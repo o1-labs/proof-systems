@@ -190,7 +190,50 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
+//! A trace is a collection of data points that represent the execution of a
+//! program.
+//! Some trace can be seen as &quot;decomposable&quot; in the sense that they can be
+//! divided into sub-traces that share the same columns, and sub-traces can be
+//! selected using &quot;selectors&quot;.
+
+</span><span class="kw">use crate</span>::{
     folding::{BaseField, FoldingInstance, FoldingWitness, ScalarField},
     lookups::Lookup,
     E,
@@ -210,17 +253,22 @@
     <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
-<span class="doccomment">/// Struct representing a circuit execution trace containing
-/// all the necessary information to generate a proof.
+<span class="doccomment">/// Struct representing a circuit execution trace which is decomposable in
+/// individual sub-circuits sharing the same columns.
 /// It is parameterized by
-/// - N: the total number of columns (constant), it must equal N_REL + N_SEL
-/// - N_REL: the number of relation columns (constant),
-/// - N_SEL: the number of selector columns (constant),
-/// - Selector: an enum representing the different gate behaviours,
-/// - F: the type of the witness data.
+/// - `N`: the total number of columns (constant), it must equal `N_REL + N_SEL`
+/// - `N_REL`: the number of relation columns (constant),
+/// - `N_SEL`: the number of selector columns (constant),
+/// - `Selector`: an enum representing the different gate behaviours,
+/// - `F`: the type of the witness data.
 </span><span class="attr">#[allow(clippy::type_complexity)]
 #[derive(Clone)]
-</span><span class="kw">pub struct </span>Trace&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt; {
+</span><span class="kw">pub struct </span>DecomposableTrace&lt;
+    <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_SEL: usize,
+    C: FoldingConfig,
+&gt; {
     <span class="doccomment">/// The domain size of the circuit
     </span><span class="kw">pub </span>domain_size: usize,
     <span class="doccomment">/// The witness for a given selector
@@ -234,23 +282,27 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt;
-    Trace&lt;N, N_REL, N_SEL, C&gt;
+    DecomposableTrace&lt;N, N_REL, N_SEL, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
 {
-    <span class="doccomment">/// Returns the number of rows that have been instantiated for the given selector.
-    /// It is important that the column used is a relation column because selector columns
-    /// are only instantiated at the very end, so their length could be zero most times.
+    <span class="doccomment">/// Returns the number of rows that have been instantiated for the given
+    /// selector.
+    /// It is important that the column used is a relation column because
+    /// selector columns are only instantiated at the very end, so their length
+    /// could be zero most times.
     </span><span class="kw">pub fn </span>number_of_rows(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: C::Selector) -&gt; usize {
         <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len()
     }
 
-    <span class="doccomment">/// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
+    <span class="doccomment">/// Returns a boolean indicating whether the witness for the given selector
+    /// was ever found in the cirucit or not.
     </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: C::Selector) -&gt; bool {
         <span class="self">self</span>.number_of_rows(opcode) != <span class="number">0
     </span>}
 
-    <span class="doccomment">/// Returns whether the witness for the given selector has achieved a number of rows that is equal to the domain size.
+    <span class="doccomment">/// Returns whether the witness for the given selector has achieved a number
+    /// of rows that is equal to the domain size.
     </span><span class="kw">pub fn </span>is_full(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: C::Selector) -&gt; bool {
         <span class="self">self</span>.domain_size == <span class="self">self</span>.number_of_rows(opcode)
     }
@@ -276,7 +328,12 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Folder&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Sponge&gt; {
+<span class="doccomment">/// The trait [Foldable] describes structures that can be folded.
+/// For that, it requires to be able to implement a way to return a folding
+/// instance and a folding witness.
+/// It is specialized for the [DecomposableTrace] struct for now and is expected
+/// to fold individual instructions, selected with a specific [C::Selector].
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Foldable&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Sponge&gt; {
     <span class="doccomment">/// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
     /// Note that this function will also absorb all commitments to the columns
@@ -292,8 +349,9 @@
     );
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig, Sponge&gt;
-    Folder&lt;N, C, Sponge&gt; <span class="kw">for </span>Trace&lt;N, N_REL, N_SEL, C&gt;
+<span class="doccomment">/// Implement the trait Foldable for the structure [DecomposableTrace]
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig, Sponge&gt;
+    Foldable&lt;N, C, Sponge&gt; <span class="kw">for </span>DecomposableTrace&lt;N, N_REL, N_SEL, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
     Sponge: FqSponge&lt;BaseField&lt;C&gt;, C::Curve, ScalarField&lt;C&gt;&gt;,
@@ -345,14 +403,28 @@
 }
 
 <span class="doccomment">/// Tracer builds traces for some program executions.
-/// The constant type `N` is defined as the maximum number of columns the trace can use per row.
-/// The constant type `N_REL` is defined as the maximum number of relation columns the trace can use per row.
-/// The constant type `N_SEL` is defined as the number of selector columns the trace can use per row.
-/// The type `Selector` encodes the information of the kind of information the trace encodes. Examples:
-/// - For Keccak, `Step` encodes the row being performed at a time: round, squeeze, padding, etc...
-/// - For MIPS, `Instruction` encodes the CPU instruction being executed: add, sub, load, store, etc...
-/// The type parameter `F` is the type the data points in the trace are encoded into. It can be a field or a native type (u64).
-</span><span class="kw">pub trait </span>Tracer&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig, Env&gt; {
+/// The constant type `N` is defined as the maximum number of columns the trace
+/// can use per row.
+/// The constant type `N_REL` is defined as the maximum number of relation
+/// columns the trace can use per row.
+/// The constant type `N_SEL` is defined as the number of selector columns the
+/// trace can use per row.
+/// The type `Selector` encodes the information of the kind of information the
+/// trace encodes. Examples:
+/// - For Keccak, `Step` encodes the row being performed at a time: round,
+/// squeeze, padding, etc...
+/// - For MIPS, `Instruction` encodes the CPU instruction being executed: add,
+/// sub, load, store, etc...
+/// The type parameter `F` is the type the data points in the trace are encoded
+/// into. It can be a field or a native type (u64).
+</span><span class="kw">pub trait </span>DecomposableTracer&lt;
+    <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_SEL: usize,
+    C: FoldingConfig,
+    Env,
+&gt;
+{
     <span class="doccomment">/// Create a new circuit
     </span><span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
 

@@ -113,6 +113,7 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{array, collections::BTreeMap};
 
 <span class="kw">use </span>ark_ff::Zero;
@@ -126,16 +127,17 @@
         environment::KeccakEnv,
         standardize,
     },
-    trace::{Trace, Tracer},
+    trace::{DecomposableTrace, DecomposableTracer},
 };
 
 <span class="kw">use </span><span class="kw">super</span>::folding::KeccakConfig;
 
 <span class="doccomment">/// The Keccak circuit trace
-</span><span class="kw">pub type </span>KeccakTrace = Trace&lt;ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig&gt;;
+</span><span class="kw">pub type </span>KeccakTrace =
+    DecomposableTrace&lt;ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig&gt;;
 
 <span class="kw">impl
-    </span>Tracer&lt;
+    </span>DecomposableTracer&lt;
         ZKVM_KECCAK_COLS,
         ZKVM_KECCAK_REL,
         ZKVM_KECCAK_SEL,

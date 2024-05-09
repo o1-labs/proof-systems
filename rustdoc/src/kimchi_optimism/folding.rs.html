@@ -197,7 +197,8 @@
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::Trace;
+<a href="#200" id="200">200</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::DecomposableTrace;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -309,8 +310,9 @@
     <span class="kw">const </span>N_SEL: usize,
     C: FoldingConfig,
 &gt; {
-    <span class="doccomment">/// Structure of the folded circuit (using Trace for now, as it contains the domain size)
-    </span><span class="kw">pub </span>structure: Trace&lt;N, N_REL, N_SEL, C&gt;,
+    <span class="doccomment">/// Structure of the folded circuit (using [DecomposableTrace] for now, as
+    /// it contains the domain size)
+    </span><span class="kw">pub </span>structure: DecomposableTrace&lt;N, N_REL, N_SEL, C&gt;,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
     </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
@@ -339,7 +341,7 @@
         Output = Evaluations&lt;ScalarField&lt;C&gt;, Radix2EvaluationDomain&lt;ScalarField&lt;C&gt;&gt;&gt;,
     &gt;,
 {
-    <span class="kw">type </span>Structure = Trace&lt;N, N_REL, N_SEL, C&gt;;
+    <span class="kw">type </span>Structure = DecomposableTrace&lt;N, N_REL, N_SEL, C&gt;;
 
     <span class="kw">fn </span>new(
         structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,

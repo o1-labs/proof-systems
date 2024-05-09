@@ -106,6 +106,7 @@
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::ScalarField,
     mips::{
@@ -113,7 +114,7 @@
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
-    trace::{Trace, Tracer},
+    trace::{DecomposableTrace, DecomposableTracer},
 };
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
@@ -123,10 +124,11 @@
 <span class="kw">use </span><span class="kw">super</span>::folding::MIPSFoldingConfig;
 
 <span class="doccomment">/// The MIPS circuit trace
-</span><span class="kw">pub type </span>MIPSTrace = Trace&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig&gt;;
+</span><span class="kw">pub type </span>MIPSTrace =
+    DecomposableTrace&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig&gt;;
 
 <span class="kw">impl
-    </span>Tracer&lt;
+    </span>DecomposableTracer&lt;
         MIPS_COLUMNS,
         MIPS_REL_COLS,
         MIPS_SEL_COLS,
