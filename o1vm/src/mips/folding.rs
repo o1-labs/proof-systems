@@ -1,7 +1,7 @@
 use crate::{
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
-        column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
+        column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
     },
     trace::Indexer,
@@ -13,7 +13,7 @@ use kimchi_msm::columns::Column;
 use std::ops::Index;
 
 use super::{
-    column::{MIPS_REL_COLS, MIPS_SEL_COLS},
+    column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
     trace::MIPSTrace,
 };
 use poly_commitment::srs::SRS;
@@ -22,7 +22,7 @@ use poly_commitment::srs::SRS;
 pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
 pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS, Curve>;
 pub type MIPSFoldingEnvironment =
-    FoldingEnvironment<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+    FoldingEnvironment<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, MIPSFoldingConfig>;
 
 // -- Start indexer implementations
 // Implement indexers over columns and selectors to implement an abstract
@@ -54,7 +54,7 @@ impl Index<Column> for MIPSFoldingWitness {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Relation(ix) => &self.witness.cols[ix],
-            Column::DynamicSelector(ix) => &self.witness.cols[MIPS_REL_COLS + ix],
+            Column::DynamicSelector(ix) => &self.witness.cols[N_MIPS_REL_COLS + ix],
             _ => panic!("Invalid column type"),
         }
     }
@@ -76,7 +76,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Selector = Instruction;
     type Challenge = Challenge;
     type Curve = Curve;
-    type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
     type Structure = MIPSTrace;

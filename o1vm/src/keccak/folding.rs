@@ -1,7 +1,7 @@
 use crate::{
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
-        column::{ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
+        column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         KeccakColumn, Steps,
     },
     trace::Indexer,
@@ -19,11 +19,15 @@ use std::ops::Index;
 
 use super::trace::KeccakTrace;
 
-pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
-pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
+pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
+pub type KeccakFoldingInstance = FoldingInstance<N_ZKVM_KECCAK_COLS, Curve>;
 
-pub type KeccakFoldingEnvironment =
-    FoldingEnvironment<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+pub type KeccakFoldingEnvironment = FoldingEnvironment<
+    N_ZKVM_KECCAK_COLS,
+    N_ZKVM_KECCAK_REL_COLS,
+    N_ZKVM_KECCAK_SEL_COLS,
+    KeccakConfig,
+>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -51,7 +55,7 @@ impl Index<Column> for KeccakFoldingWitness {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Relation(ix) => &self.witness.cols[ix],
-            Column::DynamicSelector(ix) => &self.witness.cols[ZKVM_KECCAK_REL + ix],
+            Column::DynamicSelector(ix) => &self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix],
             _ => panic!("Invalid column type"),
         }
     }

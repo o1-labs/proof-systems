@@ -1,7 +1,7 @@
 use crate::{
     folding::ScalarField,
     mips::{
-        column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
+        column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
@@ -16,13 +16,13 @@ use super::folding::MIPSFoldingConfig;
 
 /// The MIPS circuit trace
 pub type MIPSTrace =
-    DecomposableTrace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+    DecomposableTrace<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, MIPSFoldingConfig>;
 
 impl
     DecomposableTracer<
-        MIPS_COLUMNS,
-        MIPS_REL_COLS,
-        MIPS_SEL_COLS,
+        N_MIPS_COLS,
+        N_MIPS_REL_COLS,
+        N_MIPS_SEL_COLS,
         MIPSFoldingConfig,
         Env<ScalarField<MIPSFoldingConfig>>,
     > for MIPSTrace
@@ -55,7 +55,7 @@ impl
     fn push_row(
         &mut self,
         opcode: Instruction,
-        row: &[ScalarField<MIPSFoldingConfig>; MIPS_REL_COLS],
+        row: &[ScalarField<MIPSFoldingConfig>; N_MIPS_REL_COLS],
     ) {
         self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
@@ -69,7 +69,7 @@ impl
     fn pad_with_row(
         &mut self,
         opcode: Instruction,
-        row: &[ScalarField<MIPSFoldingConfig>; MIPS_REL_COLS],
+        row: &[ScalarField<MIPSFoldingConfig>; N_MIPS_REL_COLS],
     ) -> usize {
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);
