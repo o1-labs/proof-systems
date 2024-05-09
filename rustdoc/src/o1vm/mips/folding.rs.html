@@ -87,6 +87,7 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
@@ -115,14 +116,11 @@
     DecomposableMIPSFoldingConfig,
 &gt;;
 
-<span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;N_MIPS_COLS, Fp&gt;;
-<span class="kw">pub type </span>MIPSFoldingInstance = FoldingInstance&lt;N_MIPS_COLS, Curve&gt;;
-
 <span class="comment">// -- Start indexer implementations
 // Implement indexers over columns and selectors to implement an abstract
 // folding environment over selectors, see [crate::folding::FoldingEnvironment]
 // for more details
-</span><span class="kw">impl </span>Index&lt;MIPSColumn&gt; <span class="kw">for </span>MIPSFoldingWitness {
+</span><span class="kw">impl </span>Index&lt;MIPSColumn&gt; <span class="kw">for </span>FoldingWitness&lt;N_MIPS_COLS, Fp&gt; {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: MIPSColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
@@ -131,7 +129,7 @@
 }
 
 <span class="comment">// Implemented for decomposable folding compatibility
-</span><span class="kw">impl </span>Index&lt;Instruction&gt; <span class="kw">for </span>MIPSFoldingWitness {
+</span><span class="kw">impl </span>Index&lt;Instruction&gt; <span class="kw">for </span>FoldingWitness&lt;N_MIPS_COLS, Fp&gt; {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="doccomment">/// Map a selector column to the corresponding witness column.
@@ -141,7 +139,7 @@
 }
 
 <span class="comment">// Implementing this so that generic constraints can be used in folding
-</span><span class="kw">impl </span>Index&lt;Column&gt; <span class="kw">for </span>MIPSFoldingWitness {
+</span><span class="kw">impl </span>Index&lt;Column&gt; <span class="kw">for </span>FoldingWitness&lt;N_MIPS_COLS, Fp&gt; {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="doccomment">/// Map a column alias to the corresponding witness column.
@@ -171,8 +169,12 @@
     <span class="kw">type </span>Challenge = Challenge;
     <span class="kw">type </span>Curve = Curve;
     <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
-    <span class="kw">type </span>Instance = MIPSFoldingInstance;
-    <span class="kw">type </span>Witness = MIPSFoldingWitness;
+    <span class="comment">// Using FoldingInstance instead of type alias as the type parameter defines
+    // the number of columns
+    </span><span class="kw">type </span>Instance = FoldingInstance&lt;N_MIPS_COLS, Curve&gt;;
+    <span class="comment">// Using FoldingWitness instead of type alias as the type parameter defines
+    // the number of columns
+    </span><span class="kw">type </span>Witness = FoldingWitness&lt;N_MIPS_COLS, Fp&gt;;
     <span class="kw">type </span>Structure = DecomposableMIPSTrace;
     <span class="kw">type </span>Env = DecomposableMIPSFoldingEnvironment;
 }
