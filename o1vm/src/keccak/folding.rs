@@ -24,6 +24,7 @@ pub type KeccakFoldingEnvironment = DecomposableFoldingEnvironment<
     N_ZKVM_KECCAK_REL_COLS,
     N_ZKVM_KECCAK_SEL_COLS,
     KeccakConfig,
+    KeccakTrace,
 >;
 
 pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;

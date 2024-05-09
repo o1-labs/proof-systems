@@ -24,6 +24,7 @@ pub type DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment<
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
     DecomposableMIPSFoldingConfig,
+    DecomposedMIPSTrace,
 >;
 
 pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;

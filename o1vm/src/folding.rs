@@ -1,4 +1,4 @@
-use crate::trace::DecomposedTrace;
+use crate::trace::ProvableTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -109,10 +109,11 @@ pub struct DecomposableFoldingEnvironment<
     const N_REL: usize,
     const N_SEL: usize,
     C: FoldingConfig,
+    Structure: ProvableTrace,
 > {
     /// Structure of the folded circuit (using [DecomposedTrace] for now, as
     /// it contains the domain size)
-    pub structure: DecomposedTrace<N, N_REL, N_SEL, C>,
+    pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -122,7 +123,14 @@ pub struct DecomposableFoldingEnvironment<
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
 
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        C: FoldingConfig,
+        // FIXME: Clone should not be used. Only a reference should be stored
+        Structure: ProvableTrace + Clone,
+    >
     FoldingEnv<
         ScalarField<C>,
         FoldingInstance<N, C::Curve>,
@@ -130,7 +138,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
         C::Column,
         Challenge,
         C::Selector,
-    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C>
+    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -142,7 +150,7 @@ where
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = DecomposedTrace<N, N_REL, N_SEL, C>;
+    type Structure = Structure;
 
     fn new(
         structure: &Self::Structure,
@@ -157,6 +165,7 @@ where
             }
         }
         DecomposableFoldingEnvironment {
+            // FIXME: This is a clone, but it should be a reference
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
@@ -165,7 +174,7 @@ where
     }
 
     fn domain_size(&self) -> usize {
-        self.structure.domain_size
+        self.structure.domain_size()
     }
 
     fn zero_vec(&self) -> Vec<ScalarField<C>> {
