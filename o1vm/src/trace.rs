@@ -40,7 +40,7 @@ pub trait ProvableTrace {
 // single instruction.
 // It is not recommended to use this in production and it should not be
 // maintained in the long term.
-pub struct SingleInstructionTrace<const N: usize, C: FoldingConfig> {
+pub struct Trace<const N: usize, C: FoldingConfig> {
     pub domain_size: usize,
     pub witness: Witness<N, Vec<ScalarField<C>>>,
     pub constraints: Vec<E<ScalarField<C>>>,
@@ -48,7 +48,7 @@ pub struct SingleInstructionTrace<const N: usize, C: FoldingConfig> {
 }
 
 // Any single instruction trace is provable.
-impl<const N: usize, C: FoldingConfig> ProvableTrace for SingleInstructionTrace<N, C> {
+impl<const N: usize, C: FoldingConfig> ProvableTrace for Trace<N, C> {
     fn domain_size(&self) -> usize {
         self.domain_size
     }
@@ -64,12 +64,8 @@ impl<const N: usize, C: FoldingConfig> ProvableTrace for SingleInstructionTrace<
 /// - `F`: the type of the witness data.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct DecomposableTrace<
-    const N: usize,
-    const N_REL: usize,
-    const N_SEL: usize,
-    C: FoldingConfig,
-> {
+pub struct DecomposedTrace<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
+{
     /// The domain size of the circuit
     pub domain_size: usize,
     /// The witness for a given selector
@@ -84,7 +80,7 @@ pub struct DecomposableTrace<
 
 // Any decomposable trace is provable.
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> ProvableTrace
-    for DecomposableTrace<N, N_REL, N_SEL, C>
+    for DecomposedTrace<N, N_REL, N_SEL, C>
 {
     fn domain_size(&self) -> usize {
         self.domain_size
@@ -92,7 +88,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> P
 }
 
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
-    DecomposableTrace<N, N_REL, N_SEL, C>
+    DecomposedTrace<N, N_REL, N_SEL, C>
 where
     C::Selector: Indexer,
 {
@@ -141,7 +137,7 @@ where
 /// The trait [Foldable] describes structures that can be folded.
 /// For that, it requires to be able to implement a way to return a folding
 /// instance and a folding witness.
-/// It is specialized for the [DecomposableTrace] struct for now and is expected
+/// It is specialized for the [DecomposedTrace] struct for now and is expected
 /// to fold individual instructions, selected with a specific [C::Selector].
 pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     /// Returns the witness for the given selector as a folding witness and
@@ -159,9 +155,9 @@ pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     );
 }
 
-/// Implement the trait Foldable for the structure [DecomposableTrace]
+/// Implement the trait Foldable for the structure [DecomposedTrace]
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
-    Foldable<N, C, Sponge> for DecomposableTrace<N, N_REL, N_SEL, C>
+    Foldable<N, C, Sponge> for DecomposedTrace<N, N_REL, N_SEL, C>
 where
     C::Selector: Indexer,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,

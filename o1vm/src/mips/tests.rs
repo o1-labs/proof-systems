@@ -7,7 +7,7 @@ use crate::{
             JTypeInstruction::{self, *},
             RTypeInstruction::{self, *},
         },
-        trace::DecomposableMIPSTrace,
+        trace::DecomposedMIPSTrace,
     },
     trace::DecomposableTracer,
 };
@@ -28,7 +28,7 @@ fn test_mips_number_constraints() {
     };
 
     // Keep track of the constraints and lookups of the sub-circuits
-    let mips_circuit = DecomposableMIPSTrace::new(domain_size, &mut constraints_env);
+    let mips_circuit = DecomposedMIPSTrace::new(domain_size, &mut constraints_env);
 
     let assert_num_constraints = |instr: &Instruction, num: usize| {
         assert_eq!(mips_circuit.constraints.get(instr).unwrap().len(), num)

@@ -19,7 +19,7 @@ use o1vm::{
         constraints as mips_constraints,
         folding::DecomposableMIPSFoldingConfig,
         interpreter::Instruction,
-        trace::DecomposableMIPSTrace,
+        trace::DecomposedMIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
@@ -90,7 +90,7 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_trace = DecomposableMIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut mips_trace = DecomposedMIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
     let mut keccak_trace = KeccakTrace::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     let _mips_folding = {

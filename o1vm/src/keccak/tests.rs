@@ -13,7 +13,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::DecomposableTracer,
+    trace::{DecomposableTracer, DecomposedTrace},
     BaseSponge, Fp,
 };
 use ark_ff::{One, Zero};
@@ -543,11 +543,7 @@ fn test_keccak_prover_constraints() {
 
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{
-        keccak::folding::KeccakConfig,
-        trace::{DecomposableTrace, Foldable},
-        Curve,
-    };
+    use crate::{keccak::folding::KeccakConfig, trace::Foldable, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
         checker::{Checker, ExtendedProvider},
@@ -572,7 +568,7 @@ fn test_keccak_decomposable_folding() {
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
-        let mut keccak_trace: [DecomposableTrace<
+        let mut keccak_trace: [DecomposedTrace<
             N_ZKVM_KECCAK_COLS,
             N_ZKVM_KECCAK_REL_COLS,
             N_ZKVM_KECCAK_SEL_COLS,
