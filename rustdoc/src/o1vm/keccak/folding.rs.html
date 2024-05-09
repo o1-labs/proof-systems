@@ -83,6 +83,9 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
@@ -111,7 +114,10 @@
     KeccakConfig,
 &gt;;
 
-<span class="kw">impl </span>Index&lt;KeccakColumn&gt; <span class="kw">for </span>FoldingWitness&lt;N_ZKVM_KECCAK_COLS, Fp&gt; {
+<span class="kw">pub type </span>KeccakFoldingWitness = FoldingWitness&lt;N_ZKVM_KECCAK_COLS, Fp&gt;;
+<span class="kw">pub type </span>KeccakFoldingInstance = FoldingInstance&lt;N_ZKVM_KECCAK_COLS, Curve&gt;;
+
+<span class="kw">impl </span>Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakFoldingWitness {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
@@ -120,7 +126,7 @@
 }
 
 <span class="comment">// Implemented for decomposable folding compatibility
-</span><span class="kw">impl </span>Index&lt;Steps&gt; <span class="kw">for </span>FoldingWitness&lt;N_ZKVM_KECCAK_COLS, Fp&gt; {
+</span><span class="kw">impl </span>Index&lt;Steps&gt; <span class="kw">for </span>KeccakFoldingWitness {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="doccomment">/// Map a selector column to the corresponding witness column.
@@ -130,7 +136,7 @@
 }
 
 <span class="comment">// Implementing this so that generic constraints can be used in folding
-</span><span class="kw">impl </span>Index&lt;Column&gt; <span class="kw">for </span>FoldingWitness&lt;N_ZKVM_KECCAK_COLS, Fp&gt; {
+</span><span class="kw">impl </span>Index&lt;Column&gt; <span class="kw">for </span>KeccakFoldingWitness {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
 
     <span class="doccomment">/// Map a column alias to the corresponding witness column.
@@ -159,8 +165,8 @@
     <span class="kw">type </span>Challenge = Challenge;
     <span class="kw">type </span>Curve = Curve;
     <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
-    <span class="kw">type </span>Instance = FoldingInstance&lt;N_ZKVM_KECCAK_COLS, Curve&gt;;
-    <span class="kw">type </span>Witness = FoldingWitness&lt;N_ZKVM_KECCAK_COLS, Fp&gt;;
+    <span class="kw">type </span>Instance = KeccakFoldingInstance;
+    <span class="kw">type </span>Witness = KeccakFoldingWitness;
     <span class="kw">type </span>Structure = KeccakTrace;
     <span class="kw">type </span>Env = KeccakFoldingEnvironment;
 }

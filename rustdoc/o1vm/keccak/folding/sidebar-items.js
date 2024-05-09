@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["KeccakConfig"],"type":["KeccakFoldingEnvironment"]};
+window.SIDEBAR_ITEMS = {"struct":["KeccakConfig"],"type":["KeccakFoldingEnvironment","KeccakFoldingInstance","KeccakFoldingWitness"]};
