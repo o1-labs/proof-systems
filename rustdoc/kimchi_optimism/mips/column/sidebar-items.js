@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["MIPS_COLUMNS","MIPS_REL_COLS","MIPS_SEL_COLS"],"enum":["ColumnAlias"],"type":["MIPSWitness"]};

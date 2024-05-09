@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["ZKVM_KECCAK_COLS","ZKVM_KECCAK_REL","ZKVM_KECCAK_SEL"],"enum":["Absorbs","ColumnAlias","Sponges","Steps"],"struct":["AbsorbsIter","SpongesIter","StepsIter"],"type":["KeccakWitness"]};
