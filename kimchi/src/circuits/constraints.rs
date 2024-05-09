@@ -8,7 +8,7 @@ use crate::{
         lookup::{
             index::LookupConstraintSystem,
             lookups::{LookupFeatures, LookupPatterns},
-            tables::{GateLookupTables, LookupTable}
+            tables::{GateLookupTables, LookupTable},
         },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
