@@ -226,6 +226,44 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -251,6 +289,35 @@
 <span class="doccomment">/// Returns the index of the witness column in the trace.
 </span><span class="kw">pub trait </span>Indexer {
     <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+}
+
+<span class="doccomment">/// Represents an provable trace.
+/// A trace is provable if it can be used to prove the correctness of the
+/// computation it embeds.
+/// For now, the only requirement is to be able to return the length of
+/// the computation, which is commonly named the domain size.
+</span><span class="kw">pub trait </span>ProvableTrace {
+    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+}
+
+<span class="doccomment">/// Implement a trace for a single instruction.
+</span><span class="comment">// TODO: we should use the generic traits defined in [kimchi_msm].
+// For now, we want to have this to be able to test the folding library for a
+// single instruction.
+// It is not recommended to use this in production and it should not be
+// maintained in the long term.
+</span><span class="kw">pub struct </span>SingleInstructionTrace&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; {
+    <span class="kw">pub </span>domain_size: usize,
+    <span class="kw">pub </span>witness: Witness&lt;N, Vec&lt;ScalarField&lt;C&gt;&gt;&gt;,
+    <span class="kw">pub </span>constraints: Vec&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;,
+    <span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
+}
+
+<span class="comment">// Any single instruction trace is provable.
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; ProvableTrace <span class="kw">for </span>SingleInstructionTrace&lt;N, C&gt; {
+    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.domain_size
+    }
 }
 
 <span class="doccomment">/// Struct representing a circuit execution trace which is decomposable in
@@ -279,6 +346,15 @@
     </span><span class="kw">pub </span>constraints: BTreeMap&lt;C::Selector, Vec&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of lookups for a given selector
     </span><span class="kw">pub </span>lookups: BTreeMap&lt;C::Selector, Vec&lt;Lookup&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;&gt;,
+}
+
+<span class="comment">// Any decomposable trace is provable.
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt; ProvableTrace
+    <span class="kw">for </span>DecomposableTrace&lt;N, N_REL, N_SEL, C&gt;
+{
+    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.domain_size
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt;

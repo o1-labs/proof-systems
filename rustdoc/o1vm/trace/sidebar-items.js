@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DecomposableTrace"],"trait":["DecomposableTracer","Indexer"]};
+window.SIDEBAR_ITEMS = {"struct":["DecomposableTrace","SingleInstructionTrace"],"trait":["DecomposableTracer","Indexer","ProvableTrace"]};
