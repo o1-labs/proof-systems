@@ -1,10 +1,10 @@
 use clap::Arg;
-use kimchi_optimism::{
+use log::{debug, error};
+use o1vm::{
     cannon::PreimageKey,
     cannon_cli::{main_cli, read_configuration},
     preimage_oracle::PreImageOracle,
 };
-use log::{debug, error};
 use std::{
     io::{self},
     path::{Path, PathBuf},

@@ -4,7 +4,8 @@ use folding::{
 };
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
-use kimchi_optimism::{
+use log::debug;
+use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
@@ -26,7 +27,6 @@ use kimchi_optimism::{
     trace::DecomposableTracer,
     BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
-use log::debug;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
