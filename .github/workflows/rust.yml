@@ -63,7 +63,6 @@ jobs:
 
       - name: Install cargo-spec for specifications
         run: |
-          eval $(opam env)
           cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
@@ -86,7 +85,6 @@ jobs:
 
       - name: Enforce formating
         run: |
-          eval $(opam env)
           cargo fmt -- --check
 
       - name: Lint (clippy)
@@ -119,10 +117,7 @@ jobs:
 
       # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
       - name: Install latest nextest release
-        run: |
-          eval $(opam env)
-          # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
-          cargo install cargo-nextest@=0.9.67 --locked
+        uses: taiki-e/install-action@nextest
 
       - name: Test with latest nextest release (faster than cargo test)
         uses: actions-rs/cargo@v1
