@@ -7,7 +7,7 @@ use crate::{
         gate::{CircuitGate, GateType},
         lookup::{
             index::LookupConstraintSystem,
-            lookups::LookupFeatures,
+            lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
@@ -29,6 +29,7 @@ use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
+use std::default::Default;
 use std::sync::Arc;
 
 //
@@ -57,6 +58,30 @@ pub struct FeatureFlags {
     pub rot: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
+}
+
+impl Default for FeatureFlags {
+    /// Returns an instance with all features disabled.
+    fn default() -> FeatureFlags {
+        FeatureFlags {
+            range_check0: false,
+            range_check1: false,
+            lookup_features: LookupFeatures {
+                patterns: LookupPatterns {
+                    xor: false,
+                    lookup: false,
+                    range_check: false,
+                    foreign_field_mul: false,
+                },
+                joint_lookup_used: false,
+                uses_runtime_tables: false,
+            },
+            foreign_field_add: false,
+            foreign_field_mul: false,
+            xor: false,
+            rot: false,
+        }
+    }
 }
 
 /// The polynomials representing evaluated columns, in coefficient form.

@@ -1,3 +1,5 @@
+# We use --offline to be sure that we do not access the network
+
 name: CI
 
 on:
@@ -29,6 +31,8 @@ jobs:
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
+        with:
+          submodules: true        
 
       # as action-rs does not seem to be maintained anymore, building from
       # scratch the environment using rustup
@@ -44,12 +48,10 @@ jobs:
             # overwriting default rust-toolchain
             echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
-      - name: Setup OCaml ${{ matrix.ocaml_version }}
-        uses: ocaml/setup-ocaml@v2
-        with:
-          ocaml-compiler: ${{ matrix.ocaml_version }}
-          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
-          # disable-cache: true
+      - name: Setup OCaml (because of ocaml-gen)
+        run: |
+          sudo apt update
+          sudo apt install -y ocaml
 
       - name: Install markdownlint
         run: |
@@ -61,7 +63,6 @@ jobs:
 
       - name: Install cargo-spec for specifications
         run: |
-          eval $(opam env)
           cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
@@ -84,22 +85,31 @@ jobs:
 
       - name: Enforce formating
         run: |
-          eval $(opam env)
           cargo fmt -- --check
 
       - name: Lint (clippy)
-        run: |
-          eval $(opam env)
-          cargo clippy --all-features --all-targets --tests -- -W clippy::all -D warnings
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --tests --all-targets --offline -- -D warnings
+
+      - name: Run Clippy (beta)
+        uses: actions-rs/clippy-check@v1
+        continue-on-error: true
+        with:
+          name: Clippy (beta)
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --all-targets --offline -- -W clippy::all
 
       #
       # Build
       #
 
       - name: Ensure that everything builds
-        run: |
-          eval $(opam env)
-          cargo build --release --all-targets --all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets --all-features --offline
 
       #
       # Tests
@@ -107,17 +117,16 @@ jobs:
 
       # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
       - name: Install latest nextest release
-        run: |
-          eval $(opam env)
-          # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
-          cargo install cargo-nextest@=0.9.67 --locked
+        uses: taiki-e/install-action@nextest
 
       - name: Test with latest nextest release (faster than cargo test)
-        run: |
-          eval $(opam env)
-          cargo nextest run --all-features --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: run --all-features --release --offline
 
       - name: Doc tests
-        run: |
-          eval $(opam env)
-          cargo test --all-features --release --doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --release --doc --offline
