@@ -1,7 +1,7 @@
 //! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
-//! [Witness] that defines the the NP relation.
+//! [Witness] that defines the NP relation.
 //!
 //! Here a brief description of the traits and structures:
 //! - [Instance]: represents the instance (public input)

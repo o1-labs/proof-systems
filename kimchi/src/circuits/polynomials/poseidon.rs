@@ -80,7 +80,7 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
-        // Coefficients are passed in in the logical order
+        // Coefficients are passed in the logical order
         coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         let coeffs = coeffs.iter().flatten().copied().collect();
