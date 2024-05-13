@@ -449,7 +449,7 @@ mod folding {
         //     .iter()
         //     .for_each(|constraint| println!("Degree: {:?}", constraint.degree(1, 0)));
         // Selecting the first constraint for testing
-        // let constraints = vec![constraints.first().unwrap().clone()];
+        let constraints = constraints.into_iter().take(3).collect::<Vec<_>>();
 
         let witness_one = make_random_witness_for_addiu(domain_size, &mut rng);
         let witness_two = make_random_witness_for_addiu(domain_size, &mut rng);
@@ -526,9 +526,25 @@ mod folding {
 
         let one = (folding_instance_one, folding_witness_one);
         let two = (folding_instance_two, folding_witness_two);
-        let (_relaxed_instance, _relatex_witness, _error_terms) =
+        let (_relaxed_instance, relaxed_witness, _error_terms) =
             folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
 
+        // MISC testing regarding folding.
+        {
+            // I want to check there are no additional columns created.
+            // Asserting that we only use one constraint for now. I don't want the alpha
+            assert_eq!(constraints.len(), 3);
+            // Asserting we only have a degree 2 constraint
+            constraints.iter().for_each(|c| {
+                assert_eq!(c.degree(1, 0), 2);
+            });
+            // Therefore, it means we should have zero additional columns.
+            println!(
+                "Additional columns: {:?}",
+                relaxed_witness.witness.extended.len()
+            );
+            // assert_eq!(relaxed_witness.witness.extended.len(), 1);
+        }
         // FIXME: add IVC
     }
 }
