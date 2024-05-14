@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_XLARGE","N_LIMBS_XLARGE"],"fn":["combine_large_to_xlarge","ivc_circuit","ivc_constraint","process_ecadds","process_hashes","process_inputs","process_misc","process_scalars"]};
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_XLARGE","N_LIMBS_XLARGE"],"fn":["combine_large_to_xlarge","combine_small_to_full","constrain_inputs","constrain_scalars","ivc_circuit","prepare_scalars","process_ecadds","process_hashes","process_inputs","process_misc","process_scalars","write_inputs_row","write_scalars_row"]};

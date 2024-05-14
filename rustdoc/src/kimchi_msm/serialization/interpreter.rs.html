@@ -1147,7 +1147,7 @@
 ) -&gt; [Env::Variable; N] {
     <span class="macro">assert!</span>(BITSIZE_N % BITSIZE_M == <span class="number">0</span>);
     <span class="kw">let </span>k = BITSIZE_N / BITSIZE_M;
-    <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
+    <span class="kw">let </span>constant_bui = |x: BigUint| Env::constant(From::from(x));
     <span class="kw">let </span>disparity: usize = M % k;
     std::array::from_fn(|i| {
         <span class="comment">// We have less small limbs in the last large limb
@@ -1157,7 +1157,7 @@
             k
         };
         (<span class="number">0</span>..upper_bound)
-            .map(|j| x[k * i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * BITSIZE_M)))
+            .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(<span class="number">1u128</span>) &lt;&lt; (j * BITSIZE_M)))
             .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
     })
 }

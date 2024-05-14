@@ -301,9 +301,18 @@
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
-        ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+        ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
     },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
@@ -400,7 +409,16 @@
 
     <span class="doccomment">/// Returns the current row.
     </span><span class="kw">fn </span>curr_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.witness.len()
+        <span class="self">self</span>.witness.len() - <span class="number">1
+    </span>}
+}
+
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    DirectWitnessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+{
+    <span class="doccomment">/// Convert an abstract variable to a field element! Inverse of Env::constant().
+    </span><span class="kw">fn </span>variable_to_field(value: <span class="self">Self</span>::Variable) -&gt; F {
+        value
     }
 }
 

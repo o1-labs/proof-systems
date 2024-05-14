@@ -237,7 +237,7 @@
             <span class="kw">let </span>y: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
             <span class="kw">let </span>z: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
 
-            interpreter::poseidon_circuit(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;</span>PoseidonBN254Parameters, (x, y, z));
+            interpreter::poseidon_circuit(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;</span>PoseidonBN254Parameters, [x, y, z]);
 
             <span class="comment">// Check internal consistency of our circuit: that our
             // computed values match the CPU-spec implementation of
@@ -289,7 +289,7 @@
                 interpreter::poseidon_circuit(
                     <span class="kw-2">&amp;mut </span>witness_env,
                     <span class="kw-2">&amp;</span>PoseidonBN254Parameters,
-                    (x, y, z),
+                    [x, y, z],
                 );
             }
 

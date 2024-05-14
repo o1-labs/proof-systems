@@ -210,6 +210,9 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
@@ -273,21 +276,24 @@
 /// 6N+2 |------------------------------------------|
 ///
 ///     constϕ
-///      ϕ^i         ϕ^i        r*ϕ^i
-///       r*ϕ^i   in 17 limbs  in 17 limbs
-///                 each        each
-///   1  |-|-|-|------------|------------|
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  i   |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  N   |-----|------------|------------|
-///       1 2 3 4 ...     4+17          4+2*17
+///         constr
+///                ϕ^i             ϕ^i        r*ϕ^i
+///                      r*ϕ^i  in 17 limbs  in 17 limbs
+///                               each        each
+///   1  |---|---|-----|------|------------|------------|
+///      | ϕ   r    ϕ     rϕ  |            |            |
+///      | ϕ   r   ϕ^2   rϕ^2 |            |            |
+///      | ϕ   r   ϕ^3   rϕ^3 |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  i   |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  N   |--------------------|------------|------------|
+///       1    2   3   4 ...        4+17          4+2*17
 ///
 ///
 ///
@@ -354,14 +360,14 @@
     </span>Block3ConstPhi,
     <span class="doccomment">/// Constant r
     </span>Block3ConstR,
-    <span class="doccomment">/// Scalar coeff #1, phi^i
-    </span>Block3Phi,
+    <span class="doccomment">/// Scalar coeff #1, powers of Phi, phi^i
+    </span>Block3PhiPow,
     <span class="doccomment">/// Scalar coeff #2, r * phi^i
-    </span>Block3PhiR,
+    </span>Block3PhiPowR,
     <span class="doccomment">/// 17 15-bit limbs
-    </span>Block3PhiLimbs(usize),
+    </span>Block3PhiPowLimbs(usize),
     <span class="doccomment">/// 17 15-bit limbs
-    </span>Block3PhiRLimbs(usize),
+    </span>Block3PhiPowRLimbs(usize),
 
     <span class="doccomment">/// 1 addition per row
     </span>Block4ECAdd(FECColumn),
@@ -390,13 +396,13 @@
             IVCColumn::Block2Hash(poseidon_col) =&gt; poseidon_col.to_column(),
             IVCColumn::Block3ConstPhi =&gt; Column::Relation(<span class="number">0</span>),
             IVCColumn::Block3ConstR =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block3Phi =&gt; Column::Relation(<span class="number">2</span>),
-            IVCColumn::Block3PhiR =&gt; Column::Relation(<span class="number">3</span>),
-            IVCColumn::Block3PhiLimbs(i) =&gt; {
+            IVCColumn::Block3PhiPow =&gt; Column::Relation(<span class="number">2</span>),
+            IVCColumn::Block3PhiPowR =&gt; Column::Relation(<span class="number">3</span>),
+            IVCColumn::Block3PhiPowLimbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
                 Column::Relation(<span class="number">4 </span>+ i)
             }
-            IVCColumn::Block3PhiRLimbs(i) =&gt; {
+            IVCColumn::Block3PhiPowRLimbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
                 Column::Relation(<span class="number">4 </span>+ N_LIMBS_SMALL + i)
             }
