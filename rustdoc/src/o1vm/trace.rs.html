@@ -260,6 +260,10 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -319,19 +323,23 @@
 <span class="doccomment">/// Struct representing a circuit execution trace which is decomposable in
 /// individual sub-circuits sharing the same columns.
 /// It is parameterized by
-/// - `N`: the total number of columns (constant), it must equal `N_REL + N_SEL`
+/// - `N`: the total number of columns (constant), it must equal `N_REL + N_DSEL`
 /// - `N_REL`: the number of relation columns (constant),
-/// - `N_SEL`: the number of selector columns (constant),
+/// - `N_DSEL`: the number of dynamic selector columns (constant),
 /// - `Selector`: an enum representing the different gate behaviours,
 /// - `F`: the type of the witness data.
 </span><span class="attr">#[allow(clippy::type_complexity)]
 #[derive(Clone)]
-</span><span class="kw">pub struct </span>DecomposedTrace&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt;
-{
+</span><span class="kw">pub struct </span>DecomposedTrace&lt;
+    <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
+    C: FoldingConfig,
+&gt; {
     <span class="doccomment">/// The domain size of the circuit
     </span><span class="kw">pub </span>domain_size: usize,
     <span class="doccomment">/// The witness for a given selector
-    /// - the last N_SEL columns represent the selector columns
+    /// - the last N_DSEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
     </span><span class="kw">pub </span>witness: BTreeMap&lt;C::Selector, Witness&lt;N, Vec&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of constraints for a given selector
@@ -341,16 +349,16 @@
 }
 
 <span class="comment">// Any decomposable trace is provable.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt; ProvableTrace
-    <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_SEL, C&gt;
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt; ProvableTrace
+    <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
 {
     <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.domain_size
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt;
-    DecomposedTrace&lt;N, N_REL, N_SEL, C&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt;
+    DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
 {
@@ -418,8 +426,8 @@
 }
 
 <span class="doccomment">/// Implement the trait Foldable for the structure [DecomposedTrace]
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig, Sponge&gt;
-    Foldable&lt;N, C, Sponge&gt; <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_SEL, C&gt;
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig, Sponge&gt;
+    Foldable&lt;N, C, Sponge&gt; <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
     Sponge: FqSponge&lt;BaseField&lt;C&gt;, C::Curve, ScalarField&lt;C&gt;&gt;,
@@ -475,7 +483,7 @@
 /// can use per row.
 /// The constant type `N_REL` is defined as the maximum number of relation
 /// columns the trace can use per row.
-/// The constant type `N_SEL` is defined as the number of selector columns the
+/// The constant type `N_DSEL` is defined as the number of selector columns the
 /// trace can use per row.
 /// The type `Selector` encodes the information of the kind of information the
 /// trace encodes. Examples:
@@ -488,7 +496,7 @@
 </span><span class="kw">pub trait </span>DecomposableTracer&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_SEL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
     C: FoldingConfig,
     Env,
 &gt;

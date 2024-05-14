@@ -48,11 +48,11 @@
 </span><span class="kw">pub const </span>FFA_N_COLUMNS: usize = <span class="number">5 </span>* N_LIMBS;
 <span class="kw">pub const </span>FFA_NPUB_COLUMNS: usize = N_LIMBS;
 
-<span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
-</span><span class="doccomment">/// Column indexer for MSM columns.
+<span class="doccomment">/// Column indexer for MSM columns.
 ///
 /// They represent the equation
 ///   `InputA(i) + InputB(i) = ModulusF(i) * Quotient + Carry(i) * 2^LIMB_SIZE - Carry(i-1)`
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>FFAColumn {
     InputA(usize),
     InputB(usize),
@@ -63,7 +63,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FFAColumn {
-    <span class="kw">const </span>COL_N: usize = FFA_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = FFA_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);

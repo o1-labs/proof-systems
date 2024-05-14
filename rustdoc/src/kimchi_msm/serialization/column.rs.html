@@ -67,6 +67,7 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     serialization::N_INTERMEDIATE_LIMBS,
@@ -77,6 +78,7 @@
 </span><span class="kw">pub const </span>SER_N_COLUMNS: usize = <span class="number">6 </span>* N_LIMBS + N_INTERMEDIATE_LIMBS + <span class="number">9</span>;
 
 <span class="doccomment">/// Columns used by the serialization subcircuit.
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>SerializationColumn {
     <span class="doccomment">/// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
     </span>ChalKimchi(usize),
@@ -98,7 +100,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {
-    <span class="kw">const </span>COL_N: usize = SER_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = SER_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ChalKimchi(j) =&gt; {

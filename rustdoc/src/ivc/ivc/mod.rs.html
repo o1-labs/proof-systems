@@ -85,6 +85,13 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -111,8 +118,15 @@
     <span class="attr">#[derive(Clone)]
     </span><span class="kw">pub struct </span>PoseidonBN254Parameters;
 
-    <span class="kw">type </span>IVCWitnessBuilderEnv =
-        WitnessBuilderEnv&lt;Fp, { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, IVCLookupTable&lt;Ff1&gt;&gt;;
+    <span class="kw">type </span>IVCWitnessBuilderEnv = WitnessBuilderEnv&lt;
+        Fp,
+        IVCColumn,
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        IVCLookupTable&lt;Ff1&gt;,
+    &gt;;
 
     <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
         <span class="kw">for </span>PoseidonBN254Parameters

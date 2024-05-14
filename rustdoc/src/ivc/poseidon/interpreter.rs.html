@@ -346,7 +346,7 @@
     </span><span class="kw">let </span>state: Vec&lt;Env::Variable&gt; = elements
         .iter()
         .map(|x| {
-            <span class="kw">let </span>x_col = env.read_column(x.clone());
+            <span class="kw">let </span>x_col = env.read_column(<span class="kw-2">*</span>x);
             <span class="kw">let </span>x_square = x_col.clone() * x_col.clone();
             <span class="kw">let </span>x_four = x_square.clone() * x_square.clone();
             x_four.clone() * x_square.clone() * x_col.clone()

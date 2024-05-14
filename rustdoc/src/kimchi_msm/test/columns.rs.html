@@ -35,30 +35,33 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     N_LIMBS,
 };
 
 <span class="doccomment">/// Number of columns in the test circuits.
-</span><span class="kw">pub const </span>TEST_N_COLUMNS: usize = <span class="number">4 </span>* N_LIMBS;
+</span><span class="kw">pub const </span>TEST_N_COLUMNS: usize = <span class="number">4 </span>* N_LIMBS + <span class="number">1</span>;
 
-<span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
-</span><span class="doccomment">/// Column indexer for MSM columns.
+<span class="doccomment">/// Column indexer for MSM columns.
 ///
 /// Columns A to D are used for testing right now, they are used for
 /// either of the two equations:
 ///   A + B - C = 0
 ///   A * B - D = 0
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>TestColumn {
     A(usize),
     B(usize),
     C(usize),
     D(usize),
+    FixedE,
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumn {
-    <span class="kw">const </span>COL_N: usize = TEST_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = TEST_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);
@@ -69,6 +72,7 @@
             TestColumn::B(i) =&gt; to_column_inner(<span class="number">1</span>, i),
             TestColumn::C(i) =&gt; to_column_inner(<span class="number">2</span>, i),
             TestColumn::D(i) =&gt; to_column_inner(<span class="number">3</span>, i),
+            TestColumn::FixedE =&gt; Column::FixedSelector(<span class="number">0</span>),
         }
     }
 }

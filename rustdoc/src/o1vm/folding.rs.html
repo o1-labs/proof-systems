@@ -308,12 +308,12 @@
 </span><span class="kw">pub struct </span>DecomposableFoldingEnvironment&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_SEL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
     C: FoldingConfig,
 &gt; {
     <span class="doccomment">/// Structure of the folded circuit (using [DecomposedTrace] for now, as
     /// it contains the domain size)
-    </span><span class="kw">pub </span>structure: DecomposedTrace&lt;N, N_REL, N_SEL, C&gt;,
+    </span><span class="kw">pub </span>structure: DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
     </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
@@ -323,7 +323,7 @@
     </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, C: FoldingConfig&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt;
     FoldingEnv&lt;
         ScalarField&lt;C&gt;,
         FoldingInstance&lt;N, C::Curve&gt;,
@@ -331,7 +331,7 @@
         C::Column,
         Challenge,
         C::Selector,
-    &gt; <span class="kw">for </span>DecomposableFoldingEnvironment&lt;N, N_REL, N_SEL, C&gt;
+    &gt; <span class="kw">for </span>DecomposableFoldingEnvironment&lt;N, N_REL, N_DSEL, C&gt;
 <span class="kw">where
     </span><span class="comment">// Used by col and selector
     </span>FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;: Index&lt;
@@ -343,7 +343,7 @@
         Output = Evaluations&lt;ScalarField&lt;C&gt;, Radix2EvaluationDomain&lt;ScalarField&lt;C&gt;&gt;&gt;,
     &gt;,
 {
-    <span class="kw">type </span>Structure = DecomposedTrace&lt;N, N_REL, N_SEL, C&gt;;
+    <span class="kw">type </span>Structure = DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;;
 
     <span class="kw">fn </span>new(
         structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,

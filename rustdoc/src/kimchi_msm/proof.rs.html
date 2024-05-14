@@ -159,6 +159,12 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     logup::{LookupProof, LookupTableID},
     lookups::{LookupTableIDs, LookupWitness},
@@ -223,7 +229,8 @@
 </span><span class="kw">pub struct </span>ProofEvaluations&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_SEL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
+    <span class="kw">const </span>N_FSEL: usize,
     F,
     ID: LookupTableID,
 &gt; {
@@ -238,28 +245,32 @@
 <span class="doccomment">/// The trait ColumnEvaluations is used by the verifier.
 /// It will return the evaluation of the corresponding column at the
 /// evaluation points coined by the verifier during the protocol.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, F: Clone, ID: LookupTableID&gt;
-    ColumnEvaluations&lt;F&gt; <span class="kw">for </span>ProofEvaluations&lt;N, N_REL, N_SEL, F, ID&gt;
+</span><span class="kw">impl</span>&lt;
+        <span class="kw">const </span>N: usize,
+        <span class="kw">const </span>N_REL: usize,
+        <span class="kw">const </span>N_DSEL: usize,
+        <span class="kw">const </span>N_FSEL: usize,
+        F: Clone,
+        ID: LookupTableID,
+    &gt; ColumnEvaluations&lt;F&gt; <span class="kw">for </span>ProofEvaluations&lt;N, N_REL, N_DSEL, N_FSEL, F, ID&gt;
 {
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
 
     <span class="kw">fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;F&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
         <span class="comment">// TODO: substitute when non-literal generic constants are available
-        </span><span class="macro">assert!</span>(N == N_REL + N_SEL);
+        </span><span class="macro">assert!</span>(N == N_REL + N_DSEL + N_FSEL);
         <span class="kw">let </span>res = <span class="kw">match </span>col {
             <span class="self">Self</span>::Column::Relation(i) =&gt; {
-                <span class="kw">if </span>i &lt; N_REL {
-                    <span class="self">self</span>.witness_evals[i].clone()
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Index out of bounds&quot;</span>)
-                }
+                <span class="macro">assert!</span>(i &lt; N_REL, <span class="string">&quot;Index out of bounds&quot;</span>);
+                <span class="self">self</span>.witness_evals[i].clone()
             }
             <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
-                <span class="kw">if </span>i &lt; N_SEL {
-                    <span class="self">self</span>.witness_evals[N_REL + i].clone()
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Index out of bounds&quot;</span>)
-                }
+                <span class="macro">assert!</span>(i &lt; N_DSEL, <span class="string">&quot;Index out of bounds&quot;</span>);
+                <span class="self">self</span>.witness_evals[N_REL + i].clone()
+            }
+            <span class="self">Self</span>::Column::FixedSelector(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_FSEL, <span class="string">&quot;Index out of bounds&quot;</span>);
+                <span class="self">self</span>.witness_evals[N_REL + N_DSEL + i].clone()
             }
             <span class="self">Self</span>::Column::LookupPartialSum((table_id, idx)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.logup_evals {
@@ -311,13 +322,14 @@
 </span><span class="kw">pub struct </span>Proof&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_SEL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
+    <span class="kw">const </span>N_FSEL: usize,
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
     ID: LookupTableID,
 &gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) proof_comms: ProofCommitments&lt;N, G, ID&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_evals: ProofEvaluations&lt;N, N_REL, N_SEL, G::ScalarField, ID&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_evals: ProofEvaluations&lt;N, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) opening_proof: OpeningProof,
 }
 </code></pre></div></section></main></body></html>

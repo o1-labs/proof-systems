@@ -182,7 +182,7 @@
 
 <span class="doccomment">/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
-</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub enum </span>ColumnAlias {
     <span class="comment">// Can be seen as the abstract indexed variable X_{i}
     </span>ScratchState(usize),
@@ -261,7 +261,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">const </span>COL_N: usize = N_MIPS_COLS;
+    <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
         </span>Column::Relation(<span class="self">self</span>.ix())
@@ -286,7 +286,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Instruction {
-    <span class="kw">const </span>COL_N: usize = N_MIPS_COLS;
+    <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
         </span>Column::DynamicSelector(<span class="self">self</span>.ix())

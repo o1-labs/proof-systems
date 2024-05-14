@@ -130,6 +130,14 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -163,6 +171,16 @@
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
+    <span class="kw">type </span>SerializationWitnessBuilderEnv = WitnessBuilderEnv&lt;
+        Fp,
+        SerializationColumn,
+        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        LookupTable&lt;Ff1&gt;,
+    &gt;;
+
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
@@ -173,11 +191,7 @@
 
         <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::&lt;
-            Fp,
-            { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N },
-            LookupTable&lt;Ff1&gt;,
-        &gt;::create();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = SerializationWitnessBuilderEnv::create();
 
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
@@ -238,6 +252,7 @@
             SER_N_COLUMNS,
             SER_N_COLUMNS,
             <span class="number">0</span>,
+            <span class="number">0</span>,
             LookupTable&lt;Ff1&gt;,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
@@ -249,6 +264,7 @@
             ScalarSponge,
             SER_N_COLUMNS,
             SER_N_COLUMNS,
+            <span class="number">0</span>,
             <span class="number">0</span>,
             <span class="number">0</span>,
             LookupTable&lt;Ff1&gt;,

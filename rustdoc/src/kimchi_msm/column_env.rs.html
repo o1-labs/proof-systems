@@ -165,6 +165,11 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -182,11 +187,13 @@
     <span class="lifetime">&#39;a</span>,
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_SEL: usize,
+    <span class="kw">const </span>N_DSEL: usize,
+    <span class="kw">const </span>N_FSEL: usize,
     F: FftField,
     ID: LookupTableID,
 &gt; {
-    <span class="doccomment">/// The witness column polynomials
+    <span class="doccomment">/// The witness column polynomials. Includes relation columns,
+    /// fixed selector columns, and dynamic selector columns.
     </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Witness&lt;N, Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
@@ -206,10 +213,11 @@
         <span class="lifetime">&#39;a</span>,
         <span class="kw">const </span>N: usize,
         <span class="kw">const </span>N_REL: usize,
-        <span class="kw">const </span>N_SEL: usize,
+        <span class="kw">const </span>N_DSEL: usize,
+        <span class="kw">const </span>N_FSEL: usize,
         F: FftField,
         ID: LookupTableID,
-    &gt; TColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt; <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, N, N_REL, N_SEL, F, ID&gt;
+    &gt; TColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt; <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, N, N_REL, N_DSEL, N_FSEL, F, ID&gt;
 {
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
 
@@ -217,28 +225,27 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
-        <span class="comment">// TODO: when non-literal constant generics are available, substitute N with N_REG + N_SEL
-        </span><span class="macro">assert!</span>(N == N_REL + N_SEL);
+        <span class="comment">// TODO: when non-literal constant generics are available, substitute N with N_REG + N_DSEL + N_FSEL
+        </span><span class="macro">assert!</span>(N == N_REL + N_DSEL + N_FSEL);
         <span class="macro">assert!</span>(N == <span class="self">self</span>.witness.len());
         <span class="kw">match </span><span class="kw-2">*</span>col {
             <span class="comment">// Handling the &quot;relation columns&quot; at the beginning of the witness columns
             </span><span class="self">Self</span>::Column::Relation(i) =&gt; {
-                <span class="kw">if </span>i &lt; N_REL {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else </span>{
-                    <span class="comment">// TODO: add a test for this
-                    </span><span class="macro">panic!</span>(<span class="string">&quot;Requested column with index {:?} but the given witness is meant for {:?} relation columns&quot;</span>, i, N_REL)
-                }
+                <span class="comment">// TODO: add a test for this
+                </span><span class="macro">assert!</span>(i &lt; N_REL,<span class="string">&quot;Requested column with index {:?} but the given witness is meant for {:?} relation columns&quot;</span>, i, N_REL);
+                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
+                <span class="prelude-val">Some</span>(res)
             }
             <span class="comment">// Handling the &quot;dynamic selector columns&quot; at the end of the witness columns
             </span><span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
-                <span class="kw">if </span>i &lt; N_SEL {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + i];
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Requested selector with index {:?} but the given witness is meant for {:?} selector columns&quot;</span>, i, N_SEL)
-                }
+                <span class="macro">assert!</span>(i &lt; N_DSEL, <span class="string">&quot;Requested dynamic selector with index {:?} but the given witness is meant for {:?} selector columns&quot;</span>, i, N_DSEL);
+                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + i];
+                <span class="prelude-val">Some</span>(res)
+            }
+            <span class="self">Self</span>::Column::FixedSelector(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_FSEL, <span class="string">&quot;Requested fixed selector with index {:?} but the given witness is meant for {:?} selector columns&quot;</span>, i, N_FSEL);
+                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + N_DSEL + i];
+                <span class="prelude-val">Some</span>(res)
             }
             <span class="self">Self</span>::Column::LookupPartialSum((table_id, i)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
@@ -283,13 +290,16 @@
 
     <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
         <span class="kw">match </span><span class="kw-2">*</span>col {
-            <span class="self">Self</span>::Column::Relation(i) | <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
-                <span class="kw">let </span>domain_size = <span class="kw">if </span><span class="kw-2">*</span>col == <span class="self">Self</span>::Column::Relation(i) {
-                    <span class="comment">// Relation
-                    </span><span class="self">self</span>.witness[i].domain().size
-                } <span class="kw">else </span>{
-                    <span class="comment">// DynamicSelector
-                    </span><span class="self">self</span>.witness[N_REL + i].domain().size
+            <span class="self">Self</span>::Column::Relation(<span class="kw">_</span>)
+            | <span class="self">Self</span>::Column::DynamicSelector(<span class="kw">_</span>)
+            | <span class="self">Self</span>::Column::FixedSelector(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>domain_size = <span class="kw">match </span><span class="kw-2">*</span>col {
+                    <span class="self">Self</span>::Column::Relation(i) =&gt; <span class="self">self</span>.witness[i].domain().size,
+                    <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; <span class="self">self</span>.witness[N_REL + i].domain().size,
+                    <span class="self">Self</span>::Column::FixedSelector(i) =&gt; {
+                        <span class="self">self</span>.witness[N_REL + N_DSEL + i].domain().size
+                    }
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Impossible&quot;</span>),
                 };
                 <span class="kw">if </span><span class="self">self</span>.domain.d1.size == domain_size {
                     Domain::D1

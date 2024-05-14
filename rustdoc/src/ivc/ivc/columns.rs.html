@@ -362,7 +362,7 @@
 
 </span><span class="comment">// NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
-</span><span class="attr">#[derive(Debug, Clone, PartialEq)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>IVCColumn {
     <span class="doccomment">/// 2*17 15-bit limbs (two base field points)
     </span>Block1Input(usize),
@@ -393,9 +393,9 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
     <span class="comment">// This should be
-    //   const COL_N: usize = std::cmp::max(IVCPoseidonColumn::COL_N, FECColumn::COL_N);
+    //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
     // which is runtime-only expression..?
-    </span><span class="kw">const </span>COL_N: usize = IVCPoseidonColumn::COL_N;
+    </span><span class="kw">const </span>N_COL: usize = IVCPoseidonColumn::N_COL;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{

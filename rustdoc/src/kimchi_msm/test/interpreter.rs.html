@@ -105,6 +105,51 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{ColAccessCap, ColWriteCap},
     serialization::interpreter::limb_decompose_ff,
@@ -137,9 +182,7 @@
 
 <span class="doccomment">/// A consraint function for A + B - C that reads values from limbs A
 /// and B, and additionally returns resulting value in C.
-</span><span class="kw">pub fn </span>constrain_addition&lt;F: PrimeField, Ff: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
-    env: <span class="kw-2">&amp;mut </span>Env,
-) {
+</span><span class="kw">pub fn </span>constrain_addition&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
         core::array::from_fn(|i| Env::read_column(env, TestColumn::A(i)));
     <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] =
@@ -171,14 +214,12 @@
         env.write_column(TestColumn::D(i), <span class="kw-2">&amp;</span>Env::constant(Zero::zero()));
     });
 
-    constrain_addition::&lt;F, Ff, Env&gt;(env);
+    constrain_addition(env);
 }
 
 <span class="doccomment">/// A consraint function for A * B - D that reads values from limbs A
 /// and B, and multiplicationally returns resulting value in D.
-</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Ff: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
-    env: <span class="kw-2">&amp;mut </span>Env,
-) {
+</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
         core::array::from_fn(|i| Env::read_column(env, TestColumn::A(i)));
     <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] =
@@ -193,7 +234,7 @@
     });
 }
 
-<span class="doccomment">/// Circuit generator function for A + B - C, with D = 0.
+<span class="doccomment">/// Circuit generator function for A * B - C, with D = 0.
 </span><span class="kw">pub fn </span>test_multiplication&lt;
     F: PrimeField,
     Ff: PrimeField,
@@ -210,6 +251,55 @@
         env.write_column(TestColumn::C(i), <span class="kw-2">&amp;</span>Env::constant(Zero::zero()));
     });
 
-    constrain_multiplication::&lt;F, Ff, Env&gt;(env);
+    constrain_multiplication(env);
+}
+
+<span class="doccomment">/// A consraint function for A * B - D that reads values from limbs A
+/// and B, and multiplication_constally returns resulting value in D.
+</span><span class="kw">pub fn </span>constrain_test_const&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    constant: F,
+) {
+    <span class="kw">let </span>a0 = Env::read_column(env, TestColumn::A(<span class="number">0</span>));
+    <span class="kw">let </span>b0 = Env::read_column(env, TestColumn::B(<span class="number">0</span>));
+    <span class="kw">let </span>equation = a0.clone() * b0.clone() - Env::constant(constant);
+    env.assert_zero(equation.clone());
+}
+
+<span class="doccomment">/// Circuit generator function for A_0 * B_0 - const, with every other column = 0
+</span><span class="kw">pub fn </span>test_const&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    a: F,
+    b: F,
+    constant: F,
+) {
+    env.write_column(TestColumn::A(<span class="number">0</span>), <span class="kw-2">&amp;</span>Env::constant(a));
+    env.write_column(TestColumn::B(<span class="number">0</span>), <span class="kw-2">&amp;</span>Env::constant(b));
+
+    constrain_test_const(env, constant);
+}
+
+<span class="doccomment">/// A consraint function for A_0 + B_0 - FIXED_E
+</span><span class="kw">pub fn </span>constrain_test_fixed_sel&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
+    <span class="kw">let </span>a0 = Env::read_column(env, TestColumn::A(<span class="number">0</span>));
+    <span class="kw">let </span>b0 = Env::read_column(env, TestColumn::B(<span class="number">0</span>));
+    <span class="kw">let </span>fixed_e = Env::read_column(env, TestColumn::FixedE);
+    <span class="kw">let </span>equation = a0.clone() + b0.clone() - fixed_e;
+    env.assert_zero(equation.clone());
+}
+
+<span class="doccomment">/// Circuit generator function for A_0 + B_0 - FIXED_E.
+</span><span class="kw">pub fn </span>test_fixed_sel&lt;
+    F: PrimeField,
+    Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(<span class="number">0</span>), <span class="kw-2">&amp;</span>Env::constant(a));
+    <span class="kw">let </span>fixed_e = env.read_column(TestColumn::FixedE);
+    env.write_column(TestColumn::B(<span class="number">0</span>), <span class="kw-2">&amp;</span>(fixed_e - Env::constant(a)));
+
+    constrain_test_fixed_sel(env);
 }
 </code></pre></div></section></main></body></html>

@@ -70,7 +70,7 @@
 // expression must be changed to support this.
 </span><span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer};
 
-<span class="attr">#[derive(Debug, Clone, PartialEq)]
+<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>PoseidonColumn&lt;<span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUND: usize&gt; {
     Input(usize),
     Round(usize, usize),
@@ -80,7 +80,7 @@
 <span class="kw">impl</span>&lt;<span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUND: usize&gt; ColumnIndexer
     <span class="kw">for </span>PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;
 {
-    <span class="kw">const </span>COL_N: usize = STATE_SIZE + <span class="number">2 </span>* NB_FULL_ROUND * STATE_SIZE;
+    <span class="kw">const </span>N_COL: usize = STATE_SIZE + <span class="number">2 </span>* NB_FULL_ROUND * STATE_SIZE;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{

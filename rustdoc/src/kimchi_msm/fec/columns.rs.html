@@ -103,7 +103,7 @@
 </span><span class="kw">pub const </span>FEC_N_COLUMNS: usize = <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">12 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
 
 <span class="doccomment">/// Columns used by the serialization subcircuit.
-</span><span class="attr">#[derive(Debug, Clone, PartialEq)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>FECColumn {
     XP(usize),     <span class="comment">// 4
     </span>YP(usize),     <span class="comment">// 4
@@ -125,7 +125,7 @@
 </span>}
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumn {
-    <span class="kw">const </span>COL_N: usize = FEC_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = FEC_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumn::XP(i) =&gt; {

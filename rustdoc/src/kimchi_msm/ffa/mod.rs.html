@@ -114,6 +114,17 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -142,15 +153,24 @@
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
     <span class="kw">use </span>std::collections::BTreeMap;
 
+    <span class="kw">type </span>FFAWitnessBuilderEnv = WitnessBuilderEnv&lt;
+        Fp,
+        FFAColumn,
+        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        LookupTable,
+    &gt;;
+
     <span class="doccomment">/// Builds the FF addition circuit with random values. The witness
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     </span><span class="kw">fn </span>build_ffa_circuit&lt;RNG: RngCore + CryptoRng&gt;(
         rng: <span class="kw-2">&amp;mut </span>RNG,
         domain_size: usize,
-    ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LookupTable&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env =
-            WitnessBuilderEnv::&lt;Fp, { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LookupTable&gt;::create();
+    ) -&gt; FFAWitnessBuilderEnv {
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::create();
 
         <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -204,6 +224,7 @@
             FFA_N_COLUMNS,
             FFA_N_COLUMNS,
             <span class="number">0</span>,
+            <span class="number">0</span>,
             <span class="kw">_</span>,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
@@ -216,6 +237,7 @@
             ScalarSponge,
             FFA_N_COLUMNS,
             FFA_N_COLUMNS,
+            <span class="number">0</span>,
             <span class="number">0</span>,
             <span class="number">0</span>,
             <span class="kw">_</span>,

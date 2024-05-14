@@ -482,7 +482,7 @@
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
-</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub enum </span>ColumnAlias {
     <span class="doccomment">/// Hash identifier to distinguish inside the syscalls communication channel
     </span>HashIndex,
@@ -790,7 +790,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">const </span>COL_N: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
+    <span class="kw">const </span>N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         Column::Relation(<span class="self">self</span>.ix())
     }
@@ -817,7 +817,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Steps {
-    <span class="kw">const </span>COL_N: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
+    <span class="kw">const </span>N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         Column::DynamicSelector(<span class="self">self</span>.ix())
     }
