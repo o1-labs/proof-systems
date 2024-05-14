@@ -67,16 +67,13 @@ impl<const N: usize, C: FoldingConfig> ProvableTrace for Trace<N, C> {
 #[derive(Clone)]
 pub struct DecomposedTrace<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
 {
-    /// The domain size of the circuit
+    /// The domain size of the circuit (should coincide with that of the traces)
     pub domain_size: usize,
-    /// The witness for a given selector
+    /// The traces are indexed by the selector
+    /// Inside the witness of the trace for a given selector,
     /// - the last N_SEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
-    pub witness: BTreeMap<C::Selector, Witness<N, Vec<ScalarField<C>>>>,
-    /// The vector of constraints for a given selector
-    pub constraints: BTreeMap<C::Selector, Vec<E<ScalarField<C>>>>,
-    /// The vector of lookups for a given selector
-    pub lookups: BTreeMap<C::Selector, Vec<Lookup<E<ScalarField<C>>>>>,
+    pub trace: BTreeMap<C::Selector, Trace<N, C>>,
 }
 
 // Any decomposable trace is provable.
@@ -99,7 +96,7 @@ where
     /// selector columns are only instantiated at the very end, so their length
     /// could be zero most times.
     pub fn number_of_rows(&self, opcode: C::Selector) -> usize {
-        self.witness[&opcode].cols[0].len()
+        self.trace[&opcode].witness.cols[0].len()
     }
 
     /// Returns a boolean indicating whether the witness for the given selector
@@ -116,7 +113,7 @@ where
 
     /// Resets the witness after folding
     pub fn reset(&mut self, opcode: C::Selector) {
-        (self.witness.get_mut(&opcode).unwrap().cols.as_mut())
+        (self.trace.get_mut(&opcode).unwrap().witness.cols.as_mut())
             .iter_mut()
             .for_each(Vec::clear);
     }
@@ -125,10 +122,10 @@ where
     pub fn set_selector_column(&mut self, selector: C::Selector, number_of_rows: usize) {
         (N_REL..N).for_each(|i| {
             if i == selector.ix() {
-                self.witness.get_mut(&selector).unwrap().cols[i]
+                self.trace.get_mut(&selector).unwrap().witness.cols[i]
                     .extend((0..number_of_rows).map(|_| ScalarField::<C>::one()))
             } else {
-                self.witness.get_mut(&selector).unwrap().cols[i]
+                self.trace.get_mut(&selector).unwrap().witness.cols[i]
                     .extend((0..number_of_rows).map(|_| ScalarField::<C>::zero()))
             }
         });
@@ -174,7 +171,7 @@ where
     ) {
         let domain = Radix2EvaluationDomain::<ScalarField<C>>::new(self.domain_size).unwrap();
         let folding_witness = FoldingWitness {
-            witness: (&self.witness[&selector])
+            witness: (&self.trace[&selector].witness)
                 .into_par_iter()
                 .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain))
                 .collect(),
