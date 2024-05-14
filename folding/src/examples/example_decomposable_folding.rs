@@ -200,7 +200,7 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
             FoldingCompatibleExprInner::Constant(ScalarField::<TestFoldingConfig>::one()),
         )),
     );
-    // a + b + c + 1 = 0
+    // a + b - c - 1 = 0
 
     let sub = FoldingCompatibleExpr::Sub(a.clone(), b.clone());
     let sub = FoldingCompatibleExpr::Sub(sub.into(), c.clone());
