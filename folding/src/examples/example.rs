@@ -352,13 +352,44 @@ mod checker {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::FoldingScheme;
+    use super::{TestStructure, *};
+    use crate::{expressions::FoldingCompatibleExprInner, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
     use kimchi::curve::KimchiCurve;
     use mina_poseidon::FqSponge;
     use std::println as debug;
+
+    #[test]
+    fn test_quadriticization_degree_reduction() {
+        let domain_size = 1 << 4;
+        let domain = D::<Fp>::new(domain_size).unwrap();
+        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+        srs.add_lagrange_basis(domain);
+
+        // A constraint of degree 1:
+        let constraint: FoldingCompatibleExpr<TestFoldingConfig> = {
+            let x0 = FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+                col: Column::X(0),
+                row: CurrOrNext::Curr,
+            }));
+            let x1 = FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+                col: Column::X(1),
+                row: CurrOrNext::Curr,
+            }));
+            x0 + x1
+        };
+
+        let dummy_s = TestStructure {
+            s_add: vec![],
+            s_mul: vec![],
+            constants: vec![],
+        };
+
+        let (_scheme, final_constraint) =
+            FoldingScheme::<TestFoldingConfig>::new(vec![constraint], &srs, domain, &dummy_s);
+        println!("{:#?}", final_constraint);
+    }
 
     // this checks a single folding, it would be good to expand it in the future
     // to do several foldings, as a few thigs are trivial in the first fold
