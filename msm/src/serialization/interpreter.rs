@@ -304,14 +304,20 @@ pub fn combine_limbs_m_to_n<
     const BITSIZE_M: usize,
     const BITSIZE_N: usize,
     F: PrimeField,
-    CIx: ColumnIndexer,
-    Env: ColAccessCap<F, CIx>,
+    V: std::ops::Add<V, Output = V>
+        + std::ops::Sub<V, Output = V>
+        + std::ops::Mul<V, Output = V>
+        + std::ops::Neg<Output = V>
+        + From<u64>
+        + Clone,
+    Func: Fn(F) -> V,
 >(
-    x: [Env::Variable; M],
-) -> [Env::Variable; N] {
+    from_field: Func,
+    x: [V; M],
+) -> [V; N] {
     assert!(BITSIZE_N % BITSIZE_M == 0);
     let k = BITSIZE_N / BITSIZE_M;
-    let constant_bui = |x: BigUint| Env::constant(From::from(x));
+    let constant_bui = |x: BigUint| from_field(F::from(x));
     let disparity: usize = M % k;
     std::array::from_fn(|i| {
         // We have less small limbs in the last large limb
@@ -322,7 +328,7 @@ pub fn combine_limbs_m_to_n<
         };
         (0..upper_bound)
             .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(1u128) << (j * BITSIZE_M)))
-            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
+            .fold(V::from(0u64), |acc, v| acc + v)
     })
 }
 
@@ -338,9 +344,9 @@ pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessC
         LIMB_BITSIZE_SMALL,
         LIMB_BITSIZE_LARGE,
         F,
-        CIx,
-        Env,
-    >(x)
+        Env::Variable,
+        _,
+    >(|f| Env::constant(f), x)
 }
 
 /// Helper function for limb recombination for carry specifically.

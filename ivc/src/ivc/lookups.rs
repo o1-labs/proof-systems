@@ -1,5 +1,9 @@
 use ark_ff::PrimeField;
-use kimchi_msm::{logup::LookupTableID, serialization::lookups as serlookup};
+use kimchi_msm::{
+    circuit_design::composition::MPrism, fec::lookups as feclookup, logup::LookupTableID,
+    serialization::lookups as serlookup,
+};
+use std::marker::PhantomData;
 
 /// Enumeration of concrete lookup tables used in serialization circuit.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -45,5 +49,47 @@ impl<Ff: PrimeField> LookupTableID for IVCLookupTable<Ff> {
             .into_iter()
             .map(IVCLookupTable::SerLookupTable)
             .collect()
+    }
+}
+
+pub struct IVCFECLookupLens<Ff>(pub PhantomData<Ff>);
+
+impl<Ff> MPrism for IVCFECLookupLens<Ff> {
+    type Source = IVCLookupTable<Ff>;
+    type Target = feclookup::LookupTable<Ff>;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15) => {
+                Some(feclookup::LookupTable::RangeCheck15)
+            }
+            IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck14Abs) => {
+                Some(feclookup::LookupTable::RangeCheck14Abs)
+            }
+            IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck9Abs) => {
+                Some(feclookup::LookupTable::RangeCheck9Abs)
+            }
+            IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(p)) => {
+                Some(feclookup::LookupTable::RangeCheckFfHighest(p))
+            }
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        match target {
+            feclookup::LookupTable::RangeCheck15 => {
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15)
+            }
+            feclookup::LookupTable::RangeCheck14Abs => {
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck14Abs)
+            }
+            feclookup::LookupTable::RangeCheck9Abs => {
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck9Abs)
+            }
+            feclookup::LookupTable::RangeCheckFfHighest(p) => {
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(p))
+            }
+        }
     }
 }

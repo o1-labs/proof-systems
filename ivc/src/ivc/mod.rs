@@ -79,10 +79,8 @@ mod tests {
     }
 
     #[test]
-    /// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    pub fn test_ivc_addition_circuit() {
+    /// Tests if building the IVC circuit succeeds.
+    pub fn test_ivc_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
         build_ivc_circuit(&mut rng);
     }

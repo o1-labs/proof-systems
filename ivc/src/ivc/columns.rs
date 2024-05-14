@@ -86,15 +86,15 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///
 ///          input#1    input#2          FEC ADD computation          output
 ///   1   |------------------------------------------------------|-------------|
-///       |  C_{R'_i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R'_i}      |  newbucket  |
+///       |  C_{R',i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R',i}      |  newbucket  |
 ///       |           |                 |                        |             |
 ///       |           |                 |                        |             |
 ///  17*N |------------------------------------------------------|-------------|
-///       |  C_{R_i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R_i}        |  newbucket  |
+///       |  C_{R,i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R,i}        |  newbucket  |
 ///       |           |                 |                        |             |
 ///       |           |                 |                        |             |
 ///  34*N |------------------------------------------------------|-------------|
-///       |  C_{L}    |  C_{R}          |    C_{L} + C_{R}'      |    C_{O}'   | // assert that C_O' == C_O
+///       |  C_{R,i}  |  C_{L,i}        |  C_{L,i} + C_{R,i}'    |    C_{O}'   | // assert that C_O' == C_O
 /// 35*N  |------------------------------------------------------|-------------|
 ///
 ///
@@ -211,5 +211,23 @@ impl MPrism for IVCHashLens {
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
         IVCColumn::Block2Hash(target)
+    }
+}
+
+pub struct IVCFECLens {}
+
+impl MPrism for IVCFECLens {
+    type Source = IVCColumn;
+    type Target = FECColumn;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            IVCColumn::Block4ECAdd(col) => Some(col),
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        IVCColumn::Block4ECAdd(target)
     }
 }
