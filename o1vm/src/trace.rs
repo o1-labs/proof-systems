@@ -76,7 +76,7 @@ pub struct DecomposedTrace<const N: usize, C: FoldingConfig> {
     pub trace: BTreeMap<C::Selector, Trace<N, C>>,
 }
 
-// Implementation of [Index] using [C::Selector] as the index for [DecomposedTrace] to access the trace directly.
+// Implementation of [Index] using `C::Selector`` as the index for [DecomposedTrace] to access the trace directly.
 impl<const N: usize, C: FoldingConfig> Index<C::Selector> for DecomposedTrace<N, C> {
     type Output = Trace<N, C>;
 
@@ -146,7 +146,7 @@ where
 /// For that, it requires to be able to implement a way to return a folding
 /// instance and a folding witness.
 /// It is specialized for the [DecomposedTrace] struct for now and is expected
-/// to fold individual instructions, selected with a specific [C::Selector].
+/// to fold individual instructions, selected with a specific `C::Selector`.
 pub trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     /// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
