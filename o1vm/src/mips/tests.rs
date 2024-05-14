@@ -338,13 +338,12 @@ mod folding {
 
     fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
-        _rng: &mut RNG,
+        rng: &mut RNG,
     ) -> Witness<N_MIPS_REL_COLS, Vec<Fp>>
     where
         RNG: RngCore + CryptoRng,
     {
-        let mut rng = o1_utils::tests::make_test_rng();
-        let mut dummy_env = dummy_env(&mut rng);
+        let mut dummy_env = dummy_env(rng);
         let instr = ITypeInstruction::AddImmediateUnsigned;
         let a = std::array::from_fn(|_| Vec::with_capacity(domain_size));
         let mut witness = Witness { cols: Box::new(a) };
