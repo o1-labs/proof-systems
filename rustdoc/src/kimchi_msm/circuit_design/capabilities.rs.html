@@ -307,7 +307,7 @@
 <span class="doccomment">/// Write an array of /field/ values simultaneously.
 </span><span class="kw">pub fn </span>write_column_array_const&lt;F, Env, <span class="kw">const </span>ARR_N: usize, CIx: ColumnIndexer, ColMap&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    input: [F; ARR_N],
+    input: <span class="kw-2">&amp;</span>[F; ARR_N],
     column_map: ColMap,
 ) <span class="kw">where
     </span>F: PrimeField,

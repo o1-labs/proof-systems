@@ -85,8 +85,6 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -168,10 +166,8 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="doccomment">/// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    </span><span class="kw">pub fn </span>test_ivc_addition_circuit() {
+    </span><span class="doccomment">/// Tests if building the IVC circuit succeeds.
+    </span><span class="kw">pub fn </span>test_ivc_circuit() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         build_ivc_circuit(<span class="kw-2">&amp;mut </span>rng);
     }

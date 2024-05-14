@@ -834,6 +834,12 @@
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
 <a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -1140,14 +1146,20 @@
     <span class="kw">const </span>BITSIZE_M: usize,
     <span class="kw">const </span>BITSIZE_N: usize,
     F: PrimeField,
-    CIx: ColumnIndexer,
-    Env: ColAccessCap&lt;F, CIx&gt;,
+    V: std::ops::Add&lt;V, Output = V&gt;
+        + std::ops::Sub&lt;V, Output = V&gt;
+        + std::ops::Mul&lt;V, Output = V&gt;
+        + std::ops::Neg&lt;Output = V&gt;
+        + From&lt;u64&gt;
+        + Clone,
+    Func: Fn(F) -&gt; V,
 &gt;(
-    x: [Env::Variable; M],
-) -&gt; [Env::Variable; N] {
+    from_field: Func,
+    x: [V; M],
+) -&gt; [V; N] {
     <span class="macro">assert!</span>(BITSIZE_N % BITSIZE_M == <span class="number">0</span>);
     <span class="kw">let </span>k = BITSIZE_N / BITSIZE_M;
-    <span class="kw">let </span>constant_bui = |x: BigUint| Env::constant(From::from(x));
+    <span class="kw">let </span>constant_bui = |x: BigUint| from_field(F::from(x));
     <span class="kw">let </span>disparity: usize = M % k;
     std::array::from_fn(|i| {
         <span class="comment">// We have less small limbs in the last large limb
@@ -1158,7 +1170,7 @@
         };
         (<span class="number">0</span>..upper_bound)
             .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(<span class="number">1u128</span>) &lt;&lt; (j * BITSIZE_M)))
-            .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
+            .fold(V::from(<span class="number">0u64</span>), |acc, v| acc + v)
     })
 }
 
@@ -1174,9 +1186,9 @@
         LIMB_BITSIZE_SMALL,
         LIMB_BITSIZE_LARGE,
         F,
-        CIx,
-        Env,
-    &gt;(x)
+        Env::Variable,
+        <span class="kw">_</span>,
+    &gt;(|f| Env::constant(f), x)
 }
 
 <span class="doccomment">/// Helper function for limb recombination for carry specifically.

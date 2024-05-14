@@ -499,26 +499,136 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
     ivc::{
-        columns::{IVCColumn, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE},
-        lookups::IVCLookupTable,
+        columns::{
+            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE,
+        },
+        lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon::{
-        columns::PoseidonColumn,
-        interpreter::{poseidon_circuit, PoseidonParams},
-    },
+    poseidon::interpreter::{poseidon_circuit, PoseidonParams},
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const},
-        composition::SubEnvColumn,
+        composition::{SubEnvColumn, SubEnvLookup},
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
     },
     columns::ColumnIndexer,
+    fec::{
+        columns::FECColumn,
+        interpreter::{constrain_ec_addition, ec_add_circuit},
+    },
     serialization::{
         interpreter::{
             combine_limbs_m_to_n, combine_small_to_large, limb_decompose_ff, LIMB_BITSIZE_LARGE,
@@ -527,12 +637,98 @@
         lookups <span class="kw">as </span>serlookup,
     },
 };
+<span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="doccomment">/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 </span><span class="kw">pub const </span>LIMB_BITSIZE_XLARGE: usize = <span class="number">150</span>;
 <span class="doccomment">/// The biggest packing format, 2 limbs.
 </span><span class="kw">pub const </span>N_LIMBS_XLARGE: usize = <span class="number">2</span>;
+
+<span class="kw">fn </span>range_check_scalar_limbs&lt;F, Ff, Env&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    input_limbs_small: <span class="kw-2">&amp;</span>[Env::Variable; N_LIMBS_SMALL],
+) <span class="kw">where
+    </span>F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
+{
+    <span class="kw">for </span>(i, x) <span class="kw">in </span>input_limbs_small.iter().enumerate() {
+        <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
+            <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
+            </span>env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
+        } <span class="kw">else </span>{
+            <span class="comment">// TODO Add this lookup.
+            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
+        </span>}
+    }
+}
+
+<span class="kw">fn </span>range_check_small_limbs&lt;F, Ff, Env&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    input_limbs_small: <span class="kw-2">&amp;</span>[Env::Variable; N_LIMBS_SMALL],
+) <span class="kw">where
+    </span>F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
+{
+    <span class="kw">for </span>(i, x) <span class="kw">in </span>input_limbs_small.iter().enumerate() {
+        <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
+            <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
+            </span>env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
+        } <span class="kw">else </span>{
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
+                x,
+            );
+        }
+    }
+}
+
+<span class="comment">// TODO double-check it works
+</span><span class="doccomment">/// Helper. Combines large limbs into one element. Computation is over the field.
+</span><span class="kw">pub fn </span>combine_large_to_full_field&lt;Ff: PrimeField&gt;(x: [Ff; N_LIMBS_LARGE]) -&gt; Ff {
+    <span class="kw">let </span>[res] =
+        combine_limbs_m_to_n::&lt;N_LIMBS_LARGE, <span class="number">1</span>, LIMB_BITSIZE_LARGE, <span class="number">300</span>, Ff, Ff, <span class="kw">_</span>&gt;(|f| f, x);
+    res
+}
+
+<span class="doccomment">/// Helper. Combines small limbs into big limbs.
+</span><span class="kw">pub fn </span>combine_large_to_xlarge&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
+    x: [Env::Variable; N_LIMBS_LARGE],
+) -&gt; [Env::Variable; N_LIMBS_XLARGE] {
+    combine_limbs_m_to_n::&lt;
+        N_LIMBS_LARGE,
+        N_LIMBS_XLARGE,
+        LIMB_BITSIZE_LARGE,
+        LIMB_BITSIZE_XLARGE,
+        F,
+        Env::Variable,
+        <span class="kw">_</span>,
+    &gt;(|f| Env::constant(f), x)
+}
+
+<span class="doccomment">/// Helper. Combines 17x15bit limbs into 1 native field element.
+</span><span class="kw">pub fn </span>combine_small_to_full&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -&gt; Env::Variable {
+    <span class="kw">let </span>[res] =
+        combine_limbs_m_to_n::&lt;N_LIMBS_SMALL, <span class="number">1</span>, LIMB_BITSIZE_SMALL, <span class="number">255</span>, F, Env::Variable, <span class="kw">_</span>&gt;(
+            |f| Env::constant(f),
+            x,
+        );
+    res
+}
 
 <span class="doccomment">/// Constraints for the inputs block.
 </span><span class="kw">pub fn </span>constrain_inputs&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
@@ -598,82 +794,127 @@
     env: <span class="kw-2">&amp;mut </span>Env,
     target_comms: [(Ff, Ff); N_COL_TOTAL],
     row_num_local: usize,
-) <span class="kw">where
+) -&gt; (Vec&lt;F&gt;, Vec&lt;F&gt;, Vec&lt;F&gt;)
+<span class="kw">where
     </span>F: PrimeField,
     Ff: PrimeField,
     Env: ColWriteCap&lt;F, IVCColumn&gt;,
 {
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
-        ),
-        IVCColumn::Block1Input,
+    <span class="kw">let </span>small_limbs_1 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
-        ),
-        |x| IVCColumn::Block1Input(N_LIMBS_SMALL + x),
+    <span class="kw">let </span>small_limbs_2 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
-        ),
-        IVCColumn::Block1InputRepacked75,
+    <span class="kw">let </span>small_limbs_1_2: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL] = small_limbs_1
+        .into_iter()
+        .chain(small_limbs_2)
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+        .try_into()
+        .unwrap();
+    <span class="kw">let </span>large_limbs_1 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
-        ),
-        |x| IVCColumn::Block1InputRepacked75(N_LIMBS_LARGE + x),
+    <span class="kw">let </span>large_limbs_2 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
-        ),
-        IVCColumn::Block1InputRepacked150,
+    <span class="kw">let </span>large_limbs_1_2: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE] = large_limbs_1
+        .into_iter()
+        .chain(large_limbs_2)
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+        .try_into()
+        .unwrap();
+    <span class="kw">let </span>xlarge_limbs_1 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">0</span>,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE&gt;(
-            <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
-        ),
-        |x| IVCColumn::Block1InputRepacked150(N_LIMBS_XLARGE + x),
+    <span class="kw">let </span>xlarge_limbs_2 = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE&gt;(
+        <span class="kw-2">&amp;</span>target_comms[row_num_local].<span class="number">1</span>,
     );
+    <span class="kw">let </span>xlarge_limbs_1_2: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_XLARGE] = xlarge_limbs_1
+        .into_iter()
+        .chain(xlarge_limbs_2)
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+        .try_into()
+        .unwrap();
+
+    write_column_array_const(env, <span class="kw-2">&amp;</span>small_limbs_1_2, IVCColumn::Block1Input);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>large_limbs_1_2, IVCColumn::Block1InputRepacked75);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>xlarge_limbs_1_2, IVCColumn::Block1InputRepacked150);
+
+    (
+        small_limbs_1_2.to_vec(),
+        large_limbs_1_2.to_vec(),
+        xlarge_limbs_1_2.to_vec(),
+    )
 }
 
-<span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+<span class="doccomment">/// `comms` is lefts, rights, and outs. Returns the packed commitments
+/// in three different representations.
+</span><span class="attr">#[allow(clippy::type_complexity)]
+</span><span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    comms_left: [(Ff, Ff); N_COL_TOTAL],
-    comms_right: [(Ff, Ff); N_COL_TOTAL],
-    comms_out: [(Ff, Ff); N_COL_TOTAL],
-) <span class="kw">where
+    comms: [[(Ff, Ff); N_COL_TOTAL]; <span class="number">3</span>],
+) -&gt; (
+    [[[F; <span class="number">2 </span>* N_LIMBS_SMALL]; N_COL_TOTAL]; <span class="number">3</span>],
+    [[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>],
+    [[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
+)
+<span class="kw">where
     </span>F: PrimeField,
     Ff: PrimeField,
     Env: MultiRowReadCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
 {
+    <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs: [[Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>]; <span class="number">3</span>] =
+        std::array::from_fn(|<span class="kw">_</span>| std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]));
+
     <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">3 </span>* N_COL_TOTAL) {
         <span class="kw">let </span>row_num = env.curr_row();
 
-        <span class="kw">let </span>(target_comms, row_num_local) = <span class="kw">if </span>row_num &lt; N_COL_TOTAL {
-            (comms_left, row_num)
+        <span class="kw">let </span>(target_comms, row_num_local, comtype) = <span class="kw">if </span>row_num &lt; N_COL_TOTAL {
+            (comms[<span class="number">0</span>], row_num, <span class="number">0</span>)
         } <span class="kw">else if </span>row_num &lt; <span class="number">2 </span>* N_COL_TOTAL {
-            (comms_right, row_num - N_COL_TOTAL)
+            (comms[<span class="number">1</span>], row_num - N_COL_TOTAL, <span class="number">1</span>)
         } <span class="kw">else </span>{
-            (comms_out, row_num - <span class="number">2 </span>* N_COL_TOTAL)
+            (comms[<span class="number">2</span>], row_num - <span class="number">2 </span>* N_COL_TOTAL, <span class="number">2</span>)
         };
 
-        write_inputs_row(env, target_comms, row_num_local);
+        <span class="kw">let </span>(limbs_small, limbs_large, limbs_xlarge) =
+            write_inputs_row(env, target_comms, row_num_local);
+
+        comms_limbs[<span class="number">0</span>][comtype].push(limbs_small);
+        comms_limbs[<span class="number">1</span>][comtype].push(limbs_large);
+        comms_limbs[<span class="number">2</span>][comtype].push(limbs_xlarge);
 
         constrain_inputs(env);
 
         env.next_row();
     }
+
+    <span class="comment">// Transforms nested Vec&lt;Vec&lt;_&gt;&gt; into fixed-size arrays. Returns
+    // Left-Right-Output for a given limb size.
+    </span><span class="kw">fn </span>repack_output&lt;F: PrimeField, <span class="kw">const </span>TWO_LIMB_SIZE: usize, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+        input: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>],
+    ) -&gt; [[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; <span class="number">3</span>] {
+        input
+            .into_iter()
+            .map(|vector: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;| {
+                vector
+                    .into_iter()
+                    .map(|subvec: Vec&lt;<span class="kw">_</span>&gt;| subvec.try_into().unwrap())
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                    .try_into()
+                    .unwrap()
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            .try_into()
+            .unwrap()
+    }
+
+    (
+        repack_output(comms_limbs[<span class="number">0</span>].clone()),
+        repack_output(comms_limbs[<span class="number">1</span>].clone()),
+        repack_output(comms_limbs[<span class="number">2</span>].clone()),
+    )
 }
 
 <span class="comment">// FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
@@ -682,7 +923,9 @@
 </span><span class="kw">pub fn </span>process_hashes&lt;F, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     poseidon_params: <span class="kw-2">&amp;</span>PParams,
-) <span class="kw">where
+    comms_xlarge: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
+) -&gt; (Env::Variable, Env::Variable)
+<span class="kw">where
     </span>F: PrimeField,
     PParams: PoseidonParams&lt;F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
     Env: MultiRowReadCap&lt;F, IVCColumn&gt; + HybridCopyCap&lt;F, IVCColumn&gt;,
@@ -690,30 +933,36 @@
     <span class="kw">let </span>n = N_COL_TOTAL;
 
     <span class="comment">// These should be some proper seeds. Passed from the outside
-    </span><span class="kw">let </span>sponge_l_init: F = F::one();
-    <span class="kw">let </span>sponge_r_init: F = F::one();
-    <span class="kw">let </span>sponge_o_init: F = F::one();
-    <span class="kw">let </span>sponge_lr_init: F = F::one();
-    <span class="kw">let </span>sponge_lro_init: F = F::one();
+    </span><span class="kw">let </span>sponge_l_init: F = F::zero();
+    <span class="kw">let </span>sponge_r_init: F = F::zero();
+    <span class="kw">let </span>sponge_o_init: F = F::zero();
+    <span class="kw">let </span>sponge_lr_init: F = F::zero();
+    <span class="kw">let </span>sponge_lro_init: F = F::zero();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>prev_hash_output = Env::constant(F::zero());
+    <span class="kw">let </span><span class="kw-2">mut </span>hash_l = Env::constant(F::zero());
+    <span class="kw">let </span><span class="kw-2">mut </span>hash_r = Env::constant(F::zero());
+    <span class="kw">let </span><span class="kw-2">mut </span>hash_o = Env::constant(F::zero());
+    <span class="kw">let </span><span class="kw-2">mut </span>r = Env::constant(F::zero());
+    <span class="kw">let </span><span class="kw-2">mut </span>phi = Env::constant(F::zero());
 
     <span class="comment">// Relative position in the hashing block
     </span><span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>* N_COL_TOTAL + <span class="number">2 </span>{
-        <span class="comment">// Absolute row
-        </span><span class="kw">let </span>row_i = env.curr_row();
-
         <span class="comment">// Computing h_l, h_r, h_o independently
         </span><span class="kw">if </span>block_row_i &lt; <span class="number">6 </span>* n {
-            <span class="comment">// The block 1 row we target
-            </span><span class="kw">let </span>block1_row_i = block_row_i / <span class="number">2</span>;
+            <span class="comment">// Left, right, or output
+            </span><span class="kw">let </span>comm_type = block_row_i / (<span class="number">2 </span>* n);
+            <span class="comment">// The commitment we target. Commitment i is processed in hash rows 2*i and 2*i+1.
+            </span><span class="kw">let </span>comm_i = (block_row_i % (<span class="number">2 </span>* N_COL_TOTAL)) / <span class="number">2</span>;
             <span class="kw">let </span>(input1, input2) = <span class="kw">if </span>block_row_i % <span class="number">2 </span>== <span class="number">0 </span>{
                 (
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(<span class="number">0</span>)),
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(<span class="number">1</span>)),
+                    comms_xlarge[comm_type][comm_i][<span class="number">0</span>],
+                    comms_xlarge[comm_type][comm_i][<span class="number">1</span>],
                 )
             } <span class="kw">else </span>{
                 (
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(<span class="number">2</span>)),
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(<span class="number">3</span>)),
+                    comms_xlarge[comm_type][comm_i][<span class="number">2</span>],
+                    comms_xlarge[comm_type][comm_i][<span class="number">3</span>],
                 )
             };
             <span class="kw">let </span>input3 = <span class="kw">if </span>block_row_i == <span class="number">0 </span>{
@@ -723,71 +972,50 @@
             } <span class="kw">else if </span>block_row_i == <span class="number">4 </span>* n {
                 Env::constant(sponge_o_init)
             } <span class="kw">else </span>{
-                <span class="comment">// otherwise read from the previous row
-                </span>env.read_row_column(
-                    row_i - <span class="number">1</span>,
-                    IVCColumn::Block2Hash(PoseidonColumn::Round(
-                        IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-                        IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-                    )),
-                )
+                prev_hash_output.clone()
             };
 
-            poseidon_circuit(
+            <span class="kw">let </span>[<span class="kw">_</span>, <span class="kw">_</span>, output] = poseidon_circuit(
                 <span class="kw-2">&amp;mut </span>SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1, input2, input3],
+                [Env::constant(input1), Env::constant(input2), input3],
             );
+
+            <span class="kw">if </span>block_row_i == <span class="number">2 </span>* N_COL_TOTAL {
+                hash_l = output;
+            } <span class="kw">else if </span>block_row_i == <span class="number">4 </span>* N_COL_TOTAL {
+                hash_r = output;
+            } <span class="kw">else if </span>block_row_i == <span class="number">6 </span>* N_COL_TOTAL {
+                hash_o = output;
+            } <span class="kw">else </span>{
+                prev_hash_output = output;
+            }
         } <span class="kw">else if </span>block_row_i == <span class="number">6 </span>* n {
-            <span class="kw">let </span>input1_hl = env.read_row_column(
-                <span class="number">5 </span>* n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-                    IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-                )),
-            );
-            <span class="kw">let </span>input2_hr = env.read_row_column(
-                <span class="number">7 </span>* n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-                    IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-                )),
-            );
-            <span class="kw">let </span>input3 = Env::constant(sponge_lr_init);
-
             <span class="comment">// Computing r
-            </span>poseidon_circuit(
+            </span><span class="kw">let </span>[<span class="kw">_</span>, <span class="kw">_</span>, r_res] = poseidon_circuit(
                 <span class="kw-2">&amp;mut </span>SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1_hl, input2_hr, input3],
+                [
+                    hash_l.clone(),
+                    hash_r.clone(),
+                    Env::constant(sponge_lr_init),
+                ],
             );
+            r = r_res;
         } <span class="kw">else if </span>block_row_i == <span class="number">6 </span>* n + <span class="number">1 </span>{
-            <span class="kw">let </span>input1_ho = env.read_row_column(
-                <span class="number">9 </span>* n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-                    IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-                )),
-            );
-            <span class="kw">let </span>input2_r = env.read_row_column(
-                row_i - <span class="number">1</span>,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-                    IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-                )),
-            );
-            <span class="kw">let </span>input3 = Env::constant(sponge_lro_init);
-
             <span class="comment">// Computing phi
-            </span>poseidon_circuit(
+            </span><span class="kw">let </span>[<span class="kw">_</span>, <span class="kw">_</span>, phi_res] = poseidon_circuit(
                 <span class="kw-2">&amp;mut </span>SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1_ho, input2_r, input3],
+                [hash_o.clone(), r.clone(), Env::constant(sponge_lro_init)],
             );
+            phi = phi_res;
         }
 
         env.next_row();
     }
+
+    (r, phi)
 }
 
 <span class="kw">pub fn </span>constrain_scalars&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
@@ -819,29 +1047,6 @@
     env.assert_zero(phi_pow_r_expected - phi_i_r);
 }
 
-<span class="kw">pub fn </span>prepare_scalars&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env) -&gt; (F, F)
-<span class="kw">where
-    </span>F: PrimeField,
-    Env: DirectWitnessCap&lt;F, IVCColumn&gt;,
-{
-    <span class="comment">// relative position in the phi block
-    </span><span class="kw">let </span>r = env.read_row_column(
-        <span class="number">9 </span>* N_COL_TOTAL,
-        IVCColumn::Block2Hash(PoseidonColumn::Round(
-            IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-            IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-        )),
-    );
-    <span class="kw">let </span>phi = env.read_row_column(
-        <span class="number">9 </span>* N_COL_TOTAL + <span class="number">1</span>,
-        IVCColumn::Block2Hash(PoseidonColumn::Round(
-            IVC_POSEIDON_NB_FULL_ROUND - <span class="number">1</span>,
-            IVC_POSEIDON_STATE_SIZE - <span class="number">1</span>,
-        )),
-    );
-    (Env::variable_to_field(r), Env::variable_to_field(phi))
-}
-
 <span class="kw">pub fn </span>write_scalars_row&lt;F, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env, r_f: F, phi_f: F, phi_prev_power_f: F) -&gt; F
 <span class="kw">where
     </span>F: PrimeField,
@@ -858,28 +1063,27 @@
     <span class="comment">// TODO check that limb_decompose_ff works with &lt;F,F,_,_&gt;
     </span>write_column_array_const(
         env,
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_f),
+        <span class="kw-2">&amp;</span>limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_f),
         IVCColumn::Block3PhiPowLimbs,
     );
     write_column_array_const(
         env,
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_r_f),
+        <span class="kw-2">&amp;</span>limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_r_f),
         IVCColumn::Block3PhiPowRLimbs,
     );
 
     phi_cur_power_f
 }
 
-<span class="kw">pub fn </span>process_scalars&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">pub fn </span>process_scalars&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env, r: F, phi: F)
 <span class="kw">where
     </span>F: PrimeField,
     Ff: PrimeField,
     Env: DirectWitnessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
 {
-    <span class="kw">let </span>(r_f, phi_f) = prepare_scalars::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
     <span class="kw">let </span><span class="kw-2">mut </span>phi_prev_power_f = F::one();
     <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..N_COL_TOTAL {
-        phi_prev_power_f = write_scalars_row(env, r_f, phi_f, phi_prev_power_f);
+        phi_prev_power_f = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         <span class="comment">// Checking our constraints
         </span>constrain_scalars(env);
@@ -888,11 +1092,90 @@
     }
 }
 
-<span class="kw">pub fn </span>process_ecadds&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(_env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">pub fn </span>constrain_ecadds&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
 <span class="kw">where
     </span>F: PrimeField,
-    Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
 {
+    constrain_ec_addition::&lt;F, Ff, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>SubEnvLookup::new(
+        <span class="kw-2">&amp;mut </span>SubEnvColumn::new(env, IVCFECLens {}),
+        IVCFECLookupLens(PhantomData),
+    ));
+}
+
+<span class="kw">pub fn </span>process_ecadds&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    _r: F,
+    _phi: F,
+    comms_large: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>],
+) <span class="kw">where
+    </span>F: PrimeField,
+    Ff: PrimeField,
+    Env: DirectWitnessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
+{
+    <span class="comment">// TODO FIXME multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
+    </span><span class="kw">let </span>r_hat_large: Box&lt;[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]&gt; = Box::new(comms_large[<span class="number">1</span>]);
+
+    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..<span class="number">35 </span>* N_COL_TOTAL {
+        <span class="comment">// Number of the commitment we&#39;re processing
+        </span><span class="kw">let </span>com_i = block_row_i % N_COL_TOTAL;
+        <span class="kw">let </span>(xp_limbs, yp_limbs) =
+            <span class="kw">if </span>block_row_i &lt; <span class="number">17 </span>* N_COL_TOTAL || block_row_i &gt;= <span class="number">34 </span>* N_COL_TOTAL {
+                <span class="comment">// Our main commitment input
+                </span>(
+                    comms_large[<span class="number">1</span>][com_i][..N_LIMBS_LARGE].try_into().unwrap(),
+                    comms_large[<span class="number">1</span>][com_i][N_LIMBS_LARGE..].try_into().unwrap(),
+                )
+            } <span class="kw">else </span>{
+                (
+                    r_hat_large[com_i][..N_LIMBS_LARGE].try_into().unwrap(),
+                    r_hat_large[com_i][N_LIMBS_LARGE..].try_into().unwrap(),
+                )
+            };
+        write_column_array_const(env, <span class="kw-2">&amp;</span>xp_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::XP(i)));
+        write_column_array_const(env, <span class="kw-2">&amp;</span>yp_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::YP(i)));
+
+        <span class="comment">// FIXME This is a STUB right now it uses C_{L,i} commitments.
+        // Must use bucket input which is looked up.
+        </span><span class="kw">let </span>xq_limbs: [F; N_LIMBS_LARGE] =
+            comms_large[<span class="number">0</span>][com_i][..N_LIMBS_LARGE].try_into().unwrap();
+        <span class="kw">let </span>yq_limbs: [F; N_LIMBS_LARGE] =
+            comms_large[<span class="number">0</span>][com_i][..N_LIMBS_LARGE].try_into().unwrap();
+        write_column_array_const(env, <span class="kw-2">&amp;</span>xq_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::XQ(i)));
+        write_column_array_const(env, <span class="kw-2">&amp;</span>yq_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::YQ(i)));
+
+        <span class="kw">let </span>limbs_f_to_ff = |limbs: <span class="kw-2">&amp;</span>[F; N_LIMBS_LARGE]| {
+            limbs
+                .iter()
+                .map(|f| Ff::from(BigUint::try_from(<span class="kw-2">*</span>f).unwrap()))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                .try_into()
+                .unwrap()
+        };
+        <span class="kw">let </span>xp_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(<span class="kw-2">&amp;</span>xp_limbs);
+        <span class="kw">let </span>yp_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(<span class="kw-2">&amp;</span>yp_limbs);
+        <span class="kw">let </span>xq_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(<span class="kw-2">&amp;</span>xq_limbs);
+        <span class="kw">let </span>yq_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(<span class="kw-2">&amp;</span>yq_limbs);
+
+        <span class="kw">let </span>xp = combine_large_to_full_field(xp_limbs_ff);
+        <span class="kw">let </span>xq = combine_large_to_full_field(xq_limbs_ff);
+        <span class="kw">let </span>yp = combine_large_to_full_field(yp_limbs_ff);
+        <span class="kw">let </span>yq = combine_large_to_full_field(yq_limbs_ff);
+
+        ec_add_circuit(
+            <span class="kw-2">&amp;mut </span>SubEnvLookup::new(
+                <span class="kw-2">&amp;mut </span>SubEnvColumn::new(env, IVCFECLens {}),
+                IVCFECLookupLens(PhantomData),
+            ),
+            xp,
+            yp,
+            xq,
+            yq,
+        );
+
+        constrain_ecadds::&lt;F, Ff, Env&gt;(env);
+    }
 }
 
 <span class="kw">pub fn </span>process_misc&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(_env: <span class="kw-2">&amp;mut </span>Env)
@@ -921,83 +1204,14 @@
     <span class="comment">// Total height of all blocks. Probably higher than this number. WIP
     </span><span class="macro">assert!</span>(<span class="number">45 </span>* N_COL_TOTAL + <span class="number">2 </span>&lt; domain_size);
 
-    process_inputs(env, comms_left, comms_right, comms_out);
-    process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, poseidon_params);
-    process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
-    process_ecadds::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
+    <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) =
+        process_inputs(env, [comms_left, comms_right, comms_out]);
+    <span class="kw">let </span>(r_var, phi_var) =
+        process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, poseidon_params, <span class="kw-2">&amp;</span>comms_xlarge);
+    <span class="kw">let </span>r: F = Env::variable_to_field(r_var);
+    <span class="kw">let </span>phi: F = Env::variable_to_field(phi_var);
+    process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, r, phi);
+    process_ecadds::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, r, phi, <span class="kw-2">&amp;</span>comms_large);
     process_misc::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
-}
-
-<span class="kw">fn </span>range_check_scalar_limbs&lt;F, Ff, Env&gt;(
-    env: <span class="kw-2">&amp;mut </span>Env,
-    input_limbs_small: <span class="kw-2">&amp;</span>[Env::Variable; N_LIMBS_SMALL],
-) <span class="kw">where
-    </span>F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
-{
-    <span class="kw">for </span>(i, x) <span class="kw">in </span>input_limbs_small.iter().enumerate() {
-        <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
-            <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
-            </span>env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } <span class="kw">else </span>{
-            <span class="comment">// TODO Add this lookup.
-            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
-        </span>}
-    }
-}
-
-<span class="kw">fn </span>range_check_small_limbs&lt;F, Ff, Env&gt;(
-    env: <span class="kw-2">&amp;mut </span>Env,
-    input_limbs_small: <span class="kw-2">&amp;</span>[Env::Variable; N_LIMBS_SMALL],
-) <span class="kw">where
-    </span>F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
-{
-    <span class="kw">for </span>(i, x) <span class="kw">in </span>input_limbs_small.iter().enumerate() {
-        <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
-            <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
-            </span>env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } <span class="kw">else </span>{
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
-                x,
-            );
-        }
-    }
-}
-
-<span class="doccomment">/// Helper. Combines small limbs into big limbs.
-</span><span class="kw">pub fn </span>combine_large_to_xlarge&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
-    x: [Env::Variable; N_LIMBS_LARGE],
-) -&gt; [Env::Variable; N_LIMBS_XLARGE] {
-    combine_limbs_m_to_n::&lt;
-        N_LIMBS_LARGE,
-        N_LIMBS_XLARGE,
-        LIMB_BITSIZE_LARGE,
-        LIMB_BITSIZE_XLARGE,
-        F,
-        CIx,
-        Env,
-    &gt;(x)
-}
-
-<span class="doccomment">/// Helper. Combines 17x15bit limbs into 1 native field element.
-</span><span class="kw">pub fn </span>combine_small_to_full&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
-    x: [Env::Variable; N_LIMBS_SMALL],
-) -&gt; Env::Variable {
-    <span class="kw">let </span>[res] = combine_limbs_m_to_n::&lt;N_LIMBS_SMALL, <span class="number">1</span>, LIMB_BITSIZE_SMALL, <span class="number">255</span>, F, CIx, Env&gt;(x);
-    res
 }
 </code></pre></div></section></main></body></html>

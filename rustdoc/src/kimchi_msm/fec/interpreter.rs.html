@@ -869,7 +869,7 @@
 
     <span class="comment">// Signs must be -1 or 1.
     </span><span class="kw">for </span>x <span class="kw">in </span>[<span class="kw-2">&amp;</span>q1_sign, <span class="kw-2">&amp;</span>q2_sign, <span class="kw-2">&amp;</span>q3_sign] {
-        env.lookup(LookupTable::RangeCheck1Abs, x);
+        env.assert_zero(x.clone() * x.clone() - Env::constant(F::one()));
     }
 
     <span class="comment">// Carry limbs need to be in particular ranges.
@@ -1034,14 +1034,14 @@
     <span class="kw">let </span>slope_limbs_large: [F; N_LIMBS_LARGE] =
         limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(<span class="kw-2">&amp;</span>slope);
 
-    write_column_array_const(env, xp_limbs_large, FECColumn::XP);
-    write_column_array_const(env, yp_limbs_large, FECColumn::YP);
-    write_column_array_const(env, xq_limbs_large, FECColumn::XQ);
-    write_column_array_const(env, yq_limbs_large, FECColumn::YQ);
-    write_column_array_const(env, f_limbs_large, FECColumn::F);
-    write_column_array_const(env, xr_limbs_small, FECColumn::XR);
-    write_column_array_const(env, yr_limbs_small, FECColumn::YR);
-    write_column_array_const(env, slope_limbs_small, FECColumn::S);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>xp_limbs_large, FECColumn::XP);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>yp_limbs_large, FECColumn::YP);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>xq_limbs_large, FECColumn::XQ);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>yq_limbs_large, FECColumn::YQ);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>f_limbs_large, FECColumn::F);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>xr_limbs_small, FECColumn::XR);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>yr_limbs_small, FECColumn::YR);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>slope_limbs_small, FECColumn::S);
 
     <span class="kw">let </span>xp_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>xp);
     <span class="kw">let </span>yp_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>yp);
@@ -1095,9 +1095,9 @@
     <span class="kw">let </span>q3_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(q3_bi.to_biguint().unwrap());
 
-    write_column_array_const(env, q1_limbs_small, FECColumn::Q1);
-    write_column_array_const(env, q2_limbs_small, FECColumn::Q2);
-    write_column_array_const(env, q3_limbs_small, FECColumn::Q3);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>q1_limbs_small, FECColumn::Q1);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>q2_limbs_small, FECColumn::Q2);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>q3_limbs_small, FECColumn::Q3);
     write_column_const(env, FECColumn::Q1Sign, <span class="kw-2">&amp;</span>q1_sign);
     write_column_const(env, FECColumn::Q2Sign, <span class="kw-2">&amp;</span>q2_sign);
     write_column_const(env, FECColumn::Q3Sign, <span class="kw-2">&amp;</span>q3_sign);
