@@ -311,7 +311,7 @@ pub fn combine_limbs_m_to_n<
 ) -> [Env::Variable; N] {
     assert!(BITSIZE_N % BITSIZE_M == 0);
     let k = BITSIZE_N / BITSIZE_M;
-    let constant_u128 = |x: u128| Env::constant(From::from(x));
+    let constant_bui = |x: BigUint| Env::constant(From::from(x));
     let disparity: usize = M % k;
     std::array::from_fn(|i| {
         // We have less small limbs in the last large limb
@@ -321,7 +321,7 @@ pub fn combine_limbs_m_to_n<
             k
         };
         (0..upper_bound)
-            .map(|j| x[k * i + j].clone() * constant_u128(1u128 << (j * BITSIZE_M)))
+            .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(1u128) << (j * BITSIZE_M)))
             .fold(Env::Variable::from(0u64), |acc, v| acc + v)
     })
 }
