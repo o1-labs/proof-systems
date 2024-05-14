@@ -363,9 +363,9 @@ mod folding {
                     rs: reg_src,  // source register
                     rt: reg_dest, // destination register
                     // The rest is the immediate value
-                    rd: rng.gen(),
-                    shamt: rng.gen(),
-                    funct: rng.gen(),
+                    rd: rng.gen_range(0..32),
+                    shamt: rng.gen_range(0..32),
+                    funct: rng.gen_range(0..64),
                 },
             );
             interpret_itype(&mut dummy_env, instr);
