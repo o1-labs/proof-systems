@@ -323,11 +323,21 @@ where
     }
 
     fn pad_with_row(&mut self, selector: Self::Selector, row: &[ScalarField<C>; N_REL]) -> usize {
-        self.trace.get_mut(&selector).unwrap().pad_with_row((), row)
+        // We only want to pad non-empty witnesses.
+        if !self.in_circuit(selector) {
+            0
+        } else {
+            self.trace.get_mut(&selector).unwrap().pad_with_row((), row)
+        }
     }
 
     fn pad_with_zeros(&mut self, selector: Self::Selector) -> usize {
-        self.trace.get_mut(&selector).unwrap().pad_with_zeros(())
+        // We only want to pad non-empty witnesses.
+        if !self.in_circuit(selector) {
+            0
+        } else {
+            self.trace.get_mut(&selector).unwrap().pad_with_zeros(())
+        }
     }
 
     fn pad_dummy(&mut self, selector: Self::Selector) -> usize {

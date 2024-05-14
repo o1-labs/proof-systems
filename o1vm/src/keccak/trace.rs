@@ -37,7 +37,9 @@ impl DecomposableTracer<KeccakEnv<ScalarField<KeccakConfig>>> for DecomposedKecc
 
     fn pad_witnesses(&mut self) {
         for opcode in Steps::iter().flat_map(|opcode| opcode.into_iter()) {
-            self.trace.get_mut(&opcode).unwrap().pad_dummy(());
+            if self.in_circuit(opcode) {
+                self.trace.get_mut(&opcode).unwrap().pad_dummy(());
+            }
         }
     }
 }
