@@ -16,7 +16,7 @@
 // expression must be changed to support this.
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PoseidonColumn<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> {
     Input(usize),
     Round(usize, usize),
@@ -26,7 +26,7 @@ pub enum PoseidonColumn<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> {
 impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
     for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>
 {
-    const COL_N: usize = STATE_SIZE + 2 * NB_FULL_ROUND * STATE_SIZE;
+    const N_COL: usize = STATE_SIZE + 2 * NB_FULL_ROUND * STATE_SIZE;
 
     fn to_column(self) -> Column {
         match self {

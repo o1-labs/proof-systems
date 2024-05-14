@@ -53,8 +53,16 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, C
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
-    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const N_COL: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        LT: LookupTableID,
+    > HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -662,6 +670,16 @@ mod tests {
     use rand::{CryptoRng, Rng, RngCore};
     use std::str::FromStr;
 
+    type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        SerializationColumn,
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
+
     fn test_decomposition_generic(x: Fp) {
         let bits = x.to_bits();
         let limb0: u128 = {
@@ -689,11 +707,7 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = WitnessBuilderEnv::<
-            Fp,
-            { <SerializationColumn as ColumnIndexer>::COL_N },
-            LookupTable<Ff1>,
-        >::create();
+        let mut dummy_env = SerializationWitnessBuilderEnv::create();
         deserialize_field_element(
             &mut dummy_env,
             [
@@ -811,8 +825,7 @@ mod tests {
     fn build_serialization_mul_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> WitnessBuilderEnv<Fp, { <SerializationColumn as ColumnIndexer>::COL_N }, LookupTable<Ff1>>
-    {
+    ) -> SerializationWitnessBuilderEnv {
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.

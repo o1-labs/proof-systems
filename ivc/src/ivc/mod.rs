@@ -24,8 +24,15 @@ mod tests {
     #[derive(Clone)]
     pub struct PoseidonBN254Parameters;
 
-    type IVCWitnessBuilderEnv =
-        WitnessBuilderEnv<Fp, { <IVCColumn as ColumnIndexer>::COL_N }, IVCLookupTable<Ff1>>;
+    type IVCWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        IVCColumn,
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        IVCLookupTable<Ff1>,
+    >;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters

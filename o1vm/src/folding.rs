@@ -107,12 +107,12 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
 pub struct DecomposableFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
     C: FoldingConfig,
 > {
     /// Structure of the folded circuit (using [DecomposedTrace] for now, as
     /// it contains the domain size)
-    pub structure: DecomposedTrace<N, N_REL, N_SEL, C>,
+    pub structure: DecomposedTrace<N, N_REL, N_DSEL, C>,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -122,7 +122,7 @@ pub struct DecomposableFoldingEnvironment<
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
 
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
+impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig>
     FoldingEnv<
         ScalarField<C>,
         FoldingInstance<N, C::Curve>,
@@ -130,7 +130,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
         C::Column,
         Challenge,
         C::Selector,
-    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C>
+    > for DecomposableFoldingEnvironment<N, N_REL, N_DSEL, C>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -142,7 +142,7 @@ where
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = DecomposedTrace<N, N_REL, N_SEL, C>;
+    type Structure = DecomposedTrace<N, N_REL, N_DSEL, C>;
 
     fn new(
         structure: &Self::Structure,

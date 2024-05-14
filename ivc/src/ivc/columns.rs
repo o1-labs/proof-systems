@@ -129,7 +129,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 
 // NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
     /// 2*17 15-bit limbs (two base field points)
     Block1Input(usize),
@@ -160,9 +160,9 @@ pub enum IVCColumn {
 
 impl ColumnIndexer for IVCColumn {
     // This should be
-    //   const COL_N: usize = std::cmp::max(IVCPoseidonColumn::COL_N, FECColumn::COL_N);
+    //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
     // which is runtime-only expression..?
-    const COL_N: usize = IVCPoseidonColumn::COL_N;
+    const N_COL: usize = IVCPoseidonColumn::N_COL;
 
     fn to_column(self) -> Column {
         match self {

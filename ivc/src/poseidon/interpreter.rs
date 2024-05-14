@@ -151,7 +151,7 @@ where
     let state: Vec<Env::Variable> = elements
         .iter()
         .map(|x| {
-            let x_col = env.read_column(x.clone());
+            let x_col = env.read_column(*x);
             let x_square = x_col.clone() * x_col.clone();
             let x_four = x_square.clone() * x_square.clone();
             x_four.clone() * x_square.clone() * x_col.clone()

@@ -31,6 +31,16 @@ mod tests {
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
+    type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        SerializationColumn,
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
+
     #[test]
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
@@ -41,11 +51,7 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut witness_env = WitnessBuilderEnv::<
-            Fp,
-            { <SerializationColumn as ColumnIndexer>::COL_N },
-            LookupTable<Ff1>,
-        >::create();
+        let mut witness_env = SerializationWitnessBuilderEnv::create();
 
         // Boxing to avoid stack overflow
         let mut field_elements = vec![];
@@ -106,6 +112,7 @@ mod tests {
             SER_N_COLUMNS,
             SER_N_COLUMNS,
             0,
+            0,
             LookupTable<Ff1>,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -117,6 +124,7 @@ mod tests {
             ScalarSponge,
             SER_N_COLUMNS,
             SER_N_COLUMNS,
+            0,
             0,
             0,
             LookupTable<Ff1>,

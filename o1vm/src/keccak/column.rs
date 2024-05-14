@@ -70,7 +70,7 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
@@ -378,7 +378,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
         Column::Relation(self.ix())
     }
@@ -405,7 +405,7 @@ impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for Steps {
-    const COL_N: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
         Column::DynamicSelector(self.ix())
     }
