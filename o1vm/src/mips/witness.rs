@@ -437,15 +437,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         out_position: Self::Position,
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let u64_res = x + y;
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let u32_res = x + y;
-        let u32_res = u32_res as u64;
-        let overflows = if u32_res == u64_res { 0u64 } else { 1u64 };
-        self.write_column(out_position, u32_res);
-        self.write_column(overflow_position, overflows);
-        (u32_res, overflows)
+        // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
+        let res = x.overflowing_add(y);
+        let (res_, overflow) = (res.0 as u64, res.1 as u64);
+        self.write_column(out_position, res_);
+        self.write_column(overflow_position, overflow);
+        (res_, overflow)
     }
 
     unsafe fn sub_witness(
