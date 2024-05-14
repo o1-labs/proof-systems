@@ -23,7 +23,7 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     fn assert_zero(&mut self, cst: Self::Variable);
 
     /// Reads value from a column position.
-    fn read_column(&self, ix: CIx) -> Self::Variable;
+    fn read_column(&self, col: CIx) -> Self::Variable;
 
     /// Turns a constant value into a variable.
     fn constant(value: F) -> Self::Variable;
@@ -35,7 +35,7 @@ pub trait ColWriteCap<F: PrimeField, CIx: ColumnIndexer>
 where
     Self: ColAccessCap<F, CIx>,
 {
-    fn write_column(&mut self, ix: CIx, value: &Self::Variable);
+    fn write_column(&mut self, col: CIx, value: &Self::Variable);
 }
 
 /// Capability for invoking table lookups.
@@ -44,6 +44,24 @@ where
     Self: ColAccessCap<F, CIx>,
 {
     fn lookup(&mut self, lookup_id: LT, value: &Self::Variable);
+}
+
+/// Capability for reading and moving forward in a multirow fashion.
+/// Holds a "current" row that can be moved forward with `next_row`.
+/// The `ColWriteCap` and `ColAccessCap` reason in terms of current
+/// row. The two other methods can be used to read/write previous.
+pub trait MultiRowReadCap<F: PrimeField, CIx: ColumnIndexer>
+where
+    Self: ColWriteCap<F, CIx>,
+{
+    /// Read value from a (row,column) position.
+    fn read_row_column(&mut self, row: usize, col: CIx) -> Self::Variable;
+
+    /// Progresses to the next row.
+    fn next_row(&mut self);
+
+    /// Returns the current row.
+    fn curr_row(&self) -> usize;
 }
 
 ////////////////////////////////////////////////////////////////////////////

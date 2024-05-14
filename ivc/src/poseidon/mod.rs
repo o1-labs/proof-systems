@@ -9,7 +9,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::{params, params::PlonkSpongeConstantsIVC};
-    use crate::poseidon::{columns::PoseidonColumn, interpreter, interpreter::Params};
+    use crate::poseidon::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams};
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
@@ -31,7 +31,7 @@ mod tests {
     pub const N_COL: usize = PoseidonColumn::<STATE_SIZE, NB_FULL_ROUND>::COL_N;
     pub const N_SEL: usize = 0;
 
-    impl Params<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
+    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
             let rc = &params::static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
@@ -61,7 +61,7 @@ mod tests {
             let y: Fp = Fp::rand(&mut rng);
             let z: Fp = Fp::rand(&mut rng);
 
-            interpreter::poseidon_circuit(&mut witness_env, PoseidonBN254Parameters, (x, y, z));
+            interpreter::poseidon_circuit(&mut witness_env, &PoseidonBN254Parameters, (x, y, z));
 
             // Check internal consistency of our circuit: that our
             // computed values match the CPU-spec implementation of
@@ -110,7 +110,11 @@ mod tests {
                 let y: Fp = Fp::rand(&mut rng);
                 let z: Fp = Fp::rand(&mut rng);
 
-                interpreter::poseidon_circuit(&mut witness_env, PoseidonBN254Parameters, (x, y, z));
+                interpreter::poseidon_circuit(
+                    &mut witness_env,
+                    &PoseidonBN254Parameters,
+                    (x, y, z),
+                );
             }
 
             witness_env.get_proof_inputs(domain, empty_lookups)
@@ -118,7 +122,7 @@ mod tests {
 
         let constraints = {
             let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-            interpreter::apply_permutation(&mut constraint_env, PoseidonBN254Parameters);
+            interpreter::apply_permutation(&mut constraint_env, &PoseidonBN254Parameters);
             let constraints = constraint_env.get_constraints();
 
             // Constraints properties check. For this test, we do have 165 constraints

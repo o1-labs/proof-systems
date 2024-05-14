@@ -8,8 +8,8 @@ Pickles uses a pair of amicable curves called [Pasta](./pasta.md) in order to de
 
 These curves are referred to as "tick" and "tock" within the Mina source code.
 
-* Tick - Vesta (a.k.a. Step), constraint domain size $2^{18}$ [block and transaction proofs]
-* Tock - Pallas (a.k.a. Wrap), constraint domain size $2^{17}$ [signatures]
+* Tick - Vesta (a.k.a. Step), constraint domain size $2^{18}$ (block and transaction proofs)
+* Tock - Pallas (a.k.a. Wrap), constraint domain size $2^{17}$ (signatures)
 
 The Tock prover does less (only performs recursive verifications and no other logic), so it requires fewer constraints and has a smaller domain size.  Internally Pickles refers to Tick and Tock as Step and Wrap, respectively.
 

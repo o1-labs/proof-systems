@@ -11,6 +11,10 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
 use poly_commitment::SRS;
 
+// FIXME: for optimisation, as values are not necessarily Fp elements and are
+// relatively small, we could get rid of the scalar field objects, and only use
+// bigint where we only apply the modulus when needed.
+
 /// This type refers to the two instances to be folded
 #[derive(Clone, Copy)]
 pub enum Side {
@@ -173,6 +177,12 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     env: &ExtendedEnv<C>,
     u: (ScalarField<C>, ScalarField<C>),
 ) -> [Vec<ScalarField<C>>; 2] {
+    // FIXME: for speed, use inplace operations, and avoid cloning and
+    // allocating a new element.
+    // An allocation can cost a third of the time required for an addition and a
+    // 9th for a multiplication on the scalar field
+    // Indirections are also costly, so we should avoid them as much as
+    // possible, and inline code.
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
     let zero = || EvalLeaf::Result(env.inner().zero_vec());
@@ -255,16 +265,18 @@ pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
 impl<CF: FoldingConfig> ExtendedEnv<CF> {
     pub fn new(
         structure: &CF::Structure,
-        //maybe better to have some structure exteded or something like that
+        // maybe better to have some structure exteded or something like that
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         selector: Option<CF::Selector>,
     ) -> Self {
+        // FIXME: avoid indirection
         let inner_instances = [
             instances[0].inner_instance().inner(),
             instances[1].inner_instance().inner(),
         ];
+        // FIXME: avoid indirection
         let inner_witnesses = [witnesses[0].inner().inner(), witnesses[1].inner().inner()];
         let inner = <CF::Env>::new(structure, inner_instances, inner_witnesses);
         Self {
@@ -363,18 +375,22 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         env.compute_extended_commitments(srs, Side::Right)
     }
 
+    // FIXME: use reference to avoid indirect copying/cloning.
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
         let (instance, witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),
             Side::Right => (&mut self.instances[1], &self.witnesses[1]),
         };
 
+        // FIXME: use parallelisation
         for (expected_i, (i, wit)) in witness.inner().extended.iter().enumerate() {
             //in case any where to be missing for some reason
             assert_eq!(*i, expected_i);
             let commit = srs.commit_evaluations_non_hiding(self.domain, wit);
             instance.inner_mut().extended.push(commit)
         }
+        // FIXME: maybe returning a value is not necessary as it does inplace operations.
+        // It implies copying on the stack and possibly copy multiple times.
         self
     }
 }

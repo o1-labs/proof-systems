@@ -1487,45 +1487,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kimchi-optimism"
-version = "0.1.0"
-dependencies = [
- "ark-bn254",
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "base64",
- "clap 4.4.18",
- "command-fds",
- "elf",
- "env_logger",
- "folding",
- "groupmap",
- "hex",
- "itertools 0.12.1",
- "kimchi",
- "kimchi-msm",
- "libc",
- "libflate",
- "log",
- "mina-curves",
- "mina-poseidon",
- "os_pipe",
- "poly-commitment",
- "rand",
- "rayon",
- "regex",
- "rmp-serde",
- "serde",
- "serde_json",
- "serde_with 3.6.0",
- "sha3",
- "stacker",
- "strum",
- "strum_macros",
-]
-
-[[package]]
 name = "kimchi-visu"
 version = "0.1.0"
 dependencies = [
@@ -1917,6 +1878,45 @@ dependencies = [
  "serde_with 3.6.0",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "o1vm"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "base64",
+ "clap 4.4.18",
+ "command-fds",
+ "elf",
+ "env_logger",
+ "folding",
+ "groupmap",
+ "hex",
+ "itertools 0.12.1",
+ "kimchi",
+ "kimchi-msm",
+ "libc",
+ "libflate",
+ "log",
+ "mina-curves",
+ "mina-poseidon",
+ "os_pipe",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with 3.6.0",
+ "sha3",
+ "stacker",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]

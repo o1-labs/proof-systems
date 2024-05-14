@@ -778,7 +778,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
        \openx^{(\rounds)} =
        \openx^{(\rounds)}_{\chaleval} + \chalu \cdot \openx^{(\rounds)}_{\chaleval\omega}
        $$
-       See [Different functionalities](/plonk/inner_product_api.html) for more details or
+       See [Different functionalities](../plonk/inner_product_api.html) for more details or
        [the relevant code](https://github.com/o1-labs/proof-systems/blob/76c678d3db9878730f8a4eead65d1e038a509916/poly-commitment/src/commitment.rs#L785).
     1. Compute $\accCom \gets \comm^{(k)} - [\openy'] \cdot \genOpen$    (i.e. st. $\comm^{(k)} = \accCom + [\openy'] \cdot \genOpen$)
 

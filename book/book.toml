@@ -33,3 +33,12 @@ command = "mdbook-mermaid"
 [preprocessor.toc]
 command = "mdbook-toc"
 renderer = ["html"]
+
+
+# See docs:
+# - https://github.com/o1-labs/mdbook-linkcheck
+# - (original repo) https://github.com/Michael-F-Bryan/mdbook-linkcheck
+[output.linkcheck]
+follow-web-links = false
+traverse-parent-directories = false
+latex-support = true
