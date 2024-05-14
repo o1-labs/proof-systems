@@ -8,12 +8,12 @@ use crate::{
         },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
-        trace::KeccakTrace,
+        trace::DecomposedKeccakTrace,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::{DecomposableTracer, DecomposedTrace},
+    trace::{DecomposableTracer, Tracer},
     BaseSponge, Fp,
 };
 use ark_ff::{One, Zero};
@@ -510,10 +510,13 @@ fn test_keccak_prover_constraints() {
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
         // Keep track of the constraints and lookups of the sub-circuits
-        let mut keccak_circuit = KeccakTrace::new(domain_size, &mut keccak_env);
+        let mut keccak_circuit = <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
+            domain_size,
+            &mut keccak_env,
+        );
 
         while keccak_env.step.is_some() {
-            let step = keccak_env.step.unwrap();
+            let step = keccak_env.selector();
 
             // Run the interpreter, which sets the witness columns
             keccak_env.step();
@@ -531,8 +534,8 @@ fn test_keccak_prover_constraints() {
                     N_ZKVM_KECCAK_SEL_COLS,
                     _,
                 >(
-                    keccak_circuit.constraints[&step].clone(),
-                    keccak_circuit.witness[&step].clone(),
+                    keccak_circuit[step].constraints.clone(),
+                    keccak_circuit[step].witness.clone(),
                     domain_size,
                     &mut rng,
                 );
@@ -548,7 +551,6 @@ fn test_keccak_decomposable_folding() {
     use folding::{
         checker::{Checker, ExtendedProvider},
         decomposable_folding::DecomposableFoldingScheme,
-        expressions::FoldingCompatibleExpr,
     };
     use kimchi::curve::KimchiCurve;
     use log::debug;
@@ -568,15 +570,17 @@ fn test_keccak_decomposable_folding() {
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
-        let mut keccak_trace: [DecomposedTrace<
-            N_ZKVM_KECCAK_COLS,
-            N_ZKVM_KECCAK_REL_COLS,
-            N_ZKVM_KECCAK_SEL_COLS,
-            KeccakConfig,
-        >; 2] =
-            std::array::from_fn(|_| KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default()));
+        let mut keccak_trace: [DecomposedKeccakTrace; 2] = std::array::from_fn(|_| {
+            <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
+                domain_size,
+                &mut KeccakEnv::<Fp>::default(),
+            )
+        });
 
-        let default_trace = KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default());
+        let default_trace = <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
+            domain_size,
+            &mut KeccakEnv::<Fp>::default(),
+        );
 
         for trace in &mut keccak_trace {
             // Generate domain_size random preimages of 1 block for Keccak
@@ -591,7 +595,7 @@ fn test_keccak_decomposable_folding() {
 
                 // Keep track of the constraints of the sub-circuits
                 while keccak_env.step.is_some() {
-                    let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
+                    let step = keccak_env.selector();
                     keccak_env.step(); // Create the relation witness columns
                     if let Sponge(Absorb(Only)) = step {
                         // Add the witness row to the circuit
@@ -603,25 +607,15 @@ fn test_keccak_decomposable_folding() {
             assert!(trace.is_full(Sponge(Absorb(Only))));
 
             // Add the columns of the selectors to the circuit
-            trace.set_selector_column(Sponge(Absorb(Only)), domain_size);
+            trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Only)), domain_size);
         }
 
-        // Store all constraints indexed by Step
-        let constraints = Steps::iter()
-            .flat_map(|x| x.into_iter())
-            .map(|step| {
-                (
-                    step,
-                    default_trace.constraints[&step]
-                        .iter()
-                        .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
-                        .collect(),
-                )
-            })
-            .collect();
-
         let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
-            constraints,
+            <DecomposedKeccakTrace as Foldable<
+                N_ZKVM_KECCAK_COLS,
+                KeccakConfig,
+                BaseSponge,
+            >>::folding_constraints(&default_trace),
             vec![],
             &srs,
             domain,
@@ -629,8 +623,10 @@ fn test_keccak_decomposable_folding() {
         );
 
         // Fold Sponge(Absorb(Only))
-        let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
-        let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
+        let left =
+            keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &mut fq_sponge, domain, &srs);
+        let right =
+            keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &mut fq_sponge, domain, &srs);
         let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
             left,
             right,

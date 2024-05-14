@@ -1,7 +1,5 @@
 use ark_ff::UniformRand;
-use folding::{
-    decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
-};
+use folding::decomposable_folding::DecomposableFoldingScheme;
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use log::debug;
@@ -11,7 +9,7 @@ use o1vm::{
     keccak::{
         column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         environment::KeccakEnv,
-        trace::KeccakTrace,
+        trace::DecomposedKeccakTrace,
     },
     lookups::LookupTableIDs,
     mips::{
@@ -24,16 +22,10 @@ use o1vm::{
     },
     preimage_oracle::PreImageOracle,
     proof,
-    trace::DecomposableTracer,
+    trace::{DecomposableTracer, Foldable, Tracer},
     BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, HashMap},
-    fs::File,
-    io::BufReader,
-    process::ExitCode,
-};
+use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
 
 pub fn main() -> ExitCode {
@@ -91,27 +83,15 @@ pub fn main() -> ExitCode {
 
     // Initialize the circuits. Includes pre-folding witnesses.
     let mut mips_trace = DecomposedMIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
-    let mut keccak_trace = KeccakTrace::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+    let mut keccak_trace = DecomposedKeccakTrace::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     let _mips_folding = {
-        let constraints: BTreeMap<
-            Instruction,
-            Vec<FoldingCompatibleExpr<DecomposableMIPSFoldingConfig>>,
-        > = mips_trace
-            .constraints
-            .iter()
-            .map(|(k, constraints)| {
-                (
-                    *k,
-                    constraints
-                        .iter()
-                        .map(|x| FoldingCompatibleExpr::from(x.clone()))
-                        .collect(),
-                )
-            })
-            .collect();
         DecomposableFoldingScheme::<DecomposableMIPSFoldingConfig>::new(
-            constraints,
+            <DecomposedMIPSTrace as Foldable<
+                N_MIPS_COLS,
+                DecomposableMIPSFoldingConfig,
+                BaseSponge,
+            >>::folding_constraints(&mips_trace),
             vec![],
             &srs.full_srs,
             domain.d1,
@@ -142,7 +122,7 @@ pub fn main() -> ExitCode {
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
             while keccak_env.step.is_some() {
-                // Get the current step that will be
+                // Get the current standardize step that is being executed
                 let step = keccak_env.selector();
                 // Run the interpreter, which sets the witness columns
                 keccak_env.step();
@@ -152,12 +132,12 @@ pub fn main() -> ExitCode {
                 // If the witness is full, fold it and reset the pre-folding witness
                 if keccak_trace.number_of_rows(step) == DOMAIN_SIZE {
                     // Set to zero all selectors except for the one corresponding to the current instruction
-                    keccak_trace.set_selector_column(step, DOMAIN_SIZE);
+                    keccak_trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(step, DOMAIN_SIZE);
                     proof::fold::<N_ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
                         keccak_folded_instance.get_mut(&step).unwrap(),
-                        &keccak_trace.witness[&step],
+                        &keccak_trace[step].witness,
                     );
                     keccak_trace.reset(step);
                 }
@@ -169,13 +149,13 @@ pub fn main() -> ExitCode {
         // TODO: unify witness of MIPS to include scratch state, instruction counter, and error
         for i in 0..N_MIPS_REL_COLS {
             match i.cmp(&SCRATCH_SIZE) {
-                Ordering::Less => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                Ordering::Less => mips_trace.trace.get_mut(&instr).unwrap().witness.cols[i]
                     .push(mips_wit_env.scratch_state[i]),
-                Ordering::Equal => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                Ordering::Equal => mips_trace.trace.get_mut(&instr).unwrap().witness.cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter)),
                 Ordering::Greater => {
                     // TODO: error
-                    mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                    mips_trace.trace.get_mut(&instr).unwrap().witness.cols[i]
                         .push(Fp::rand(&mut rand::rngs::OsRng))
                 }
             }
@@ -183,12 +163,12 @@ pub fn main() -> ExitCode {
 
         if mips_trace.number_of_rows(instr) == DOMAIN_SIZE {
             // Set to zero all selectors except for the one corresponding to the current instruction
-            mips_trace.set_selector_column(instr, DOMAIN_SIZE);
+            mips_trace.set_selector_column::<N_MIPS_REL_COLS>(instr, DOMAIN_SIZE);
             proof::fold::<N_MIPS_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 mips_folded_instance.get_mut(&instr).unwrap(),
-                &mips_trace.witness[&instr],
+                &mips_trace[instr].witness,
             );
             mips_trace.reset(instr);
         }
@@ -200,27 +180,27 @@ pub fn main() -> ExitCode {
         let needs_folding = mips_trace.pad_dummy(instr) != 0;
         if needs_folding {
             // Then set the selector columns (all of them, none has selectors set)
-            mips_trace.set_selector_column(instr, DOMAIN_SIZE);
+            mips_trace.set_selector_column::<N_MIPS_REL_COLS>(instr, DOMAIN_SIZE);
 
             // Finally fold instance
             proof::fold::<N_MIPS_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 mips_folded_instance.get_mut(&instr).unwrap(),
-                &mips_trace.witness[&instr],
+                &mips_trace[instr].witness,
             );
         }
     }
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
         let needs_folding = keccak_trace.pad_dummy(step) != 0;
         if needs_folding {
-            keccak_trace.set_selector_column(step, DOMAIN_SIZE);
+            keccak_trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(step, DOMAIN_SIZE);
 
             proof::fold::<N_ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 keccak_folded_instance.get_mut(&step).unwrap(),
-                &keccak_trace.witness[&step],
+                &keccak_trace[step].witness,
             );
         }
     }
@@ -230,7 +210,7 @@ pub fn main() -> ExitCode {
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             // Prove only if the instruction was executed
             // and if the number of constraints is nonzero (otherwise quotient polynomial cannot be created)
-            if mips_trace.in_circuit(instr) && !mips_trace.constraints[&instr].is_empty() {
+            if mips_trace.in_circuit(instr) && !mips_trace[instr].constraints.is_empty() {
                 debug!("Checking MIPS circuit {:?}", instr);
                 let mips_result = prove::<
                     _,
@@ -245,7 +225,7 @@ pub fn main() -> ExitCode {
                 >(
                     domain,
                     &srs,
-                    &mips_trace.constraints[&instr],
+                    &mips_trace[instr].constraints,
                     mips_folded_instance[&instr].clone(),
                     &mut rng,
                 );
@@ -264,7 +244,7 @@ pub fn main() -> ExitCode {
                 >(
                     domain,
                     &srs,
-                    &mips_trace.constraints[&instr],
+                    &mips_trace[instr].constraints,
                     &mips_proof,
                     Witness::zero_vec(DOMAIN_SIZE),
                 );
@@ -297,7 +277,7 @@ pub fn main() -> ExitCode {
                 >(
                     domain,
                     &srs,
-                    &keccak_trace.constraints[&step],
+                    &keccak_trace[step].constraints,
                     keccak_folded_instance[&step].clone(),
                     &mut rng,
                 );
@@ -316,7 +296,7 @@ pub fn main() -> ExitCode {
                 >(
                     domain,
                     &srs,
-                    &keccak_trace.constraints[&step],
+                    &keccak_trace[step].constraints,
                     &keccak_proof,
                     Witness::zero_vec(DOMAIN_SIZE),
                 );

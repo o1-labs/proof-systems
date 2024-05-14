@@ -31,7 +31,10 @@ fn test_mips_number_constraints() {
     let mips_circuit = DecomposedMIPSTrace::new(domain_size, &mut constraints_env);
 
     let assert_num_constraints = |instr: &Instruction, num: usize| {
-        assert_eq!(mips_circuit.constraints.get(instr).unwrap().len(), num)
+        assert_eq!(
+            mips_circuit.trace.get(instr).unwrap().constraints.len(),
+            num
+        )
     };
 
     let mut i = 0;
