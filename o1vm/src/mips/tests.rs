@@ -375,6 +375,7 @@ mod folding {
             }
             witness.cols[SCRATCH_SIZE].push(Fp::from(dummy_env.instruction_counter));
             witness.cols[SCRATCH_SIZE + 1].push(Fp::from(0));
+            dummy_env.instruction_counter += 1;
 
             dummy_env.reset_scratch_state()
         });
