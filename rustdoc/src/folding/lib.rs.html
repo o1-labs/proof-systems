@@ -328,8 +328,6 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -353,9 +351,7 @@
 <span class="kw">use </span>ark_ff::{Field, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
-<span class="kw">use </span>expressions::{
-    folding_expression, FoldingColumnTrait, FoldingCompatibleExpr, IntegratedFoldingExpr,
-};
+<span class="kw">use </span>expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 <span class="kw">use </span>instance_witness::{RelaxableInstance, RelaxablePair};
 <span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
 <span class="kw">use </span>mina_poseidon::FqSponge;
@@ -371,7 +367,7 @@
 
 <span class="comment">// Make available outside the crate to avoid code duplication
 </span><span class="kw">pub use </span>error_term::Side;
-<span class="kw">pub use </span>expressions::ExpExtension;
+<span class="kw">pub use </span>expressions::{ExpExtension, FoldingCompatibleExpr};
 <span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 <span class="kw">pub mod </span>columns;
