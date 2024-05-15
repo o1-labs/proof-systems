@@ -21,9 +21,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
-use expressions::{
-    folding_expression, FoldingColumnTrait, FoldingCompatibleExpr, IntegratedFoldingExpr,
-};
+use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use mina_poseidon::FqSponge;
@@ -39,7 +37,7 @@ use std::{
 
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
-pub use expressions::ExpExtension;
+pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod columns;

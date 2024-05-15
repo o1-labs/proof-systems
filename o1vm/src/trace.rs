@@ -40,6 +40,7 @@ pub trait ProvableTrace {
 // single instruction.
 // It is not recommended to use this in production and it should not be
 // maintained in the long term.
+#[derive(Clone)]
 pub struct Trace<const N: usize, C: FoldingConfig> {
     pub domain_size: usize,
     pub witness: Witness<N, Vec<ScalarField<C>>>,
@@ -57,19 +58,23 @@ impl<const N: usize, C: FoldingConfig> ProvableTrace for Trace<N, C> {
 /// Struct representing a circuit execution trace which is decomposable in
 /// individual sub-circuits sharing the same columns.
 /// It is parameterized by
-/// - `N`: the total number of columns (constant), it must equal `N_REL + N_SEL`
+/// - `N`: the total number of columns (constant), it must equal `N_REL + N_DSEL`
 /// - `N_REL`: the number of relation columns (constant),
-/// - `N_SEL`: the number of selector columns (constant),
+/// - `N_DSEL`: the number of dynamic selector columns (constant),
 /// - `Selector`: an enum representing the different gate behaviours,
 /// - `F`: the type of the witness data.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct DecomposedTrace<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
-{
+pub struct DecomposedTrace<
+    const N: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    C: FoldingConfig,
+> {
     /// The domain size of the circuit
     pub domain_size: usize,
     /// The witness for a given selector
-    /// - the last N_SEL columns represent the selector columns
+    /// - the last N_DSEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
     pub witness: BTreeMap<C::Selector, Witness<N, Vec<ScalarField<C>>>>,
     /// The vector of constraints for a given selector
@@ -79,16 +84,16 @@ pub struct DecomposedTrace<const N: usize, const N_REL: usize, const N_SEL: usiz
 }
 
 // Any decomposable trace is provable.
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> ProvableTrace
-    for DecomposedTrace<N, N_REL, N_SEL, C>
+impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig> ProvableTrace
+    for DecomposedTrace<N, N_REL, N_DSEL, C>
 {
     fn domain_size(&self) -> usize {
         self.domain_size
     }
 }
 
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
-    DecomposedTrace<N, N_REL, N_SEL, C>
+impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig>
+    DecomposedTrace<N, N_REL, N_DSEL, C>
 where
     C::Selector: Indexer,
 {
@@ -156,8 +161,8 @@ pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
 }
 
 /// Implement the trait Foldable for the structure [DecomposedTrace]
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
-    Foldable<N, C, Sponge> for DecomposedTrace<N, N_REL, N_SEL, C>
+impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig, Sponge>
+    Foldable<N, C, Sponge> for DecomposedTrace<N, N_REL, N_DSEL, C>
 where
     C::Selector: Indexer,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
@@ -213,7 +218,7 @@ where
 /// can use per row.
 /// The constant type `N_REL` is defined as the maximum number of relation
 /// columns the trace can use per row.
-/// The constant type `N_SEL` is defined as the number of selector columns the
+/// The constant type `N_DSEL` is defined as the number of selector columns the
 /// trace can use per row.
 /// The type `Selector` encodes the information of the kind of information the
 /// trace encodes. Examples:
@@ -226,7 +231,7 @@ where
 pub trait DecomposableTracer<
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
     C: FoldingConfig,
     Env,
 >

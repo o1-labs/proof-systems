@@ -25,10 +25,20 @@ mod tests {
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
 
+    type FECWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        FECColumn,
+        { <FECColumn as ColumnIndexer>::N_COL },
+        { <FECColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
+
     fn build_fec_addition_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> WitnessBuilderEnv<Fp, { <FECColumn as ColumnIndexer>::COL_N }, LookupTable<Ff1>> {
+    ) -> FECWitnessBuilderEnv {
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.
@@ -91,6 +101,7 @@ mod tests {
             FEC_N_COLUMNS,
             FEC_N_COLUMNS,
             0,
+            0,
             _,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -103,6 +114,7 @@ mod tests {
             ScalarSponge,
             FEC_N_COLUMNS,
             FEC_N_COLUMNS,
+            0,
             0,
             0,
             _,

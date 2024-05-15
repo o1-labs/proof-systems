@@ -35,7 +35,7 @@ pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
@@ -114,7 +114,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = N_MIPS_COLS;
+    const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::Relation(self.ix())
@@ -139,7 +139,7 @@ impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for Instruction {
-    const COL_N: usize = N_MIPS_COLS;
+    const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::DynamicSelector(self.ix())

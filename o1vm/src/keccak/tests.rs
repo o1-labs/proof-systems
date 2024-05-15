@@ -529,6 +529,7 @@ fn test_keccak_prover_constraints() {
                     N_ZKVM_KECCAK_COLS,
                     N_ZKVM_KECCAK_REL_COLS,
                     N_ZKVM_KECCAK_SEL_COLS,
+                    0,
                     _,
                 >(
                     keccak_circuit.constraints[&step].clone(),
