@@ -70,7 +70,7 @@ impl<
                     let res = &self.witness[N_REL + i];
                     Some(res)
                 } else {
-                    panic!("Requested selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_SEL)
+                    panic!("Requested selector with index {:?} but the given witness is meant for {:?} dynamic selector columns", i, N_SEL)
                 }
             }
             Self::Column::LookupPartialSum((table_id, i)) => {
