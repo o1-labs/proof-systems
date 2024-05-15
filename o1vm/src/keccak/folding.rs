@@ -2,6 +2,7 @@ use crate::{
     folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
         column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
+        trace::DecomposedKeccakTrace,
         KeccakColumn, Steps,
     },
     trace::Indexer,
@@ -17,14 +18,12 @@ use kimchi_msm::columns::Column;
 use poly_commitment::srs::SRS;
 use std::ops::Index;
 
-use super::trace::KeccakTrace;
-
 pub type KeccakFoldingEnvironment = DecomposedFoldingEnvironment<
     N_ZKVM_KECCAK_COLS,
     N_ZKVM_KECCAK_REL_COLS,
     N_ZKVM_KECCAK_SEL_COLS,
     KeccakConfig,
-    KeccakTrace,
+    DecomposedKeccakTrace,
 >;
 
 pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
@@ -80,7 +79,7 @@ impl FoldingConfig for KeccakConfig {
     type Srs = SRS<Curve>;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
-    type Structure = KeccakTrace;
+    type Structure = DecomposedKeccakTrace;
     type Env = KeccakFoldingEnvironment;
 }
 
