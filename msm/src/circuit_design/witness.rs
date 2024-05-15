@@ -43,7 +43,12 @@ pub struct WitnessBuilderEnv<
     /// value for row #j of the selector #i.
     pub fixed_selectors: Vec<Vec<F>>,
 
-    // Not strictly needed at this point, but likely will be used later.
+    // A Phantom Data for CIx -- right now WitnessBUilderEnv does not
+    // depend on CIx, but in the future (with associated generics
+    // enabled?) it might be convenient to put all the `NT_COL` (and
+    // other) constants into `CIx`. Logically, all these constants
+    // "belong" to CIx, so there's an extra type parameter, and a
+    // phantom data to support it.
     pub phantom_cix: PhantomData<CIx>,
 }
 

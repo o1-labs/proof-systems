@@ -71,7 +71,6 @@ impl FormattedOutput for Column {
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
 pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
-    // TODO rename into N_COL for consistency
     /// Total number of columns in this index.
     const N_COL: usize;
 
