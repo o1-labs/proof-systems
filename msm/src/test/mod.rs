@@ -12,7 +12,13 @@ use rand::{CryptoRng, RngCore};
 
 // Generic function to test with different circuits with the generic prover/verifier.
 // It doesn't use the interpreter to build the witness and compute the constraints.
-pub fn test_completeness_generic<const N: usize, const N_REL: usize, const N_SEL: usize, RNG>(
+pub fn test_completeness_generic<
+    const N: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
+    RNG,
+>(
     constraints: Vec<E<Fp>>,
     evaluations: Witness<N, Vec<Fp>>,
     domain_size: usize,
@@ -34,15 +40,19 @@ pub fn test_completeness_generic<const N: usize, const N_REL: usize, const N_SEL
         logups: vec![],
     };
 
-    let proof =
-        prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N, N_REL, N_SEL, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            proof_inputs,
-            rng,
-        )
-        .unwrap();
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        _,
+        N,
+        N_REL,
+        N_DSEL,
+        N_FSEL,
+        LookupTableIDs,
+    >(domain, &srs, &constraints, proof_inputs, rng)
+    .unwrap();
 
     {
         // Checking the proof size. We should have:
@@ -80,14 +90,24 @@ pub fn test_completeness_generic<const N: usize, const N_REL: usize, const N_SEL
         }
     }
 
-    let verifies =
-        verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, N_REL, N_SEL, 0, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(domain_size),
-        );
+    let verifies = verify::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        N,
+        N_REL,
+        N_DSEL,
+        N_FSEL,
+        0,
+        LookupTableIDs,
+    >(
+        domain,
+        &srs,
+        &constraints,
+        &proof,
+        Witness::zero_vec(domain_size),
+    );
     assert!(verifies)
 }
 
@@ -173,7 +193,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -209,7 +229,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, exp_x2]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -254,7 +274,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -293,7 +313,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -326,7 +346,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -369,7 +389,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -424,7 +444,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -479,7 +499,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, N, 0, _>(
+        test_completeness_generic::<N, N, 0, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,

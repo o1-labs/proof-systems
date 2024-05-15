@@ -7,7 +7,7 @@ use crate::{
 pub const FEC_N_COLUMNS: usize = 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL + 9;
 
 /// Columns used by the serialization subcircuit.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FECColumn {
     XP(usize),     // 4
     YP(usize),     // 4
@@ -29,7 +29,7 @@ pub enum FECColumn {
 }
 
 impl ColumnIndexer for FECColumn {
-    const COL_N: usize = FEC_N_COLUMNS;
+    const N_COL: usize = FEC_N_COLUMNS;
     fn to_column(self) -> Column {
         match self {
             FECColumn::XP(i) => {

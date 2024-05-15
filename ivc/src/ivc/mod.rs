@@ -24,8 +24,15 @@ mod tests {
     #[derive(Clone)]
     pub struct PoseidonBN254Parameters;
 
-    type IVCWitnessBuilderEnv =
-        WitnessBuilderEnv<Fp, { <IVCColumn as ColumnIndexer>::COL_N }, IVCLookupTable<Ff1>>;
+    type IVCWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        IVCColumn,
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        IVCLookupTable<Ff1>,
+    >;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters
@@ -79,10 +86,8 @@ mod tests {
     }
 
     #[test]
-    /// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    pub fn test_ivc_addition_circuit() {
+    /// Tests if building the IVC circuit succeeds.
+    pub fn test_ivc_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
         build_ivc_circuit(&mut rng);
     }
