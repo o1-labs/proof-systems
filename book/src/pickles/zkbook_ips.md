@@ -22,7 +22,7 @@ Ok, so what are inductive SNARKs? Well, first let's describe precisely the afore
 
 ## Inductive sets
 
-zk-SNARKs [as defined earlier](./zkbook_plonk.md) allow you to prove for efficiently computable functions $f \colon A \times W \to \mathsf{Bool}$ statements of the form
+zk-SNARKs [as defined earlier](../fundamentals/zkbook_plonk.md) allow you to prove for efficiently computable functions $f \colon A \times W \to \mathsf{Bool}$ statements of the form
 
 > I know $w \colon W$ such that $f(a, w) = \mathsf{true}$
 

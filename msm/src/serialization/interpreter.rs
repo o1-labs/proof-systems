@@ -53,8 +53,16 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, C
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
-    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const N_COL: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        LT: LookupTableID,
+    > HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -69,7 +77,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res_fp: F = res.into();
-        self.write_column(position.to_column(), res_fp);
+        self.write_column_raw(position.to_column(), res_fp);
         res_fp
     }
 }
@@ -304,14 +312,20 @@ pub fn combine_limbs_m_to_n<
     const BITSIZE_M: usize,
     const BITSIZE_N: usize,
     F: PrimeField,
-    CIx: ColumnIndexer,
-    Env: ColAccessCap<F, CIx>,
+    V: std::ops::Add<V, Output = V>
+        + std::ops::Sub<V, Output = V>
+        + std::ops::Mul<V, Output = V>
+        + std::ops::Neg<Output = V>
+        + From<u64>
+        + Clone,
+    Func: Fn(F) -> V,
 >(
-    x: [Env::Variable; M],
-) -> [Env::Variable; N] {
+    from_field: Func,
+    x: [V; M],
+) -> [V; N] {
     assert!(BITSIZE_N % BITSIZE_M == 0);
     let k = BITSIZE_N / BITSIZE_M;
-    let constant_u128 = |x: u128| Env::constant(From::from(x));
+    let constant_bui = |x: BigUint| from_field(F::from(x));
     let disparity: usize = M % k;
     std::array::from_fn(|i| {
         // We have less small limbs in the last large limb
@@ -321,8 +335,8 @@ pub fn combine_limbs_m_to_n<
             k
         };
         (0..upper_bound)
-            .map(|j| x[k * i + j].clone() * constant_u128(1u128 << (j * BITSIZE_M)))
-            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
+            .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(1u128) << (j * BITSIZE_M)))
+            .fold(V::from(0u64), |acc, v| acc + v)
     })
 }
 
@@ -338,9 +352,9 @@ pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessC
         LIMB_BITSIZE_SMALL,
         LIMB_BITSIZE_LARGE,
         F,
-        CIx,
-        Env,
-    >(x)
+        Env::Variable,
+        _,
+    >(|f| Env::constant(f), x)
 }
 
 /// Helper function for limb recombination for carry specifically.
@@ -656,6 +670,16 @@ mod tests {
     use rand::{CryptoRng, Rng, RngCore};
     use std::str::FromStr;
 
+    type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        SerializationColumn,
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
+
     fn test_decomposition_generic(x: Fp) {
         let bits = x.to_bits();
         let limb0: u128 = {
@@ -683,11 +707,7 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = WitnessBuilderEnv::<
-            Fp,
-            { <SerializationColumn as ColumnIndexer>::COL_N },
-            LookupTable<Ff1>,
-        >::create();
+        let mut dummy_env = SerializationWitnessBuilderEnv::create();
         deserialize_field_element(
             &mut dummy_env,
             [
@@ -805,8 +825,7 @@ mod tests {
     fn build_serialization_mul_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> WitnessBuilderEnv<Fp, { <SerializationColumn as ColumnIndexer>::COL_N }, LookupTable<Ff1>>
-    {
+    ) -> SerializationWitnessBuilderEnv {
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.

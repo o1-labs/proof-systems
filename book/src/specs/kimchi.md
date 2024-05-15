@@ -913,10 +913,10 @@ v_1$ and $v_2$) of up to 88 bits each.
 
 Values can be copied as inputs to the multi range check gadget in two ways:
 
-* [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+* (Standard mode) With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
     cells of the first 3 rows of the gadget.  In this mode the first gate
     coefficient is set to `0`.
-* [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+* (Compact mode) With 2 copies, by copying $v_2$ to the first cell of the first
     row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
     In this mode the first gate coefficient is set to `1`.
 

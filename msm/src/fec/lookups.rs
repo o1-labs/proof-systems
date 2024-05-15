@@ -17,8 +17,6 @@ pub enum LookupTable<Ff> {
     /// x ∈ [0, ff_highest] where ff_highest is the highest 15-bit
     /// limb of the modulus of the foreign field `Ff`.
     RangeCheckFfHighest(PhantomData<Ff>),
-    /// x ∈ [-1, 1]
-    RangeCheck1Abs,
 }
 
 impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
@@ -28,7 +26,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             Self::RangeCheck14Abs => 2,
             Self::RangeCheck9Abs => 3,
             Self::RangeCheckFfHighest(_) => 4,
-            Self::RangeCheck1Abs => 5,
         }
     }
 
@@ -38,7 +35,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             2 => Self::RangeCheck14Abs,
             3 => Self::RangeCheck9Abs,
             4 => Self::RangeCheckFfHighest(PhantomData),
-            5 => Self::RangeCheck1Abs,
             _ => panic!("Invalid lookup table id"),
         }
     }
@@ -57,7 +53,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                 crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>(),
             )
             .unwrap(),
-            Self::RangeCheck1Abs => 2,
         }
     }
 
@@ -81,15 +76,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                 }
             }
             Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
-            Self::RangeCheck1Abs => {
-                if value == F::one() {
-                    0
-                } else if value == F::zero() - F::one() {
-                    1
-                } else {
-                    panic!("Invalid value for rangecheck1abs")
-                }
-            }
         }
     }
 
@@ -98,7 +84,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             Self::RangeCheck15,
             Self::RangeCheck14Abs,
             Self::RangeCheck9Abs,
-            Self::RangeCheck1Abs,
             Self::RangeCheckFfHighest(PhantomData),
         ]
     }
@@ -150,10 +135,6 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                 })
                 .collect(),
             Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain_d1_size),
-            Self::RangeCheck1Abs => [F::one(), F::zero() - F::one()]
-                .into_iter()
-                .chain((2..domain_d1_size).map(|_| F::one())) // dummies are 1s
-                .collect(),
         }
     }
 
@@ -173,7 +154,6 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                     F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
                 value < top_modulus_f
             }
-            Self::RangeCheck1Abs => value == F::one() || value == F::zero() - F::one(),
         }
     }
 }

@@ -26,13 +26,13 @@ use strum_macros::{EnumCount, EnumIter};
 
 /// The maximum total number of witness columns used by the Keccak circuit.
 /// Note that in round steps, the columns used to store padding information are not needed.
-pub const ZKVM_KECCAK_REL: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
+pub const N_ZKVM_KECCAK_REL_COLS: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
 
 /// The number of columns required for the Keccak selectors
-pub const ZKVM_KECCAK_SEL: usize = MODE_LEN;
+pub const N_ZKVM_KECCAK_SEL_COLS: usize = MODE_LEN;
 
 /// Total number of columns used in Keccak, including relation and selectors
-pub const ZKVM_KECCAK_COLS: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+pub const N_ZKVM_KECCAK_COLS: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
 
 const MODE_LEN: usize = 6; // The number of columns used by the Keccak circuit to represent the mode flags.
 const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside DynamicSelector
@@ -70,7 +70,7 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
@@ -355,7 +355,7 @@ impl Indexer for ColumnAlias {
 ///             -> 811..=815: PadSuffix
 ///             -> 816..=951: PadBytesFlags
 ///
-pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_REL, T>;
+pub type KeccakWitness<T> = Witness<N_ZKVM_KECCAK_REL_COLS, T>;
 
 /// IMPLEMENTATIONS FOR COLUMN ALIAS
 
@@ -378,7 +378,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
         Column::Relation(self.ix())
     }
@@ -405,7 +405,7 @@ impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for Steps {
-    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
         Column::DynamicSelector(self.ix())
     }

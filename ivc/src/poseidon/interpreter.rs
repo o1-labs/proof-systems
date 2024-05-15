@@ -23,7 +23,8 @@ use num_integer::Integer;
 /// The type is parametrized by the field, the state size, and the number of full rounds.
 /// Note that the parameters are only for instances using full rounds.
 // IMPROVEME merge constants and mds in a flat array, to use the CPU cache
-pub trait Params<F: PrimeField, const STATE_SIZE: usize, const NB_FULL_ROUNDS: usize> {
+// IMPROVEME generalise init_state for more than 3 elements
+pub trait PoseidonParams<F: PrimeField, const STATE_SIZE: usize, const NB_FULL_ROUNDS: usize> {
     fn constants(&self) -> [[F; STATE_SIZE]; NB_FULL_ROUNDS];
     fn mds(&self) -> [[F; STATE_SIZE]; STATE_SIZE];
 }
@@ -37,20 +38,19 @@ pub fn poseidon_circuit<
     Env,
 >(
     env: &mut Env,
-    param: PARAMETERS,
-    init_state: (F, F, F),
-) where
+    param: &PARAMETERS,
+    init_state: [Env::Variable; STATE_SIZE],
+) -> [Env::Variable; STATE_SIZE]
+where
     F: PrimeField,
-    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_FULL_ROUND>,
     Env: ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
     // Write inputs
-    {
-        env.write_column(PoseidonColumn::Input(0), &Env::constant(init_state.0));
-        env.write_column(PoseidonColumn::Input(1), &Env::constant(init_state.1));
-        env.write_column(PoseidonColumn::Input(2), &Env::constant(init_state.2));
-    }
+    init_state.iter().enumerate().for_each(|(i, value)| {
+        env.write_column(PoseidonColumn::Input(i), value);
+    });
 
     // Write constants
     {
@@ -67,7 +67,7 @@ pub fn poseidon_circuit<
     }
 
     // Create, write, and constrain all other columns.
-    apply_permutation(env, param);
+    apply_permutation(env, param)
 }
 
 /// Apply the whole permutation of Poseidon to the state.
@@ -80,10 +80,11 @@ pub fn apply_permutation<
     Env,
 >(
     env: &mut Env,
-    param: PARAMETERS,
-) where
+    param: &PARAMETERS,
+) -> [Env::Variable; STATE_SIZE]
+where
     F: PrimeField,
-    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_FULL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
@@ -96,6 +97,9 @@ pub fn apply_permutation<
         assert_eq!(p_minus_one.gcd(&seven), one);
     }
 
+    let mut final_state: [Env::Variable; STATE_SIZE] =
+        std::array::from_fn(|_| Env::constant(F::zero()));
+
     for i in 0..NB_FULL_ROUND {
         let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] = {
             if i == 0 {
@@ -104,8 +108,16 @@ pub fn apply_permutation<
                 std::array::from_fn(|j| PoseidonColumn::Round(i - 1, j))
             }
         };
-        compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(env, &param, i, &state);
+        let round_res = compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(
+            env, param, i, &state,
+        );
+
+        if i == NB_FULL_ROUND - 1 {
+            final_state = round_res
+        }
     }
+
+    final_state
 }
 
 /// Compute one round the Poseidon permutation
@@ -120,9 +132,10 @@ fn compute_one_round<
     param: &PARAMETERS,
     round: usize,
     elements: &[PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE],
-) where
+) -> [Env::Variable; STATE_SIZE]
+where
     F: PrimeField,
-    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_FULL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
@@ -138,7 +151,7 @@ fn compute_one_round<
     let state: Vec<Env::Variable> = elements
         .iter()
         .map(|x| {
-            let x_col = env.read_column(x.clone());
+            let x_col = env.read_column(*x);
             let x_square = x_col.clone() * x_col.clone();
             let x_four = x_square.clone() * x_square.clone();
             x_four.clone() * x_square.clone() * x_col.clone()
@@ -146,7 +159,7 @@ fn compute_one_round<
         .collect();
 
     // Applying the linear layer
-    let mds = Params::mds(param);
+    let mds = PoseidonParams::mds(param);
     let state: Vec<Env::Variable> = mds
         .into_iter()
         .map(|m| {
@@ -170,7 +183,13 @@ fn compute_one_round<
         })
         .collect();
 
-    state.iter().enumerate().for_each(|(i, res)| {
-        env.hcopy(res, PoseidonColumn::Round(round, i));
-    });
+    let res_state: Vec<Env::Variable> = state
+        .iter()
+        .enumerate()
+        .map(|(i, res)| env.hcopy(res, PoseidonColumn::Round(round, i)))
+        .collect();
+
+    res_state
+        .try_into()
+        .expect("Resulting state must be of STATE_SIZE length")
 }

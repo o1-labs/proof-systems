@@ -15,11 +15,13 @@ pub struct ColumnEnvironment<
     'a,
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
     F: FftField,
     ID: LookupTableID,
 > {
-    /// The witness column polynomials
+    /// The witness column polynomials. Includes relation columns,
+    /// fixed selector columns, and dynamic selector columns.
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
@@ -39,10 +41,11 @@ impl<
         'a,
         const N: usize,
         const N_REL: usize,
-        const N_SEL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
         F: FftField,
         ID: LookupTableID,
-    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, N_REL, N_SEL, F, ID>
+    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, N_REL, N_DSEL, N_FSEL, F, ID>
 {
     type Column = crate::columns::Column;
 
@@ -50,28 +53,27 @@ impl<
         &self,
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
-        // TODO: when non-literal constant generics are available, substitute N with N_REG + N_SEL
-        assert!(N == N_REL + N_SEL);
+        // TODO: when non-literal constant generics are available, substitute N with N_REG + N_DSEL + N_FSEL
+        assert!(N == N_REL + N_DSEL + N_FSEL);
         assert!(N == self.witness.len());
         match *col {
             // Handling the "relation columns" at the beginning of the witness columns
             Self::Column::Relation(i) => {
-                if i < N_REL {
-                    let res = &self.witness[i];
-                    Some(res)
-                } else {
-                    // TODO: add a test for this
-                    panic!("Requested column with index {:?} but the given witness is meant for {:?} relation columns", i, N_REL)
-                }
+                // TODO: add a test for this
+                assert!(i < N_REL,"Requested column with index {:?} but the given witness is meant for {:?} relation columns", i, N_REL);
+                let res = &self.witness[i];
+                Some(res)
             }
             // Handling the "dynamic selector columns" at the end of the witness columns
             Self::Column::DynamicSelector(i) => {
-                if i < N_SEL {
-                    let res = &self.witness[N_REL + i];
-                    Some(res)
-                } else {
-                    panic!("Requested selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_SEL)
-                }
+                assert!(i < N_DSEL, "Requested dynamic selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_DSEL);
+                let res = &self.witness[N_REL + i];
+                Some(res)
+            }
+            Self::Column::FixedSelector(i) => {
+                assert!(i < N_FSEL, "Requested fixed selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_FSEL);
+                let res = &self.witness[N_REL + N_DSEL + i];
+                Some(res)
             }
             Self::Column::LookupPartialSum((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
@@ -116,13 +118,16 @@ impl<
 
     fn column_domain(&self, col: &Self::Column) -> Domain {
         match *col {
-            Self::Column::Relation(i) | Self::Column::DynamicSelector(i) => {
-                let domain_size = if *col == Self::Column::Relation(i) {
-                    // Relation
-                    self.witness[i].domain().size
-                } else {
-                    // DynamicSelector
-                    self.witness[N_REL + i].domain().size
+            Self::Column::Relation(_)
+            | Self::Column::DynamicSelector(_)
+            | Self::Column::FixedSelector(_) => {
+                let domain_size = match *col {
+                    Self::Column::Relation(i) => self.witness[i].domain().size,
+                    Self::Column::DynamicSelector(i) => self.witness[N_REL + i].domain().size,
+                    Self::Column::FixedSelector(i) => {
+                        self.witness[N_REL + N_DSEL + i].domain().size
+                    }
+                    _ => panic!("Impossible"),
                 };
                 if self.domain.d1.size == domain_size {
                     Domain::D1

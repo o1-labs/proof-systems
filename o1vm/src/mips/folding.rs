@@ -1,10 +1,10 @@
 use crate::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
-        column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
+        column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
     },
-    trace::{Indexer, Trace},
+    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -12,13 +12,39 @@ use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use kimchi_msm::columns::Column;
 use std::ops::Index;
 
-use super::column::{MIPS_REL_COLS, MIPS_SEL_COLS};
+use super::{
+    column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+    trace::DecomposedMIPSTrace,
+};
 use poly_commitment::srs::SRS;
 
-pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
-pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS, Curve>;
-pub type MIPSFoldingEnvironment =
-    FoldingEnvironment<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+// Decomposable folding compatibility
+pub type DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment<
+    N_MIPS_COLS,
+    N_MIPS_REL_COLS,
+    N_MIPS_SEL_COLS,
+    DecomposableMIPSFoldingConfig,
+    DecomposedMIPSTrace,
+>;
+
+pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;
+pub type MIPSFoldingInstance = FoldingInstance<N_MIPS_COLS, Curve>;
+
+// -- Start indexer implementations
+// Implement indexers over columns and selectors to implement an abstract
+// folding environment over selectors, see [crate::folding::FoldingEnvironment]
+// for more details
+
+impl Index<Column> for FoldingWitness<N_MIPS_REL_COLS, Fp> {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    fn index(&self, index: Column) -> &Self::Output {
+        match index {
+            Column::Relation(ix) => &self.witness.cols[ix],
+            _ => panic!("Invalid column type"),
+        }
+    }
+}
 
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -46,14 +72,15 @@ impl Index<Column> for MIPSFoldingWitness {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Relation(ix) => &self.witness.cols[ix],
-            Column::DynamicSelector(ix) => &self.witness.cols[MIPS_REL_COLS + ix],
+            Column::DynamicSelector(ix) => &self.witness.cols[N_MIPS_REL_COLS + ix],
             _ => panic!("Invalid column type"),
         }
     }
 }
+// -- End of indexer implementations
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MIPSFoldingConfig;
+pub struct DecomposableMIPSFoldingConfig;
 
 impl FoldingColumnTrait for MIPSColumn {
     fn is_witness(&self) -> bool {
@@ -62,7 +89,7 @@ impl FoldingColumnTrait for MIPSColumn {
     }
 }
 
-impl FoldingConfig for MIPSFoldingConfig {
+impl FoldingConfig for DecomposableMIPSFoldingConfig {
     type Column = Column;
     type Selector = Instruction;
     type Challenge = Challenge;
@@ -70,6 +97,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
-    type Env = MIPSFoldingEnvironment;
+    type Structure = DecomposedMIPSTrace;
+    type Env = DecomposableMIPSFoldingEnvironment;
 }

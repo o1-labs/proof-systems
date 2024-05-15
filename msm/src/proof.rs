@@ -62,7 +62,8 @@ impl<const N: usize, F: PrimeField, ID: LookupTableID> Default for ProofInputs<N
 pub struct ProofEvaluations<
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
     F,
     ID: LookupTableID,
 > {
@@ -77,28 +78,32 @@ pub struct ProofEvaluations<
 /// The trait ColumnEvaluations is used by the verifier.
 /// It will return the evaluation of the corresponding column at the
 /// evaluation points coined by the verifier during the protocol.
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, F: Clone, ID: LookupTableID>
-    ColumnEvaluations<F> for ProofEvaluations<N, N_REL, N_SEL, F, ID>
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        F: Clone,
+        ID: LookupTableID,
+    > ColumnEvaluations<F> for ProofEvaluations<N, N_REL, N_DSEL, N_FSEL, F, ID>
 {
     type Column = crate::columns::Column;
 
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
         // TODO: substitute when non-literal generic constants are available
-        assert!(N == N_REL + N_SEL);
+        assert!(N == N_REL + N_DSEL + N_FSEL);
         let res = match col {
             Self::Column::Relation(i) => {
-                if i < N_REL {
-                    self.witness_evals[i].clone()
-                } else {
-                    panic!("Index out of bounds")
-                }
+                assert!(i < N_REL, "Index out of bounds");
+                self.witness_evals[i].clone()
             }
             Self::Column::DynamicSelector(i) => {
-                if i < N_SEL {
-                    self.witness_evals[N_REL + i].clone()
-                } else {
-                    panic!("Index out of bounds")
-                }
+                assert!(i < N_DSEL, "Index out of bounds");
+                self.witness_evals[N_REL + i].clone()
+            }
+            Self::Column::FixedSelector(i) => {
+                assert!(i < N_FSEL, "Index out of bounds");
+                self.witness_evals[N_REL + N_DSEL + i].clone()
             }
             Self::Column::LookupPartialSum((table_id, idx)) => {
                 if let Some(ref lookup) = self.logup_evals {
@@ -150,12 +155,13 @@ pub struct ProofCommitments<const N: usize, G: KimchiCurve, ID: LookupTableID> {
 pub struct Proof<
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
     ID: LookupTableID,
 > {
     pub(crate) proof_comms: ProofCommitments<N, G, ID>,
-    pub(crate) proof_evals: ProofEvaluations<N, N_REL, N_SEL, G::ScalarField, ID>,
+    pub(crate) proof_evals: ProofEvaluations<N, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID>,
     pub(crate) opening_proof: OpeningProof,
 }
