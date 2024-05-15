@@ -265,7 +265,7 @@ pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
 impl<CF: FoldingConfig> ExtendedEnv<CF> {
     pub fn new(
         structure: &CF::Structure,
-        // maybe better to have some structure exteded or something like that
+        // maybe better to have some structure extended or something like that
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,

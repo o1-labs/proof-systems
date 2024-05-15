@@ -150,7 +150,7 @@ impl<C: FoldingConfig> std::ops::Mul for FoldingCompatibleExpr<C> {
 }
 
 /// Implement a human-readable version of a folding compatible expression.
-// FIXME: use Display instead, to follow the recommandation of the trait.
+// FIXME: use Display instead, to follow the recommendation of the trait.
 impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
     fn to_string(&self) -> String {
         match self {
