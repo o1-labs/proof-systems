@@ -100,6 +100,7 @@ where
     /// It is important that the column used is a relation column because
     /// selector columns are only instantiated at the very end, so their length
     /// could be zero most times.
+    /// That is the reason that relation columns are located first.
     pub fn number_of_rows(&self, opcode: C::Selector) -> usize {
         self[opcode].witness.cols[0].len()
     }

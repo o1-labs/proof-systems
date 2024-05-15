@@ -166,9 +166,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         instance.alphas.get(i).unwrap()
     }
 
-    // this is exclusively for dynamic selectors aiming to make use of optimization
-    // as clasic static selectors will be handle as normal structure columns in col()
-    // the implementation of this if the same as col(), it is just separated as they
+    // This is exclusively for dynamic selectors aiming to make use of optimization
+    // as classic static selectors will be handled as normal structure columns in col().
+    // The implementation of this if the same as col(), it is just separated as they
     // have different types to resolve
     fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
         let wit = &self.curr_witnesses[side as usize];

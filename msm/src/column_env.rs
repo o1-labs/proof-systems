@@ -66,12 +66,12 @@ impl<
             }
             // Handling the "dynamic selector columns" at the end of the witness columns
             Self::Column::DynamicSelector(i) => {
-                assert!(i < N_DSEL, "Requested dynamic selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_DSEL);
+                assert!(i < N_DSEL, "Requested dynamic selector with index {:?} but the given witness is meant for {:?} dynamic selector columns", i, N_DSEL);
                 let res = &self.witness[N_REL + i];
                 Some(res)
             }
             Self::Column::FixedSelector(i) => {
-                assert!(i < N_FSEL, "Requested fixed selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_FSEL);
+                assert!(i < N_FSEL, "Requested fixed selector with index {:?} but the given witness is meant for {:?} fixed selector columns", i, N_FSEL);
                 let res = &self.witness[N_REL + N_DSEL + i];
                 Some(res)
             }
