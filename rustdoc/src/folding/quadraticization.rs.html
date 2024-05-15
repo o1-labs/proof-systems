@@ -225,7 +225,7 @@
 }
 
 <span class="doccomment">/// Returns the constraints converted into degree 2 or less and the extra
-/// contraints added in the process
+/// constraints added in the process
 </span><span class="kw">pub fn </span>quadraticize&lt;C: FoldingConfig&gt;(constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;) -&gt; Quadraticized&lt;C&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>recorder = ExpRecorder::new();
     <span class="kw">let </span>original_constraints = constraints
