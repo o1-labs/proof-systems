@@ -49,12 +49,12 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///  1   |------------------------------------------|
 ///      |                                          |
 ///      |                                         .| . here is h_l
-///  2N  |------------------------------------------|
-///      |                                          |
+///  2N  |------------------------------------------|   must be equal to public input!
+///      |                                          |                    (H_i in nova)
 ///      |                                         .| . here is h_r
 ///  4N  |------------------------------------------|
 ///      |                                          |
-///      |                                         .| . here is h_o
+///      |                                         .| . here is h_o, equal to H_{i+1} in Nova
 ///  6N  |------------------------------------------|
 ///      |                                         .| r = h_lr = h(h_l,h_r)
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
@@ -89,6 +89,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///       1    2   3   4      5      6   ...        6+17          6+2*17                    6+4*17
 ///
 ///
+
 ///
 /// We compute the following equations, where equations in "quotes" are
 /// what we /want/ to prove, and non-quoted is an equavilant version
@@ -96,19 +97,21 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// - "C_{O,i} = C_{L,i} + r·C_{R,i}":
 ///   - C_{O,i} = C_{L,i} + C_{R',i}
 ///   - "C_{R',i} = r·C_{R,i}"
-///     - bucket[ϕ^i]_k -= C_{R',i}
-///     - bucket[r·ϕ^i]_k += C_{R,i}
+///     - bucket[(ϕ^i)_k] -= C_{R',i}
+///     - bucket[(r·ϕ^i)_k] += C_{R,i}
 /// - "E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R":
 ///   - E_O = E_L + E_R'
 ///   - "E_R' = r·T_0 + r^2·T_1 + r^3·E_R"
-///     - bucket[ϕ^{n+1}] += E_R'
-///     - bucket[r·ϕ^{n+1}] += T_0
-///     - bucket[r^2·ϕ^{n+1}] += T_1
-///     - bucket[r^3·ϕ^{n+1}] += E_R
+///     - bucket[(ϕ^{n+1})_k] += E_R'
+///     - bucket[(r·ϕ^{n+1})_k] += T_0
+///     - bucket[(r^2·ϕ^{n+1})_k] += T_1
+///     - bucket[(r^3·ϕ^{n+1})_k] += E_R
 ///
 /// Runtime access time is represented by ? because it's not known in advance.
 ///
 /// Output and input RAM invocations in the same row use the same coeff/memory index.
+///
+/// TODO FIXME we need to write into /different/ buckets.
 ///
 /// FEC Additions, one per row, each one is ~230 columns:
 ///
@@ -146,10 +149,35 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// 1
 ///
 ///
-///           The mystery block (undefined now)
-///      |-------------------------------------------|
-///      |   default_instance                        |
-///      |   ???                                     |
+/// Challenges block.
+///
+///        r   α_{L,i}    α_{R}^i     α_{O,i}
+///  1    |--|--------|-----------|-------------------|
+///       |  |        | α_R = h_R |                   |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+///       |  |        | α_R^i     | α_{L,i} + r·α_R^i |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+///       |  |        |           |                   |
+/// #chal |--|--------|-----------|-------------------|
+///
+/// #chal is the number of constraints. Our optimistic expectation is
+/// that it is around const*N for const < 3.
+///
+///
+/// "u" block. In the general form we want to prove
+/// u_O = u_L + r·u_R, but u_R = 0, so we prove
+/// u_O = u_L + r.
+///
+///     r    u_L       u_O = u_L + r
+///    |--|--------|--------------------|
+///    |--|--------|--------------------|
+///
+///
 /// 2^15 |---- --------------------------------------|
 ///```
 ///
@@ -232,6 +260,24 @@ pub enum IVCColumn {
     Block4OutputAccessTime,
     /// 2*4 75-bit limbs
     Block4OutputRepacked(usize),
+
+    /// Constant h_r
+    Block5ConstHr,
+    /// Constant r
+    Block5ConstR,
+    /// α_{L,i}
+    Block5ChalLeft,
+    /// α_R^i, where α_R = h_R
+    Block5ChalRight,
+    /// α_{O,i} = α_{L,i} + r·α_R^i
+    Block5ChalOutput,
+
+    /// Constant r
+    Block6ConstR,
+    /// u_L
+    Block6ULeft,
+    /// u_O = u_L + r
+    Block6UOutput,
 }
 
 impl ColumnIndexer for IVCColumn {
@@ -301,6 +347,15 @@ impl ColumnIndexer for IVCColumn {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
             }
+            IVCColumn::Block5ConstHr => Column::Relation(0),
+            IVCColumn::Block5ConstR => Column::Relation(1),
+            IVCColumn::Block5ChalLeft => Column::Relation(2),
+            IVCColumn::Block5ChalRight => Column::Relation(3),
+            IVCColumn::Block5ChalOutput => Column::Relation(4),
+
+            IVCColumn::Block6ConstR => Column::Relation(0),
+            IVCColumn::Block6ULeft => Column::Relation(1),
+            IVCColumn::Block6UOutput => Column::Relation(2),
         }
     }
 }

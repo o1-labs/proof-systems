@@ -309,6 +309,9 @@ where
     )
 }
 
+// TODO We need to have alpha
+// TODO We need to hash i (or i+1)?
+// TODO We need to hash T_0 and T_1?
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 /// Instantiates the IVC circuit for folding. N is the total number of columns
@@ -316,7 +319,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
     env: &mut Env,
     poseidon_params: &PParams,
     comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
-) -> (Env::Variable, Env::Variable)
+) -> (Env::Variable, Env::Variable, Env::Variable)
 where
     F: PrimeField,
     PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
@@ -374,10 +377,15 @@ where
             );
 
             if block_row_i == 2 * N_COL_TOTAL {
+                // TODO we must somehow assert this hash_l is part of
+                // the "right strict instance". This is H_i in Nova.
                 hash_l = output;
             } else if block_row_i == 4 * N_COL_TOTAL {
                 hash_r = output;
             } else if block_row_i == 6 * N_COL_TOTAL {
+                // TODO we must somehow assert this hash_o is part of
+                // the "output relaxed instance". This is H_{i+1} in Nova.
+                // This one should be in the public input?
                 hash_o = output;
             } else {
                 prev_hash_output = output;
@@ -407,7 +415,7 @@ where
         env.next_row();
     }
 
-    (r, phi)
+    (hash_r, r, phi)
 }
 
 pub fn constrain_scalars<F, Ff, Env>(env: &mut Env)
@@ -811,7 +819,91 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
         });
 
         constrain_ecadds::<F, Ff, Env>(env);
+
+        env.next_row();
     }
+}
+
+pub fn constrain_challenges<F, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Env: ColAccessCap<F, IVCColumn>,
+{
+    let _h_r = env.read_column(IVCColumn::Block5ConstHr);
+
+    let r = env.read_column(IVCColumn::Block5ConstR);
+    let alpha_l = env.read_column(IVCColumn::Block5ChalLeft);
+    let alpha_r = env.read_column(IVCColumn::Block5ChalRight);
+    let alpha_o = env.read_column(IVCColumn::Block5ChalOutput);
+    env.assert_zero(alpha_o - alpha_l - r * alpha_r);
+
+    // TODO constrain that α_l are public inputs
+    // TODO constrain that α_{r,i} = α_{r,i-1} * h_R
+    // TODO constrain that α_{r,1} = h_R (from hash table)
+}
+
+#[allow(clippy::needless_range_loop)]
+pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
+    env: &mut Env,
+    h_r: F,
+    chal_l: Vec<F>,
+    r: F,
+) where
+    F: PrimeField,
+    Env: MultiRowReadCap<F, IVCColumn>,
+{
+    let chal_num = chal_l.len();
+
+    let mut cur_alpha_r_pow: F = F::one();
+
+    for block_row_i in 0..chal_num {
+        cur_alpha_r_pow *= h_r;
+
+        env.write_column(IVCColumn::Block5ConstHr, &Env::constant(h_r));
+        env.write_column(IVCColumn::Block5ConstR, &Env::constant(r));
+        env.write_column(
+            IVCColumn::Block5ChalLeft,
+            &Env::constant(chal_l[block_row_i]),
+        );
+        env.write_column(IVCColumn::Block5ChalRight, &Env::constant(cur_alpha_r_pow));
+        env.write_column(
+            IVCColumn::Block5ChalOutput,
+            &Env::constant(cur_alpha_r_pow * r + chal_l[block_row_i]),
+        );
+
+        constrain_challenges(env);
+
+        env.next_row()
+    }
+}
+
+pub fn constrain_u<F, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Env: ColAccessCap<F, IVCColumn>,
+{
+    // TODO constrain that r is read from the "hashes" block.
+    // TODO constrain that the inputs are corresponding to public input (?).
+
+    let r = env.read_column(IVCColumn::Block6ConstR);
+    let u_l = env.read_column(IVCColumn::Block6ULeft);
+    let u_o = env.read_column(IVCColumn::Block6UOutput);
+    env.assert_zero(u_o - u_l - r);
+}
+
+#[allow(clippy::needless_range_loop)]
+pub fn process_u<F, Env, const N_COL_TOTAL: usize>(env: &mut Env, u_l: F, r: F)
+where
+    F: PrimeField,
+    Env: MultiRowReadCap<F, IVCColumn>,
+{
+    env.write_column(IVCColumn::Block6ConstR, &Env::constant(r));
+    env.write_column(IVCColumn::Block6ULeft, &Env::constant(u_l));
+    env.write_column(IVCColumn::Block6UOutput, &Env::constant(u_l + r));
+
+    constrain_u(env);
+
+    env.next_row();
 }
 
 pub fn process_misc<F, Env, const N_COL_TOTAL: usize>(_env: &mut Env)
@@ -821,7 +913,9 @@ where
 {
 }
 
-/// Instantiates the IVC circuit for folding. N is the total number of columns
+/// Instantiates the IVC circuit for folding. L is relaxed (folded)
+/// instance, and R is strict (new) instance that is being relaxed at
+/// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     env: &mut Env,
@@ -830,6 +924,8 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     comms_out: [(Ff, Ff); N_COL_TOTAL],
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
+    u_l: F,                     // part of the relaxed instance.
+    chal_l: Vec<F>,             // challenges
     poseidon_params: &PParams,
     domain_size: usize,
 ) where
@@ -845,11 +941,14 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
 
     let (_comms_small, comms_large, comms_xlarge) =
         process_inputs(env, [comms_left, comms_right, comms_out]);
-    let (r_var, phi_var) =
+    let (hash_r_var, r_var, phi_var) =
         process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params, &comms_xlarge);
     let r: F = Env::variable_to_field(r_var);
     let phi: F = Env::variable_to_field(phi_var);
+    let hash_r: F = Env::variable_to_field(hash_r_var);
     let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL>(env, r, phi);
     process_ecadds::<_, Ff, _, N_COL_TOTAL>(env, scalar_limbs, &comms_large, error_terms, t_terms);
+    process_challenges::<_, _, N_COL_TOTAL>(env, hash_r, chal_l, r);
+    process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
     process_misc::<_, _, N_COL_TOTAL>(env);
 }
