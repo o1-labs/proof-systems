@@ -444,18 +444,34 @@ pub fn write_scalars_row<F, Env>(
     r_f: F,
     phi_f: F,
     phi_prev_power_f: F,
-) -> (F, [F; N_LIMBS_SMALL], [F; N_LIMBS_SMALL])
+) -> (
+    F,
+    [F; N_LIMBS_SMALL],
+    [F; N_LIMBS_SMALL],
+    [F; N_LIMBS_SMALL],
+    [F; N_LIMBS_SMALL],
+)
 where
     F: PrimeField,
     Env: ColWriteCap<F, IVCColumn>,
 {
     let phi_cur_power_f = phi_prev_power_f * phi_f;
     let phi_cur_power_r_f = phi_prev_power_f * phi_f * r_f;
+    let phi_cur_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
+    let phi_cur_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
 
     env.write_column(IVCColumn::Block3ConstPhi, &Env::constant(phi_f));
     env.write_column(IVCColumn::Block3ConstR, &Env::constant(r_f));
     env.write_column(IVCColumn::Block3PhiPow, &Env::constant(phi_cur_power_f));
     env.write_column(IVCColumn::Block3PhiPowR, &Env::constant(phi_cur_power_r_f));
+    env.write_column(
+        IVCColumn::Block3PhiPowR2,
+        &Env::constant(phi_cur_power_r2_f),
+    );
+    env.write_column(
+        IVCColumn::Block3PhiPowR3,
+        &Env::constant(phi_cur_power_r3_f),
+    );
 
     // TODO check that limb_decompose_ff works with <F,F,_,_>
     let phi_cur_power_f_limbs =
@@ -466,10 +482,28 @@ where
         limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r_f);
     write_column_array_const(env, &phi_cur_power_r_f_limbs, IVCColumn::Block3PhiPowRLimbs);
 
+    let phi_cur_power_r2_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r2_f);
+    write_column_array_const(
+        env,
+        &phi_cur_power_r2_f_limbs,
+        IVCColumn::Block3PhiPowR2Limbs,
+    );
+
+    let phi_cur_power_r3_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r3_f);
+    write_column_array_const(
+        env,
+        &phi_cur_power_r3_f_limbs,
+        IVCColumn::Block3PhiPowR3Limbs,
+    );
+
     (
         phi_cur_power_f,
         phi_cur_power_f_limbs,
         phi_cur_power_r_f_limbs,
+        phi_cur_power_r2_f_limbs,
+        phi_cur_power_r3_f_limbs,
     )
 }
 
@@ -501,26 +535,34 @@ where
     let mut phi_prev_power_f = F::one();
     let mut phi_limbs = vec![];
     let mut phi_r_limbs = vec![];
-    for _block_row_i in 0..N_COL_TOTAL + 1 {
-        let (phi_prev_power_f_new, phi_cur_power_f_limbs, phi_cur_power_r_f_limbs) =
-            write_scalars_row(env, r, phi, phi_prev_power_f);
+
+    // FIXME constrain these two, they are not in circuit yet
+    let mut phi_np1_r2_limbs = [F::zero(); N_LIMBS_SMALL];
+    let mut phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
+
+    for block_row_i in 0..N_COL_TOTAL + 1 {
+        let (
+            phi_prev_power_f_new,
+            phi_cur_power_f_limbs,
+            phi_cur_power_r_f_limbs,
+            phi_cur_power_r2_f_limbs,
+            phi_cur_power_r3_f_limbs,
+        ) = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         phi_prev_power_f = phi_prev_power_f_new;
         phi_limbs.push(phi_cur_power_f_limbs);
         phi_r_limbs.push(phi_cur_power_r_f_limbs);
+
+        if block_row_i == N_COL_TOTAL + 1 {
+            phi_np1_r2_limbs = phi_cur_power_r2_f_limbs;
+            phi_np1_r3_limbs = phi_cur_power_r3_f_limbs;
+        }
 
         // Checking our constraints
         constrain_scalars(env);
 
         env.next_row();
     }
-
-    // FIXME constrain these two, they are not in circuit yet
-    let phi_np1_r2_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&(r * r * phi_prev_power_f));
-    let phi_np1_r3_limbs = limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
-        &(r * r * r * phi_prev_power_f),
-    );
 
     ScalarLimbs {
         phi_limbs,
