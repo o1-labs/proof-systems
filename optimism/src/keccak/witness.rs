@@ -30,6 +30,8 @@ pub struct Env<F> {
     pub tables: Vec<LookupTable<F>>,
     /// The multiplicities of each lookup entry. Should not be cleared between steps.
     pub multiplicities: Vec<Vec<u32>>,
+    /// Columns involved in lookups for delayed folded instances
+    pub delayed_columns: HashMap<ColumnAlias, bool>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
     /// The round number [0..23]
