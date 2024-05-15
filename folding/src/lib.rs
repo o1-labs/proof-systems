@@ -49,6 +49,7 @@ mod eval_leaf;
 pub mod expressions;
 mod instance_witness;
 pub mod quadraticization;
+mod quadraticization_tests;
 
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -157,6 +158,7 @@ pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub zero_vec: Evals<ScalarField<CF>>,
     pub structure: CF::Structure,
     pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
+    quadraticization_columns: usize,
 }
 
 impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
@@ -166,7 +168,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: &CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
-        let (expression, extended_witness_generator) = folding_expression(constraints);
+        let (expression, extended_witness_generator, quadraticization_columns) =
+            folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
@@ -181,8 +184,13 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
+            quadraticization_columns,
         };
         (scheme, final_expression)
+    }
+    //the number of columns added by quadraticization to lower the degree
+    pub fn quadraticization_columns(&self) -> usize {
+        self.quadraticization_columns
     }
 
     #[allow(clippy::type_complexity)]
