@@ -1,4 +1,4 @@
-use crate::trace::DecomposedTrace;
+use crate::trace::ProvableTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -104,15 +104,14 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
 
 /// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
-pub struct DecomposableFoldingEnvironment<
+pub struct DecomposedFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     C: FoldingConfig,
+    Structure: ProvableTrace,
 > {
-    /// Structure of the folded circuit (using [DecomposedTrace] for now, as
-    /// it contains the domain size)
-    pub structure: DecomposedTrace<N, N_REL, N_DSEL, C>,
+    pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -122,7 +121,14 @@ pub struct DecomposableFoldingEnvironment<
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
 
-impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig>
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        C: FoldingConfig,
+        // FIXME: Clone should not be used. Only a reference should be stored
+        Structure: ProvableTrace + Clone,
+    >
     FoldingEnv<
         ScalarField<C>,
         FoldingInstance<N, C::Curve>,
@@ -130,7 +136,7 @@ impl<const N: usize, const N_REL: usize, const N_DSEL: usize, C: FoldingConfig>
         C::Column,
         Challenge,
         C::Selector,
-    > for DecomposableFoldingEnvironment<N, N_REL, N_DSEL, C>
+    > for DecomposedFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -142,7 +148,7 @@ where
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = DecomposedTrace<N, N_REL, N_DSEL, C>;
+    type Structure = Structure;
 
     fn new(
         structure: &Self::Structure,
@@ -156,7 +162,8 @@ where
                 col.evals.rotate_left(1);
             }
         }
-        DecomposableFoldingEnvironment {
+        DecomposedFoldingEnvironment {
+            // FIXME: This is a clone, but it should be a reference
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
@@ -165,7 +172,7 @@ where
     }
 
     fn domain_size(&self) -> usize {
-        self.structure.domain_size
+        self.structure.domain_size()
     }
 
     fn zero_vec(&self) -> Vec<ScalarField<C>> {
@@ -200,16 +207,107 @@ where
     }
 }
 
+pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+    /// Structure of the folded circuit
+    pub structure: Structure,
+    /// Commitments to the witness columns, for both sides
+    pub instances: [FoldingInstance<N, C::Curve>; 2],
+    /// Corresponds to the omega evaluations, for both sides
+    pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
+    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// This is curr_witness but left shifted by 1
+    pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
+}
+
+impl<
+        const N: usize,
+        C: FoldingConfig,
+        // FIXME: Clone should not be used. Only a reference should be stored
+        Structure: ProvableTrace + Clone,
+    >
+    FoldingEnv<
+        ScalarField<C>,
+        FoldingInstance<N, C::Curve>,
+        FoldingWitness<N, ScalarField<C>>,
+        C::Column,
+        Challenge,
+        (),
+    > for FoldingEnvironment<N, C, Structure>
+where
+    // Used by col and selector
+    FoldingWitness<N, ScalarField<C>>: Index<
+        C::Column,
+        Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
+    >,
+{
+    type Structure = Structure;
+
+    fn new(
+        structure: &Self::Structure,
+        instances: [&FoldingInstance<N, C::Curve>; 2],
+        witnesses: [&FoldingWitness<N, ScalarField<C>>; 2],
+    ) -> Self {
+        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
+        let mut next_witnesses = curr_witnesses.clone();
+        for side in next_witnesses.iter_mut() {
+            for col in side.witness.cols.iter_mut() {
+                col.evals.rotate_left(1);
+            }
+        }
+        FoldingEnvironment {
+            // FIXME: This is a clone, but it should be a reference
+            structure: structure.clone(),
+            instances: [instances[0].clone(), instances[1].clone()],
+            curr_witnesses,
+            next_witnesses,
+        }
+    }
+
+    fn domain_size(&self) -> usize {
+        self.structure.domain_size()
+    }
+
+    fn zero_vec(&self) -> Vec<ScalarField<C>> {
+        vec![ScalarField::<C>::zero(); self.domain_size()]
+    }
+
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
+        let wit = match curr_or_next {
+            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
+            CurrOrNext::Next => &self.next_witnesses[side as usize],
+        };
+        // The following is possible because Index is implemented for our circuit witnesses
+        &wit[col].evals
+    }
+
+    fn challenge(&self, challenge: Challenge, side: Side) -> ScalarField<C> {
+        match challenge {
+            Challenge::Beta => self.instances[side as usize].challenges[0],
+            Challenge::Gamma => self.instances[side as usize].challenges[1],
+            Challenge::JointCombiner => self.instances[side as usize].challenges[2],
+        }
+    }
+
+    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
+        let instance = &self.instances[side as usize];
+        instance.alphas.get(i).unwrap()
+    }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
+        unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when there is only one instruction.")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
-        folding::{DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness, *},
+        folding::{FoldingInstance, FoldingWitness, *},
         Curve, Fp,
     };
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use folding::{
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        FoldingCompatibleExpr, FoldingConfig,
+        expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
+        FoldingConfig,
     };
     use kimchi::{
         circuits::expr::{
@@ -232,10 +330,16 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     struct TestConfig;
 
+    impl ProvableTrace for TestStructure {
+        fn domain_size(&self) -> usize {
+            4
+        }
+    }
+
     type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
     type TestFoldingWitness = FoldingWitness<3, Fp>;
     type TestFoldingInstance = FoldingInstance<3, Curve>;
-    type TestFoldingEnvironment = DecomposableFoldingEnvironment<3, 3, 0, TestConfig>;
+    type TestFoldingEnvironment = FoldingEnvironment<3, TestConfig, TestStructure>;
 
     impl Index<TestColumn> for TestFoldingWitness {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -265,12 +369,12 @@ mod tests {
     impl FoldingConfig for TestConfig {
         type Column = TestColumn;
         type Challenge = Challenge;
-        type Selector = TestColumn;
+        type Selector = ();
         type Curve = Curve;
         type Srs = poly_commitment::srs::SRS<Curve>;
         type Instance = TestFoldingInstance;
         type Witness = TestFoldingWitness;
-        type Structure = DecomposedTrace<3, 3, 0, TestConfig>;
+        type Structure = TestStructure;
         type Env = TestFoldingEnvironment;
     }
 
