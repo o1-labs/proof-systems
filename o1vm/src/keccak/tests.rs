@@ -616,9 +616,12 @@ fn test_keccak_folding() {
                 assert!(trace.is_full(Sponge(Squeeze)));
 
                 // Add the columns of the selectors to the circuit
-                trace.set_selector_column(Sponge(Absorb(Only)), domain_size);
-                trace.set_selector_column(Round(0), domain_size);
-                trace.set_selector_column(Sponge(Squeeze), domain_size);
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
+                    Sponge(Absorb(Only)),
+                    domain_size,
+                );
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Round(0), domain_size);
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Squeeze), domain_size);
             }
             {
                 // 3 block preimages for Sponge(Absorb(First)), Sponge(Absorb(Middle)), and Sponge(Absorb(Last))
