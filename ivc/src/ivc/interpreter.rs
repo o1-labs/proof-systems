@@ -309,8 +309,9 @@ where
     )
 }
 
-// TODO Do we need to hash i or i+1?
-// TODO Do we need to hash T_0 and T_1?
+// TODO We need to have alpha
+// TODO We need to hash i (or i+1)?
+// TODO We need to hash T_0 and T_1?
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 /// Instantiates the IVC circuit for folding. N is the total number of columns

@@ -97,19 +97,21 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// - "C_{O,i} = C_{L,i} + r·C_{R,i}":
 ///   - C_{O,i} = C_{L,i} + C_{R',i}
 ///   - "C_{R',i} = r·C_{R,i}"
-///     - bucket[ϕ^i]_k -= C_{R',i}
-///     - bucket[r·ϕ^i]_k += C_{R,i}
+///     - bucket[(ϕ^i)_k] -= C_{R',i}
+///     - bucket[(r·ϕ^i)_k] += C_{R,i}
 /// - "E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R":
 ///   - E_O = E_L + E_R'
 ///   - "E_R' = r·T_0 + r^2·T_1 + r^3·E_R"
-///     - bucket[ϕ^{n+1}] += E_R'
-///     - bucket[r·ϕ^{n+1}] += T_0
-///     - bucket[r^2·ϕ^{n+1}] += T_1
-///     - bucket[r^3·ϕ^{n+1}] += E_R
+///     - bucket[(ϕ^{n+1})_k] += E_R'
+///     - bucket[(r·ϕ^{n+1})_k] += T_0
+///     - bucket[(r^2·ϕ^{n+1})_k] += T_1
+///     - bucket[(r^3·ϕ^{n+1})_k] += E_R
 ///
 /// Runtime access time is represented by ? because it's not known in advance.
 ///
 /// Output and input RAM invocations in the same row use the same coeff/memory index.
+///
+/// TODO FIXME we need to write into /different/ buckets.
 ///
 /// FEC Additions, one per row, each one is ~230 columns:
 ///
