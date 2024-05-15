@@ -1,5 +1,5 @@
 use crate::{
-    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
@@ -19,11 +19,12 @@ use super::{
 use poly_commitment::srs::SRS;
 
 // Decomposable folding compatibility
-pub type DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment<
+pub type DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment<
     N_MIPS_COLS,
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
     DecomposableMIPSFoldingConfig,
+    DecomposedMIPSTrace,
 >;
 
 pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;
@@ -33,6 +34,18 @@ pub type MIPSFoldingInstance = FoldingInstance<N_MIPS_COLS, Curve>;
 // Implement indexers over columns and selectors to implement an abstract
 // folding environment over selectors, see [crate::folding::FoldingEnvironment]
 // for more details
+
+impl Index<Column> for FoldingWitness<N_MIPS_REL_COLS, Fp> {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    fn index(&self, index: Column) -> &Self::Output {
+        match index {
+            Column::Relation(ix) => &self.witness.cols[ix],
+            _ => panic!("Invalid column type"),
+        }
+    }
+}
+
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
