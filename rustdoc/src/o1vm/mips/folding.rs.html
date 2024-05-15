@@ -87,8 +87,9 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias <span class="kw">as </span>MIPSColumn, N_MIPS_COLS},
         Instruction,
@@ -108,11 +109,12 @@
 <span class="kw">use </span>poly_commitment::srs::SRS;
 
 <span class="comment">// Decomposable folding compatibility
-</span><span class="kw">pub type </span>DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment&lt;
+</span><span class="kw">pub type </span>DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment&lt;
     N_MIPS_COLS,
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
     DecomposableMIPSFoldingConfig,
+    DecomposedMIPSTrace,
 &gt;;
 
 <span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;N_MIPS_COLS, Fp&gt;;

@@ -264,6 +264,7 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -306,6 +307,7 @@
 // single instruction.
 // It is not recommended to use this in production and it should not be
 // maintained in the long term.
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>Trace&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; {
     <span class="kw">pub </span>domain_size: usize,
     <span class="kw">pub </span>witness: Witness&lt;N, Vec&lt;ScalarField&lt;C&gt;&gt;&gt;,

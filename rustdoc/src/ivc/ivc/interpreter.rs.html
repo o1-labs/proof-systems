@@ -853,6 +853,105 @@
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
 <a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -1164,14 +1263,17 @@
     )
 }
 
-<span class="comment">// FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
+<span class="comment">// TODO We need to have alpha
+// TODO We need to hash i (or i+1)?
+// TODO We need to hash T_0 and T_1?
+// FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 </span><span class="doccomment">/// Instantiates the IVC circuit for folding. N is the total number of columns
 </span><span class="kw">pub fn </span>process_hashes&lt;F, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     poseidon_params: <span class="kw-2">&amp;</span>PParams,
     comms_xlarge: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
-) -&gt; (Env::Variable, Env::Variable)
+) -&gt; (Env::Variable, Env::Variable, Env::Variable)
 <span class="kw">where
     </span>F: PrimeField,
     PParams: PoseidonParams&lt;F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
@@ -1229,11 +1331,16 @@
             );
 
             <span class="kw">if </span>block_row_i == <span class="number">2 </span>* N_COL_TOTAL {
-                hash_l = output;
+                <span class="comment">// TODO we must somehow assert this hash_l is part of
+                // the &quot;right strict instance&quot;. This is H_i in Nova.
+                </span>hash_l = output;
             } <span class="kw">else if </span>block_row_i == <span class="number">4 </span>* N_COL_TOTAL {
                 hash_r = output;
             } <span class="kw">else if </span>block_row_i == <span class="number">6 </span>* N_COL_TOTAL {
-                hash_o = output;
+                <span class="comment">// TODO we must somehow assert this hash_o is part of
+                // the &quot;output relaxed instance&quot;. This is H_{i+1} in Nova.
+                // This one should be in the public input?
+                </span>hash_o = output;
             } <span class="kw">else </span>{
                 prev_hash_output = output;
             }
@@ -1262,7 +1369,7 @@
         env.next_row();
     }
 
-    (r, phi)
+    (hash_r, r, phi)
 }
 
 <span class="kw">pub fn </span>constrain_scalars&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
@@ -1666,7 +1773,91 @@
         });
 
         constrain_ecadds::&lt;F, Ff, Env&gt;(env);
+
+        env.next_row();
     }
+}
+
+<span class="kw">pub fn </span>constrain_challenges&lt;F, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">where
+    </span>F: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt;,
+{
+    <span class="kw">let </span>_h_r = env.read_column(IVCColumn::Block5ConstHr);
+
+    <span class="kw">let </span>r = env.read_column(IVCColumn::Block5ConstR);
+    <span class="kw">let </span>alpha_l = env.read_column(IVCColumn::Block5ChalLeft);
+    <span class="kw">let </span>alpha_r = env.read_column(IVCColumn::Block5ChalRight);
+    <span class="kw">let </span>alpha_o = env.read_column(IVCColumn::Block5ChalOutput);
+    env.assert_zero(alpha_o - alpha_l - r * alpha_r);
+
+    <span class="comment">// TODO constrain that α_l are public inputs
+    // TODO constrain that α_{r,i} = α_{r,i-1} * h_R
+    // TODO constrain that α_{r,1} = h_R (from hash table)
+</span>}
+
+<span class="attr">#[allow(clippy::needless_range_loop)]
+</span><span class="kw">pub fn </span>process_challenges&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    h_r: F,
+    chal_l: Vec&lt;F&gt;,
+    r: F,
+) <span class="kw">where
+    </span>F: PrimeField,
+    Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
+{
+    <span class="kw">let </span>chal_num = chal_l.len();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>cur_alpha_r_pow: F = F::one();
+
+    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..chal_num {
+        cur_alpha_r_pow <span class="kw-2">*</span>= h_r;
+
+        env.write_column(IVCColumn::Block5ConstHr, <span class="kw-2">&amp;</span>Env::constant(h_r));
+        env.write_column(IVCColumn::Block5ConstR, <span class="kw-2">&amp;</span>Env::constant(r));
+        env.write_column(
+            IVCColumn::Block5ChalLeft,
+            <span class="kw-2">&amp;</span>Env::constant(chal_l[block_row_i]),
+        );
+        env.write_column(IVCColumn::Block5ChalRight, <span class="kw-2">&amp;</span>Env::constant(cur_alpha_r_pow));
+        env.write_column(
+            IVCColumn::Block5ChalOutput,
+            <span class="kw-2">&amp;</span>Env::constant(cur_alpha_r_pow * r + chal_l[block_row_i]),
+        );
+
+        constrain_challenges(env);
+
+        env.next_row()
+    }
+}
+
+<span class="kw">pub fn </span>constrain_u&lt;F, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">where
+    </span>F: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt;,
+{
+    <span class="comment">// TODO constrain that r is read from the &quot;hashes&quot; block.
+    // TODO constrain that the inputs are corresponding to public input (?).
+
+    </span><span class="kw">let </span>r = env.read_column(IVCColumn::Block6ConstR);
+    <span class="kw">let </span>u_l = env.read_column(IVCColumn::Block6ULeft);
+    <span class="kw">let </span>u_o = env.read_column(IVCColumn::Block6UOutput);
+    env.assert_zero(u_o - u_l - r);
+}
+
+<span class="attr">#[allow(clippy::needless_range_loop)]
+</span><span class="kw">pub fn </span>process_u&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env, u_l: F, r: F)
+<span class="kw">where
+    </span>F: PrimeField,
+    Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
+{
+    env.write_column(IVCColumn::Block6ConstR, <span class="kw-2">&amp;</span>Env::constant(r));
+    env.write_column(IVCColumn::Block6ULeft, <span class="kw-2">&amp;</span>Env::constant(u_l));
+    env.write_column(IVCColumn::Block6UOutput, <span class="kw-2">&amp;</span>Env::constant(u_l + r));
+
+    constrain_u(env);
+
+    env.next_row();
 }
 
 <span class="kw">pub fn </span>process_misc&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(_env: <span class="kw-2">&amp;mut </span>Env)
@@ -1676,7 +1867,9 @@
 {
 }
 
-<span class="doccomment">/// Instantiates the IVC circuit for folding. N is the total number of columns
+<span class="doccomment">/// Instantiates the IVC circuit for folding. L is relaxed (folded)
+/// instance, and R is strict (new) instance that is being relaxed at
+/// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
@@ -1685,6 +1878,8 @@
     comms_out: [(Ff, Ff); N_COL_TOTAL],
     error_terms: [(Ff, Ff); <span class="number">3</span>], <span class="comment">// E_L, E_R, E_O
     </span>t_terms: [(Ff, Ff); <span class="number">2</span>],     <span class="comment">// T_0, T_1
+    </span>u_l: F,                     <span class="comment">// part of the relaxed instance.
+    </span>chal_l: Vec&lt;F&gt;,             <span class="comment">// challenges
     </span>poseidon_params: <span class="kw-2">&amp;</span>PParams,
     domain_size: usize,
 ) <span class="kw">where
@@ -1700,12 +1895,15 @@
 
     <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) =
         process_inputs(env, [comms_left, comms_right, comms_out]);
-    <span class="kw">let </span>(r_var, phi_var) =
+    <span class="kw">let </span>(hash_r_var, r_var, phi_var) =
         process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, poseidon_params, <span class="kw-2">&amp;</span>comms_xlarge);
     <span class="kw">let </span>r: F = Env::variable_to_field(r_var);
     <span class="kw">let </span>phi: F = Env::variable_to_field(phi_var);
+    <span class="kw">let </span>hash_r: F = Env::variable_to_field(hash_r_var);
     <span class="kw">let </span>scalar_limbs = process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, r, phi);
     process_ecadds::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, scalar_limbs, <span class="kw-2">&amp;</span>comms_large, error_terms, t_terms);
+    process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, hash_r, chal_l, r);
+    process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, u_l, r);
     process_misc::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
 }
 </code></pre></div></section></main></body></html>

@@ -359,7 +359,111 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::DecomposedTrace;
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::ProvableTrace;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -465,15 +569,14 @@
 
 <span class="doccomment">/// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
-</span><span class="kw">pub struct </span>DecomposableFoldingEnvironment&lt;
+</span><span class="kw">pub struct </span>DecomposedFoldingEnvironment&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_DSEL: usize,
     C: FoldingConfig,
+    Structure: ProvableTrace,
 &gt; {
-    <span class="doccomment">/// Structure of the folded circuit (using [DecomposedTrace] for now, as
-    /// it contains the domain size)
-    </span><span class="kw">pub </span>structure: DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;,
+    <span class="kw">pub </span>structure: Structure,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
     </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
@@ -483,7 +586,14 @@
     </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt;
+<span class="kw">impl</span>&lt;
+        <span class="kw">const </span>N: usize,
+        <span class="kw">const </span>N_REL: usize,
+        <span class="kw">const </span>N_SEL: usize,
+        C: FoldingConfig,
+        <span class="comment">// FIXME: Clone should not be used. Only a reference should be stored
+        </span>Structure: ProvableTrace + Clone,
+    &gt;
     FoldingEnv&lt;
         ScalarField&lt;C&gt;,
         FoldingInstance&lt;N, C::Curve&gt;,
@@ -491,7 +601,7 @@
         C::Column,
         Challenge,
         C::Selector,
-    &gt; <span class="kw">for </span>DecomposableFoldingEnvironment&lt;N, N_REL, N_DSEL, C&gt;
+    &gt; <span class="kw">for </span>DecomposedFoldingEnvironment&lt;N, N_REL, N_SEL, C, Structure&gt;
 <span class="kw">where
     </span><span class="comment">// Used by col and selector
     </span>FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;: Index&lt;
@@ -503,7 +613,7 @@
         Output = Evaluations&lt;ScalarField&lt;C&gt;, Radix2EvaluationDomain&lt;ScalarField&lt;C&gt;&gt;&gt;,
     &gt;,
 {
-    <span class="kw">type </span>Structure = DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;;
+    <span class="kw">type </span>Structure = Structure;
 
     <span class="kw">fn </span>new(
         structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,
@@ -517,8 +627,9 @@
                 col.evals.rotate_left(<span class="number">1</span>);
             }
         }
-        DecomposableFoldingEnvironment {
-            structure: structure.clone(),
+        DecomposedFoldingEnvironment {
+            <span class="comment">// FIXME: This is a clone, but it should be a reference
+            </span>structure: structure.clone(),
             instances: [instances[<span class="number">0</span>].clone(), instances[<span class="number">1</span>].clone()],
             curr_witnesses,
             next_witnesses,
@@ -526,7 +637,7 @@
     }
 
     <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.structure.domain_size
+        <span class="self">self</span>.structure.domain_size()
     }
 
     <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;ScalarField&lt;C&gt;&gt; {
@@ -561,16 +672,107 @@
     }
 }
 
+<span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Structure: ProvableTrace&gt; {
+    <span class="doccomment">/// Structure of the folded circuit
+    </span><span class="kw">pub </span>structure: Structure,
+    <span class="doccomment">/// Commitments to the witness columns, for both sides
+    </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
+    <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
+    </span><span class="kw">pub </span>curr_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
+    <span class="doccomment">/// Corresponds to the zeta*omega evaluations, for both sides
+    /// This is curr_witness but left shifted by 1
+    </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
+}
+
+<span class="kw">impl</span>&lt;
+        <span class="kw">const </span>N: usize,
+        C: FoldingConfig,
+        <span class="comment">// FIXME: Clone should not be used. Only a reference should be stored
+        </span>Structure: ProvableTrace + Clone,
+    &gt;
+    FoldingEnv&lt;
+        ScalarField&lt;C&gt;,
+        FoldingInstance&lt;N, C::Curve&gt;,
+        FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;,
+        C::Column,
+        Challenge,
+        (),
+    &gt; <span class="kw">for </span>FoldingEnvironment&lt;N, C, Structure&gt;
+<span class="kw">where
+    </span><span class="comment">// Used by col and selector
+    </span>FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;: Index&lt;
+        C::Column,
+        Output = Evaluations&lt;ScalarField&lt;C&gt;, Radix2EvaluationDomain&lt;ScalarField&lt;C&gt;&gt;&gt;,
+    &gt;,
+{
+    <span class="kw">type </span>Structure = Structure;
+
+    <span class="kw">fn </span>new(
+        structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,
+        instances: [<span class="kw-2">&amp;</span>FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
+        witnesses: [<span class="kw-2">&amp;</span>FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>curr_witnesses = [witnesses[<span class="number">0</span>].clone(), witnesses[<span class="number">1</span>].clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>next_witnesses = curr_witnesses.clone();
+        <span class="kw">for </span>side <span class="kw">in </span>next_witnesses.iter_mut() {
+            <span class="kw">for </span>col <span class="kw">in </span>side.witness.cols.iter_mut() {
+                col.evals.rotate_left(<span class="number">1</span>);
+            }
+        }
+        FoldingEnvironment {
+            <span class="comment">// FIXME: This is a clone, but it should be a reference
+            </span>structure: structure.clone(),
+            instances: [instances[<span class="number">0</span>].clone(), instances[<span class="number">1</span>].clone()],
+            curr_witnesses,
+            next_witnesses,
+        }
+    }
+
+    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.structure.domain_size()
+    }
+
+    <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;ScalarField&lt;C&gt;&gt; {
+        <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); <span class="self">self</span>.domain_size()]
+    }
+
+    <span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: C::Column, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
+        <span class="kw">let </span>wit = <span class="kw">match </span>curr_or_next {
+            CurrOrNext::Curr =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr_witnesses[side <span class="kw">as </span>usize],
+            CurrOrNext::Next =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next_witnesses[side <span class="kw">as </span>usize],
+        };
+        <span class="comment">// The following is possible because Index is implemented for our circuit witnesses
+        </span><span class="kw-2">&amp;</span>wit[col].evals
+    }
+
+    <span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: Challenge, side: Side) -&gt; ScalarField&lt;C&gt; {
+        <span class="kw">match </span>challenge {
+            Challenge::Beta =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">0</span>],
+            Challenge::Gamma =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">1</span>],
+            Challenge::JointCombiner =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">2</span>],
+        }
+    }
+
+    <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; ScalarField&lt;C&gt; {
+        <span class="kw">let </span>instance = <span class="kw-2">&amp;</span><span class="self">self</span>.instances[side <span class="kw">as </span>usize];
+        instance.alphas.get(i).unwrap()
+    }
+
+    <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, _s: <span class="kw-2">&amp;</span>(), _side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
+        <span class="macro">unimplemented!</span>(<span class="string">&quot;Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when there is only one instruction.&quot;</span>)
+    }
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
-        folding::{DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness, <span class="kw-2">*</span>},
+        folding::{FoldingInstance, FoldingWitness, <span class="kw-2">*</span>},
         Curve, Fp,
     };
     <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
     <span class="kw">use </span>folding::{
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        FoldingCompatibleExpr, FoldingConfig,
+        expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
+        FoldingConfig,
     };
     <span class="kw">use </span>kimchi::{
         circuits::expr::{
@@ -593,10 +795,16 @@
     <span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
     </span><span class="kw">struct </span>TestConfig;
 
+    <span class="kw">impl </span>ProvableTrace <span class="kw">for </span>TestStructure {
+        <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+            <span class="number">4
+        </span>}
+    }
+
     <span class="kw">type </span>TestWitness&lt;T&gt; = kimchi_msm::witness::Witness&lt;<span class="number">3</span>, T&gt;;
     <span class="kw">type </span>TestFoldingWitness = FoldingWitness&lt;<span class="number">3</span>, Fp&gt;;
     <span class="kw">type </span>TestFoldingInstance = FoldingInstance&lt;<span class="number">3</span>, Curve&gt;;
-    <span class="kw">type </span>TestFoldingEnvironment = DecomposableFoldingEnvironment&lt;<span class="number">3</span>, <span class="number">3</span>, <span class="number">0</span>, TestConfig&gt;;
+    <span class="kw">type </span>TestFoldingEnvironment = FoldingEnvironment&lt;<span class="number">3</span>, TestConfig, TestStructure&gt;;
 
     <span class="kw">impl </span>Index&lt;TestColumn&gt; <span class="kw">for </span>TestFoldingWitness {
         <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;
@@ -626,12 +834,12 @@
     <span class="kw">impl </span>FoldingConfig <span class="kw">for </span>TestConfig {
         <span class="kw">type </span>Column = TestColumn;
         <span class="kw">type </span>Challenge = Challenge;
-        <span class="kw">type </span>Selector = TestColumn;
+        <span class="kw">type </span>Selector = ();
         <span class="kw">type </span>Curve = Curve;
         <span class="kw">type </span>Srs = poly_commitment::srs::SRS&lt;Curve&gt;;
         <span class="kw">type </span>Instance = TestFoldingInstance;
         <span class="kw">type </span>Witness = TestFoldingWitness;
-        <span class="kw">type </span>Structure = DecomposedTrace&lt;<span class="number">3</span>, <span class="number">3</span>, <span class="number">0</span>, TestConfig&gt;;
+        <span class="kw">type </span>Structure = TestStructure;
         <span class="kw">type </span>Env = TestFoldingEnvironment;
     }
 
