@@ -77,7 +77,7 @@ impl<
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res_fp: F = res.into();
-        self.write_column(position.to_column(), res_fp);
+        self.write_column_raw(position.to_column(), res_fp);
         res_fp
     }
 }

@@ -94,10 +94,7 @@ impl<
     > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
-        let Column::Relation(i) = ix.to_column() else {
-            todo!()
-        };
-        self.witness.last_mut().unwrap().cols[i] = *value;
+        self.write_column_raw(ix.to_column(), *value);
     }
 }
 
@@ -206,8 +203,7 @@ impl<
         LT: LookupTableID,
     > WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
-    // TODO this function duplicates one from ColWriteCap
-    pub fn write_column(&mut self, position: Column, value: F) {
+    pub fn write_column_raw(&mut self, position: Column, value: F) {
         match position {
             Column::Relation(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::FixedSelector(_) => {
