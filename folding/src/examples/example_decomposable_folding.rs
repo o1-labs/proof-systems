@@ -100,7 +100,7 @@ pub struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-// implementing the an envionment trait compatible with our config
+// implementing the an environment trait compatible with our config
 impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, DynamicSelector>
     for TestFoldingEnv
 {
@@ -130,7 +130,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     fn domain_size(&self) -> usize {
-        // this works in the example but is not the best way as the envionment
+        // this works in the example but is not the best way as the environment
         // could get circuits of any size
         2
     }

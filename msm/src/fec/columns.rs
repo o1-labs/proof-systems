@@ -6,16 +6,27 @@ use crate::{
 /// Number of columns in the FEC circuits.
 pub const FEC_N_COLUMNS: usize = 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL + 9;
 
-/// Columns used by the serialization subcircuit.
-#[derive(Debug, Clone, PartialEq)]
-pub enum FECColumn {
-    XP(usize),     // 4
-    YP(usize),     // 4
-    XQ(usize),     // 4
-    YQ(usize),     // 4
+/// FEC ADD inputs: two points = four coordinates, and each in 4
+/// "large format" limbs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FECColumnInput {
+    XP(usize), // 4
+    YP(usize), // 4
+    XQ(usize), // 4
+    YQ(usize), // 4
+}
+
+/// FEC ADD outputs: one point, each in 17 limb output format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FECColumnOutput {
+    XR(usize), // 17
+    YR(usize), // 17
+}
+
+/// FEC ADD intermediate (work) columns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FECColumnInter {
     F(usize),      // 4
-    XR(usize),     // 17
-    YR(usize),     // 17
     S(usize),      // 17
     Q1(usize),     // 17
     Q2(usize),     // 17
@@ -28,69 +39,106 @@ pub enum FECColumn {
     Carry3(usize), // 36
 }
 
-impl ColumnIndexer for FECColumn {
-    const COL_N: usize = FEC_N_COLUMNS;
+/// Columns used by the FEC Addition subcircuit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FECColumn {
+    Input(FECColumnInput),
+    Output(FECColumnOutput),
+    Inter(FECColumnInter),
+}
+
+impl ColumnIndexer for FECColumnInput {
+    const N_COL: usize = 4 * N_LIMBS_LARGE;
     fn to_column(self) -> Column {
         match self {
-            FECColumn::XP(i) => {
+            FECColumnInput::XP(i) => {
                 assert!(i < N_LIMBS_LARGE);
                 Column::Relation(i)
             }
-            FECColumn::YP(i) => {
+            FECColumnInput::YP(i) => {
                 assert!(i < N_LIMBS_LARGE);
                 Column::Relation(N_LIMBS_LARGE + i)
             }
-            FECColumn::XQ(i) => {
+            FECColumnInput::XQ(i) => {
                 assert!(i < N_LIMBS_LARGE);
                 Column::Relation(2 * N_LIMBS_LARGE + i)
             }
-            FECColumn::YQ(i) => {
+            FECColumnInput::YQ(i) => {
                 assert!(i < N_LIMBS_LARGE);
                 Column::Relation(3 * N_LIMBS_LARGE + i)
             }
-            FECColumn::F(i) => {
+        }
+    }
+}
+
+impl ColumnIndexer for FECColumnOutput {
+    const N_COL: usize = 2 * N_LIMBS_SMALL;
+    fn to_column(self) -> Column {
+        match self {
+            FECColumnOutput::XR(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::Relation(i)
+            }
+            FECColumnOutput::YR(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::Relation(N_LIMBS_SMALL + i)
+            }
+        }
+    }
+}
+
+impl ColumnIndexer for FECColumnInter {
+    const N_COL: usize = N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 9;
+    fn to_column(self) -> Column {
+        match self {
+            FECColumnInter::F(i) => {
                 assert!(i < N_LIMBS_LARGE);
-                Column::Relation(4 * N_LIMBS_LARGE + i)
+                Column::Relation(i)
             }
-            FECColumn::XR(i) => {
+            FECColumnInter::S(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + i)
+                Column::Relation(N_LIMBS_LARGE + i)
             }
-            FECColumn::YR(i) => {
+            FECColumnInter::Q1(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + N_LIMBS_SMALL + i)
+                Column::Relation(N_LIMBS_LARGE + N_LIMBS_SMALL + i)
             }
-            FECColumn::S(i) => {
+            FECColumnInter::Q2(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + 2 * N_LIMBS_SMALL + i)
+                Column::Relation(N_LIMBS_LARGE + 2 * N_LIMBS_SMALL + i)
             }
-            FECColumn::Q1(i) => {
+            FECColumnInter::Q3(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + 3 * N_LIMBS_SMALL + i)
+                Column::Relation(N_LIMBS_LARGE + 3 * N_LIMBS_SMALL + i)
             }
-            FECColumn::Q2(i) => {
-                assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + 4 * N_LIMBS_SMALL + i)
-            }
-            FECColumn::Q3(i) => {
-                assert!(i < N_LIMBS_SMALL);
-                Column::Relation(5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL + i)
-            }
-            FECColumn::Q1Sign => Column::Relation(5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
-            FECColumn::Q2Sign => Column::Relation(5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
-            FECColumn::Q3Sign => Column::Relation(5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
-            FECColumn::Carry1(i) => {
+            FECColumnInter::Q1Sign => Column::Relation(N_LIMBS_LARGE + 4 * N_LIMBS_SMALL),
+            FECColumnInter::Q2Sign => Column::Relation(N_LIMBS_LARGE + 4 * N_LIMBS_SMALL + 1),
+            FECColumnInter::Q3Sign => Column::Relation(N_LIMBS_LARGE + 4 * N_LIMBS_SMALL + 2),
+            FECColumnInter::Carry1(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL + 2);
-                Column::Relation(5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3 + i)
+                Column::Relation(N_LIMBS_LARGE + 4 * N_LIMBS_SMALL + 3 + i)
             }
-            FECColumn::Carry2(i) => {
+            FECColumnInter::Carry2(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL + 2);
-                Column::Relation(5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + 5 + i)
+                Column::Relation(N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 5 + i)
             }
-            FECColumn::Carry3(i) => {
+            FECColumnInter::Carry3(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL + 2);
-                Column::Relation(5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 7 + i)
+                Column::Relation(N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + 7 + i)
             }
+        }
+    }
+}
+
+impl ColumnIndexer for FECColumn {
+    const N_COL: usize = FEC_N_COLUMNS;
+    fn to_column(self) -> Column {
+        match self {
+            FECColumn::Input(input) => input.to_column(),
+            FECColumn::Inter(inter) => inter.to_column().add_rel_offset(FECColumnInput::N_COL),
+            FECColumn::Output(output) => output
+                .to_column()
+                .add_rel_offset(FECColumnInput::N_COL + FECColumnInter::N_COL),
         }
     }
 }

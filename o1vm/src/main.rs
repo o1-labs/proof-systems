@@ -241,6 +241,7 @@ pub fn main() -> ExitCode {
                     N_MIPS_COLS,
                     N_MIPS_REL_COLS,
                     N_MIPS_SEL_COLS,
+                    0,
                     LookupTableIDs,
                 >(
                     domain,
@@ -259,6 +260,7 @@ pub fn main() -> ExitCode {
                     N_MIPS_COLS,
                     N_MIPS_REL_COLS,
                     N_MIPS_SEL_COLS,
+                    0,
                     0,
                     LookupTableIDs,
                 >(
@@ -293,6 +295,7 @@ pub fn main() -> ExitCode {
                     N_ZKVM_KECCAK_COLS,
                     N_ZKVM_KECCAK_REL_COLS,
                     N_ZKVM_KECCAK_SEL_COLS,
+                    0,
                     LookupTableIDs,
                 >(
                     domain,
@@ -311,6 +314,7 @@ pub fn main() -> ExitCode {
                     N_ZKVM_KECCAK_COLS,
                     N_ZKVM_KECCAK_REL_COLS,
                     N_ZKVM_KECCAK_SEL_COLS,
+                    0,
                     0,
                     LookupTableIDs,
                 >(

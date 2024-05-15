@@ -10,6 +10,8 @@ pub enum Column {
     Relation(usize),
     /// Columns related to dynamic selectors to indicate gate type
     DynamicSelector(usize),
+    /// Constant column that is /always/ fixed for a given circuit.
+    FixedSelector(usize),
     // Columns related to the lookup protocol
     /// Partial sums. This corresponds to the `h_i`.
     /// It is first indexed by the table ID, and after that internal index.
@@ -22,11 +24,20 @@ pub enum Column {
     LookupFixedTable(u32),
 }
 
+impl Column {
+    /// Adds offset if the column is `Relation`. Fails otherwise.
+    pub fn add_rel_offset(self, offset: usize) -> Column {
+        let Column::Relation(i) = self else { todo!() };
+        Column::Relation(offset + i)
+    }
+}
+
 impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Relation(i) => format!("x_{{{i}}}"),
-            Column::DynamicSelector(i) => format!("s_{{{i}}}"),
+            Column::FixedSelector(i) => format!("fs_{{{i}}}"),
+            Column::DynamicSelector(i) => format!("ds_{{{i}}}"),
             Column::LookupPartialSum((table_id, i)) => format!("h_{{{table_id}, {i}}}"),
             Column::LookupMultiplicity(i) => format!("m_{{{i}}}"),
             Column::LookupFixedTable(i) => format!("t_{{{i}}}"),
@@ -37,7 +48,8 @@ impl FormattedOutput for Column {
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Relation(i) => format!("x[{i}]"),
-            Column::DynamicSelector(i) => format!("s[{i}]"),
+            Column::FixedSelector(i) => format!("fs[{i}]"),
+            Column::DynamicSelector(i) => format!("ds[{i}]"),
             Column::LookupPartialSum((table_id, i)) => format!("h[{table_id}, {i}]"),
             Column::LookupMultiplicity(i) => format!("m[{i}]"),
             Column::LookupFixedTable(i) => format!("t[{i}]"),
@@ -58,9 +70,9 @@ impl FormattedOutput for Column {
 
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
-pub trait ColumnIndexer {
+pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
     /// Total number of columns in this index.
-    const COL_N: usize;
+    const N_COL: usize;
 
     /// Flatten the column "alias" into the integer-like column.
     fn to_column(self) -> Column;
