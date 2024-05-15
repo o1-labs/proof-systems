@@ -685,6 +685,15 @@ fn test_keccak_folding() {
                 })
                 .collect();
 
+        // Create the decomposable folding scheme reused in some checks
+        let (dec_scheme, dec_final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
+            constraints.clone(),
+            vec![],
+            &srs,
+            domain,
+            &default_trace,
+        );
+
         // Check folding constraints of individual steps ignoring selectors
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
             // Create sides for folding
@@ -726,7 +735,7 @@ fn test_keccak_folding() {
             // CASE 2: Check that `DecomposableFoldingScheme` works when passing the dummy zero constraint
             //         to each step, and an empty list of common constraints.
             {
-                let (dec_scheme, dec_final_constraint) =
+                let (dummy_scheme, dummy_final_constraint) =
                     DecomposableFoldingScheme::<KeccakConfig>::new(
                         zero_constraints.clone(),
                         vec![],
@@ -736,7 +745,7 @@ fn test_keccak_folding() {
                     );
                 // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
                 {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
                         .fold_instance_witness_pair(
                             left.clone(),
                             right.clone(),
@@ -745,12 +754,12 @@ fn test_keccak_folding() {
                         );
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
+                    checker.check(&dummy_final_constraint);
                 }
 
                 // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
                 {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
                         .fold_instance_witness_pair(
                             left.clone(),
                             right.clone(),
@@ -760,7 +769,7 @@ fn test_keccak_folding() {
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
+                    checker.check(&dummy_final_constraint);
                 }
             }
 
@@ -769,7 +778,7 @@ fn test_keccak_folding() {
             //         common constraints set to each selector's constraints.
             {
                 // Create a different decomposable folding scheme applying selectors with dummy constraints
-                let (dec_scheme, dec_final_constraint) =
+                let (dummy_scheme, dummy_final_constraint) =
                     DecomposableFoldingScheme::<KeccakConfig>::new(
                         zero_constraints.clone(),
                         default_trace.constraints[&step]
@@ -783,6 +792,41 @@ fn test_keccak_folding() {
 
                 // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
                 {
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
+                        .fold_instance_witness_pair(
+                            left.clone(),
+                            right.clone(),
+                            None,
+                            &mut fq_sponge,
+                        );
+                    let checker =
+                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
+                    checker.check(&dummy_final_constraint);
+                }
+
+                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
+                {
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
+                        .fold_instance_witness_pair(
+                            left.clone(),
+                            right.clone(),
+                            Some(step),
+                            &mut fq_sponge,
+                        );
+                    // Check the constraints on the folded circuit applying selectors
+                    let checker =
+                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
+                    checker.check(&dummy_final_constraint);
+                }
+            }
+
+            // CASE 4: Using the same `DecomposableFoldingScheme` for all steps, initialized with a real
+            //         BTreeMap of constraints per-step, and common constraints set to `vec[]`, check
+            //         the folded circuit
+            {
+                // Check constraints on independent sides and in decomposable folding scheme
+                {
+                    // Check the folded circuit of decomposable folding ignoring selectors (None)
                     let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
                         .fold_instance_witness_pair(
                             left.clone(),
@@ -793,64 +837,44 @@ fn test_keccak_folding() {
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
                     checker.check(&dec_final_constraint);
-                }
 
-                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
-                {
+                    // Check constraints on independent sides and in folded circuit applying selectors
                     let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            Some(step),
-                            &mut fq_sponge,
-                        );
+                        .fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
                     checker.check(&dec_final_constraint);
                 }
             }
-
-            // CASE 4: Using the same `DecomposableFoldingScheme` for all steps, initialized with a real
-            //         BTreeMap of constraints per-step, and common constraints set to `vec[]`, check
-            //         the folded circuit
-            {
-                // Create the decomposable folding scheme
-                let (dec_scheme, dec_final_constraint) =
-                    DecomposableFoldingScheme::<KeccakConfig>::new(
-                        constraints.clone(),
-                        vec![],
-                        &srs,
-                        domain,
-                        &default_trace,
-                    );
-                // Check constraints on independent sides and in decomposable folding scheme
-                {
-                    if step == Sponge(Absorb(Only)) {
-                        // Check the folded circuit of decomposable folding ignoring selectors (None)
-                        let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
-                            .fold_instance_witness_pair(
-                                left.clone(),
-                                right.clone(),
-                                None,
-                                &mut fq_sponge,
-                            );
-                        let checker =
-                            ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                        checker.check(&dec_final_constraint);
-
-                        // Check constraints on independent sides and in folded circuit applying selectors
-                        let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
-                            .fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
-                        // Check the constraints on the folded circuit applying selectors
-                        let checker =
-                            ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                        checker.check(&dec_final_constraint);
-                    }
-                }
-            }
         }
-        // TODO:
-        // Fold mixed steps together and check the constraints
+        // CASE 5: Fold mixed steps together and check the final constraints
+        {
+            // Mix Sponge(Absorb(Only)) and Round(0)
+            let left = {
+                let (folded_l_ins, folded_l_wit, _) = dec_scheme.fold_instance_witness_pair(
+                    keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge),
+                    keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge),
+                    Some(Sponge(Absorb(Only))),
+                    &mut fq_sponge,
+                );
+                let checker = ExtendedProvider::<KeccakConfig>::new(folded_l_ins, folded_l_wit);
+                (checker.instance, checker.witness)
+            };
+            let right = {
+                let (folded_r_ins, folded_r_wit, _) = dec_scheme.fold_instance_witness_pair(
+                    keccak_trace[0].to_folding_pair(Round(0), &srs, &mut fq_sponge),
+                    keccak_trace[1].to_folding_pair(Round(0), &srs, &mut fq_sponge),
+                    Some(Round(0)),
+                    &mut fq_sponge,
+                );
+                let checker = ExtendedProvider::<KeccakConfig>::new(folded_r_ins, folded_r_wit);
+                (checker.instance, checker.witness)
+            };
+            let (folded_ins, folded_wit, [_t0, _t1]) =
+                dec_scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
+            let checker = ExtendedProvider::new(folded_ins, folded_wit);
+            checker.check(&dec_final_constraint);
+        }
     });
 }
