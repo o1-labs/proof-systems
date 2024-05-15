@@ -111,8 +111,6 @@ pub struct DecomposedFoldingEnvironment<
     C: FoldingConfig,
     Structure: ProvableTrace,
 > {
-    /// Structure of the folded circuit (using [DecomposedTrace] for now, as
-    /// it contains the domain size)
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
@@ -304,7 +302,6 @@ where
 mod tests {
     use crate::{
         folding::{FoldingInstance, FoldingWitness, *},
-        trace::Trace,
         Curve, Fp,
     };
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
