@@ -1205,7 +1205,6 @@
 <a href="#1205" id="1205">1205</a>
 <a href="#1206" id="1206">1206</a>
 <a href="#1207" id="1207">1207</a>
-<a href="#1208" id="1208">1208</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1645,15 +1644,14 @@
         out_position: <span class="self">Self</span>::Position,
         overflow_position: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>u64_res = x + y;
         <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
-        <span class="kw">let </span>u32_res = x + y;
-        <span class="kw">let </span>u32_res = u32_res <span class="kw">as </span>u64;
-        <span class="kw">let </span>overflows = <span class="kw">if </span>u32_res == u64_res { <span class="number">0u64 </span>} <span class="kw">else </span>{ <span class="number">1u64 </span>};
-        <span class="self">self</span>.write_column(out_position, u32_res);
-        <span class="self">self</span>.write_column(overflow_position, overflows);
-        (u32_res, overflows)
+        <span class="comment">// https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
+        </span><span class="kw">let </span>res = x.overflowing_add(y);
+        <span class="kw">let </span>(res_, overflow) = (res.<span class="number">0 </span><span class="kw">as </span>u64, res.<span class="number">1 </span><span class="kw">as </span>u64);
+        <span class="self">self</span>.write_column(out_position, res_);
+        <span class="self">self</span>.write_column(overflow_position, overflow);
+        (res_, overflow)
     }
 
     <span class="kw">unsafe fn </span>sub_witness(
