@@ -92,6 +92,9 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -107,7 +110,7 @@
         },
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
-    <span class="kw">use </span>ark_ff::UniformRand;
+    <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
 
@@ -167,11 +170,14 @@
             )
         });
 
-        ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
+        <span class="comment">// TODO add nonzero E/T values.
+        </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
             <span class="kw-2">&amp;mut </span>witness_env,
             comms_left,
             comms_right,
             comms_output,
+            [(Ff1::zero(), Ff1::zero()); <span class="number">3</span>],
+            [(Ff1::zero(), Ff1::zero()); <span class="number">2</span>],
             <span class="kw-2">&amp;</span>PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );
