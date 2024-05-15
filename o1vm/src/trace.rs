@@ -40,6 +40,7 @@ pub trait ProvableTrace {
 // single instruction.
 // It is not recommended to use this in production and it should not be
 // maintained in the long term.
+#[derive(Clone)]
 pub struct Trace<const N: usize, C: FoldingConfig> {
     pub domain_size: usize,
     pub witness: Witness<N, Vec<ScalarField<C>>>,
