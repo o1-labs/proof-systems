@@ -362,61 +362,6 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
@@ -468,12 +413,12 @@
 ///  1   |------------------------------------------|
 ///      |                                          |
 ///      |                                         .| . here is h_l
-///  2N  |------------------------------------------|   must be equal to public input!
-///      |                                          |                    (H_i in nova)
+///  2N  |------------------------------------------|
+///      |                                          |
 ///      |                                         .| . here is h_r
 ///  4N  |------------------------------------------|
 ///      |                                          |
-///      |                                         .| . here is h_o, equal to H_{i+1} in Nova
+///      |                                         .| . here is h_o
 ///  6N  |------------------------------------------|
 ///      |                                         .| r = h_lr = h(h_l,h_r)
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
@@ -508,7 +453,6 @@
 ///       1    2   3   4      5      6   ...        6+17          6+2*17                    6+4*17
 ///
 ///
-
 ///
 /// We compute the following equations, where equations in &quot;quotes&quot; are
 /// what we /want/ to prove, and non-quoted is an equavilant version
@@ -516,21 +460,19 @@
 /// - &quot;C_{O,i} = C_{L,i} + r·C_{R,i}&quot;:
 ///   - C_{O,i} = C_{L,i} + C_{R&#39;,i}
 ///   - &quot;C_{R&#39;,i} = r·C_{R,i}&quot;
-///     - bucket[(ϕ^i)_k] -= C_{R&#39;,i}
-///     - bucket[(r·ϕ^i)_k] += C_{R,i}
+///     - bucket[ϕ^i]_k -= C_{R&#39;,i}
+///     - bucket[r·ϕ^i]_k += C_{R,i}
 /// - &quot;E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R&quot;:
 ///   - E_O = E_L + E_R&#39;
 ///   - &quot;E_R&#39; = r·T_0 + r^2·T_1 + r^3·E_R&quot;
-///     - bucket[(ϕ^{n+1})_k] += E_R&#39;
-///     - bucket[(r·ϕ^{n+1})_k] += T_0
-///     - bucket[(r^2·ϕ^{n+1})_k] += T_1
-///     - bucket[(r^3·ϕ^{n+1})_k] += E_R
+///     - bucket[ϕ^{n+1}] += E_R&#39;
+///     - bucket[r·ϕ^{n+1}] += T_0
+///     - bucket[r^2·ϕ^{n+1}] += T_1
+///     - bucket[r^3·ϕ^{n+1}] += E_R
 ///
 /// Runtime access time is represented by ? because it&#39;s not known in advance.
 ///
 /// Output and input RAM invocations in the same row use the same coeff/memory index.
-///
-/// TODO FIXME we need to write into /different/ buckets.
 ///
 /// FEC Additions, one per row, each one is ~230 columns:
 ///
@@ -568,35 +510,10 @@
 /// 1
 ///
 ///
-/// Challenges block.
-///
-///        r   α_{L,i}    α_{R}^i     α_{O,i}
-///  1    |--|--------|-----------|-------------------|
-///       |  |        | α_R = h_R |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        | α_R^i     | α_{L,i} + r·α_R^i |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-/// #chal |--|--------|-----------|-------------------|
-///
-/// #chal is the number of constraints. Our optimistic expectation is
-/// that it is around const*N for const &lt; 3.
-///
-///
-/// &quot;u&quot; block. In the general form we want to prove
-/// u_O = u_L + r·u_R, but u_R = 0, so we prove
-/// u_O = u_L + r.
-///
-///     r    u_L       u_O = u_L + r
-///    |--|--------|--------------------|
-///    |--|--------|--------------------|
-///
-///
+///           The mystery block (undefined now)
+///      |-------------------------------------------|
+///      |   default_instance                        |
+///      |   ???                                     |
 /// 2^15 |---- --------------------------------------|
 ///```
 ///
@@ -679,24 +596,6 @@
     </span>Block4OutputAccessTime,
     <span class="doccomment">/// 2*4 75-bit limbs
     </span>Block4OutputRepacked(usize),
-
-    <span class="doccomment">/// Constant h_r
-    </span>Block5ConstHr,
-    <span class="doccomment">/// Constant r
-    </span>Block5ConstR,
-    <span class="doccomment">/// α_{L,i}
-    </span>Block5ChalLeft,
-    <span class="doccomment">/// α_R^i, where α_R = h_R
-    </span>Block5ChalRight,
-    <span class="doccomment">/// α_{O,i} = α_{L,i} + r·α_R^i
-    </span>Block5ChalOutput,
-
-    <span class="doccomment">/// Constant r
-    </span>Block6ConstR,
-    <span class="doccomment">/// u_L
-    </span>Block6ULeft,
-    <span class="doccomment">/// u_O = u_L + r
-    </span>Block6UOutput,
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
@@ -766,15 +665,6 @@
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
                 Column::Relation(<span class="number">18 </span>+ FECColumnInter::N_COL + FECColumnOutput::N_COL + <span class="number">1 </span>+ i)
             }
-            IVCColumn::Block5ConstHr =&gt; Column::Relation(<span class="number">0</span>),
-            IVCColumn::Block5ConstR =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block5ChalLeft =&gt; Column::Relation(<span class="number">2</span>),
-            IVCColumn::Block5ChalRight =&gt; Column::Relation(<span class="number">3</span>),
-            IVCColumn::Block5ChalOutput =&gt; Column::Relation(<span class="number">4</span>),
-
-            IVCColumn::Block6ConstR =&gt; Column::Relation(<span class="number">0</span>),
-            IVCColumn::Block6ULeft =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block6UOutput =&gt; Column::Relation(<span class="number">2</span>),
         }
     }
 }
