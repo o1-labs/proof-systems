@@ -932,7 +932,7 @@
         <span class="kw">let </span>x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         <span class="kw">let </span>res = (x_u128 &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
         <span class="kw">let </span>res_fp: F = res.into();
-        <span class="self">self</span>.write_column(position.to_column(), res_fp);
+        <span class="self">self</span>.write_column_raw(position.to_column(), res_fp);
         res_fp
     }
 }
