@@ -20,6 +20,16 @@ pub struct DecomposableFoldingScheme<'a, CF: FoldingConfig> {
 }
 
 impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
+    /// Creates a new folding scheme for decomposable circuits.
+    /// It takes as input:
+    /// - a set of constraints, each associated with a particular selector;
+    /// - a list of common constraints, that are applied to every instance regardless of the selector (can be empty);
+    /// - a structured reference string;
+    /// - a domain;
+    /// - a structure of the associated folding configuration.
+    /// The function uses the normal `FoldingScheme::new()` function to create the decomposable scheme, using for that
+    /// the concatenation of the constraints associated with each selector multiplied by the selector, and the common constraints.
+    /// This product is performed with `FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s))`.
     pub fn new(
         // constraints with a dynamic selector
         constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
