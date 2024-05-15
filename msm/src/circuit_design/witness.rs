@@ -43,7 +43,12 @@ pub struct WitnessBuilderEnv<
     /// value for row #j of the selector #i.
     pub fixed_selectors: Vec<Vec<F>>,
 
-    // Not strictly needed at this point, but likely will be used later.
+    // A Phantom Data for CIx -- right now WitnessBUilderEnv does not
+    // depend on CIx, but in the future (with associated generics
+    // enabled?) it might be convenient to put all the `NT_COL` (and
+    // other) constants into `CIx`. Logically, all these constants
+    // "belong" to CIx, so there's an extra type parameter, and a
+    // phantom data to support it.
     pub phantom_cix: PhantomData<CIx>,
 }
 
@@ -89,10 +94,7 @@ impl<
     > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
-        let Column::Relation(i) = ix.to_column() else {
-            todo!()
-        };
-        self.witness.last_mut().unwrap().cols[i] = *value;
+        self.write_column_raw(ix.to_column(), *value);
     }
 }
 
@@ -201,8 +203,7 @@ impl<
         LT: LookupTableID,
     > WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
 {
-    // TODO this function duplicates one from ColWriteCap
-    pub fn write_column(&mut self, position: Column, value: F) {
+    pub fn write_column_raw(&mut self, position: Column, value: F) {
         match position {
             Column::Relation(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::FixedSelector(_) => {

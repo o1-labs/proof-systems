@@ -3,7 +3,10 @@ use crate::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},
         ColAccessCap, ColWriteCap, LookupCap,
     },
-    fec::{columns::FECColumn, lookups::LookupTable},
+    fec::{
+        columns::{FECColumn, FECColumnInput, FECColumnInter, FECColumnOutput},
+        lookups::LookupTable,
+    },
     serialization::interpreter::{
         bigint_to_biguint_f, combine_carry, combine_small_to_large, fold_choice2,
         limb_decompose_biguint, limb_decompose_ff, LIMB_BITSIZE_LARGE, LIMB_BITSIZE_SMALL,
@@ -201,25 +204,39 @@ pub fn constrain_ec_addition<
 >(
     env: &mut Env,
 ) {
-    let xp_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XP);
-    let yp_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YP);
-    let xq_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XQ);
-    let yq_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YQ);
-    let f_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::F);
-    let xr_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::XR);
-    let yr_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::YR);
-    let s_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::S);
+    let xp_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Input(FECColumnInput::XP(i)));
+    let yp_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Input(FECColumnInput::YP(i)));
+    let xq_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Input(FECColumnInput::XQ(i)));
+    let yq_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Input(FECColumnInput::YQ(i)));
+    let f_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::F(i)));
+    let xr_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Output(FECColumnOutput::XR(i)));
+    let yr_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Output(FECColumnOutput::YR(i)));
+    let s_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::S(i)));
 
-    let q1_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q1);
-    let q2_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q2);
-    let q3_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q3);
-    let q1_sign = env.read_column(FECColumn::Q1Sign);
-    let q2_sign = env.read_column(FECColumn::Q2Sign);
-    let q3_sign = env.read_column(FECColumn::Q3Sign);
+    let q1_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q1(i)));
+    let q2_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q2(i)));
+    let q3_limbs_small: [_; N_LIMBS_SMALL] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q3(i)));
+    let q1_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q1Sign));
+    let q2_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q2Sign));
+    let q3_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q3Sign));
 
-    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry1);
-    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry2);
-    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry3);
+    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Carry1(i)));
+    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Carry2(i)));
+    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Carry3(i)));
 
     // FIXME get rid of cloning
 
@@ -359,12 +376,11 @@ pub fn constrain_ec_addition<
     }
 }
 
-/// Creates a witness for adding two points, p and q, each represented as a pair of foreign
-/// field elements.
+/// Creates a witness for adding two points, p and q, each represented
+/// as a pair of foreign field elements. Returns a point.
 ///
 /// This function is witness-generation counterpart (called by the prover) of
 /// `constrain_ec_addition` -- see the documentation of the latter.
-#[allow(dead_code)]
 pub fn ec_add_circuit<
     F: PrimeField,
     Ff: PrimeField,
@@ -375,7 +391,7 @@ pub fn ec_add_circuit<
     yp: Ff,
     xq: Ff,
     yq: Ff,
-) {
+) -> (Ff, Ff) {
     let slope: Ff = (yq - yp) / (xq - xp);
     let xr: Ff = slope * slope - xp - xq;
     let yr: Ff = slope * (xp - xr) - yp;
@@ -417,14 +433,30 @@ pub fn ec_add_circuit<
     let slope_limbs_large: [F; N_LIMBS_LARGE] =
         limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&slope);
 
-    write_column_array_const(env, &xp_limbs_large, FECColumn::XP);
-    write_column_array_const(env, &yp_limbs_large, FECColumn::YP);
-    write_column_array_const(env, &xq_limbs_large, FECColumn::XQ);
-    write_column_array_const(env, &yq_limbs_large, FECColumn::YQ);
-    write_column_array_const(env, &f_limbs_large, FECColumn::F);
-    write_column_array_const(env, &xr_limbs_small, FECColumn::XR);
-    write_column_array_const(env, &yr_limbs_small, FECColumn::YR);
-    write_column_array_const(env, &slope_limbs_small, FECColumn::S);
+    write_column_array_const(env, &xp_limbs_large, |i| {
+        FECColumn::Input(FECColumnInput::XP(i))
+    });
+    write_column_array_const(env, &yp_limbs_large, |i| {
+        FECColumn::Input(FECColumnInput::YP(i))
+    });
+    write_column_array_const(env, &xq_limbs_large, |i| {
+        FECColumn::Input(FECColumnInput::XQ(i))
+    });
+    write_column_array_const(env, &yq_limbs_large, |i| {
+        FECColumn::Input(FECColumnInput::YQ(i))
+    });
+    write_column_array_const(env, &f_limbs_large, |i| {
+        FECColumn::Inter(FECColumnInter::F(i))
+    });
+    write_column_array_const(env, &xr_limbs_small, |i| {
+        FECColumn::Output(FECColumnOutput::XR(i))
+    });
+    write_column_array_const(env, &yr_limbs_small, |i| {
+        FECColumn::Output(FECColumnOutput::YR(i))
+    });
+    write_column_array_const(env, &slope_limbs_small, |i| {
+        FECColumn::Inter(FECColumnInter::S(i))
+    });
 
     let xp_bi: BigInt = FieldHelpers::to_bigint_positive(&xp);
     let yp_bi: BigInt = FieldHelpers::to_bigint_positive(&yp);
@@ -478,12 +510,18 @@ pub fn ec_add_circuit<
     let q3_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(q3_bi.to_biguint().unwrap());
 
-    write_column_array_const(env, &q1_limbs_small, FECColumn::Q1);
-    write_column_array_const(env, &q2_limbs_small, FECColumn::Q2);
-    write_column_array_const(env, &q3_limbs_small, FECColumn::Q3);
-    write_column_const(env, FECColumn::Q1Sign, &q1_sign);
-    write_column_const(env, FECColumn::Q2Sign, &q2_sign);
-    write_column_const(env, FECColumn::Q3Sign, &q3_sign);
+    write_column_array_const(env, &q1_limbs_small, |i| {
+        FECColumn::Inter(FECColumnInter::Q1(i))
+    });
+    write_column_array_const(env, &q2_limbs_small, |i| {
+        FECColumn::Inter(FECColumnInter::Q2(i))
+    });
+    write_column_array_const(env, &q3_limbs_small, |i| {
+        FECColumn::Inter(FECColumnInter::Q3(i))
+    });
+    write_column_const(env, FECColumn::Inter(FECColumnInter::Q1Sign), &q1_sign);
+    write_column_const(env, FECColumn::Inter(FECColumnInter::Q2Sign), &q2_sign);
+    write_column_const(env, FECColumn::Inter(FECColumnInter::Q3Sign), &q3_sign);
 
     let mut carry1: F = From::from(0u64);
     let mut carry2: F = From::from(0u64);
@@ -557,14 +595,9 @@ pub fn ec_add_circuit<
             });
         res1 += carry1;
         let newcarry1 = compute_carry(res1);
-        assign_carry(
-            env,
-            &n_half_bi,
-            i,
-            newcarry1,
-            &mut carry1,
-            FECColumn::Carry1,
-        );
+        assign_carry(env, &n_half_bi, i, newcarry1, &mut carry1, |i| {
+            FECColumn::Inter(FECColumnInter::Carry1(i))
+        });
 
         // Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
         let mut res2 = F::zero();
@@ -580,14 +613,9 @@ pub fn ec_add_circuit<
             });
         res2 += carry2;
         let newcarry2 = compute_carry(res2);
-        assign_carry(
-            env,
-            &n_half_bi,
-            i,
-            newcarry2,
-            &mut carry2,
-            FECColumn::Carry2,
-        );
+        assign_carry(env, &n_half_bi, i, newcarry2, &mut carry2, |i| {
+            FECColumn::Inter(FECColumnInter::Carry2(i))
+        });
 
         // Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
         let mut res3 = F::zero();
@@ -603,15 +631,12 @@ pub fn ec_add_circuit<
             });
         res3 += carry3;
         let newcarry3 = compute_carry(res3);
-        assign_carry(
-            env,
-            &n_half_bi,
-            i,
-            newcarry3,
-            &mut carry3,
-            FECColumn::Carry3,
-        );
+        assign_carry(env, &n_half_bi, i, newcarry3, &mut carry3, |i| {
+            FECColumn::Inter(FECColumnInter::Carry3(i))
+        });
     }
 
     constrain_ec_addition::<F, Ff, Env>(env);
+
+    (xr, yr)
 }

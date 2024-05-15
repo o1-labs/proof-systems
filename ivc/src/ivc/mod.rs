@@ -13,7 +13,7 @@ mod tests {
         },
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
     use rand::{CryptoRng, RngCore};
 
@@ -73,11 +73,16 @@ mod tests {
             )
         });
 
+        // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
             &mut witness_env,
             comms_left,
             comms_right,
             comms_output,
+            [(Ff1::zero(), Ff1::zero()); 3],
+            [(Ff1::zero(), Ff1::zero()); 2],
+            Fp::zero(),
+            vec![Fp::zero(); 200],
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );

@@ -1,7 +1,7 @@
 use crate::{
     circuit_design::{ColAccessCap, ColWriteCap},
     serialization::interpreter::limb_decompose_ff,
-    test::columns::TestColumn,
+    test::test_circuit::columns::TestColumn,
     LIMB_BITSIZE, N_LIMBS,
 };
 use ark_ff::{PrimeField, Zero};
