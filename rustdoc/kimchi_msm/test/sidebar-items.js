@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["test_completeness_generic"],"mod":["columns","interpreter"]};
+window.SIDEBAR_ITEMS = {"mod":["logup","proof_system","test_circuit"]};

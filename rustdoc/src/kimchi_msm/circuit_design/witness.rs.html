@@ -419,6 +419,11 @@
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
@@ -464,7 +469,12 @@
     /// value for row #j of the selector #i.
     </span><span class="kw">pub </span>fixed_selectors: Vec&lt;Vec&lt;F&gt;&gt;,
 
-    <span class="comment">// Not strictly needed at this point, but likely will be used later.
+    <span class="comment">// A Phantom Data for CIx -- right now WitnessBUilderEnv does not
+    // depend on CIx, but in the future (with associated generics
+    // enabled?) it might be convenient to put all the `NT_COL` (and
+    // other) constants into `CIx`. Logically, all these constants
+    // &quot;belong&quot; to CIx, so there&#39;s an extra type parameter, and a
+    // phantom data to support it.
     </span><span class="kw">pub </span>phantom_cix: PhantomData&lt;CIx&gt;,
 }
 
