@@ -61,21 +61,24 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// 6N+2 |------------------------------------------|
 ///
 ///     constϕ
-///      ϕ^i         ϕ^i        r*ϕ^i
-///       r*ϕ^i   in 17 limbs  in 17 limbs
-///                 each        each
-///   1  |-|-|-|------------|------------|
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  i   |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  N   |-----|------------|------------|
-///       1 2 3 4 ...     4+17          4+2*17
+///         constr
+///                ϕ^i             ϕ^i        r*ϕ^i
+///                      r*ϕ^i  in 17 limbs  in 17 limbs
+///                               each        each
+///   1  |---|---|-----|------|------------|------------|
+///      | ϕ   r    ϕ     rϕ  |            |            |
+///      | ϕ   r   ϕ^2   rϕ^2 |            |            |
+///      | ϕ   r   ϕ^3   rϕ^3 |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  i   |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  N   |--------------------|------------|------------|
+///       1    2   3   4 ...        4+17          4+2*17
 ///
 ///
 ///
@@ -83,15 +86,15 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///
 ///          input#1    input#2          FEC ADD computation          output
 ///   1   |------------------------------------------------------|-------------|
-///       |  C_{R'_i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R'_i}      |  newbucket  |
+///       |  C_{R',i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R',i}      |  newbucket  |
 ///       |           |                 |                        |             |
 ///       |           |                 |                        |             |
 ///  17*N |------------------------------------------------------|-------------|
-///       |  C_{R_i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R_i}        |  newbucket  |
+///       |  C_{R,i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R,i}        |  newbucket  |
 ///       |           |                 |                        |             |
 ///       |           |                 |                        |             |
 ///  34*N |------------------------------------------------------|-------------|
-///       |  C_{L}    |  C_{R}          |    C_{L} + C_{R}'      |    C_{O}'   | // assert that C_O' == C_O
+///       |  C_{R,i}  |  C_{L,i}        |  C_{L,i} + C_{R,i}'    |    C_{O}'   | // assert that C_O' == C_O
 /// 35*N  |------------------------------------------------------|-------------|
 ///
 ///
@@ -126,7 +129,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 
 // NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
     /// 2*17 15-bit limbs (two base field points)
     Block1Input(usize),
@@ -142,14 +145,14 @@ pub enum IVCColumn {
     Block3ConstPhi,
     /// Constant r
     Block3ConstR,
-    /// Scalar coeff #1, phi^i
-    Block3Phi,
+    /// Scalar coeff #1, powers of Phi, phi^i
+    Block3PhiPow,
     /// Scalar coeff #2, r * phi^i
-    Block3PhiR,
+    Block3PhiPowR,
     /// 17 15-bit limbs
-    Block3PhiLimbs(usize),
+    Block3PhiPowLimbs(usize),
     /// 17 15-bit limbs
-    Block3PhiRLimbs(usize),
+    Block3PhiPowRLimbs(usize),
 
     /// 1 addition per row
     Block4ECAdd(FECColumn),
@@ -157,9 +160,9 @@ pub enum IVCColumn {
 
 impl ColumnIndexer for IVCColumn {
     // This should be
-    //   const COL_N: usize = std::cmp::max(IVCPoseidonColumn::COL_N, FECColumn::COL_N);
+    //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
     // which is runtime-only expression..?
-    const COL_N: usize = IVCPoseidonColumn::COL_N;
+    const N_COL: usize = IVCPoseidonColumn::N_COL;
 
     fn to_column(self) -> Column {
         match self {
@@ -178,13 +181,13 @@ impl ColumnIndexer for IVCColumn {
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
             IVCColumn::Block3ConstPhi => Column::Relation(0),
             IVCColumn::Block3ConstR => Column::Relation(1),
-            IVCColumn::Block3Phi => Column::Relation(2),
-            IVCColumn::Block3PhiR => Column::Relation(3),
-            IVCColumn::Block3PhiLimbs(i) => {
+            IVCColumn::Block3PhiPow => Column::Relation(2),
+            IVCColumn::Block3PhiPowR => Column::Relation(3),
+            IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
                 Column::Relation(4 + i)
             }
-            IVCColumn::Block3PhiRLimbs(i) => {
+            IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
                 Column::Relation(4 + N_LIMBS_SMALL + i)
             }
@@ -208,5 +211,23 @@ impl MPrism for IVCHashLens {
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
         IVCColumn::Block2Hash(target)
+    }
+}
+
+pub struct IVCFECLens {}
+
+impl MPrism for IVCFECLens {
+    type Source = IVCColumn;
+    type Target = FECColumn;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            IVCColumn::Block4ECAdd(col) => Some(col),
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        IVCColumn::Block4ECAdd(target)
     }
 }

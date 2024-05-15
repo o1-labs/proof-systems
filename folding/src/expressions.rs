@@ -125,6 +125,30 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Square(Box<Self>),
 }
 
+impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self::Add(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<C: FoldingConfig> std::ops::Sub for FoldingCompatibleExpr<C> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Self::Sub(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<C: FoldingConfig> std::ops::Mul for FoldingCompatibleExpr<C> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self {
+        Self::Mul(Box::new(self), Box::new(rhs))
+    }
+}
+
 /// Implement a human-readable version of a folding compatible expression.
 // FIXME: use Display instead, to follow the recommandation of the trait.
 impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {

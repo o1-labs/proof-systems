@@ -107,7 +107,7 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
 pub struct DecomposedFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
     C: FoldingConfig,
     Structure: ProvableTrace,
 > {

@@ -341,13 +341,12 @@ mod folding {
 
     fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
-        _rng: &mut RNG,
+        rng: &mut RNG,
     ) -> Witness<N_MIPS_REL_COLS, Vec<Fp>>
     where
         RNG: RngCore + CryptoRng,
     {
-        let mut rng = o1_utils::tests::make_test_rng();
-        let mut dummy_env = dummy_env(&mut rng);
+        let mut dummy_env = dummy_env(rng);
         let instr = ITypeInstruction::AddImmediateUnsigned;
         let a = std::array::from_fn(|_| Vec::with_capacity(domain_size));
         let mut witness = Witness { cols: Box::new(a) };
@@ -367,9 +366,9 @@ mod folding {
                     rs: reg_src,  // source register
                     rt: reg_dest, // destination register
                     // The rest is the immediate value
-                    rd: rng.gen(),
-                    shamt: rng.gen(),
-                    funct: rng.gen(),
+                    rd: rng.gen_range(0..32),
+                    shamt: rng.gen_range(0..32),
+                    funct: rng.gen_range(0..64),
                 },
             );
             interpret_itype(&mut dummy_env, instr);
@@ -379,6 +378,7 @@ mod folding {
             }
             witness.cols[SCRATCH_SIZE].push(Fp::from(dummy_env.instruction_counter));
             witness.cols[SCRATCH_SIZE + 1].push(Fp::from(0));
+            dummy_env.instruction_counter += 1;
 
             dummy_env.reset_scratch_state()
         });

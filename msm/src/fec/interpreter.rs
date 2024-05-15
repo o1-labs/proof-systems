@@ -252,7 +252,7 @@ pub fn constrain_ec_addition<
 
     // Signs must be -1 or 1.
     for x in [&q1_sign, &q2_sign, &q3_sign] {
-        env.lookup(LookupTable::RangeCheck1Abs, x);
+        env.assert_zero(x.clone() * x.clone() - Env::constant(F::one()));
     }
 
     // Carry limbs need to be in particular ranges.
@@ -417,14 +417,14 @@ pub fn ec_add_circuit<
     let slope_limbs_large: [F; N_LIMBS_LARGE] =
         limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&slope);
 
-    write_column_array_const(env, xp_limbs_large, FECColumn::XP);
-    write_column_array_const(env, yp_limbs_large, FECColumn::YP);
-    write_column_array_const(env, xq_limbs_large, FECColumn::XQ);
-    write_column_array_const(env, yq_limbs_large, FECColumn::YQ);
-    write_column_array_const(env, f_limbs_large, FECColumn::F);
-    write_column_array_const(env, xr_limbs_small, FECColumn::XR);
-    write_column_array_const(env, yr_limbs_small, FECColumn::YR);
-    write_column_array_const(env, slope_limbs_small, FECColumn::S);
+    write_column_array_const(env, &xp_limbs_large, FECColumn::XP);
+    write_column_array_const(env, &yp_limbs_large, FECColumn::YP);
+    write_column_array_const(env, &xq_limbs_large, FECColumn::XQ);
+    write_column_array_const(env, &yq_limbs_large, FECColumn::YQ);
+    write_column_array_const(env, &f_limbs_large, FECColumn::F);
+    write_column_array_const(env, &xr_limbs_small, FECColumn::XR);
+    write_column_array_const(env, &yr_limbs_small, FECColumn::YR);
+    write_column_array_const(env, &slope_limbs_small, FECColumn::S);
 
     let xp_bi: BigInt = FieldHelpers::to_bigint_positive(&xp);
     let yp_bi: BigInt = FieldHelpers::to_bigint_positive(&yp);
@@ -478,9 +478,9 @@ pub fn ec_add_circuit<
     let q3_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(q3_bi.to_biguint().unwrap());
 
-    write_column_array_const(env, q1_limbs_small, FECColumn::Q1);
-    write_column_array_const(env, q2_limbs_small, FECColumn::Q2);
-    write_column_array_const(env, q3_limbs_small, FECColumn::Q3);
+    write_column_array_const(env, &q1_limbs_small, FECColumn::Q1);
+    write_column_array_const(env, &q2_limbs_small, FECColumn::Q2);
+    write_column_array_const(env, &q3_limbs_small, FECColumn::Q3);
     write_column_const(env, FECColumn::Q1Sign, &q1_sign);
     write_column_const(env, FECColumn::Q2Sign, &q2_sign);
     write_column_const(env, FECColumn::Q3Sign, &q3_sign);

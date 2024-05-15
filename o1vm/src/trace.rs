@@ -59,12 +59,11 @@ impl<const N: usize, C: FoldingConfig> ProvableTrace for Trace<N, C> {
 /// Struct representing a circuit execution trace which is decomposable in
 /// individual sub-circuits sharing the same columns.
 /// It is parameterized by
-/// - `N`: the total number of columns (constant), it must equal `N_REL + N_SEL`
+/// - `N`: the total number of columns (constant), it must equal `N_REL + N_DSEL`
 /// - `N_REL`: the number of relation columns (constant),
-/// - `N_SEL`: the number of selector columns (constant),
+/// - `N_DSEL`: the number of dynamic selector columns (constant),
 /// - `Selector`: an enum representing the different gate behaviours,
 /// - `F`: the type of the witness data.
-#[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct DecomposedTrace<const N: usize, C: FoldingConfig> {
     /// The domain size of the circuit (should coincide with that of the traces)
@@ -247,6 +246,7 @@ where
 /// The constant type `N_REL` is defined as the maximum number of relation
 /// columns the trace can use per row.
 /// The type `C` encodes the folding configuration, from which the selector,
+/// which encodes the information of the kind of information the trace encodes,
 /// and scalar field are derived. Examples of selectors are:
 /// - For Keccak, `Step` encodes the row being performed at a time: round,
 /// squeeze, padding, etc...
