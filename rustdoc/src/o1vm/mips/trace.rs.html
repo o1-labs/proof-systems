@@ -109,115 +109,129 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::ScalarField,
     mips::{
-        column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+        column::{N_MIPS_COLS, N_MIPS_REL_COLS},
         constraints::Env,
+        folding::DecomposableMIPSFoldingConfig,
         interpreter::{interpret_instruction, Instruction},
     },
-    trace::{DecomposableTracer, DecomposedTrace},
+    trace::{DecomposableTracer, DecomposedTrace, Trace, Tracer},
 };
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
 <span class="kw">use </span>std::{array, collections::BTreeMap};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
-<span class="kw">use </span><span class="kw">super</span>::folding::DecomposableMIPSFoldingConfig;
-
+<span class="doccomment">/// The MIPS instruction trace
+</span><span class="kw">pub type </span>MIPSTrace = Trace&lt;N_MIPS_COLS, DecomposableMIPSFoldingConfig&gt;;
 <span class="doccomment">/// The MIPS circuit trace
-</span><span class="kw">pub type </span>DecomposedMIPSTrace =
-    DecomposedTrace&lt;N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, DecomposableMIPSFoldingConfig&gt;;
+</span><span class="kw">pub type </span>DecomposedMIPSTrace = DecomposedTrace&lt;N_MIPS_COLS, DecomposableMIPSFoldingConfig&gt;;
 
-<span class="kw">impl
-    </span>DecomposableTracer&lt;
-        N_MIPS_COLS,
-        N_MIPS_REL_COLS,
-        N_MIPS_SEL_COLS,
-        DecomposableMIPSFoldingConfig,
-        Env&lt;ScalarField&lt;DecomposableMIPSFoldingConfig&gt;&gt;,
-    &gt; <span class="kw">for </span>DecomposedMIPSTrace
-{
+<span class="kw">impl </span>DecomposableTracer&lt;Env&lt;ScalarField&lt;DecomposableMIPSFoldingConfig&gt;&gt;&gt; <span class="kw">for </span>DecomposedMIPSTrace {
     <span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env&lt;ScalarField&lt;DecomposableMIPSFoldingConfig&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>circuit = <span class="self">Self </span>{
             domain_size,
-            witness: BTreeMap::new(),
-            constraints: Default::default(),
-            lookups: Default::default(),
+            trace: BTreeMap::new(),
         };
-
-        <span class="kw">for </span>instr <span class="kw">in </span>Instruction::iter().flat_map(|x| x.into_iter()) {
-            circuit.witness.insert(
-                instr,
-                Witness {
-                    cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
-                },
-            );
-            interpret_instruction(env, instr);
-            circuit.constraints.insert(instr, env.constraints.clone());
-            circuit.lookups.insert(instr, env.lookups.clone());
-            env.scratch_state_idx = <span class="number">0</span>; <span class="comment">// Reset the scratch state index for the next instruction
-            </span>env.constraints = <span class="macro">vec!</span>[]; <span class="comment">// Clear the constraints for the next instruction
-            </span>env.lookups = <span class="macro">vec!</span>[]; <span class="comment">// Clear the lookups for the next instruction
-        </span>}
+        <span class="kw">for </span>instr <span class="kw">in </span>Instruction::iter().flat_map(|step| step.into_iter()) {
+            circuit
+                .trace
+                .insert(instr, &lt;MIPSTrace&gt;::init(domain_size, instr, env));
+        }
         circuit
+    }
+
+    <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>opcode <span class="kw">in </span>Instruction::iter().flat_map(|opcode| opcode.into_iter()) {
+            <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().pad_dummy(());
+        }
+    }
+}
+
+<span class="kw">impl
+    </span>Tracer&lt;
+        N_MIPS_REL_COLS,
+        DecomposableMIPSFoldingConfig,
+        Env&lt;ScalarField&lt;DecomposableMIPSFoldingConfig&gt;&gt;,
+    &gt; <span class="kw">for </span>MIPSTrace
+{
+    <span class="kw">type </span>Selector = ();
+
+    <span class="kw">fn </span>init(
+        domain_size: usize,
+        instr: Instruction,
+        env: <span class="kw-2">&amp;mut </span>Env&lt;ScalarField&lt;DecomposableMIPSFoldingConfig&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        interpret_instruction(env, instr);
+
+        <span class="kw">let </span>trace = <span class="self">Self </span>{
+            domain_size,
+            witness: Witness {
+                cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
+            },
+            constraints: env.constraints.clone(),
+            lookups: env.lookups.clone(),
+        };
+        env.scratch_state_idx = <span class="number">0</span>; <span class="comment">// Reset the scratch state index for the next instruction
+        </span>env.constraints = <span class="macro">vec!</span>[]; <span class="comment">// Clear the constraints for the next instruction
+        </span>env.lookups = <span class="macro">vec!</span>[]; <span class="comment">// Clear the lookups for the next instruction
+
+        </span>trace
     }
 
     <span class="kw">fn </span>push_row(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        opcode: Instruction,
+        _selector: <span class="self">Self</span>::Selector,
         row: <span class="kw-2">&amp;</span>[ScalarField&lt;DecomposableMIPSFoldingConfig&gt;; N_MIPS_REL_COLS],
     ) {
-        <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
-            <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
-                <span class="kw">if </span>wit.cols[i].len() &lt; wit.cols[i].capacity() {
-                    wit.cols[i].push(<span class="kw-2">*</span>value);
-                }
+        <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
+            <span class="kw">if </span><span class="self">self</span>.witness.cols[i].len() &lt; <span class="self">self</span>.witness.cols[i].capacity() {
+                <span class="self">self</span>.witness.cols[i].push(<span class="kw-2">*</span>value);
             }
-        });
+        }
     }
 
     <span class="kw">fn </span>pad_with_row(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        opcode: Instruction,
+        _selector: <span class="self">Self</span>::Selector,
         row: <span class="kw-2">&amp;</span>[ScalarField&lt;DecomposableMIPSFoldingConfig&gt;; N_MIPS_REL_COLS],
     ) -&gt; usize {
-        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+        <span class="kw">let </span>len = <span class="self">self</span>.witness.cols[<span class="number">0</span>].len();
         <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
-        <span class="kw">for _ in </span><span class="number">0</span>..rows_to_add {
-            <span class="self">self</span>.push_row(opcode, row);
+        <span class="comment">// When we reach the domain size, we don&#39;t need to pad anymore.
+        </span><span class="kw">for _ in </span><span class="number">0</span>..rows_to_add {
+            <span class="self">self</span>.push_row(_selector, row);
         }
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Instruction) -&gt; usize {
-        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="kw">let </span>len = <span class="self">self</span>.witness.cols[<span class="number">0</span>].len();
         <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
-        <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
-            <span class="kw">for </span>col <span class="kw">in </span>wit.cols.iter_mut() {
-                col.extend(
-                    (<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| ScalarField::&lt;DecomposableMIPSFoldingConfig&gt;::zero()),
-                );
-            }
-        });
+        <span class="comment">// When we reach the domain size, we don&#39;t need to pad anymore.
+        </span><span class="kw">for </span>col <span class="kw">in </span><span class="self">self</span>.witness.cols.iter_mut() {
+            col.extend(
+                (<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| ScalarField::&lt;DecomposableMIPSFoldingConfig&gt;::zero()),
+            );
+        }
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Instruction) -&gt; usize {
-        <span class="kw">if </span>!<span class="self">self</span>.in_circuit(opcode) {
-            <span class="number">0
-        </span>} <span class="kw">else </span>{
-            <span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[i][<span class="number">0</span>]);
-            <span class="self">self</span>.pad_with_row(opcode, <span class="kw-2">&amp;</span>row)
-        }
-    }
-
-    <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>step <span class="kw">in </span>Instruction::iter().flat_map(|step| step.into_iter()) {
-            <span class="self">self</span>.pad_dummy(step);
-        }
+    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="comment">// We keep track of the first row of the non-empty witness, which is a real step witness.
+        </span><span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness.cols[i][<span class="number">0</span>]);
+        <span class="self">self</span>.pad_with_row(_selector, <span class="kw-2">&amp;</span>row)
     }
 }
 </code></pre></div></section></main></body></html>

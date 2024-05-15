@@ -110,18 +110,6 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{array, collections::BTreeMap};
 
 <span class="kw">use </span>ark_ff::Zero;
@@ -131,119 +119,107 @@
 <span class="kw">use crate</span>::{
     folding::ScalarField,
     keccak::{
-        column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
+        column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS},
         environment::KeccakEnv,
         standardize,
     },
-    trace::{DecomposableTracer, DecomposedTrace},
+    trace::{DecomposableTracer, DecomposedTrace, Trace, Tracer},
 };
 
 <span class="kw">use </span><span class="kw">super</span>::folding::KeccakConfig;
 
+<span class="doccomment">/// A Keccak instruction trace
+</span><span class="kw">pub type </span>KeccakTrace = Trace&lt;N_ZKVM_KECCAK_COLS, KeccakConfig&gt;;
 <span class="doccomment">/// The Keccak circuit trace
-</span><span class="kw">pub type </span>KeccakTrace = DecomposedTrace&lt;
-    N_ZKVM_KECCAK_COLS,
-    N_ZKVM_KECCAK_REL_COLS,
-    N_ZKVM_KECCAK_SEL_COLS,
-    KeccakConfig,
-&gt;;
+</span><span class="kw">pub type </span>DecomposedKeccakTrace = DecomposedTrace&lt;N_ZKVM_KECCAK_COLS, KeccakConfig&gt;;
 
-<span class="kw">impl
-    </span>DecomposableTracer&lt;
-        N_ZKVM_KECCAK_COLS,
-        N_ZKVM_KECCAK_REL_COLS,
-        N_ZKVM_KECCAK_SEL_COLS,
-        KeccakConfig,
-        KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;,
-    &gt; <span class="kw">for </span>KeccakTrace
-{
-    <span class="kw">fn </span>new(domain_size: usize, _env: <span class="kw-2">&amp;mut </span>KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>DecomposableTracer&lt;KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;&gt; <span class="kw">for </span>DecomposedKeccakTrace {
+    <span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>circuit = <span class="self">Self </span>{
             domain_size,
-            witness: BTreeMap::new(),
-            constraints: Default::default(),
-            lookups: Default::default(),
+            trace: BTreeMap::new(),
         };
-
-        <span class="kw">for </span>opcode <span class="kw">in </span>Steps::iter().flat_map(|step| step.into_iter()) {
-            circuit.witness.insert(
-                opcode,
-                Witness {
-                    cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
-                },
-            );
+        <span class="kw">for </span>step <span class="kw">in </span>Steps::iter().flat_map(|step| step.into_iter()) {
             circuit
-                .constraints
-                .insert(opcode, KeccakEnv::constraints_of(opcode));
-            circuit
-                .lookups
-                .insert(opcode, KeccakEnv::lookups_of(opcode));
+                .trace
+                .insert(step, KeccakTrace::init(domain_size, step, env));
         }
         circuit
     }
 
+    <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>opcode <span class="kw">in </span>Steps::iter().flat_map(|opcode| opcode.into_iter()) {
+            <span class="kw">if </span><span class="self">self</span>.in_circuit(opcode) {
+                <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().pad_dummy(());
+            }
+        }
+    }
+}
+
+<span class="kw">impl </span>Tracer&lt;N_ZKVM_KECCAK_REL_COLS, KeccakConfig, KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;&gt;
+    <span class="kw">for </span>KeccakTrace
+{
+    <span class="kw">type </span>Selector = ();
+
+    <span class="kw">fn </span>init(
+        domain_size: usize,
+        selector: Steps,
+        _env: <span class="kw-2">&amp;mut </span>KeccakEnv&lt;ScalarField&lt;KeccakConfig&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="comment">// Make sure we are using the same round number to refer to round steps
+        </span><span class="kw">let </span>step = standardize(selector);
+        <span class="self">Self </span>{
+            domain_size,
+            witness: Witness {
+                cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
+            },
+            constraints: KeccakEnv::constraints_of(step),
+            lookups: KeccakEnv::lookups_of(step),
+        }
+    }
+
     <span class="kw">fn </span>push_row(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        opcode: Steps,
+        _selector: <span class="self">Self</span>::Selector,
         row: <span class="kw-2">&amp;</span>[ScalarField&lt;KeccakConfig&gt;; N_ZKVM_KECCAK_REL_COLS],
     ) {
-        <span class="comment">// Make sure we are using the same round number to refer to round steps
-        </span><span class="kw">let </span>opcode = standardize(opcode);
-        <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
-            <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
-                <span class="kw">if </span>wit.cols[i].len() &lt; wit.cols[i].capacity() {
-                    wit.cols[i].push(<span class="kw-2">*</span>value);
-                }
+        <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
+            <span class="kw">if </span><span class="self">self</span>.witness.cols[i].len() &lt; <span class="self">self</span>.witness.cols[i].capacity() {
+                <span class="self">self</span>.witness.cols[i].push(<span class="kw-2">*</span>value);
             }
-        });
+        }
     }
 
     <span class="kw">fn </span>pad_with_row(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        opcode: Steps,
+        _selector: <span class="self">Self</span>::Selector,
         row: <span class="kw-2">&amp;</span>[ScalarField&lt;KeccakConfig&gt;; N_ZKVM_KECCAK_REL_COLS],
     ) -&gt; usize {
-        <span class="kw">let </span>opcode = standardize(opcode);
-        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+        <span class="kw">let </span>len = <span class="self">self</span>.witness.cols[<span class="number">0</span>].len();
         <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
         <span class="comment">// When we reach the domain size, we don&#39;t need to pad anymore.
         </span><span class="kw">for _ in </span><span class="number">0</span>..rows_to_add {
-            <span class="self">self</span>.push_row(opcode, row);
+            <span class="self">self</span>.push_row((), row);
         }
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps) -&gt; usize {
-        <span class="kw">let </span>opcode = standardize(opcode);
-        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="kw">let </span>len = <span class="self">self</span>.witness.cols[<span class="number">0</span>].len();
         <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
         <span class="comment">// When we reach the domain size, we don&#39;t need to pad anymore.
-        </span><span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
-            <span class="kw">for </span>col <span class="kw">in </span>wit.cols.iter_mut() {
-                col.extend((<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| ScalarField::&lt;KeccakConfig&gt;::zero()));
-            }
-        });
+        </span><span class="kw">for </span>col <span class="kw">in </span><span class="self">self</span>.witness.cols.iter_mut() {
+            col.extend((<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| ScalarField::&lt;KeccakConfig&gt;::zero()));
+        }
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps) -&gt; usize {
-        <span class="comment">// We only want to pad non-empty witnesses.
-        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(opcode) {
-            <span class="number">0
-        </span>} <span class="kw">else </span>{
-            <span class="kw">let </span>opcode = standardize(opcode);
-            <span class="comment">// We keep track of the first row of the non-empty witness, which is a real step witness.
-            </span><span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[i][<span class="number">0</span>]);
-            <span class="self">self</span>.pad_with_row(opcode, <span class="kw-2">&amp;</span>row)
-        }
-    }
-
-    <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>opcode <span class="kw">in </span>Steps::iter().flat_map(|opcode| opcode.into_iter()) {
-            <span class="self">self</span>.pad_dummy(opcode);
-        }
+    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="comment">// We keep track of the first row of the non-empty witness, which is a real step witness.
+        </span><span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness.cols[i][<span class="number">0</span>]);
+        <span class="self">self</span>.pad_with_row(_selector, <span class="kw-2">&amp;</span>row)
     }
 }
 </code></pre></div></section></main></body></html>

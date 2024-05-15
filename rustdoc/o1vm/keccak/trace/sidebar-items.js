@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["KeccakTrace"]};
+window.SIDEBAR_ITEMS = {"type":["DecomposedKeccakTrace","KeccakTrace"]};

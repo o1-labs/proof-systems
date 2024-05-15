@@ -265,6 +265,90 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -278,14 +362,15 @@
     E,
 };
 <span class="kw">use </span>ark_ff::{One, Zero};
-<span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>folding::{Alphas, FoldingConfig};
+<span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig};
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>kimchi_msm::witness::Witness;
+<span class="kw">use </span>kimchi::circuits::expr::ChallengeTerm;
+<span class="kw">use </span>kimchi_msm::{columns::Column, witness::Witness};
 <span class="kw">use </span>mina_poseidon::sponge::FqSponge;
-<span class="kw">use </span>poly_commitment::{PolyComm, SRS <span class="kw">as _</span>};
+<span class="kw">use </span>poly_commitment::{commitment::absorb_commitment, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
-<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::{collections::BTreeMap, ops::Index};
 
 <span class="doccomment">/// Returns the index of the witness column in the trace.
 </span><span class="kw">pub trait </span>Indexer {
@@ -330,37 +415,34 @@
 /// - `N_DSEL`: the number of dynamic selector columns (constant),
 /// - `Selector`: an enum representing the different gate behaviours,
 /// - `F`: the type of the witness data.
-</span><span class="attr">#[allow(clippy::type_complexity)]
-#[derive(Clone)]
-</span><span class="kw">pub struct </span>DecomposedTrace&lt;
-    <span class="kw">const </span>N: usize,
-    <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_DSEL: usize,
-    C: FoldingConfig,
-&gt; {
-    <span class="doccomment">/// The domain size of the circuit
+</span><span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>DecomposedTrace&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; {
+    <span class="doccomment">/// The domain size of the circuit (should coincide with that of the traces)
     </span><span class="kw">pub </span>domain_size: usize,
-    <span class="doccomment">/// The witness for a given selector
-    /// - the last N_DSEL columns represent the selector columns
+    <span class="doccomment">/// The traces are indexed by the selector
+    /// Inside the witness of the trace for a given selector,
+    /// - the last N_SEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
-    </span><span class="kw">pub </span>witness: BTreeMap&lt;C::Selector, Witness&lt;N, Vec&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
-    <span class="doccomment">/// The vector of constraints for a given selector
-    </span><span class="kw">pub </span>constraints: BTreeMap&lt;C::Selector, Vec&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
-    <span class="doccomment">/// The vector of lookups for a given selector
-    </span><span class="kw">pub </span>lookups: BTreeMap&lt;C::Selector, Vec&lt;Lookup&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>trace: BTreeMap&lt;C::Selector, Trace&lt;N, C&gt;&gt;,
+}
+
+<span class="comment">// Implementation of [Index] using `C::Selector`` as the index for [DecomposedTrace] to access the trace directly.
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; Index&lt;C::Selector&gt; <span class="kw">for </span>DecomposedTrace&lt;N, C&gt; {
+    <span class="kw">type </span>Output = Trace&lt;N, C&gt;;
+
+    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: C::Selector) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.trace[<span class="kw-2">&amp;</span>index]
+    }
 }
 
 <span class="comment">// Any decomposable trace is provable.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt; ProvableTrace
-    <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
-{
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; ProvableTrace <span class="kw">for </span>DecomposedTrace&lt;N, C&gt; {
     <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.domain_size
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig&gt;
-    DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; DecomposedTrace&lt;N, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
 {
@@ -370,7 +452,7 @@
     /// selector columns are only instantiated at the very end, so their length
     /// could be zero most times.
     </span><span class="kw">pub fn </span>number_of_rows(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: C::Selector) -&gt; usize {
-        <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len()
+        <span class="self">self</span>[opcode].witness.cols[<span class="number">0</span>].len()
     }
 
     <span class="doccomment">/// Returns a boolean indicating whether the witness for the given selector
@@ -387,19 +469,23 @@
 
     <span class="doccomment">/// Resets the witness after folding
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: C::Selector) {
-        (<span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().cols.as_mut())
+        (<span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().witness.cols.as_mut())
             .iter_mut()
             .for_each(Vec::clear);
     }
 
     <span class="doccomment">/// Sets the selector column to all ones, and the rest to all zeros
-    </span><span class="kw">pub fn </span>set_selector_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: C::Selector, number_of_rows: usize) {
+    </span><span class="kw">pub fn </span>set_selector_column&lt;<span class="kw">const </span>N_REL: usize&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        selector: C::Selector,
+        number_of_rows: usize,
+    ) {
         (N_REL..N).for_each(|i| {
             <span class="kw">if </span>i == selector.ix() {
-                <span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().cols[i]
+                <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().witness.cols[i]
                     .extend((<span class="number">0</span>..number_of_rows).map(|<span class="kw">_</span>| ScalarField::&lt;C&gt;::one()))
             } <span class="kw">else </span>{
-                <span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().cols[i]
+                <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().witness.cols[i]
                     .extend((<span class="number">0</span>..number_of_rows).map(|<span class="kw">_</span>| ScalarField::&lt;C&gt;::zero()))
             }
         });
@@ -410,8 +496,8 @@
 /// For that, it requires to be able to implement a way to return a folding
 /// instance and a folding witness.
 /// It is specialized for the [DecomposedTrace] struct for now and is expected
-/// to fold individual instructions, selected with a specific [C::Selector].
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Foldable&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Sponge&gt; {
+/// to fold individual instructions, selected with a specific `C::Selector`.
+</span><span class="kw">pub trait </span>Foldable&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Sponge&gt; {
     <span class="doccomment">/// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
     /// Note that this function will also absorb all commitments to the columns
@@ -419,33 +505,38 @@
     </span><span class="kw">fn </span>to_folding_pair(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: C::Selector,
+        fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
+        domain: D&lt;ScalarField&lt;C&gt;&gt;,
         srs: <span class="kw-2">&amp;</span>poly_commitment::srs::SRS&lt;C::Curve&gt;,
-        sponge: <span class="kw-2">&amp;mut </span>Sponge,
     ) -&gt; (
         FoldingInstance&lt;N, C::Curve&gt;,
         FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;,
     );
+
+    <span class="doccomment">/// Returns a map of constraints that are compatible with folding for each selector
+    </span><span class="kw">fn </span>folding_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;C::Selector, Vec&lt;FoldingCompatibleExpr&lt;C&gt;&gt;&gt;;
 }
 
 <span class="doccomment">/// Implement the trait Foldable for the structure [DecomposedTrace]
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_DSEL: usize, C: FoldingConfig, Sponge&gt;
-    Foldable&lt;N, C, Sponge&gt; <span class="kw">for </span>DecomposedTrace&lt;N, N_REL, N_DSEL, C&gt;
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&lt;Column = Column&gt;, Sponge&gt; Foldable&lt;N, C, Sponge&gt;
+    <span class="kw">for </span>DecomposedTrace&lt;N, C&gt;
 <span class="kw">where
     </span>C::Selector: Indexer,
     Sponge: FqSponge&lt;BaseField&lt;C&gt;, C::Curve, ScalarField&lt;C&gt;&gt;,
+    &lt;C <span class="kw">as </span>FoldingConfig&gt;::Challenge: From&lt;ChallengeTerm&gt;,
 {
     <span class="kw">fn </span>to_folding_pair(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: C::Selector,
-        srs: <span class="kw-2">&amp;</span>poly_commitment::srs::SRS&lt;C::Curve&gt;,
         fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
+        domain: D&lt;ScalarField&lt;C&gt;&gt;,
+        srs: <span class="kw-2">&amp;</span>poly_commitment::srs::SRS&lt;C::Curve&gt;,
     ) -&gt; (
         FoldingInstance&lt;N, C::Curve&gt;,
         FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;,
     ) {
-        <span class="kw">let </span>domain = Radix2EvaluationDomain::&lt;ScalarField&lt;C&gt;&gt;::new(<span class="self">self</span>.domain_size).unwrap();
         <span class="kw">let </span>folding_witness = FoldingWitness {
-            witness: (<span class="kw-2">&amp;</span><span class="self">self</span>.witness[<span class="kw-2">&amp;</span>selector])
+            witness: (<span class="kw-2">&amp;</span><span class="self">self</span>[selector].witness)
                 .into_par_iter()
                 .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain))
                 .collect(),
@@ -455,6 +546,12 @@
             .into_par_iter()
             .map(|w| srs.commit_evaluations_non_hiding(domain, w))
             .collect();
+
+        <span class="comment">// Absorbing commitments
+        </span>(<span class="kw-2">&amp;</span>commitments)
+            .into_iter()
+            .for_each(|c| absorb_commitment(fq_sponge, c));
+
         <span class="kw">let </span>commitments: [C::Curve; N] = commitments
             .into_iter()
             .map(|c| c.elems[<span class="number">0</span>])
@@ -478,58 +575,129 @@
 
         (instance, folding_witness)
     }
+
+    <span class="kw">fn </span>folding_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;C::Selector, Vec&lt;FoldingCompatibleExpr&lt;C&gt;&gt;&gt; {
+        <span class="self">self</span>.trace
+            .iter()
+            .map(|(k, instr)| {
+                (
+                    <span class="kw-2">*</span>k,
+                    instr
+                        .constraints
+                        .iter()
+                        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
 }
 
 <span class="doccomment">/// Tracer builds traces for some program executions.
-/// The constant type `N` is defined as the maximum number of columns the trace
-/// can use per row.
 /// The constant type `N_REL` is defined as the maximum number of relation
 /// columns the trace can use per row.
-/// The constant type `N_DSEL` is defined as the number of selector columns the
-/// trace can use per row.
-/// The type `Selector` encodes the information of the kind of information the
-/// trace encodes. Examples:
+/// The type `C` encodes the folding configuration, from which the selector,
+/// which encodes the information of the kind of information the trace encodes,
+/// and scalar field are derived. Examples of selectors are:
 /// - For Keccak, `Step` encodes the row being performed at a time: round,
 /// squeeze, padding, etc...
 /// - For MIPS, `Instruction` encodes the CPU instruction being executed: add,
 /// sub, load, store, etc...
-/// The type parameter `F` is the type the data points in the trace are encoded
-/// into. It can be a field or a native type (u64).
-</span><span class="kw">pub trait </span>DecomposableTracer&lt;
-    <span class="kw">const </span>N: usize,
-    <span class="kw">const </span>N_REL: usize,
-    <span class="kw">const </span>N_DSEL: usize,
-    C: FoldingConfig,
-    Env,
-&gt;
-{
-    <span class="doccomment">/// Create a new circuit
-    </span><span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
+</span><span class="kw">pub trait </span>Tracer&lt;<span class="kw">const </span>N_REL: usize, C: FoldingConfig, Env&gt; {
+    <span class="kw">type </span>Selector;
+
+    <span class="doccomment">/// Initialize a new trace with the given domain size, selector, and environment.
+    </span><span class="kw">fn </span>init(domain_size: usize, selector: C::Selector, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Add a witness row to the circuit (only for relation columns)
-    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: C::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]);
+    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]);
 
     <span class="doccomment">/// Pad the rows of one opcode with the given row until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
     /// It does not add selector columns.
-    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: C::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]) -&gt; usize;
+    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]) -&gt; usize;
 
     <span class="doccomment">/// Pads the rows of one opcode with zero rows until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
     /// It does not add selector columns.
-    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: C::Selector) -&gt; usize;
+    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector) -&gt; usize;
 
     <span class="doccomment">/// Pad the rows of one opcode with the first row until
     /// reaching the domain size if needed.
     /// It only tries to pad witnesses which are non empty.
     /// Returns the number of rows that were added.
     /// It does not add selector columns.
-    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: C::Selector) -&gt; usize;
+    /// - Use `None` for single traces
+    /// - Use `Some(selector)` for multi traces
+    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector) -&gt; usize;
+}
+
+<span class="doccomment">/// DecomposableTracer builds traces for some program executions.
+/// The constant type `N_REL` is defined as the maximum number of relation
+/// columns the trace can use per row.
+/// The type `C` encodes the folding configuration, from which the selector,
+/// and scalar field are derived. Examples of selectors are:
+/// - For Keccak, `Step` encodes the row being performed at a time: round,
+/// squeeze, padding, etc...
+/// - For MIPS, `Instruction` encodes the CPU instruction being executed: add,
+/// sub, load, store, etc...
+</span><span class="kw">pub trait </span>DecomposableTracer&lt;Env&gt; {
+    <span class="doccomment">/// Create a new decomposable trace with the given domain size, and environment.
+    </span><span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Pads the rows of the witnesses until reaching the domain size using the first
     /// row repeatedly. It does not add selector columns.
     </span><span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+}
+
+<span class="doccomment">/// Generic implementation of the [Tracer] trait for the [DecomposedTrace] struct.
+/// It requires the [DecomposedTrace] to implement the [DecomposableTracer] trait,
+/// and the [Trace] struct to implement the [Tracer] trait with Selector set to (),
+/// and the `C::Selector` to implement the [Indexer] trait.
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, C: FoldingConfig, Env&gt; Tracer&lt;N_REL, C, Env&gt;
+    <span class="kw">for </span>DecomposedTrace&lt;N, C&gt;
+<span class="kw">where
+    </span>DecomposedTrace&lt;N, C&gt;: DecomposableTracer&lt;Env&gt;,
+    Trace&lt;N, C&gt;: Tracer&lt;N_REL, C, Env, Selector = ()&gt;,
+    &lt;C <span class="kw">as </span>FoldingConfig&gt;::Selector: Indexer,
+{
+    <span class="kw">type </span>Selector = C::Selector;
+
+    <span class="kw">fn </span>init(domain_size: usize, _selector: C::Selector, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self </span>{
+        &lt;<span class="self">Self </span><span class="kw">as </span>DecomposableTracer&lt;Env&gt;&gt;::new(domain_size, env)
+    }
+
+    <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]) {
+        <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().push_row((), row);
+    }
+
+    <span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector, row: <span class="kw-2">&amp;</span>[ScalarField&lt;C&gt;; N_REL]) -&gt; usize {
+        <span class="comment">// We only want to pad non-empty witnesses.
+        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(selector) {
+            <span class="number">0
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().pad_with_row((), row)
+        }
+    }
+
+    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="comment">// We only want to pad non-empty witnesses.
+        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(selector) {
+            <span class="number">0
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().pad_with_zeros(())
+        }
+    }
+
+    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: <span class="self">Self</span>::Selector) -&gt; usize {
+        <span class="comment">// We only want to pad non-empty witnesses.
+        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(selector) {
+            <span class="number">0
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().pad_dummy(())
+        }
+    }
 }
 </code></pre></div></section></main></body></html>
