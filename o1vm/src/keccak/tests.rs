@@ -616,9 +616,12 @@ fn test_keccak_folding() {
                 assert!(trace.is_full(Sponge(Squeeze)));
 
                 // Add the columns of the selectors to the circuit
-                trace.set_selector_column::<N_ZKVM_KECCAK_COLS>(Sponge(Absorb(Only)), domain_size);
-                trace.set_selector_column::<N_ZKVM_KECCAK_COLS>(Round(0), domain_size);
-                trace.set_selector_column::<N_ZKVM_KECCAK_COLS>(Sponge(Squeeze), domain_size);
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
+                    Sponge(Absorb(Only)),
+                    domain_size,
+                );
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Round(0), domain_size);
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Squeeze), domain_size);
             }
             {
                 // 3 block preimages for Sponge(Absorb(First)), Sponge(Absorb(Middle)), and Sponge(Absorb(Last))
@@ -649,10 +652,18 @@ fn test_keccak_folding() {
                 assert!(trace.is_full(Sponge(Absorb(Last))));
 
                 // Add the columns of the selectors to the circuit
-                trace.set_selector_column::<N_ZKVM_KECCAK_COLS>(Sponge(Absorb(First)), domain_size);
-                trace
-                    .set_selector_column::<N_ZKVM_KECCAK_COLS>(Sponge(Absorb(Middle)), domain_size);
-                trace.set_selector_column::<N_ZKVM_KECCAK_COLS>(Sponge(Absorb(Last)), domain_size);
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
+                    Sponge(Absorb(First)),
+                    domain_size,
+                );
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
+                    Sponge(Absorb(Middle)),
+                    domain_size,
+                );
+                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
+                    Sponge(Absorb(Last)),
+                    domain_size,
+                );
             }
         }
 
@@ -789,7 +800,8 @@ fn test_keccak_folding() {
                 let (dummy_scheme, dummy_final_constraint) =
                     DecomposableFoldingScheme::<KeccakConfig>::new(
                         zero_constraints.clone(),
-                        default_trace.constraints[&step]
+                        default_trace[step]
+                            .constraints
                             .iter()
                             .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                             .collect(),
@@ -861,8 +873,18 @@ fn test_keccak_folding() {
             // Mix Sponge(Absorb(Only)) and Round(0)
             let left = {
                 let (folded_l_ins, folded_l_wit, _) = dec_scheme.fold_instance_witness_pair(
-                    keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge),
-                    keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge),
+                    keccak_trace[0].to_folding_pair(
+                        Sponge(Absorb(Only)),
+                        &mut fq_sponge,
+                        domain,
+                        &srs,
+                    ),
+                    keccak_trace[1].to_folding_pair(
+                        Sponge(Absorb(Only)),
+                        &mut fq_sponge,
+                        domain,
+                        &srs,
+                    ),
                     Some(Sponge(Absorb(Only))),
                     &mut fq_sponge,
                 );
@@ -871,8 +893,8 @@ fn test_keccak_folding() {
             };
             let right = {
                 let (folded_r_ins, folded_r_wit, _) = dec_scheme.fold_instance_witness_pair(
-                    keccak_trace[0].to_folding_pair(Round(0), &srs, &mut fq_sponge),
-                    keccak_trace[1].to_folding_pair(Round(0), &srs, &mut fq_sponge),
+                    keccak_trace[0].to_folding_pair(Round(0), &mut fq_sponge, domain, &srs),
+                    keccak_trace[1].to_folding_pair(Round(0), &mut fq_sponge, domain, &srs),
                     Some(Round(0)),
                     &mut fq_sponge,
                 );
