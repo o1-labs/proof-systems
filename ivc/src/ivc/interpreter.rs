@@ -914,6 +914,43 @@ where
 {
 }
 
+/// Builds selectors for the IVC circuit.
+pub fn build_selectors<F, const N_COL_TOTAL: usize, const CHAL_LEN: usize>(
+    domain_size: usize,
+) -> [Vec<F>; N_BLOCKS]
+where
+    F: PrimeField,
+{
+    let mut selectors: [Vec<F>; N_BLOCKS] = std::array::from_fn(|_| vec![F::zero(); domain_size]);
+    let mut cur_row = 0;
+    for _i in 0..3 * N_COL_TOTAL {
+        selectors[0][cur_row] = F::one();
+        cur_row += 1;
+    }
+    for _i in 0..6 * N_COL_TOTAL + 2 {
+        selectors[1][cur_row] = F::one();
+        cur_row += 1;
+    }
+    for _i in 0..N_COL_TOTAL + 1 {
+        selectors[2][cur_row] = F::one();
+        cur_row += 1;
+    }
+    for _i in 0..(35 * N_COL_TOTAL + 5) {
+        selectors[3][cur_row] = F::one();
+        cur_row += 1;
+    }
+    for _i in 0..CHAL_LEN {
+        selectors[4][cur_row] = F::one();
+        cur_row += 1;
+    }
+    for _i in 0..1 {
+        selectors[5][cur_row] = F::one();
+        cur_row += 1;
+    }
+
+    selectors
+}
+
 /// This function generates constraitns for the whole IVC circuit.
 pub fn constrain_selectors<F, Env>(env: &mut Env)
 where
@@ -938,7 +975,7 @@ where
 
     env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(0)));
     constrain_inputs(env);
-    // TODO hashes
+    // TODO FIXME add constraints for hashes
     env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(2)));
     constrain_ecadds(env);
     env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(3)));
