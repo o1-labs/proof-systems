@@ -298,8 +298,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     }
 
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        // FIXME
-        todo!()
+        panic!("Panic")
     }
 
     fn alphas(&self) -> &Alphas<G::ScalarField> {
