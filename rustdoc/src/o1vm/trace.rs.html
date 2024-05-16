@@ -349,6 +349,7 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -451,6 +452,7 @@
     /// It is important that the column used is a relation column because
     /// selector columns are only instantiated at the very end, so their length
     /// could be zero most times.
+    /// That is the reason that relation columns are located first.
     </span><span class="kw">pub fn </span>number_of_rows(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: C::Selector) -&gt; usize {
         <span class="self">self</span>[opcode].witness.cols[<span class="number">0</span>].len()
     }

@@ -86,6 +86,10 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
@@ -98,7 +102,7 @@
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::{
-    checker::{Checker, ExtendedProvider},
+    checker::{Checker, ExtendedProvider, Provider},
     expressions::FoldingColumnTrait,
     FoldingConfig,
 };
@@ -143,8 +147,11 @@
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Column) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             Column::Relation(ix) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.witness.cols[ix],
-            Column::DynamicSelector(ix) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix],
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid column type&quot;</span>),
+            <span class="comment">// Even if `Column::DynamicSelector(ix)` would correspond to `&amp;self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix]`,
+            // the current design of constraints should not include the dynamic selectors. Instead, folding will add them
+            // in the `DecomposableFoldingScheme` as extended selector columns, and the `selector()` function inside the
+            // `FoldingEnv` will return the actual witness column values.
+            </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Undesired column type inside expressions&quot;</span>),
         }
     }
 }
@@ -174,4 +181,5 @@
 <span class="comment">// IMPLEMENT CHECKER TRAITS
 
 </span><span class="kw">impl </span>Checker&lt;KeccakConfig&gt; <span class="kw">for </span>ExtendedProvider&lt;KeccakConfig&gt; {}
+<span class="kw">impl </span>Checker&lt;KeccakConfig&gt; <span class="kw">for </span>Provider&lt;KeccakConfig&gt; {}
 </code></pre></div></section></main></body></html>

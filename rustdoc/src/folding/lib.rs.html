@@ -548,7 +548,6 @@
         <span class="kw">let </span>env: ExtendedEnv&lt;CF&gt; =
             env.compute_extension(<span class="kw-2">&amp;</span><span class="self">self</span>.extended_witness_generator, <span class="self">self</span>.srs);
         <span class="kw">let </span>error: [Vec&lt;ScalarField&lt;CF&gt;&gt;; <span class="number">2</span>] = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
-
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
 
         <span class="kw">let </span>error_commitments = error_evals
@@ -556,6 +555,8 @@
             .map(|e| <span class="self">self</span>.srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, e))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>error_commitments: [PolyComm&lt;CF::Curve&gt;; <span class="number">2</span>] = error_commitments.try_into().unwrap();
+
+        <span class="kw">let </span>error: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">2</span>] = error_evals.map(|e| e.evals);
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
@@ -567,7 +568,6 @@
 
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
-        <span class="kw">let </span>error = error_evals.map(|e| e.evals);
         <span class="kw">let </span>([ins1, ins2], [wit1, wit2]) = env.unwrap();
         <span class="kw">let </span>instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, <span class="kw-2">&amp;</span>error_commitments);

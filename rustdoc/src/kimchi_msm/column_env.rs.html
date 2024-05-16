@@ -238,12 +238,12 @@
             }
             <span class="comment">// Handling the &quot;dynamic selector columns&quot; at the end of the witness columns
             </span><span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; N_DSEL, <span class="string">&quot;Requested dynamic selector with index {:?} but the given witness is meant for {:?} selector columns&quot;</span>, i, N_DSEL);
+                <span class="macro">assert!</span>(i &lt; N_DSEL, <span class="string">&quot;Requested dynamic selector with index {:?} but the given witness is meant for {:?} dynamic selector columns&quot;</span>, i, N_DSEL);
                 <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + i];
                 <span class="prelude-val">Some</span>(res)
             }
             <span class="self">Self</span>::Column::FixedSelector(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; N_FSEL, <span class="string">&quot;Requested fixed selector with index {:?} but the given witness is meant for {:?} selector columns&quot;</span>, i, N_FSEL);
+                <span class="macro">assert!</span>(i &lt; N_FSEL, <span class="string">&quot;Requested fixed selector with index {:?} but the given witness is meant for {:?} fixed selector columns&quot;</span>, i, N_FSEL);
                 <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + N_DSEL + i];
                 <span class="prelude-val">Some</span>(res)
             }
