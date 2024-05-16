@@ -29,3 +29,6 @@ things to do:
     - use subsets of the hashing to create the challenges used by msm and by certain lookups
     - decompose scalars to be passed to msm
 */
+
+#[cfg(test)]
+mod test;
