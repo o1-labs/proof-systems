@@ -604,13 +604,16 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 /// Convert a list of folding compatible expression into the folded form.
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
-) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
+) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>, usize) {
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
-    let Quadraticized {
-        original_constraints: expressions,
-        extra_constraints: extra_expressions,
-        extended_witness_generator,
-    } = quadraticize(simplified_expressions);
+    let (
+        Quadraticized {
+            original_constraints: expressions,
+            extra_constraints: extra_expressions,
+            extended_witness_generator,
+        },
+        added_columns,
+    ) = quadraticize(simplified_expressions);
     let mut terms = vec![];
     let mut alpha = 0;
     for exp in expressions.into_iter() {
@@ -632,7 +635,7 @@ pub fn folding_expression<C: FoldingConfig>(
             Degree::Two => integrated.degree_2.push(t),
         }
     }
-    (integrated, extended_witness_generator)
+    (integrated, extended_witness_generator, added_columns)
 }
 
 // CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
