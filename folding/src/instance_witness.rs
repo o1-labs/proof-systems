@@ -28,7 +28,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// it, either scalar field elements or base field points
     /// Elements will be absorbed in the next order for instances L and R
     /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
-    /// points_r = L.to_absorb().1 | L.extended | L.error
+    /// points_l = L.to_absorb().1 | L.extended | L.error
     /// points_r = R.to_absorb().1 | R.extended | R.error
     /// sponge.absorb_g(t_0);
     /// sponge.absorb_g(t_1);
