@@ -31,18 +31,34 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// Combine two instances 'a' and 'b' into a new instance.
     /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
-    /// this method should provide the instance as the collection of elements that form
-    /// it, either scalar field elements or base field points
-    /// Elements will be absorbed in the next order for instances L and R
+
+    /// This method returns the scalars and commitments that must be absorbed by
+    /// the sponge. It is not supposed to do any absorption itself, and the user
+    /// is responsible for calling the sponge absorb methods with the elements
+    /// returned by this method.
+    /// When called on a RelaxedInstance, elements will be returned in the
+    /// following order, for given instances L and R
+    /// ```text
     /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
-    /// points_l = L.to_absorb().1 | L.extended | L.error
-    /// points_r = R.to_absorb().1 | R.extended | R.error
-    /// sponge.absorb_g(t_0);
-    /// sponge.absorb_g(t_1);
-    /// sponge.absorb_fr(scalar);
-    /// sponge.absorb_g(points_l | points_r);
+    /// points_l = L.to_absorb().1 | L.extended | L.error // where extended is the commitments to the extra columns
+    /// points_r = R.to_absorb().1 | R.extended | R.error // where extended is the commitments to the extra columns
+    /// ```
+    /// A user implementing the IVC circuit should absorb the elements in the
+    /// following order:
+    /// ```text
+    /// sponge.absorb_g(t_0); // first error term
+    /// sponge.absorb_g(t_1); // second error term
+    /// sponge.absorb_fr(scalar); // absorb the scalar elements
+    /// sponge.absorb_g(points_l | points_r); // absorb the commitments
+    /// ```
+    /// This is the order used by the folding library in the method
+    /// `fold_instance_witness_pair`.
+    /// From there, a challenge can be coined using:
+    /// ```text
     /// let challenge_r = sponge.challenge();
+    /// ```
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
+
     /// This method takes an Instance and a commitment to zero and extends the instance,
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
