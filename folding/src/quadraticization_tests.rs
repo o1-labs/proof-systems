@@ -196,3 +196,13 @@ fn quadraticization_test_8() {
     let constraints = constraints(4, 3);
     assert_eq!(test_with_constraints(constraints), 3);
 }
+
+//shared subexpression
+#[test]
+fn quadraticization_test_9() {
+    //here I duplicate the first constraint
+    let mut constraints = constraints(3, 1);
+    constraints.truncate(1);
+    constraints.push(constraints[0].clone());
+    assert_eq!(test_with_constraints(constraints), 1);
+}
