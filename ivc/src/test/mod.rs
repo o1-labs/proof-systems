@@ -24,7 +24,9 @@ mod interpreters;
 
 pub type Fp = ark_bn254::Fr;
 pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
+pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
+
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type OpeningProof = PairingProof<BN254>;

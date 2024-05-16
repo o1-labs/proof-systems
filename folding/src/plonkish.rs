@@ -166,3 +166,14 @@ where
         unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations.")
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct PlonkishTrace {
+    domain_size: usize,
+}
+
+impl ProvableTrace for PlonkishTrace {
+    fn domain_size(&self) -> usize {
+        self.domain_size
+    }
+}

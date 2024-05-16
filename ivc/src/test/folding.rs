@@ -1,44 +1,50 @@
 mod addition {
-    use std::array;
+    use std::ops::Index;
 
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
-    use folding::Alphas;
+    use folding::{
+        expressions::FoldingColumnTrait,
+        plonkish::{PlonkishEnvironment, PlonkishInstance, PlonkishTrace, PlonkishWitness},
+        FoldingConfig,
+    };
+    use poly_commitment::srs::SRS;
     use strum::EnumCount;
-    use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-    use crate::test::{columns::AdditionColumn, Fp, BN254};
+    use crate::test::{columns::AdditionColumn, BN254G1Affine, Fp};
 
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-    pub enum Challenge {
-        Beta,
-        Gamma,
-        JointCombiner,
+    #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
+    pub struct Config;
+
+    impl FoldingColumnTrait for AdditionColumn {
+        fn is_witness(&self) -> bool {
+            true
+        }
     }
 
-    struct Config;
+    type Witness = PlonkishWitness<{ AdditionColumn::COUNT }, Fp>;
 
-    #[derive(Clone, Debug)]
-    struct FoldingInstance {
-        commitments: [BN254; AdditionColumn::COUNT],
-        challenge: [Fp; Challenge::COUNT],
-        alphas: Alphas<Fp>,
-    }
+    impl Index<AdditionColumn> for Witness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
-    type FoldingWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; AdditionColumn::COUNT];
-
-    impl<const N: usize> Instance<BN254> for FoldingInstance<N> {
-        fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-            Instance {
-                commitments: array::from_fn(|i| {
-                    a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
-                }),
-                challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
-                alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+        /// Map a column alias to the corresponding witness column.
+        fn index(&self, index: AdditionColumn) -> &Self::Output {
+            match index {
+                AdditionColumn::A => &self.witness.cols[0],
+                AdditionColumn::B => &self.witness.cols[1],
+                AdditionColumn::C => &self.witness.cols[2],
             }
         }
+    }
 
-        fn alphas(&self) -> &Alphas<G::ScalarField> {
-            &self.alphas
-        }
+    impl FoldingConfig for Config {
+        type Column = AdditionColumn;
+        type Selector = ();
+        type Challenge = ();
+        type Curve = BN254G1Affine;
+        type Srs = SRS<BN254G1Affine>;
+        type Instance = PlonkishInstance<{ AdditionColumn::COUNT }, BN254G1Affine>;
+        type Witness = Witness;
+        type Structure = PlonkishTrace;
+        type Env = PlonkishEnvironment<{ AdditionColumn::COUNT }, Self, PlonkishTrace>;
     }
 }
