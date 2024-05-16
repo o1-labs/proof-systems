@@ -861,6 +861,11 @@ fn test_keccak_folding() {
                     // Check constraints on independent sides and in folded circuit applying selectors
                     let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
                         .fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
+
+                    // Regression tests on the additional number of columns
+                    // added by quadritization
+                    assert!(folded_instance.get_number_of_additional_columns() == 151);
+
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
