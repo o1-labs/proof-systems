@@ -328,6 +328,16 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -379,6 +389,9 @@
 <span class="kw">pub mod </span>expressions;
 <span class="kw">mod </span>instance_witness;
 <span class="kw">pub mod </span>quadraticization;
+<span class="attr">#[cfg(test)]
+#[cfg(feature = <span class="string">&quot;bn254&quot;</span>)]
+</span><span class="kw">mod </span>quadraticization_tests;
 
 <span class="comment">// Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -487,6 +500,7 @@
     <span class="kw">pub </span>zero_vec: Evals&lt;ScalarField&lt;CF&gt;&gt;,
     <span class="kw">pub </span>structure: CF::Structure,
     <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;CF&gt;,
+    quadraticization_columns: usize,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, CF: FoldingConfig&gt; FoldingScheme&lt;<span class="lifetime">&#39;a</span>, CF&gt; {
@@ -496,7 +510,8 @@
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
         structure: <span class="kw-2">&amp;</span>CF::Structure,
     ) -&gt; (<span class="self">Self</span>, FoldingCompatibleExpr&lt;CF&gt;) {
-        <span class="kw">let </span>(expression, extended_witness_generator) = folding_expression(constraints);
+        <span class="kw">let </span>(expression, extended_witness_generator, quadraticization_columns) =
+            folding_expression(constraints);
         <span class="kw">let </span>zero = &lt;ScalarField&lt;CF&gt;&gt;::zero();
         <span class="kw">let </span>evals = std::iter::repeat(zero).take(domain.size()).collect();
         <span class="kw">let </span>zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
@@ -511,8 +526,13 @@
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
+            quadraticization_columns,
         };
         (scheme, final_expression)
+    }
+    <span class="comment">//the number of columns added by quadraticization to lower the degree
+    </span><span class="kw">pub fn </span>quadraticization_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.quadraticization_columns
     }
 
     <span class="attr">#[allow(clippy::type_complexity)]

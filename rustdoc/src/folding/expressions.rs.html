@@ -783,6 +783,9 @@
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1389,13 +1392,16 @@
 <span class="doccomment">/// Convert a list of folding compatible expression into the folded form.
 </span><span class="kw">pub fn </span>folding_expression&lt;C: FoldingConfig&gt;(
     exps: Vec&lt;FoldingCompatibleExpr&lt;C&gt;&gt;,
-) -&gt; (IntegratedFoldingExpr&lt;C&gt;, ExtendedWitnessGenerator&lt;C&gt;) {
+) -&gt; (IntegratedFoldingExpr&lt;C&gt;, ExtendedWitnessGenerator&lt;C&gt;, usize) {
     <span class="kw">let </span>simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
-    <span class="kw">let </span>Quadraticized {
-        original_constraints: expressions,
-        extra_constraints: extra_expressions,
-        extended_witness_generator,
-    } = quadraticize(simplified_expressions);
+    <span class="kw">let </span>(
+        Quadraticized {
+            original_constraints: expressions,
+            extra_constraints: extra_expressions,
+            extended_witness_generator,
+        },
+        added_columns,
+    ) = quadraticize(simplified_expressions);
     <span class="kw">let </span><span class="kw-2">mut </span>terms = <span class="macro">vec!</span>[];
     <span class="kw">let </span><span class="kw-2">mut </span>alpha = <span class="number">0</span>;
     <span class="kw">for </span>exp <span class="kw">in </span>expressions.into_iter() {
@@ -1417,7 +1423,7 @@
             Degree::Two =&gt; integrated.degree_2.push(t),
         }
     }
-    (integrated, extended_witness_generator)
+    (integrated, extended_witness_generator, added_columns)
 }
 
 <span class="comment">// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
