@@ -3,10 +3,10 @@ use crate::{
     error_term::Side,
     examples::{Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, Witness,
+    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, ScalarField, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::UniformRand;
+use ark_ff::{One, UniformRand};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
@@ -166,9 +166,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         instance.alphas.get(i).unwrap()
     }
 
-    // this is exclusively for dynamic selectors aiming to make use of optimization
-    // as clasic static selectors will be handle as normal structure columns in col()
-    // the implementation of this if the same as col(), it is just separated as they
+    // This is exclusively for dynamic selectors aiming to make use of optimization
+    // as classic static selectors will be handled as normal structure columns in col().
+    // The implementation of this if the same as col(), it is just separated as they
     // have different types to resolve
     fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
         let wit = &self.curr_witnesses[side as usize];
@@ -194,6 +194,13 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
 
     let add = FoldingCompatibleExpr::Add(a.clone(), b.clone());
     let add = FoldingCompatibleExpr::Sub(add.into(), c.clone());
+    let add = FoldingCompatibleExpr::Sub(
+        add.into(),
+        Box::new(FoldingCompatibleExpr::Atom(
+            FoldingCompatibleExprInner::Constant(ScalarField::<TestFoldingConfig>::one()),
+        )),
+    );
+    // a + b - c - 1 = 0
 
     let sub = FoldingCompatibleExpr::Sub(a.clone(), b.clone());
     let sub = FoldingCompatibleExpr::Sub(sub.into(), c.clone());
@@ -311,9 +318,10 @@ mod tests {
     fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;
-        let c = [a1 + b1, a2 + b2];
+        let c = [a1 + b1 - 1, a2 + b2 - 1];
         [a, b, c, [1, 1], [0, 0]]
     }
+
     fn sub_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;

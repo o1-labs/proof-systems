@@ -10,7 +10,7 @@ use crate::{
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
-    checker::{Checker, ExtendedProvider},
+    checker::{Checker, ExtendedProvider, Provider},
     expressions::FoldingColumnTrait,
     FoldingConfig,
 };
@@ -55,8 +55,11 @@ impl Index<Column> for KeccakFoldingWitness {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Relation(ix) => &self.witness.cols[ix],
-            Column::DynamicSelector(ix) => &self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix],
-            _ => panic!("Invalid column type"),
+            // Even if `Column::DynamicSelector(ix)` would correspond to `&self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix]`,
+            // the current design of constraints should not include the dynamic selectors. Instead, folding will add them
+            // in the `DecomposableFoldingScheme` as extended selector columns, and the `selector()` function inside the
+            // `FoldingEnv` will return the actual witness column values.
+            _ => panic!("Undesired column type inside expressions"),
         }
     }
 }
@@ -86,3 +89,4 @@ impl FoldingConfig for KeccakConfig {
 // IMPLEMENT CHECKER TRAITS
 
 impl Checker<KeccakConfig> for ExtendedProvider<KeccakConfig> {}
+impl Checker<KeccakConfig> for Provider<KeccakConfig> {}

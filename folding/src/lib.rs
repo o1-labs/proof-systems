@@ -218,7 +218,6 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let env: ExtendedEnv<CF> =
             env.compute_extension(&self.extended_witness_generator, self.srs);
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
-
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
         let error_commitments = error_evals
@@ -226,6 +225,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e))
             .collect::<Vec<_>>();
         let error_commitments: [PolyComm<CF::Curve>; 2] = error_commitments.try_into().unwrap();
+
+        let error: [Vec<_>; 2] = error_evals.map(|e| e.evals);
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
@@ -237,7 +238,6 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         let challenge = fq_sponge.challenge();
 
-        let error = error_evals.map(|e| e.evals);
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
         let instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
