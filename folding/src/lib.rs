@@ -239,7 +239,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         let to_absorb = env.to_absorb();
         fq_sponge.absorb_fr(&to_absorb.0);
-        fq_sponge.absorb_fq(&to_absorb.1);
+        fq_sponge.absorb_g(&to_absorb.1);
 
         let challenge = fq_sponge.challenge();
 

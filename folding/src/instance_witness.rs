@@ -25,8 +25,17 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
     /// this method should provide the instance as the collection of elements that form
-    /// it, both fields are present to support commitments and challenges
-    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+    /// it, either scalar field elements or base field points
+    /// Elements will be absorbed in the next order for instances L and R
+    /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
+    /// points_r = L.to_absorb().1 | L.extended | L.error
+    /// points_r = R.to_absorb().1 | R.extended | R.error
+    /// sponge.absorb_g(t_0);
+    /// sponge.absorb_g(t_1);
+    /// sponge.absorb_fr(scalar);
+    /// sponge.absorb_g(points_l | points_r);
+    /// let challenge_r = sponge.challenge();
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         (vec![], vec![])
     }
     /// This method takes an Instance and a commitment to zero and extends the instance,
@@ -87,14 +96,11 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
         }
     }
     /// wraps the inner absorb, adding its own commitments
-    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.inner.to_absorb();
-        let extended_commitments = self.extended.iter().flat_map(|commit| {
+        let extended_commitments = self.extended.iter().map(|commit| {
             assert_eq!(commit.elems.len(), 1);
-            let point = commit.elems[0];
-            //this may need change if we need to support the infinity point
-            let (x, y) = point.to_coordinates().unwrap();
-            [x, y]
+            commit.elems[0]
         });
         elements.1.extend(extended_commitments);
         elements
@@ -112,13 +118,11 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
-    pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+    pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.instance.to_absorb();
         elements.0.push(self.u);
         assert_eq!(self.error_commitment.elems.len(), 1);
-        //this may need change if we need to support the infinity point
-        let (x, y) = self.error_commitment.elems[0].to_coordinates().unwrap();
-        elements.1.extend([x, y]);
+        elements.1.push(self.error_commitment.elems[0]);
         elements
     }
 
