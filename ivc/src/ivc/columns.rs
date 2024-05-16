@@ -151,6 +151,9 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///
 /// Challenges block.
 ///
+///            relaxed
+///                       strict
+///                    (relaxed in-place)
 ///        r   α_{L,i}    α_{R}^i     α_{O,i}
 ///  1    |--|--------|-----------|-------------------|
 ///       |  |        | α_R = h_R |                   |
@@ -212,6 +215,9 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
+    /// Selector for blocks. Inner usize is ∈ [0,#blocks).
+    BlockSel(usize),
+
     /// 2*17 15-bit limbs (two base field points)
     Block1Input(usize),
     /// 2*4 75-bit limbs
@@ -280,6 +286,9 @@ pub enum IVCColumn {
     Block6UOutput,
 }
 
+/// Number of blocks in the circuit.
+const N_BLOCKS: usize = 6;
+
 impl ColumnIndexer for IVCColumn {
     // This should be
     //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
@@ -288,74 +297,83 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
+            IVCColumn::BlockSel(i) => {
+                assert!(i < 2 * N_BLOCKS);
+                Column::FixedSelector(i)
+            }
+
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
-                Column::Relation(i)
+                Column::Relation(N_BLOCKS + i)
             }
             IVCColumn::Block1InputRepacked75(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + i)
+                Column::Relation(N_BLOCKS + 2 * N_LIMBS_SMALL + i)
             }
             IVCColumn::Block1InputRepacked150(i) => {
                 assert!(i < 2 * N_LIMBS_XLARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
+                Column::Relation(N_BLOCKS + 2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
 
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
 
-            IVCColumn::Block3ConstPhi => Column::Relation(0),
-            IVCColumn::Block3ConstR => Column::Relation(1),
-            IVCColumn::Block3PhiPow => Column::Relation(2),
-            IVCColumn::Block3PhiPowR => Column::Relation(3),
-            IVCColumn::Block3PhiPowR2 => Column::Relation(4),
-            IVCColumn::Block3PhiPowR3 => Column::Relation(5),
+            IVCColumn::Block3ConstPhi => Column::Relation(N_BLOCKS),
+            IVCColumn::Block3ConstR => Column::Relation(N_BLOCKS + 1),
+            IVCColumn::Block3PhiPow => Column::Relation(N_BLOCKS + 2),
+            IVCColumn::Block3PhiPowR => Column::Relation(N_BLOCKS + 3),
+            IVCColumn::Block3PhiPowR2 => Column::Relation(N_BLOCKS + 4),
+            IVCColumn::Block3PhiPowR3 => Column::Relation(N_BLOCKS + 5),
             IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + i)
+                Column::Relation(N_BLOCKS + 6 + i)
             }
             IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + N_LIMBS_SMALL + i)
+                Column::Relation(N_BLOCKS + 6 + N_LIMBS_SMALL + i)
             }
             IVCColumn::Block3PhiPowR2Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 2 * N_LIMBS_SMALL + i)
+                Column::Relation(N_BLOCKS + 6 + 2 * N_LIMBS_SMALL + i)
             }
             IVCColumn::Block3PhiPowR3Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 3 * N_LIMBS_SMALL + i)
+                Column::Relation(N_BLOCKS + 6 + 3 * N_LIMBS_SMALL + i)
             }
 
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(i)
+                Column::Relation(N_BLOCKS + i)
             }
-            IVCColumn::Block4Coeff => Column::Relation(8),
-            IVCColumn::Block4Input2AccessTime => Column::Relation(9),
+            IVCColumn::Block4Coeff => Column::Relation(N_BLOCKS + 8),
+            IVCColumn::Block4Input2AccessTime => Column::Relation(N_BLOCKS + 9),
             IVCColumn::Block4Input2(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(10 + i)
+                Column::Relation(N_BLOCKS + 10 + i)
             }
-            IVCColumn::Block4ECAddInter(fec_inter) => fec_inter.to_column().add_rel_offset(18),
+            IVCColumn::Block4ECAddInter(fec_inter) => {
+                fec_inter.to_column().add_rel_offset(N_BLOCKS + 18)
+            }
             IVCColumn::Block4OutputRaw(fec_output) => fec_output
                 .to_column()
-                .add_rel_offset(18 + FECColumnInter::N_COL),
+                .add_rel_offset(N_BLOCKS + 18 + FECColumnInter::N_COL),
             IVCColumn::Block4OutputAccessTime => {
-                Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL)
+                Column::Relation(N_BLOCKS + 18 + FECColumnInter::N_COL + FECColumnOutput::N_COL)
             }
             IVCColumn::Block4OutputRepacked(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
+                Column::Relation(
+                    N_BLOCKS + 18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i,
+                )
             }
-            IVCColumn::Block5ConstHr => Column::Relation(0),
-            IVCColumn::Block5ConstR => Column::Relation(1),
-            IVCColumn::Block5ChalLeft => Column::Relation(2),
-            IVCColumn::Block5ChalRight => Column::Relation(3),
-            IVCColumn::Block5ChalOutput => Column::Relation(4),
+            IVCColumn::Block5ConstHr => Column::Relation(N_BLOCKS),
+            IVCColumn::Block5ConstR => Column::Relation(N_BLOCKS + 1),
+            IVCColumn::Block5ChalLeft => Column::Relation(N_BLOCKS + 2),
+            IVCColumn::Block5ChalRight => Column::Relation(N_BLOCKS + 3),
+            IVCColumn::Block5ChalOutput => Column::Relation(N_BLOCKS + 4),
 
-            IVCColumn::Block6ConstR => Column::Relation(0),
-            IVCColumn::Block6ULeft => Column::Relation(1),
-            IVCColumn::Block6UOutput => Column::Relation(2),
+            IVCColumn::Block6ConstR => Column::Relation(N_BLOCKS),
+            IVCColumn::Block6ULeft => Column::Relation(N_BLOCKS + 1),
+            IVCColumn::Block6UOutput => Column::Relation(N_BLOCKS + 2),
         }
     }
 }
