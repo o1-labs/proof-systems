@@ -358,7 +358,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FoldingScheme;
+    use crate::{FoldingOutput, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
     use kimchi::curve::KimchiCurve;
@@ -439,7 +439,11 @@ mod tests {
         let right = (right_instance, right_witness);
 
         let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
-        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            ..
+        } = folded;
         // FIXME: check the number of elements to be absorbed
         let _to_absorb = folded_instance.to_absorb();
         {

@@ -116,21 +116,6 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
             extended: vec![],
         }
     }
-
-    /// Return the elements to be absorbed by the sponge
-    ///
-    /// The commitments to the additional columns created by quadriticization
-    /// are appended to the existing commitments of the initial instance
-    /// to be absorbed. The scalars are unchanged.
-    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        let mut elements = self.inner.to_absorb();
-        let extended_commitments = self.extended.iter().map(|commit| {
-            assert_eq!(commit.elems.len(), 1);
-            commit.elems[0]
-        });
-        elements.1.extend(extended_commitments);
-        elements
-    }
 }
 
 /// A relaxed instance is an instance that has been relaxed by the folding scheme.
@@ -155,7 +140,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     ///
     /// The scalar elements of the are appended with the scalar `u` and the
     /// commitments are appended by the commitment to the error term.
-    pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+    pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.instance.to_absorb();
         elements.0.push(self.u);
         assert_eq!(self.error_commitment.elems.len(), 1);
@@ -297,8 +282,19 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
         Self { inner, extended }
     }
 
+    /// Return the elements to be absorbed by the sponge
+    ///
+    /// The commitments to the additional columns created by quadriticization
+    /// are appended to the existing commitments of the initial instance
+    /// to be absorbed. The scalars are unchanged.
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        panic!("Panic")
+        let mut elements = self.inner.to_absorb();
+        let extended_commitments = self.extended.iter().map(|commit| {
+            assert_eq!(commit.elems.len(), 1);
+            commit.elems[0]
+        });
+        elements.1.extend(extended_commitments);
+        elements
     }
 
     fn alphas(&self) -> &Alphas<G::ScalarField> {
