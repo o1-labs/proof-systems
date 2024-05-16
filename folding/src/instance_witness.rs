@@ -117,6 +117,11 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
         &self.error_commitment
     }
+
+    /// Return the number of additional columns added by quadraticization
+    pub fn get_number_of_additional_columns(&self) -> usize {
+        self.instance.extended.len()
+    }
 }
 
 // -- Relaxed witnesses
