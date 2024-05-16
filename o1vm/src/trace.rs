@@ -209,8 +209,6 @@ where
             .try_into()
             .unwrap();
 
-        // FIXME: absorb commitments
-
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
         let joint_combiner = fq_sponge.challenge();
