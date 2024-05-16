@@ -64,6 +64,16 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
         }
     }
 
+    fn to_absorb(&self) -> (Vec<<G>::ScalarField>, Vec<G>) {
+        // FIXME: check!!!!
+        let mut scalars = Vec::new();
+        let mut points = Vec::new();
+        points.extend(self.commitments);
+        scalars.extend(self.challenges);
+        scalars.extend(self.alphas.clone().powers());
+        (scalars, points)
+    }
+
     fn alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }

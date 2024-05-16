@@ -43,6 +43,11 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        // FIXME?
+        (vec![], vec![])
+    }
+
     fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
@@ -435,6 +440,8 @@ mod tests {
 
         let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        // FIXME: check the number of elements to be absorbed
+        let _to_absorb = folded_instance.to_absorb();
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);
