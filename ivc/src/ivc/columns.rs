@@ -11,7 +11,7 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 
 pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>;
 
-/// The IVC circuit is tiled vertically. We assume we have as much
+/// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don't, we wrap around and continue.
 ///
 /// The biggest blocks are hashes and ECAdds, so other blocks may be wider.
@@ -64,7 +64,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// Scalars block.
 ///
 /// Most of the r^2 and r^3 cells are /unused/, and this design can be
-/// much more optimal if r^2/r^3 elements come in a separate block.
+/// much more optimal if r^2|r^3 elements come in a separate block.
 /// But the overhead is not big and it's a very easy layout, so
 /// keeping it for now.
 ///

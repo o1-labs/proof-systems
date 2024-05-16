@@ -515,8 +515,8 @@ where
     )
 }
 
-/// Contains vectors of of scalars in small limb representations.
-/// Generic consts don't allow +1 so vectors not arrays. `N` is
+/// Contains vectors of scalars in small limb representations.
+/// Generic consts don't allow +1, so vectors not arrays. `N` is
 /// `N_COL_TOTAL`.
 pub struct ScalarLimbs<F> {
     /// ϕ^i,   i ∈ [N+1]
