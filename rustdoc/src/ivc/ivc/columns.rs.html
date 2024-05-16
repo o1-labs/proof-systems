@@ -430,7 +430,7 @@
 
 <span class="kw">pub type </span>IVCPoseidonColumn = PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;;
 
-<span class="doccomment">/// The IVC circuit is tiled vertically. We assume we have as much
+<span class="doccomment">/// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don&#39;t, we wrap around and continue.
 ///
 /// The biggest blocks are hashes and ECAdds, so other blocks may be wider.
@@ -483,7 +483,7 @@
 /// Scalars block.
 ///
 /// Most of the r^2 and r^3 cells are /unused/, and this design can be
-/// much more optimal if r^2/r^3 elements come in a separate block.
+/// much more optimal if r^2|r^3 elements come in a separate block.
 /// But the overhead is not big and it&#39;s a very easy layout, so
 /// keeping it for now.
 ///
