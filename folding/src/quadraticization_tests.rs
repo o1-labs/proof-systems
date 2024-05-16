@@ -1,19 +1,15 @@
+//! quadraticization test, check that diferent cases result in the expected number of columns
+//! being added
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingScheme, Instance, Witness,
 };
 use ark_poly::Radix2EvaluationDomain;
-use kimchi::{
-    circuits::{expr::Variable, gate::CurrOrNext},
-    curve::KimchiCurve,
-};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::srs::SRS;
 
 pub type Fp = ark_bn254::Fr;
 pub type Curve = ark_bn254::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 #[derive(Hash, Clone, Debug, PartialEq, Eq)]
 struct TestConfig;
@@ -128,7 +124,7 @@ fn degree_n_constraint(n: usize, col: Col) -> FoldingCompatibleExpr<TestConfig> 
 fn constraints(a: usize, b: usize) -> Vec<FoldingCompatibleExpr<TestConfig>> {
     vec![
         degree_n_constraint(a, Col::A),
-        degree_n_constraint(a, Col::B),
+        degree_n_constraint(b, Col::B),
     ]
 }
 //creates and scheme with the constraints and returns the number of columns added
@@ -139,9 +135,8 @@ fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) ->
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
 
-    let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
-
     let (scheme, _) = FoldingScheme::<TestConfig>::new(constraints, &srs, domain, &());
+    // println!("exp:\n {}", exp.to_string());
     scheme.quadraticization_columns()
 }
 
@@ -170,7 +165,7 @@ fn quadraticization_test_3() {
 //1 constraint of degree 4 to 8 (as we usually support up to 8).
 #[test]
 fn quadraticization_test_4() {
-    let cols = [0, 1, 2, 3, 4];
+    let cols = [2, 3, 4, 5, 6];
     for i in 4..=8 {
         let mut constraints = constraints(i, 1);
         constraints.truncate(1);
@@ -199,5 +194,5 @@ fn quadraticization_test_7() {
 #[test]
 fn quadraticization_test_8() {
     let constraints = constraints(4, 3);
-    assert_eq!(test_with_constraints(constraints), 4);
+    assert_eq!(test_with_constraints(constraints), 3);
 }

@@ -49,6 +49,8 @@ mod eval_leaf;
 pub mod expressions;
 mod instance_witness;
 pub mod quadraticization;
+#[cfg(test)]
+#[cfg(feature = "bn254")]
 mod quadraticization_tests;
 
 // Modules strictly related to tests
