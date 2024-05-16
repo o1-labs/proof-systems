@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use folding::expressions::FoldingColumnTrait;
 use kimchi::circuits::expr::{CacheId, FormattedOutput};
 
 /// Describe a generic indexed variable X_{i}.
@@ -76,12 +75,4 @@ pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
 
     /// Flatten the column "alias" into the integer-like column.
     fn to_column(self) -> Column;
-}
-
-// Implementation to be compatible with folding if we use generic column constraints
-impl FoldingColumnTrait for Column {
-    fn is_witness(&self) -> bool {
-        // TODO: check if we want to treat lookups differently
-        true
-    }
 }

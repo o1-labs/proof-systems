@@ -1,0 +1,168 @@
+//! Implement folding environments and folding configurations for Plonkish
+//! proving systems.
+
+use std::{array, ops::Index};
+
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{FftField, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::circuits::gate::CurrOrNext;
+use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
+use poly_commitment::commitment::CommitmentCurve;
+
+use crate::{
+    expressions::FoldingColumnTrait, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
+};
+
+pub(crate) type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+
+// Implementation to be compatible with folding if we use generic column constraints
+impl FoldingColumnTrait for Column {
+    fn is_witness(&self) -> bool {
+        match self {
+            Column::Relation(_) => true,
+            Column::FixedSelector(_) => false,
+            Column::LookupPartialSum(_)
+            | Column::LookupMultiplicity(_)
+            | Column::LookupFixedTable(_)
+            | Column::LookupAggregation => {
+                todo!("Lookup columns have not been tested yet for folding")
+            }
+            Column::DynamicSelector(_) => {
+                unimplemented!("Dynamic selectors should not be used in Plonkish relations. It is meant to be used by the folding library.")
+            }
+        }
+    }
+}
+
+/// Represents an provable trace.
+/// A trace is provable if it can be used to prove the correctness of the
+/// computation it embeds.
+/// For now, the only requirement is to be able to return the length of
+/// the computation, which is commonly named the domain size.
+pub trait ProvableTrace {
+    fn domain_size(&self) -> usize;
+}
+
+#[derive(Clone, Debug)]
+pub struct PlonkishInstance<const N_COL: usize, C: CommitmentCurve> {
+    commitments: [C; N_COL],
+    alphas: Alphas<<C as AffineCurve>::ScalarField>,
+}
+
+impl<const N: usize, G: CommitmentCurve> Instance<G> for PlonkishInstance<N, G> {
+    fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
+        PlonkishInstance {
+            commitments: array::from_fn(|i| {
+                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+            }),
+            alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+        }
+    }
+
+    fn alphas(&self) -> &Alphas<G::ScalarField> {
+        &self.alphas
+    }
+}
+
+/// Includes the data witness columns and also the dynamic selector columns
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PlonkishWitness<const N: usize, F: FftField> {
+    pub witness: GenericWitness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
+}
+
+impl<const N: usize, G: CommitmentCurve> Witness<G> for PlonkishWitness<N, G::ScalarField> {
+    fn combine(mut a: Self, b: Self, challenge: G::ScalarField) -> Self {
+        for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
+            for (a, b) in a.evals.iter_mut().zip(b.evals) {
+                *a += challenge * b;
+            }
+        }
+        a
+    }
+
+    fn rows(&self) -> usize {
+        self.witness.cols[0].evals.len()
+    }
+}
+
+pub struct PlonkishEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+    /// Structure of the folded circuit
+    pub structure: Structure,
+    /// Commitments to the witness columns, for both sides
+    pub instances: [PlonkishInstance<N, C::Curve>; 2],
+    /// Corresponds to the omega evaluations, for both sides
+    pub curr_witnesses: [PlonkishWitness<N, ScalarField<C>>; 2],
+    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// This is curr_witness but left shifted by 1
+    pub next_witnesses: [PlonkishWitness<N, ScalarField<C>>; 2],
+}
+
+impl<const N: usize, C: FoldingConfig, Structure: ProvableTrace + Clone>
+    FoldingEnv<
+        ScalarField<C>,
+        PlonkishInstance<N, C::Curve>,
+        PlonkishWitness<N, ScalarField<C>>,
+        C::Column,
+        (),
+        (),
+    > for PlonkishEnvironment<N, C, Structure>
+where
+    PlonkishWitness<N, ScalarField<C>>: Index<
+        C::Column,
+        Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
+    >,
+{
+    type Structure = Structure;
+
+    fn new(
+        structure: &Self::Structure,
+        instances: [&PlonkishInstance<N, C::Curve>; 2],
+        witnesses: [&PlonkishWitness<N, ScalarField<C>>; 2],
+    ) -> Self {
+        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
+        let mut next_witnesses = curr_witnesses.clone();
+        for side in next_witnesses.iter_mut() {
+            for col in side.witness.cols.iter_mut() {
+                col.evals.rotate_left(1);
+            }
+        }
+        PlonkishEnvironment {
+            // FIXME: This is a clone, but it should be a reference
+            structure: structure.clone(),
+            instances: [instances[0].clone(), instances[1].clone()],
+            curr_witnesses,
+            next_witnesses,
+        }
+    }
+
+    fn domain_size(&self) -> usize {
+        self.structure.domain_size()
+    }
+
+    fn zero_vec(&self) -> Vec<ScalarField<C>> {
+        vec![ScalarField::<C>::zero(); self.domain_size()]
+    }
+
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
+        let wit = match curr_or_next {
+            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
+            CurrOrNext::Next => &self.next_witnesses[side as usize],
+        };
+        // The following is possible because Index is implemented for our circuit witnesses
+        &wit[col].evals
+    }
+
+    fn challenge(&self, _challenge: (), _side: Side) -> ScalarField<C> {
+        unimplemented!("There is no challenge")
+    }
+
+    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
+        let instance = &self.instances[side as usize];
+        instance.alphas.get(i).unwrap()
+    }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
+        unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations.")
+    }
+}

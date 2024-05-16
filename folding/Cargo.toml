@@ -14,6 +14,7 @@ o1-utils.workspace = true
 itertools.workspace = true
 log.workspace = true
 kimchi.workspace = true
+kimchi-msm.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true
 mina-curves.workspace = true
