@@ -19,6 +19,7 @@ use rand::{CryptoRng, RngCore};
 use self::columns::AdditionColumn;
 
 mod columns;
+mod folding;
 mod interpreters;
 
 pub type Fp = ark_bn254::Fr;
@@ -137,4 +138,6 @@ pub fn test_simple_add() {
 
         assert!(verifies);
     }
+
+    // Folding + IVC
 }

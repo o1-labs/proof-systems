@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ark-poly.workspace = true
 ark-bn254.workspace = true
 ark-ec.workspace = true
 ark-ff.workspace = true
+folding.workspace = true
 kimchi.workspace = true
 kimchi-msm.workspace = true
 mina-poseidon.workspace = true
