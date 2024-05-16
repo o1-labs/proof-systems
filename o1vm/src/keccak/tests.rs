@@ -747,6 +747,11 @@ fn test_keccak_folding() {
                 // Fold both sides and check the constraints ignoring the selector columns
                 let (folded_instance, folded_witness, [_t0, _t1]) =
                     scheme.fold_instance_witness_pair(left.clone(), right.clone(), &mut fq_sponge);
+
+                // We should always have 0 as the degree of the constraints,
+                // without selectors, are never higher than 2
+                assert_eq!(folded_instance.get_number_of_additional_columns(), 0);
+
                 let checker = ExtendedProvider::new(folded_instance, folded_witness);
                 checker.check(&final_constraint);
             }
