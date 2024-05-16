@@ -314,12 +314,18 @@ impl<
 
     /// Sets a fixed selector, the vector of length equal to the
     /// domain size (circuit height).
-    pub fn set_fixed_selector(&mut self, sel: CIx, sel_values: Vec<F>) {
+    pub fn set_fixed_selector_cix(&mut self, sel: CIx, sel_values: Vec<F>) {
         if let Column::FixedSelector(i) = sel.to_column() {
             self.fixed_selectors[i] = sel_values;
         } else {
             panic!("Tried to assign values to non-fixed-selector typed column {sel:?}");
         }
+    }
+
+    /// Sets all fixed selectors directly. Each item in `selectors` is
+    /// a vector of `domain_size` length.
+    pub fn set_fixed_selectors(&mut self, selectors: Vec<Vec<F>>) {
+        self.fixed_selectors = selectors
     }
 
     /// Generates proof inputs, repacking/collecting internal witness builder state.

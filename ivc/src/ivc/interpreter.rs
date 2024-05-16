@@ -915,7 +915,7 @@ where
 }
 
 /// Builds selectors for the IVC circuit.
-pub fn build_selectors<F, const N_COL_TOTAL: usize, const CHAL_LEN: usize>(
+pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
 ) -> [Vec<F>; N_BLOCKS]
 where
@@ -939,7 +939,7 @@ where
         selectors[3][cur_row] = F::one();
         cur_row += 1;
     }
-    for _i in 0..CHAL_LEN {
+    for _i in 0..N_CHALS {
         selectors[4][cur_row] = F::one();
         cur_row += 1;
     }

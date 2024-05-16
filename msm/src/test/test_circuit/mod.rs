@@ -45,7 +45,7 @@ mod tests {
             fixed_sel.push(Fp::from(i as u64));
         }
 
-        witness_env.set_fixed_selector(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
