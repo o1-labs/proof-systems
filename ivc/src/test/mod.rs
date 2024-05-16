@@ -56,40 +56,85 @@ pub fn test_simple_add() {
         constraint_env.get_relation_constraints()
     };
 
-    let mut witness_env: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+    let mut witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
+    let mut witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+        WitnessBuilderEnv::create();
+
+    let empty_lookups = BTreeMap::new();
+
+    // Witness one
     for _i in 0..domain_size {
         let a: Fp = Fp::rand(&mut rng);
         let b: Fp = Fp::rand(&mut rng);
-        witness_env.write_column(AdditionColumn::A, &a);
-        witness_env.write_column(AdditionColumn::B, &b);
-        interpreters::interpreter_simple_add(&mut witness_env);
-        witness_env.next_row();
+        witness_one.write_column(AdditionColumn::A, &a);
+        witness_one.write_column(AdditionColumn::B, &b);
+        interpreters::interpreter_simple_add(&mut witness_one);
+        witness_two.next_row();
     }
 
-    let empty_lookups = BTreeMap::new();
-    let proof_inputs = witness_env.get_proof_inputs(domain, empty_lookups);
-    // generate the proof
-    let proof =
-        prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, 3, 3, 0, 0, DummyLookupTable>(
-            domain,
-            &srs,
-            &constraints,
-            proof_inputs,
-            &mut rng,
-        )
-        .unwrap();
+    // Witness two
+    for _i in 0..domain_size {
+        let a: Fp = Fp::rand(&mut rng);
+        let b: Fp = Fp::rand(&mut rng);
+        witness_two.write_column(AdditionColumn::A, &a);
+        witness_two.write_column(AdditionColumn::B, &b);
+        interpreters::interpreter_simple_add(&mut witness_two);
+        witness_two.next_row();
+    }
 
-    // verify the proof
-    let verifies =
-        verify::<_, OpeningProof, BaseSponge, ScalarSponge, 3, 3, 0, 0, 0, DummyLookupTable>(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(domain_size),
-        );
+    // Verify individual witnesses before folding
+    {
+        let proof_inputs = witness_one.get_proof_inputs(domain, empty_lookups.clone());
+        // generate the proof
+        let proof =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, 3, 3, 0, 0, DummyLookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                proof_inputs,
+                &mut rng,
+            )
+            .unwrap();
 
-    assert!(verifies);
+        // verify the proof
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, 3, 3, 0, 0, 0, DummyLookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                &proof,
+                Witness::zero_vec(domain_size),
+            );
+
+        assert!(verifies);
+    }
+
+    // Verify individual witnesses before folding
+    {
+        let proof_inputs = witness_two.get_proof_inputs(domain, empty_lookups.clone());
+        // generate the proof
+        let proof =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, 3, 3, 0, 0, DummyLookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                proof_inputs,
+                &mut rng,
+            )
+            .unwrap();
+
+        // verify the proof
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, 3, 3, 0, 0, 0, DummyLookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                &proof,
+                Witness::zero_vec(domain_size),
+            );
+
+        assert!(verifies);
+    }
 }
