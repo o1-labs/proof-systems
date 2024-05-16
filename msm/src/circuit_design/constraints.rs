@@ -17,17 +17,20 @@ pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
-    pub constraints: Vec<(usize, Expr<ConstantExpr<F>, Column>)>,
-    pub constrain_index: usize,
+    pub constraints: Vec<Expr<ConstantExpr<F>, Column>>,
     pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
+    pub assert_mapper: E<F>,
 }
 
 impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn create() -> Self {
+        let const_one = Expr::Atom(ExprInner::Constant(ConstantExpr::from(
+            ConstantTerm::Literal(F::one()),
+        )));
         Self {
             constraints: vec![],
-            constrain_index: 0,
             lookups: BTreeMap::new(),
+            assert_mapper: const_one,
         }
     }
 }
@@ -40,9 +43,11 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     fn assert_zero(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression
-        let index = self.constrain_index;
-        self.constraints.push((index, cst));
-        self.constrain_index += 1;
+        self.constraints.push(self.assert_mapper.clone() * cst);
+    }
+
+    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+        self.assert_mapper = mapper;
     }
 
     fn read_column(&self, position: CIx) -> Self::Variable {
@@ -91,10 +96,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
 impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     /// Get constraints related to the application logic itself.
     pub fn get_relation_constraints(&self) -> Vec<E<F>> {
-        self.constraints
-            .iter()
-            .map(|(_, cst)| cst.clone())
-            .collect()
+        self.constraints.clone()
     }
 
     /// Get constraints related to the lookup argument.

@@ -3,7 +3,8 @@
 use crate::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE,
+            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
@@ -911,6 +912,43 @@ where
     F: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn>,
 {
+}
+
+/// This function generates constraitns for the whole IVC circuit.
+pub fn constrain_selectors<F, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Env: ColAccessCap<F, IVCColumn>,
+{
+    for i in 0..N_BLOCKS {
+        // Each selector must have value either 0 or 1.
+        let sel = env.read_column(IVCColumn::BlockSel(i));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::from(1u64))));
+    }
+}
+
+/// This function generates constraitns for the whole IVC circuit.
+pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    constrain_selectors(env);
+
+    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(0)));
+    constrain_inputs(env);
+    // TODO hashes
+    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(2)));
+    constrain_ecadds(env);
+    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(3)));
+    constrain_scalars(env);
+    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(4)));
+    constrain_challenges(env);
+    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(5)));
+    constrain_u(env);
+
+    env.set_assert_mapper(Env::constant(F::one()));
 }
 
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)

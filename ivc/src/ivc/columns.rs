@@ -6,6 +6,9 @@ use kimchi_msm::{
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
 
+/// Number of blocks in the circuit.
+pub const N_BLOCKS: usize = 6;
+
 pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
 pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 
@@ -285,9 +288,6 @@ pub enum IVCColumn {
     /// u_O = u_L + r
     Block6UOutput,
 }
-
-/// Number of blocks in the circuit.
-const N_BLOCKS: usize = 6;
 
 impl ColumnIndexer for IVCColumn {
     // This should be

@@ -183,6 +183,10 @@ impl<
         self.env.assert_zero(cst);
     }
 
+    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+        self.env.set_assert_mapper(mapper);
+    }
+
     fn constant(value: F) -> Self::Variable {
         Env1::constant(value)
     }
@@ -235,6 +239,10 @@ impl<
         self.0.assert_zero(cst);
     }
 
+    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+        self.0.set_assert_mapper(mapper);
+    }
+
     fn constant(value: F) -> Self::Variable {
         Env1::constant(value)
     }
@@ -279,6 +287,10 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> Col
 
     fn assert_zero(&mut self, cst: Self::Variable) {
         self.0.env.assert_zero(cst);
+    }
+
+    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+        self.0.env.set_assert_mapper(mapper);
     }
 
     fn constant(value: F) -> Self::Variable {

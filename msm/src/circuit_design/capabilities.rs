@@ -22,6 +22,11 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     /// Asserts that the value is zero.
     fn assert_zero(&mut self, cst: Self::Variable);
 
+    // TODO we need mapper: Box<impl Fn(Self::Variable) -> Self::Variable>
+    /// Sets an assert predicate `f(X)` such that when assert_zero is
+    /// called on x, it will actually perform `assert_zero(f(x))`.
+    fn set_assert_mapper(&mut self, mapper: Self::Variable);
+
     /// Reads value from a column position.
     fn read_column(&self, col: CIx) -> Self::Variable;
 
