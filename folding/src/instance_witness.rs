@@ -137,8 +137,8 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
 
     /// Returns the elements to be absorbed by the sponge
     ///
-    /// The scalar elements of the are appended with the scalar `u` and the commitments
-    /// are appended by the commitment to the error term.
+    /// The scalar elements of the are appended with the scalar `u` and the
+    /// commitments are appended by the commitment to the error term.
     pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.instance.to_absorb();
         elements.0.push(self.u);
@@ -246,8 +246,10 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
         self.extended.insert(i, evals);
     }
 
-    /// Allows to know if the extended witness comlumns are already computed, to
-    /// avoid overriding them
+    /// Return true if the no extra columns are added by quadraticization
+    ///
+    /// Can be used to know if the extended witness columns are already
+    /// computed, to avoid overriding them
     pub fn is_extended(&self) -> bool {
         !self.extended.is_empty()
     }
