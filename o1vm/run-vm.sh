@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cargo run --bin kimchi-optimism \
+cargo run --bin o1vm \
     --all-features \
     --release \
-    -p kimchi-optimism -- \
+    -p o1vm -- \
       --pprof.cpu \
       --info-at "${INFO_AT:-%10000000}" \
       --snapshot-state-at "${SNAPSHOT_STATE_AT:-%10000000}" \

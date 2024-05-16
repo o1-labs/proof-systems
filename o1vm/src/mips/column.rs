@@ -24,18 +24,18 @@ pub(crate) const MIPS_HAS_N_BYTES_OFFSET: usize = 89;
 pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 
 /// The number of columns used for relation witness in the MIPS circuit
-pub const MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
+pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
-pub const MIPS_SEL_COLS: usize =
+pub const N_MIPS_SEL_COLS: usize =
     RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
 
 /// All the witness columns used in MIPS
-pub const MIPS_COLUMNS: usize = MIPS_REL_COLS + MIPS_SEL_COLS;
+pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
@@ -72,7 +72,7 @@ impl Indexer for Instruction {
 
 /// Represents one line of the execution trace of the virtual machine
 /// It does contain
-/// [MIPS_SEL_COLS] columns for the instruction selectors
+/// [N_MIPS_SEL_COLS] columns for the instruction selectors
 /// + [SCRATCH_SIZE] columns
 /// + 2 additional columns to keep track of the instruction index and one for the system error code.
 /// The columns are, in order,
@@ -94,7 +94,7 @@ impl Indexer for Instruction {
 /// - how many bytes are left to be read for the current preimage
 /// - the (at most) 4 bytes of the preimage key that are currently being processed
 /// - 4 helpers to check if at least n bytes were read in the current row
-pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
+pub type MIPSWitness<T> = Witness<N_MIPS_COLS, T>;
 
 // IMPLEMENTATIONS FOR COLUMN ALIAS
 
@@ -114,7 +114,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = MIPS_COLUMNS;
+    const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::Relation(self.ix())
@@ -139,7 +139,7 @@ impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for Instruction {
-    const COL_N: usize = MIPS_COLUMNS;
+    const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::DynamicSelector(self.ix())

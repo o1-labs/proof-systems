@@ -26,15 +26,24 @@ mod tests {
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
 
+    type FFAWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        FFAColumn,
+        { <FFAColumn as ColumnIndexer>::N_COL },
+        { <FFAColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable,
+    >;
+
     /// Builds the FF addition circuit with random values. The witness
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     fn build_ffa_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> WitnessBuilderEnv<Fp, { <FFAColumn as ColumnIndexer>::COL_N }, LookupTable> {
-        let mut witness_env =
-            WitnessBuilderEnv::<Fp, { <FFAColumn as ColumnIndexer>::COL_N }, LookupTable>::create();
+    ) -> FFAWitnessBuilderEnv {
+        let mut witness_env = FFAWitnessBuilderEnv::create();
 
         for _row_i in 0..domain_size {
             let a: Ff1 = <Ff1 as UniformRand>::rand(rng);
@@ -88,6 +97,7 @@ mod tests {
             FFA_N_COLUMNS,
             FFA_N_COLUMNS,
             0,
+            0,
             _,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -100,6 +110,7 @@ mod tests {
             ScalarSponge,
             FFA_N_COLUMNS,
             FFA_N_COLUMNS,
+            0,
             0,
             0,
             _,

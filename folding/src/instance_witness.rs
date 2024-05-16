@@ -1,4 +1,5 @@
-//! This module defines a list of traits and structures that are used by the folding scheme
+//! This module defines a list of traits and structures that are used by the
+//! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
 //! [Witness] that defines the the NP relation.
 //!
@@ -6,13 +7,19 @@
 //! - [Instance]: represents the instance (public input)
 //! - [Witness]: represents the witness (private input)
 //! - [ExtendedInstance]: represents the instance extended with extra columns
-//! - [ExtendedWitness]: represents the witness extended with extra columns
+//! that are added by quadraticization
+//! - [ExtendedWitness]: represents the witness extended with extra columns that
+//! are added by quadraticization
 //! - [RelaxedInstance]: represents a relaxed instance
 //! - [RelaxedWitness]: represents a relaxed witness
 //! - [RelaxableInstance]: a trait that allows to relax an instance. It is
 //! implemented for [Instance] and [RelaxedInstance] so methods that require a
 //! relaxed instance can also be called on a normal instance
 //! - [RelaxableWitness]: same than [RelaxableInstance] but for witnesses.
+
+// FIXME: for optimisation, as values are not necessarily Fp elements and are
+// relatively small, we could get rid of the scalar field objects, and only use
+// bigint where we only apply the modulus when needed.
 
 use crate::{Alphas, Evals};
 use ark_ff::Field;
@@ -140,6 +147,11 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
         &self.error_commitment
     }
+
+    /// Return the number of additional columns added by quadraticization
+    pub fn get_number_of_additional_columns(&self) -> usize {
+        self.instance.extended.len()
+    }
 }
 
 // -- Relaxed witnesses
@@ -169,9 +181,12 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
 }
 
 // -- Extended witness
+/// This structure represents a witness extended with extra columns that are
+/// added by quadraticization
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub inner: W,
-    //extra columns added by quadraticization to lower the degree of expressions to 2
+    /// Extra columns added by quadraticization to lower the degree of expressions
+    /// to 2
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
 
@@ -212,10 +227,13 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     pub(crate) fn inner(&self) -> &W {
         &self.inner
     }
+
     pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
         self.extended.insert(i, evals);
     }
-    ///allows to know if the extended witness comlumns are already computed, to avoid overriding them
+
+    /// Allows to know if the extended witness comlumns are already computed, to
+    /// avoid overriding them
     pub fn is_extended(&self) -> bool {
         !self.extended.is_empty()
     }
@@ -224,7 +242,7 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 // -- Extended instance
 pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     pub inner: I,
-    //commitments to extra columns
+    /// Commitments to the extra columns added by quadraticization
     pub extended: Vec<PolyComm<G>>,
 }
 
@@ -391,6 +409,8 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
             .iter_mut()
             .zip(e0.into_iter().zip(e1.into_iter()))
         {
+            // FIXME: for optimisation, use inplace operators. Allocating can be
+            // costly
             // should be the same as e0 * c + e1 * c^2
             *a -= ((e1 * challenge) + e0) * challenge;
         }

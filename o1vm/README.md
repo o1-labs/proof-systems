@@ -1,3 +1,15 @@
+## o1VM: a zero-knowledge virtual machine
+
+This crate contains an implementation of different components used to build a
+zero-knowledge virtual machine.
+For now, the implementation is specialised for the ISA MIPS used by
+[Cannon](https://github.com/ethereum-optimism/cannon).
+In the future, the codebase will be generalised to handle more ISA and more
+programs.
+
+
+### Run the demo, for Optimism.
+
 To run the demo:
 * `git submodule init && git submodule update`
 * create an executable file `rpcs.sh` that looks like
@@ -19,7 +31,7 @@ The initial state will be output to a file with format `YYYY-MM-DD-HH-MM-SS-op-p
 If you want to re-run against an existing state, pass the environment variable `FILENAME=YYYY-MM-DD-HH-MM-SS-op-program-data-log.sh` to the `run-code.sh` script.
 
 
-# Testing preimage read
+### Testing preimage read
 
 Run
 ```

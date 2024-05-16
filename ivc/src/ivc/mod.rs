@@ -13,7 +13,7 @@ mod tests {
         },
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
     use rand::{CryptoRng, RngCore};
 
@@ -24,8 +24,15 @@ mod tests {
     #[derive(Clone)]
     pub struct PoseidonBN254Parameters;
 
-    type IVCWitnessBuilderEnv =
-        WitnessBuilderEnv<Fp, { <IVCColumn as ColumnIndexer>::COL_N }, IVCLookupTable<Ff1>>;
+    type IVCWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        IVCColumn,
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        { <IVCColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        IVCLookupTable<Ff1>,
+    >;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters
@@ -66,11 +73,16 @@ mod tests {
             )
         });
 
+        // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
             &mut witness_env,
             comms_left,
             comms_right,
             comms_output,
+            [(Ff1::zero(), Ff1::zero()); 3],
+            [(Ff1::zero(), Ff1::zero()); 2],
+            Fp::zero(),
+            vec![Fp::zero(); 200],
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );
@@ -79,10 +91,8 @@ mod tests {
     }
 
     #[test]
-    /// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    pub fn test_ivc_addition_circuit() {
+    /// Tests if building the IVC circuit succeeds.
+    pub fn test_ivc_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
         build_ivc_circuit(&mut rng);
     }

@@ -16,7 +16,7 @@ pub struct Quadraticized<C: FoldingConfig> {
 }
 
 /// Returns the constraints converted into degree 2 or less and the extra
-/// contraints added in the process
+/// constraints added in the process
 pub fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints

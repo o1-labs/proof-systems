@@ -30,7 +30,8 @@ pub mod proof;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
-/// Defines a trace struct used for testing / demo purposes
+/// Abstract execution traces, possible long, that can be folded.
+/// A trace is a sequence of data points organized in a 2D array, constrained.
 pub mod trace;
 
 use ark_ec::bn::Bn;

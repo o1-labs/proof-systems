@@ -31,14 +31,15 @@ pub fn verify<
     EFrSponge: FrSponge<G::ScalarField>,
     const N: usize,
     const N_REL: usize,
-    const N_SEL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
     const NPUB: usize,
     ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraints: &Vec<E<G::ScalarField>>,
-    proof: &Proof<N, N_REL, N_SEL, G, OpeningProof, ID>,
+    proof: &Proof<N, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
 where

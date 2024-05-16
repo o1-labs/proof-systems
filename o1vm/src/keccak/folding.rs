@@ -1,15 +1,16 @@
 use crate::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
-        column::{ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
+        column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
+        trace::DecomposedKeccakTrace,
         KeccakColumn, Steps,
     },
-    trace::{Indexer, Trace},
+    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
-    checker::{Checker, ExtendedProvider},
+    checker::{Checker, ExtendedProvider, Provider},
     expressions::FoldingColumnTrait,
     FoldingConfig,
 };
@@ -17,11 +18,16 @@ use kimchi_msm::columns::Column;
 use poly_commitment::srs::SRS;
 use std::ops::Index;
 
-pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
-pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
+pub type KeccakFoldingEnvironment = DecomposedFoldingEnvironment<
+    N_ZKVM_KECCAK_COLS,
+    N_ZKVM_KECCAK_REL_COLS,
+    N_ZKVM_KECCAK_SEL_COLS,
+    KeccakConfig,
+    DecomposedKeccakTrace,
+>;
 
-pub type KeccakFoldingEnvironment =
-    FoldingEnvironment<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
+pub type KeccakFoldingInstance = FoldingInstance<N_ZKVM_KECCAK_COLS, Curve>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -49,8 +55,11 @@ impl Index<Column> for KeccakFoldingWitness {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Relation(ix) => &self.witness.cols[ix],
-            Column::DynamicSelector(ix) => &self.witness.cols[ZKVM_KECCAK_REL + ix],
-            _ => panic!("Invalid column type"),
+            // Even if `Column::DynamicSelector(ix)` would correspond to `&self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix]`,
+            // the current design of constraints should not include the dynamic selectors. Instead, folding will add them
+            // in the `DecomposableFoldingScheme` as extended selector columns, and the `selector()` function inside the
+            // `FoldingEnv` will return the actual witness column values.
+            _ => panic!("Undesired column type inside expressions"),
         }
     }
 }
@@ -73,10 +82,11 @@ impl FoldingConfig for KeccakConfig {
     type Srs = SRS<Curve>;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
-    type Structure = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+    type Structure = DecomposedKeccakTrace;
     type Env = KeccakFoldingEnvironment;
 }
 
 // IMPLEMENT CHECKER TRAITS
 
 impl Checker<KeccakConfig> for ExtendedProvider<KeccakConfig> {}
+impl Checker<KeccakConfig> for Provider<KeccakConfig> {}

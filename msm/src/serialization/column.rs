@@ -8,6 +8,7 @@ use crate::{
 pub const SER_N_COLUMNS: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 9;
 
 /// Columns used by the serialization subcircuit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SerializationColumn {
     /// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
     ChalKimchi(usize),
@@ -29,7 +30,7 @@ pub enum SerializationColumn {
 }
 
 impl ColumnIndexer for SerializationColumn {
-    const COL_N: usize = SER_N_COLUMNS;
+    const N_COL: usize = SER_N_COLUMNS;
     fn to_column(self) -> Column {
         match self {
             Self::ChalKimchi(j) => {

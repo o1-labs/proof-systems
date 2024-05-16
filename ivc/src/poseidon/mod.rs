@@ -28,8 +28,9 @@ mod tests {
 
     pub const STATE_SIZE: usize = 3;
     pub const NB_FULL_ROUND: usize = 55;
-    pub const N_COL: usize = PoseidonColumn::<STATE_SIZE, NB_FULL_ROUND>::COL_N;
-    pub const N_SEL: usize = 0;
+    type TestPoseidonColumn = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>;
+    pub const N_COL: usize = TestPoseidonColumn::N_COL;
+    pub const N_DSEL: usize = 0;
 
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
@@ -43,6 +44,16 @@ mod tests {
         }
     }
 
+    type PoseidonWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        TestPoseidonColumn,
+        { <TestPoseidonColumn as ColumnIndexer>::N_COL },
+        { <TestPoseidonColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        DummyLookupTable,
+    >;
+
     #[test]
     /// Tests that poseidon circuit is correctly formed (witness
     /// generation + constraints match) and matches the CPU
@@ -52,8 +63,7 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 4;
 
-        let mut witness_env: WitnessBuilderEnv<Fp, N_COL, DummyLookupTable> =
-            WitnessBuilderEnv::create();
+        let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
 
         // Generate random inputs at each row
         for _row in 0..domain_size {
@@ -61,7 +71,7 @@ mod tests {
             let y: Fp = Fp::rand(&mut rng);
             let z: Fp = Fp::rand(&mut rng);
 
-            interpreter::poseidon_circuit(&mut witness_env, &PoseidonBN254Parameters, (x, y, z));
+            interpreter::poseidon_circuit(&mut witness_env, &PoseidonBN254Parameters, [x, y, z]);
 
             // Check internal consistency of our circuit: that our
             // computed values match the CPU-spec implementation of
@@ -101,8 +111,7 @@ mod tests {
 
         let empty_lookups = BTreeMap::new();
         let proof_inputs = {
-            let mut witness_env: WitnessBuilderEnv<Fp, N_COL, DummyLookupTable> =
-                WitnessBuilderEnv::create();
+            let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
 
             // Generate random inputs at each row
             for _row in 0..domain.d1.size {
@@ -113,7 +122,7 @@ mod tests {
                 interpreter::poseidon_circuit(
                     &mut witness_env,
                     &PoseidonBN254Parameters,
-                    (x, y, z),
+                    [x, y, z],
                 );
             }
 
@@ -147,7 +156,8 @@ mod tests {
             _,
             N_COL,
             N_COL,
-            N_SEL,
+            N_DSEL,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -160,7 +170,8 @@ mod tests {
             ScalarSponge,
             N_COL,
             N_COL,
-            N_SEL,
+            N_DSEL,
+            0,
             0,
             DummyLookupTable,
         >(

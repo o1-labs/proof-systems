@@ -26,21 +26,13 @@ use strum_macros::{EnumCount, EnumIter};
 
 /// The maximum total number of witness columns used by the Keccak circuit.
 /// Note that in round steps, the columns used to store padding information are not needed.
-pub const ZKVM_KECCAK_REL: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
+pub const N_ZKVM_KECCAK_REL_COLS: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
 
-/// The number of columns required for the Keccak selectors
-pub const ZKVM_KECCAK_SEL: usize = MODE_LEN;
+/// The number of columns required for the Keccak selectors. They are located after the relation columns.
+pub const N_ZKVM_KECCAK_SEL_COLS: usize = 6;
 
 /// Total number of columns used in Keccak, including relation and selectors
-pub const ZKVM_KECCAK_COLS: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
-
-const MODE_LEN: usize = 6; // The number of columns used by the Keccak circuit to represent the mode flags.
-const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside DynamicSelector
-const FLAG_FST_OFF: usize = FLAG_ROUND_OFF + 1; // Offset of the Absorb(First) selector inside the mode flags
-const FLAG_MID_OFF: usize = FLAG_ROUND_OFF + 2; // Offset of the Absorb(Middle) selector inside the mode flags
-const FLAG_LST_OFF: usize = FLAG_ROUND_OFF + 3; // Offset of the Absorb(Last) selector  inside the mode flags
-const FLAG_ONE_OFF: usize = FLAG_ROUND_OFF + 4; // Offset of the Absorb(Only) selector  inside the mode flags
-const FLAG_SQUEEZE_OFF: usize = FLAG_ROUND_OFF + 5; // Offset of the Squeeze selector inside the mode flags
+pub const N_ZKVM_KECCAK_COLS: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
 
 const STATUS_OFF: usize = 0; // The offset of the columns reserved for the status indices
 const STATUS_LEN: usize = 3; // The number of columns used by the Keccak circuit to represent the status flags.
@@ -55,7 +47,7 @@ pub(crate) const ROUND_CONST_LEN: usize = QUARTERS;
 const RC_OFF: usize = NEXT_OFF + NEXT_LEN; // The offset of the Round coefficients inside the witness columns
 const RC_LEN: usize = ROUND_CONST_LEN + 1; // The round constants plus the round number
 
-const PAD_FLAGS_OFF: usize = MODE_LEN + STATUS_LEN + SPONGE_COLS; // Offset of the Pad flags inside the witness columns. Starts after sponge columns are finished.
+const PAD_FLAGS_OFF: usize = STATUS_LEN + SPONGE_COLS; // Offset of the Pad flags inside the witness columns. Starts after sponge columns are finished.
 const PAD_LEN_OFF: usize = 0; // Offset of the PadLength column inside the sponge coefficients
 const PAD_TWO_OFF: usize = 1; // Offset of the TwoToPad column inside the sponge coefficients
 const PAD_SUFFIX_OFF: usize = 2; // Offset of the PadSuffix column inside the sponge coefficients
@@ -65,12 +57,19 @@ const PAD_BYTES_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; // Offset of the P
 /// The maximum number of padding bytes involved
 pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 
+const FLAG_ROUND_OFF: usize = N_ZKVM_KECCAK_REL_COLS; // Offset of the Round selector inside DynamicSelector
+const FLAG_FST_OFF: usize = FLAG_ROUND_OFF + 1; // Offset of the Absorb(First) selector inside DynamicSelector
+const FLAG_MID_OFF: usize = FLAG_ROUND_OFF + 2; // Offset of the Absorb(Middle) selector inside DynamicSelector
+const FLAG_LST_OFF: usize = FLAG_ROUND_OFF + 3; // Offset of the Absorb(Last) selector  inside DynamicSelector
+const FLAG_ONE_OFF: usize = FLAG_ROUND_OFF + 4; // Offset of the Absorb(Only) selector  inside DynamicSelector
+const FLAG_SQUEEZE_OFF: usize = FLAG_ROUND_OFF + 5; // Offset of the Squeeze selector inside DynamicSelector
+
 /// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
@@ -304,7 +303,6 @@ impl Indexer for ColumnAlias {
 /// The columns are shared between the Sponge and Round steps.
 /// The hash and step indices are shared between both modes.
 /// The row is split into the following entries:
-/// - mode_flags: what kind of mode is running: round, root, absorb, pad, rootpad, squeeze. Only 1 of them can be active.
 /// - hash_index: Which hash this is inside the circuit
 /// - block_index: Which block this is inside the hash
 /// - step_index: Which step this is inside the hash
@@ -312,50 +310,52 @@ impl Indexer for ColumnAlias {
 /// - next: Contains the 100 Output witnesses
 /// - round_flags: contain 5 elements with information about the current round step
 /// - pad_flags: PadLength, TwoToPad, PadBytesFlags, PadSuffix
+/// - mode_flags: what kind of mode is running: round, root, absorb, pad, rootpad, squeeze. Only 1 of them can be active.
 ///
 ///   Keccak Witness Columns: KeccakWitness.cols
 ///  -------------------------------------------------------
-/// | 0..=5 | 6 | 7 | 8 | 9..1973 | 1974..2073 | 2074..2078 |
+/// | 0 | 1 | 2 | 3..=1967 | 1968..=2067 | 2068..=2071 |
 ///  -------------------------------------------------------
-///   0..=5 -> mode_flags
-///   6     -> hash_index
-///   7     -> block_index
-///   8     -> step_index
-///   9..=1973 -> curr
-///            9                                                                        1973
+///   0     -> hash_index
+///   1     -> block_index
+///   2     -> step_index
+///   3..=1967 -> curr
+///            3                                                                        1967
 ///            <--------------------------------if_round<---------------------------------->
 ///            <-------------if_sponge-------------->
-///            9                                   808
+///            3                                   802
 ///           -> SPONGE:                             | -> ROUND:
-///           -> 9..=108: Input == SpongeOldState    | -> 9..=108: Input == ThetaStateA
-///           -> 109..=208: SpongeNewState           | -> 109..=188: ThetaShiftsC
-///                       : 176..=207 -> SpongeZeros | -> 189..=208: ThetaDenseC
-///           -> 209..=408: SpongeBytes              | -> 209..=213: ThetaQuotientC
-///           -> 409..=808: SpongeShifts             | -> 214..=233: ThetaRemainderC
-///                                                  | -> 234..=253: ThetaDenseRotC
-///                                                  | -> 254..=273: ThetaExpandRotC
-///                                                  | -> 274..=673: PiRhoShiftsE
-///                                                  | -> 674..=773: PiRhoDenseE
-///                                                  | -> 774..=873: PiRhoQuotientE
-///                                                  | -> 874..=973: PiRhoRemainderE
-///                                                  | -> 974..=1073: PiRhoDenseRotE
-///                                                  | -> 1074..=1173: PiRhoExpandRotE
-///                                                  | -> 1174..=1573: ChiShiftsB
-///                                                  | -> 1574..=1973: ChiShiftsSum
-///   1974..=2073 -> next
-///               -> 1974..=2073: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
+///           -> 3..=102: Input == SpongeOldState    | -> 3..=102: Input == ThetaStateA
+///           -> 103..=202: SpongeNewState           | -> 103..=182: ThetaShiftsC
+///                       : 170..=202 -> SpongeZeros | -> 183..=202: ThetaDenseC
+///           -> 203..=402: SpongeBytes              | -> 203..=207: ThetaQuotientC
+///           -> 403..=802: SpongeShifts             | -> 208..=227: ThetaRemainderC
+///                                                  | -> 228..=247: ThetaDenseRotC
+///                                                  | -> 248..=267: ThetaExpandRotC
+///                                                  | -> 268..=667: PiRhoShiftsE
+///                                                  | -> 668..=767: PiRhoDenseE
+///                                                  | -> 768..=867: PiRhoQuotientE
+///                                                  | -> 868..=967: PiRhoRemainderE
+///                                                  | -> 968..=1067: PiRhoDenseRotE
+///                                                  | -> 1068..=1167: PiRhoExpandRotE
+///                                                  | -> 1168..=1567: ChiShiftsB
+///                                                  | -> 1568..=1967: ChiShiftsSum
+///   1968..=2067 -> next
+///               -> 1968..=2067: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
 ///
-///   2074..=2078 -> round_flags
-///               -> 2074: RoundNumber
-///               -> 2075..=2078: RoundConstants
+///   2068..=2072 -> round_flags
+///               -> 2068: RoundNumber
+///               -> 2069..=2072: RoundConstants
 ///
-///   809..=951 -> pad_flags
-///             -> 809: PadLength
-///             -> 810: TwoToPad
-///             -> 811..=815: PadSuffix
-///             -> 816..=951: PadBytesFlags
+///   2073..=2078 -> selectors
 ///
-pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_REL, T>;
+///   803..=945 -> pad_flags
+///             -> 803: PadLength
+///             -> 804: TwoToPad
+///             -> 805..=809: PadSuffix
+///             -> 810..=945: PadBytesFlags
+///
+pub type KeccakWitness<T> = Witness<N_ZKVM_KECCAK_REL_COLS, T>;
 
 /// IMPLEMENTATIONS FOR COLUMN ALIAS
 
@@ -378,7 +378,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
         Column::Relation(self.ix())
     }
@@ -393,6 +393,7 @@ impl<T: Clone> Index<Steps> for KeccakWitness<T> {
     /// Note that the column index depends on the step kind (Sponge or Round).
     /// For instance, the column 800 represents PadLength in the Sponge step, while it
     /// is used by intermediary values when executing the Round step.
+    /// The selector columns are located at the end of the witness relation columns.
     fn index(&self, index: Steps) -> &Self::Output {
         &self.cols[index.ix()]
     }
@@ -405,8 +406,8 @@ impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for Steps {
-    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
-        Column::DynamicSelector(self.ix())
+        Column::DynamicSelector(self.ix() - N_ZKVM_KECCAK_REL_COLS)
     }
 }
