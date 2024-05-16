@@ -393,6 +393,9 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         // It implies copying on the stack and possibly copy multiple times.
         self
     }
+
+    /// Return the list of scalars and commitments to be absorbed, by
+    /// concatenating the ones of the left with the ones of the right instance
     pub(crate) fn to_absorb(&self) -> (Vec<ScalarField<CF>>, Vec<CF::Curve>) {
         let mut left = self.instances[0].to_absorb();
         let right = self.instances[1].to_absorb();

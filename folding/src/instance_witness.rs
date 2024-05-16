@@ -102,7 +102,12 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
             extended: vec![],
         }
     }
-    /// wraps the inner absorb, adding its own commitments
+
+    /// Return the elements to be absorbed by the sponge
+    ///
+    /// The commitments to the additional columns created by quadriticization
+    /// are appended to the existing commitments of the initial instance
+    /// to be absorbed. The scalars are unchanged.
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.inner.to_absorb();
         let extended_commitments = self.extended.iter().map(|commit| {
@@ -114,8 +119,14 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     }
 }
 
-// -- Relaxed instances
+/// A relaxed instance is an instance that has been relaxed by the folding scheme.
+/// It contains the original instance, extended with the columns added by
+/// quadriticization, the scalar `u` and a commitment to the
+/// slack/error term.
+/// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
+    /// The original instance, extended with the columns added by
+    /// quadriticization
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
@@ -125,6 +136,11 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
+
+    /// Returns the elements to be absorbed by the sponge
+    ///
+    /// The scalar elements of the are appended with the scalar `u` and the commitments
+    /// are appended by the commitment to the error term.
     pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.instance.to_absorb();
         elements.0.push(self.u);
