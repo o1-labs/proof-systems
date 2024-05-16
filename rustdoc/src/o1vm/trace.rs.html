@@ -348,8 +348,6 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -561,9 +559,7 @@
             .try_into()
             .unwrap();
 
-        <span class="comment">// FIXME: absorb commitments
-
-        </span><span class="kw">let </span>beta = fq_sponge.challenge();
+        <span class="kw">let </span>beta = fq_sponge.challenge();
         <span class="kw">let </span>gamma = fq_sponge.challenge();
         <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
         <span class="kw">let </span>alpha = fq_sponge.challenge();
