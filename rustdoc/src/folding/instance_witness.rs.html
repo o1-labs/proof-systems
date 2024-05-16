@@ -408,6 +408,11 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -526,6 +531,11 @@
     <span class="doccomment">/// Provides access to a commitment to the error column
     </span><span class="kw">pub fn </span>get_error_column_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PolyComm&lt;G&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.error_commitment
+    }
+
+    <span class="doccomment">/// Return the number of additional columns added by quadraticization
+    </span><span class="kw">pub fn </span>get_number_of_additional_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.instance.extended.len()
     }
 }
 
