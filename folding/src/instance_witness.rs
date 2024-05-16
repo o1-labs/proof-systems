@@ -42,9 +42,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// sponge.absorb_fr(scalar);
     /// sponge.absorb_g(points_l | points_r);
     /// let challenge_r = sponge.challenge();
-    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        (vec![], vec![])
-    }
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
     /// This method takes an Instance and a commitment to zero and extends the instance,
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
@@ -279,6 +277,11 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
         Self { inner, extended }
+    }
+
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        // FIXME
+        todo!()
     }
 
     fn alphas(&self) -> &Alphas<G::ScalarField> {

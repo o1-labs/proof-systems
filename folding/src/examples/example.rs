@@ -43,6 +43,11 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        // FIXME?
+        (vec![], vec![])
+    }
+
     fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
