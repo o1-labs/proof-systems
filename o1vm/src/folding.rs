@@ -324,15 +324,12 @@ mod tests {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    struct TestStructure;
-
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     struct TestConfig;
 
     type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
     type TestFoldingWitness = FoldingWitness<3, Fp>;
     type TestFoldingInstance = FoldingInstance<3, Curve>;
-    type TestFoldingEnvironment = FoldingEnvironment<3, TestConfig, TestStructure>;
+    type TestFoldingEnvironment = FoldingEnvironment<3, TestConfig, ()>;
 
     impl Index<TestColumn> for TestFoldingWitness {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -367,7 +364,7 @@ mod tests {
         type Srs = poly_commitment::srs::SRS<Curve>;
         type Instance = TestFoldingInstance;
         type Witness = TestFoldingWitness;
-        type Structure = TestStructure;
+        type Structure = ();
         type Env = TestFoldingEnvironment;
     }
 

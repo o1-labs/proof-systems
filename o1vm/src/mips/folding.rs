@@ -12,10 +12,7 @@ use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use kimchi_msm::columns::Column;
 use std::ops::Index;
 
-use super::{
-    column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-    trace::DecomposedMIPSTrace,
-};
+use super::column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS};
 use poly_commitment::srs::SRS;
 
 // Decomposable folding compatibility
@@ -24,7 +21,7 @@ pub type DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment<
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
     DecomposableMIPSFoldingConfig,
-    DecomposedMIPSTrace,
+    (),
 >;
 
 pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;
@@ -97,6 +94,6 @@ impl FoldingConfig for DecomposableMIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure = DecomposedMIPSTrace;
+    type Structure = ();
     type Env = DecomposableMIPSFoldingEnvironment;
 }
