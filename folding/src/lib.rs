@@ -22,7 +22,7 @@ use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-use instance_witness::{RelaxableInstance, RelaxablePair};
+use instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -328,10 +328,25 @@ pub enum Alphas<F: Field> {
     Combinations(Vec<F>),
 }
 
+impl<F: Field> Foldable<F> for Alphas<F> {
+    fn combine(a: Self, b: Self, challenge: F) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
+    }
+}
+
 impl<F: Field> Alphas<F> {
     pub fn new(alpha: F) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
+
     pub fn get(&self, i: usize) -> Option<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -342,6 +357,7 @@ impl<F: Field> Alphas<F> {
             Alphas::Combinations(alphas) => alphas.get(i).cloned(),
         }
     }
+
     pub fn powers(self) -> Vec<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -351,16 +367,5 @@ impl<F: Field> Alphas<F> {
             }
             Alphas::Combinations(c) => c,
         }
-    }
-    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
     }
 }
