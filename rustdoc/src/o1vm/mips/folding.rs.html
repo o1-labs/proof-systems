@@ -97,9 +97,6 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
@@ -114,10 +111,7 @@
 <span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>std::ops::Index;
 
-<span class="kw">use super</span>::{
-    column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-    trace::DecomposedMIPSTrace,
-};
+<span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS};
 <span class="kw">use </span>poly_commitment::srs::SRS;
 
 <span class="comment">// Decomposable folding compatibility
@@ -126,7 +120,7 @@
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
     DecomposableMIPSFoldingConfig,
-    DecomposedMIPSTrace,
+    (),
 &gt;;
 
 <span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;N_MIPS_COLS, Fp&gt;;
@@ -199,7 +193,7 @@
     <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
     <span class="kw">type </span>Instance = MIPSFoldingInstance;
     <span class="kw">type </span>Witness = MIPSFoldingWitness;
-    <span class="kw">type </span>Structure = DecomposedMIPSTrace;
+    <span class="kw">type </span>Structure = ();
     <span class="kw">type </span>Env = DecomposableMIPSFoldingEnvironment;
 }
 </code></pre></div></section></main></body></html>
