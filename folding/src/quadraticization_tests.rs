@@ -94,10 +94,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn domain_size(&self) -> usize {
-        1
-    }
-
     fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: crate::Side) -> &Vec<Fp> {
         todo!()
     }
