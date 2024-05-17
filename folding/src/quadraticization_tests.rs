@@ -97,10 +97,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn alpha(&self, _i: usize, _side: crate::Side) -> Fp {
-        todo!()
-    }
-
     fn selector(&self, _s: &(), _side: crate::Side) -> &Vec<Fp> {
         todo!()
     }

@@ -143,14 +143,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    // access to the alphas, while folding will decide how many there are and how do
-    // they appear in the expressions, the instances should store them, and the environment
-    // should provide acces to them like this
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     // this is exclusively for dynamic selectors aiming to make use of optimization
     // as clasic static selectors will be handle as normal structure columns in col()
     // the implementation of this if the same as col(), it is just separated as they

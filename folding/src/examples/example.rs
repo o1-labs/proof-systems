@@ -144,11 +144,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
         unreachable!()
     }

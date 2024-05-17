@@ -196,11 +196,6 @@ where
         }
     }
 
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     fn selector(&self, s: &C::Selector, side: Side) -> &Vec<ScalarField<C>> {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
@@ -278,11 +273,6 @@ where
             Challenge::Gamma => self.instances[side as usize].challenges[1],
             Challenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
