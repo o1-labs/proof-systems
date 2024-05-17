@@ -15,6 +15,11 @@
 //! After that, the user can provide folding compatible expressions and build a
 //! folding scheme [FoldingScheme]. The process is described in the module
 //! [expressions].
+//! ## Degree 3 folding
+//! While mostly hidden from the interface, internally folding supports degree 3
+//! expressions in orther to support multiple constraints.
+//! That results in 2 errors terms t_0 and t_1 and a slightly different computation
+//! of E than in Nova (E' + rt_0 + r^2t_1 + r^3E'')
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
