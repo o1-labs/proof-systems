@@ -84,6 +84,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// The target curve used by the polynomial commitment
     type Curve: CommitmentCurve;
 
+    /// The SRS used by the polynomial commitment. The SRS is used to commit to
+    /// the additional columns that are added by the quadraticization.
     type Srs: SRS<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
