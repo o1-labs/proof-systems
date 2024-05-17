@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"folding":[],
+"o1vm":[["impl&lt;const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>, G: CommitmentCurve&gt; Foldable&lt;&lt;G as AffineCurve&gt;::ScalarField&gt; for <a class=\"struct\" href=\"o1vm/folding/struct.FoldingInstance.html\" title=\"struct o1vm::folding::FoldingInstance\">FoldingInstance</a>&lt;N, G&gt;"],["impl&lt;const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>, F: FftField&gt; Foldable&lt;F&gt; for <a class=\"struct\" href=\"o1vm/folding/struct.FoldingWitness.html\" title=\"struct o1vm::folding::FoldingWitness\">FoldingWitness</a>&lt;N, F&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

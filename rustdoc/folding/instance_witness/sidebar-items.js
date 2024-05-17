@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ExtendedInstance","ExtendedWitness","RelaxedInstance","RelaxedWitness"],"trait":["Foldable","Instance","RelaxableInstance","RelaxablePair","RelaxableWitness","Witness"]};

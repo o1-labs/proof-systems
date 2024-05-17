@@ -473,11 +473,19 @@
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::ProvableTrace;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>folding::{Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness};
+<span class="kw">use </span>folding::{
+    instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
+};
 <span class="kw">use </span>kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
 <span class="kw">use </span>kimchi_msm::witness::Witness <span class="kw">as </span>GenericWitness;
 <span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
@@ -528,7 +536,7 @@
     </span><span class="kw">pub </span>alphas: Alphas&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Instance&lt;G&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         FoldingInstance {
             commitments: array::from_fn(|i| {
@@ -538,7 +546,9 @@
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Instance&lt;G&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
     <span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;&lt;G&gt;::ScalarField&gt;, Vec&lt;G&gt;) {
         <span class="comment">// FIXME: check!!!!
         </span><span class="kw">let </span><span class="kw-2">mut </span>scalars = Vec::new();
@@ -572,8 +582,8 @@
     <span class="kw">pub </span>witness: GenericWitness&lt;N, Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Witness&lt;G&gt; <span class="kw">for </span>FoldingWitness&lt;N, G::ScalarField&gt; {
-    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: FftField&gt; Foldable&lt;F&gt; <span class="kw">for </span>FoldingWitness&lt;N, F&gt; {
+    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
         <span class="kw">for </span>(a, b) <span class="kw">in </span>(<span class="kw-2">*</span>a.witness.cols).iter_mut().zip(<span class="kw-2">*</span>(b.witness.cols)) {
             <span class="kw">for </span>(a, b) <span class="kw">in </span>a.evals.iter_mut().zip(b.evals) {
                 <span class="kw-2">*</span>a += challenge * b;
@@ -581,7 +591,9 @@
         }
         a
     }
+}
 
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Witness&lt;G&gt; <span class="kw">for </span>FoldingWitness&lt;N, G::ScalarField&gt; {
     <span class="kw">fn </span>rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.witness.cols[<span class="number">0</span>].evals.len()
     }
