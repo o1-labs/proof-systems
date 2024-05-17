@@ -1,6 +1,14 @@
+use ark_ec::bn::Bn;
+use ark_poly::Evaluations;
+use folding::{
+    plonkish::{PlonkishInstance, PlonkishTrace},
+    FoldingCompatibleExpr, FoldingScheme,
+};
+use kimchi::curve::KimchiCurve;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
 };
 use std::collections::BTreeMap;
 
@@ -9,48 +17,34 @@ use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
     lookups::DummyLookupTable,
-    prover::prove,
-    verifier::verify,
-    witness::Witness,
 };
-use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
-use rand::{CryptoRng, RngCore};
-
-use self::columns::AdditionColumn;
-
-mod columns;
-mod folding;
-mod interpreters;
+use poly_commitment::{srs::SRS, SRS as _};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
 pub type Fp = ark_bn254::Fr;
-pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
-pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
+pub type Curve = ark_bn254::G1Affine;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-pub type OpeningProof = PairingProof<BN254>;
+pub type SpongeParams = PlonkSpongeConstantsKimchi;
 
-/// Obtains an SRS for a specific curve from disk, or generates it if absent.
-pub fn get_bn254_srs<RNG: RngCore + CryptoRng>(
-    rng: &mut RNG,
-    domain: EvaluationDomains<Fp>,
-) -> PairingSRS<BN254> {
-    // Temporarily just generate it from scratch since SRS serialization is
-    // broken.
-    let trapdoor = Fp::rand(rng);
-    let mut srs = PairingSRS::create(trapdoor, domain.d1.size as usize);
-    srs.full_srs.add_lagrange_basis(domain.d1);
-    srs
-}
+mod columns;
+mod ifolding;
+mod interpreters;
+
+use crate::test::{columns::AdditionColumn, ifolding::addition};
+
+use self::ifolding::addition::Config;
 
 #[test]
 pub fn test_simple_add() {
     let mut rng = o1_utils::tests::make_test_rng();
+    let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
     let domain_size: usize = 1 << 5;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-    let srs: PairingSRS<BN254> = get_bn254_srs(&mut rng, domain);
+    // let srs: PairingSRS<BN254> = get_bn254_srs(&mut rng, domain);
+    let mut srs = SRS::<Curve>::create(domain_size);
+    srs.add_lagrange_basis(domain.d1);
 
     let constraints = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
@@ -87,59 +81,48 @@ pub fn test_simple_add() {
         witness_two.next_row();
     }
 
-    // Verify individual witnesses before folding
-    {
-        let proof_inputs = witness_one.get_proof_inputs(domain, empty_lookups.clone());
-        // generate the proof
-        let proof =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, 3, 3, 0, 0, DummyLookupTable>(
-                domain,
-                &srs,
-                &constraints,
-                proof_inputs,
-                &mut rng,
-            )
-            .unwrap();
+    let proof_inputs_one = witness_one.get_proof_inputs(domain, empty_lookups.clone());
+    let proof_inputs_two = witness_two.get_proof_inputs(domain, empty_lookups.clone());
 
-        // verify the proof
-        let verifies =
-            verify::<_, OpeningProof, BaseSponge, ScalarSponge, 3, 3, 0, 0, 0, DummyLookupTable>(
-                domain,
-                &srs,
-                &constraints,
-                &proof,
-                Witness::zero_vec(domain_size),
-            );
+    let folding_witness_one = ifolding::addition::Witness {
+        witness: (proof_inputs_one.evaluations)
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect(),
+    };
 
-        assert!(verifies);
-    }
+    let folding_instance_one = PlonkishInstance::from_witness(
+        &folding_witness_one.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
 
-    // Verify individual witnesses before folding
-    {
-        let proof_inputs = witness_two.get_proof_inputs(domain, empty_lookups.clone());
-        // generate the proof
-        let proof =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, 3, 3, 0, 0, DummyLookupTable>(
-                domain,
-                &srs,
-                &constraints,
-                proof_inputs,
-                &mut rng,
-            )
-            .unwrap();
+    let folding_witness_two = addition::Witness {
+        witness: (proof_inputs_two.evaluations)
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect(),
+    };
 
-        // verify the proof
-        let verifies =
-            verify::<_, OpeningProof, BaseSponge, ScalarSponge, 3, 3, 0, 0, 0, DummyLookupTable>(
-                domain,
-                &srs,
-                &constraints,
-                &proof,
-                Witness::zero_vec(domain_size),
-            );
+    let folding_instance_two = PlonkishInstance::from_witness(
+        &folding_witness_two.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
 
-        assert!(verifies);
-    }
+    let trace = PlonkishTrace {
+        domain_size: domain.d1.size as usize,
+    };
 
-    // Folding + IVC
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = constraints
+        .iter()
+        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .collect();
+
+    let (folding_scheme, _) =
+        FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &trace);
+
+    // IVC
 }
