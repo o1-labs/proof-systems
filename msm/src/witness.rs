@@ -1,6 +1,7 @@
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use folding::instance_witness::Foldable;
+use folding::{instance_witness::Foldable, Witness as FoldingWitnessT};
+use poly_commitment::commitment::CommitmentCurve;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::ops::Index;
 
@@ -157,4 +158,9 @@ impl<const N: usize, F: FftField> Foldable<F>
         }
         a
     }
+}
+
+impl<const N: usize, G: CommitmentCurve> FoldingWitnessT<G>
+    for Witness<N, Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>
+{
 }
