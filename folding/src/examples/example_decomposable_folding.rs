@@ -139,12 +139,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    fn domain_size(&self) -> usize {
-        // this works in the example but is not the best way as the environment
-        // could get circuits of any size
-        2
-    }
-
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {

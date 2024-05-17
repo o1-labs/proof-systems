@@ -1,6 +1,5 @@
-use crate::trace::ProvableTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{FftField, Zero};
+use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
@@ -125,7 +124,7 @@ pub struct DecomposedFoldingEnvironment<
     const N_REL: usize,
     const N_DSEL: usize,
     C: FoldingConfig,
-    Structure: ProvableTrace,
+    Structure,
 > {
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
@@ -143,7 +142,7 @@ impl<
         const N_SEL: usize,
         C: FoldingConfig,
         // FIXME: Clone should not be used. Only a reference should be stored
-        Structure: ProvableTrace + Clone,
+        Structure: Clone,
     >
     FoldingEnv<
         ScalarField<C>,
@@ -187,14 +186,6 @@ where
         }
     }
 
-    fn domain_size(&self) -> usize {
-        self.structure.domain_size()
-    }
-
-    fn zero_vec(&self) -> Vec<ScalarField<C>> {
-        vec![ScalarField::<C>::zero(); self.domain_size()]
-    }
-
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -223,7 +214,7 @@ where
     }
 }
 
-pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure> {
     /// Structure of the folded circuit
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
@@ -239,7 +230,7 @@ impl<
         const N: usize,
         C: FoldingConfig,
         // FIXME: Clone should not be used. Only a reference should be stored
-        Structure: ProvableTrace + Clone,
+        Structure: Clone,
     >
     FoldingEnv<
         ScalarField<C>,
@@ -277,14 +268,6 @@ where
             curr_witnesses,
             next_witnesses,
         }
-    }
-
-    fn domain_size(&self) -> usize {
-        self.structure.domain_size()
-    }
-
-    fn zero_vec(&self) -> Vec<ScalarField<C>> {
-        vec![ScalarField::<C>::zero(); self.domain_size()]
     }
 
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
@@ -345,12 +328,6 @@ mod tests {
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     struct TestConfig;
-
-    impl ProvableTrace for TestStructure {
-        fn domain_size(&self) -> usize {
-            4
-        }
-    }
 
     type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
     type TestFoldingWitness = FoldingWitness<3, Fp>;

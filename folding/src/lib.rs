@@ -122,16 +122,13 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Creates a new environment storing the structure, instances and witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 
-    /// Returns the domain size of the circuit.
-    fn domain_size(&self) -> usize;
-
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
     /// Returns a vector of zeros with the same length as the number of rows in
     /// the circuit.
-    fn zero_vec(&self) -> Vec<F> {
-        vec![F::zero(); self.domain_size()]
+    fn zero_vec(&self, n: usize) -> Vec<F> {
+        vec![F::zero(); n]
     }
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.

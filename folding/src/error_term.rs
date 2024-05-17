@@ -62,7 +62,7 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec()),
+                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
                 Some(true) | None => {
                     let d1 = e1.folding_degree();
                     let d2 = e2.folding_degree();
@@ -131,7 +131,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec()),
+                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
                 Some(true) | None => match (exp.folding_degree(), e1.folding_degree()) {
                     (Degree::Two, Degree::One) => {
                         let first =
@@ -185,7 +185,7 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     // possible, and inline code.
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
-    let zero = || EvalLeaf::Result(env.inner().zero_vec());
+    let zero = || EvalLeaf::Result(env.inner().zero_vec(env.domain.size as usize));
 
     let t_0 = {
         let t_0 = (zero(), zero());
