@@ -5,6 +5,7 @@ use crate::{
     error_term::Side,
     examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -52,7 +53,7 @@ pub struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -62,7 +63,9 @@ impl Instance<Curve> for TestInstance {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
+impl Instance<Curve> for TestInstance {
     fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
         // FIXME?
         (vec![], vec![])

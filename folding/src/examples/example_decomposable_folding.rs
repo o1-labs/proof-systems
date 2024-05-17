@@ -3,6 +3,7 @@ use crate::{
     error_term::Side,
     examples::{Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, ScalarField, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -50,7 +51,7 @@ pub struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -60,7 +61,9 @@ impl Instance<Curve> for TestInstance {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
+impl Instance<Curve> for TestInstance {
     fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
         // FIXME?
         (vec![], vec![])
@@ -77,7 +80,7 @@ impl Instance<Curve> for TestInstance {
 /// 2 dynamic selector columns that are esentially witness
 pub type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5];
 
-impl Witness<Curve> for TestWitness {
+impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -86,7 +89,9 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
+}
 
+impl Witness<Curve> for TestWitness {
     fn rows(&self) -> usize {
         self[0].evals.len()
     }
