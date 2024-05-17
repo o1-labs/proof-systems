@@ -290,11 +290,12 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
     }
 }
+
 /// Output of the folding prover
 pub struct FoldingOutput<C: FoldingConfig> {
-    ///folded instance
+    /// Folded instance
     pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
-    ///folded witness
+    /// Folded witness
     pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
     pub t_0: PolyComm<C::Curve>,
     pub t_1: PolyComm<C::Curve>,
