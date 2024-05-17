@@ -293,7 +293,8 @@ impl ColumnIndexer for IVCColumn {
     // This should be
     //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
     // which is runtime-only expression..?
-    const N_COL: usize = IVCPoseidonColumn::N_COL;
+    // 333 is not enough
+    const N_COL: usize = 400;
 
     fn to_column(self) -> Column {
         match self {
@@ -315,7 +316,9 @@ impl ColumnIndexer for IVCColumn {
                 Column::Relation(N_BLOCKS + 2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
 
-            IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
+            IVCColumn::Block2Hash(poseidon_col) => {
+                poseidon_col.to_column().add_rel_offset(N_BLOCKS)
+            }
 
             IVCColumn::Block3ConstPhi => Column::Relation(N_BLOCKS),
             IVCColumn::Block3ConstR => Column::Relation(N_BLOCKS + 1),

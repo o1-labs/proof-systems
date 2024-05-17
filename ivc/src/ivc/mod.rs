@@ -16,10 +16,14 @@ mod tests {
     use ark_ff::{UniformRand, Zero};
     use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
-        circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
+        circuit_design::{
+            composition::{IdMPrism, MPrism},
+            ConstraintBuilderEnv, SubEnvLookup, WitnessBuilderEnv,
+        },
         columns::ColumnIndexer,
         logup::LookupTableID,
         precomputed_srs::get_bn254_srs,
+        proof::ProofInputs,
         prover::prove,
         verifier::verify,
         witness::Witness,
@@ -27,10 +31,9 @@ mod tests {
     };
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
-    use std::collections::BTreeMap;
 
     // Test number
-    pub const TEST_N_COL_TOTAL: usize = 2 * IVCColumn::N_COL;
+    pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
     // Absolutely no idea.
     pub const TEST_N_CHALS: usize = 200;
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
@@ -38,15 +41,17 @@ mod tests {
     #[derive(Clone)]
     pub struct PoseidonBN254Parameters;
 
-    type IVCWitnessBuilderEnv = WitnessBuilderEnv<
+    type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
         Fp,
         IVCColumn,
         { <IVCColumn as ColumnIndexer>::N_COL },
         { <IVCColumn as ColumnIndexer>::N_COL },
         0,
         0,
-        IVCLookupTable<Ff1>,
+        LT,
     >;
+    //type IVCWitnessBuilderEnv = IVCWitnessBuilderEnvRaw<IVCLookupTable<Ff1>>;
+    //type IVCWitnessBuilderEnvDummy = IVCWitnessBuilderEnvRaw<DummyLookupTable>;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters
@@ -62,41 +67,46 @@ mod tests {
         }
     }
 
-    fn build_ivc_circuit<RNG: RngCore + CryptoRng>(
+    fn build_ivc_circuit<
+        RNG: RngCore + CryptoRng,
+        LT: LookupTableID,
+        L: MPrism<Source = LT, Target = IVCLookupTable<Ff1>>,
+    >(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> IVCWitnessBuilderEnv {
-        let mut witness_env = IVCWitnessBuilderEnv::create();
+        lt_lens: L,
+    ) -> IVCWitnessBuilderEnvRaw<LT> {
+        let mut witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        let comms_left: [_; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        let comms_left: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
             (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
             )
-        });
-        let comms_right: [_; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        }));
+        let comms_right: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
             (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
             )
-        });
-        let comms_output: [_; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        }));
+        let comms_output: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
             (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
             )
-        });
+        }));
 
-        let fixed_selectors: [Vec<Fp>; N_BLOCKS] =
+        let fixed_selectors: Vec<Vec<Fp>> =
             build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
-            &mut witness_env,
+            &mut SubEnvLookup::new(&mut witness_env, lt_lens),
             comms_left,
             comms_right,
             comms_output,
@@ -115,7 +125,11 @@ mod tests {
     /// Tests if building the IVC circuit succeeds.
     pub fn test_ivc_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
-        build_ivc_circuit(&mut rng, 1 << 8);
+        build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+            &mut rng,
+            1 << 8,
+            IdMPrism::<IVCLookupTable<Ff1>>::default(),
+        );
     }
 
     #[test]
@@ -127,14 +141,17 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut lookup_tables_data = BTreeMap::new();
-        for table_id in IVCLookupTable::<Ff1>::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
-        }
-        let witness_env = build_ivc_circuit::<_>(&mut rng, domain_size);
-        let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+            &mut rng,
+            domain_size,
+            IdMPrism::<IVCLookupTable<Ff1>>::default(),
+        );
         // Don't use lookups for now
-        proof_inputs.logups = vec![];
+        let rel_witness = witness_env.get_relation_witness(domain);
+        let proof_inputs = ProofInputs {
+            evaluations: rel_witness,
+            logups: vec![],
+        };
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
         constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);

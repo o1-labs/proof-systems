@@ -328,13 +328,9 @@ impl<
         self.fixed_selectors = selectors
     }
 
-    /// Generates proof inputs, repacking/collecting internal witness builder state.
-    pub fn get_proof_inputs(
-        &self,
-        domain: EvaluationDomains<F>,
-        lookup_tables_data: BTreeMap<LT, Vec<F>>,
-    ) -> ProofInputs<N_COL, F, LT> {
+    pub fn get_relation_witness(&self, domain: EvaluationDomains<F>) -> Witness<N_COL, Vec<F>> {
         let domain_size: usize = domain.d1.size as usize;
+
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<N_COL, Vec<F>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
@@ -366,6 +362,15 @@ impl<
             witness.cols[N_REL + N_DSEL + i] = self.fixed_selectors[i].clone();
         }
 
+        *witness
+    }
+
+    pub fn get_logup_witness(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> Vec<LogupWitness<F, LT>> {
+        let domain_size: usize = domain.d1.size as usize;
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
@@ -412,7 +417,7 @@ impl<
             *(table.last_mut().unwrap()) = lookup_t.collect();
         }
 
-        let logups: Vec<LogupWitness<F, LT>> = lookup_tables
+        lookup_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 // Only add a table if it's used. Otherwise lookups fail.
@@ -426,10 +431,20 @@ impl<
                     None
                 }
             })
-            .collect();
+            .collect()
+    }
+
+    /// Generates proof inputs, repacking/collecting internal witness builder state.
+    pub fn get_proof_inputs(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> ProofInputs<N_COL, F, LT> {
+        let evaluations = self.get_relation_witness(domain);
+        let logups = self.get_logup_witness(domain, lookup_tables_data);
 
         ProofInputs {
-            evaluations: *witness,
+            evaluations,
             logups,
         }
     }

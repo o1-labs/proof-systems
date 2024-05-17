@@ -185,7 +185,7 @@ where
 
 pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    target_comms: [(Ff, Ff); N_COL_TOTAL],
+    target_comms: &[(Ff, Ff); N_COL_TOTAL],
     row_num_local: usize,
 ) -> (Vec<F>, Vec<F>, Vec<F>)
 where
@@ -246,11 +246,11 @@ where
 #[allow(clippy::type_complexity)]
 pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    comms: [[(Ff, Ff); N_COL_TOTAL]; 3],
+    comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
-    [[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3],
-    [[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
-    [[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
+    Box<[[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3]>,
+    Box<[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3]>,
+    Box<[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3]>,
 )
 where
     F: PrimeField,
@@ -264,11 +264,11 @@ where
         let row_num = env.curr_row();
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
-            (comms[0], row_num, 0)
+            (&comms[0], row_num, 0)
         } else if row_num < 2 * N_COL_TOTAL {
-            (comms[1], row_num - N_COL_TOTAL, 1)
+            (&comms[1], row_num - N_COL_TOTAL, 1)
         } else {
-            (comms[2], row_num - 2 * N_COL_TOTAL, 2)
+            (&comms[2], row_num - 2 * N_COL_TOTAL, 2)
         };
 
         let (limbs_small, limbs_large, limbs_xlarge) =
@@ -287,20 +287,22 @@ where
     // Left-Right-Output for a given limb size.
     fn repack_output<F: PrimeField, const TWO_LIMB_SIZE: usize, const N_COL_TOTAL: usize>(
         input: [Vec<Vec<F>>; 3],
-    ) -> [[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3] {
-        input
-            .into_iter()
-            .map(|vector: Vec<Vec<_>>| {
-                vector
-                    .into_iter()
-                    .map(|subvec: Vec<_>| subvec.try_into().unwrap())
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap()
-            })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap()
+    ) -> Box<[[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3]> {
+        Box::new(
+            input
+                .into_iter()
+                .map(|vector: Vec<Vec<_>>| {
+                    vector
+                        .into_iter()
+                        .map(|subvec: Vec<_>| subvec.try_into().unwrap())
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        )
     }
 
     (
@@ -917,14 +919,17 @@ where
 /// Builds selectors for the IVC circuit.
 pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> [Vec<F>; N_BLOCKS]
+) -> Vec<Vec<F>>
 where
     F: PrimeField,
 {
-    let mut selectors: [Vec<F>; N_BLOCKS] = std::array::from_fn(|_| vec![F::zero(); domain_size]);
+    // 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    // 45N + 9 + N_CHALS
+    let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
     let mut cur_row = 0;
     for _i in 0..3 * N_COL_TOTAL {
-        selectors[0][cur_row] = F::one();
+        //selectors[0][cur_row] = F::one();
+        selectors[0][cur_row] = F::from(2u32);
         cur_row += 1;
     }
     for _i in 0..6 * N_COL_TOTAL + 2 {
@@ -994,9 +999,9 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    comms_left: [(Ff, Ff); N_COL_TOTAL],
-    comms_right: [(Ff, Ff); N_COL_TOTAL],
-    comms_out: [(Ff, Ff); N_COL_TOTAL],
+    comms_left: Box<[(Ff, Ff); N_COL_TOTAL]>,
+    comms_right: Box<[(Ff, Ff); N_COL_TOTAL]>,
+    comms_out: Box<[(Ff, Ff); N_COL_TOTAL]>,
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
     u_l: F,                     // part of the relaxed instance.
