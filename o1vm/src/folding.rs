@@ -108,11 +108,7 @@ impl<const N: usize, F: FftField> Foldable<F> for FoldingWitness<N, F> {
     }
 }
 
-impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {
-    fn rows(&self) -> usize {
-        self.witness.cols[0].evals.len()
-    }
-}
+impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {}
 
 /// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
