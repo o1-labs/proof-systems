@@ -710,7 +710,7 @@ fn test_keccak_folding() {
             vec![],
             &srs,
             domain,
-            &default_trace,
+            &(),
         );
 
         // Check folding constraints of individual steps ignoring selectors
@@ -742,7 +742,7 @@ fn test_keccak_folding() {
                     constraints[&step].clone(),
                     &srs,
                     domain,
-                    &default_trace,
+                    &(),
                 );
                 // Fold both sides and check the constraints ignoring the selector columns
                 let (folded_instance, folded_witness) = scheme
@@ -766,7 +766,7 @@ fn test_keccak_folding() {
                         vec![],
                         &srs,
                         domain,
-                        &default_trace,
+                        &(),
                     );
                 // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
                 {
@@ -815,7 +815,7 @@ fn test_keccak_folding() {
                             .collect(),
                         &srs,
                         domain,
-                        &default_trace,
+                        &(),
                     );
 
                 // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
