@@ -47,7 +47,7 @@ mod error_term;
 
 mod eval_leaf;
 pub mod expressions;
-mod instance_witness;
+pub mod instance_witness;
 pub mod quadraticization;
 #[cfg(test)]
 #[cfg(feature = "bn254")]

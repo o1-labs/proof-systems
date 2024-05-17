@@ -11,6 +11,7 @@ use crate::{
     error_term::Side,
     examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
+    instance_witness::Foldable,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,
 };
@@ -32,7 +33,7 @@ struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -42,7 +43,9 @@ impl Instance<Curve> for TestInstance {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
+impl Instance<Curve> for TestInstance {
     fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
         let mut fields = Vec::with_capacity(3 + 2);
         fields.extend(self.challenges);
@@ -61,7 +64,7 @@ impl Instance<Curve> for TestInstance {
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
 type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
 
-impl Witness<Curve> for TestWitness {
+impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -70,7 +73,9 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
+}
 
+impl Witness<Curve> for TestWitness {
     fn rows(&self) -> usize {
         self[0].evals.len()
     }

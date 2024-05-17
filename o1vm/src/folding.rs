@@ -2,7 +2,9 @@ use crate::trace::ProvableTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use folding::{Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness};
+use folding::{
+    instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
+};
 use kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::witness::Witness as GenericWitness;
 use poly_commitment::commitment::CommitmentCurve;
@@ -53,7 +55,7 @@ pub struct FoldingInstance<const N: usize, G: CommitmentCurve> {
     pub alphas: Alphas<<G as AffineCurve>::ScalarField>,
 }
 
-impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
+impl<const N: usize, G: CommitmentCurve> Foldable<G::ScalarField> for FoldingInstance<N, G> {
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
         FoldingInstance {
             commitments: array::from_fn(|i| {
@@ -63,7 +65,9 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
+impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
     fn to_absorb(&self) -> (Vec<<G>::ScalarField>, Vec<G>) {
         // FIXME: check!!!!
         let mut scalars = Vec::new();
@@ -97,8 +101,8 @@ pub struct FoldingWitness<const N: usize, F: FftField> {
     pub witness: GenericWitness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
 }
 
-impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {
-    fn combine(mut a: Self, b: Self, challenge: G::ScalarField) -> Self {
+impl<const N: usize, F: FftField> Foldable<F> for FoldingWitness<N, F> {
+    fn combine(mut a: Self, b: Self, challenge: F) -> Self {
         for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
                 *a += challenge * b;
@@ -106,7 +110,9 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
         }
         a
     }
+}
 
+impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {
     fn rows(&self) -> usize {
         self.witness.cols[0].evals.len()
     }
