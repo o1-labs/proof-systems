@@ -1,6 +1,6 @@
-# RFC: Extended lookup tables
+# Extended lookup tables
 
-This RFC proposes an extension to our use of lookup tables using the PLOOKUP
+This (old) RFC proposes an extension to our use of lookup tables using the PLOOKUP
 multiset inclusion argument, so that values within lookup tables can be chosen
 after the constraint system for a circuit has been fixed.
 

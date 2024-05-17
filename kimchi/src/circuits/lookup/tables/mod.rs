@@ -20,6 +20,53 @@ pub enum GateLookupTable {
     RangeCheck,
 }
 
+/// Enumerates the different 'fixed' lookup tables used by individual gates
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GateLookupTables {
+    pub xor: bool,
+    pub range_check: bool,
+}
+
+impl std::ops::Index<GateLookupTable> for GateLookupTables {
+    type Output = bool;
+
+    fn index(&self, index: GateLookupTable) -> &Self::Output {
+        match index {
+            GateLookupTable::Xor => &self.xor,
+            GateLookupTable::RangeCheck => &self.range_check,
+        }
+    }
+}
+
+impl std::ops::IndexMut<GateLookupTable> for GateLookupTables {
+    fn index_mut(&mut self, index: GateLookupTable) -> &mut Self::Output {
+        match index {
+            GateLookupTable::Xor => &mut self.xor,
+            GateLookupTable::RangeCheck => &mut self.range_check,
+        }
+    }
+}
+
+impl IntoIterator for GateLookupTables {
+    type Item = GateLookupTable;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Destructor pattern to make sure we add new lookup patterns.
+        let GateLookupTables { xor, range_check } = self;
+
+        let mut patterns = Vec::with_capacity(2);
+
+        if xor {
+            patterns.push(GateLookupTable::Xor)
+        }
+        if range_check {
+            patterns.push(GateLookupTable::RangeCheck)
+        }
+        patterns.into_iter()
+    }
+}
+
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
@@ -31,20 +78,23 @@ impl<F> LookupTable<F>
 where
     F: FftField,
 {
-    /// Return true if the table has an entry containing all zeros.
+    /// Return true if the table has an entry (row) containing all zeros.
     pub fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
-        for row in 0..self.data[0].len() {
-            for col in &self.data {
-                if !col[row].is_zero() {
-                    continue;
-                }
+        for row in 0..self.len() {
+            if self.data.iter().all(|col| col[row].is_zero()) {
                 return true;
             }
         }
-
         false
+    }
+
+    /// Returns the number of columns, i.e. the width of the table.
+    /// It is less error prone to introduce this method than using the public
+    /// field data.
+    pub fn width(&self) -> usize {
+        self.data.len()
     }
 
     /// Returns the length of the table.
@@ -147,4 +197,57 @@ where
     }
 
     PolyComm::multi_scalar_mul(&commitments, &scalars)
+}
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use ark_ff::PrimeField;
+    use ocaml;
+    use ocaml_gen;
+
+    use super::LookupTable;
+
+    //
+    // CamlLookupTable<CamlF>
+    //
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupTable<CamlF> {
+        pub id: i32,
+        pub data: Vec<Vec<CamlF>>,
+    }
+
+    impl<F, CamlF> From<CamlLookupTable<CamlF>> for LookupTable<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_lt: CamlLookupTable<CamlF>) -> Self {
+            Self {
+                id: caml_lt.id,
+                data: caml_lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<LookupTable<F>> for CamlLookupTable<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(lt: LookupTable<F>) -> Self {
+            Self {
+                id: lt.id,
+                data: lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
 }

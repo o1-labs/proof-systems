@@ -63,7 +63,11 @@ where
         val.serialize(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
-        Bytes::serialize_as(&bytes, serializer)
+        if serializer.is_human_readable() {
+            hex::serde::serialize(bytes, serializer)
+        } else {
+            Bytes::serialize_as(&bytes, serializer)
+        }
     }
 }
 
@@ -75,7 +79,11 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
+        let bytes: Vec<u8> = if deserializer.is_human_readable() {
+            hex::serde::deserialize(deserializer)?
+        } else {
+            Bytes::deserialize_as(deserializer)?
+        };
         T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }

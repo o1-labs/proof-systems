@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Serialization in JSON now uses hexstrings for bytearrays.
 - Upgrade to Rust 1.67.0
 - Remove unneeded ChaCha gates
 

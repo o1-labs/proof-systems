@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+env:
+  OCAML_VERSION: "4.14.0"
+  RUST_TOOLCHAIN_VERSION: "nightly"
+
 jobs:
   release:
     name: GitHub Pages
@@ -12,18 +16,37 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.1.1
 
-      - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
+      # as action-rs does not seem to be maintained anymore, building from
+      # scratch the environment using rustup
+      - name: Setup nightly Rust toolchain
+        run:
+          |
+            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+            chmod +x ./rustup-init
+            ./rustup-init -y --default-toolchain "$RUST_TOOLCHAIN_VERSION" --profile default
+            rm ./rustup-init
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            # overwriting default rust-toolchain
+            echo $RUST_TOOLCHAIN_VERSION > rust-toolchain
+
+      - name: Setup OCaml ${{ env.OCAML_VERSION }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ env.OCAML_VERSION }}
+          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
+          # disable-cache: true
 
       - name: Build Rust Documentation
         run: |
-          rustup install nightly
+          eval $(opam env)
           RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
 
       - name: Build the mdbook
         run: |
+          eval $(opam env)
           cd book
           make deps
           make build

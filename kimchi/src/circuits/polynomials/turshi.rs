@@ -226,6 +226,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            zk_rows: 3,
         };
 
         let pt = F::rand(rng);

@@ -22,3 +22,9 @@ _build
 *.swp
 *.swo
 .vscode
+
+*.html
+# If symlink created for kimchi-visu
+tools/srs
+
+.ignore

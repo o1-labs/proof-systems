@@ -582,7 +582,7 @@ mod tests {
     fn test_cairo_step() {
         // This tests that CairoStep works for a 2 word instruction
         //    tempvar x = 10;
-        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+        let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
             .iter()
             .map(|&i: &i64| F::from(i))
             .collect();
@@ -604,7 +604,7 @@ mod tests {
 
     #[test]
     fn test_cairo_program() {
-        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+        let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
             .iter()
             .map(|&i: &i64| F::from(i))
             .collect();
@@ -634,7 +634,7 @@ mod tests {
             return ()
         end
         */
-        let instrs = vec![
+        let instrs = [
             0x400380007ffc7ffd,
             0x482680017ffc8000,
             1,

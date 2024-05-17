@@ -5,6 +5,7 @@ use crate::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
+    SRS as _,
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
@@ -59,6 +60,8 @@ where
                     }
                 })
                 .collect::<Vec<_>>();
+
+            // TODO @volhovm remove?
             let bounds = a
                 .iter()
                 .enumerate()
@@ -78,10 +81,19 @@ where
             let mut start = Instant::now();
             let comm = (0..a.len())
                 .map(|i| {
+                    let n = a[i].len();
+                    let num_chunks = if n == 0 {
+                        1
+                    } else {
+                        n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
+                    };
                     (
-                        srs.commit(&a[i].clone(), bounds[i], rng),
+                        srs.commit(&a[i].clone(), num_chunks, rng),
                         x.iter()
-                            .map(|xx| a[i].to_chunked_polynomial(size).evaluate_chunks(*xx))
+                            .map(|xx| {
+                                a[i].to_chunked_polynomial(num_chunks, size)
+                                    .evaluate_chunks(*xx)
+                            })
                             .collect::<Vec<_>>(),
                         bounds[i],
                     )
@@ -93,12 +105,10 @@ where
             let polys: Vec<(
                 DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
                 _,
-                _,
             )> = (0..a.len())
                 .map(|i| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(&a[i]),
-                        bounds[i],
                         (comm[i].0).blinders.clone(),
                     )
                 })
@@ -117,20 +127,9 @@ where
             let combined_inner_product = {
                 let es: Vec<_> = comm
                     .iter()
-                    .map(|(commitment, evaluations, degree_bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    })
+                    .map(|(_, evaluations, _)| evaluations.clone())
                     .collect();
-                combined_inner_product(&x, &polymask, &evalmask, &es, srs.g.len())
+                combined_inner_product(&polymask, &evalmask, &es)
             };
 
             (
@@ -158,7 +157,6 @@ where
                 .map(|poly| Evaluation {
                     commitment: (poly.0).commitment.clone(),
                     evaluations: poly.1.clone(),
-                    degree_bound: poly.2,
                 })
                 .collect::<Vec<_>>(),
             opening: &proof.5,

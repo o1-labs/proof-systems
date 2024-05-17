@@ -38,6 +38,7 @@ use mina_poseidon::{
 };
 use poly_commitment::{
     commitment::CommitmentCurve,
+    evaluation_proof::OpeningProof,
     srs::{endos, SRS},
 };
 
@@ -53,21 +54,17 @@ const RNG_SEED: [u8; 32] = [
     0, 33, 210, 215, 172, 130, 24, 164, 12,
 ];
 
-fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Vesta> {
+fn create_test_prover_index(
+    public_size: usize,
+    compact: bool,
+) -> ProverIndex<Vesta, OpeningProof<Vesta>> {
     let (_next_row, gates) = if compact {
         CircuitGate::<Fp>::create_compact_multi_range_check(0)
     } else {
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
 
-    new_index_for_test_with_lookups(
-        gates,
-        public_size,
-        0,
-        vec![range_check::gadget::lookup_table()],
-        None,
-        false,
-    )
+    new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None)
 }
 
 #[test]
@@ -598,7 +595,7 @@ fn verify_range_check0_v0_test_lookups() {
                 .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
-                "the lookup failed to find a match in the table"
+                "the lookup failed to find a match in the table: row=0"
             ))
         );
     }
@@ -651,7 +648,7 @@ fn verify_range_check0_v1_test_lookups() {
                 .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
-                "the lookup failed to find a match in the table"
+                "the lookup failed to find a match in the table: row=1"
             ))
         );
     }
@@ -1001,7 +998,7 @@ fn verify_range_check1_test_curr_row_lookups() {
                 .witness(witness.clone())
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
-                "the lookup failed to find a match in the table"
+                "the lookup failed to find a match in the table: row=2"
             ))
         );
     }
@@ -1055,7 +1052,7 @@ fn verify_range_check1_test_next_row_lookups() {
                     .witness(witness.clone())
                     .prove_and_verify::<BaseSponge, ScalarSponge>(),
                 Err(String::from(
-                    "the lookup failed to find a match in the table"
+                    "the lookup failed to find a match in the table: row=3"
                 ))
             );
         }
@@ -1091,7 +1088,7 @@ fn verify_64_bit_range_check() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     // Witness layout (positive test case)
@@ -1217,7 +1214,7 @@ fn verify_range_check_valid_proof1() {
     let verifier_index = prover_index.verifier_index();
 
     // Verify proof
-    let res = verify::<Vesta, BaseSponge, ScalarSponge>(
+    let res = verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
         &group_map,
         &verifier_index,
         &proof,
