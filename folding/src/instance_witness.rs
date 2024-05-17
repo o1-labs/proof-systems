@@ -42,14 +42,14 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
     /// points_l = L.to_absorb().1 | L.extended | L.error // where extended is the commitments to the extra columns
     /// points_r = R.to_absorb().1 | R.extended | R.error // where extended is the commitments to the extra columns
+    /// t_0 and t_1 first and second error terms
+    /// points = points_l | points_r | t_0 | t_1
     /// ```
     /// A user implementing the IVC circuit should absorb the elements in the
     /// following order:
     /// ```text
-    /// sponge.absorb_g(t_0); // first error term
-    /// sponge.absorb_g(t_1); // second error term
     /// sponge.absorb_fr(scalar); // absorb the scalar elements
-    /// sponge.absorb_g(points_l | points_r); // absorb the commitments
+    /// sponge.absorb_g(points); // absorb the commitments
     /// ```
     /// This is the order used by the folding library in the method
     /// `fold_instance_witness_pair`.
