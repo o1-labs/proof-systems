@@ -6,9 +6,16 @@ use std::{array, ops::Index};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use itertools::Itertools;
 use kimchi::circuits::gate::CurrOrNext;
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
-use poly_commitment::commitment::CommitmentCurve;
+use mina_poseidon::FqSponge;
+use poly_commitment::{
+    commitment::{absorb_commitment, CommitmentCurve},
+    srs::SRS,
+    PolyComm, SRS as _,
+};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
 use crate::{
     expressions::FoldingColumnTrait, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
@@ -46,8 +53,8 @@ pub trait ProvableTrace {
 
 #[derive(Clone, Debug)]
 pub struct PlonkishInstance<const N_COL: usize, C: CommitmentCurve> {
-    commitments: [C; N_COL],
-    alphas: Alphas<<C as AffineCurve>::ScalarField>,
+    pub commitments: [C; N_COL],
+    pub alphas: Alphas<<C as AffineCurve>::ScalarField>,
 }
 
 impl<const N: usize, G: CommitmentCurve> Instance<G> for PlonkishInstance<N, G> {
@@ -86,29 +93,65 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for PlonkishWitness<N, G::Sc
     }
 }
 
-pub struct PlonkishEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+impl<const N: usize, G: CommitmentCurve> PlonkishInstance<N, G> {
+    pub fn from_witness<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        w: &GenericWitness<N, Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>,
+        fq_sponge: &mut EFqSponge,
+        srs: &SRS<G>,
+        domain: Radix2EvaluationDomain<G::ScalarField>,
+    ) -> Self {
+        let commitments: GenericWitness<3, PolyComm<G>> = (&w)
+            .into_par_iter()
+            .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+            .collect();
+
+        // Absorbing commitments
+        (&commitments)
+            .into_iter()
+            .for_each(|c| absorb_commitment(fq_sponge, c));
+
+        let commitments: [G; N] = commitments
+            .into_iter()
+            .map(|c| c.elems[0])
+            .collect_vec()
+            .try_into()
+            .unwrap();
+
+        let alpha = fq_sponge.challenge();
+        let alphas = Alphas::new(alpha);
+
+        PlonkishInstance {
+            commitments,
+            alphas,
+        }
+    }
+}
+
+pub struct PlonkishEnvironment<
+    'a,
+    const N: usize,
+    C: FoldingConfig,
+    W: Witness<C::Curve>,
+    Structure: ProvableTrace,
+> {
     /// Structure of the folded circuit
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [PlonkishInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
-    pub curr_witnesses: [PlonkishWitness<N, ScalarField<C>>; 2],
-    /// Corresponds to the zeta*omega evaluations, for both sides
-    /// This is curr_witness but left shifted by 1
-    pub next_witnesses: [PlonkishWitness<N, ScalarField<C>>; 2],
+    pub curr_witnesses: [&'a W; 2],
 }
 
-impl<const N: usize, C: FoldingConfig, Structure: ProvableTrace + Clone>
-    FoldingEnv<
-        ScalarField<C>,
-        PlonkishInstance<N, C::Curve>,
-        PlonkishWitness<N, ScalarField<C>>,
-        C::Column,
-        (),
-        (),
-    > for PlonkishEnvironment<N, C, Structure>
+impl<
+        'a,
+        const N: usize,
+        W: Witness<C::Curve>,
+        C: FoldingConfig,
+        Structure: ProvableTrace + Clone,
+    > FoldingEnv<ScalarField<C>, PlonkishInstance<N, C::Curve>, W, C::Column, (), ()>
+    for PlonkishEnvironment<'a, N, C, W, Structure>
 where
-    PlonkishWitness<N, ScalarField<C>>: Index<
+    Witness<C::Curve>: Index<
         C::Column,
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
@@ -118,21 +161,13 @@ where
     fn new(
         structure: &Self::Structure,
         instances: [&PlonkishInstance<N, C::Curve>; 2],
-        witnesses: [&PlonkishWitness<N, ScalarField<C>>; 2],
+        witnesses: [&W; 2],
     ) -> Self {
-        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
-        let mut next_witnesses = curr_witnesses.clone();
-        for side in next_witnesses.iter_mut() {
-            for col in side.witness.cols.iter_mut() {
-                col.evals.rotate_left(1);
-            }
-        }
         PlonkishEnvironment {
             // FIXME: This is a clone, but it should be a reference
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
-            curr_witnesses,
-            next_witnesses,
+            curr_witnesses: witnesses,
         }
     }
 
@@ -146,11 +181,11 @@ where
 
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
         let wit = match curr_or_next {
-            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
-            CurrOrNext::Next => &self.next_witnesses[side as usize],
+            CurrOrNext::Curr => self.curr_witnesses[side as usize],
+            _ => unimplemented!("Only curr is supported for PlonkishEnvironment"),
         };
         // The following is possible because Index is implemented for our circuit witnesses
-        &wit[col].evals
+        wit[col].evals
     }
 
     fn challenge(&self, _challenge: (), _side: Side) -> ScalarField<C> {
