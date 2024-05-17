@@ -19,18 +19,15 @@ pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// folding for instance.
     pub constraints: Vec<Expr<ConstantExpr<F>, Column>>,
     pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
-    pub assert_mapper: E<F>,
+    pub assert_mapper: Box<dyn Fn(E<F>) -> E<F>>,
 }
 
 impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn create() -> Self {
-        let const_one = Expr::Atom(ExprInner::Constant(ConstantExpr::from(
-            ConstantTerm::Literal(F::one()),
-        )));
         Self {
             constraints: vec![],
             lookups: BTreeMap::new(),
-            assert_mapper: const_one,
+            assert_mapper: Box::new(|x| x),
         }
     }
 }
@@ -43,10 +40,10 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     fn assert_zero(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression
-        self.constraints.push(self.assert_mapper.clone() * cst);
+        self.constraints.push((self.assert_mapper)(cst));
     }
 
-    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
         self.assert_mapper = mapper;
     }
 

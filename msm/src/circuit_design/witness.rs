@@ -44,7 +44,7 @@ pub struct WitnessBuilderEnv<
     pub fixed_selectors: Vec<Vec<F>>,
 
     /// Function used to map assertions.
-    pub assert_mapper: F,
+    pub assert_mapper: Box<dyn Fn(F) -> F>,
 
     // A Phantom Data for CIx -- right now WitnessBUilderEnv does not
     // depend on CIx, but in the future (with associated generics
@@ -70,10 +70,10 @@ impl<
     type Variable = F;
 
     fn assert_zero(&mut self, cst: Self::Variable) {
-        assert_eq!(self.assert_mapper * cst, F::zero());
+        assert_eq!((self.assert_mapper)(cst), F::zero());
     }
 
-    fn set_assert_mapper(&mut self, mapper: Self::Variable) {
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
         self.assert_mapper = mapper;
     }
 
@@ -308,7 +308,7 @@ impl<
             lookups: vec![lookups_row],
             fixed_selectors,
             phantom_cix: PhantomData,
-            assert_mapper: F::one(),
+            assert_mapper: Box::new(|x| x),
         }
     }
 

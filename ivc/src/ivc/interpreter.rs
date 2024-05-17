@@ -928,8 +928,7 @@ where
     let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
     let mut cur_row = 0;
     for _i in 0..3 * N_COL_TOTAL {
-        //selectors[0][cur_row] = F::one();
-        selectors[0][cur_row] = F::from(2u32);
+        selectors[0][cur_row] = F::one();
         cur_row += 1;
     }
     for _i in 0..6 * N_COL_TOTAL + 2 {
@@ -978,19 +977,29 @@ where
 {
     constrain_selectors(env);
 
-    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(0)));
+    let s0 = env.read_column(IVCColumn::BlockSel(0));
+    env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
     constrain_inputs(env);
+
     // TODO FIXME add constraints for hashes
-    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(2)));
+
+    let s2 = env.read_column(IVCColumn::BlockSel(2));
+    env.set_assert_mapper(Box::new(move |x| s2.clone() * x));
     constrain_ecadds(env);
-    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(3)));
+
+    let s3 = env.read_column(IVCColumn::BlockSel(3));
+    env.set_assert_mapper(Box::new(move |x| s3.clone() * x));
     constrain_scalars(env);
-    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(4)));
+
+    let s4 = env.read_column(IVCColumn::BlockSel(4));
+    env.set_assert_mapper(Box::new(move |x| s4.clone() * x));
     constrain_challenges(env);
-    env.set_assert_mapper(env.read_column(IVCColumn::BlockSel(5)));
+
+    let s5 = env.read_column(IVCColumn::BlockSel(5));
+    env.set_assert_mapper(Box::new(move |x| s5.clone() * x));
     constrain_u(env);
 
-    env.set_assert_mapper(Env::constant(F::one()));
+    env.set_assert_mapper(Box::new(move |x| x));
 }
 
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)

@@ -127,7 +127,7 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng();
         build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
-            1 << 8,
+            1 << 15,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
     }
