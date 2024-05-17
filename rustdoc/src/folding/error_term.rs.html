@@ -394,6 +394,21 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -789,5 +804,20 @@
         // It implies copying on the stack and possibly copy multiple times.
         </span><span class="self">self
     </span>}
+
+    <span class="doccomment">/// Return the list of scalars and commitments to be absorbed, by
+    /// concatenating the ones of the left with the ones of the right instance
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_absorb(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        t0: <span class="kw-2">&amp;</span>CF::Curve,
+        t1: <span class="kw-2">&amp;</span>CF::Curve,
+    ) -&gt; (Vec&lt;ScalarField&lt;CF&gt;&gt;, Vec&lt;CF::Curve&gt;) {
+        <span class="kw">let </span><span class="kw-2">mut </span>left = <span class="self">self</span>.instances[<span class="number">0</span>].to_absorb();
+        <span class="kw">let </span>right = <span class="self">self</span>.instances[<span class="number">1</span>].to_absorb();
+        left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
+        left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
+        left.<span class="number">1</span>.extend([t0, t1]);
+        left
+    }
 }
 </code></pre></div></section></main></body></html>

@@ -338,6 +338,35 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -541,11 +570,7 @@
         a: A,
         b: B,
         fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
-    ) -&gt; (
-        RelaxedInstance&lt;CF::Curve, CF::Instance&gt;,
-        RelaxedWitness&lt;CF::Curve, CF::Witness&gt;,
-        [PolyComm&lt;CF::Curve&gt;; <span class="number">2</span>],
-    )
+    ) -&gt; FoldingOutput&lt;CF&gt;
     <span class="kw">where
         </span>A: RelaxablePair&lt;CF::Curve, CF::Instance, CF::Witness&gt;,
         B: RelaxablePair&lt;CF::Curve, CF::Instance, CF::Witness&gt;,
@@ -583,16 +608,26 @@
         </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
 
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems);
+        <span class="kw">let </span>t_0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>];
+        <span class="kw">let </span>t_1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>];
+
+        <span class="kw">let </span>to_absorb = env.to_absorb(t_0, t_1);
+        fq_sponge.absorb_fr(<span class="kw-2">&amp;</span>to_absorb.<span class="number">0</span>);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>to_absorb.<span class="number">1</span>);
 
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
         <span class="kw">let </span>([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        <span class="kw">let </span>instance =
+        <span class="kw">let </span>folded_instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, <span class="kw-2">&amp;</span>error_commitments);
-        <span class="kw">let </span>witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
-        (instance, witness, error_commitments)
+        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        FoldingOutput {
+            folded_instance,
+            folded_witness,
+            t_0: error_commitments[<span class="number">0</span>].clone(),
+            t_1: error_commitments[<span class="number">1</span>].clone(),
+            to_absorb,
+        }
     }
 
     <span class="doccomment">/// Fold two relaxable instances into a relaxed instance.
@@ -625,6 +660,29 @@
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
         RelaxedInstance::combine_and_sub_error(a, b, challenge, <span class="kw-2">&amp;</span>error_commitments)
+    }
+}
+<span class="doccomment">/// Output of the folding prover
+</span><span class="kw">pub struct </span>FoldingOutput&lt;C: FoldingConfig&gt; {
+    <span class="doccomment">///folded instance
+    </span><span class="kw">pub </span>folded_instance: RelaxedInstance&lt;C::Curve, C::Instance&gt;,
+    <span class="doccomment">///folded witness
+    </span><span class="kw">pub </span>folded_witness: RelaxedWitness&lt;C::Curve, C::Witness&gt;,
+    <span class="kw">pub </span>t_0: PolyComm&lt;C::Curve&gt;,
+    <span class="kw">pub </span>t_1: PolyComm&lt;C::Curve&gt;,
+    <span class="doccomment">/// Elements to absorbed in IVC, in the same order as done in folding
+    </span><span class="kw">pub </span>to_absorb: (Vec&lt;ScalarField&lt;C&gt;&gt;, Vec&lt;C::Curve&gt;),
+}
+
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingOutput&lt;C&gt; {
+    <span class="attr">#[allow(clippy::type_complexity)]
+    </span><span class="kw">pub fn </span>pair(
+        <span class="self">self</span>,
+    ) -&gt; (
+        RelaxedInstance&lt;C::Curve, C::Instance&gt;,
+        RelaxedWitness&lt;C::Curve, C::Witness&gt;,
+    ) {
+        (<span class="self">self</span>.folded_instance, <span class="self">self</span>.folded_witness)
     }
 }
 

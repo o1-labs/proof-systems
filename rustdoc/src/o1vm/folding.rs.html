@@ -463,6 +463,16 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::ProvableTrace;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Zero};
@@ -527,6 +537,16 @@
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+
+    <span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;&lt;G&gt;::ScalarField&gt;, Vec&lt;G&gt;) {
+        <span class="comment">// FIXME: check!!!!
+        </span><span class="kw">let </span><span class="kw-2">mut </span>scalars = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>points = Vec::new();
+        points.extend(<span class="self">self</span>.commitments);
+        scalars.extend(<span class="self">self</span>.challenges);
+        scalars.extend(<span class="self">self</span>.alphas.clone().powers());
+        (scalars, points)
     }
 
     <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
