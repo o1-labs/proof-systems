@@ -1,4 +1,6 @@
-use ark_ff::Zero;
+use ark_ff::{FftField, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use folding::instance_witness::Foldable;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::ops::Index;
 
@@ -141,5 +143,18 @@ where
         let mut iter_contents = Vec::with_capacity(N);
         iter_contents.extend(&mut *self.cols);
         iter_contents.into_par_iter()
+    }
+}
+
+impl<const N: usize, F: FftField> Foldable<F>
+    for Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>
+{
+    fn combine(mut a: Self, b: Self, challenge: F) -> Self {
+        for (a, b) in (*a.cols).iter_mut().zip(*(b.cols)) {
+            for (a, b) in a.evals.iter_mut().zip(b.evals) {
+                *a += challenge * b;
+            }
+        }
+        a
     }
 }
