@@ -43,6 +43,15 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        let mut fields = Vec::with_capacity(3 + 2);
+        fields.extend(self.challenges);
+        fields.extend(self.alphas.clone().powers());
+        assert_eq!(fields.len(), 5);
+        let points = self.commitments.to_vec();
+        (fields, points)
+    }
+
     fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
@@ -353,7 +362,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FoldingScheme;
+    use crate::{FoldingOutput, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
     use kimchi::curve::KimchiCurve;
@@ -434,7 +443,17 @@ mod tests {
         let right = (right_instance, right_witness);
 
         let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
-        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            to_absorb,
+            ..
+        } = folded;
+        // checking that we have the expected number of elements to absorb
+        // 3+2 from each instance + 1 from u, times 2 instances
+        assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
+        // 3 from each instance + 1 from E, times 2 instances + t_0 + t_1
+        assert_eq!(to_absorb.1.len(), (3 + 1) * 2 + 2);
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);

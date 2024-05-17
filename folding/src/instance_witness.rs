@@ -32,6 +32,33 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
+    /// This method returns the scalars and commitments that must be absorbed by
+    /// the sponge. It is not supposed to do any absorption itself, and the user
+    /// is responsible for calling the sponge absorb methods with the elements
+    /// returned by this method.
+    /// When called on a RelaxedInstance, elements will be returned in the
+    /// following order, for given instances L and R
+    /// ```text
+    /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
+    /// points_l = L.to_absorb().1 | L.extended | L.error // where extended is the commitments to the extra columns
+    /// points_r = R.to_absorb().1 | R.extended | R.error // where extended is the commitments to the extra columns
+    /// t_0 and t_1 first and second error terms
+    /// points = points_l | points_r | t_0 | t_1
+    /// ```
+    /// A user implementing the IVC circuit should absorb the elements in the
+    /// following order:
+    /// ```text
+    /// sponge.absorb_fr(scalar); // absorb the scalar elements
+    /// sponge.absorb_g(points); // absorb the commitments
+    /// ```
+    /// This is the order used by the folding library in the method
+    /// `fold_instance_witness_pair`.
+    /// From there, a challenge can be coined using:
+    /// ```text
+    /// let challenge_r = sponge.challenge();
+    /// ```
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
+
     /// This method takes an Instance and a commitment to zero and extends the instance,
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
@@ -91,8 +118,14 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     }
 }
 
-// -- Relaxed instances
+/// A relaxed instance is an instance that has been relaxed by the folding scheme.
+/// It contains the original instance, extended with the columns added by
+/// quadriticization, the scalar `u` and a commitment to the
+/// slack/error term.
+/// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
+    /// The original instance, extended with the columns added by
+    /// quadriticization
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
@@ -101,6 +134,18 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
+    }
+
+    /// Returns the elements to be absorbed by the sponge
+    ///
+    /// The scalar elements of the are appended with the scalar `u` and the
+    /// commitments are appended by the commitment to the error term.
+    pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        let mut elements = self.instance.to_absorb();
+        elements.0.push(self.u);
+        assert_eq!(self.error_commitment.elems.len(), 1);
+        elements.1.push(self.error_commitment.elems[0]);
+        elements
     }
 
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
@@ -202,8 +247,10 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
         self.extended.insert(i, evals);
     }
 
-    /// Allows to know if the extended witness comlumns are already computed, to
-    /// avoid overriding them
+    /// Return true if the no extra columns are added by quadraticization
+    ///
+    /// Can be used to know if the extended witness columns are already
+    /// computed, to avoid overriding them
     pub fn is_extended(&self) -> bool {
         !self.extended.is_empty()
     }
@@ -233,6 +280,21 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
         Self { inner, extended }
+    }
+
+    /// Return the elements to be absorbed by the sponge
+    ///
+    /// The commitments to the additional columns created by quadriticization
+    /// are appended to the existing commitments of the initial instance
+    /// to be absorbed. The scalars are unchanged.
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        let mut elements = self.inner.to_absorb();
+        let extended_commitments = self.extended.iter().map(|commit| {
+            assert_eq!(commit.elems.len(), 1);
+            commit.elems[0]
+        });
+        elements.1.extend(extended_commitments);
+        elements
     }
 
     fn alphas(&self) -> &Alphas<G::ScalarField> {

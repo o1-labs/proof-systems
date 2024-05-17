@@ -63,6 +63,11 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        // FIXME?
+        (vec![], vec![])
+    }
+
     fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
@@ -284,7 +289,7 @@ impl Index<DynamicSelector> for TestWitness {
 mod tests {
     use super::*;
     // Trick to print debug message while testing, as we in the test config env
-    use crate::decomposable_folding::DecomposableFoldingScheme;
+    use crate::{decomposable_folding::DecomposableFoldingScheme, FoldingOutput};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use kimchi::curve::KimchiCurve;
     use mina_poseidon::FqSponge;
@@ -365,7 +370,11 @@ mod tests {
                 Some(DynamicSelector::SelecAdd),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             checker.check(&final_constraint);
             let ExtendedProvider {
@@ -393,7 +402,11 @@ mod tests {
                 Some(DynamicSelector::SelecMul),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
@@ -409,7 +422,11 @@ mod tests {
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
             let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 

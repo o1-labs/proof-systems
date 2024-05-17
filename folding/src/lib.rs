@@ -201,11 +201,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         a: A,
         b: B,
         fq_sponge: &mut Sponge,
-    ) -> (
-        RelaxedInstance<CF::Curve, CF::Instance>,
-        RelaxedWitness<CF::Curve, CF::Witness>,
-        [PolyComm<CF::Curve>; 2],
-    )
+    ) -> FoldingOutput<CF>
     where
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
@@ -243,16 +239,26 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].elems.len(), 1);
         assert_eq!(error_commitments[1].elems.len(), 1);
 
-        fq_sponge.absorb_g(&error_commitments[0].elems);
-        fq_sponge.absorb_g(&error_commitments[1].elems);
+        let t_0 = &error_commitments[0].elems[0];
+        let t_1 = &error_commitments[1].elems[0];
+
+        let to_absorb = env.to_absorb(t_0, t_1);
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
 
         let challenge = fq_sponge.challenge();
 
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let instance =
+        let folded_instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
-        (instance, witness, error_commitments)
+        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        FoldingOutput {
+            folded_instance,
+            folded_witness,
+            t_0: error_commitments[0].clone(),
+            t_1: error_commitments[1].clone(),
+            to_absorb,
+        }
     }
 
     /// Fold two relaxable instances into a relaxed instance.
@@ -285,6 +291,29 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let challenge = fq_sponge.challenge();
 
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+    }
+}
+/// Output of the folding prover
+pub struct FoldingOutput<C: FoldingConfig> {
+    ///folded instance
+    pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
+    ///folded witness
+    pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
+    pub t_0: PolyComm<C::Curve>,
+    pub t_1: PolyComm<C::Curve>,
+    /// Elements to absorbed in IVC, in the same order as done in folding
+    pub to_absorb: (Vec<ScalarField<C>>, Vec<C::Curve>),
+}
+
+impl<C: FoldingConfig> FoldingOutput<C> {
+    #[allow(clippy::type_complexity)]
+    pub fn pair(
+        self,
+    ) -> (
+        RelaxedInstance<C::Curve, C::Instance>,
+        RelaxedWitness<C::Curve, C::Witness>,
+    ) {
+        (self.folded_instance, self.folded_witness)
     }
 }
 

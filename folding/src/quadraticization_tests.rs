@@ -23,6 +23,10 @@ impl Instance<Curve> for TestInstance {
     fn alphas(&self) -> &crate::Alphas<Fp> {
         todo!()
     }
+
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        todo!()
+    }
 }
 #[derive(Clone)]
 struct TestWitness;
