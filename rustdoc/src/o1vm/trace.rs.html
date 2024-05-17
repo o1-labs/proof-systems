@@ -325,29 +325,6 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -376,15 +353,6 @@
     <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
-<span class="doccomment">/// Represents an provable trace.
-/// A trace is provable if it can be used to prove the correctness of the
-/// computation it embeds.
-/// For now, the only requirement is to be able to return the length of
-/// the computation, which is commonly named the domain size.
-</span><span class="kw">pub trait </span>ProvableTrace {
-    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
-}
-
 <span class="doccomment">/// Implement a trace for a single instruction.
 </span><span class="comment">// TODO: we should use the generic traits defined in [kimchi_msm].
 // For now, we want to have this to be able to test the folding library for a
@@ -397,13 +365,6 @@
     <span class="kw">pub </span>witness: Witness&lt;N, Vec&lt;ScalarField&lt;C&gt;&gt;&gt;,
     <span class="kw">pub </span>constraints: Vec&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;,
     <span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;ScalarField&lt;C&gt;&gt;&gt;&gt;,
-}
-
-<span class="comment">// Any single instruction trace is provable.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; ProvableTrace <span class="kw">for </span>Trace&lt;N, C&gt; {
-    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.domain_size
-    }
 }
 
 <span class="doccomment">/// Struct representing a circuit execution trace which is decomposable in
@@ -431,13 +392,6 @@
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: C::Selector) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw-2">&amp;</span><span class="self">self</span>.trace[<span class="kw-2">&amp;</span>index]
-    }
-}
-
-<span class="comment">// Any decomposable trace is provable.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; ProvableTrace <span class="kw">for </span>DecomposedTrace&lt;N, C&gt; {
-    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.domain_size
     }
 }
 

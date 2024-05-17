@@ -456,32 +456,8 @@
 <a href="#456" id="456">456</a>
 <a href="#457" id="457">457</a>
 <a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::trace::ProvableTrace;
-<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::{FftField, Zero};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
@@ -606,7 +582,7 @@
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_DSEL: usize,
     C: FoldingConfig,
-    Structure: ProvableTrace,
+    Structure,
 &gt; {
     <span class="kw">pub </span>structure: Structure,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
@@ -624,7 +600,7 @@
         <span class="kw">const </span>N_SEL: usize,
         C: FoldingConfig,
         <span class="comment">// FIXME: Clone should not be used. Only a reference should be stored
-        </span>Structure: ProvableTrace + Clone,
+        </span>Structure: Clone,
     &gt;
     FoldingEnv&lt;
         ScalarField&lt;C&gt;,
@@ -668,14 +644,6 @@
         }
     }
 
-    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.structure.domain_size()
-    }
-
-    <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;ScalarField&lt;C&gt;&gt; {
-        <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); <span class="self">self</span>.domain_size()]
-    }
-
     <span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: C::Column, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
         <span class="kw">let </span>wit = <span class="kw">match </span>curr_or_next {
             CurrOrNext::Curr =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr_witnesses[side <span class="kw">as </span>usize],
@@ -704,7 +672,7 @@
     }
 }
 
-<span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Structure: ProvableTrace&gt; {
+<span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, C: FoldingConfig, Structure&gt; {
     <span class="doccomment">/// Structure of the folded circuit
     </span><span class="kw">pub </span>structure: Structure,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
@@ -720,7 +688,7 @@
         <span class="kw">const </span>N: usize,
         C: FoldingConfig,
         <span class="comment">// FIXME: Clone should not be used. Only a reference should be stored
-        </span>Structure: ProvableTrace + Clone,
+        </span>Structure: Clone,
     &gt;
     FoldingEnv&lt;
         ScalarField&lt;C&gt;,
@@ -758,14 +726,6 @@
             curr_witnesses,
             next_witnesses,
         }
-    }
-
-    <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.structure.domain_size()
-    }
-
-    <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;ScalarField&lt;C&gt;&gt; {
-        <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); <span class="self">self</span>.domain_size()]
     }
 
     <span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: C::Column, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
@@ -826,12 +786,6 @@
 
     <span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
     </span><span class="kw">struct </span>TestConfig;
-
-    <span class="kw">impl </span>ProvableTrace <span class="kw">for </span>TestStructure {
-        <span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-            <span class="number">4
-        </span>}
-    }
 
     <span class="kw">type </span>TestWitness&lt;T&gt; = kimchi_msm::witness::Witness&lt;<span class="number">3</span>, T&gt;;
     <span class="kw">type </span>TestFoldingWitness = FoldingWitness&lt;<span class="number">3</span>, Fp&gt;;

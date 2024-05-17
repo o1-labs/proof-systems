@@ -364,9 +364,6 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -491,16 +488,13 @@
     <span class="doccomment">/// Creates a new environment storing the structure, instances and witnesses.
     </span><span class="kw">fn </span>new(structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure, instances: [<span class="kw-2">&amp;</span>I; <span class="number">2</span>], witnesses: [<span class="kw-2">&amp;</span>W; <span class="number">2</span>]) -&gt; <span class="self">Self</span>;
 
-    <span class="doccomment">/// Returns the domain size of the circuit.
-    </span><span class="kw">fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
-
     <span class="comment">// TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
     </span><span class="doccomment">/// Returns a vector of zeros with the same length as the number of rows in
     /// the circuit.
-    </span><span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;F&gt; {
-        <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain_size()]
+    </span><span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; Vec&lt;F&gt; {
+        <span class="macro">vec!</span>[F::zero(); n]
     }
 
     <span class="doccomment">/// Returns the evaluations of a given column witness at omega or zeta*omega.

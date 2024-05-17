@@ -473,7 +473,7 @@
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             <span class="kw">match </span>selector {
-                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec()),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize)),
                 <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) | <span class="prelude-val">None </span>=&gt; {
                     <span class="kw">let </span>d1 = e1.folding_degree();
                     <span class="kw">let </span>d2 = e2.folding_degree();
@@ -542,7 +542,7 @@
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             <span class="kw">match </span>selector {
-                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec()),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize)),
                 <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) | <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>(exp.folding_degree(), e1.folding_degree()) {
                     (Degree::Two, Degree::One) =&gt; {
                         <span class="kw">let </span>first =
@@ -596,7 +596,7 @@
     // possible, and inline code.
     </span><span class="kw">let </span>(ul, ur) = (u.<span class="number">0</span>, u.<span class="number">1</span>);
     <span class="kw">let </span>u_cross = ul * ur;
-    <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner().zero_vec());
+    <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner().zero_vec(env.domain.size <span class="kw">as </span>usize));
 
     <span class="kw">let </span>t_0 = {
         <span class="kw">let </span>t_0 = (zero(), zero());
