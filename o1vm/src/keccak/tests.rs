@@ -1,4 +1,5 @@
 use crate::{
+    folding::{BaseField, ScalarField},
     keccak::{
         column::{
             Absorbs::*,
@@ -7,30 +8,110 @@ use crate::{
             N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS,
         },
         environment::KeccakEnv,
+        folding::KeccakConfig,
         interpreter::KeccakInterpreter,
         trace::DecomposedKeccakTrace,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::{DecomposableTracer, Tracer},
+    trace::{DecomposableTracer, Foldable, Tracer},
     BaseSponge, Fp,
 };
+use ark_bn254::g1::Parameters;
+use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::{One, Zero};
+use ark_poly::Radix2EvaluationDomain as D;
 use folding::{
-    checker::{ExtendedProvider, Provider},
+    checker::{Checker, ExtendedProvider, Provider},
     decomposable_folding::DecomposableFoldingScheme,
-    FoldingScheme,
+    expressions::FoldingCompatibleExprInner,
+    FoldingCompatibleExpr, FoldingConfig, FoldingScheme,
 };
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
     o1_utils::{self, FieldHelpers, Two},
 };
-use kimchi_msm::test::test_completeness_generic;
-use rand::Rng;
+use kimchi_msm::{expr::E, test::test_completeness_generic};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
+use poly_commitment::srs::SRS;
+use rand::{rngs::StdRng, Rng};
 use sha3::{Digest, Keccak256};
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    array,
+    collections::{BTreeMap, HashMap},
+};
 use strum::IntoEnumIterator;
+
+fn create_trace_all_steps(domain_size: usize, rng: &mut StdRng) -> DecomposedKeccakTrace {
+    let mut trace = <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
+        domain_size,
+        &mut KeccakEnv::<Fp>::default(),
+    );
+    {
+        // 1 block preimages for Sponge(Absorb(Only)), Round(0), and Sponge(Squeeze)
+        for _ in 0..domain_size {
+            // random 1-block preimages
+            let bytelength = rng.gen_range(0..RATE_IN_BYTES);
+            let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+            // Initialize the environment and run the interpreter
+            let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+            while keccak_env.step.is_some() {
+                let step = keccak_env.step.unwrap();
+                // Create the relation witness columns
+                keccak_env.step();
+                match step {
+                    Sponge(Absorb(Only)) | Round(0) | Sponge(Squeeze) => {
+                        // Add the witness row to the circuit
+                        trace.push_row(step, &keccak_env.witness_env.witness.cols);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // Check there is no need for padding because we reached domain_size rows for these selectors
+        assert!(trace.is_full(Sponge(Absorb(Only))));
+        assert!(trace.is_full(Round(0)));
+        assert!(trace.is_full(Sponge(Squeeze)));
+
+        // Add the columns of the selectors to the circuit
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Only)), domain_size);
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Round(0), domain_size);
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Squeeze), domain_size);
+    }
+    {
+        // 3 block preimages for Sponge(Absorb(First)), Sponge(Absorb(Middle)), and Sponge(Absorb(Last))
+        for _ in 0..domain_size {
+            // random 3-block preimages
+            let bytelength = rng.gen_range(2 * RATE_IN_BYTES..3 * RATE_IN_BYTES);
+            let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+            // Initialize the environment and run the interpreter
+            let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+            while keccak_env.step.is_some() {
+                let step = keccak_env.step.unwrap();
+                // Create the relation witness columns
+                keccak_env.step();
+                match step {
+                    Sponge(Absorb(First)) | Sponge(Absorb(Middle)) | Sponge(Absorb(Last)) => {
+                        // Add the witness row to the circuit
+                        trace.push_row(step, &keccak_env.witness_env.witness.cols);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // Check there is no need for padding because we reached domain_size rows for these selectors
+        assert!(trace.is_full(Sponge(Absorb(First))));
+        assert!(trace.is_full(Sponge(Absorb(Middle))));
+        assert!(trace.is_full(Sponge(Absorb(Last))));
+
+        // Add the columns of the selectors to the circuit
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(First)), domain_size);
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Middle)), domain_size);
+        trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Last)), domain_size);
+        trace
+    }
+}
 
 #[test]
 fn test_pad_blocks() {
@@ -550,14 +631,34 @@ fn test_keccak_prover_constraints() {
     });
 }
 
+fn dummy_constraints() -> BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>> {
+    Steps::iter()
+        .flat_map(|x| x.into_iter())
+        .map(|step| {
+            (
+                step,
+                vec![FoldingCompatibleExpr::<KeccakConfig>::Atom(
+                    FoldingCompatibleExprInner::Constant(Fp::zero()),
+                )],
+            )
+        })
+        .collect()
+}
+
+// (Instance, Witness)
+type KeccakFoldingSide = (
+    <KeccakConfig as FoldingConfig>::Instance,
+    <KeccakConfig as FoldingConfig>::Witness,
+);
+
+// (Step, Left, Right)
+type KeccakFoldingPair = (Steps, KeccakFoldingSide, KeccakFoldingSide);
+
 #[test]
 fn test_keccak_folding() {
     use crate::{keccak::folding::KeccakConfig, trace::Foldable, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use folding::{
-        checker::Checker,
-        expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner},
-    };
+    use folding::{checker::Checker, expressions::FoldingCompatibleExpr};
     use kimchi::curve::KimchiCurve;
     use mina_poseidon::FqSponge;
     use poly_commitment::srs::SRS;
@@ -575,112 +676,148 @@ fn test_keccak_folding() {
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
-        let mut keccak_trace: [DecomposedKeccakTrace; 2] = std::array::from_fn(|_| {
-            <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
-                domain_size,
-                &mut KeccakEnv::<Fp>::default(),
-            )
-        });
-
-        let default_trace = <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
-            domain_size,
-            &mut KeccakEnv::<Fp>::default(),
-        );
-
-        for trace in &mut keccak_trace {
-            // Generate domain_size rows for each of the 6 selectors
-            {
-                // 1 block preimages for Sponge(Absorb(Only)), Round(0), and Sponge(Squeeze)
-                for _ in 0..domain_size {
-                    // random 1-block preimages
-                    let bytelength = rng.gen_range(0..RATE_IN_BYTES);
-                    let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
-                    // Initialize the environment and run the interpreter
-                    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-                    while keccak_env.step.is_some() {
-                        let step = keccak_env.step.unwrap();
-                        // Create the relation witness columns
-                        keccak_env.step();
-                        match step {
-                            Sponge(Absorb(Only)) | Round(0) | Sponge(Squeeze) => {
-                                // Add the witness row to the circuit
-                                trace.push_row(step, &keccak_env.witness_env.witness.cols);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                // Check there is no need for padding because we reached domain_size rows for these selectors
-                assert!(trace.is_full(Sponge(Absorb(Only))));
-                assert!(trace.is_full(Round(0)));
-                assert!(trace.is_full(Sponge(Squeeze)));
-
-                // Add the columns of the selectors to the circuit
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
-                    Sponge(Absorb(Only)),
-                    domain_size,
-                );
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Round(0), domain_size);
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Squeeze), domain_size);
-            }
-            {
-                // 3 block preimages for Sponge(Absorb(First)), Sponge(Absorb(Middle)), and Sponge(Absorb(Last))
-                for _ in 0..domain_size {
-                    // random 3-block preimages
-                    let bytelength = rng.gen_range(2 * RATE_IN_BYTES..3 * RATE_IN_BYTES);
-                    let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
-                    // Initialize the environment and run the interpreter
-                    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-                    while keccak_env.step.is_some() {
-                        let step = keccak_env.step.unwrap();
-                        // Create the relation witness columns
-                        keccak_env.step();
-                        match step {
-                            Sponge(Absorb(First))
-                            | Sponge(Absorb(Middle))
-                            | Sponge(Absorb(Last)) => {
-                                // Add the witness row to the circuit
-                                trace.push_row(step, &keccak_env.witness_env.witness.cols);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                // Check there is no need for padding because we reached domain_size rows for these selectors
-                assert!(trace.is_full(Sponge(Absorb(First))));
-                assert!(trace.is_full(Sponge(Absorb(Middle))));
-                assert!(trace.is_full(Sponge(Absorb(Last))));
-
-                // Add the columns of the selectors to the circuit
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
-                    Sponge(Absorb(First)),
-                    domain_size,
-                );
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
-                    Sponge(Absorb(Middle)),
-                    domain_size,
-                );
-                trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(
-                    Sponge(Absorb(Last)),
-                    domain_size,
-                );
-            }
-        }
+        let keccak_trace: [DecomposedKeccakTrace; 2] =
+            array::from_fn(|_| create_trace_all_steps(domain_size, &mut rng));
+        let trace = keccak_trace[0].clone();
 
         // Store all constraints indexed by Step
-        let constraints: BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>> = Steps::iter()
-            .flat_map(|x| x.into_iter())
-            .map(|step| {
-                (
-                    step,
-                    default_trace[step]
-                        .constraints
-                        .iter()
-                        .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
-                        .collect(),
-                )
-            })
-            .collect();
+        let constraints = <DecomposedKeccakTrace as Foldable<
+            N_ZKVM_KECCAK_COLS,
+            KeccakConfig,
+            BaseSponge,
+        >>::folding_constraints(&trace);
+
+        // DEFINITIONS OF FUNCTIONS FOR TESTING PURPOSES
+
+        let check_instance_satisfy_constraints =
+            |constraints: &[FoldingCompatibleExpr<KeccakConfig>], side: &KeccakFoldingSide| {
+                let (instance, witness) = side;
+                let checker = Provider::new(instance.clone(), witness.clone());
+                constraints.iter().for_each(|c| {
+                    checker.check(c);
+                });
+            };
+
+        let check_folding =
+            |left: &KeccakFoldingSide,
+             right: &KeccakFoldingSide,
+             constraints: &[FoldingCompatibleExpr<KeccakConfig>],
+             fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
+                // Create the folding scheme ignoring selectors
+                let (scheme, final_constraint) =
+                    FoldingScheme::<KeccakConfig>::new(constraints.to_vec(), &srs, domain, &trace);
+
+                // Fold both sides and check the constraints ignoring the selector columns
+                let (folded_instance, folded_witness, [_t0, _t1]) =
+                    scheme.fold_instance_witness_pair(left.clone(), right.clone(), fq_sponge);
+
+                // We should always have 0 as the degree of the constraints,
+                // without selectors, they are never higher than 2 in Keccak.
+                assert_eq!(folded_instance.get_number_of_additional_columns(), 0);
+
+                let checker = ExtendedProvider::new(folded_instance, folded_witness);
+                checker.check(&final_constraint);
+            };
+
+        let check_decomposable_folding_pair =
+            |step: Option<Steps>,
+             left: &KeccakFoldingSide,
+             right: &KeccakFoldingSide,
+             scheme: &DecomposableFoldingScheme<KeccakConfig>,
+             final_constraint: &FoldingCompatibleExpr<KeccakConfig>,
+             quadri_cols: Option<usize>,
+             fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
+                let (folded_instance, folded_witness, [_t0, _t1]) =
+                    scheme.fold_instance_witness_pair(left.clone(), right.clone(), step, fq_sponge);
+
+                let extra_cols = folded_instance.get_number_of_additional_columns();
+                if let Some(quadri_cols) = quadri_cols {
+                    assert!(extra_cols == quadri_cols);
+                } else {
+                    println!("Additional columns for step {:?}: {}", step, extra_cols);
+                }
+
+                // Check the constraints on the folded circuit applying selectors
+                let checker =
+                    ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
+                checker.check(&final_constraint);
+            };
+
+        let check_decomposable_folding =
+            |pair: &KeccakFoldingPair,
+             constraints: BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>>,
+             common_constraints: Vec<FoldingCompatibleExpr<KeccakConfig>>,
+             quadri_cols: Option<usize>,
+             fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
+                let (step, left, right) = pair;
+                let (dec_scheme, dec_final_constraint) =
+                    DecomposableFoldingScheme::<KeccakConfig>::new(
+                        constraints,
+                        common_constraints,
+                        &srs,
+                        domain,
+                        &trace,
+                    );
+                // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
+                check_decomposable_folding_pair(
+                    None,
+                    left,
+                    right,
+                    &dec_scheme,
+                    &dec_final_constraint,
+                    quadri_cols,
+                    fq_sponge,
+                );
+                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
+                check_decomposable_folding_pair(
+                    Some(*step),
+                    left,
+                    right,
+                    &dec_scheme,
+                    &dec_final_constraint,
+                    quadri_cols,
+                    fq_sponge,
+                );
+            };
+
+        let check_decomposable_folding_mix =
+            |steps: (Steps, Steps),
+             fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
+                let (dec_scheme, dec_final_constraint) =
+                    DecomposableFoldingScheme::<KeccakConfig>::new(
+                        constraints.clone(),
+                        vec![],
+                        &srs,
+                        domain,
+                        &trace,
+                    );
+                let left = {
+                    let (folded_l_ins, folded_l_wit, _) = dec_scheme.fold_instance_witness_pair(
+                        keccak_trace[0].to_folding_pair(steps.0, fq_sponge, domain, &srs),
+                        keccak_trace[1].to_folding_pair(steps.0, fq_sponge, domain, &srs),
+                        Some(steps.0),
+                        fq_sponge,
+                    );
+                    let checker = ExtendedProvider::<KeccakConfig>::new(folded_l_ins, folded_l_wit);
+                    (checker.instance, checker.witness)
+                };
+                let right = {
+                    let (folded_r_ins, folded_r_wit, _) = dec_scheme.fold_instance_witness_pair(
+                        keccak_trace[0].to_folding_pair(steps.1, fq_sponge, domain, &srs),
+                        keccak_trace[1].to_folding_pair(steps.1, fq_sponge, domain, &srs),
+                        Some(steps.1),
+                        fq_sponge,
+                    );
+                    let checker = ExtendedProvider::<KeccakConfig>::new(folded_r_ins, folded_r_wit);
+                    (checker.instance, checker.witness)
+                };
+                let (folded_ins, folded_wit, [_t0, _t1]) =
+                    dec_scheme.fold_instance_witness_pair(left, right, None, fq_sponge);
+                let checker = ExtendedProvider::new(folded_ins, folded_wit);
+                checker.check(&dec_final_constraint);
+            };
+
+        // HERE STARTS THE TESTING
 
         // Sanity checks that the number of constraints are as expected for each step
         assert_eq!(constraints[&Sponge(Absorb(First))].len(), 332);
@@ -690,231 +827,82 @@ fn test_keccak_folding() {
         assert_eq!(constraints[&Sponge(Squeeze)].len(), 16);
         assert_eq!(constraints[&Round(0)].len(), 389);
 
-        // A dummy BTreeMap of one constraint to zero to be used in tests
-        let zero_constraints: BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>> =
-            Steps::iter()
-                .flat_map(|x| x.into_iter())
-                .map(|step| {
-                    (
-                        step,
-                        vec![FoldingCompatibleExpr::<KeccakConfig>::Atom(
-                            FoldingCompatibleExprInner::Constant(Fp::zero()),
-                        )],
-                    )
-                })
-                .collect();
-
-        // Create the decomposable folding scheme reused in some checks
-        let (dec_scheme, dec_final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
-            constraints.clone(),
-            vec![],
-            &srs,
-            domain,
-            &default_trace,
-        );
+        // Total number of Keccak constraints of degree higher than 2 (should be 0)
+        let total_deg_higher_2 = Steps::iter()
+            .flat_map(|x| x.into_iter())
+            .fold(0, |acc, step| {
+                acc + trace[step]
+                    .constraints
+                    .iter()
+                    .filter(|c| c.degree(1, 0) > 2)
+                    .count()
+            });
+        assert_eq!(total_deg_higher_2, 0);
 
         // Check folding constraints of individual steps ignoring selectors
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
+            // Number of degree-2 constraints for each step
+            let deg_2_constraints = trace[step]
+                .constraints
+                .iter()
+                .filter(|c| c.degree(1, 0) == 2)
+                .count();
+            println!("Step: {:?}, deg-2 constraints: {}", step, deg_2_constraints);
+
+            // BTreeMap with constraints of this step
+            let mut step_constraints = BTreeMap::new();
+            step_constraints.insert(step, constraints[&step].clone());
+
             // Create sides for folding
             let left = keccak_trace[0].to_folding_pair(step, &mut fq_sponge, domain, &srs);
-            let (left_instance, left_witness) = left.clone();
             let right = keccak_trace[1].to_folding_pair(step, &mut fq_sponge, domain, &srs);
-            let (right_instance, right_witness) = right.clone();
 
             // CASE 0: Check instances satisfy the constraints, without folding them
-            {
-                // Check constraints on Left side
-                let checker = Provider::new(left_instance.clone(), left_witness.clone());
-                constraints[&step].iter().for_each(|c| {
-                    checker.check(c);
-                });
-                // Check constraints on Right side
-                let checker = Provider::new(right_instance.clone(), right_witness.clone());
-                constraints[&step].iter().for_each(|c| {
-                    checker.check(c);
-                });
-            }
+            check_instance_satisfy_constraints(&constraints[&step], &left);
+            check_instance_satisfy_constraints(&constraints[&step], &right);
 
             // CASE 1: Check constraints on folded circuit ignoring selectors with `FoldingScheme`
-            {
-                // Create the folding scheme ignoring selectors
-                let (scheme, final_constraint) = FoldingScheme::<KeccakConfig>::new(
-                    constraints[&step].clone(),
-                    &srs,
-                    domain,
-                    &default_trace,
-                );
-                // Fold both sides and check the constraints ignoring the selector columns
-                let (folded_instance, folded_witness, [_t0, _t1]) =
-                    scheme.fold_instance_witness_pair(left.clone(), right.clone(), &mut fq_sponge);
-
-                // We should always have 0 as the degree of the constraints,
-                // without selectors, are never higher than 2
-                assert_eq!(folded_instance.get_number_of_additional_columns(), 0);
-
-                let checker = ExtendedProvider::new(folded_instance, folded_witness);
-                checker.check(&final_constraint);
-            }
+            check_folding(&left, &right, &constraints[&step], &mut fq_sponge);
 
             // CASE 2: Check that `DecomposableFoldingScheme` works when passing the dummy zero constraint
             //         to each step, and an empty list of common constraints.
-            {
-                let (dummy_scheme, dummy_final_constraint) =
-                    DecomposableFoldingScheme::<KeccakConfig>::new(
-                        zero_constraints.clone(),
-                        vec![],
-                        &srs,
-                        domain,
-                        &default_trace,
-                    );
-                // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
-                {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            None,
-                            &mut fq_sponge,
-                        );
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
-                }
-
-                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
-                {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            Some(step),
-                            &mut fq_sponge,
-                        );
-                    // Check the constraints on the folded circuit applying selectors
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
-                }
-            }
+            let pair = (step, left, right);
+            check_decomposable_folding(&pair, dummy_constraints(), vec![], Some(0), &mut fq_sponge);
 
             // CASE 3: Using a separate `DecomposableFoldingScheme` for each step, check each step
             //         constraints using a dummy BTreeMap of `vec[0]` per-step constraints and
             //         common constraints set to each selector's constraints.
-            {
-                // Create a different decomposable folding scheme applying selectors with dummy constraints
-                let (dummy_scheme, dummy_final_constraint) =
-                    DecomposableFoldingScheme::<KeccakConfig>::new(
-                        zero_constraints.clone(),
-                        default_trace[step]
-                            .constraints
-                            .iter()
-                            .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
-                            .collect(),
-                        &srs,
-                        domain,
-                        &default_trace,
-                    );
-
-                // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
-                {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            None,
-                            &mut fq_sponge,
-                        );
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
-                }
-
-                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
-                {
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dummy_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            Some(step),
-                            &mut fq_sponge,
-                        );
-                    // Check the constraints on the folded circuit applying selectors
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
-                }
-            }
+            check_decomposable_folding(
+                &pair,
+                dummy_constraints(),
+                step_constraints[&step].clone(),
+                Some(0),
+                &mut fq_sponge,
+            );
 
             // CASE 4: Using the same `DecomposableFoldingScheme` for all steps, initialized with a real
+            //         BTreeMap of only the current step, and common constraints set to `vec[]`, check
+            //         the folded circuit
+            check_decomposable_folding(
+                &pair,
+                step_constraints.clone(),
+                vec![],
+                None,
+                &mut fq_sponge,
+            );
+
+            // CASE 5: Using the same `DecomposableFoldingScheme` for all steps, initialized with a real
             //         BTreeMap of constraints per-step, and common constraints set to `vec[]`, check
             //         the folded circuit
-            {
-                // Check constraints on independent sides and in decomposable folding scheme
-                {
-                    // Check the folded circuit of decomposable folding ignoring selectors (None)
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
-                        .fold_instance_witness_pair(
-                            left.clone(),
-                            right.clone(),
-                            None,
-                            &mut fq_sponge,
-                        );
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
-
-                    // Check constraints on independent sides and in folded circuit applying selectors
-                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
-                        .fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
-
-                    // Regression tests on the additional number of columns
-                    // added by quadritization
-                    assert!(folded_instance.get_number_of_additional_columns() == 151);
-
-                    // Check the constraints on the folded circuit applying selectors
-                    let checker =
-                        ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
-                }
-            }
+            check_decomposable_folding(
+                &pair,
+                constraints.clone(),
+                vec![],
+                Some(151),
+                &mut fq_sponge,
+            );
         }
-        // CASE 5: Fold mixed steps together and check the final constraints
-        {
-            // Mix Sponge(Absorb(Only)) and Round(0)
-            let left = {
-                let (folded_l_ins, folded_l_wit, _) = dec_scheme.fold_instance_witness_pair(
-                    keccak_trace[0].to_folding_pair(
-                        Sponge(Absorb(Only)),
-                        &mut fq_sponge,
-                        domain,
-                        &srs,
-                    ),
-                    keccak_trace[1].to_folding_pair(
-                        Sponge(Absorb(Only)),
-                        &mut fq_sponge,
-                        domain,
-                        &srs,
-                    ),
-                    Some(Sponge(Absorb(Only))),
-                    &mut fq_sponge,
-                );
-                let checker = ExtendedProvider::<KeccakConfig>::new(folded_l_ins, folded_l_wit);
-                (checker.instance, checker.witness)
-            };
-            let right = {
-                let (folded_r_ins, folded_r_wit, _) = dec_scheme.fold_instance_witness_pair(
-                    keccak_trace[0].to_folding_pair(Round(0), &mut fq_sponge, domain, &srs),
-                    keccak_trace[1].to_folding_pair(Round(0), &mut fq_sponge, domain, &srs),
-                    Some(Round(0)),
-                    &mut fq_sponge,
-                );
-                let checker = ExtendedProvider::<KeccakConfig>::new(folded_r_ins, folded_r_wit);
-                (checker.instance, checker.witness)
-            };
-            let (folded_ins, folded_wit, [_t0, _t1]) =
-                dec_scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
-            let checker = ExtendedProvider::new(folded_ins, folded_wit);
-            checker.check(&dec_final_constraint);
-        }
+        // CASE 6: Fold mixed steps together and check the final constraints
+        check_decomposable_folding_mix((Sponge(Absorb(First)), Round(0)), &mut fq_sponge);
     });
 }

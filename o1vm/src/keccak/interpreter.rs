@@ -74,6 +74,10 @@ where
     /// - if Steps::Sponge::Squeeze         -> only 16  constraints added
     /// So:
     /// - At most, 474 constraints are added per row
+    /// In particular, after folding:
+    /// - 136 columns should be added for the degree-2 constraints of the flags
+    /// - 5   columns should be added for the degree-2 constraints of the sponge
+    /// - 5   columns should be added for the degree-2 constraints of the round
     fn constraints(&mut self, step: Steps) {
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
