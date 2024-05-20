@@ -53,8 +53,6 @@ pub mod quadraticization;
 #[cfg(feature = "bn254")]
 mod quadraticization_tests;
 
-pub mod plonkish;
-
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
 #[cfg(test)]

@@ -8,7 +8,7 @@ use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::gate::CurrOrNext;
-use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
+use crate:{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve},
@@ -17,7 +17,7 @@ use poly_commitment::{
 };
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
-use crate::{
+use folding::{
     expressions::FoldingColumnTrait, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
 };
 
@@ -77,10 +77,6 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for PlonkishWitness<N, G::Sc
             }
         }
         a
-    }
-
-    fn rows(&self) -> usize {
-        self.witness.cols[0].evals.len()
     }
 }
 
