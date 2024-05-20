@@ -55,7 +55,7 @@ impl Instance<Curve> for TestInstance {
         (fields, points)
     }
 
-    fn alphas(&self) -> &Alphas<Fp> {
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }
@@ -142,11 +142,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
             TestChallenge::Gamma => self.instances[side as usize].challenges[1],
             TestChallenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {

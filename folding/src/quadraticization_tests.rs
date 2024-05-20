@@ -25,7 +25,7 @@ impl Foldable<Fp> for TestInstance {
 }
 
 impl Instance<Curve> for TestInstance {
-    fn alphas(&self) -> &crate::Alphas<Fp> {
+    fn get_alphas(&self) -> &crate::Alphas<Fp> {
         todo!()
     }
 
@@ -94,10 +94,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
     }
 
     fn challenge(&self, _challenge: (), _side: crate::Side) -> Fp {
-        todo!()
-    }
-
-    fn alpha(&self, _i: usize, _side: crate::Side) -> Fp {
         todo!()
     }
 

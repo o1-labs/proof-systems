@@ -77,7 +77,7 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
         (scalars, points)
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }
 }
@@ -196,11 +196,6 @@ where
         }
     }
 
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     fn selector(&self, s: &C::Selector, side: Side) -> &Vec<ScalarField<C>> {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
@@ -212,9 +207,9 @@ pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure> {
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
-    /// Corresponds to the omega evaluations, for both sides
+    /// Corresponds to the evaluations at ω, for both sides
     pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
-    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// Corresponds to the evaluations at ζω, for both sides
     /// This is curr_witness but left shifted by 1
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
@@ -278,11 +273,6 @@ where
             Challenge::Gamma => self.instances[side as usize].challenges[1],
             Challenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {

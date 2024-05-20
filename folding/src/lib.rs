@@ -121,7 +121,8 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
-    /// Creates a new environment storing the structure, instances and witnesses.
+    /// Creates a new environment storing the structure, instances and
+    /// witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 
     // TODO: move into `FoldingConfig`
@@ -133,16 +134,12 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
         vec![F::zero(); n]
     }
 
-    /// Returns the evaluations of a given column witness at omega or zeta*omega.
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
-
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
-    /// Computes the i-th power of alpha for a given side.
-    /// Folding itself will provide us with the alpha value.
-    fn alpha(&self, i: usize, side: Side) -> F;
+    /// Returns the evaluations of a given column witness at omega or zeta*omega.
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector

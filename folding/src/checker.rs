@@ -179,7 +179,7 @@ where
                         .instance
                         .inner_instance()
                         .inner
-                        .alphas()
+                        .get_alphas()
                         .get(i)
                         .unwrap();
                     let domain_size = domain.size as usize;
