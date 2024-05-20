@@ -369,7 +369,6 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -456,7 +455,9 @@
     <span class="doccomment">/// The target curve used by the polynomial commitment
     </span><span class="kw">type </span>Curve: CommitmentCurve;
 
-    <span class="kw">type </span>Srs: SRS&lt;<span class="self">Self</span>::Curve&gt;;
+    <span class="doccomment">/// The SRS used by the polynomial commitment. The SRS is used to commit to
+    /// the additional columns that are added by the quadraticization.
+    </span><span class="kw">type </span>Srs: SRS&lt;<span class="self">Self</span>::Curve&gt;;
 
     <span class="doccomment">/// For Plonk, it will be the commitments to the polynomials and the challenges
     </span><span class="kw">type </span>Instance: Instance&lt;<span class="self">Self</span>::Curve&gt; + Clone;
@@ -491,7 +492,8 @@
     <span class="doccomment">/// Structure which could be storing useful information like selectors, etc.
     </span><span class="kw">type </span>Structure;
 
-    <span class="doccomment">/// Creates a new environment storing the structure, instances and witnesses.
+    <span class="doccomment">/// Creates a new environment storing the structure, instances and
+    /// witnesses.
     </span><span class="kw">fn </span>new(structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure, instances: [<span class="kw-2">&amp;</span>I; <span class="number">2</span>], witnesses: [<span class="kw-2">&amp;</span>W; <span class="number">2</span>]) -&gt; <span class="self">Self</span>;
 
     <span class="comment">// TODO: move into `FoldingConfig`
@@ -503,16 +505,12 @@
         <span class="macro">vec!</span>[F::zero(); n]
     }
 
-    <span class="doccomment">/// Returns the evaluations of a given column witness at omega or zeta*omega.
-    </span><span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Col, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;F&gt;;
-
     <span class="doccomment">/// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     </span><span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: Chal, side: Side) -&gt; F;
 
-    <span class="doccomment">/// Computes the i-th power of alpha for a given side.
-    /// Folding itself will provide us with the alpha value.
-    </span><span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; F;
+    <span class="doccomment">/// Returns the evaluations of a given column witness at omega or zeta*omega.
+    </span><span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Col, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;F&gt;;
 
     <span class="doccomment">/// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector

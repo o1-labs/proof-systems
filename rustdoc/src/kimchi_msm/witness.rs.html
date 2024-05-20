@@ -158,9 +158,16 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>folding::instance_witness::Foldable;
+<span class="kw">use </span>folding::{instance_witness::Foldable, Witness <span class="kw">as </span>FoldingWitnessT};
+<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 <span class="kw">use </span>std::ops::Index;
 
@@ -317,5 +324,10 @@
         }
         a
     }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; FoldingWitnessT&lt;G&gt;
+    <span class="kw">for </span>Witness&lt;N, Evaluations&lt;G::ScalarField, Radix2EvaluationDomain&lt;G::ScalarField&gt;&gt;&gt;
+{
 }
 </code></pre></div></section></main></body></html>

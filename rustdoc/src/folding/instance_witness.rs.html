@@ -476,6 +476,8 @@
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -552,7 +554,7 @@
     }
 
     <span class="doccomment">/// Returns the alphas values for the instance
-    </span><span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt;;
+    </span><span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt;;
 }
 
 <span class="kw">pub trait </span>Witness&lt;G: CommitmentCurve&gt;: Sized + Foldable&lt;G::ScalarField&gt; {
@@ -606,7 +608,9 @@
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxedInstance&lt;G, I&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner_instance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedInstance&lt;G, I&gt; {
+    <span class="doccomment">/// Return the original instance that has been relaxed, with the extra
+    /// columns added by quadraticization
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner_instance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedInstance&lt;G, I&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.instance
     }
 
@@ -771,8 +775,8 @@
         elements
     }
 
-    <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
-        <span class="self">self</span>.inner.alphas()
+    <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
+        <span class="self">self</span>.inner.get_alphas()
     }
 }
 

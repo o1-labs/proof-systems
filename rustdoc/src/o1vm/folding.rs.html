@@ -436,16 +436,6 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -525,7 +515,7 @@
         (scalars, points)
     }
 
-    <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
+    <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.alphas
     }
 }
@@ -644,11 +634,6 @@
         }
     }
 
-    <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; ScalarField&lt;C&gt; {
-        <span class="kw">let </span>instance = <span class="kw-2">&amp;</span><span class="self">self</span>.instances[side <span class="kw">as </span>usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>C::Selector, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
         <span class="kw">let </span>witness = <span class="kw-2">&amp;</span><span class="self">self</span>.curr_witnesses[side <span class="kw">as </span>usize];
         <span class="kw-2">&amp;</span>witness[<span class="kw-2">*</span>s].evals
@@ -660,9 +645,9 @@
     </span><span class="kw">pub </span>structure: Structure,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
     </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, C::Curve&gt;; <span class="number">2</span>],
-    <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
+    <span class="doccomment">/// Corresponds to the evaluations at ω, for both sides
     </span><span class="kw">pub </span>curr_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
-    <span class="doccomment">/// Corresponds to the zeta*omega evaluations, for both sides
+    <span class="doccomment">/// Corresponds to the evaluations at ζω, for both sides
     /// This is curr_witness but left shifted by 1
     </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;; <span class="number">2</span>],
 }
@@ -726,11 +711,6 @@
             Challenge::Gamma =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">1</span>],
             Challenge::JointCombiner =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">2</span>],
         }
-    }
-
-    <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; ScalarField&lt;C&gt; {
-        <span class="kw">let </span>instance = <span class="kw-2">&amp;</span><span class="self">self</span>.instances[side <span class="kw">as </span>usize];
-        instance.alphas.get(i).unwrap()
     }
 
     <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, _s: <span class="kw-2">&amp;</span>(), _side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;ScalarField&lt;C&gt;&gt; {
