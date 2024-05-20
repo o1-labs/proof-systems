@@ -3,6 +3,7 @@
 //! A collection of utility functions and constants that can be reused from multiple projects
 
 pub mod adjacent_pairs;
+pub mod array;
 pub mod biguint_helpers;
 pub mod bitwise_operations;
 pub mod chunked_evaluations;
