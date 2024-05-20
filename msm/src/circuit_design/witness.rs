@@ -13,12 +13,12 @@ use log::debug;
 use std::{collections::BTreeMap, iter, marker::PhantomData};
 
 /// Witness builder environment. Operates on multiple rows at the same
-/// time. `CIx::N_COL` must be equal to `N_COL`; passing these two
+/// time. `CIx::N_COL` must be equal to `N_WIT + N_FSEL`; passing these two
 /// separately is due to a rust limitation.
 pub struct WitnessBuilderEnv<
     F: PrimeField,
     CIx: ColumnIndexer,
-    const N_COL: usize,
+    const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
@@ -27,7 +27,7 @@ pub struct WitnessBuilderEnv<
     /// The witness columns that the environment is working with.
     /// Every element of the vector is a row, and the builder is
     /// always processing the last row.
-    pub witness: Vec<Witness<N_COL, F>>,
+    pub witness: Vec<Witness<N_WIT, F>>,
 
     /// Lookup multiplicities, a vector of values `m_i` per lookup
     /// table, where `m_i` is how many times the lookup value number
@@ -58,12 +58,12 @@ pub struct WitnessBuilderEnv<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > ColAccessCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > ColAccessCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
@@ -93,12 +93,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
         self.write_column_raw(ix.to_column(), *value);
@@ -114,15 +114,15 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn hcopy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
-        <WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT> as ColWriteCap<F, CIx>>::write_column(
+        <WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT> as ColWriteCap<F, CIx>>::write_column(
             self, ix, value,
         );
         *value
@@ -132,12 +132,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > MultiRowReadCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > MultiRowReadCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     /// Read value from a (row,column) position.
     fn read_row_column(&mut self, row: usize, col: CIx) -> Self::Variable {
@@ -161,12 +161,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > DirectWitnessCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > DirectWitnessCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     /// Convert an abstract variable to a field element! Inverse of Env::constant().
     fn variable_to_field(value: Self::Variable) -> F {
@@ -177,12 +177,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn lookup(&mut self, table_id: LT, value: &<Self as ColAccessCap<F, CIx>>::Variable) {
         let value_ix = table_id.ix_by_value(*value);
@@ -203,12 +203,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     pub fn write_column_raw(&mut self, position: Column, value: F) {
         match position {
@@ -253,7 +253,7 @@ impl<
     /// Progress to the computations on the next row.
     pub fn next_row(&mut self) {
         self.witness.push(Witness {
-            cols: Box::new([F::zero(); N_COL]),
+            cols: Box::new([F::zero(); N_WIT]),
         });
         let mut lookups_row = BTreeMap::new();
         for table_id in LT::all_variants().into_iter() {
@@ -282,12 +282,12 @@ impl<
 impl<
         F: PrimeField,
         CIx: ColumnIndexer,
-        const N_COL: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         LT: LookupTableID,
-    > WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+    > WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     /// Create a new empty-state witness builder.
     pub fn create() -> Self {
@@ -301,7 +301,7 @@ impl<
 
         Self {
             witness: vec![Witness {
-                cols: Box::new([F::zero(); N_COL]),
+                cols: Box::new([F::zero(); N_WIT]),
             }],
 
             lookup_multiplicities,
@@ -328,11 +328,11 @@ impl<
         self.fixed_selectors = selectors
     }
 
-    pub fn get_relation_witness(&self, domain: EvaluationDomains<F>) -> Witness<N_COL, Vec<F>> {
+    pub fn get_relation_witness(&self, domain: EvaluationDomains<F>) -> Witness<N_WIT, Vec<F>> {
         let domain_size: usize = domain.d1.size as usize;
 
         // Boxing to avoid stack overflow
-        let mut witness: Box<Witness<N_COL, Vec<F>>> = Box::new(Witness {
+        let mut witness: Box<Witness<N_WIT, Vec<F>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
         });
 
@@ -355,11 +355,6 @@ impl<
         for i in 0..N_DSEL {
             // TODO FIXME Fill out dynamic selectors!
             witness.cols[N_REL + i] = vec![F::zero(); domain_size];
-        }
-
-        // Fill out fixed selectors.
-        for i in 0..N_FSEL {
-            witness.cols[N_REL + N_DSEL + i] = self.fixed_selectors[i].clone();
         }
 
         *witness
@@ -439,7 +434,7 @@ impl<
         &self,
         domain: EvaluationDomains<F>,
         lookup_tables_data: BTreeMap<LT, Vec<F>>,
-    ) -> ProofInputs<N_COL, F, LT> {
+    ) -> ProofInputs<N_WIT, F, LT> {
         let evaluations = self.get_relation_witness(domain);
         let logups = self.get_logup_witness(domain, lookup_tables_data);
 

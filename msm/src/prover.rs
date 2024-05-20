@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::boxed_local)]
+
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -45,14 +48,13 @@ pub enum ProverError {
     ConstraintDegreeTooHigh(u64, u64, String),
 }
 
-#[allow(unreachable_code)]
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
     RNG,
-    const N: usize,
+    const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
@@ -61,9 +63,10 @@ pub fn prove<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraints: &Vec<E<G::ScalarField>>,
-    inputs: ProofInputs<N, G::ScalarField, ID>,
+    fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
+    inputs: ProofInputs<N_WIT, G::ScalarField, ID>,
     rng: &mut RNG,
-) -> Result<Proof<N, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>, ProverError>
+) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>, ProverError>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -80,8 +83,40 @@ where
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
+    let fixed_selectors_evals_d1: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> =
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors
+                .into_par_iter()
+                .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
+                .collect(),
+        );
+
+    let fixed_selectors_polys: Box<[DensePolynomial<G::ScalarField>; N_FSEL]> =
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors_evals_d1
+                .into_par_iter()
+                .map(|evals| evals.interpolate())
+                .collect(),
+        );
+
+    let fixed_selectors_comms: Box<[PolyComm<G>; N_FSEL]> = {
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors_polys
+                .as_ref()
+                .into_par_iter()
+                .map(comm)
+                .collect(),
+        )
+    };
+
+    // Do not use parallelism
+    (fixed_selectors_comms)
+        .into_iter()
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
+
     // Interpolate all columns on d1, using trait Into.
-    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
+    let witness_evals_d1: Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
@@ -89,18 +124,18 @@ where
                 evals, domain.d1,
             )
         })
-        .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
+        .collect::<Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
 
-    let witness_polys: Witness<N, DensePolynomial<G::ScalarField>> = {
+    let witness_polys: Witness<N_WIT, DensePolynomial<G::ScalarField>> = {
         let interpolate =
             |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
-        witness_evals
+        witness_evals_d1
             .into_par_iter()
             .map(interpolate)
-            .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
+            .collect::<Witness<N_WIT, DensePolynomial<G::ScalarField>>>()
     };
 
-    let witness_comms: Witness<N, PolyComm<G>> = {
+    let witness_comms: Witness<N_WIT, PolyComm<G>> = {
         let comm = {
             |poly: &DensePolynomial<G::ScalarField>| {
                 let mut comm = srs.commit_non_hiding(poly, 1);
@@ -115,7 +150,7 @@ where
         (&witness_polys)
             .into_par_iter()
             .map(comm)
-            .collect::<Witness<N, PolyComm<G>>>()
+            .collect::<Witness<N_WIT, PolyComm<G>>>()
     };
 
     // Do not use parallelism
@@ -159,18 +194,28 @@ where
     // -- end computing the running sum in lookup_aggregation
     // -- End of Logup
 
-    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
-        let domain_eval = if max_degree <= 4 {
-            domain.d4
-        } else if max_degree as usize <= MAX_SUPPORTED_DEGREE {
-            domain.d8
-        } else {
-            panic!("We do support constraints up to {:?}", MAX_SUPPORTED_DEGREE)
-        };
+    let domain_eval = if max_degree <= 4 {
+        domain.d4
+    } else if max_degree as usize <= MAX_SUPPORTED_DEGREE {
+        domain.d8
+    } else {
+        panic!("We do support constraints up to {:?}", MAX_SUPPORTED_DEGREE)
+    };
+
+    let witness_evals: Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
         (&witness_polys)
             .into_par_iter()
             .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
-            .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>()
+            .collect::<Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>()
+    };
+
+    let fixed_selectors_evals: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> = {
+        o1_utils::array::vec_to_boxed_array(
+            (fixed_selectors_polys.as_ref())
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
+                .collect(),
+        )
     };
 
     ////////////////////////////////////////////////////////////////////////////
@@ -183,7 +228,7 @@ where
     let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
-    let column_env: ColumnEnvironment<'_, N, N_REL, N_DSEL, N_FSEL, _, _> = {
+    let column_env: ColumnEnvironment<'_, N_WIT, N_REL, N_DSEL, N_FSEL, _, _> = {
         let challenges = Challenges {
             alpha,
             // NB: as there is on permutation argument, we do use the beta
@@ -200,6 +245,7 @@ where
             },
             challenges,
             witness: &witness_evals,
+            fixed_selectors: &fixed_selectors_evals,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 logup::prover::QuotientPolynomialEnvironment {
@@ -295,7 +341,7 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at ζ and ζω -- Columns
-    let witness_evals: Witness<N, PointEvaluations<_>> = {
+    let witness_evals: Witness<N_WIT, PointEvaluations<_>> = {
         let eval = |p: &DensePolynomial<_>| PointEvaluations {
             zeta: p.evaluate(&zeta),
             zeta_omega: p.evaluate(&zeta_omega),
@@ -303,7 +349,21 @@ where
         (&witness_polys)
             .into_par_iter()
             .map(eval)
-            .collect::<Witness<N, PointEvaluations<_>>>()
+            .collect::<Witness<N_WIT, PointEvaluations<_>>>()
+    };
+
+    let fixed_selectors_evals: Box<[PointEvaluations<_>; N_FSEL]> = {
+        let eval = |p: &DensePolynomial<_>| PointEvaluations {
+            zeta: p.evaluate(&zeta),
+            zeta_omega: p.evaluate(&zeta_omega),
+        };
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors_polys
+                .as_ref()
+                .into_par_iter()
+                .map(eval)
+                .collect::<_>(),
+        )
     };
 
     // IMPROVEME: move this into the logup module
@@ -358,6 +418,11 @@ where
     fr_sponge.absorb(&fq_sponge.digest());
 
     for PointEvaluations { zeta, zeta_omega } in (&witness_evals).into_iter() {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
+    }
+
+    for PointEvaluations { zeta, zeta_omega } in fixed_selectors_evals.as_ref().iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
@@ -417,6 +482,16 @@ where
         .map(|poly| (coefficients_form(poly), hiding(1)))
         .collect();
 
+    // @volhovm: I'm not sure we need to prove opening of fixed
+    // selectors in the commitment.
+    polynomials.extend(
+        fixed_selectors_polys
+            .as_ref()
+            .into_par_iter()
+            .map(|poly| (coefficients_form(poly), non_hiding(1)))
+            .collect::<Vec<_>>(),
+    );
+
     // Adding Logup
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
@@ -465,9 +540,10 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID> = {
+    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID> = {
         ProofEvaluations {
             witness_evals,
+            fixed_selectors_evals,
             logup_evals,
             ft_eval1,
         }

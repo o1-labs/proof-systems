@@ -1,6 +1,17 @@
 //! This module provides different helpers in creating constant sized
 //! arrays and converting them to different formats.
 
+// Use a generic function so that the pointer cast remains type-safe
+/// Converts a vector of elements to a boxed one. Semantically
+/// equivalent to `vector.into_boxed_slice().try_into().unwrap()`.
+pub fn vec_to_boxed_array<T, const N: usize>(vec: Vec<T>) -> Box<[T; N]> {
+    let boxed_slice = vec.into_boxed_slice();
+
+    let ptr = ::std::boxed::Box::into_raw(boxed_slice) as *mut [T; N];
+
+    unsafe { Box::from_raw(ptr) }
+}
+
 // @volhovm It could potentially be more efficient with unsafe tricks.
 /// Converts a two-dimensional vector to a constant sized two-dimensional array.
 pub fn vec_to_boxed_array2<T, const N: usize, const M: usize>(

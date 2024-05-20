@@ -159,7 +159,14 @@ mod tests {
             N_DSEL,
             0,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            Box::new([]),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         // verify the proof
@@ -178,6 +185,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            Box::new([]),
             &proof,
             Witness::zero_vec(domain_size),
         );

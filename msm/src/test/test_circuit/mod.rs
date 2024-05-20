@@ -27,7 +27,7 @@ mod tests {
     type TestWitnessBuilderEnv<LT> = WitnessBuilderEnv<
         Fp,
         TestColumn,
-        { <TestColumn as ColumnIndexer>::N_COL },
+        { <TestColumn as ColumnIndexer>::N_COL - 1 },
         { <TestColumn as ColumnIndexer>::N_COL - 1 },
         0,
         1,
@@ -40,11 +40,7 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        let mut fixed_sel: Vec<Fp> = vec![];
-        for i in 0..domain_size {
-            fixed_sel.push(Fp::from(i as u64));
-        }
-
+        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
         witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         for row_i in 0..domain_size {
@@ -91,6 +87,9 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+
         // generate the proof
         let proof = prove::<
             _,
@@ -98,12 +97,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         // verify the proof
@@ -112,7 +118,7 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
@@ -122,6 +128,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            fixed_selectors,
             &proof,
             Witness::zero_vec(domain_size),
         );
@@ -185,6 +192,9 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+
         // generate the proof
         let proof = prove::<
             _,
@@ -192,12 +202,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         // verify the proof
@@ -206,7 +223,7 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
@@ -216,6 +233,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            fixed_selectors,
             &proof,
             Witness::zero_vec(domain_size),
         );
@@ -268,6 +286,9 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
@@ -284,12 +305,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         // verify the proof
@@ -298,7 +326,7 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
@@ -308,6 +336,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            fixed_selectors,
             &proof,
             Witness::zero_vec(domain_size),
         );
@@ -330,6 +359,9 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
@@ -345,12 +377,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         let witness_env_prime =
@@ -366,12 +405,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             { TEST_N_COLUMNS - 1 },
             0,
             1,
             DummyLookupTable,
-        >(domain, &srs, &constraints, proof_inputs_prime, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs_prime,
+            &mut rng,
+        )
         .unwrap();
 
         // Swap the opening proof. The verification should fail.
@@ -383,7 +429,7 @@ mod tests {
                 OpeningProof,
                 BaseSponge,
                 ScalarSponge,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 { TEST_N_COLUMNS - 1 },
                 0,
                 1,
@@ -393,6 +439,7 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                fixed_selectors.clone(),
                 &proof_clone,
                 Witness::zero_vec(domain_size),
             );
@@ -410,7 +457,7 @@ mod tests {
                 OpeningProof,
                 BaseSponge,
                 ScalarSponge,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 { TEST_N_COLUMNS - 1 },
                 0,
                 1,
@@ -420,6 +467,7 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                fixed_selectors.clone(),
                 &proof_clone,
                 Witness::zero_vec(domain_size),
             );
@@ -438,7 +486,7 @@ mod tests {
                 OpeningProof,
                 BaseSponge,
                 ScalarSponge,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 { TEST_N_COLUMNS - 1 },
                 0,
                 1,
@@ -448,6 +496,7 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                fixed_selectors,
                 &proof_clone,
                 Witness::zero_vec(domain_size),
             );
