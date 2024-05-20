@@ -43,12 +43,7 @@ impl Foldable<Fp> for TestWitness {
     }
 }
 
-impl Witness<Curve> for TestWitness {
-    fn rows(&self) -> usize {
-        todo!()
-    }
-}
-
+impl Witness<Curve> for TestWitness {}
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Col {
     A,

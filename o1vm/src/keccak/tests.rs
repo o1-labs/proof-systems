@@ -726,12 +726,12 @@ fn test_keccak_folding() {
                 // Check constraints on Left side
                 let checker = Provider::new(left_instance.clone(), left_witness.clone());
                 constraints[&step].iter().for_each(|c| {
-                    checker.check(c);
+                    checker.check(c, domain);
                 });
                 // Check constraints on Right side
                 let checker = Provider::new(right_instance.clone(), right_witness.clone());
                 constraints[&step].iter().for_each(|c| {
-                    checker.check(c);
+                    checker.check(c, domain);
                 });
             }
 
@@ -754,7 +754,7 @@ fn test_keccak_folding() {
                 assert_eq!(folded_instance.get_number_of_additional_columns(), 0);
 
                 let checker = ExtendedProvider::new(folded_instance, folded_witness);
-                checker.check(&final_constraint);
+                checker.check(&final_constraint, domain);
             }
 
             // CASE 2: Check that `DecomposableFoldingScheme` works when passing the dummy zero constraint
@@ -780,7 +780,7 @@ fn test_keccak_folding() {
                         .pair();
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
+                    checker.check(&dummy_final_constraint, domain);
                 }
 
                 // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
@@ -796,7 +796,7 @@ fn test_keccak_folding() {
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
+                    checker.check(&dummy_final_constraint, domain);
                 }
             }
 
@@ -830,7 +830,7 @@ fn test_keccak_folding() {
                         .pair();
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
+                    checker.check(&dummy_final_constraint, domain);
                 }
 
                 // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
@@ -846,7 +846,7 @@ fn test_keccak_folding() {
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dummy_final_constraint);
+                    checker.check(&dummy_final_constraint, domain);
                 }
             }
 
@@ -867,7 +867,7 @@ fn test_keccak_folding() {
                         .pair();
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
+                    checker.check(&dec_final_constraint, domain);
 
                     // Check constraints on independent sides and in folded circuit applying selectors
                     let (folded_instance, folded_witness) = dec_scheme
@@ -881,7 +881,7 @@ fn test_keccak_folding() {
                     // Check the constraints on the folded circuit applying selectors
                     let checker =
                         ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
-                    checker.check(&dec_final_constraint);
+                    checker.check(&dec_final_constraint, domain);
                 }
             }
         }
@@ -926,7 +926,7 @@ fn test_keccak_folding() {
                 .fold_instance_witness_pair(left, right, None, &mut fq_sponge)
                 .pair();
             let checker = ExtendedProvider::new(folded_ins, folded_wit);
-            checker.check(&dec_final_constraint);
+            checker.check(&dec_final_constraint, domain);
         }
     });
 }
