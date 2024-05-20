@@ -42,15 +42,6 @@ impl FoldingColumnTrait for Column {
     }
 }
 
-/// Represents an provable trace.
-/// A trace is provable if it can be used to prove the correctness of the
-/// computation it embeds.
-/// For now, the only requirement is to be able to return the length of
-/// the computation, which is commonly named the domain size.
-pub trait ProvableTrace {
-    fn domain_size(&self) -> usize;
-}
-
 #[derive(Clone, Debug)]
 pub struct PlonkishInstance<const N_COL: usize, C: CommitmentCurve> {
     pub commitments: [C; N_COL],
@@ -67,7 +58,7 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for PlonkishInstance<N, G> 
         }
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }
 }
@@ -147,7 +138,7 @@ impl<
         const N: usize,
         W: Witness<C::Curve>,
         C: FoldingConfig,
-        Structure: ProvableTrace + Clone,
+        Structure: Clone,
     > FoldingEnv<ScalarField<C>, PlonkishInstance<N, C::Curve>, W, C::Column, (), ()>
     for PlonkishEnvironment<'a, N, C, W, Structure>
 where
@@ -171,10 +162,6 @@ where
         }
     }
 
-    fn domain_size(&self) -> usize {
-        self.structure.domain_size()
-    }
-
     fn zero_vec(&self) -> Vec<ScalarField<C>> {
         vec![ScalarField::<C>::zero(); self.domain_size()]
     }
@@ -192,23 +179,7 @@ where
         unimplemented!("There is no challenge")
     }
 
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
         unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations.")
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct PlonkishTrace {
-    domain_size: usize,
-}
-
-impl ProvableTrace for PlonkishTrace {
-    fn domain_size(&self) -> usize {
-        self.domain_size
     }
 }
