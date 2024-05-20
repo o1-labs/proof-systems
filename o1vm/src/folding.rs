@@ -207,9 +207,9 @@ pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure> {
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
-    /// Corresponds to the omega evaluations, for both sides
+    /// Corresponds to the evaluations at ω, for both sides
     pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
-    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// Corresponds to the evaluations at ζω, for both sides
     /// This is curr_witness but left shifted by 1
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }

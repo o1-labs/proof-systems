@@ -74,6 +74,7 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     }
 
     /// Returns the alphas values for the instance
+    // FIXME: rename in get_alphas
     fn alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
@@ -128,6 +129,8 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
+    /// Return the original instance that has been relaxed, with the extra
+    /// columns added by quadraticization
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
