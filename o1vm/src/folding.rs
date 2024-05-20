@@ -101,13 +101,10 @@ pub struct FoldingWitness<const N: usize, F: FftField> {
 }
 
 impl<const N: usize, F: FftField> Foldable<F> for FoldingWitness<N, F> {
-    fn combine(mut a: Self, b: Self, challenge: F) -> Self {
-        for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-            for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a += challenge * b;
-            }
+    fn combine(a: Self, b: Self, challenge: F) -> Self {
+        Self {
+            witness: GenericWitness::combine(a.witness, b.witness, challenge),
         }
-        a
     }
 }
 
