@@ -320,6 +320,14 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         (instances, witnesses)
     }
 
+    pub fn get_relaxed_instance(&self, side: Side) -> &RelaxedInstance<CF::Curve, CF::Instance> {
+        &self.instances[side as usize]
+    }
+
+    pub fn get_relaxed_witness(&self, side: Side) -> &RelaxedWitness<CF::Curve, CF::Witness> {
+        &self.witnesses[side as usize]
+    }
+
     pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<ScalarField<CF>> {
         use EvalLeaf::Col;
         use ExtendedFoldingColumn::*;
