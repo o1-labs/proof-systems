@@ -373,7 +373,7 @@ mod tests {
                 ..
             } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -407,7 +407,7 @@ mod tests {
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -427,7 +427,7 @@ mod tests {
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
         };
     }
 }

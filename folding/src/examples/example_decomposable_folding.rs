@@ -91,11 +91,7 @@ impl Foldable<Fp> for TestWitness {
     }
 }
 
-impl Witness<Curve> for TestWitness {
-    fn rows(&self) -> usize {
-        self[0].evals.len()
-    }
-}
+impl Witness<Curve> for TestWitness {}
 
 // our environment, the way in which we provide access to the actual values in the
 // witness and instances, when folding evaluates expressions and reaches leaves (Atom)
@@ -400,7 +396,7 @@ mod tests {
             } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -434,7 +430,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -454,7 +450,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
         };
     }
 }
