@@ -3,12 +3,12 @@
 
 use std::{array, ops::Index};
 
+use crate::{columns::Column, witness::Witness as GenericWitness};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::gate::CurrOrNext;
-use crate:{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve},
@@ -114,31 +114,25 @@ impl<const N: usize, G: CommitmentCurve> PlonkishInstance<N, G> {
     }
 }
 
+
 pub struct PlonkishEnvironment<
-    'a,
     const N: usize,
     C: FoldingConfig,
     W: Witness<C::Curve>,
-    Structure: ProvableTrace,
 > {
     /// Structure of the folded circuit
-    pub structure: Structure,
+    pub structure: (),
     /// Commitments to the witness columns, for both sides
     pub instances: [PlonkishInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
-    pub curr_witnesses: [&'a W; 2],
+    pub curr_witnesses: [PlonkishWitness; 2],
 }
 
-impl<
-        'a,
-        const N: usize,
-        W: Witness<C::Curve>,
-        C: FoldingConfig,
-        Structure: Clone,
-    > FoldingEnv<ScalarField<C>, PlonkishInstance<N, C::Curve>, W, C::Column, (), ()>
-    for PlonkishEnvironment<'a, N, C, W, Structure>
+impl<'a, const N: usize, W: Witness<C::Curve>, C: FoldingConfig, Structure: Clone>
+    FoldingEnv<ScalarField<C>, PlonkishInstance<N, C::Curve>, W, C::Column, (), ()>
+    for PlonkishEnvironment<'a, N, C, W>
 where
-    Witness<C::Curve>: Index<
+    PlonkishWitness<C::Curve>: Index<
         C::Column,
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
@@ -158,8 +152,8 @@ where
         }
     }
 
-    fn zero_vec(&self) -> Vec<ScalarField<C>> {
-        vec![ScalarField::<C>::zero(); self.domain_size()]
+    fn challenge(&self, _challenge: (), _side: Side) -> ScalarField<C> {
+        unimplemented!("There is no challenge")
     }
 
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
@@ -169,10 +163,6 @@ where
         };
         // The following is possible because Index is implemented for our circuit witnesses
         wit[col].evals
-    }
-
-    fn challenge(&self, _challenge: (), _side: Side) -> ScalarField<C> {
-        unimplemented!("There is no challenge")
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {

@@ -7,7 +7,7 @@ pub mod addition {
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use folding::{
         expressions::FoldingColumnTrait,
-        plonkish::{PlonkishEnvironment, PlonkishInstance, PlonkishTrace},
+        plonkish::{PlonkishEnvironment, PlonkishInstance},
         FoldingConfig, Witness,
     };
     use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
@@ -41,10 +41,6 @@ pub mod addition {
             }
             a
         }
-
-        fn rows(&self) -> usize {
-            self.witness.cols[0].evals.len()
-        }
     }
 
     impl Index<Column> for PlonkishWitness {
@@ -69,7 +65,7 @@ pub mod addition {
         type Srs = SRS<Curve>;
         type Instance = PlonkishInstance<{ AdditionColumn::COUNT }, Curve>;
         type Witness = PlonkishWitness;
-        type Structure = PlonkishTrace;
-        type Env = PlonkishEnvironment<{ AdditionColumn::COUNT }, Self, PlonkishTrace>;
+        type Structure = ();
+        type Env = PlonkishEnvironment<{ AdditionColumn::COUNT }, Self, ()>;
     }
 }

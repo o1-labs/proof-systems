@@ -13,6 +13,7 @@ pub mod circuit_design;
 pub mod column_env;
 pub mod columns;
 pub mod expr;
+pub mod folding;
 pub mod logup;
 /// Instantiations of Logups for the MSM project
 // REMOVEME. The different interpreters must define their own tables.
