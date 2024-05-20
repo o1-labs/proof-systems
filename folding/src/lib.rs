@@ -148,6 +148,34 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
+pub struct FoldingEnvironment<const N: usize, FC: FoldingConfig> {
+    pub structure: FC::Structure,
+    pub instances: [FC::Instance; 2],
+    pub curr_witnesses: [Box<[Evals<ScalarField<FC>>; N]>; 2],
+    pub next_witnesses: [Box<[Evals<ScalarField<FC>>; N]>; 2],
+}
+
+impl<const N: usize, FC: FoldingConfig> FoldingEnvironment<N, FC> {
+    pub fn new(
+        structure: FC::Structure,
+        instances: [FC::Instance; 2],
+        witnesses: [Box<[Evals<ScalarField<FC>>; N]>; 2],
+    ) -> Self {
+        let mut next_witnesses = witnesses.clone();
+        next_witnesses.iter_mut().for_each(|w| {
+            (*w).iter_mut().for_each(|col| {
+                col.evals.rotate_left(1);
+            });
+        });
+        Self {
+            structure,
+            instances,
+            curr_witnesses: witnesses,
+            next_witnesses,
+        }
+    }
+}
+
 pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub expression: IntegratedFoldingExpr<CF>,
     pub srs: &'a CF::Srs,
