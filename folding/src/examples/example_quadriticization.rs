@@ -71,7 +71,7 @@ impl Instance<Curve> for TestInstance {
         (vec![], vec![])
     }
 
-    fn alphas(&self) -> &Alphas<Fp> {
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }

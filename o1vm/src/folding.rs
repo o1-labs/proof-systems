@@ -77,7 +77,7 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
         (scalars, points)
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }
 }

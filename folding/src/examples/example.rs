@@ -55,7 +55,7 @@ impl Instance<Curve> for TestInstance {
         (fields, points)
     }
 
-    fn alphas(&self) -> &Alphas<Fp> {
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }

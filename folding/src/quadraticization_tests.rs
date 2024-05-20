@@ -25,7 +25,7 @@ impl Foldable<Fp> for TestInstance {
 }
 
 impl Instance<Curve> for TestInstance {
-    fn alphas(&self) -> &crate::Alphas<Fp> {
+    fn get_alphas(&self) -> &crate::Alphas<Fp> {
         todo!()
     }
 

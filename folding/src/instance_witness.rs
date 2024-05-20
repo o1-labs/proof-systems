@@ -74,8 +74,7 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     }
 
     /// Returns the alphas values for the instance
-    // FIXME: rename in get_alphas
-    fn alphas(&self) -> &Alphas<G::ScalarField>;
+    fn get_alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
@@ -296,8 +295,8 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
         elements
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
-        self.inner.alphas()
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
+        self.inner.get_alphas()
     }
 }
 

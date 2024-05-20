@@ -190,11 +190,11 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     let alphas_l = env
         .get_relaxed_instance(Side::Left)
         .inner_instance()
-        .alphas();
+        .get_alphas();
     let alphas_r = env
         .get_relaxed_instance(Side::Right)
         .inner_instance()
-        .alphas();
+        .get_alphas();
 
     let t_0 = {
         let t_0 = (zero(), zero());
@@ -333,7 +333,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         use ExtendedFoldingColumn::*;
         let instance = self.get_relaxed_instance(side);
         let witness = self.get_relaxed_witness(side);
-        let alphas = instance.inner_instance().alphas();
+        let alphas = instance.inner_instance().get_alphas();
         match col {
             Inner(Variable { col, row }) => Col(self.inner().col(*col, *row, side)),
             WitnessExtended(i) => Col(&witness
