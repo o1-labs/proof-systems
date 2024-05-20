@@ -364,6 +364,12 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -388,7 +394,7 @@
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
 <span class="kw">use </span>expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-<span class="kw">use </span>instance_witness::{RelaxableInstance, RelaxablePair};
+<span class="kw">use </span>instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
 <span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -656,11 +662,12 @@
         RelaxedInstance::combine_and_sub_error(a, b, challenge, <span class="kw-2">&amp;</span>error_commitments)
     }
 }
+
 <span class="doccomment">/// Output of the folding prover
 </span><span class="kw">pub struct </span>FoldingOutput&lt;C: FoldingConfig&gt; {
-    <span class="doccomment">///folded instance
+    <span class="doccomment">/// Folded instance
     </span><span class="kw">pub </span>folded_instance: RelaxedInstance&lt;C::Curve, C::Instance&gt;,
-    <span class="doccomment">///folded witness
+    <span class="doccomment">/// Folded witness
     </span><span class="kw">pub </span>folded_witness: RelaxedWitness&lt;C::Curve, C::Witness&gt;,
     <span class="kw">pub </span>t_0: PolyComm&lt;C::Curve&gt;,
     <span class="kw">pub </span>t_1: PolyComm&lt;C::Curve&gt;,
@@ -694,10 +701,25 @@
     Combinations(Vec&lt;F&gt;),
 }
 
+<span class="kw">impl</span>&lt;F: Field&gt; Foldable&lt;F&gt; <span class="kw">for </span>Alphas&lt;F&gt; {
+    <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>a = a.powers();
+        <span class="kw">let </span>b = b.powers();
+        <span class="macro">assert_eq!</span>(a.len(), b.len());
+        <span class="kw">let </span>comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        <span class="self">Self</span>::Combinations(comb)
+    }
+}
+
 <span class="kw">impl</span>&lt;F: Field&gt; Alphas&lt;F&gt; {
     <span class="kw">pub fn </span>new(alpha: F) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Powers(alpha, Rc::new(AtomicUsize::from(<span class="number">0</span>)))
     }
+
     <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="prelude-ty">Option</span>&lt;F&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Alphas::Powers(alpha, count) =&gt; {
@@ -708,6 +730,7 @@
             Alphas::Combinations(alphas) =&gt; alphas.get(i).cloned(),
         }
     }
+
     <span class="kw">pub fn </span>powers(<span class="self">self</span>) -&gt; Vec&lt;F&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Alphas::Powers(alpha, count) =&gt; {
@@ -717,17 +740,6 @@
             }
             Alphas::Combinations(c) =&gt; c,
         }
-    }
-    <span class="kw">pub fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>a = a.powers();
-        <span class="kw">let </span>b = b.powers();
-        <span class="macro">assert_eq!</span>(a.len(), b.len());
-        <span class="kw">let </span>comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        <span class="self">Self</span>::Combinations(comb)
     }
 }
 </code></pre></div></section></main></body></html>
