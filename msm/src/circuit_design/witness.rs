@@ -8,7 +8,6 @@ use crate::{
     witness::Witness,
 };
 use ark_ff::PrimeField;
-use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
 use std::{collections::BTreeMap, iter, marker::PhantomData};
 
@@ -263,18 +262,18 @@ impl<
     }
 
     /// Getting multiplicities for range check tables less or equal than 15 bits.
-    pub fn get_lookup_multiplicities(&self, domain: EvaluationDomains<F>, table_id: LT) -> Vec<F> {
-        let mut m = Vec::with_capacity(domain.d1.size as usize);
+    pub fn get_lookup_multiplicities(&self, domain_size: usize, table_id: LT) -> Vec<F> {
+        let mut m = Vec::with_capacity(domain_size);
         m.extend(self.lookup_multiplicities[&table_id].to_vec());
-        if table_id.length() < (domain.d1.size as usize) {
-            let n_repeated_dummy_value: usize = (domain.d1.size as usize) - table_id.length() - 1;
+        if table_id.length() < domain_size {
+            let n_repeated_dummy_value: usize = domain_size - table_id.length() - 1;
             let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
                 .take(n_repeated_dummy_value)
                 .collect();
             m.extend(repeated_dummy_value);
             m.push(F::from(n_repeated_dummy_value as u64));
         }
-        assert_eq!(m.len(), domain.d1.size as usize);
+        assert_eq!(m.len(), domain_size);
         m
     }
 }
@@ -328,9 +327,7 @@ impl<
         self.fixed_selectors = selectors
     }
 
-    pub fn get_relation_witness(&self, domain: EvaluationDomains<F>) -> Witness<N_WIT, Vec<F>> {
-        let domain_size: usize = domain.d1.size as usize;
-
+    pub fn get_relation_witness(&self, domain_size: usize) -> Witness<N_WIT, Vec<F>> {
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<N_WIT, Vec<F>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
@@ -362,10 +359,9 @@ impl<
 
     pub fn get_logup_witness(
         &self,
-        domain: EvaluationDomains<F>,
+        domain_size: usize,
         lookup_tables_data: BTreeMap<LT, Vec<F>>,
     ) -> Vec<LogupWitness<F, LT>> {
-        let domain_size: usize = domain.d1.size as usize;
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
@@ -399,7 +395,7 @@ impl<
         let mut lookup_multiplicities: BTreeMap<LT, Vec<F>> = BTreeMap::new();
         // Counting multiplicities & adding fixed column into the last column of every table.
         for (table_id, table) in lookup_tables.iter_mut() {
-            let lookup_m = self.get_lookup_multiplicities(domain, *table_id);
+            let lookup_m = self.get_lookup_multiplicities(domain_size, *table_id);
             lookup_multiplicities.insert(*table_id, lookup_m.clone());
             let lookup_t = lookup_tables_data[table_id]
                 .iter()
@@ -432,11 +428,11 @@ impl<
     /// Generates proof inputs, repacking/collecting internal witness builder state.
     pub fn get_proof_inputs(
         &self,
-        domain: EvaluationDomains<F>,
+        domain_size: usize,
         lookup_tables_data: BTreeMap<LT, Vec<F>>,
     ) -> ProofInputs<N_WIT, F, LT> {
-        let evaluations = self.get_relation_witness(domain);
-        let logups = self.get_logup_witness(domain, lookup_tables_data);
+        let evaluations = self.get_relation_witness(domain_size);
+        let logups = self.get_logup_witness(domain_size, lookup_tables_data);
 
         ProofInputs {
             evaluations,

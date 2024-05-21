@@ -6,23 +6,16 @@ pub mod params;
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use super::{params, params::PlonkSpongeConstantsIVC};
     use crate::poseidon::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams};
     use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
         circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::ColumnIndexer,
         lookups::DummyLookupTable,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+        Fp,
     };
     use mina_poseidon::permutation::poseidon_block_cipher;
-    use poly_commitment::pairing_proof::PairingSRS;
 
     pub struct PoseidonBN254Parameters;
 
@@ -102,19 +95,13 @@ mod tests {
     /// Checks that poseidon circuit can be proven and verified. Big domain.
     pub fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
-        let domain_size = 1 << 15;
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+        let domain_size: usize = 1 << 15;
 
-        let srs_trapdoor = Fp::rand(&mut rng);
-        let mut srs: PairingSRS<BN254> = PairingSRS::create(srs_trapdoor, domain.d1.size as usize);
-        srs.full_srs.add_lagrange_basis(domain.d1);
-
-        let empty_lookups = BTreeMap::new();
-        let proof_inputs = {
+        let relation_witness = {
             let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
 
             // Generate random inputs at each row
-            for _row in 0..domain.d1.size {
+            for _row in 0..domain_size {
                 let x: Fp = Fp::rand(&mut rng);
                 let y: Fp = Fp::rand(&mut rng);
                 let z: Fp = Fp::rand(&mut rng);
@@ -126,7 +113,7 @@ mod tests {
                 );
             }
 
-            witness_env.get_proof_inputs(domain, empty_lookups)
+            witness_env.get_relation_witness(domain_size)
         };
 
         let constraints = {
@@ -147,49 +134,12 @@ mod tests {
             constraints
         };
 
-        // generate the proof
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            _,
-            N_COL,
-            N_COL,
-            N_DSEL,
-            0,
-            DummyLookupTable,
-        >(
-            domain,
-            &srs,
-            &constraints,
+        kimchi_msm::test::test_completeness_generic_no_lookups::<N_COL, N_COL, N_DSEL, 0, _>(
+            constraints,
             Box::new([]),
-            proof_inputs,
+            relation_witness,
+            domain_size,
             &mut rng,
-        )
-        .unwrap();
-
-        // verify the proof
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            N_COL,
-            N_COL,
-            N_DSEL,
-            0,
-            0,
-            DummyLookupTable,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            Box::new([]),
-            &proof,
-            Witness::zero_vec(domain_size),
         );
-
-        assert!(verifies);
     }
 }

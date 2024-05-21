@@ -3,7 +3,7 @@ use crate::{
     expr::E, logup::LookupTableID, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
     verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
-use ark_ff::{UniformRand, Zero};
+use ark_ff::Zero;
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 use rand::{CryptoRng, RngCore};
@@ -78,12 +78,7 @@ pub fn test_completeness_generic<
 {
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-    let mut srs: PairingSRS<BN254> = {
-        // Trusted setup toxic waste
-        let x = Fp::rand(rng);
-        PairingSRS::create(x, domain.d1.size as usize)
-    };
-    srs.full_srs.add_lagrange_basis(domain.d1);
+    let srs: PairingSRS<BN254> = crate::precomputed_srs::get_bn254_srs(domain);
 
     let proof =
         prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
@@ -142,4 +137,133 @@ pub fn test_completeness_generic<
             Witness::zero_vec(domain_size),
         );
     assert!(verifies)
+}
+
+pub fn test_soundness_generic<
+    const N_WIT: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
+    LT: LookupTableID,
+    RNG,
+>(
+    constraints: Vec<E<Fp>>,
+    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    proof_inputs: ProofInputs<N_WIT, Fp, LT>,
+    proof_inputs_prime: ProofInputs<N_WIT, Fp, LT>,
+    domain_size: usize,
+    rng: &mut RNG,
+) where
+    RNG: RngCore + CryptoRng,
+{
+    let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+    let srs: PairingSRS<BN254> = crate::precomputed_srs::get_bn254_srs(domain);
+
+    // generate the proof
+    let proof =
+        prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs,
+            rng,
+        )
+        .unwrap();
+
+    // generate another (prime) proof
+    let proof_prime =
+        prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            proof_inputs_prime,
+            rng,
+        )
+        .unwrap();
+
+    // Swap the opening proof. The verification should fail.
+    {
+        let mut proof_clone = proof.clone();
+        proof_clone.opening_proof = proof_prime.opening_proof;
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            N_WIT,
+            N_REL,
+            N_DSEL,
+            N_FSEL,
+            0,
+            LT,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            &proof_clone,
+            Witness::zero_vec(domain_size),
+        );
+        assert!(!verifies, "Proof with a swapped opening must fail");
+    }
+
+    // Changing at least one commitment in the proof should fail the verification.
+    // TODO: improve me by swapping only one commitments. It should be
+    // easier when an index trait is implemented.
+    {
+        let mut proof_clone = proof.clone();
+        proof_clone.proof_comms = proof_prime.proof_comms;
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            N_WIT,
+            N_REL,
+            N_DSEL,
+            N_FSEL,
+            0,
+            LT,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors.clone(),
+            &proof_clone,
+            Witness::zero_vec(domain_size),
+        );
+        assert!(!verifies, "Proof with a swapped commitment must fail");
+    }
+
+    // Changing at least one evaluation at zeta in the proof should fail
+    // the verification.
+    // TODO: improve me by swapping only one evaluation at \zeta. It should be
+    // easier when an index trait is implemented.
+    {
+        let mut proof_clone = proof.clone();
+        proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            N_WIT,
+            N_REL,
+            N_DSEL,
+            N_FSEL,
+            0,
+            LT,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            fixed_selectors,
+            &proof_clone,
+            Witness::zero_vec(domain_size),
+        );
+        assert!(!verifies, "Proof with a swapped witness eval must fail");
+    }
 }
