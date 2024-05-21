@@ -1,5 +1,4 @@
 use crate::{
-    folding::{BaseField, ScalarField},
     keccak::{
         column::{
             Absorbs::*,
@@ -15,26 +14,23 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::{DecomposableTracer, Foldable, Tracer},
+    trace::{DecomposableTracer, Tracer},
     BaseSponge, Fp,
 };
 use ark_bn254::g1::Parameters;
-use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::{One, Zero};
-use ark_poly::Radix2EvaluationDomain as D;
 use folding::{
-    checker::{Checker, ExtendedProvider, Provider},
+    checker::{ExtendedProvider, Provider},
     decomposable_folding::DecomposableFoldingScheme,
     expressions::FoldingCompatibleExprInner,
-    FoldingCompatibleExpr, FoldingConfig, FoldingOutput, FoldingScheme,
+    FoldingCompatibleExpr, FoldingConfig, FoldingScheme,
 };
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
     o1_utils::{self, FieldHelpers, Two},
 };
-use kimchi_msm::{expr::E, test::test_completeness_generic};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::srs::SRS;
+use kimchi_msm::test::test_completeness_generic;
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use rand::{rngs::StdRng, Rng};
 use sha3::{Digest, Keccak256};
 use std::{
@@ -733,8 +729,6 @@ fn test_keccak_folding() {
                 let extra_cols = fout.folded_instance.get_number_of_additional_columns();
                 if let Some(quadri_cols) = quadri_cols {
                     assert!(extra_cols == quadri_cols);
-                } else {
-                    println!("Additional columns for step {:?}: {}", step, extra_cols);
                 }
 
                 // Check the constraints on the folded circuit applying selectors
@@ -742,7 +736,7 @@ fn test_keccak_folding() {
                     fout.folded_instance,
                     fout.folded_witness,
                 );
-                checker.check(&final_constraint, domain);
+                checker.check(final_constraint, domain);
             };
 
         let check_decomposable_folding =
@@ -848,14 +842,6 @@ fn test_keccak_folding() {
 
         // Check folding constraints of individual steps ignoring selectors
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
-            // Number of degree-2 constraints for each step
-            let deg_2_constraints = trace[step]
-                .constraints
-                .iter()
-                .filter(|c| c.degree(1, 0) == 2)
-                .count();
-            println!("Step: {:?}, deg-2 constraints: {}", step, deg_2_constraints);
-
             // BTreeMap with constraints of this step
             let mut step_constraints = BTreeMap::new();
             step_constraints.insert(step, constraints[&step].clone());

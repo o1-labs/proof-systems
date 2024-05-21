@@ -76,8 +76,9 @@ where
     /// - At most, 474 constraints are added per row
     /// In particular, after folding:
     /// - 136 columns should be added for the degree-2 constraints of the flags
-    /// - 5   columns should be added for the degree-2 constraints of the sponge
     /// - 5   columns should be added for the degree-2 constraints of the round
+    /// - 10  columns should be added for the degree-2 constraints of the sponge
+    ///   - for each of the 5 constraints, 2 columns are added for block_in_padding
     fn constraints(&mut self, step: Steps) {
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
