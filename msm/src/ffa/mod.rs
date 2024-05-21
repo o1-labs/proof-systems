@@ -87,6 +87,11 @@ mod tests {
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
+        //test_completeness_generic::<            FFA_N_COLUMNS,
+        //    FFA_N_COLUMNS,
+        //    0,
+        //    0>(constraints, proof_inputs,
+
         // generate the proof
         let proof = prove::<
             _,
