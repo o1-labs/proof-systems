@@ -74,13 +74,10 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     }
 
     /// Returns the alphas values for the instance
-    fn alphas(&self) -> &Alphas<G::ScalarField>;
+    fn get_alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
-    /// Returns the number of rows in the witness
-    fn rows(&self) -> usize;
-
     /// This method takes a witness and a vector of evaluations to the zero polynomial,
     /// returning a relaxed witness which is composed by the extended witness and the error vector
     /// that is set to the zero polynomial.
@@ -131,6 +128,8 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
+    /// Return the original instance that has been relaxed, with the extra
+    /// columns added by quadraticization
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
@@ -233,11 +232,7 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWit
     }
 }
 
-impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
-    fn rows(&self) -> usize {
-        self.inner.rows()
-    }
-}
+impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {}
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     pub(crate) fn inner(&self) -> &W {
@@ -300,8 +295,8 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
         elements
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
-        self.inner.alphas()
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
+        self.inner.get_alphas()
     }
 }
 

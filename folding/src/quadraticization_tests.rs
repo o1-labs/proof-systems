@@ -25,7 +25,7 @@ impl Foldable<Fp> for TestInstance {
 }
 
 impl Instance<Curve> for TestInstance {
-    fn alphas(&self) -> &crate::Alphas<Fp> {
+    fn get_alphas(&self) -> &crate::Alphas<Fp> {
         todo!()
     }
 
@@ -43,12 +43,7 @@ impl Foldable<Fp> for TestWitness {
     }
 }
 
-impl Witness<Curve> for TestWitness {
-    fn rows(&self) -> usize {
-        todo!()
-    }
-}
-
+impl Witness<Curve> for TestWitness {}
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Col {
     A,
@@ -94,19 +89,11 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn domain_size(&self) -> usize {
-        1
-    }
-
     fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: crate::Side) -> &Vec<Fp> {
         todo!()
     }
 
     fn challenge(&self, _challenge: (), _side: crate::Side) -> Fp {
-        todo!()
-    }
-
-    fn alpha(&self, _i: usize, _side: crate::Side) -> Fp {
         todo!()
     }
 

@@ -1,6 +1,5 @@
-use crate::trace::ProvableTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{FftField, Zero};
+use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
@@ -78,7 +77,7 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
         (scalars, points)
     }
 
-    fn alphas(&self) -> &Alphas<G::ScalarField> {
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }
 }
@@ -102,21 +101,14 @@ pub struct FoldingWitness<const N: usize, F: FftField> {
 }
 
 impl<const N: usize, F: FftField> Foldable<F> for FoldingWitness<N, F> {
-    fn combine(mut a: Self, b: Self, challenge: F) -> Self {
-        for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-            for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a += challenge * b;
-            }
+    fn combine(a: Self, b: Self, challenge: F) -> Self {
+        Self {
+            witness: GenericWitness::combine(a.witness, b.witness, challenge),
         }
-        a
     }
 }
 
-impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {
-    fn rows(&self) -> usize {
-        self.witness.cols[0].evals.len()
-    }
-}
+impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::ScalarField> {}
 
 /// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
@@ -125,7 +117,7 @@ pub struct DecomposedFoldingEnvironment<
     const N_REL: usize,
     const N_DSEL: usize,
     C: FoldingConfig,
-    Structure: ProvableTrace,
+    Structure,
 > {
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
@@ -143,7 +135,7 @@ impl<
         const N_SEL: usize,
         C: FoldingConfig,
         // FIXME: Clone should not be used. Only a reference should be stored
-        Structure: ProvableTrace + Clone,
+        Structure: Clone,
     >
     FoldingEnv<
         ScalarField<C>,
@@ -187,14 +179,6 @@ where
         }
     }
 
-    fn domain_size(&self) -> usize {
-        self.structure.domain_size()
-    }
-
-    fn zero_vec(&self) -> Vec<ScalarField<C>> {
-        vec![ScalarField::<C>::zero(); self.domain_size()]
-    }
-
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -212,25 +196,20 @@ where
         }
     }
 
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-
     fn selector(&self, s: &C::Selector, side: Side) -> &Vec<ScalarField<C>> {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
     }
 }
 
-pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure> {
     /// Structure of the folded circuit
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
-    /// Corresponds to the omega evaluations, for both sides
+    /// Corresponds to the evaluations at ω, for both sides
     pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
-    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// Corresponds to the evaluations at ζω, for both sides
     /// This is curr_witness but left shifted by 1
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
@@ -239,7 +218,7 @@ impl<
         const N: usize,
         C: FoldingConfig,
         // FIXME: Clone should not be used. Only a reference should be stored
-        Structure: ProvableTrace + Clone,
+        Structure: Clone,
     >
     FoldingEnv<
         ScalarField<C>,
@@ -279,14 +258,6 @@ where
         }
     }
 
-    fn domain_size(&self) -> usize {
-        self.structure.domain_size()
-    }
-
-    fn zero_vec(&self) -> Vec<ScalarField<C>> {
-        vec![ScalarField::<C>::zero(); self.domain_size()]
-    }
-
     fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -302,11 +273,6 @@ where
             Challenge::Gamma => self.instances[side as usize].challenges[1],
             Challenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
@@ -341,21 +307,12 @@ mod tests {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    struct TestStructure;
-
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     struct TestConfig;
-
-    impl ProvableTrace for TestStructure {
-        fn domain_size(&self) -> usize {
-            4
-        }
-    }
 
     type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
     type TestFoldingWitness = FoldingWitness<3, Fp>;
     type TestFoldingInstance = FoldingInstance<3, Curve>;
-    type TestFoldingEnvironment = FoldingEnvironment<3, TestConfig, TestStructure>;
+    type TestFoldingEnvironment = FoldingEnvironment<3, TestConfig, ()>;
 
     impl Index<TestColumn> for TestFoldingWitness {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -390,7 +347,7 @@ mod tests {
         type Srs = poly_commitment::srs::SRS<Curve>;
         type Instance = TestFoldingInstance;
         type Witness = TestFoldingWitness;
-        type Structure = TestStructure;
+        type Structure = ();
         type Env = TestFoldingEnvironment;
     }
 

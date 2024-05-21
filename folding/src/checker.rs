@@ -3,7 +3,7 @@
 
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
-    instance_witness::{Instance, Witness},
+    instance_witness::Instance,
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::AffineCurve;
@@ -55,10 +55,6 @@ impl<C: FoldingConfig> Provider<C> {
     pub fn new(instance: C::Instance, witness: C::Witness) -> Self {
         Self { instance, witness }
     }
-
-    pub fn rows(&self) -> usize {
-        self.witness.rows()
-    }
 }
 
 pub struct ExtendedProvider<C: FoldingConfig> {
@@ -89,6 +85,7 @@ pub trait Provide<C: FoldingConfig> {
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
     ) -> Vec<<C::Curve as AffineCurve>::ScalarField>;
 }
 
@@ -113,14 +110,16 @@ where
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
     ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
+        let domain_size = domain.size as usize;
         match inner {
             FoldingCompatibleExprInner::Constant(c) => {
-                vec![c; self.rows()]
+                vec![c; domain_size]
             }
             FoldingCompatibleExprInner::Challenge(chal) => {
                 let v = self.instance[chal];
-                vec![v; self.rows()]
+                vec![v; domain_size]
             }
             FoldingCompatibleExprInner::Cell(var) => {
                 let Variable { col, row } = var;
@@ -162,12 +161,14 @@ where
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
     ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
         match inner {
             FoldingCompatibleExprInner::Extensions(ext) => match ext {
                 ExpExtension::U => {
                     let u = self.instance.u;
-                    vec![u; self.inner_provider.rows()]
+                    let domain_size = domain.size as usize;
+                    vec![u; domain_size]
                 }
                 ExpExtension::Error => self.witness.error_vec.evals.clone(),
                 ExpExtension::ExtendedWitness(i) => {
@@ -178,17 +179,18 @@ where
                         .instance
                         .inner_instance()
                         .inner
-                        .alphas()
+                        .get_alphas()
                         .get(i)
                         .unwrap();
-                    vec![alpha; self.inner_provider.rows()]
+                    let domain_size = domain.size as usize;
+                    vec![alpha; domain_size]
                 }
                 ExpExtension::Selector(s) => {
                     let col = &self.inner_provider.witness[s].evals;
                     col.clone()
                 }
             },
-            e => self.inner_provider.resolve(e),
+            e => self.inner_provider.resolve(e, domain),
         }
     }
 }
@@ -197,35 +199,36 @@ pub trait Checker<C: FoldingConfig>: Provide<C> {
     fn check_rec(
         &self,
         exp: FoldingCompatibleExpr<C>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
     ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
         let e2 = exp.clone();
         let res = match exp {
-            FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
+            FoldingCompatibleExpr::Atom(inner) => self.resolve(inner, domain),
             FoldingCompatibleExpr::Double(e) => {
-                let v = self.check_rec(*e);
+                let v = self.check_rec(*e, domain);
                 v.into_iter().map(|x| x.double()).collect()
             }
             FoldingCompatibleExpr::Square(e) => {
-                let v = self.check_rec(*e);
+                let v = self.check_rec(*e, domain);
                 v.into_iter().map(|x| x.square()).collect()
             }
             FoldingCompatibleExpr::Add(e1, e2) => {
-                let v1 = self.check_rec(*e1);
-                let v2 = self.check_rec(*e2);
+                let v1 = self.check_rec(*e1, domain);
+                let v2 = self.check_rec(*e2, domain);
                 v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
             }
             FoldingCompatibleExpr::Sub(e1, e2) => {
-                let v1 = self.check_rec(*e1);
-                let v2 = self.check_rec(*e2);
+                let v1 = self.check_rec(*e1, domain);
+                let v2 = self.check_rec(*e2, domain);
                 v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
             }
             FoldingCompatibleExpr::Mul(e1, e2) => {
-                let v1 = self.check_rec(*e1);
-                let v2 = self.check_rec(*e2);
+                let v1 = self.check_rec(*e1, domain);
+                let v2 = self.check_rec(*e2, domain);
                 v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
             }
             FoldingCompatibleExpr::Pow(e, exp) => {
-                let v = self.check_rec(*e);
+                let v = self.check_rec(*e, domain);
                 v.into_iter().map(|x| x.pow([exp])).collect()
             }
         };
@@ -238,8 +241,12 @@ pub trait Checker<C: FoldingConfig>: Provide<C> {
         res
     }
 
-    fn check(&self, exp: &FoldingCompatibleExpr<C>) {
-        let res = self.check_rec(exp.clone());
+    fn check(
+        &self,
+        exp: &FoldingCompatibleExpr<C>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+    ) {
+        let res = self.check_rec(exp.clone(), domain);
         for (i, row) in res.iter().enumerate() {
             if !row.is_zero() {
                 panic!("check in row {i} failed, {row} != 0");

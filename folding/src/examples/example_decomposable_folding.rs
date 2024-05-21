@@ -69,7 +69,7 @@ impl Instance<Curve> for TestInstance {
         (vec![], vec![])
     }
 
-    fn alphas(&self) -> &Alphas<Fp> {
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }
@@ -91,11 +91,7 @@ impl Foldable<Fp> for TestWitness {
     }
 }
 
-impl Witness<Curve> for TestWitness {
-    fn rows(&self) -> usize {
-        self[0].evals.len()
-    }
-}
+impl Witness<Curve> for TestWitness {}
 
 // our environment, the way in which we provide access to the actual values in the
 // witness and instances, when folding evaluates expressions and reaches leaves (Atom)
@@ -139,12 +135,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    fn domain_size(&self) -> usize {
-        // this works in the example but is not the best way as the environment
-        // could get circuits of any size
-        2
-    }
-
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
@@ -166,14 +156,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
             TestChallenge::Gamma => self.instances[side as usize].challenges[1],
             TestChallenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    // access to the alphas, while folding will decide how many there are and how do
-    // they appear in the expressions, the instances should store them, and the environment
-    // should provide acces to them like this
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     // This is exclusively for dynamic selectors aiming to make use of optimization
@@ -406,7 +388,7 @@ mod tests {
             } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -440,7 +422,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -460,7 +442,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
         };
     }
 }

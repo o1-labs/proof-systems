@@ -26,15 +26,6 @@ pub trait Indexer {
     fn ix(&self) -> usize;
 }
 
-/// Represents an provable trace.
-/// A trace is provable if it can be used to prove the correctness of the
-/// computation it embeds.
-/// For now, the only requirement is to be able to return the length of
-/// the computation, which is commonly named the domain size.
-pub trait ProvableTrace {
-    fn domain_size(&self) -> usize;
-}
-
 /// Implement a trace for a single instruction.
 // TODO: we should use the generic traits defined in [kimchi_msm].
 // For now, we want to have this to be able to test the folding library for a
@@ -47,13 +38,6 @@ pub struct Trace<const N: usize, C: FoldingConfig> {
     pub witness: Witness<N, Vec<ScalarField<C>>>,
     pub constraints: Vec<E<ScalarField<C>>>,
     pub lookups: Vec<Lookup<E<ScalarField<C>>>>,
-}
-
-// Any single instruction trace is provable.
-impl<const N: usize, C: FoldingConfig> ProvableTrace for Trace<N, C> {
-    fn domain_size(&self) -> usize {
-        self.domain_size
-    }
 }
 
 /// Struct representing a circuit execution trace which is decomposable in
@@ -81,13 +65,6 @@ impl<const N: usize, C: FoldingConfig> Index<C::Selector> for DecomposedTrace<N,
 
     fn index(&self, index: C::Selector) -> &Self::Output {
         &self.trace[&index]
-    }
-}
-
-// Any decomposable trace is provable.
-impl<const N: usize, C: FoldingConfig> ProvableTrace for DecomposedTrace<N, C> {
-    fn domain_size(&self) -> usize {
-        self.domain_size
     }
 }
 

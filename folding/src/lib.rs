@@ -22,7 +22,7 @@ use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-use instance_witness::{RelaxableInstance, RelaxablePair};
+use instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -84,6 +84,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// The target curve used by the polynomial commitment
     type Curve: CommitmentCurve;
 
+    /// The SRS used by the polynomial commitment. The SRS is used to commit to
+    /// the additional columns that are added by the quadraticization.
     type Srs: SRS<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
@@ -119,31 +121,25 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
-    /// Creates a new environment storing the structure, instances and witnesses.
+    /// Creates a new environment storing the structure, instances and
+    /// witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
-
-    /// Returns the domain size of the circuit.
-    fn domain_size(&self) -> usize;
 
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
     /// Returns a vector of zeros with the same length as the number of rows in
     /// the circuit.
-    fn zero_vec(&self) -> Vec<F> {
-        vec![F::zero(); self.domain_size()]
+    fn zero_vec(&self, n: usize) -> Vec<F> {
+        vec![F::zero(); n]
     }
-
-    /// Returns the evaluations of a given column witness at omega or zeta*omega.
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
-    /// Computes the i-th power of alpha for a given side.
-    /// Folding itself will provide us with the alpha value.
-    fn alpha(&self, i: usize, side: Side) -> F;
+    /// Returns the evaluations of a given column witness at omega or zeta*omega.
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
@@ -293,11 +289,12 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
     }
 }
+
 /// Output of the folding prover
 pub struct FoldingOutput<C: FoldingConfig> {
-    ///folded instance
+    /// Folded instance
     pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
-    ///folded witness
+    /// Folded witness
     pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
     pub t_0: PolyComm<C::Curve>,
     pub t_1: PolyComm<C::Curve>,
@@ -331,10 +328,25 @@ pub enum Alphas<F: Field> {
     Combinations(Vec<F>),
 }
 
+impl<F: Field> Foldable<F> for Alphas<F> {
+    fn combine(a: Self, b: Self, challenge: F) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
+    }
+}
+
 impl<F: Field> Alphas<F> {
     pub fn new(alpha: F) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
+
     pub fn get(&self, i: usize) -> Option<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -345,6 +357,7 @@ impl<F: Field> Alphas<F> {
             Alphas::Combinations(alphas) => alphas.get(i).cloned(),
         }
     }
+
     pub fn powers(self) -> Vec<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -354,16 +367,5 @@ impl<F: Field> Alphas<F> {
             }
             Alphas::Combinations(c) => c,
         }
-    }
-    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
     }
 }
