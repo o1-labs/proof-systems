@@ -26,7 +26,7 @@ use folding::{
     checker::{Checker, ExtendedProvider, Provider},
     decomposable_folding::DecomposableFoldingScheme,
     expressions::FoldingCompatibleExprInner,
-    FoldingCompatibleExpr, FoldingConfig, FoldingScheme,
+    FoldingCompatibleExpr, FoldingConfig, FoldingOutput, FoldingScheme,
 };
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
@@ -708,14 +708,14 @@ fn test_keccak_folding() {
                     FoldingScheme::<KeccakConfig>::new(constraints.to_vec(), &srs, domain, &trace);
 
                 // Fold both sides and check the constraints ignoring the selector columns
-                let (folded_instance, folded_witness, [_t0, _t1]) =
+                let fout =
                     scheme.fold_instance_witness_pair(left.clone(), right.clone(), fq_sponge);
 
                 // We should always have 0 as the degree of the constraints,
                 // without selectors, they are never higher than 2 in Keccak.
-                assert_eq!(folded_instance.get_number_of_additional_columns(), 0);
+                assert_eq!(fout.folded_instance.get_number_of_additional_columns(), 0);
 
-                let checker = ExtendedProvider::new(folded_instance, folded_witness);
+                let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
                 checker.check(&final_constraint);
             };
 
@@ -727,10 +727,10 @@ fn test_keccak_folding() {
              final_constraint: &FoldingCompatibleExpr<KeccakConfig>,
              quadri_cols: Option<usize>,
              fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
-                let (folded_instance, folded_witness, [_t0, _t1]) =
+                let fout =
                     scheme.fold_instance_witness_pair(left.clone(), right.clone(), step, fq_sponge);
 
-                let extra_cols = folded_instance.get_number_of_additional_columns();
+                let extra_cols = fout.folded_instance.get_number_of_additional_columns();
                 if let Some(quadri_cols) = quadri_cols {
                     assert!(extra_cols == quadri_cols);
                 } else {
@@ -738,8 +738,10 @@ fn test_keccak_folding() {
                 }
 
                 // Check the constraints on the folded circuit applying selectors
-                let checker =
-                    ExtendedProvider::<KeccakConfig>::new(folded_instance, folded_witness);
+                let checker = ExtendedProvider::<KeccakConfig>::new(
+                    fout.folded_instance,
+                    fout.folded_witness,
+                );
                 checker.check(&final_constraint);
             };
 
@@ -792,28 +794,33 @@ fn test_keccak_folding() {
                         &trace,
                     );
                 let left = {
-                    let (folded_l_ins, folded_l_wit, _) = dec_scheme.fold_instance_witness_pair(
+                    let fout = dec_scheme.fold_instance_witness_pair(
                         keccak_trace[0].to_folding_pair(steps.0, fq_sponge, domain, &srs),
                         keccak_trace[1].to_folding_pair(steps.0, fq_sponge, domain, &srs),
                         Some(steps.0),
                         fq_sponge,
                     );
-                    let checker = ExtendedProvider::<KeccakConfig>::new(folded_l_ins, folded_l_wit);
+                    let checker = ExtendedProvider::<KeccakConfig>::new(
+                        fout.folded_instance,
+                        fout.folded_witness,
+                    );
                     (checker.instance, checker.witness)
                 };
                 let right = {
-                    let (folded_r_ins, folded_r_wit, _) = dec_scheme.fold_instance_witness_pair(
+                    let fout = dec_scheme.fold_instance_witness_pair(
                         keccak_trace[0].to_folding_pair(steps.1, fq_sponge, domain, &srs),
                         keccak_trace[1].to_folding_pair(steps.1, fq_sponge, domain, &srs),
                         Some(steps.1),
                         fq_sponge,
                     );
-                    let checker = ExtendedProvider::<KeccakConfig>::new(folded_r_ins, folded_r_wit);
+                    let checker = ExtendedProvider::<KeccakConfig>::new(
+                        fout.folded_instance,
+                        fout.folded_witness,
+                    );
                     (checker.instance, checker.witness)
                 };
-                let (folded_ins, folded_wit, [_t0, _t1]) =
-                    dec_scheme.fold_instance_witness_pair(left, right, None, fq_sponge);
-                let checker = ExtendedProvider::new(folded_ins, folded_wit);
+                let fout = dec_scheme.fold_instance_witness_pair(left, right, None, fq_sponge);
+                let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
                 checker.check(&dec_final_constraint);
             };
 

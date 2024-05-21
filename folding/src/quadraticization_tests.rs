@@ -2,6 +2,7 @@
 //! being added
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
     FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingScheme, Instance, Witness,
 };
 use ark_poly::Radix2EvaluationDomain;
@@ -13,24 +14,36 @@ pub type Curve = ark_bn254::G1Affine;
 
 #[derive(Hash, Clone, Debug, PartialEq, Eq)]
 struct TestConfig;
+
 #[derive(Debug, Clone)]
 struct TestInstance;
-impl Instance<Curve> for TestInstance {
-    fn combine(_a: Self, _b: Self, _challenge: Fp) -> Self {
-        todo!()
-    }
 
+impl Foldable<Fp> for TestInstance {
+    fn combine(_a: Self, _b: Self, _challenge: Fp) -> Self {
+        unimplemented!()
+    }
+}
+
+impl Instance<Curve> for TestInstance {
     fn alphas(&self) -> &crate::Alphas<Fp> {
         todo!()
     }
-}
-#[derive(Clone)]
-struct TestWitness;
-impl Witness<Curve> for TestWitness {
-    fn combine(_a: Self, _b: Self, _challenge: Fp) -> Self {
+
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
         todo!()
     }
+}
 
+#[derive(Clone)]
+struct TestWitness;
+
+impl Foldable<Fp> for TestWitness {
+    fn combine(_a: Self, _b: Self, _challenge: Fp) -> Self {
+        unimplemented!()
+    }
+}
+
+impl Witness<Curve> for TestWitness {
     fn rows(&self) -> usize {
         todo!()
     }
@@ -41,11 +54,13 @@ enum Col {
     A,
     B,
 }
+
 impl FoldingColumnTrait for Col {
     fn is_witness(&self) -> bool {
         true
     }
 }
+
 impl FoldingConfig for TestConfig {
     type Column = Col;
 
@@ -67,6 +82,7 @@ impl FoldingConfig for TestConfig {
 }
 
 struct Env;
+
 impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
     type Structure = ();
 

@@ -27,10 +27,39 @@ use num_traits::One;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
-pub trait Instance<G: CommitmentCurve>: Sized {
-    /// Combine two instances 'a' and 'b' into a new instance.
-    /// See page 15.
-    fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
+pub trait Foldable<F: Field> {
+    /// Combine two objects 'a' and 'b' into a new object using the challenge.
+    // FIXME: rename in fold2
+    fn combine(a: Self, b: Self, challenge: F) -> Self;
+}
+
+pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
+    /// This method returns the scalars and commitments that must be absorbed by
+    /// the sponge. It is not supposed to do any absorption itself, and the user
+    /// is responsible for calling the sponge absorb methods with the elements
+    /// returned by this method.
+    /// When called on a RelaxedInstance, elements will be returned in the
+    /// following order, for given instances L and R
+    /// ```text
+    /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
+    /// points_l = L.to_absorb().1 | L.extended | L.error // where extended is the commitments to the extra columns
+    /// points_r = R.to_absorb().1 | R.extended | R.error // where extended is the commitments to the extra columns
+    /// t_0 and t_1 first and second error terms
+    /// points = points_l | points_r | t_0 | t_1
+    /// ```
+    /// A user implementing the IVC circuit should absorb the elements in the
+    /// following order:
+    /// ```text
+    /// sponge.absorb_fr(scalar); // absorb the scalar elements
+    /// sponge.absorb_g(points); // absorb the commitments
+    /// ```
+    /// This is the order used by the folding library in the method
+    /// `fold_instance_witness_pair`.
+    /// From there, a challenge can be coined using:
+    /// ```text
+    /// let challenge_r = sponge.challenge();
+    /// ```
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
 
     /// This method takes an Instance and a commitment to zero and extends the instance,
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
@@ -48,10 +77,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     fn alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
-pub trait Witness<G: CommitmentCurve>: Sized {
-    /// Returns a new witness which is a linear combination using the challenge of the two witnesses `a` and `b`.
-    fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
-
+pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// Returns the number of rows in the witness
     fn rows(&self) -> usize;
 
@@ -91,8 +117,14 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     }
 }
 
-// -- Relaxed instances
+/// A relaxed instance is an instance that has been relaxed by the folding scheme.
+/// It contains the original instance, extended with the columns added by
+/// quadriticization, the scalar `u` and a commitment to the
+/// slack/error term.
+/// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
+    /// The original instance, extended with the columns added by
+    /// quadriticization
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
@@ -101,6 +133,18 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
+    }
+
+    /// Returns the elements to be absorbed by the sponge
+    ///
+    /// The scalar elements of the are appended with the scalar `u` and the
+    /// commitments are appended by the commitment to the error term.
+    pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        let mut elements = self.instance.to_absorb();
+        elements.0.push(self.u);
+        assert_eq!(self.error_commitment.elems.len(), 1);
+        elements.1.push(self.error_commitment.elems[0]);
+        elements
     }
 
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
@@ -160,7 +204,7 @@ pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
 
-impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWitness<G, W> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
             inner: inner1,
@@ -187,7 +231,9 @@ impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
             .collect();
         Self { inner, extended }
     }
+}
 
+impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
     fn rows(&self) -> usize {
         self.inner.rows()
     }
@@ -202,8 +248,10 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
         self.extended.insert(i, evals);
     }
 
-    /// Allows to know if the extended witness comlumns are already computed, to
-    /// avoid overriding them
+    /// Return true if the no extra columns are added by quadraticization
+    ///
+    /// Can be used to know if the extended witness columns are already
+    /// computed, to avoid overriding them
     pub fn is_extended(&self) -> bool {
         !self.extended.is_empty()
     }
@@ -216,7 +264,7 @@ pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     pub extended: Vec<PolyComm<G>>,
 }
 
-impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> {
+impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for ExtendedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
             inner: inner1,
@@ -233,6 +281,23 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
         Self { inner, extended }
+    }
+}
+
+impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> {
+    /// Return the elements to be absorbed by the sponge
+    ///
+    /// The commitments to the additional columns created by quadriticization
+    /// are appended to the existing commitments of the initial instance
+    /// to be absorbed. The scalars are unchanged.
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        let mut elements = self.inner.to_absorb();
+        let extended_commitments = self.extended.iter().map(|commit| {
+            assert_eq!(commit.elems.len(), 1);
+            commit.elems[0]
+        });
+        elements.1.extend(extended_commitments);
+        elements
     }
 
     fn alphas(&self) -> &Alphas<G::ScalarField> {
@@ -321,22 +386,7 @@ where
     }
 }
 
-impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
-    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
-        let RelaxedInstance {
-            instance,
-            u,
-            error_commitment: error,
-        } = self;
-        let [e0, e1] = error_commitments;
-        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
-        RelaxedInstance {
-            instance,
-            u,
-            error_commitment,
-        }
-    }
-
+impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let challenge_cube = challenge * challenge * challenge;
         let RelaxedInstance {
@@ -358,6 +408,23 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
             error_commitment,
         }
     }
+}
+
+impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
+    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
+        let RelaxedInstance {
+            instance,
+            u,
+            error_commitment: error,
+        } = self;
+        let [e0, e1] = error_commitments;
+        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
+        RelaxedInstance {
+            instance,
+            u,
+            error_commitment,
+        }
+    }
 
     pub(super) fn combine_and_sub_error(
         a: Self,
@@ -366,6 +433,26 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         error_commitments: &[PolyComm<G>; 2],
     ) -> Self {
         Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
+    }
+}
+
+impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
+    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        let RelaxedWitness {
+            witness: a,
+            error_vec: mut e1,
+        } = a;
+        let RelaxedWitness {
+            witness: b,
+            error_vec: e2,
+        } = b;
+        let challenge_cube = (challenge * challenge) * challenge;
+        let witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
+        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
+            *a += b * challenge_cube;
+        }
+        let error_vec = e1;
+        RelaxedWitness { witness, error_vec }
     }
 }
 
@@ -387,23 +474,6 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
         self
     }
 
-    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let RelaxedWitness {
-            witness: a,
-            error_vec: mut e1,
-        } = a;
-        let RelaxedWitness {
-            witness: b,
-            error_vec: e2,
-        } = b;
-        let challenge_cube = (challenge * challenge) * challenge;
-        let witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
-        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
-            *a += b * challenge_cube;
-        }
-        let error_vec = e1;
-        RelaxedWitness { witness, error_vec }
-    }
     pub(super) fn combine_and_sub_error(
         a: Self,
         b: Self,

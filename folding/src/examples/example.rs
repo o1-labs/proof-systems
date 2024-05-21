@@ -11,6 +11,7 @@ use crate::{
     error_term::Side,
     examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
+    instance_witness::Foldable,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,
 };
@@ -32,7 +33,7 @@ struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -41,6 +42,17 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+}
+
+impl Instance<Curve> for TestInstance {
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        let mut fields = Vec::with_capacity(3 + 2);
+        fields.extend(self.challenges);
+        fields.extend(self.alphas.clone().powers());
+        assert_eq!(fields.len(), 5);
+        let points = self.commitments.to_vec();
+        (fields, points)
     }
 
     fn alphas(&self) -> &Alphas<Fp> {
@@ -52,7 +64,7 @@ impl Instance<Curve> for TestInstance {
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
 type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
 
-impl Witness<Curve> for TestWitness {
+impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -61,7 +73,9 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
+}
 
+impl Witness<Curve> for TestWitness {
     fn rows(&self) -> usize {
         self[0].evals.len()
     }
@@ -353,7 +367,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FoldingScheme;
+    use crate::{FoldingOutput, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
     use kimchi::curve::KimchiCurve;
@@ -434,7 +448,17 @@ mod tests {
         let right = (right_instance, right_witness);
 
         let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
-        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            to_absorb,
+            ..
+        } = folded;
+        // checking that we have the expected number of elements to absorb
+        // 3+2 from each instance + 1 from u, times 2 instances
+        assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
+        // 3 from each instance + 1 from E, times 2 instances + t_0 + t_1
+        assert_eq!(to_absorb.1.len(), (3 + 1) * 2 + 2);
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);

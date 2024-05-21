@@ -3,6 +3,7 @@ use crate::{
     error_term::Side,
     examples::{Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, ScalarField, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -50,7 +51,7 @@ pub struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -59,6 +60,13 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+}
+
+impl Instance<Curve> for TestInstance {
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        // FIXME?
+        (vec![], vec![])
     }
 
     fn alphas(&self) -> &Alphas<Fp> {
@@ -72,7 +80,7 @@ impl Instance<Curve> for TestInstance {
 /// 2 dynamic selector columns that are esentially witness
 pub type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5];
 
-impl Witness<Curve> for TestWitness {
+impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -81,7 +89,9 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
+}
 
+impl Witness<Curve> for TestWitness {
     fn rows(&self) -> usize {
         self[0].evals.len()
     }
@@ -307,7 +317,7 @@ mod tests {
     // Trick to print debug message while testing, as we in the test config env
     use crate::{
         checker::ExtendedProvider, decomposable_folding::DecomposableFoldingScheme,
-        examples::BaseSponge,
+        examples::BaseSponge, FoldingOutput,
     };
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use kimchi::curve::KimchiCurve;
@@ -389,7 +399,11 @@ mod tests {
                 Some(DynamicSelector::SelecAdd),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
             checker.check(&final_constraint);
@@ -417,7 +431,11 @@ mod tests {
                 Some(DynamicSelector::SelecSub),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
@@ -433,7 +451,11 @@ mod tests {
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
             let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
