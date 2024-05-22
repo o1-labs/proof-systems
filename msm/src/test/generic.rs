@@ -86,7 +86,7 @@ pub fn test_completeness_generic<
             &srs,
             &constraints,
             fixed_selectors.clone(),
-            proof_inputs,
+            proof_inputs.clone(),
             rng,
         )
         .unwrap();
@@ -115,15 +115,22 @@ pub fn test_completeness_generic<
             .for_each(|v| v.elems.iter().for_each(|x| assert!(!x.is_zero())));
 
         // Checking the number of chunks of the quotient polynomial
-        let max_degree = constraints
-            .iter()
-            .map(|c| c.degree(1, 0) as usize)
-            .max()
-            .unwrap();
+        let max_degree = {
+            if proof_inputs.logups.is_empty() {
+                constraints
+                    .iter()
+                    .map(|expr| expr.degree(1, 0))
+                    .max()
+                    .unwrap_or(0)
+            } else {
+                8
+            }
+        };
+
         if max_degree == 1 {
             assert_eq!(proof.proof_comms.t_comm.len(), 1);
         } else {
-            assert_eq!(proof.proof_comms.t_comm.len(), max_degree - 1);
+            assert_eq!(proof.proof_comms.t_comm.len(), max_degree as usize - 1);
         }
     }
 
