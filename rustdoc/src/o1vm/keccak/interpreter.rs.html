@@ -1086,6 +1086,11 @@
 <a href="#1086" id="1086">1086</a>
 <a href="#1087" id="1087">1087</a>
 <a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
@@ -1162,6 +1167,11 @@
     /// - if Steps::Sponge::Squeeze         -&gt; only 16  constraints added
     /// So:
     /// - At most, 474 constraints are added per row
+    /// In particular, after folding:
+    /// - 136 columns should be added for the degree-2 constraints of the flags
+    /// - 5   columns should be added for the degree-2 constraints of the round
+    /// - 10  columns should be added for the degree-2 constraints of the sponge
+    ///   - for each of the 5 constraints, 2 columns are added for block_in_padding
     </span><span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
         <span class="comment">// CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2

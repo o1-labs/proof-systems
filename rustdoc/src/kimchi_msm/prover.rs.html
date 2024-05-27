@@ -671,7 +671,7 @@
     <span class="kw">let </span>column_env: ColumnEnvironment&lt;<span class="lifetime">&#39;_</span>, N, N_REL, N_DSEL, N_FSEL, <span class="kw">_</span>, <span class="kw">_</span>&gt; = {
         <span class="kw">let </span>challenges = Challenges {
             alpha,
-            <span class="comment">// NB: as there is on permutation argument, we do use the beta
+            <span class="comment">// NB: as there is no permutation argument, we do use the beta
             // field instead of a new one for the evaluation point.
             </span>beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
