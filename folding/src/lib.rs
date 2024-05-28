@@ -15,11 +15,63 @@
 //! After that, the user can provide folding compatible expressions and build a
 //! folding scheme [FoldingScheme]. The process is described in the module
 //! [expressions].
-//! ## Degree 3 folding
+//!
+//! ## Degree 3 folding for multiple constraints
 //! While mostly hidden from the interface, internally folding supports degree 3
-//! expressions in orther to support multiple constraints.
-//! That results in 2 errors terms t_0 and t_1 and a slightly different computation
-//! of E than in Nova (E' + rt_0 + r^2t_1 + r^3E'')
+//! expressions in order to support multiple degree-2 constraints, which we combine with a
+//! per-instance random challenge.
+//! That results in 2 errors terms `t_0` and `t_1` and a slightly different computation
+//! of E than in Nova `E' + rt_0 + r^2t_1 + r^3E''`.
+//!
+//! ### An example
+//! Concretely, if we have 3 constraints that look like
+//! ```
+//! W_0 * W_1 - (1 - W_2) = 0
+//! W_2 * W_0 = 0
+//! W_2 * (W_3 - W_4) + W_4 - W_5 = 0
+//! ```
+//! then we can form a relaxed instance that looks like
+//! ```
+//! W_0 * W_1 - u (u - W_2) + E_1 = 0
+//! W_2 * W_0 + E_2 = 0
+//! W_2 * (W_3 - W_4) + u W_4 - u W_5 + E_3 = 0
+//! ```
+//! for the 3 constraints. However, we would like to handle fewer error terms, and so consider
+//! these as a single constraint with a combiner, along the lines of
+//! ```
+//!   c_0 * (W_0 * W_1 - (1 - W_2))
+//! + c_1 * (W_2 * W_0)
+//! + c_2 * (W_2 * (W_3 - W_4) + W_4 - W_5)
+//! = 0
+//! ```
+//! where the `c_0`, `c_1`, and `c_2` are challenges chosen for each instance and combined in the
+//! folding. To achieve this, we have to consider these challenges as 'degree-1' in `r`, in the
+//! sense that combining 2 instances results in `c_0'' = c_0 + r c_0'`, similar to `W_0'' = W_0 + r
+//! W_1`. Therefore, our relaxed instance is now
+//! ```
+//!   c_0 * (W_0 * W_1 - u (u - W_2))
+//! + c_1 * (W_2 * W_0)
+//! + c_2 * (W_2 * (W_3 - W_4) + u W_4 - u W_5)
+//! + E
+//! = 0
+//! ```
+//! Importantly, if we examine the expansion of the terms, we see that
+//! ```
+//! T_1 = c_0' * (W_0 * W_1 - u (u - W_2))
+//!     + c_0 * (W_0' * W_1 + W_0 * W_1' - 2 u u'  + u' W_2 + u W_2')
+//!     + c_1' * (W_2 * W_0)
+//!     + c_1 * (W_2' * W_0 + W_2 * W_0')
+//!     + c_2' * (W_2 * (W_3 - W_4) + u W_4 - u W_5)
+//!     + c_2 * (W_2' * (W_3 - W_4) + W_2 * (W_3' - W_4') + u' W_4 - u W_4' - u' W_5 - u W_5')
+//! T_2 = c_0' * (W_0' * W_1 + W_0 * W_1' - 2 u u'  + u' W_2 + u W_2')
+//!     + c_0 * (W_0' * W_1' + u' (u' - W_2'))
+//!     + c_1' * (W_2' * W_0 + W_2 * W_0')
+//!     + c_1 * (w_2' * W_0')
+//!     + c_2' * (W_2' * (W_3 - W_4) + W_2 * (W_3' - W_4') + u' W_4 - u W_4' - u' W_5 - u W_5')
+//!     + c_2 * (W_2' * (W_3' - W_4') + u' W_4' - u' W_5')
+//! ```
+//! that capture the new errors when we combine instances formed of `(c_i, W_i)` and `(c_i',
+//! W_i')`.
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
