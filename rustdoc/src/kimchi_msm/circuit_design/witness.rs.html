@@ -420,6 +420,35 @@
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
@@ -465,6 +494,9 @@
     /// value for row #j of the selector #i.
     </span><span class="kw">pub </span>fixed_selectors: Vec&lt;Vec&lt;F&gt;&gt;,
 
+    <span class="doccomment">/// Function used to map assertions.
+    </span><span class="kw">pub </span>assert_mapper: Box&lt;<span class="kw">dyn </span>Fn(F) -&gt; F&gt;,
+
     <span class="comment">// A Phantom Data for CIx -- right now WitnessBUilderEnv does not
     // depend on CIx, but in the future (with associated generics
     // enabled?) it might be convenient to put all the `NT_COL` (and
@@ -489,7 +521,11 @@
     </span><span class="kw">type </span>Variable = F;
 
     <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
-        <span class="macro">assert_eq!</span>(cst, F::zero());
+        <span class="macro">assert_eq!</span>((<span class="self">self</span>.assert_mapper)(cst), F::zero());
+    }
+
+    <span class="kw">fn </span>set_assert_mapper(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mapper: Box&lt;<span class="kw">dyn </span>Fn(<span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.assert_mapper = mapper;
     }
 
     <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
@@ -723,12 +759,13 @@
             lookups: <span class="macro">vec!</span>[lookups_row],
             fixed_selectors,
             phantom_cix: PhantomData,
+            assert_mapper: Box::new(|x| x),
         }
     }
 
     <span class="doccomment">/// Sets a fixed selector, the vector of length equal to the
     /// domain size (circuit height).
-    </span><span class="kw">pub fn </span>set_fixed_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sel: CIx, sel_values: Vec&lt;F&gt;) {
+    </span><span class="kw">pub fn </span>set_fixed_selector_cix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sel: CIx, sel_values: Vec&lt;F&gt;) {
         <span class="kw">if let </span>Column::FixedSelector(i) = sel.to_column() {
             <span class="self">self</span>.fixed_selectors[i] = sel_values;
         } <span class="kw">else </span>{
@@ -736,13 +773,15 @@
         }
     }
 
-    <span class="doccomment">/// Generates proof inputs, repacking/collecting internal witness builder state.
-    </span><span class="kw">pub fn </span>get_proof_inputs(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        domain: EvaluationDomains&lt;F&gt;,
-        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
-    ) -&gt; ProofInputs&lt;N_COL, F, LT&gt; {
+    <span class="doccomment">/// Sets all fixed selectors directly. Each item in `selectors` is
+    /// a vector of `domain_size` length.
+    </span><span class="kw">pub fn </span>set_fixed_selectors(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selectors: Vec&lt;Vec&lt;F&gt;&gt;) {
+        <span class="self">self</span>.fixed_selectors = selectors
+    }
+
+    <span class="kw">pub fn </span>get_relation_witness(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;) -&gt; Witness&lt;N_COL, Vec&lt;F&gt;&gt; {
         <span class="kw">let </span>domain_size: usize = domain.d1.size <span class="kw">as </span>usize;
+
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;N_COL, Vec&lt;F&gt;&gt;&gt; = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
@@ -774,6 +813,15 @@
             witness.cols[N_REL + N_DSEL + i] = <span class="self">self</span>.fixed_selectors[i].clone();
         }
 
+        <span class="kw-2">*</span>witness
+    }
+
+    <span class="kw">pub fn </span>get_logup_witness(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: EvaluationDomains&lt;F&gt;,
+        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+    ) -&gt; Vec&lt;LogupWitness&lt;F, LT&gt;&gt; {
+        <span class="kw">let </span>domain_size: usize = domain.d1.size <span class="kw">as </span>usize;
         <span class="comment">// Building lookup values
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
         <span class="kw">if </span>!lookup_tables_data.is_empty() {
@@ -820,7 +868,7 @@
             <span class="kw-2">*</span>(table.last_mut().unwrap()) = lookup_t.collect();
         }
 
-        <span class="kw">let </span>logups: Vec&lt;LogupWitness&lt;F, LT&gt;&gt; = lookup_tables
+        lookup_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 <span class="comment">// Only add a table if it&#39;s used. Otherwise lookups fail.
@@ -834,10 +882,20 @@
                     <span class="prelude-val">None
                 </span>}
             })
-            .collect();
+            .collect()
+    }
+
+    <span class="doccomment">/// Generates proof inputs, repacking/collecting internal witness builder state.
+    </span><span class="kw">pub fn </span>get_proof_inputs(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: EvaluationDomains&lt;F&gt;,
+        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+    ) -&gt; ProofInputs&lt;N_COL, F, LT&gt; {
+        <span class="kw">let </span>evaluations = <span class="self">self</span>.get_relation_witness(domain);
+        <span class="kw">let </span>logups = <span class="self">self</span>.get_logup_witness(domain, lookup_tables_data);
 
         ProofInputs {
-            evaluations: <span class="kw-2">*</span>witness,
+            evaluations,
             logups,
         }
     }

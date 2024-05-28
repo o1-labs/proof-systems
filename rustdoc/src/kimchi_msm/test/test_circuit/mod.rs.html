@@ -502,7 +502,7 @@
             fixed_sel.push(Fp::from(i <span class="kw">as </span>u64));
         }
 
-        witness_env.set_fixed_selector(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);

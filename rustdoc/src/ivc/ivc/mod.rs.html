@@ -97,6 +97,105 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -106,34 +205,53 @@
 
     <span class="kw">use crate</span>::{
         ivc::{
-            columns::{IVCColumn, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE},
-            interpreter::ivc_circuit,
+            columns::{IVCColumn, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
+            interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
-    <span class="kw">use </span>kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
+    <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+    <span class="kw">use </span>kimchi_msm::{
+        circuit_design::{
+            composition::{IdMPrism, MPrism},
+            ConstraintBuilderEnv, SubEnvLookup, WitnessBuilderEnv,
+        },
+        columns::ColumnIndexer,
+        logup::LookupTableID,
+        precomputed_srs::get_bn254_srs,
+        proof::ProofInputs,
+        prover::prove,
+        verifier::verify,
+        witness::Witness,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+    };
+    <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
 
     <span class="comment">// Test number
-    </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = <span class="number">50</span>;
+    </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + <span class="number">50</span>;
+    <span class="comment">// Absolutely no idea.
+    </span><span class="kw">pub const </span>TEST_N_CHALS: usize = <span class="number">200</span>;
     <span class="kw">pub const </span>TEST_DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
     <span class="attr">#[derive(Clone)]
     </span><span class="kw">pub struct </span>PoseidonBN254Parameters;
 
-    <span class="kw">type </span>IVCWitnessBuilderEnv = WitnessBuilderEnv&lt;
+    <span class="kw">type </span>IVCWitnessBuilderEnvRaw&lt;LT&gt; = WitnessBuilderEnv&lt;
         Fp,
         IVCColumn,
         { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
         { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
         <span class="number">0</span>,
         <span class="number">0</span>,
-        IVCLookupTable&lt;Ff1&gt;,
+        LT,
     &gt;;
+    <span class="comment">//type IVCWitnessBuilderEnv = IVCWitnessBuilderEnvRaw&lt;IVCLookupTable&lt;Ff1&gt;&gt;;
+    //type IVCWitnessBuilderEnvDummy = IVCWitnessBuilderEnvRaw&lt;DummyLookupTable&gt;;
 
-    <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
+    </span><span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
         <span class="kw">for </span>PoseidonBN254Parameters
     {
         <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
@@ -147,34 +265,46 @@
         }
     }
 
-    <span class="kw">fn </span>build_ivc_circuit&lt;RNG: RngCore + CryptoRng&gt;(rng: <span class="kw-2">&amp;mut </span>RNG) -&gt; IVCWitnessBuilderEnv {
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = IVCWitnessBuilderEnv::create();
+    <span class="kw">fn </span>build_ivc_circuit&lt;
+        RNG: RngCore + CryptoRng,
+        LT: LookupTableID,
+        L: MPrism&lt;Source = LT, Target = IVCLookupTable&lt;Ff1&gt;&gt;,
+    &gt;(
+        rng: <span class="kw-2">&amp;mut </span>RNG,
+        domain_size: usize,
+        lt_lens: L,
+    ) -&gt; IVCWitnessBuilderEnvRaw&lt;LT&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = IVCWitnessBuilderEnvRaw::&lt;LT&gt;::create();
 
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        </span><span class="kw">let </span>comms_left: [<span class="kw">_</span>; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        </span><span class="kw">let </span>comms_left: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
             (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
             )
-        });
-        <span class="kw">let </span>comms_right: [<span class="kw">_</span>; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        }));
+        <span class="kw">let </span>comms_right: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
             (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
             )
-        });
-        <span class="kw">let </span>comms_output: [<span class="kw">_</span>; TEST_N_COL_TOTAL] = core::array::from_fn(|_i| {
+        }));
+        <span class="kw">let </span>comms_output: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
             (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
             )
-        });
+        }));
+
+        <span class="kw">let </span>fixed_selectors: Vec&lt;Vec&lt;Fp&gt;&gt; =
+            build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         <span class="comment">// TODO add nonzero E/T values.
         </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
-            <span class="kw-2">&amp;mut </span>witness_env,
+            <span class="kw-2">&amp;mut </span>SubEnvLookup::new(<span class="kw-2">&amp;mut </span>witness_env, lt_lens),
             comms_left,
             comms_right,
             comms_output,
@@ -193,7 +323,75 @@
     </span><span class="doccomment">/// Tests if building the IVC circuit succeeds.
     </span><span class="kw">pub fn </span>test_ivc_circuit() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
-        build_ivc_circuit(<span class="kw-2">&amp;mut </span>rng);
+        build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
+            IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
+        );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_completeness_ivc() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+
+        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+        <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
+
+        <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
+
+        <span class="kw">let </span>witness_env = build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            domain_size,
+            IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
+        );
+        <span class="comment">// Don&#39;t use lookups for now
+        </span><span class="kw">let </span>rel_witness = witness_env.get_relation_witness(domain);
+        <span class="kw">let </span>proof_inputs = ProofInputs {
+            evaluations: rel_witness,
+            logups: <span class="macro">vec!</span>[],
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, IVCLookupTable&lt;Ff1&gt;&gt;::create();
+        constrain_ivc::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
+        <span class="comment">// Don&#39;t use lookups for now
+        </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
+
+        <span class="comment">// generate the proof
+        </span><span class="kw">let </span>proof = prove::&lt;
+            <span class="kw">_</span>,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            <span class="kw">_</span>,
+            { IVCColumn::N_COL },
+            { IVCColumn::N_COL - N_BLOCKS },
+            <span class="number">0</span>,
+            N_BLOCKS,
+            IVCLookupTable&lt;Ff1&gt;,
+        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
+        .unwrap();
+
+        <span class="comment">// verify the proof
+        </span><span class="kw">let </span>verifies = verify::&lt;
+            <span class="kw">_</span>,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            { IVCColumn::N_COL },
+            { IVCColumn::N_COL - N_BLOCKS },
+            <span class="number">0</span>,
+            N_BLOCKS,
+            <span class="number">0</span>,
+            IVCLookupTable&lt;Ff1&gt;,
+        &gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
+        );
+
+        <span class="macro">assert!</span>(verifies);
     }
 }
 </code></pre></div></section></main></body></html>

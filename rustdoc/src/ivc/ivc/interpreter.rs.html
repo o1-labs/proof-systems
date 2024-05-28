@@ -952,12 +952,106 @@
 <a href="#952" id="952">952</a>
 <a href="#953" id="953">953</a>
 <a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE,
+            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
@@ -1138,7 +1232,7 @@
 
 <span class="kw">pub fn </span>write_inputs_row&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    target_comms: [(Ff, Ff); N_COL_TOTAL],
+    target_comms: <span class="kw-2">&amp;</span>[(Ff, Ff); N_COL_TOTAL],
     row_num_local: usize,
 ) -&gt; (Vec&lt;F&gt;, Vec&lt;F&gt;, Vec&lt;F&gt;)
 <span class="kw">where
@@ -1199,11 +1293,11 @@
 </span><span class="attr">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    comms: [[(Ff, Ff); N_COL_TOTAL]; <span class="number">3</span>],
+    comms: [Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;; <span class="number">3</span>],
 ) -&gt; (
-    [[[F; <span class="number">2 </span>* N_LIMBS_SMALL]; N_COL_TOTAL]; <span class="number">3</span>],
-    [[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>],
-    [[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
+    Box&lt;[[[F; <span class="number">2 </span>* N_LIMBS_SMALL]; N_COL_TOTAL]; <span class="number">3</span>]&gt;,
+    Box&lt;[[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>]&gt;,
+    Box&lt;[[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>]&gt;,
 )
 <span class="kw">where
     </span>F: PrimeField,
@@ -1217,11 +1311,11 @@
         <span class="kw">let </span>row_num = env.curr_row();
 
         <span class="kw">let </span>(target_comms, row_num_local, comtype) = <span class="kw">if </span>row_num &lt; N_COL_TOTAL {
-            (comms[<span class="number">0</span>], row_num, <span class="number">0</span>)
+            (<span class="kw-2">&amp;</span>comms[<span class="number">0</span>], row_num, <span class="number">0</span>)
         } <span class="kw">else if </span>row_num &lt; <span class="number">2 </span>* N_COL_TOTAL {
-            (comms[<span class="number">1</span>], row_num - N_COL_TOTAL, <span class="number">1</span>)
+            (<span class="kw-2">&amp;</span>comms[<span class="number">1</span>], row_num - N_COL_TOTAL, <span class="number">1</span>)
         } <span class="kw">else </span>{
-            (comms[<span class="number">2</span>], row_num - <span class="number">2 </span>* N_COL_TOTAL, <span class="number">2</span>)
+            (<span class="kw-2">&amp;</span>comms[<span class="number">2</span>], row_num - <span class="number">2 </span>* N_COL_TOTAL, <span class="number">2</span>)
         };
 
         <span class="kw">let </span>(limbs_small, limbs_large, limbs_xlarge) =
@@ -1240,20 +1334,22 @@
     // Left-Right-Output for a given limb size.
     </span><span class="kw">fn </span>repack_output&lt;F: PrimeField, <span class="kw">const </span>TWO_LIMB_SIZE: usize, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
         input: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>],
-    ) -&gt; [[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; <span class="number">3</span>] {
-        input
-            .into_iter()
-            .map(|vector: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;| {
-                vector
-                    .into_iter()
-                    .map(|subvec: Vec&lt;<span class="kw">_</span>&gt;| subvec.try_into().unwrap())
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                    .try_into()
-                    .unwrap()
-            })
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            .try_into()
-            .unwrap()
+    ) -&gt; Box&lt;[[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; <span class="number">3</span>]&gt; {
+        Box::new(
+            input
+                .into_iter()
+                .map(|vector: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;| {
+                    vector
+                        .into_iter()
+                        .map(|subvec: Vec&lt;<span class="kw">_</span>&gt;| subvec.try_into().unwrap())
+                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                        .try_into()
+                        .unwrap()
+                })
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                .try_into()
+                .unwrap(),
+        )
     }
 
     (
@@ -1417,55 +1513,59 @@
     </span>F: PrimeField,
     Env: ColWriteCap&lt;F, IVCColumn&gt;,
 {
-    <span class="kw">let </span>phi_cur_power_f = phi_prev_power_f * phi_f;
-    <span class="kw">let </span>phi_cur_power_r_f = phi_prev_power_f * phi_f * r_f;
-    <span class="kw">let </span>phi_cur_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
-    <span class="kw">let </span>phi_cur_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
+    <span class="kw">let </span>phi_curr_power_f = phi_prev_power_f * phi_f;
+    <span class="kw">let </span>phi_curr_power_r_f = phi_prev_power_f * phi_f * r_f;
+    <span class="kw">let </span>phi_curr_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
+    <span class="kw">let </span>phi_curr_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
 
     env.write_column(IVCColumn::Block3ConstPhi, <span class="kw-2">&amp;</span>Env::constant(phi_f));
     env.write_column(IVCColumn::Block3ConstR, <span class="kw-2">&amp;</span>Env::constant(r_f));
-    env.write_column(IVCColumn::Block3PhiPow, <span class="kw-2">&amp;</span>Env::constant(phi_cur_power_f));
-    env.write_column(IVCColumn::Block3PhiPowR, <span class="kw-2">&amp;</span>Env::constant(phi_cur_power_r_f));
+    env.write_column(IVCColumn::Block3PhiPow, <span class="kw-2">&amp;</span>Env::constant(phi_curr_power_f));
+    env.write_column(IVCColumn::Block3PhiPowR, <span class="kw-2">&amp;</span>Env::constant(phi_curr_power_r_f));
     env.write_column(
         IVCColumn::Block3PhiPowR2,
-        <span class="kw-2">&amp;</span>Env::constant(phi_cur_power_r2_f),
+        <span class="kw-2">&amp;</span>Env::constant(phi_curr_power_r2_f),
     );
     env.write_column(
         IVCColumn::Block3PhiPowR3,
-        <span class="kw-2">&amp;</span>Env::constant(phi_cur_power_r3_f),
+        <span class="kw-2">&amp;</span>Env::constant(phi_curr_power_r3_f),
     );
 
     <span class="comment">// TODO check that limb_decompose_ff works with &lt;F,F,_,_&gt;
-    </span><span class="kw">let </span>phi_cur_power_f_limbs =
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_f);
-    write_column_array_const(env, <span class="kw-2">&amp;</span>phi_cur_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
+    </span><span class="kw">let </span>phi_curr_power_f_limbs =
+        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_curr_power_f);
+    write_column_array_const(env, <span class="kw-2">&amp;</span>phi_curr_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
 
-    <span class="kw">let </span>phi_cur_power_r_f_limbs =
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_r_f);
-    write_column_array_const(env, <span class="kw-2">&amp;</span>phi_cur_power_r_f_limbs, IVCColumn::Block3PhiPowRLimbs);
-
-    <span class="kw">let </span>phi_cur_power_r2_f_limbs =
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_r2_f);
+    <span class="kw">let </span>phi_curr_power_r_f_limbs =
+        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_curr_power_r_f);
     write_column_array_const(
         env,
-        <span class="kw-2">&amp;</span>phi_cur_power_r2_f_limbs,
+        <span class="kw-2">&amp;</span>phi_curr_power_r_f_limbs,
+        IVCColumn::Block3PhiPowRLimbs,
+    );
+
+    <span class="kw">let </span>phi_curr_power_r2_f_limbs =
+        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_curr_power_r2_f);
+    write_column_array_const(
+        env,
+        <span class="kw-2">&amp;</span>phi_curr_power_r2_f_limbs,
         IVCColumn::Block3PhiPowR2Limbs,
     );
 
-    <span class="kw">let </span>phi_cur_power_r3_f_limbs =
-        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_cur_power_r3_f);
+    <span class="kw">let </span>phi_curr_power_r3_f_limbs =
+        limb_decompose_ff::&lt;F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>phi_curr_power_r3_f);
     write_column_array_const(
         env,
-        <span class="kw-2">&amp;</span>phi_cur_power_r3_f_limbs,
+        <span class="kw-2">&amp;</span>phi_curr_power_r3_f_limbs,
         IVCColumn::Block3PhiPowR3Limbs,
     );
 
     (
-        phi_cur_power_f,
-        phi_cur_power_f_limbs,
-        phi_cur_power_r_f_limbs,
-        phi_cur_power_r2_f_limbs,
-        phi_cur_power_r3_f_limbs,
+        phi_curr_power_f,
+        phi_curr_power_f_limbs,
+        phi_curr_power_r_f_limbs,
+        phi_curr_power_r2_f_limbs,
+        phi_curr_power_r3_f_limbs,
     )
 }
 
@@ -1505,19 +1605,19 @@
     <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..N_COL_TOTAL + <span class="number">1 </span>{
         <span class="kw">let </span>(
             phi_prev_power_f_new,
-            phi_cur_power_f_limbs,
-            phi_cur_power_r_f_limbs,
-            phi_cur_power_r2_f_limbs,
-            phi_cur_power_r3_f_limbs,
+            phi_curr_power_f_limbs,
+            phi_curr_power_r_f_limbs,
+            phi_curr_power_r2_f_limbs,
+            phi_curr_power_r3_f_limbs,
         ) = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         phi_prev_power_f = phi_prev_power_f_new;
-        phi_limbs.push(phi_cur_power_f_limbs);
-        phi_r_limbs.push(phi_cur_power_r_f_limbs);
+        phi_limbs.push(phi_curr_power_f_limbs);
+        phi_r_limbs.push(phi_curr_power_r_f_limbs);
 
         <span class="kw">if </span>block_row_i == N_COL_TOTAL + <span class="number">1 </span>{
-            phi_np1_r2_limbs = phi_cur_power_r2_f_limbs;
-            phi_np1_r3_limbs = phi_cur_power_r3_f_limbs;
+            phi_np1_r2_limbs = phi_curr_power_r2_f_limbs;
+            phi_np1_r3_limbs = phi_curr_power_r3_f_limbs;
         }
 
         <span class="comment">// Checking our constraints
@@ -1808,10 +1908,10 @@
 {
     <span class="kw">let </span>chal_num = chal_l.len();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>cur_alpha_r_pow: F = F::one();
+    <span class="kw">let </span><span class="kw-2">mut </span>curr_alpha_r_pow: F = F::one();
 
     <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..chal_num {
-        cur_alpha_r_pow <span class="kw-2">*</span>= h_r;
+        curr_alpha_r_pow <span class="kw-2">*</span>= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, <span class="kw-2">&amp;</span>Env::constant(h_r));
         env.write_column(IVCColumn::Block5ConstR, <span class="kw-2">&amp;</span>Env::constant(r));
@@ -1819,10 +1919,10 @@
             IVCColumn::Block5ChalLeft,
             <span class="kw-2">&amp;</span>Env::constant(chal_l[block_row_i]),
         );
-        env.write_column(IVCColumn::Block5ChalRight, <span class="kw-2">&amp;</span>Env::constant(cur_alpha_r_pow));
+        env.write_column(IVCColumn::Block5ChalRight, <span class="kw-2">&amp;</span>Env::constant(curr_alpha_r_pow));
         env.write_column(
             IVCColumn::Block5ChalOutput,
-            <span class="kw-2">&amp;</span>Env::constant(cur_alpha_r_pow * r + chal_l[block_row_i]),
+            <span class="kw-2">&amp;</span>Env::constant(curr_alpha_r_pow * r + chal_l[block_row_i]),
         );
 
         constrain_challenges(env);
@@ -1867,15 +1967,101 @@
 {
 }
 
+<span class="doccomment">/// Builds selectors for the IVC circuit.
+</span><span class="kw">pub fn </span>build_selectors&lt;F, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
+    domain_size: usize,
+) -&gt; Vec&lt;Vec&lt;F&gt;&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
+    <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    // 45N + 9 + N_CHALS
+    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: Vec&lt;Vec&lt;F&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[F::zero(); domain_size]; N_BLOCKS];
+    <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">3 </span>* N_COL_TOTAL {
+        selectors[<span class="number">0</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>* N_COL_TOTAL + <span class="number">2 </span>{
+        selectors[<span class="number">1</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..N_COL_TOTAL + <span class="number">1 </span>{
+        selectors[<span class="number">2</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">35 </span>* N_COL_TOTAL + <span class="number">5</span>) {
+        selectors[<span class="number">3</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..N_CHALS {
+        selectors[<span class="number">4</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">1 </span>{
+        selectors[<span class="number">5</span>][curr_row] = F::one();
+        curr_row += <span class="number">1</span>;
+    }
+
+    selectors
+}
+
+<span class="doccomment">/// This function generates constraitns for the whole IVC circuit.
+</span><span class="kw">pub fn </span>constrain_selectors&lt;F, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">where
+    </span>F: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt;,
+{
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
+        <span class="comment">// Each selector must have value either 0 or 1.
+        </span><span class="kw">let </span>sel = env.read_column(IVCColumn::BlockSel(i));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
+    }
+}
+
+<span class="doccomment">/// This function generates constraitns for the whole IVC circuit.
+</span><span class="kw">pub fn </span>constrain_ivc&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">where
+    </span>F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
+{
+    constrain_selectors(env);
+
+    <span class="kw">let </span>s0 = env.read_column(IVCColumn::BlockSel(<span class="number">0</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s0.clone() * x));
+    constrain_inputs(env);
+
+    <span class="comment">// TODO FIXME add constraints for hashes
+
+    </span><span class="kw">let </span>s2 = env.read_column(IVCColumn::BlockSel(<span class="number">2</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s2.clone() * x));
+    constrain_ecadds(env);
+
+    <span class="kw">let </span>s3 = env.read_column(IVCColumn::BlockSel(<span class="number">3</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s3.clone() * x));
+    constrain_scalars(env);
+
+    <span class="kw">let </span>s4 = env.read_column(IVCColumn::BlockSel(<span class="number">4</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s4.clone() * x));
+    constrain_challenges(env);
+
+    <span class="kw">let </span>s5 = env.read_column(IVCColumn::BlockSel(<span class="number">5</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s5.clone() * x));
+    constrain_u(env);
+
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| x));
+}
+
 <span class="doccomment">/// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    comms_left: [(Ff, Ff); N_COL_TOTAL],
-    comms_right: [(Ff, Ff); N_COL_TOTAL],
-    comms_out: [(Ff, Ff); N_COL_TOTAL],
+    comms_left: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
+    comms_right: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
+    comms_out: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
     error_terms: [(Ff, Ff); <span class="number">3</span>], <span class="comment">// E_L, E_R, E_O
     </span>t_terms: [(Ff, Ff); <span class="number">2</span>],     <span class="comment">// T_0, T_1
     </span>u_l: F,                     <span class="comment">// part of the relaxed instance.

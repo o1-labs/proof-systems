@@ -93,6 +93,15 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism, fec::lookups <span class="kw">as </span>feclookup, logup::LookupTableID,
@@ -144,6 +153,15 @@
             .into_iter()
             .map(IVCLookupTable::SerLookupTable)
             .collect()
+    }
+}
+
+<span class="kw">impl</span>&lt;Ff: PrimeField&gt; IVCLookupTable&lt;Ff&gt; {
+    <span class="doccomment">/// Provides a full list of entries for the given table.
+    </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::SerLookupTable(lt) =&gt; lt.entries(domain_d1_size),
+        }
     }
 }
 

@@ -111,7 +111,6 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -131,17 +130,17 @@
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
-    </span><span class="kw">pub </span>constraints: Vec&lt;(usize, Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;)&gt;,
-    <span class="kw">pub </span>constrain_index: usize,
+    </span><span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;,
     <span class="kw">pub </span>lookups: BTreeMap&lt;LT, Vec&lt;Logup&lt;E&lt;F&gt;, LT&gt;&gt;&gt;,
+    <span class="kw">pub </span>assert_mapper: Box&lt;<span class="kw">dyn </span>Fn(E&lt;F&gt;) -&gt; E&lt;F&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField, LT: LookupTableID&gt; ConstraintBuilderEnv&lt;F, LT&gt; {
     <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
-            constrain_index: <span class="number">0</span>,
             lookups: BTreeMap::new(),
+            assert_mapper: Box::new(|x| x),
         }
     }
 }
@@ -154,9 +153,11 @@
     <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
         <span class="comment">// FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression
-        </span><span class="kw">let </span>index = <span class="self">self</span>.constrain_index;
-        <span class="self">self</span>.constraints.push((index, cst));
-        <span class="self">self</span>.constrain_index += <span class="number">1</span>;
+        </span><span class="self">self</span>.constraints.push((<span class="self">self</span>.assert_mapper)(cst));
+    }
+
+    <span class="kw">fn </span>set_assert_mapper(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mapper: Box&lt;<span class="kw">dyn </span>Fn(<span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.assert_mapper = mapper;
     }
 
     <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, position: CIx) -&gt; <span class="self">Self</span>::Variable {
@@ -205,10 +206,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField, LT: LookupTableID&gt; ConstraintBuilderEnv&lt;F, LT&gt; {
     <span class="doccomment">/// Get constraints related to the application logic itself.
     </span><span class="kw">pub fn </span>get_relation_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
-        <span class="self">self</span>.constraints
-            .iter()
-            .map(|(<span class="kw">_</span>, cst)| cst.clone())
-            .collect()
+        <span class="self">self</span>.constraints.clone()
     }
 
     <span class="doccomment">/// Get constraints related to the lookup argument.

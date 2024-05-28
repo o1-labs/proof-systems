@@ -158,6 +158,14 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides generic environment traits that allow manipulating columns and
 /// requesting lookups.
 ///
@@ -171,16 +179,24 @@
 <span class="doccomment">/// Environment capability for accessing and reading columns. This is necessary for
 /// building constraints.
 </span><span class="kw">pub trait </span>ColAccessCap&lt;F: PrimeField, CIx: ColumnIndexer&gt; {
-    <span class="kw">type </span>Variable: Clone
+    <span class="comment">// NB: &#39;static here means that `Variable` does not contain any
+    // references with a lifetime less than &#39;static. Which is true in
+    // our case. Necessary for `set_assert_mapper`
+    </span><span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Neg&lt;Output = <span class="self">Self</span>::Variable&gt;
         + From&lt;u64&gt;
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + <span class="lifetime">&#39;static</span>;
 
     <span class="doccomment">/// Asserts that the value is zero.
     </span><span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Sets an assert predicate `f(X)` such that when assert_zero is
+    /// called on x, it will actually perform `assert_zero(f(x))`.
+    </span><span class="kw">fn </span>set_assert_mapper(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mapper: Box&lt;<span class="kw">dyn </span>Fn(<span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable&gt;);
 
     <span class="doccomment">/// Reads value from a column position.
     </span><span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: CIx) -&gt; <span class="self">Self</span>::Variable;
