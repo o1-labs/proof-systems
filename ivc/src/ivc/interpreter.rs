@@ -828,7 +828,7 @@ where
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     h_r: F,
-    chal_l: Box<[F; N_CHALS]>,
+    chal_l: &[F; N_CHALS],
     r: F,
 ) where
     F: PrimeField,
@@ -1014,7 +1014,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
         error_terms,
         t_terms,
     );
-    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, chal_l, r);
+    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, &chal_l, r);
     process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
     process_misc::<_, _, N_COL_TOTAL>(env);
 }
