@@ -6,6 +6,9 @@ use kimchi_msm::{
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
 
+/// Number of blocks in the circuit.
+pub const N_BLOCKS: usize = 6;
+
 pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
 pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 
@@ -151,6 +154,9 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///
 /// Challenges block.
 ///
+///            relaxed
+///                       strict
+///                    (relaxed in-place)
 ///        r   α_{L,i}    α_{R}^i     α_{O,i}
 ///  1    |--|--------|-----------|-------------------|
 ///       |  |        | α_R = h_R |                   |
@@ -212,6 +218,9 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
+    /// Selector for blocks. Inner usize is ∈ [0,#blocks).
+    BlockSel(usize),
+
     /// 2*17 15-bit limbs (two base field points)
     Block1Input(usize),
     /// 2*4 75-bit limbs
@@ -284,10 +293,16 @@ impl ColumnIndexer for IVCColumn {
     // This should be
     //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
     // which is runtime-only expression..?
-    const N_COL: usize = IVCPoseidonColumn::N_COL;
+    // 333 is not enough
+    const N_COL: usize = 400;
 
     fn to_column(self) -> Column {
         match self {
+            IVCColumn::BlockSel(i) => {
+                assert!(i < N_BLOCKS);
+                Column::FixedSelector(i)
+            }
+
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
                 Column::Relation(i)
@@ -347,6 +362,7 @@ impl ColumnIndexer for IVCColumn {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
             }
+
             IVCColumn::Block5ConstHr => Column::Relation(0),
             IVCColumn::Block5ConstR => Column::Relation(1),
             IVCColumn::Block5ChalLeft => Column::Relation(2),

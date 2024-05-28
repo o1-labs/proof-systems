@@ -43,6 +43,9 @@ pub struct WitnessBuilderEnv<
     /// value for row #j of the selector #i.
     pub fixed_selectors: Vec<Vec<F>>,
 
+    /// Function used to map assertions.
+    pub assert_mapper: Box<dyn Fn(F) -> F>,
+
     // A Phantom Data for CIx -- right now WitnessBUilderEnv does not
     // depend on CIx, but in the future (with associated generics
     // enabled?) it might be convenient to put all the `NT_COL` (and
@@ -67,7 +70,11 @@ impl<
     type Variable = F;
 
     fn assert_zero(&mut self, cst: Self::Variable) {
-        assert_eq!(cst, F::zero());
+        assert_eq!((self.assert_mapper)(cst), F::zero());
+    }
+
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
+        self.assert_mapper = mapper;
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -301,12 +308,13 @@ impl<
             lookups: vec![lookups_row],
             fixed_selectors,
             phantom_cix: PhantomData,
+            assert_mapper: Box::new(|x| x),
         }
     }
 
     /// Sets a fixed selector, the vector of length equal to the
     /// domain size (circuit height).
-    pub fn set_fixed_selector(&mut self, sel: CIx, sel_values: Vec<F>) {
+    pub fn set_fixed_selector_cix(&mut self, sel: CIx, sel_values: Vec<F>) {
         if let Column::FixedSelector(i) = sel.to_column() {
             self.fixed_selectors[i] = sel_values;
         } else {
@@ -314,13 +322,15 @@ impl<
         }
     }
 
-    /// Generates proof inputs, repacking/collecting internal witness builder state.
-    pub fn get_proof_inputs(
-        &self,
-        domain: EvaluationDomains<F>,
-        lookup_tables_data: BTreeMap<LT, Vec<F>>,
-    ) -> ProofInputs<N_COL, F, LT> {
+    /// Sets all fixed selectors directly. Each item in `selectors` is
+    /// a vector of `domain_size` length.
+    pub fn set_fixed_selectors(&mut self, selectors: Vec<Vec<F>>) {
+        self.fixed_selectors = selectors
+    }
+
+    pub fn get_relation_witness(&self, domain: EvaluationDomains<F>) -> Witness<N_COL, Vec<F>> {
         let domain_size: usize = domain.d1.size as usize;
+
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<N_COL, Vec<F>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
@@ -352,6 +362,15 @@ impl<
             witness.cols[N_REL + N_DSEL + i] = self.fixed_selectors[i].clone();
         }
 
+        *witness
+    }
+
+    pub fn get_logup_witness(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> Vec<LogupWitness<F, LT>> {
+        let domain_size: usize = domain.d1.size as usize;
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
@@ -398,7 +417,7 @@ impl<
             *(table.last_mut().unwrap()) = lookup_t.collect();
         }
 
-        let logups: Vec<LogupWitness<F, LT>> = lookup_tables
+        lookup_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 // Only add a table if it's used. Otherwise lookups fail.
@@ -412,10 +431,20 @@ impl<
                     None
                 }
             })
-            .collect();
+            .collect()
+    }
+
+    /// Generates proof inputs, repacking/collecting internal witness builder state.
+    pub fn get_proof_inputs(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> ProofInputs<N_COL, F, LT> {
+        let evaluations = self.get_relation_witness(domain);
+        let logups = self.get_logup_witness(domain, lookup_tables_data);
 
         ProofInputs {
-            evaluations: *witness,
+            evaluations,
             logups,
         }
     }

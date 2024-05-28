@@ -3,7 +3,8 @@
 use crate::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE,
+            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
@@ -184,7 +185,7 @@ where
 
 pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    target_comms: [(Ff, Ff); N_COL_TOTAL],
+    target_comms: &[(Ff, Ff); N_COL_TOTAL],
     row_num_local: usize,
 ) -> (Vec<F>, Vec<F>, Vec<F>)
 where
@@ -245,11 +246,11 @@ where
 #[allow(clippy::type_complexity)]
 pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    comms: [[(Ff, Ff); N_COL_TOTAL]; 3],
+    comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
-    [[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3],
-    [[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
-    [[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
+    Box<[[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3]>,
+    Box<[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3]>,
+    Box<[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3]>,
 )
 where
     F: PrimeField,
@@ -263,11 +264,11 @@ where
         let row_num = env.curr_row();
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
-            (comms[0], row_num, 0)
+            (&comms[0], row_num, 0)
         } else if row_num < 2 * N_COL_TOTAL {
-            (comms[1], row_num - N_COL_TOTAL, 1)
+            (&comms[1], row_num - N_COL_TOTAL, 1)
         } else {
-            (comms[2], row_num - 2 * N_COL_TOTAL, 2)
+            (&comms[2], row_num - 2 * N_COL_TOTAL, 2)
         };
 
         let (limbs_small, limbs_large, limbs_xlarge) =
@@ -286,20 +287,22 @@ where
     // Left-Right-Output for a given limb size.
     fn repack_output<F: PrimeField, const TWO_LIMB_SIZE: usize, const N_COL_TOTAL: usize>(
         input: [Vec<Vec<F>>; 3],
-    ) -> [[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3] {
-        input
-            .into_iter()
-            .map(|vector: Vec<Vec<_>>| {
-                vector
-                    .into_iter()
-                    .map(|subvec: Vec<_>| subvec.try_into().unwrap())
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap()
-            })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap()
+    ) -> Box<[[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3]> {
+        Box::new(
+            input
+                .into_iter()
+                .map(|vector: Vec<Vec<_>>| {
+                    vector
+                        .into_iter()
+                        .map(|subvec: Vec<_>| subvec.try_into().unwrap())
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap()
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        )
     }
 
     (
@@ -463,55 +466,59 @@ where
     F: PrimeField,
     Env: ColWriteCap<F, IVCColumn>,
 {
-    let phi_cur_power_f = phi_prev_power_f * phi_f;
-    let phi_cur_power_r_f = phi_prev_power_f * phi_f * r_f;
-    let phi_cur_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
-    let phi_cur_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
+    let phi_curr_power_f = phi_prev_power_f * phi_f;
+    let phi_curr_power_r_f = phi_prev_power_f * phi_f * r_f;
+    let phi_curr_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
+    let phi_curr_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
 
     env.write_column(IVCColumn::Block3ConstPhi, &Env::constant(phi_f));
     env.write_column(IVCColumn::Block3ConstR, &Env::constant(r_f));
-    env.write_column(IVCColumn::Block3PhiPow, &Env::constant(phi_cur_power_f));
-    env.write_column(IVCColumn::Block3PhiPowR, &Env::constant(phi_cur_power_r_f));
+    env.write_column(IVCColumn::Block3PhiPow, &Env::constant(phi_curr_power_f));
+    env.write_column(IVCColumn::Block3PhiPowR, &Env::constant(phi_curr_power_r_f));
     env.write_column(
         IVCColumn::Block3PhiPowR2,
-        &Env::constant(phi_cur_power_r2_f),
+        &Env::constant(phi_curr_power_r2_f),
     );
     env.write_column(
         IVCColumn::Block3PhiPowR3,
-        &Env::constant(phi_cur_power_r3_f),
+        &Env::constant(phi_curr_power_r3_f),
     );
 
     // TODO check that limb_decompose_ff works with <F,F,_,_>
-    let phi_cur_power_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_f);
-    write_column_array_const(env, &phi_cur_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
+    let phi_curr_power_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_f);
+    write_column_array_const(env, &phi_curr_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
 
-    let phi_cur_power_r_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r_f);
-    write_column_array_const(env, &phi_cur_power_r_f_limbs, IVCColumn::Block3PhiPowRLimbs);
-
-    let phi_cur_power_r2_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r2_f);
+    let phi_curr_power_r_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r_f);
     write_column_array_const(
         env,
-        &phi_cur_power_r2_f_limbs,
+        &phi_curr_power_r_f_limbs,
+        IVCColumn::Block3PhiPowRLimbs,
+    );
+
+    let phi_curr_power_r2_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r2_f);
+    write_column_array_const(
+        env,
+        &phi_curr_power_r2_f_limbs,
         IVCColumn::Block3PhiPowR2Limbs,
     );
 
-    let phi_cur_power_r3_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r3_f);
+    let phi_curr_power_r3_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r3_f);
     write_column_array_const(
         env,
-        &phi_cur_power_r3_f_limbs,
+        &phi_curr_power_r3_f_limbs,
         IVCColumn::Block3PhiPowR3Limbs,
     );
 
     (
-        phi_cur_power_f,
-        phi_cur_power_f_limbs,
-        phi_cur_power_r_f_limbs,
-        phi_cur_power_r2_f_limbs,
-        phi_cur_power_r3_f_limbs,
+        phi_curr_power_f,
+        phi_curr_power_f_limbs,
+        phi_curr_power_r_f_limbs,
+        phi_curr_power_r2_f_limbs,
+        phi_curr_power_r3_f_limbs,
     )
 }
 
@@ -551,19 +558,19 @@ where
     for block_row_i in 0..N_COL_TOTAL + 1 {
         let (
             phi_prev_power_f_new,
-            phi_cur_power_f_limbs,
-            phi_cur_power_r_f_limbs,
-            phi_cur_power_r2_f_limbs,
-            phi_cur_power_r3_f_limbs,
+            phi_curr_power_f_limbs,
+            phi_curr_power_r_f_limbs,
+            phi_curr_power_r2_f_limbs,
+            phi_curr_power_r3_f_limbs,
         ) = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         phi_prev_power_f = phi_prev_power_f_new;
-        phi_limbs.push(phi_cur_power_f_limbs);
-        phi_r_limbs.push(phi_cur_power_r_f_limbs);
+        phi_limbs.push(phi_curr_power_f_limbs);
+        phi_r_limbs.push(phi_curr_power_r_f_limbs);
 
         if block_row_i == N_COL_TOTAL + 1 {
-            phi_np1_r2_limbs = phi_cur_power_r2_f_limbs;
-            phi_np1_r3_limbs = phi_cur_power_r3_f_limbs;
+            phi_np1_r2_limbs = phi_curr_power_r2_f_limbs;
+            phi_np1_r3_limbs = phi_curr_power_r3_f_limbs;
         }
 
         // Checking our constraints
@@ -854,10 +861,10 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
 {
     let chal_num = chal_l.len();
 
-    let mut cur_alpha_r_pow: F = F::one();
+    let mut curr_alpha_r_pow: F = F::one();
 
     for block_row_i in 0..chal_num {
-        cur_alpha_r_pow *= h_r;
+        curr_alpha_r_pow *= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, &Env::constant(h_r));
         env.write_column(IVCColumn::Block5ConstR, &Env::constant(r));
@@ -865,10 +872,10 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
             IVCColumn::Block5ChalLeft,
             &Env::constant(chal_l[block_row_i]),
         );
-        env.write_column(IVCColumn::Block5ChalRight, &Env::constant(cur_alpha_r_pow));
+        env.write_column(IVCColumn::Block5ChalRight, &Env::constant(curr_alpha_r_pow));
         env.write_column(
             IVCColumn::Block5ChalOutput,
-            &Env::constant(cur_alpha_r_pow * r + chal_l[block_row_i]),
+            &Env::constant(curr_alpha_r_pow * r + chal_l[block_row_i]),
         );
 
         constrain_challenges(env);
@@ -913,15 +920,101 @@ where
 {
 }
 
+/// Builds selectors for the IVC circuit.
+pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+    domain_size: usize,
+) -> Vec<Vec<F>>
+where
+    F: PrimeField,
+{
+    // 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    // 45N + 9 + N_CHALS
+    let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
+    let mut curr_row = 0;
+    for _i in 0..3 * N_COL_TOTAL {
+        selectors[0][curr_row] = F::one();
+        curr_row += 1;
+    }
+    for _i in 0..6 * N_COL_TOTAL + 2 {
+        selectors[1][curr_row] = F::one();
+        curr_row += 1;
+    }
+    for _i in 0..N_COL_TOTAL + 1 {
+        selectors[2][curr_row] = F::one();
+        curr_row += 1;
+    }
+    for _i in 0..(35 * N_COL_TOTAL + 5) {
+        selectors[3][curr_row] = F::one();
+        curr_row += 1;
+    }
+    for _i in 0..N_CHALS {
+        selectors[4][curr_row] = F::one();
+        curr_row += 1;
+    }
+    for _i in 0..1 {
+        selectors[5][curr_row] = F::one();
+        curr_row += 1;
+    }
+
+    selectors
+}
+
+/// This function generates constraitns for the whole IVC circuit.
+pub fn constrain_selectors<F, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Env: ColAccessCap<F, IVCColumn>,
+{
+    for i in 0..N_BLOCKS {
+        // Each selector must have value either 0 or 1.
+        let sel = env.read_column(IVCColumn::BlockSel(i));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
+    }
+}
+
+/// This function generates constraitns for the whole IVC circuit.
+pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    constrain_selectors(env);
+
+    let s0 = env.read_column(IVCColumn::BlockSel(0));
+    env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
+    constrain_inputs(env);
+
+    // TODO FIXME add constraints for hashes
+
+    let s2 = env.read_column(IVCColumn::BlockSel(2));
+    env.set_assert_mapper(Box::new(move |x| s2.clone() * x));
+    constrain_ecadds(env);
+
+    let s3 = env.read_column(IVCColumn::BlockSel(3));
+    env.set_assert_mapper(Box::new(move |x| s3.clone() * x));
+    constrain_scalars(env);
+
+    let s4 = env.read_column(IVCColumn::BlockSel(4));
+    env.set_assert_mapper(Box::new(move |x| s4.clone() * x));
+    constrain_challenges(env);
+
+    let s5 = env.read_column(IVCColumn::BlockSel(5));
+    env.set_assert_mapper(Box::new(move |x| s5.clone() * x));
+    constrain_u(env);
+
+    env.set_assert_mapper(Box::new(move |x| x));
+}
+
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    comms_left: [(Ff, Ff); N_COL_TOTAL],
-    comms_right: [(Ff, Ff); N_COL_TOTAL],
-    comms_out: [(Ff, Ff); N_COL_TOTAL],
+    comms_left: Box<[(Ff, Ff); N_COL_TOTAL]>,
+    comms_right: Box<[(Ff, Ff); N_COL_TOTAL]>,
+    comms_out: Box<[(Ff, Ff); N_COL_TOTAL]>,
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
     u_l: F,                     // part of the relaxed instance.
