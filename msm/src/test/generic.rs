@@ -17,14 +17,10 @@ pub fn test_completeness_generic_only_relation<const N_REL: usize, RNG>(
 ) where
     RNG: RngCore + CryptoRng,
 {
-    let proof_inputs = ProofInputs {
-        evaluations,
-        logups: vec![],
-    };
-    test_completeness_generic::<N_REL, N_REL, 0, 0, LookupTableIDs, _>(
+    test_completeness_generic_no_lookups::<N_REL, N_REL, 0, 0, _>(
         constraints,
         Box::new([]),
-        proof_inputs,
+        evaluations,
         domain_size,
         rng,
     )
