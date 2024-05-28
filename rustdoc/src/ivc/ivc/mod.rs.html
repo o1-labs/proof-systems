@@ -194,8 +194,6 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -227,6 +225,7 @@
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
+    <span class="kw">use </span>o1_utils::box_array;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
 
@@ -248,10 +247,8 @@
         <span class="number">0</span>,
         LT,
     &gt;;
-    <span class="comment">//type IVCWitnessBuilderEnv = IVCWitnessBuilderEnvRaw&lt;IVCLookupTable&lt;Ff1&gt;&gt;;
-    //type IVCWitnessBuilderEnvDummy = IVCWitnessBuilderEnvRaw&lt;DummyLookupTable&gt;;
 
-    </span><span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
+    <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
         <span class="kw">for </span>PoseidonBN254Parameters
     {
         <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
@@ -276,32 +273,31 @@
     ) -&gt; IVCWitnessBuilderEnvRaw&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = IVCWitnessBuilderEnvRaw::&lt;LT&gt;::create();
 
-        <span class="comment">// To support less rows than domain_size we need to have selectors.
-        //let row_num = rng.gen_range(0..domain_size);
+        <span class="kw">let </span><span class="kw-2">mut </span>comms_left: Box&lt;<span class="kw">_</span>&gt; = <span class="macro">box_array!</span>[(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
+        <span class="kw">let </span><span class="kw-2">mut </span>comms_right: Box&lt;<span class="kw">_</span>&gt; = <span class="macro">box_array!</span>[(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
+        <span class="kw">let </span><span class="kw-2">mut </span>comms_output: Box&lt;<span class="kw">_</span>&gt; = <span class="macro">box_array!</span>[(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
 
-        </span><span class="kw">let </span>comms_left: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
-            (
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..TEST_N_COL_TOTAL {
+            comms_left[i] = (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
-            )
-        }));
-        <span class="kw">let </span>comms_right: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
-            (
+            );
+            comms_right[i] = (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
-            )
-        }));
-        <span class="kw">let </span>comms_output: Box&lt;[<span class="kw">_</span>; TEST_N_COL_TOTAL]&gt; = Box::new(core::array::from_fn(|_i| {
-            (
+            );
+            comms_output[i] = (
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
                 &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng),
-            )
-        }));
+            );
+        }
 
+        <span class="macro">println!</span>(<span class="string">&quot;Building fixed selectors&quot;</span>);
         <span class="kw">let </span>fixed_selectors: Vec&lt;Vec&lt;Fp&gt;&gt; =
             build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
+        <span class="macro">println!</span>(<span class="string">&quot;Calling the IVC circuit&quot;</span>);
         <span class="comment">// TODO add nonzero E/T values.
         </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
             <span class="kw-2">&amp;mut </span>SubEnvLookup::new(<span class="kw-2">&amp;mut </span>witness_env, lt_lens),
@@ -311,7 +307,7 @@
             [(Ff1::zero(), Ff1::zero()); <span class="number">3</span>],
             [(Ff1::zero(), Ff1::zero()); <span class="number">2</span>],
             Fp::zero(),
-            <span class="macro">vec!</span>[Fp::zero(); <span class="number">200</span>],
+            <span class="macro">vec!</span>[Fp::zero(); TEST_N_CHALS],
             <span class="kw-2">&amp;</span>PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );

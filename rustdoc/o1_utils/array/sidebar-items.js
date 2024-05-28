@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["vec_to_boxed_array2","vec_to_boxed_array3"]};

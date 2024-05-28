@@ -1020,31 +1020,6 @@
 <a href="#1020" id="1020">1020</a>
 <a href="#1021" id="1021">1021</a>
 <a href="#1022" id="1022">1022</a>
-<a href="#1023" id="1023">1023</a>
-<a href="#1024" id="1024">1024</a>
-<a href="#1025" id="1025">1025</a>
-<a href="#1026" id="1026">1026</a>
-<a href="#1027" id="1027">1027</a>
-<a href="#1028" id="1028">1028</a>
-<a href="#1029" id="1029">1029</a>
-<a href="#1030" id="1030">1030</a>
-<a href="#1031" id="1031">1031</a>
-<a href="#1032" id="1032">1032</a>
-<a href="#1033" id="1033">1033</a>
-<a href="#1034" id="1034">1034</a>
-<a href="#1035" id="1035">1035</a>
-<a href="#1036" id="1036">1036</a>
-<a href="#1037" id="1037">1037</a>
-<a href="#1038" id="1038">1038</a>
-<a href="#1039" id="1039">1039</a>
-<a href="#1040" id="1040">1040</a>
-<a href="#1041" id="1041">1041</a>
-<a href="#1042" id="1042">1042</a>
-<a href="#1043" id="1043">1043</a>
-<a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -1304,8 +1279,9 @@
     Ff: PrimeField,
     Env: MultiRowReadCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
 {
-    <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs: [[Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>]; <span class="number">3</span>] =
-        std::array::from_fn(|<span class="kw">_</span>| std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]));
+    <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs_s: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+    <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs_l: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+    <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs_xl: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
     <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">3 </span>* N_COL_TOTAL) {
         <span class="kw">let </span>row_num = env.curr_row();
@@ -1321,41 +1297,19 @@
         <span class="kw">let </span>(limbs_small, limbs_large, limbs_xlarge) =
             write_inputs_row(env, target_comms, row_num_local);
 
-        comms_limbs[<span class="number">0</span>][comtype].push(limbs_small);
-        comms_limbs[<span class="number">1</span>][comtype].push(limbs_large);
-        comms_limbs[<span class="number">2</span>][comtype].push(limbs_xlarge);
+        comms_limbs_s[comtype].push(limbs_small);
+        comms_limbs_l[comtype].push(limbs_large);
+        comms_limbs_xl[comtype].push(limbs_xlarge);
 
         constrain_inputs(env);
 
         env.next_row();
     }
 
-    <span class="comment">// Transforms nested Vec&lt;Vec&lt;_&gt;&gt; into fixed-size arrays. Returns
-    // Left-Right-Output for a given limb size.
-    </span><span class="kw">fn </span>repack_output&lt;F: PrimeField, <span class="kw">const </span>TWO_LIMB_SIZE: usize, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
-        input: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>],
-    ) -&gt; Box&lt;[[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; <span class="number">3</span>]&gt; {
-        Box::new(
-            input
-                .into_iter()
-                .map(|vector: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;| {
-                    vector
-                        .into_iter()
-                        .map(|subvec: Vec&lt;<span class="kw">_</span>&gt;| subvec.try_into().unwrap())
-                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                        .try_into()
-                        .unwrap()
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                .try_into()
-                .unwrap(),
-        )
-    }
-
     (
-        repack_output(comms_limbs[<span class="number">0</span>].clone()),
-        repack_output(comms_limbs[<span class="number">1</span>].clone()),
-        repack_output(comms_limbs[<span class="number">2</span>].clone()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_s.to_vec()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_l.to_vec()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_xl.to_vec()),
     )
 }
 
@@ -1688,32 +1642,28 @@
     </span><span class="kw">let </span>r_hat_large: Box&lt;[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]&gt; = Box::new(comms_large[<span class="number">1</span>]);
 
     <span class="comment">// Compute error and t terms limbs.
-    </span><span class="kw">let </span>error_terms_large: [[F; <span class="number">2 </span>* N_LIMBS_LARGE]; <span class="number">3</span>] = error_terms
-        .iter()
-        .map(|(x, y)| {
-            limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(x)
-                .into_iter()
-                .chain(limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(y))
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                .try_into()
-                .unwrap()
-        })
-        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        .try_into()
-        .unwrap();
-    <span class="kw">let </span>t_terms_large: [[F; <span class="number">2 </span>* N_LIMBS_LARGE]; <span class="number">2</span>] = t_terms
-        .iter()
-        .map(|(x, y)| {
-            limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(x)
-                .into_iter()
-                .chain(limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(y))
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                .try_into()
-                .unwrap()
-        })
-        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        .try_into()
-        .unwrap();
+    </span><span class="kw">let </span>error_terms_large: Box&lt;[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; <span class="number">3</span>]&gt; = o1_utils::array::vec_to_boxed_array2(
+        error_terms
+            .iter()
+            .map(|(x, y)| {
+                limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(x)
+                    .into_iter()
+                    .chain(limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(y))
+                    .collect()
+            })
+            .collect(),
+    );
+    <span class="kw">let </span>t_terms_large: Box&lt;[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; <span class="number">2</span>]&gt; = o1_utils::array::vec_to_boxed_array2(
+        t_terms
+            .iter()
+            .map(|(x, y)| {
+                limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(x)
+                    .into_iter()
+                    .chain(limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(y))
+                    .collect()
+            })
+            .collect(),
+    );
 
     <span class="comment">// E_R&#39; = r·T_0 + r^2·T_1 + r^3·E_R
     // FIXME for now stubbed and just equal to E_L

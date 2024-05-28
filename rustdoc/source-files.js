@@ -13,7 +13,7 @@ var sourcesIndex = JSON.parse('{\
 "mina_hasher":["",[],["lib.rs","poseidon.rs","roinput.rs"]],\
 "mina_poseidon":["",[["pasta",[],["fp_kimchi.rs","fp_legacy.rs","fq_kimchi.rs","fq_legacy.rs","mod.rs"]]],["constants.rs","dummy_values.rs","lib.rs","permutation.rs","poseidon.rs","sponge.rs"]],\
 "mina_signer":["",[],["keypair.rs","lib.rs","pubkey.rs","schnorr.rs","seckey.rs","signature.rs"]],\
-"o1_utils":["",[],["adjacent_pairs.rs","biguint_helpers.rs","bitwise_operations.rs","chunked_evaluations.rs","chunked_polynomial.rs","dense_polynomial.rs","evaluations.rs","field_helpers.rs","foreign_field.rs","hasher.rs","lib.rs","math.rs","serialization.rs"]],\
+"o1_utils":["",[],["adjacent_pairs.rs","array.rs","biguint_helpers.rs","bitwise_operations.rs","chunked_evaluations.rs","chunked_polynomial.rs","dense_polynomial.rs","evaluations.rs","field_helpers.rs","foreign_field.rs","hasher.rs","lib.rs","math.rs","serialization.rs"]],\
 "o1vm":["",[["keccak",[],["column.rs","constraints.rs","environment.rs","folding.rs","helpers.rs","interpreter.rs","mod.rs","trace.rs","witness.rs"]],["mips",[],["column.rs","constraints.rs","folding.rs","interpreter.rs","mod.rs","registers.rs","trace.rs","witness.rs"]]],["cannon.rs","cannon_cli.rs","folding.rs","lib.rs","lookups.rs","preimage_oracle.rs","proof.rs","ramlookup.rs","trace.rs"]],\
 "poly_commitment":["",[],["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","lib.rs","pairing_proof.rs","srs.rs"]],\
 "snarky_deriver":["",[],["lib.rs"]],\
