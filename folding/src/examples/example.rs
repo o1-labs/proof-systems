@@ -11,6 +11,7 @@ use crate::{
     error_term::Side,
     examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
+    instance_witness::Foldable,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,
 };
@@ -32,7 +33,7 @@ struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -42,8 +43,19 @@ impl Instance<Curve> for TestInstance {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
-    fn alphas(&self) -> &Alphas<Fp> {
+impl Instance<Curve> for TestInstance {
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        let mut fields = Vec::with_capacity(3 + 2);
+        fields.extend(self.challenges);
+        fields.extend(self.alphas.clone().powers());
+        assert_eq!(fields.len(), 5);
+        let points = self.commitments.to_vec();
+        (fields, points)
+    }
+
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }
@@ -52,7 +64,7 @@ impl Instance<Curve> for TestInstance {
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
 type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
 
-impl Witness<Curve> for TestWitness {
+impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -61,11 +73,9 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
-
-    fn rows(&self) -> usize {
-        self[0].evals.len()
-    }
 }
+
+impl Witness<Curve> for TestWitness {}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct TestStructure<F: Clone> {
@@ -109,10 +119,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn domain_size(&self) -> usize {
-        2
-    }
-
     fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -136,11 +142,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
             TestChallenge::Gamma => self.instances[side as usize].challenges[1],
             TestChallenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
@@ -249,17 +250,18 @@ mod checker {
                 witness,
             }
         }
-
-        pub(crate) fn rows(&self) -> usize {
-            self.witness.rows()
-        }
     }
 
     impl Provide<TestFoldingConfig> for Provider {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
+        fn resolve(
+            &self,
+            inner: FoldingCompatibleExprInner<TestFoldingConfig>,
+            domain: Radix2EvaluationDomain<Fp>,
+        ) -> Vec<Fp> {
+            let domain_size = domain.size as usize;
             match inner {
                 FoldingCompatibleExprInner::Constant(c) => {
-                    vec![c; self.rows()]
+                    vec![c; domain_size]
                 }
                 FoldingCompatibleExprInner::Challenge(chall) => {
                     let chals = self.instance.challenges;
@@ -268,7 +270,7 @@ mod checker {
                         TestChallenge::Gamma => chals[1],
                         TestChallenge::JointCombiner => chals[2],
                     };
-                    vec![v; self.rows()]
+                    vec![v; domain_size]
                 }
                 FoldingCompatibleExprInner::Cell(var) => {
                     let Variable { col, row } = var;
@@ -324,12 +326,17 @@ mod checker {
     }
 
     impl Provide<TestFoldingConfig> for ExtendedProvider {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
+        fn resolve(
+            &self,
+            inner: FoldingCompatibleExprInner<TestFoldingConfig>,
+            domain: Radix2EvaluationDomain<Fp>,
+        ) -> Vec<Fp> {
+            let domain_size = domain.size as usize;
             match inner {
                 FoldingCompatibleExprInner::Extensions(ext) => match ext {
                     ExpExtension::U => {
                         let u = self.instance.u;
-                        vec![u; self.inner_provider.rows()]
+                        vec![u; domain_size]
                     }
                     ExpExtension::Error => self.witness.error_vec.evals.clone(),
                     ExpExtension::ExtendedWitness(i) => {
@@ -337,11 +344,11 @@ mod checker {
                     }
                     ExpExtension::Alpha(i) => {
                         let alpha = self.instance.inner_instance().inner.alphas.get(i).unwrap();
-                        vec![alpha; self.inner_provider.rows()]
+                        vec![alpha; domain_size]
                     }
                     ExpExtension::Selector(_) => panic!("unused"),
                 },
-                e => self.inner_provider.resolve(e),
+                e => self.inner_provider.resolve(e, domain),
             }
         }
     }
@@ -353,7 +360,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FoldingScheme;
+    use crate::{FoldingOutput, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
     use kimchi::curve::KimchiCurve;
@@ -414,7 +421,7 @@ mod tests {
             );
             constraints
                 .iter()
-                .for_each(|constraint| checker.check(constraint));
+                .for_each(|constraint| checker.check(constraint, domain));
         }
         // check right
         {
@@ -426,7 +433,7 @@ mod tests {
             );
             constraints
                 .iter()
-                .for_each(|constraint| checker.check(constraint));
+                .for_each(|constraint| checker.check(constraint, domain));
         }
 
         // pairs
@@ -434,12 +441,22 @@ mod tests {
         let right = (right_instance, right_witness);
 
         let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
-        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            to_absorb,
+            ..
+        } = folded;
+        // checking that we have the expected number of elements to absorb
+        // 3+2 from each instance + 1 from u, times 2 instances
+        assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
+        // 3 from each instance + 1 from E, times 2 instances + t_0 + t_1
+        assert_eq!(to_absorb.1.len(), (3 + 1) * 2 + 2);
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);
             debug!("check folded");
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
         }
     }
 }

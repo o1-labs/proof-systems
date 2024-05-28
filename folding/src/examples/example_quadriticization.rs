@@ -5,6 +5,7 @@ use crate::{
     error_term::Side,
     examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -52,7 +53,7 @@ pub struct TestInstance {
     alphas: Alphas<Fp>,
 }
 
-impl Instance<Curve> for TestInstance {
+impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
@@ -62,8 +63,15 @@ impl Instance<Curve> for TestInstance {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+}
 
-    fn alphas(&self) -> &Alphas<Fp> {
+impl Instance<Curve> for TestInstance {
+    fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+        // FIXME?
+        (vec![], vec![])
+    }
+
+    fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }
@@ -112,12 +120,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    fn domain_size(&self) -> usize {
-        // this works in the example but is not the best way as the environment
-        // could get circuits of any size
-        2
-    }
-
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
@@ -139,14 +141,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
             TestChallenge::Gamma => self.instances[side as usize].challenges[1],
             TestChallenge::JointCombiner => self.instances[side as usize].challenges[2],
         }
-    }
-
-    // access to the alphas, while folding will decide how many there are and how do
-    // they appear in the expressions, the instances should store them, and the environment
-    // should provide acces to them like this
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
     }
 
     // this is exclusively for dynamic selectors aiming to make use of optimization
@@ -284,7 +278,7 @@ impl Index<DynamicSelector> for TestWitness {
 mod tests {
     use super::*;
     // Trick to print debug message while testing, as we in the test config env
-    use crate::decomposable_folding::DecomposableFoldingScheme;
+    use crate::{decomposable_folding::DecomposableFoldingScheme, FoldingOutput};
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use kimchi::curve::KimchiCurve;
     use mina_poseidon::FqSponge;
@@ -365,9 +359,13 @@ mod tests {
                 Some(DynamicSelector::SelecAdd),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -393,11 +391,15 @@ mod tests {
                 Some(DynamicSelector::SelecMul),
                 &mut fq_sponge,
             );
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -409,11 +411,15 @@ mod tests {
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
             let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let FoldingOutput {
+                folded_instance,
+                folded_witness,
+                ..
+            } = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            checker.check(&final_constraint);
+            checker.check(&final_constraint, domain);
         };
     }
 }

@@ -529,8 +529,9 @@ mod folding {
 
         let one = (folding_instance_one, folding_witness_one);
         let two = (folding_instance_two, folding_witness_two);
-        let (_relaxed_instance, _relatex_witness, _error_terms) =
-            folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+        let (_relaxed_instance, _relatex_witness) = folding_scheme
+            .fold_instance_witness_pair(one, two, &mut fq_sponge)
+            .pair();
 
         // FIXME: add IVC
     }

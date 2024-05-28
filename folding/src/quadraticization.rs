@@ -17,24 +17,30 @@ pub struct Quadraticized<C: FoldingConfig> {
 
 /// Returns the constraints converted into degree 2 or less and the extra
 /// constraints added in the process
-pub fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
+pub fn quadraticize<C: FoldingConfig>(
+    constraints: Vec<FoldingExp<C>>,
+) -> (Quadraticized<C>, usize) {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints
         .into_iter()
         .map(|exp| lower_degree_to_2(exp, &mut recorder))
         .collect();
+    let added_columns = recorder.next;
     let (extra_constraints, exprs) = recorder.into_constraints();
-    Quadraticized {
-        original_constraints,
-        extra_constraints,
-        extended_witness_generator: ExtendedWitnessGenerator { exprs },
-    }
+    (
+        Quadraticized {
+            original_constraints,
+            extra_constraints,
+            extended_witness_generator: ExtendedWitnessGenerator { exprs },
+        },
+        added_columns,
+    )
 }
 
 /// Records expressions that have been extracted into an extra column
 struct ExpRecorder<C: FoldingConfig> {
     recorded_exprs: HashMap<FoldingExp<C>, usize>,
-    next: usize,
+    pub(crate) next: usize,
 }
 
 impl<C: FoldingConfig> ExpRecorder<C> {

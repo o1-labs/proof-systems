@@ -1,4 +1,7 @@
-use ark_ff::Zero;
+use ark_ff::{FftField, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use folding::{instance_witness::Foldable, Witness as FoldingWitnessT};
+use poly_commitment::commitment::CommitmentCurve;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::ops::Index;
 
@@ -142,4 +145,22 @@ where
         iter_contents.extend(&mut *self.cols);
         iter_contents.into_par_iter()
     }
+}
+
+impl<const N: usize, F: FftField> Foldable<F>
+    for Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>
+{
+    fn combine(mut a: Self, b: Self, challenge: F) -> Self {
+        for (a, b) in (*a.cols).iter_mut().zip(*(b.cols)) {
+            for (a, b) in a.evals.iter_mut().zip(b.evals) {
+                *a += challenge * b;
+            }
+        }
+        a
+    }
+}
+
+impl<const N: usize, G: CommitmentCurve> FoldingWitnessT<G>
+    for Witness<N, Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>
+{
 }

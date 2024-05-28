@@ -22,7 +22,7 @@ use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-use instance_witness::{RelaxableInstance, RelaxablePair};
+use instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -47,8 +47,11 @@ mod error_term;
 
 mod eval_leaf;
 pub mod expressions;
-mod instance_witness;
+pub mod instance_witness;
 pub mod quadraticization;
+#[cfg(test)]
+#[cfg(feature = "bn254")]
+mod quadraticization_tests;
 
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -81,6 +84,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// The target curve used by the polynomial commitment
     type Curve: CommitmentCurve;
 
+    /// The SRS used by the polynomial commitment. The SRS is used to commit to
+    /// the additional columns that are added by the quadraticization.
     type Srs: SRS<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
@@ -116,31 +121,25 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
-    /// Creates a new environment storing the structure, instances and witnesses.
+    /// Creates a new environment storing the structure, instances and
+    /// witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
-
-    /// Returns the domain size of the circuit.
-    fn domain_size(&self) -> usize;
 
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
     /// Returns a vector of zeros with the same length as the number of rows in
     /// the circuit.
-    fn zero_vec(&self) -> Vec<F> {
-        vec![F::zero(); self.domain_size()]
+    fn zero_vec(&self, n: usize) -> Vec<F> {
+        vec![F::zero(); n]
     }
-
-    /// Returns the evaluations of a given column witness at omega or zeta*omega.
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
-    /// Computes the i-th power of alpha for a given side.
-    /// Folding itself will provide us with the alpha value.
-    fn alpha(&self, i: usize, side: Side) -> F;
+    /// Returns the evaluations of a given column witness at omega or zeta*omega.
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
@@ -157,6 +156,7 @@ pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub zero_vec: Evals<ScalarField<CF>>,
     pub structure: CF::Structure,
     pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
+    quadraticization_columns: usize,
 }
 
 impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
@@ -166,7 +166,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: &CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
-        let (expression, extended_witness_generator) = folding_expression(constraints);
+        let (expression, extended_witness_generator, quadraticization_columns) =
+            folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
@@ -181,8 +182,13 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
+            quadraticization_columns,
         };
         (scheme, final_expression)
+    }
+    //the number of columns added by quadraticization to lower the degree
+    pub fn quadraticization_columns(&self) -> usize {
+        self.quadraticization_columns
     }
 
     #[allow(clippy::type_complexity)]
@@ -191,11 +197,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         a: A,
         b: B,
         fq_sponge: &mut Sponge,
-    ) -> (
-        RelaxedInstance<CF::Curve, CF::Instance>,
-        RelaxedWitness<CF::Curve, CF::Witness>,
-        [PolyComm<CF::Curve>; 2],
-    )
+    ) -> FoldingOutput<CF>
     where
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
@@ -233,16 +235,26 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].elems.len(), 1);
         assert_eq!(error_commitments[1].elems.len(), 1);
 
-        fq_sponge.absorb_g(&error_commitments[0].elems);
-        fq_sponge.absorb_g(&error_commitments[1].elems);
+        let t_0 = &error_commitments[0].elems[0];
+        let t_1 = &error_commitments[1].elems[0];
+
+        let to_absorb = env.to_absorb(t_0, t_1);
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
 
         let challenge = fq_sponge.challenge();
 
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let instance =
+        let folded_instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
-        (instance, witness, error_commitments)
+        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        FoldingOutput {
+            folded_instance,
+            folded_witness,
+            t_0: error_commitments[0].clone(),
+            t_1: error_commitments[1].clone(),
+            to_absorb,
+        }
     }
 
     /// Fold two relaxable instances into a relaxed instance.
@@ -278,6 +290,30 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     }
 }
 
+/// Output of the folding prover
+pub struct FoldingOutput<C: FoldingConfig> {
+    /// Folded instance
+    pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
+    /// Folded witness
+    pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
+    pub t_0: PolyComm<C::Curve>,
+    pub t_1: PolyComm<C::Curve>,
+    /// Elements to absorbed in IVC, in the same order as done in folding
+    pub to_absorb: (Vec<ScalarField<C>>, Vec<C::Curve>),
+}
+
+impl<C: FoldingConfig> FoldingOutput<C> {
+    #[allow(clippy::type_complexity)]
+    pub fn pair(
+        self,
+    ) -> (
+        RelaxedInstance<C::Curve, C::Instance>,
+        RelaxedWitness<C::Curve, C::Witness>,
+    ) {
+        (self.folded_instance, self.folded_witness)
+    }
+}
+
 /// Combinators that will be used to fold the constraints,
 /// called the "alphas".
 /// The alphas are exceptional, their number cannot be known ahead of time as it
@@ -292,10 +328,25 @@ pub enum Alphas<F: Field> {
     Combinations(Vec<F>),
 }
 
+impl<F: Field> Foldable<F> for Alphas<F> {
+    fn combine(a: Self, b: Self, challenge: F) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
+    }
+}
+
 impl<F: Field> Alphas<F> {
     pub fn new(alpha: F) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
+
     pub fn get(&self, i: usize) -> Option<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -306,6 +357,7 @@ impl<F: Field> Alphas<F> {
             Alphas::Combinations(alphas) => alphas.get(i).cloned(),
         }
     }
+
     pub fn powers(self) -> Vec<F> {
         match self {
             Alphas::Powers(alpha, count) => {
@@ -315,16 +367,5 @@ impl<F: Field> Alphas<F> {
             }
             Alphas::Combinations(c) => c,
         }
-    }
-    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
     }
 }
