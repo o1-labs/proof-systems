@@ -3843,14 +3843,14 @@
 <span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub enum </span>Operations&lt;T&gt; {
     Atom(T),
-    Pow(Box&lt;Operations&lt;T&gt;&gt;, u64),
-    Add(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
-    Mul(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
-    Sub(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
-    Double(Box&lt;Operations&lt;T&gt;&gt;),
-    Square(Box&lt;Operations&lt;T&gt;&gt;),
-    Cache(CacheId, Box&lt;Operations&lt;T&gt;&gt;),
-    IfFeature(FeatureFlag, Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
+    Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
+    Add(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Mul(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Sub(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Double(Box&lt;<span class="self">Self</span>&gt;),
+    Square(Box&lt;<span class="self">Self</span>&gt;),
+    Cache(CacheId, Box&lt;<span class="self">Self</span>&gt;),
+    IfFeature(FeatureFlag, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
 }
 
 <span class="kw">impl</span>&lt;T&gt; From&lt;T&gt; <span class="kw">for </span>Operations&lt;T&gt; {
