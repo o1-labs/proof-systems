@@ -927,7 +927,7 @@ pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
 where
     F: PrimeField,
 {
-    // 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
     let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
     let mut curr_row = 0;
@@ -968,7 +968,7 @@ where
     for i in 0..N_BLOCKS {
         // Each selector must have value either 0 or 1.
         let sel = env.read_column(IVCColumn::BlockSel(i));
-        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::from(1u64))));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
     }
 }
 
@@ -980,6 +980,12 @@ where
     Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
     constrain_selectors(env);
+
+    // The code below calls constraint method, and internally records
+    // constraints for the corresponding blocks. Before the each call
+    // we prefix the constraint with `selector(block_num)*` so that
+    // the constraints that are created in the block block_num will have
+    // the form selector(block_num)*C(X) and not just C(X).
 
     let s0 = env.read_column(IVCColumn::BlockSel(0));
     env.set_assert_mapper(Box::new(move |x| s0.clone() * x));

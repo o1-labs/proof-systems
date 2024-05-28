@@ -50,8 +50,6 @@ mod tests {
         0,
         LT,
     >;
-    //type IVCWitnessBuilderEnv = IVCWitnessBuilderEnvRaw<IVCLookupTable<Ff1>>;
-    //type IVCWitnessBuilderEnvDummy = IVCWitnessBuilderEnvRaw<DummyLookupTable>;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters
