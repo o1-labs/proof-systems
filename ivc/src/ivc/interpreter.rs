@@ -968,7 +968,7 @@ where
     for i in 0..N_BLOCKS {
         // Each selector must have value either 0 or 1.
         let sel = env.read_column(IVCColumn::BlockSel(i));
-        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::from(1u64))));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
     }
 }
 
