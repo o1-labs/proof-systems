@@ -919,7 +919,7 @@ where
 // are public values, and can be verified directly by the verifier.
 // However we might need these constraints in folding, where public
 // input needs to be checked.
-/// This function generates constraitns for the whole IVC circuit.
+/// This function generates constraints for the whole IVC circuit.
 pub fn constrain_selectors<F, Env>(env: &mut Env)
 where
     F: PrimeField,

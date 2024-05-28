@@ -362,6 +362,10 @@ impl<
             witness.cols[N_REL + N_DSEL + i] = self.fixed_selectors[i].clone();
         }
 
+        for i in 0..(N_REL + N_DSEL + N_FSEL) {
+            assert!(witness.cols[i].len() == domain_size);
+        }
+
         *witness
     }
 
