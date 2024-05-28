@@ -70,7 +70,7 @@ pub struct ProofEvaluations<
 > {
     /// Witness evaluations, including public inputs
     pub(crate) witness_evals: Witness<N_WIT, PointEvaluations<F>>,
-    /// Evaluations of fixed selectors. having
+    /// Evaluations of fixed selectors.
     pub(crate) fixed_selectors_evals: Box<[PointEvaluations<F>; N_FSEL]>,
     /// Logup argument evaluations
     pub(crate) logup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
