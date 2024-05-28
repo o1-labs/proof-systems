@@ -16,8 +16,8 @@
 //! folding scheme [FoldingScheme]. The process is described in the module
 //! [expressions].
 //!
-//! ## Degree 3 folding for multiple constraints
-//! While mostly hidden from the interface, internally folding supports degree 3
+//! ## Degree-3 folding for multiple constraints
+//! While mostly hidden from the interface, internally folding supports degree-3
 //! expressions in order to support multiple degree-2 constraints, which we combine with a
 //! per-instance random challenge.
 //! That results in 2 errors terms `t_0` and `t_1` and a slightly different computation
