@@ -3,7 +3,7 @@
 use crate::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
             IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
@@ -244,7 +244,7 @@ where
 /// `comms` is lefts, rights, and outs. Returns the packed commitments
 /// in three different representations.
 #[allow(clippy::type_complexity)]
-pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
@@ -260,7 +260,7 @@ where
     let mut comms_limbs: [[Vec<Vec<F>>; 3]; 3] =
         std::array::from_fn(|_| std::array::from_fn(|_| vec![]));
 
-    for _block_row_i in 0..(3 * N_COL_TOTAL) {
+    for _block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(0) {
         let row_num = env.curr_row();
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
@@ -318,7 +318,7 @@ where
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 /// Instantiates the IVC circuit for folding. N is the total number of columns
-pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
+pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     poseidon_params: &PParams,
     comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
@@ -345,7 +345,7 @@ where
     let mut phi = Env::constant(F::zero());
 
     // Relative position in the hashing block
-    for block_row_i in 0..6 * N_COL_TOTAL + 2 {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
         // Computing h_l, h_r, h_o independently
         if block_row_i < 6 * n {
             // Left, right, or output
@@ -537,7 +537,7 @@ pub struct ScalarLimbs<F> {
 }
 
 /// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
-pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     r: F,
     phi: F,
@@ -555,7 +555,7 @@ where
     let mut phi_np1_r2_limbs = [F::zero(); N_LIMBS_SMALL];
     let mut phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
 
-    for block_row_i in 0..N_COL_TOTAL + 1 {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(2) {
         let (
             phi_prev_power_f_new,
             phi_curr_power_f_limbs,
@@ -626,7 +626,7 @@ where
     }
 }
 
-pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     scalar_limbs: ScalarLimbs<F>,
     comms_large: &[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
@@ -672,7 +672,7 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
     // FIXME for now stubbed and just equal to E_L
     let error_term_rprime_large: [F; 2 * N_LIMBS_LARGE] = error_terms_large[0];
 
-    for block_row_i in 0..(35 * N_COL_TOTAL + 5) {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(3) {
         // Number of the commitment we're processing, ∈ [N]
         let com_i = block_row_i % N_COL_TOTAL;
         // Coefficient limb we're processing for C_L/C_R/C_O, ∈ [k = 17]
@@ -850,20 +850,18 @@ where
 }
 
 #[allow(clippy::needless_range_loop)]
-pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
+pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     h_r: F,
-    chal_l: Vec<F>,
+    chal_l: Box<[F; N_CHALS]>,
     r: F,
 ) where
     F: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn>,
 {
-    let chal_num = chal_l.len();
-
     let mut curr_alpha_r_pow: F = F::one();
 
-    for block_row_i in 0..chal_num {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(4) {
         curr_alpha_r_pow *= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, &Env::constant(h_r));
@@ -921,6 +919,7 @@ where
 }
 
 /// Builds selectors for the IVC circuit.
+#[allow(clippy::needless_range_loop)]
 pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
 ) -> Vec<Vec<F>>
@@ -931,34 +930,20 @@ where
     // 45N + 9 + N_CHALS
     let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
     let mut curr_row = 0;
-    for _i in 0..3 * N_COL_TOTAL {
-        selectors[0][curr_row] = F::one();
-        curr_row += 1;
-    }
-    for _i in 0..6 * N_COL_TOTAL + 2 {
-        selectors[1][curr_row] = F::one();
-        curr_row += 1;
-    }
-    for _i in 0..N_COL_TOTAL + 1 {
-        selectors[2][curr_row] = F::one();
-        curr_row += 1;
-    }
-    for _i in 0..(35 * N_COL_TOTAL + 5) {
-        selectors[3][curr_row] = F::one();
-        curr_row += 1;
-    }
-    for _i in 0..N_CHALS {
-        selectors[4][curr_row] = F::one();
-        curr_row += 1;
-    }
-    for _i in 0..1 {
-        selectors[5][curr_row] = F::one();
-        curr_row += 1;
+    for block_i in 0..N_BLOCKS {
+        for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
+            selectors[block_i][curr_row] = F::one();
+            curr_row += 1;
+        }
     }
 
     selectors
 }
 
+// We might not need to constrain selectors to be 0 or 1 if selectors
+// are public values, and can be verified directly by the verifier.
+// However we might need these constraints in folding, where public
+// input needs to be checked.
 /// This function generates constraitns for the whole IVC circuit.
 pub fn constrain_selectors<F, Env>(env: &mut Env)
 where
@@ -1016,7 +1001,7 @@ where
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 #[allow(clippy::too_many_arguments)]
-pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
+pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     comms_left: Box<[(Ff, Ff); N_COL_TOTAL]>,
     comms_right: Box<[(Ff, Ff); N_COL_TOTAL]>,
@@ -1024,7 +1009,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
     u_l: F,                     // part of the relaxed instance.
-    chal_l: Vec<F>,             // challenges
+    chal_l: Box<[F; N_CHALS]>,  // challenges
     poseidon_params: &PParams,
     domain_size: usize,
 ) where
@@ -1037,17 +1022,24 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
 {
     // Total height of all blocks. Probably higher than this number. WIP
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
+    assert!(chal_l.len() == N_CHALS);
 
     let (_comms_small, comms_large, comms_xlarge) =
-        process_inputs(env, [comms_left, comms_right, comms_out]);
+        process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(env, [comms_left, comms_right, comms_out]);
     let (hash_r_var, r_var, phi_var) =
-        process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params, &comms_xlarge);
+        process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(env, poseidon_params, &comms_xlarge);
     let r: F = Env::variable_to_field(r_var);
     let phi: F = Env::variable_to_field(phi_var);
     let hash_r: F = Env::variable_to_field(hash_r_var);
-    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL>(env, r, phi);
-    process_ecadds::<_, Ff, _, N_COL_TOTAL>(env, scalar_limbs, &comms_large, error_terms, t_terms);
-    process_challenges::<_, _, N_COL_TOTAL>(env, hash_r, chal_l, r);
+    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, r, phi);
+    process_ecadds::<_, Ff, _, N_COL_TOTAL, N_CHALS>(
+        env,
+        scalar_limbs,
+        &comms_large,
+        error_terms,
+        t_terms,
+    );
+    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, chal_l, r);
     process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
     process_misc::<_, _, N_COL_TOTAL>(env);
 }
