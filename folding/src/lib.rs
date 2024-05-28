@@ -20,7 +20,37 @@
 //! expressions in orther to support multiple constraints.
 //! That results in 2 errors terms t_0 and t_1 and a slightly different computation
 //! of E than in Nova (E' + rt_0 + r^2t_1 + r^3E'')
-// TODO: the documentation above might need more descriptions.
+//! ### Computing t_0 and t_1
+//! Given a constraint C as multivariate polynomial with n terms of
+//! folding degree exactly 3, we separate variables into 2 sets, S for
+//! those of folding degree 0, and W for those of folding degree 1.  
+//! ```text
+//!
+//!   T_i = a_i * b_i * c_i *  ∏ s
+//!                           s∊S_i
+//!
+//!   for a_i, b_i, c_i ∈ W and S_i ∈ S
+//! ```
+//!
+//! Then we can compute t_0
+//! ```text
+//!      n-1
+//! t_0 = ∑ (a_i' * b_i' * c_i'' + c_i' * (a_i * 'b_i'' + a_i' * 'b_i')) * ∏ s
+//!      i=0                                                              s∊S_i
+//! ```
+//! And t_1
+//! ```text
+//!      n-1
+//! t_1 = ∑ (c_i' * '(a_i' * b_i'' + a_i'' * b_i') + a_i'' * b_i'' * c_i') * ∏ s
+//!      i=0                                                                s∊S_i
+//! ```
+//! where a_i' and a_i'' for example are the same column, one from
+//! each of the 2 witnesses being folded.
+//! ```text
+//! folding degree:
+//! 1 for variables tied to a pair            : witness columns, challenges, dynamic selectors, ..
+//! 0 for pair independent or fixed variables : static selectors, constants, ..
+//! ```
 
 use ark_ec::AffineCurve;
 use ark_ff::{Field, Zero};
