@@ -29,6 +29,7 @@ mod tests {
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
+    use o1_utils::box_array;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
 
@@ -50,8 +51,6 @@ mod tests {
         0,
         LT,
     >;
-    //type IVCWitnessBuilderEnv = IVCWitnessBuilderEnvRaw<IVCLookupTable<Ff1>>;
-    //type IVCWitnessBuilderEnvDummy = IVCWitnessBuilderEnvRaw<DummyLookupTable>;
 
     impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
         for PoseidonBN254Parameters
@@ -78,32 +77,31 @@ mod tests {
     ) -> IVCWitnessBuilderEnvRaw<LT> {
         let mut witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
 
-        // To support less rows than domain_size we need to have selectors.
-        //let row_num = rng.gen_range(0..domain_size);
+        let mut comms_left: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
+        let mut comms_right: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
+        let mut comms_output: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
 
-        let comms_left: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
-            (
+        for i in 0..TEST_N_COL_TOTAL {
+            comms_left[i] = (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            )
-        }));
-        let comms_right: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
-            (
+            );
+            comms_right[i] = (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            )
-        }));
-        let comms_output: Box<[_; TEST_N_COL_TOTAL]> = Box::new(core::array::from_fn(|_i| {
-            (
+            );
+            comms_output[i] = (
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            )
-        }));
+            );
+        }
 
+        println!("Building fixed selectors");
         let fixed_selectors: Vec<Vec<Fp>> =
             build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
+        println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
@@ -113,7 +111,7 @@ mod tests {
             [(Ff1::zero(), Ff1::zero()); 3],
             [(Ff1::zero(), Ff1::zero()); 2],
             Fp::zero(),
-            vec![Fp::zero(); 200],
+            vec![Fp::zero(); TEST_N_CHALS],
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );

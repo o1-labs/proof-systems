@@ -257,8 +257,9 @@ where
     Ff: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    let mut comms_limbs: [[Vec<Vec<F>>; 3]; 3] =
-        std::array::from_fn(|_| std::array::from_fn(|_| vec![]));
+    let mut comms_limbs_s: [Vec<Vec<F>>; 3] = std::array::from_fn(|_| vec![]);
+    let mut comms_limbs_l: [Vec<Vec<F>>; 3] = std::array::from_fn(|_| vec![]);
+    let mut comms_limbs_xl: [Vec<Vec<F>>; 3] = std::array::from_fn(|_| vec![]);
 
     for _block_row_i in 0..(3 * N_COL_TOTAL) {
         let row_num = env.curr_row();
@@ -274,41 +275,19 @@ where
         let (limbs_small, limbs_large, limbs_xlarge) =
             write_inputs_row(env, target_comms, row_num_local);
 
-        comms_limbs[0][comtype].push(limbs_small);
-        comms_limbs[1][comtype].push(limbs_large);
-        comms_limbs[2][comtype].push(limbs_xlarge);
+        comms_limbs_s[comtype].push(limbs_small);
+        comms_limbs_l[comtype].push(limbs_large);
+        comms_limbs_xl[comtype].push(limbs_xlarge);
 
         constrain_inputs(env);
 
         env.next_row();
     }
 
-    // Transforms nested Vec<Vec<_>> into fixed-size arrays. Returns
-    // Left-Right-Output for a given limb size.
-    fn repack_output<F: PrimeField, const TWO_LIMB_SIZE: usize, const N_COL_TOTAL: usize>(
-        input: [Vec<Vec<F>>; 3],
-    ) -> Box<[[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3]> {
-        Box::new(
-            input
-                .into_iter()
-                .map(|vector: Vec<Vec<_>>| {
-                    vector
-                        .into_iter()
-                        .map(|subvec: Vec<_>| subvec.try_into().unwrap())
-                        .collect::<Vec<_>>()
-                        .try_into()
-                        .unwrap()
-                })
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
-    }
-
     (
-        repack_output(comms_limbs[0].clone()),
-        repack_output(comms_limbs[1].clone()),
-        repack_output(comms_limbs[2].clone()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_s.to_vec()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_l.to_vec()),
+        o1_utils::array::vec_to_boxed_array3(comms_limbs_xl.to_vec()),
     )
 }
 
@@ -641,32 +620,28 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
     let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
 
     // Compute error and t terms limbs.
-    let error_terms_large: [[F; 2 * N_LIMBS_LARGE]; 3] = error_terms
-        .iter()
-        .map(|(x, y)| {
-            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(x)
-                .into_iter()
-                .chain(limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(y))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap()
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-    let t_terms_large: [[F; 2 * N_LIMBS_LARGE]; 2] = t_terms
-        .iter()
-        .map(|(x, y)| {
-            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(x)
-                .into_iter()
-                .chain(limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(y))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap()
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let error_terms_large: Box<[[F; 2 * N_LIMBS_LARGE]; 3]> = o1_utils::array::vec_to_boxed_array2(
+        error_terms
+            .iter()
+            .map(|(x, y)| {
+                limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(x)
+                    .into_iter()
+                    .chain(limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(y))
+                    .collect()
+            })
+            .collect(),
+    );
+    let t_terms_large: Box<[[F; 2 * N_LIMBS_LARGE]; 2]> = o1_utils::array::vec_to_boxed_array2(
+        t_terms
+            .iter()
+            .map(|(x, y)| {
+                limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(x)
+                    .into_iter()
+                    .chain(limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(y))
+                    .collect()
+            })
+            .collect(),
+    );
 
     // E_R' = r·T_0 + r^2·T_1 + r^3·E_R
     // FIXME for now stubbed and just equal to E_L
