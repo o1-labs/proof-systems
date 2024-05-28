@@ -972,7 +972,7 @@ where
     }
 }
 
-/// This function generates constraitns for the whole IVC circuit.
+/// This function generates constraints for the whole IVC circuit.
 pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
 where
     F: PrimeField,
