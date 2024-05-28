@@ -30,7 +30,7 @@
 //! W_2 * W_0 = 0
 //! W_2 * (W_3 - W_4) + W_4 - W_5 = 0
 //! ```
-//! then we can form a relaxed instance that looks like
+//! then we can form a relaxed instance with 3 error terms `E_1`, `E_2`, and `E_3` that looks like
 //! ```
 //! W_0 * W_1 - u (u - W_2) + E_1 = 0
 //! W_2 * W_0 + E_2 = 0
