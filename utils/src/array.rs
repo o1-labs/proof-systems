@@ -10,9 +10,9 @@
 /// Converts a vector of elements to a boxed one. Semantically
 /// equivalent to `vector.into_boxed_slice().try_into().unwrap()`.
 pub fn vec_to_boxed_array<T, const N: usize>(vec: Vec<T>) -> Box<[T; N]> {
-    vec.into_boxed_slice().try_into().unwrap_or_else(|_| {
-        panic!("vec_to_boxed_array: length mismatch, expected {}", N)
-    })
+    vec.into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|_| panic!("vec_to_boxed_array: length mismatch, expected {}", N))
 }
 
 // @volhovm It could potentially be more efficient with unsafe tricks.
