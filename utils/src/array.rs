@@ -102,6 +102,7 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::Zero;
     use mina_curves::pasta::Pallas as CurvePoint;
+    use ark_ff::UniformRand;
 
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 
@@ -112,8 +113,15 @@ mod tests {
         // Each point is assumed to be 256 bits, so 512 points is
         // 16MB. This often overflows the stack if created as an
         // array.
-        let _boxed: Box<[[BaseField; 256]; 1]> =
-            vec_to_boxed_array2(vec![vec![BaseField::zero(); 256]; 1]);
+        let mut rng = crate::tests::make_test_rng();
+        let boxed: Box<[[BaseField; 256]; 1]> =
+            vec_to_boxed_array2(vec![vec![BaseField::rand(&mut rng); 256]; 1]);
+        println!("{:?}", std::mem::size_of_val(&boxed));
+        println!("{:?}", std::mem::size_of_val(&boxed[0]));
+        // Will always print the same value
+        for x in boxed[0].iter() {
+            println!("{:?}", x);
+        }
         let _boxed: Box<[[BaseField; 64]; 4]> =
             vec_to_boxed_array2(vec![vec![BaseField::zero(); 64]; 4]);
         let _boxed: Box<[BaseField; 256]> = box_array![BaseField::zero(); 256];
