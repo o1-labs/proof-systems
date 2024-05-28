@@ -134,8 +134,6 @@ mod tests {
     fn test_completeness_ivc() {
         let mut rng = o1_utils::tests::make_test_rng();
 
-        //let mut comms_left: Box<_> = box_array2![(Fp::zero(),Fp::zero()); TEST_N_COL_TOTAL; 3];
-
         let domain_size = 1 << 15;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
