@@ -40,11 +40,7 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        let mut fixed_sel: Vec<Fp> = vec![];
-        for i in 0..domain_size {
-            fixed_sel.push(Fp::from(i as u64));
-        }
-
+        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
         witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         for row_i in 0..domain_size {
@@ -137,6 +133,9 @@ mod tests {
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
+
+        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         let constant: Fp = <Fp as UniformRand>::rand(rng);
         for row_i in 0..domain_size {
@@ -231,6 +230,9 @@ mod tests {
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
+
+        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         let row_num = 10;
         for row_i in 0..row_num {
