@@ -122,6 +122,16 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides different helpers in creating constant sized
 //! arrays and converting them to different formats.
 //!
@@ -130,7 +140,17 @@
 //! better performance, either optimise this code, or use
 //! (non-fixed-sized) vectors.
 
-/// Converts a two-dimensional vector to a constant sized two-dimensional array.
+</span><span class="comment">// Use a generic function so that the pointer cast remains type-safe
+</span><span class="doccomment">/// Converts a vector of elements to a boxed one. Semantically
+/// equivalent to `vector.into_boxed_slice().try_into().unwrap()`.
+</span><span class="kw">pub fn </span>vec_to_boxed_array&lt;T, <span class="kw">const </span>N: usize&gt;(vec: Vec&lt;T&gt;) -&gt; Box&lt;[T; N]&gt; {
+    vec.into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array: length mismatch, expected {}&quot;</span>, N))
+}
+
+<span class="comment">// @volhovm It could potentially be more efficient with unsafe tricks.
+</span><span class="doccomment">/// Converts a two-dimensional vector to a constant sized two-dimensional array.
 </span><span class="kw">pub fn </span>vec_to_boxed_array2&lt;T, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize&gt;(
     vec: Vec&lt;Vec&lt;T&gt;&gt;,
 ) -&gt; Box&lt;[[T; N]; M]&gt; {

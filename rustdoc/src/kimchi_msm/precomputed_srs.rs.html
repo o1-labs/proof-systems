@@ -23,14 +23,14 @@
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
 
-<span class="kw">use crate</span>::{Fp, BN254, DOMAIN_SIZE};
+<span class="kw">use crate</span>::{Fp, BN254};
 
 <span class="doccomment">/// Obtains an SRS for a specific curve from disk, or generates it if absent.
 </span><span class="kw">pub fn </span>get_bn254_srs(domain: EvaluationDomains&lt;Fp&gt;) -&gt; PairingSRS&lt;BN254&gt; {
     <span class="comment">// Temporarily just generate it from scratch since SRS serialization is
     // broken.
     </span><span class="kw">let </span>trapdoor = Fp::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
-    <span class="kw">let </span><span class="kw-2">mut </span>srs = PairingSRS::create(trapdoor, DOMAIN_SIZE);
+    <span class="kw">let </span><span class="kw-2">mut </span>srs = PairingSRS::create(trapdoor, domain.d1.size <span class="kw">as </span>usize);
     srs.full_srs.add_lagrange_basis(domain.d1);
     srs
 }

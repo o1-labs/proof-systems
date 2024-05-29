@@ -450,16 +450,6 @@
 <a href="#450" id="450">450</a>
 <a href="#451" id="451">451</a>
 <a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
@@ -470,17 +460,16 @@
     witness::Witness,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>std::{collections::BTreeMap, iter, marker::PhantomData};
 
 <span class="doccomment">/// Witness builder environment. Operates on multiple rows at the same
-/// time. `CIx::N_COL` must be equal to `N_COL`; passing these two
+/// time. `CIx::N_COL` must be equal to `N_WIT + N_FSEL`; passing these two
 /// separately is due to a rust limitation.
 </span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;
     F: PrimeField,
     CIx: ColumnIndexer,
-    <span class="kw">const </span>N_COL: usize,
+    <span class="kw">const </span>N_WIT: usize,
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_DSEL: usize,
     <span class="kw">const </span>N_FSEL: usize,
@@ -489,7 +478,7 @@
     <span class="doccomment">/// The witness columns that the environment is working with.
     /// Every element of the vector is a row, and the builder is
     /// always processing the last row.
-    </span><span class="kw">pub </span>witness: Vec&lt;Witness&lt;N_COL, F&gt;&gt;,
+    </span><span class="kw">pub </span>witness: Vec&lt;Witness&lt;N_WIT, F&gt;&gt;,
 
     <span class="doccomment">/// Lookup multiplicities, a vector of values `m_i` per lookup
     /// table, where `m_i` is how many times the lookup value number
@@ -520,12 +509,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; ColAccessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; ColAccessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="comment">// Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
@@ -555,12 +544,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; ColWriteCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; ColWriteCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="self">self</span>.write_column_raw(ix.to_column(), <span class="kw-2">*</span>value);
@@ -576,15 +565,15 @@
 </span><span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; HybridCopyCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; HybridCopyCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx) -&gt; <span class="self">Self</span>::Variable {
-        &lt;WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt; <span class="kw">as </span>ColWriteCap&lt;F, CIx&gt;&gt;::write_column(
+        &lt;WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt; <span class="kw">as </span>ColWriteCap&lt;F, CIx&gt;&gt;::write_column(
             <span class="self">self</span>, ix, value,
         );
         <span class="kw-2">*</span>value
@@ -594,12 +583,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; MultiRowReadCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; MultiRowReadCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="doccomment">/// Read value from a (row,column) position.
     </span><span class="kw">fn </span>read_row_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, row: usize, col: CIx) -&gt; <span class="self">Self</span>::Variable {
@@ -623,12 +612,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; DirectWitnessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; DirectWitnessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="doccomment">/// Convert an abstract variable to a field element! Inverse of Env::constant().
     </span><span class="kw">fn </span>variable_to_field(value: <span class="self">Self</span>::Variable) -&gt; F {
@@ -639,12 +628,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: <span class="kw-2">&amp;</span>&lt;<span class="self">Self </span><span class="kw">as </span>ColAccessCap&lt;F, CIx&gt;&gt;::Variable) {
         <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">*</span>value);
@@ -665,12 +654,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="kw">pub fn </span>write_column_raw(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
         <span class="kw">match </span>position {
@@ -715,7 +704,7 @@
     <span class="doccomment">/// Progress to the computations on the next row.
     </span><span class="kw">pub fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.witness.push(Witness {
-            cols: Box::new([F::zero(); N_COL]),
+            cols: Box::new([F::zero(); N_WIT]),
         });
         <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
         <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
@@ -725,18 +714,18 @@
     }
 
     <span class="doccomment">/// Getting multiplicities for range check tables less or equal than 15 bits.
-    </span><span class="kw">pub fn </span>get_lookup_multiplicities(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;, table_id: LT) -&gt; Vec&lt;F&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>m = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+    </span><span class="kw">pub fn </span>get_lookup_multiplicities(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize, table_id: LT) -&gt; Vec&lt;F&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>m = Vec::with_capacity(domain_size);
         m.extend(<span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>table_id].to_vec());
-        <span class="kw">if </span>table_id.length() &lt; (domain.d1.size <span class="kw">as </span>usize) {
-            <span class="kw">let </span>n_repeated_dummy_value: usize = (domain.d1.size <span class="kw">as </span>usize) - table_id.length() - <span class="number">1</span>;
+        <span class="kw">if </span>table_id.length() &lt; domain_size {
+            <span class="kw">let </span>n_repeated_dummy_value: usize = domain_size - table_id.length() - <span class="number">1</span>;
             <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; = iter::repeat(-F::one())
                 .take(n_repeated_dummy_value)
                 .collect();
             m.extend(repeated_dummy_value);
             m.push(F::from(n_repeated_dummy_value <span class="kw">as </span>u64));
         }
-        <span class="macro">assert_eq!</span>(m.len(), domain.d1.size <span class="kw">as </span>usize);
+        <span class="macro">assert_eq!</span>(m.len(), domain_size);
         m
     }
 }
@@ -744,12 +733,12 @@
 <span class="kw">impl</span>&lt;
         F: PrimeField,
         CIx: ColumnIndexer,
-        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
         <span class="kw">const </span>N_FSEL: usize,
         LT: LookupTableID,
-    &gt; WitnessBuilderEnv&lt;F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT&gt;
+    &gt; WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="doccomment">/// Create a new empty-state witness builder.
     </span><span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
@@ -763,7 +752,7 @@
 
         <span class="self">Self </span>{
             witness: <span class="macro">vec!</span>[Witness {
-                cols: Box::new([F::zero(); N_COL]),
+                cols: Box::new([F::zero(); N_WIT]),
             }],
 
             lookup_multiplicities,
@@ -790,11 +779,9 @@
         <span class="self">self</span>.fixed_selectors = selectors
     }
 
-    <span class="kw">pub fn </span>get_relation_witness(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;) -&gt; Witness&lt;N_COL, Vec&lt;F&gt;&gt; {
-        <span class="kw">let </span>domain_size: usize = domain.d1.size <span class="kw">as </span>usize;
-
+    <span class="kw">pub fn </span>get_relation_witness(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; Witness&lt;N_WIT, Vec&lt;F&gt;&gt; {
         <span class="comment">// Boxing to avoid stack overflow
-        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;N_COL, Vec&lt;F&gt;&gt;&gt; = Box::new(Witness {
+        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;N_WIT, Vec&lt;F&gt;&gt;&gt; = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
         });
 
@@ -819,13 +806,7 @@
             </span>witness.cols[N_REL + i] = <span class="macro">vec!</span>[F::zero(); domain_size];
         }
 
-        <span class="comment">// Fill out fixed selectors.
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_FSEL {
-            <span class="macro">assert!</span>(<span class="self">self</span>.fixed_selectors[i].len() == domain_size);
-            witness.cols[N_REL + N_DSEL + i] = <span class="self">self</span>.fixed_selectors[i].clone();
-        }
-
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(N_REL + N_DSEL + N_FSEL) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(N_REL + N_DSEL) {
             <span class="macro">assert!</span>(
                 witness.cols[i].len() == domain_size,
                 <span class="string">&quot;Witness columns length {:?} for column {:?} does not match domain size {:?}&quot;</span>,
@@ -840,10 +821,9 @@
 
     <span class="kw">pub fn </span>get_logup_witness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        domain: EvaluationDomains&lt;F&gt;,
+        domain_size: usize,
         lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
     ) -&gt; Vec&lt;LogupWitness&lt;F, LT&gt;&gt; {
-        <span class="kw">let </span>domain_size: usize = domain.d1.size <span class="kw">as </span>usize;
         <span class="comment">// Building lookup values
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
         <span class="kw">if </span>!lookup_tables_data.is_empty() {
@@ -877,7 +857,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;F&gt;&gt; = BTreeMap::new();
         <span class="comment">// Counting multiplicities &amp; adding fixed column into the last column of every table.
         </span><span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
-            <span class="kw">let </span>lookup_m = <span class="self">self</span>.get_lookup_multiplicities(domain, <span class="kw-2">*</span>table_id);
+            <span class="kw">let </span>lookup_m = <span class="self">self</span>.get_lookup_multiplicities(domain_size, <span class="kw-2">*</span>table_id);
             lookup_multiplicities.insert(<span class="kw-2">*</span>table_id, lookup_m.clone());
             <span class="kw">let </span>lookup_t = lookup_tables_data[table_id]
                 .iter()
@@ -910,11 +890,11 @@
     <span class="doccomment">/// Generates proof inputs, repacking/collecting internal witness builder state.
     </span><span class="kw">pub fn </span>get_proof_inputs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        domain: EvaluationDomains&lt;F&gt;,
+        domain_size: usize,
         lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
-    ) -&gt; ProofInputs&lt;N_COL, F, LT&gt; {
-        <span class="kw">let </span>evaluations = <span class="self">self</span>.get_relation_witness(domain);
-        <span class="kw">let </span>logups = <span class="self">self</span>.get_logup_witness(domain, lookup_tables_data);
+    ) -&gt; ProofInputs&lt;N_WIT, F, LT&gt; {
+        <span class="kw">let </span>evaluations = <span class="self">self</span>.get_relation_witness(domain_size);
+        <span class="kw">let </span>logups = <span class="self">self</span>.get_logup_witness(domain_size, lookup_tables_data);
 
         ProofInputs {
             evaluations,

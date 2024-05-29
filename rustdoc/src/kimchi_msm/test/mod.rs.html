@@ -3,9 +3,13 @@
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
 <a href="#5" id="5">5</a>
-</pre></div><pre class="rust"><code><span class="kw">pub mod </span>logup;
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+</pre></div><pre class="rust"><code><span class="kw">pub mod </span>generic;
+<span class="kw">pub mod </span>logup;
 <span class="kw">pub mod </span>proof_system;
 <span class="kw">pub mod </span>test_circuit;
 
-<span class="kw">pub use </span>proof_system::test_completeness_generic;
+<span class="comment">// Reexport all the generic test functions.
+</span><span class="kw">pub use </span>generic::<span class="kw-2">*</span>;
 </code></pre></div></section></main></body></html>

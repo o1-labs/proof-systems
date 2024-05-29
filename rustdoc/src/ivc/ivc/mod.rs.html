@@ -164,40 +164,6 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -214,7 +180,6 @@
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
-    <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>kimchi_msm::{
         circuit_design::{
             composition::{IdMPrism, MPrism},
@@ -222,18 +187,12 @@
         },
         columns::ColumnIndexer,
         logup::LookupTableID,
-        precomputed_srs::get_bn254_srs,
-        proof::ProofInputs,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
     <span class="kw">use </span>o1_utils::box_array;
-    <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
 
-    <span class="comment">// Test number
+    <span class="comment">// Total number of columns in IVC and Application circuits.
     </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + <span class="number">50</span>;
     <span class="comment">// Absolutely no idea.
     </span><span class="kw">pub const </span>TEST_N_CHALS: usize = <span class="number">200</span>;
@@ -245,10 +204,10 @@
     <span class="kw">type </span>IVCWitnessBuilderEnvRaw&lt;LT&gt; = WitnessBuilderEnv&lt;
         Fp,
         IVCColumn,
-        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
-        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_BLOCKS },
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_BLOCKS },
         <span class="number">0</span>,
-        <span class="number">0</span>,
+        N_BLOCKS,
         LT,
     &gt;;
 
@@ -298,8 +257,8 @@
 
         <span class="macro">println!</span>(<span class="string">&quot;Building fixed selectors&quot;</span>);
         <span class="kw">let </span>fixed_selectors: Vec&lt;Vec&lt;Fp&gt;&gt; =
-            build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size);
-        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+            build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size).to_vec();
+        witness_env.set_fixed_selectors(fixed_selectors);
 
         <span class="macro">println!</span>(<span class="string">&quot;Calling the IVC circuit&quot;</span>);
         <span class="comment">// TODO add nonzero E/T values.
@@ -339,63 +298,36 @@
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
 
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
-        <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
-
-        <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
         <span class="kw">let </span>witness_env = build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
             <span class="kw-2">&amp;mut </span>rng,
             domain_size,
             IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
         );
-        <span class="comment">// Don&#39;t use lookups for now
-        </span><span class="kw">let </span>rel_witness = witness_env.get_relation_witness(domain);
-        <span class="kw">let </span>proof_inputs = ProofInputs {
-            evaluations: rel_witness,
-            logups: <span class="macro">vec!</span>[],
-        };
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, IVCLookupTable&lt;Ff1&gt;&gt;::create();
         constrain_ivc::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
-        <span class="comment">// Don&#39;t use lookups for now
-        </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
+        <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            <span class="kw">_</span>,
-            { IVCColumn::N_COL },
+        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; N_BLOCKS]&gt; =
+            Box::new(build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
+                domain_size,
+            ));
+
+        kimchi_msm::test::test_completeness_generic_no_lookups::&lt;
+            { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             <span class="number">0</span>,
             N_BLOCKS,
-            IVCLookupTable&lt;Ff1&gt;,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
-        .unwrap();
-
-        <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;
             <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            { IVCColumn::N_COL },
-            { IVCColumn::N_COL - N_BLOCKS },
-            <span class="number">0</span>,
-            N_BLOCKS,
-            <span class="number">0</span>,
-            IVCLookupTable&lt;Ff1&gt;,
         &gt;(
-            domain,
-            <span class="kw-2">&amp;</span>srs,
-            <span class="kw-2">&amp;</span>constraints,
-            <span class="kw-2">&amp;</span>proof,
-            Witness::zero_vec(domain_size),
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
+            <span class="kw-2">&amp;mut </span>rng,
         );
-
-        <span class="macro">assert!</span>(verifies);
     }
 }
 </code></pre></div></section></main></body></html>

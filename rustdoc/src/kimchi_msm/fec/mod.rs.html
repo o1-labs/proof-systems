@@ -97,38 +97,6 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -145,14 +113,9 @@
             lookups::LookupTable,
         },
         logup::LookupTableID,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
-    <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-    <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
     <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -203,13 +166,8 @@
     </span><span class="kw">pub fn </span>test_fec_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>; <span class="comment">// Otherwise we can&#39;t do 15-bit lookups.
-        </span><span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
-        <span class="kw">let </span>srs_trapdoor = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(srs_trapdoor, domain.d1.size <span class="kw">as </span>usize);
-        srs.full_srs.add_lagrange_basis(domain.d1);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
         constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.get_constraints();
 
@@ -218,46 +176,24 @@
         <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
         <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+            lookup_tables_data.insert(table_id, table_id.entries(domain_size <span class="kw">as </span>u64));
         }
-        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
-        <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            <span class="kw">_</span>,
+        <span class="kw">crate</span>::test::test_completeness_generic::&lt;
             FEC_N_COLUMNS,
             FEC_N_COLUMNS,
             <span class="number">0</span>,
             <span class="number">0</span>,
-            <span class="kw">_</span>,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
-        .unwrap();
-
-        <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            FEC_N_COLUMNS,
-            FEC_N_COLUMNS,
-            <span class="number">0</span>,
-            <span class="number">0</span>,
-            <span class="number">0</span>,
+            LookupTable&lt;Ff1&gt;,
             <span class="kw">_</span>,
         &gt;(
-            domain,
-            <span class="kw-2">&amp;</span>srs,
-            <span class="kw-2">&amp;</span>constraints,
-            <span class="kw-2">&amp;</span>proof,
-            Witness::zero_vec(domain_size),
+            constraints,
+            Box::new([]),
+            proof_inputs,
+            domain_size,
+            <span class="kw-2">&amp;mut </span>rng,
         );
-
-        <span class="macro">assert!</span>(verifies);
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1010,14 +1010,6 @@
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
 <a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -1906,24 +1898,17 @@
     env.next_row();
 }
 
-<span class="kw">pub fn </span>process_misc&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(_env: <span class="kw-2">&amp;mut </span>Env)
-<span class="kw">where
-    </span>F: PrimeField,
-    Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
-{
-}
-
 <span class="doccomment">/// Builds selectors for the IVC circuit.
 </span><span class="attr">#[allow(clippy::needless_range_loop)]
 </span><span class="kw">pub fn </span>build_selectors&lt;F, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
-) -&gt; Vec&lt;Vec&lt;F&gt;&gt;
+) -&gt; [Vec&lt;F&gt;; N_BLOCKS]
 <span class="kw">where
     </span>F: PrimeField,
 {
     <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: Vec&lt;Vec&lt;F&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[F::zero(); domain_size]; N_BLOCKS];
+    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;F&gt;; N_BLOCKS] = core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain_size]);
     <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
     <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
         <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(block_i) {
@@ -1975,11 +1960,11 @@
 
     </span><span class="kw">let </span>s2 = env.read_column(IVCColumn::BlockSel(<span class="number">2</span>));
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s2.clone() * x));
-    constrain_ecadds(env);
+    constrain_scalars(env);
 
     <span class="kw">let </span>s3 = env.read_column(IVCColumn::BlockSel(<span class="number">3</span>));
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s3.clone() * x));
-    constrain_scalars(env);
+    constrain_ecadds(env);
 
     <span class="kw">let </span>s4 = env.read_column(IVCColumn::BlockSel(<span class="number">4</span>));
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s4.clone() * x));
@@ -2036,6 +2021,5 @@
     );
     process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, hash_r, <span class="kw-2">&amp;</span>chal_l, r);
     process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, u_l, r);
-    process_misc::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
 }
 </code></pre></div></section></main></body></html>
