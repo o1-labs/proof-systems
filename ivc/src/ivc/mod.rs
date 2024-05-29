@@ -45,10 +45,10 @@ mod tests {
     type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
         Fp,
         IVCColumn,
-        { <IVCColumn as ColumnIndexer>::N_COL },
-        { <IVCColumn as ColumnIndexer>::N_COL },
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
         0,
-        0,
+        N_BLOCKS,
         LT,
     >;
 
@@ -98,8 +98,8 @@ mod tests {
 
         println!("Building fixed selectors");
         let fixed_selectors: Vec<Vec<Fp>> =
-            build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
-        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+            build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
+        witness_env.set_fixed_selectors(fixed_selectors);
 
         println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
@@ -160,6 +160,9 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
+        let fixed_selectors: [Vec<Fp>; N_BLOCKS] =
+            build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
+
         // generate the proof
         let proof = prove::<
             _,
@@ -167,12 +170,19 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             _,
-            { IVCColumn::N_COL },
+            { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
             N_BLOCKS,
             IVCLookupTable<Ff1>,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        >(
+            domain,
+            &srs,
+            &constraints,
+            Box::new(fixed_selectors.clone()),
+            proof_inputs,
+            &mut rng,
+        )
         .unwrap();
 
         // verify the proof
@@ -181,7 +191,7 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            { IVCColumn::N_COL },
+            { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
             N_BLOCKS,
@@ -191,6 +201,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            Box::new(fixed_selectors),
             &proof,
             Witness::zero_vec(domain_size),
         );

@@ -886,24 +886,17 @@ where
     env.next_row();
 }
 
-pub fn process_misc<F, Env, const N_COL_TOTAL: usize>(_env: &mut Env)
-where
-    F: PrimeField,
-    Env: MultiRowReadCap<F, IVCColumn>,
-{
-}
-
 /// Builds selectors for the IVC circuit.
 #[allow(clippy::needless_range_loop)]
 pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> Vec<Vec<F>>
+) -> [Vec<F>; N_BLOCKS]
 where
     F: PrimeField,
 {
     // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    let mut selectors: Vec<Vec<F>> = vec![vec![F::zero(); domain_size]; N_BLOCKS];
+    let mut selectors: [Vec<F>; N_BLOCKS] = core::array::from_fn(|_| vec![F::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
@@ -955,11 +948,11 @@ where
 
     let s2 = env.read_column(IVCColumn::BlockSel(2));
     env.set_assert_mapper(Box::new(move |x| s2.clone() * x));
-    constrain_ecadds(env);
+    constrain_scalars(env);
 
     let s3 = env.read_column(IVCColumn::BlockSel(3));
     env.set_assert_mapper(Box::new(move |x| s3.clone() * x));
-    constrain_scalars(env);
+    constrain_ecadds(env);
 
     let s4 = env.read_column(IVCColumn::BlockSel(4));
     env.set_assert_mapper(Box::new(move |x| s4.clone() * x));
@@ -1016,5 +1009,4 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     );
     process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, &chal_l, r);
     process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
-    process_misc::<_, _, N_COL_TOTAL>(env);
 }

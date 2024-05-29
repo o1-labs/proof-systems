@@ -227,6 +227,7 @@ pub fn main() -> ExitCode {
                     domain,
                     &srs,
                     &mips_trace[instr].constraints,
+                    Box::new([]),
                     mips_folded_instance[&instr].clone(),
                     &mut rng,
                 );
@@ -247,6 +248,7 @@ pub fn main() -> ExitCode {
                     domain,
                     &srs,
                     &mips_trace[instr].constraints,
+                    Box::new([]),
                     &mips_proof,
                     Witness::zero_vec(DOMAIN_SIZE),
                 );
@@ -281,6 +283,7 @@ pub fn main() -> ExitCode {
                     domain,
                     &srs,
                     &keccak_trace[step].constraints,
+                    Box::new([]),
                     keccak_folded_instance[&step].clone(),
                     &mut rng,
                 );
@@ -301,6 +304,7 @@ pub fn main() -> ExitCode {
                     domain,
                     &srs,
                     &keccak_trace[step].constraints,
+                    Box::new([]),
                     &keccak_proof,
                     Witness::zero_vec(DOMAIN_SIZE),
                 );
