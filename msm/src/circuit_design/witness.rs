@@ -357,6 +357,16 @@ impl<
             witness.cols[N_REL + i] = vec![F::zero(); domain_size];
         }
 
+        for i in 0..(N_REL + N_DSEL) {
+            assert!(
+                witness.cols[i].len() == domain_size,
+                "Witness columns length {:?} for column {:?} does not match domain size {:?}",
+                witness.cols[i].len(),
+                i,
+                domain_size
+            );
+        }
+
         *witness
     }
 

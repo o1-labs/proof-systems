@@ -74,6 +74,11 @@ pub trait MPrism {
 }
 
 /// Identity `MPrism` from any type `T` to itself.
+///
+/// Can be used in many situations. E.g. when `foo1` and `foo2` both
+/// call `bar` that is parameterised by a lens, and `foo1` has
+/// identical context to `bar` (so requires the ID lens), but `foo2`
+/// needs an actual non-ID lens.
 #[derive(Clone, Copy, Debug)]
 pub struct IdMPrism<T>(pub PhantomData<T>);
 
