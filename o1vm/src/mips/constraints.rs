@@ -3,8 +3,8 @@ use crate::{
     mips::{
         column::{
             ColumnAlias as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
+            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
@@ -18,6 +18,8 @@ use kimchi::circuits::{
 };
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
+
+use super::column::MIPS_IS_SYSCALL_OFFSET;
 
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
@@ -383,35 +385,68 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i))
         });
-        // Whether this step has read any bytes of the preimage or not (bytelength otherwise)
+        // Whether this step has read any bytes of the preimage or not (boolean)
         let reading_preimage =
             self.variable(Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET));
+        let is_syscall = self.variable(Self::Position::ScratchState(MIPS_IS_SYSCALL_OFFSET));
         // How many hashes have been performed so far in the circuit
         let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET));
-        // How many bytes remain to be read from the preimage
-        let preimage_left = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET));
+        // Whether this is the last step of the preimage or not (boolean)
+        let end_of_preimage =
+            self.variable(Self::Position::ScratchState(MIPS_END_OF_PREIMAGE_OFFSET));
         // How many bytes have been read from the preimage so far
         let byte_counter = self.variable(Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET));
         // How many bytes have been read from the preimage in this row
-        let row_bytes = self.variable(Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET));
-        // The chunk of at most 4 bytes that has been read from the preimage
+        let num_read_bytes = self.variable(Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET));
+        // The chunk of at most 4 bytes that has been read from the preimage in this instruction
         let this_chunk = self.variable(pos);
 
         // EXTRA CONSTRAINTS
+
+        // Booleanity constraints
         {
-            // Expressions that are nonzero when the corresponding number of bytes are read
-            let read_1 = (row_bytes.clone() - Expr::from(2))
-                * (row_bytes.clone() - Expr::from(3))
-                * (row_bytes.clone() - Expr::from(4));
-            let read_2 = (row_bytes.clone() - Expr::from(1))
-                * (row_bytes.clone() - Expr::from(3))
-                * (row_bytes.clone() - Expr::from(4));
-            let read_3 = (row_bytes.clone() - Expr::from(1))
-                * (row_bytes.clone() - Expr::from(2))
-                * (row_bytes.clone() - Expr::from(4));
-            let read_4 = (row_bytes.clone() - Expr::from(1))
-                * (row_bytes.clone() - Expr::from(2))
-                * (row_bytes.clone() - Expr::from(3));
+            for var in has_n_bytes.iter() {
+                self.assert_boolean(var.clone());
+            }
+            self.assert_boolean(reading_preimage.clone());
+            self.assert_boolean(is_syscall.clone());
+            self.assert_boolean(end_of_preimage.clone());
+            // TODO: do we want to constrain this?
+            // If this is the end of the preimage, then it is also a syscall and a preimage read
+            // The possible combinations are:
+            // is_syscall reading_preimage end_of_preimage
+            // 0          0                0
+            // 1          0                0
+            // 1          1                0
+            // 1          1                1
+        }
+
+        // Byte checks with lookups
+        // FIXME: probably not needed as the preimage bytes are checked on the Keccak side as well.
+        //        Do we want to keep them here so that the bytelength bytes are also checked?
+        {
+            for b in bytes.iter() {
+                self.add_lookup(Lookup::write_one(
+                    LookupTableIDs::ByteLookup,
+                    vec![b.clone()],
+                ));
+            }
+        }
+
+        {
+            // Expressions that are nonzero when the exact corresponding number of bytes are read
+            let read_1 = (num_read_bytes.clone() - Expr::from(2))
+                * (num_read_bytes.clone() - Expr::from(3))
+                * (num_read_bytes.clone() - Expr::from(4));
+            let read_2 = (num_read_bytes.clone() - Expr::from(1))
+                * (num_read_bytes.clone() - Expr::from(3))
+                * (num_read_bytes.clone() - Expr::from(4));
+            let read_3 = (num_read_bytes.clone() - Expr::from(1))
+                * (num_read_bytes.clone() - Expr::from(2))
+                * (num_read_bytes.clone() - Expr::from(4));
+            let read_4 = (num_read_bytes.clone() - Expr::from(1))
+                * (num_read_bytes.clone() - Expr::from(2))
+                * (num_read_bytes.clone() - Expr::from(3));
 
             // Note there is no need to multiply by the Syscall flag because the constraints are zero when the witnesses are zero
             {
@@ -469,32 +504,32 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 // <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.constraints.push(
                     reading_preimage.clone()
-                        * (row_bytes.clone() - Expr::from(1))
-                        * (row_bytes.clone() - Expr::from(2))
-                        * (row_bytes.clone() - Expr::from(3))
-                        * (row_bytes.clone() - Expr::from(4)),
+                        * (num_read_bytes.clone() - Expr::from(1))
+                        * (num_read_bytes.clone() - Expr::from(2))
+                        * (num_read_bytes.clone() - Expr::from(3))
+                        * (num_read_bytes.clone() - Expr::from(4)),
                 );
 
                 // When at least has_2_byte, then any number of bytes can be read except 1
                 self.constraints.push(
                     reading_preimage.clone()
                         * has_n_bytes[1].clone()
-                        * (row_bytes.clone() - Expr::from(2))
-                        * (row_bytes.clone() - Expr::from(3))
-                        * (row_bytes.clone() - Expr::from(4)),
+                        * (num_read_bytes.clone() - Expr::from(2))
+                        * (num_read_bytes.clone() - Expr::from(3))
+                        * (num_read_bytes.clone() - Expr::from(4)),
                 );
                 // When at least has_3_byte, then any number of bytes can be read except 1 nor 2
                 self.constraints.push(
                     reading_preimage.clone()
                         * has_n_bytes[2].clone()
-                        * (row_bytes.clone() - Expr::from(3))
-                        * (row_bytes.clone() - Expr::from(4)),
+                        * (num_read_bytes.clone() - Expr::from(3))
+                        * (num_read_bytes.clone() - Expr::from(4)),
                 );
                 // When has_4_byte, then only can read 4
                 self.constraints.push(
                     reading_preimage.clone()
                         * has_n_bytes[3].clone()
-                        * (row_bytes.clone() - Expr::from(4)),
+                        * (num_read_bytes.clone() - Expr::from(4)),
                 );
             }
         }
@@ -522,9 +557,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // If no more bytes left to be read, and syscall row, then the end of the preimage is true
         // Otherwise, there was no a syscall in this row or there is still more to read
         // FIXME: can the condition be a degree-3 variable?
-        let is_syscall = self.variable(Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET));
-
-        let end_of_preimage = is_syscall * reading_preimage * preimage_left;
+        // FIXME: preimage_left should be 1 when no more bytes are left
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,

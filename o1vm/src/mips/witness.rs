@@ -8,8 +8,8 @@ use crate::{
     mips::{
         column::{
             ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
+            MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -619,12 +619,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
-
-            // Initialize bytes left to read from preimage length
-            self.write_column(
-                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-                preimage.len() as u64,
-            );
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -686,14 +680,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.preimage_bytes_read,
         );
 
-        // Update how many bytes are left to be read
-        self.write_column(
-            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-            (preimage_len as u64) - self.preimage_bytes_read,
-        );
-
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
+            self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFFSET), 1);
+
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
                 self.hash_counter,
