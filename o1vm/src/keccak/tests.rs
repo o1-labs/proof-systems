@@ -29,7 +29,7 @@ use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
     o1_utils::{self, FieldHelpers, Two},
 };
-use kimchi_msm::test::test_completeness_generic;
+use kimchi_msm::test::test_completeness_generic_no_lookups;
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use rand::{rngs::StdRng, Rng};
 use sha3::{Digest, Keccak256};
@@ -610,13 +610,15 @@ fn test_keccak_prover_constraints() {
 
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
             if keccak_circuit.in_circuit(step) {
-                test_completeness_generic::<
+                test_completeness_generic_no_lookups::<
                     N_ZKVM_KECCAK_COLS,
                     N_ZKVM_KECCAK_REL_COLS,
                     N_ZKVM_KECCAK_SEL_COLS,
+                    0,
                     _,
                 >(
                     keccak_circuit[step].constraints.clone(),
+                    Box::new([]),
                     keccak_circuit[step].witness.clone(),
                     domain_size,
                     &mut rng,

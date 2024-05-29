@@ -14,7 +14,6 @@ mod tests {
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
     use ark_ff::{UniformRand, Zero};
-    use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
         circuit_design::{
             composition::{IdMPrism, MPrism},
@@ -22,18 +21,12 @@ mod tests {
         },
         columns::ColumnIndexer,
         logup::LookupTableID,
-        precomputed_srs::get_bn254_srs,
-        proof::ProofInputs,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
     use o1_utils::box_array;
-    use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
 
-    // Test number
+    // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
     // Absolutely no idea.
     pub const TEST_N_CHALS: usize = 200;
@@ -139,73 +132,35 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng();
 
         let domain_size = 1 << 15;
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
-
-        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
             domain_size,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
-        // Don't use lookups for now
-        let rel_witness = witness_env.get_relation_witness(domain);
-        let proof_inputs = ProofInputs {
-            evaluations: rel_witness,
-            logups: vec![],
-        };
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
         constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
-        // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: [Vec<Fp>; N_BLOCKS] =
-            build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
+        let fixed_selectors: Box<[Vec<Fp>; N_BLOCKS]> =
+            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+                domain_size,
+            ));
 
-        // generate the proof
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            _,
+        kimchi_msm::test::test_completeness_generic_no_lookups::<
             { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
             N_BLOCKS,
-            IVCLookupTable<Ff1>,
+            _,
         >(
-            domain,
-            &srs,
-            &constraints,
-            Box::new(fixed_selectors.clone()),
-            proof_inputs,
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
             &mut rng,
-        )
-        .unwrap();
-
-        // verify the proof
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            { IVCColumn::N_COL - N_BLOCKS },
-            { IVCColumn::N_COL - N_BLOCKS },
-            0,
-            N_BLOCKS,
-            0,
-            IVCLookupTable<Ff1>,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            Box::new(fixed_selectors),
-            &proof,
-            Witness::zero_vec(domain_size),
         );
-
-        assert!(verifies);
     }
 }

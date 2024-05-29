@@ -8,16 +8,12 @@ pub const N_INTERMEDIATE_LIMBS: usize = 20;
 #[cfg(test)]
 mod tests {
     use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::pairing_proof::PairingSRS;
     use std::collections::BTreeMap;
 
     use crate::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         columns::ColumnIndexer,
         logup::LookupTableID,
-        precomputed_srs::get_bn254_srs,
-        prover::prove,
         serialization::{
             column::{SerializationColumn, SER_N_COLUMNS},
             interpreter::{
@@ -26,9 +22,7 @@ mod tests {
             },
             lookups::LookupTable,
         },
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
 
     type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
@@ -45,11 +39,7 @@ mod tests {
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
         // Must be at least 1 << 15 to support rangecheck15
-        const DOMAIN_SIZE: usize = 1 << 15;
-
-        let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-
-        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
+        let domain_size: usize = 1 << 15;
 
         let mut witness_env = SerializationWitnessBuilderEnv::create();
 
@@ -61,7 +51,7 @@ mod tests {
         // constant support/public input yet in the quotient polynomial.
         let input_chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
         let [input1, input2, input3]: [Fp; 3] = limb_decompose_ff::<Fp, Ff1, 88, 3>(&input_chal);
-        for _ in 0..DOMAIN_SIZE {
+        for _ in 0..domain_size {
             field_elements.push([input1, input2, input3])
         }
         let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
@@ -91,7 +81,7 @@ mod tests {
             multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
 
             // Don't reset on the last iteration.
-            if i < DOMAIN_SIZE {
+            if i < domain_size {
                 witness_env.next_row()
             }
         }
@@ -99,50 +89,23 @@ mod tests {
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64));
         }
-        let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            _,
+        crate::test::test_completeness_generic::<
             SER_N_COLUMNS,
             SER_N_COLUMNS,
             0,
             0,
             LookupTable<Ff1>,
+            _,
         >(
-            domain,
-            &srs,
-            &constraints,
+            constraints,
             Box::new([]),
             proof_inputs,
+            domain_size,
             &mut rng,
-        )
-        .unwrap();
-
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            SER_N_COLUMNS,
-            SER_N_COLUMNS,
-            0,
-            0,
-            0,
-            LookupTable<Ff1>,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            Box::new([]),
-            &proof,
-            Witness::zero_vec(DOMAIN_SIZE),
         );
-        assert!(verifies)
     }
 }

@@ -9,20 +9,14 @@ mod tests {
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::ColumnIndexer,
         ffa::{
-            columns::{FFAColumn, FFA_N_COLUMNS},
+            columns::FFAColumn,
             interpreter::{self as ffa_interpreter},
             lookups::LookupTable,
         },
         logup::LookupTableID,
-        precomputed_srs::get_bn254_srs,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
     use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
 
@@ -70,9 +64,6 @@ mod tests {
     pub fn test_ffa_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
-
-        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable>::create();
         ffa_interpreter::constrain_ff_addition(&mut constraint_env);
@@ -83,53 +74,23 @@ mod tests {
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64));
         }
-        let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
-        // generate the proof
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            _,
-            FFA_N_COLUMNS,
-            FFA_N_COLUMNS,
+        crate::test::test_completeness_generic::<
+            { <FFAColumn as ColumnIndexer>::N_COL },
+            { <FFAColumn as ColumnIndexer>::N_COL },
             0,
             0,
+            LookupTable,
             _,
         >(
-            domain,
-            &srs,
-            &constraints,
+            constraints,
             Box::new([]),
             proof_inputs,
+            domain_size,
             &mut rng,
-        )
-        .unwrap();
-
-        // verify the proof
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            FFA_N_COLUMNS,
-            FFA_N_COLUMNS,
-            0,
-            0,
-            0,
-            _,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            Box::new([]),
-            &proof,
-            Witness::zero_vec(domain_size),
         );
-
-        assert!(verifies, "Proof must verify");
     }
 }
