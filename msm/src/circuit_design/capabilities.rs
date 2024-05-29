@@ -12,7 +12,7 @@ use ark_ff::PrimeField;
 /// building constraints.
 pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     // NB: 'static here means that `Variable` does not contain any
-    // references witha a lifetime less than 'static. Which is true in
+    // references with a lifetime less than 'static. Which is true in
     // our case. Necessary for `set_assert_mapper`
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>

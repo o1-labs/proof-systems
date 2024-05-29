@@ -3,7 +3,7 @@
 use crate::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
             IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
@@ -244,7 +244,7 @@ where
 /// `comms` is lefts, rights, and outs. Returns the packed commitments
 /// in three different representations.
 #[allow(clippy::type_complexity)]
-pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
@@ -261,7 +261,7 @@ where
     let mut comms_limbs_l: [Vec<Vec<F>>; 3] = std::array::from_fn(|_| vec![]);
     let mut comms_limbs_xl: [Vec<Vec<F>>; 3] = std::array::from_fn(|_| vec![]);
 
-    for _block_row_i in 0..(3 * N_COL_TOTAL) {
+    for _block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(0) {
         let row_num = env.curr_row();
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
@@ -297,7 +297,7 @@ where
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 /// Instantiates the IVC circuit for folding. N is the total number of columns
-pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
+pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     poseidon_params: &PParams,
     comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
@@ -324,7 +324,7 @@ where
     let mut phi = Env::constant(F::zero());
 
     // Relative position in the hashing block
-    for block_row_i in 0..6 * N_COL_TOTAL + 2 {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
         // Computing h_l, h_r, h_o independently
         if block_row_i < 6 * n {
             // Left, right, or output
@@ -445,55 +445,59 @@ where
     F: PrimeField,
     Env: ColWriteCap<F, IVCColumn>,
 {
-    let phi_cur_power_f = phi_prev_power_f * phi_f;
-    let phi_cur_power_r_f = phi_prev_power_f * phi_f * r_f;
-    let phi_cur_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
-    let phi_cur_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
+    let phi_curr_power_f = phi_prev_power_f * phi_f;
+    let phi_curr_power_r_f = phi_prev_power_f * phi_f * r_f;
+    let phi_curr_power_r2_f = phi_prev_power_f * phi_f * r_f * r_f;
+    let phi_curr_power_r3_f = phi_prev_power_f * phi_f * r_f * r_f * r_f;
 
     env.write_column(IVCColumn::Block3ConstPhi, &Env::constant(phi_f));
     env.write_column(IVCColumn::Block3ConstR, &Env::constant(r_f));
-    env.write_column(IVCColumn::Block3PhiPow, &Env::constant(phi_cur_power_f));
-    env.write_column(IVCColumn::Block3PhiPowR, &Env::constant(phi_cur_power_r_f));
+    env.write_column(IVCColumn::Block3PhiPow, &Env::constant(phi_curr_power_f));
+    env.write_column(IVCColumn::Block3PhiPowR, &Env::constant(phi_curr_power_r_f));
     env.write_column(
         IVCColumn::Block3PhiPowR2,
-        &Env::constant(phi_cur_power_r2_f),
+        &Env::constant(phi_curr_power_r2_f),
     );
     env.write_column(
         IVCColumn::Block3PhiPowR3,
-        &Env::constant(phi_cur_power_r3_f),
+        &Env::constant(phi_curr_power_r3_f),
     );
 
     // TODO check that limb_decompose_ff works with <F,F,_,_>
-    let phi_cur_power_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_f);
-    write_column_array_const(env, &phi_cur_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
+    let phi_curr_power_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_f);
+    write_column_array_const(env, &phi_curr_power_f_limbs, IVCColumn::Block3PhiPowLimbs);
 
-    let phi_cur_power_r_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r_f);
-    write_column_array_const(env, &phi_cur_power_r_f_limbs, IVCColumn::Block3PhiPowRLimbs);
-
-    let phi_cur_power_r2_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r2_f);
+    let phi_curr_power_r_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r_f);
     write_column_array_const(
         env,
-        &phi_cur_power_r2_f_limbs,
+        &phi_curr_power_r_f_limbs,
+        IVCColumn::Block3PhiPowRLimbs,
+    );
+
+    let phi_curr_power_r2_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r2_f);
+    write_column_array_const(
+        env,
+        &phi_curr_power_r2_f_limbs,
         IVCColumn::Block3PhiPowR2Limbs,
     );
 
-    let phi_cur_power_r3_f_limbs =
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r3_f);
+    let phi_curr_power_r3_f_limbs =
+        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_curr_power_r3_f);
     write_column_array_const(
         env,
-        &phi_cur_power_r3_f_limbs,
+        &phi_curr_power_r3_f_limbs,
         IVCColumn::Block3PhiPowR3Limbs,
     );
 
     (
-        phi_cur_power_f,
-        phi_cur_power_f_limbs,
-        phi_cur_power_r_f_limbs,
-        phi_cur_power_r2_f_limbs,
-        phi_cur_power_r3_f_limbs,
+        phi_curr_power_f,
+        phi_curr_power_f_limbs,
+        phi_curr_power_r_f_limbs,
+        phi_curr_power_r2_f_limbs,
+        phi_curr_power_r3_f_limbs,
     )
 }
 
@@ -512,7 +516,7 @@ pub struct ScalarLimbs<F> {
 }
 
 /// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
-pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     r: F,
     phi: F,
@@ -530,22 +534,22 @@ where
     let mut phi_np1_r2_limbs = [F::zero(); N_LIMBS_SMALL];
     let mut phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
 
-    for block_row_i in 0..N_COL_TOTAL + 1 {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(2) {
         let (
             phi_prev_power_f_new,
-            phi_cur_power_f_limbs,
-            phi_cur_power_r_f_limbs,
-            phi_cur_power_r2_f_limbs,
-            phi_cur_power_r3_f_limbs,
+            phi_curr_power_f_limbs,
+            phi_curr_power_r_f_limbs,
+            phi_curr_power_r2_f_limbs,
+            phi_curr_power_r3_f_limbs,
         ) = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         phi_prev_power_f = phi_prev_power_f_new;
-        phi_limbs.push(phi_cur_power_f_limbs);
-        phi_r_limbs.push(phi_cur_power_r_f_limbs);
+        phi_limbs.push(phi_curr_power_f_limbs);
+        phi_r_limbs.push(phi_curr_power_r_f_limbs);
 
         if block_row_i == N_COL_TOTAL + 1 {
-            phi_np1_r2_limbs = phi_cur_power_r2_f_limbs;
-            phi_np1_r3_limbs = phi_cur_power_r3_f_limbs;
+            phi_np1_r2_limbs = phi_curr_power_r2_f_limbs;
+            phi_np1_r3_limbs = phi_curr_power_r3_f_limbs;
         }
 
         // Checking our constraints
@@ -601,7 +605,7 @@ where
     }
 }
 
-pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
+pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     scalar_limbs: ScalarLimbs<F>,
     comms_large: &[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
@@ -643,7 +647,7 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
     // FIXME for now stubbed and just equal to E_L
     let error_term_rprime_large: [F; 2 * N_LIMBS_LARGE] = error_terms_large[0];
 
-    for block_row_i in 0..(35 * N_COL_TOTAL + 5) {
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(3) {
         // Number of the commitment we're processing, ∈ [N]
         let com_i = block_row_i % N_COL_TOTAL;
         // Coefficient limb we're processing for C_L/C_R/C_O, ∈ [k = 17]
@@ -821,21 +825,19 @@ where
 }
 
 #[allow(clippy::needless_range_loop)]
-pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
+pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     h_r: F,
-    chal_l: Vec<F>,
+    chal_l: &[F; N_CHALS],
     r: F,
 ) where
     F: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn>,
 {
-    let chal_num = chal_l.len();
+    let mut curr_alpha_r_pow: F = F::one();
 
-    let mut cur_alpha_r_pow: F = F::one();
-
-    for block_row_i in 0..chal_num {
-        cur_alpha_r_pow *= h_r;
+    for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(4) {
+        curr_alpha_r_pow *= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, &Env::constant(h_r));
         env.write_column(IVCColumn::Block5ConstR, &Env::constant(r));
@@ -843,10 +845,10 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize>(
             IVCColumn::Block5ChalLeft,
             &Env::constant(chal_l[block_row_i]),
         );
-        env.write_column(IVCColumn::Block5ChalRight, &Env::constant(cur_alpha_r_pow));
+        env.write_column(IVCColumn::Block5ChalRight, &Env::constant(curr_alpha_r_pow));
         env.write_column(
             IVCColumn::Block5ChalOutput,
-            &Env::constant(cur_alpha_r_pow * r + chal_l[block_row_i]),
+            &Env::constant(curr_alpha_r_pow * r + chal_l[block_row_i]),
         );
 
         constrain_challenges(env);
@@ -885,45 +887,32 @@ where
 }
 
 /// Builds selectors for the IVC circuit.
+#[allow(clippy::needless_range_loop)]
 pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
 ) -> [Vec<F>; N_BLOCKS]
 where
     F: PrimeField,
 {
-    // 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
     let mut selectors: [Vec<F>; N_BLOCKS] = core::array::from_fn(|_| vec![F::zero(); domain_size]);
-    let mut cur_row = 0;
-    for _i in 0..3 * N_COL_TOTAL {
-        selectors[0][cur_row] = F::one();
-        cur_row += 1;
-    }
-    for _i in 0..6 * N_COL_TOTAL + 2 {
-        selectors[1][cur_row] = F::one();
-        cur_row += 1;
-    }
-    for _i in 0..N_COL_TOTAL + 1 {
-        selectors[2][cur_row] = F::one();
-        cur_row += 1;
-    }
-    for _i in 0..(35 * N_COL_TOTAL + 5) {
-        selectors[3][cur_row] = F::one();
-        cur_row += 1;
-    }
-    for _i in 0..N_CHALS {
-        selectors[4][cur_row] = F::one();
-        cur_row += 1;
-    }
-    for _i in 0..1 {
-        selectors[5][cur_row] = F::one();
-        cur_row += 1;
+    let mut curr_row = 0;
+    for block_i in 0..N_BLOCKS {
+        for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
+            selectors[block_i][curr_row] = F::one();
+            curr_row += 1;
+        }
     }
 
     selectors
 }
 
-/// This function generates constraitns for the whole IVC circuit.
+// We might not need to constrain selectors to be 0 or 1 if selectors
+// are public values, and can be verified directly by the verifier.
+// However we might need these constraints in folding, where public
+// input needs to be checked.
+/// This function generates constraints for the whole IVC circuit.
 pub fn constrain_selectors<F, Env>(env: &mut Env)
 where
     F: PrimeField,
@@ -932,11 +921,11 @@ where
     for i in 0..N_BLOCKS {
         // Each selector must have value either 0 or 1.
         let sel = env.read_column(IVCColumn::BlockSel(i));
-        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::from(1u64))));
+        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
     }
 }
 
-/// This function generates constraitns for the whole IVC circuit.
+/// This function generates constraints for the whole IVC circuit.
 pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
 where
     F: PrimeField,
@@ -944,6 +933,12 @@ where
     Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
     constrain_selectors(env);
+
+    // The code below calls constraint method, and internally records
+    // constraints for the corresponding blocks. Before the each call
+    // we prefix the constraint with `selector(block_num)*` so that
+    // the constraints that are created in the block block_num will have
+    // the form selector(block_num)*C(X) and not just C(X).
 
     let s0 = env.read_column(IVCColumn::BlockSel(0));
     env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
@@ -974,7 +969,7 @@ where
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 #[allow(clippy::too_many_arguments)]
-pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
+pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     comms_left: Box<[(Ff, Ff); N_COL_TOTAL]>,
     comms_right: Box<[(Ff, Ff); N_COL_TOTAL]>,
@@ -982,7 +977,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
     u_l: F,                     // part of the relaxed instance.
-    chal_l: Vec<F>,             // challenges
+    chal_l: Box<[F; N_CHALS]>,  // challenges
     poseidon_params: &PParams,
     domain_size: usize,
 ) where
@@ -995,16 +990,23 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
 {
     // Total height of all blocks. Probably higher than this number. WIP
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
+    assert!(chal_l.len() == N_CHALS);
 
     let (_comms_small, comms_large, comms_xlarge) =
-        process_inputs(env, [comms_left, comms_right, comms_out]);
+        process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(env, [comms_left, comms_right, comms_out]);
     let (hash_r_var, r_var, phi_var) =
-        process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params, &comms_xlarge);
+        process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(env, poseidon_params, &comms_xlarge);
     let r: F = Env::variable_to_field(r_var);
     let phi: F = Env::variable_to_field(phi_var);
     let hash_r: F = Env::variable_to_field(hash_r_var);
-    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL>(env, r, phi);
-    process_ecadds::<_, Ff, _, N_COL_TOTAL>(env, scalar_limbs, &comms_large, error_terms, t_terms);
-    process_challenges::<_, _, N_COL_TOTAL>(env, hash_r, chal_l, r);
+    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, r, phi);
+    process_ecadds::<_, Ff, _, N_COL_TOTAL, N_CHALS>(
+        env,
+        scalar_limbs,
+        &comms_large,
+        error_terms,
+        t_terms,
+    );
+    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, &chal_l, r);
     process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
 }

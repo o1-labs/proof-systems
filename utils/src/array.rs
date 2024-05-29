@@ -1,15 +1,18 @@
 //! This module provides different helpers in creating constant sized
 //! arrays and converting them to different formats.
+//!
+//! Functions in this module are not necessarily optimal in terms of
+//! allocations, as they tend to create intermediate vectors. For
+//! better performance, either optimise this code, or use
+//! (non-fixed-sized) vectors.
 
 // Use a generic function so that the pointer cast remains type-safe
 /// Converts a vector of elements to a boxed one. Semantically
 /// equivalent to `vector.into_boxed_slice().try_into().unwrap()`.
 pub fn vec_to_boxed_array<T, const N: usize>(vec: Vec<T>) -> Box<[T; N]> {
-    let boxed_slice = vec.into_boxed_slice();
-
-    let ptr = ::std::boxed::Box::into_raw(boxed_slice) as *mut [T; N];
-
-    unsafe { Box::from_raw(ptr) }
+    vec.into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|_| panic!("vec_to_boxed_array: length mismatch, expected {}", N))
 }
 
 // @volhovm It could potentially be more efficient with unsafe tricks.
@@ -48,7 +51,7 @@ pub fn vec_to_boxed_array3<T, const N: usize, const M: usize, const K: usize>(
 }
 
 /// A macro similar to `vec![$elem; $size]` which returns a boxed
-/// array, allocated directly on the heap (via a vector).
+/// array, allocated directly on the heap (via a vector, with reallocations).
 ///
 /// ```rustc
 ///     let _: Box<[u8; 1024]> = box_array![0; 1024];
@@ -61,11 +64,9 @@ macro_rules! box_array {
     ($val:expr ; $len:expr) => {{
         // Use a generic function so that the pointer cast remains type-safe
         fn vec_to_boxed_array<T>(vec: Vec<T>) -> Box<[T; $len]> {
-            let boxed_slice = vec.into_boxed_slice();
-
-            let ptr = ::std::boxed::Box::into_raw(boxed_slice) as *mut [T; $len];
-
-            unsafe { Box::from_raw(ptr) }
+            (vec.into_boxed_slice())
+                .try_into()
+                .unwrap_or_else(|_| panic!("box_array: length mismatch"))
         }
 
         vec_to_boxed_array(vec![$val; $len])
@@ -74,7 +75,7 @@ macro_rules! box_array {
 
 /// A macro similar to `vec![vec![$elem; $size1]; $size2]` which
 /// returns a two-dimensional boxed array, allocated directly on the
-/// heap (via a vector).
+/// heap (via a vector, with reallocations).
 ///
 /// ```rustc
 ///     let _: Box<[[u8; 1024]; 512]> = box_array![0; 1024; 512];

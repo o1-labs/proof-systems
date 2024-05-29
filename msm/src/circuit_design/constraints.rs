@@ -14,11 +14,10 @@ use crate::{
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
-    /// The index can be used to differentiate the constraints used by different
-    /// calls to the interpreter function, and let the callers ordered them for
-    /// folding for instance.
     pub constraints: Vec<Expr<ConstantExpr<F>, Column>>,
+    /// Aggregated lookups.
     pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
+    /// The function that maps the argument of `assert_zero`.
     pub assert_mapper: Box<dyn Fn(E<F>) -> E<F>>,
 }
 
@@ -38,8 +37,6 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     type Variable = E<F>;
 
     fn assert_zero(&mut self, cst: Self::Variable) {
-        // FIXME: We should enforce that we add the same expression
-        // Maybe we could have a digest of the expression
         self.constraints.push((self.assert_mapper)(cst));
     }
 

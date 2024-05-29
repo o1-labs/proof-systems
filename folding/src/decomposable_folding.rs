@@ -8,7 +8,7 @@ use crate::{
     error_term::{compute_error, ExtendedEnv},
     expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
-    BaseField, FoldingConfig, FoldingScheme, ScalarField,
+    BaseField, FoldingConfig, FoldingOutput, FoldingScheme, ScalarField,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use mina_poseidon::FqSponge;
@@ -64,11 +64,7 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         b: B,
         selector: Option<CF::Selector>,
         fq_sponge: &mut Sponge,
-    ) -> (
-        RelaxedInstance<CF::Curve, CF::Instance>,
-        RelaxedWitness<CF::Curve, CF::Witness>,
-        [PolyComm<CF::Curve>; 2],
-    )
+    ) -> FoldingOutput<CF>
     where
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
@@ -107,16 +103,26 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].elems.len(), 1);
         assert_eq!(error_commitments[1].elems.len(), 1);
 
-        fq_sponge.absorb_g(&error_commitments[0].elems);
-        fq_sponge.absorb_g(&error_commitments[1].elems);
+        let t0 = &error_commitments[0].elems[0];
+        let t1 = &error_commitments[1].elems[0];
+
+        let to_absorb = env.to_absorb(t0, t1);
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
 
         let challenge = fq_sponge.challenge();
 
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let instance =
+        let folded_instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
-        (instance, witness, error_commitments)
+        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        FoldingOutput {
+            folded_instance,
+            folded_witness,
+            t_0: error_commitments[0].clone(),
+            t_1: error_commitments[1].clone(),
+            to_absorb,
+        }
     }
 }
 

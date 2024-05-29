@@ -231,7 +231,7 @@ where
     let column_env: ColumnEnvironment<'_, N_WIT, N_REL, N_DSEL, N_FSEL, _, _> = {
         let challenges = Challenges {
             alpha,
-            // NB: as there is on permutation argument, we do use the beta
+            // NB: as there is no permutation argument, we do use the beta
             // field instead of a new one for the evaluation point.
             beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
