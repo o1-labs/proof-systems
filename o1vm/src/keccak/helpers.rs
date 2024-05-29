@@ -83,6 +83,24 @@ where
         Self::is_one(x * x_inv)
     }
 
+    // The following two degree-2 constraints define the is_zero function meaning (1 = yes):
+    // - if x = 0 then is_zero(x) = 1
+    // - if x ≠ 0 then is_zero(x) = 0
+    // It is obtained by combining these two equations:
+    // x * xinv = 1 - z
+    // x * z = 0
+    // When x = 0, xinv could be anything, like 1.
+    fn is_zero(
+        x: Self::Variable,
+        x_inv: Self::Variable,
+        z: Self::Variable,
+    ) -> (Self::Variable, Self::Variable) {
+        (
+            x.clone() * x_inv.clone() - z.clone() + Self::Variable::one(),
+            x * z,
+        )
+    }
+
     /// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - Self::constant(2) * x * y
