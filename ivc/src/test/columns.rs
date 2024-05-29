@@ -1,6 +1,7 @@
 use kimchi_msm::columns::{Column, ColumnIndexer};
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, EnumIter, EnumCountMacro, Hash)]
 pub enum AdditionColumn {
     A,
     B,
