@@ -7,33 +7,36 @@
 //! (non-fixed-sized) vectors.
 
 /// Converts a two-dimensional vector to a constant sized two-dimensional array.
-pub fn vec_to_boxed_array2<T, const N: usize, const M: usize>(
+pub fn vec_to_boxed_array2<T: Clone, const N: usize, const M: usize>(
     vec: Vec<Vec<T>>,
 ) -> Box<[[T; N]; M]> {
-    let vec_of_slices2: Vec<[T; N]> = vec
-        .into_iter()
-        .map(|x: Vec<T>| {
-            let y: Box<[T]> = x.into_boxed_slice();
-            let z: Box<[T; N]> = y
-                .try_into()
-                .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch inner array"));
-            *z
-        })
-        .collect();
-    let array: Box<[[T; N]; M]> = vec_of_slices2
+    let mut vec_of_slices2: Vec<[T; N]> = vec![];
+    vec.into_iter().for_each(|x: Vec<T>| {
+        let y: Box<[T]> = x.into_boxed_slice();
+        let z: Box<[T; N]> = y
+            .try_into()
+            .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch inner array"));
+        let zz: &[[T; N]] = std::slice::from_ref(z.as_ref());
+        vec_of_slices2.extend_from_slice(zz);
+    });
+
+    vec_of_slices2
         .into_boxed_slice()
         .try_into()
-        .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch outer array"));
-
-    array
+        .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch outer array"))
 }
 
 /// Converts a three-dimensional vector to a constant sized two-dimensional array.
-pub fn vec_to_boxed_array3<T, const N: usize, const M: usize, const K: usize>(
+pub fn vec_to_boxed_array3<T: Clone, const N: usize, const M: usize, const K: usize>(
     vec: Vec<Vec<Vec<T>>>,
 ) -> Box<[[[T; N]; M]; K]> {
-    let vec_of_slices2: Vec<[[T; N]; M]> =
-        vec.into_iter().map(|v| *vec_to_boxed_array2(v)).collect();
+    let mut vec_of_slices2: Vec<[[T; N]; M]> = vec![];
+    vec.into_iter().for_each(|x| {
+        let r: Box<[[T; N]; M]> = vec_to_boxed_array2(x);
+        let zz: &[[[T; N]; M]] = std::slice::from_ref(r.as_ref());
+        vec_of_slices2.extend_from_slice(zz);
+    });
+
     vec_of_slices2
         .into_boxed_slice()
         .try_into()
@@ -74,23 +77,23 @@ macro_rules! box_array {
 #[macro_export]
 macro_rules! box_array2 {
     ($val:expr; $len1:expr; $len2:expr) => {{
-        pub fn vec_to_boxed_array2<T>(vec: Vec<Vec<T>>) -> Box<[[T; $len1]; $len2]> {
-            let vec_of_slices2: Vec<[T; $len1]> = vec
-                .into_iter()
-                .map(|x: Vec<T>| {
-                    let y: Box<[T]> = x.into_boxed_slice();
-                    let z: Box<[T; $len1]> = y
-                        .try_into()
-                        .unwrap_or_else(|_| panic!("box_array2: length mismatch inner array"));
-                    *z
-                })
-                .collect();
-            let array: Box<[[T; $len1]; $len2]> = vec_of_slices2
+        fn vec_to_boxed_array2<T: Clone, const N: usize, const M: usize>(
+            vec: Vec<Vec<T>>,
+        ) -> Box<[[T; N]; M]> {
+            let mut vec_of_slices2: Vec<[T; N]> = vec![];
+            vec.into_iter().for_each(|x: Vec<T>| {
+                let y: Box<[T]> = x.into_boxed_slice();
+                let z: Box<[T; N]> = y
+                    .try_into()
+                    .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch inner array"));
+                let zz: &[[T; N]] = std::slice::from_ref(z.as_ref());
+                vec_of_slices2.extend_from_slice(zz);
+            });
+
+            vec_of_slices2
                 .into_boxed_slice()
                 .try_into()
-                .unwrap_or_else(|_| panic!("box_array2: length mismatch outer array"));
-
-            array
+                .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch outer array"))
         }
 
         vec_to_boxed_array2(vec![vec![$val; $len1]; $len2])
@@ -111,14 +114,14 @@ mod tests {
     /// Tests whether initialising different arrays creates a stack
     /// overflow. The usual default size of the stack is 128kB.
     fn test_boxed_stack_overflow() {
-        // Each point is assumed to be 256 bits, so 512 points is
-        // 16MB. This often overflows the stack if created as an
-        // array.
-        let _boxed: Box<[[BaseField; 256]; 1]> =
-            vec_to_boxed_array2(vec![vec![BaseField::zero(); 256]; 1]);
-        let _boxed: Box<[[BaseField; 64]; 4]> =
-            vec_to_boxed_array2(vec![vec![BaseField::zero(); 64]; 4]);
-        let _boxed: Box<[BaseField; 256]> = box_array![BaseField::zero(); 256];
-        let _boxed: Box<[[BaseField; 256]; 1]> = box_array2![BaseField::zero(); 256; 1];
+        // Each field element is assumed to be 256 bits, so 1.000.000
+        // elements is 30MB. This often overflows the stack if created
+        // as an array.
+        let _boxed: Box<[[BaseField; 1000000]; 1]> =
+            vec_to_boxed_array2(vec![vec![BaseField::zero(); 1000000]; 1]);
+        let _boxed: Box<[[BaseField; 250000]; 4]> =
+            vec_to_boxed_array2(vec![vec![BaseField::zero(); 250000]; 4]);
+        let _boxed: Box<[BaseField; 1000000]> = box_array![BaseField::zero(); 1000000];
+        let _boxed: Box<[[BaseField; 250000]; 4]> = box_array2![BaseField::zero(); 250000; 4];
     }
 }
