@@ -1018,14 +1018,12 @@
 <a href="#1018" id="1018">1018</a>
 <a href="#1019" id="1019">1019</a>
 <a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
-<a href="#1022" id="1022">1022</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
     ivc::{
         columns::{
-            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
             IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
@@ -1266,7 +1264,7 @@
 <span class="doccomment">/// `comms` is lefts, rights, and outs. Returns the packed commitments
 /// in three different representations.
 </span><span class="attr">#[allow(clippy::type_complexity)]
-</span><span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+</span><span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     comms: [Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;; <span class="number">3</span>],
 ) -&gt; (
@@ -1283,7 +1281,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs_l: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
     <span class="kw">let </span><span class="kw-2">mut </span>comms_limbs_xl: [Vec&lt;Vec&lt;F&gt;&gt;; <span class="number">3</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
-    <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">3 </span>* N_COL_TOTAL) {
+    <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">0</span>) {
         <span class="kw">let </span>row_num = env.curr_row();
 
         <span class="kw">let </span>(target_comms, row_num_local, comtype) = <span class="kw">if </span>row_num &lt; N_COL_TOTAL {
@@ -1319,7 +1317,7 @@
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
 </span><span class="doccomment">/// Instantiates the IVC circuit for folding. N is the total number of columns
-</span><span class="kw">pub fn </span>process_hashes&lt;F, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+</span><span class="kw">pub fn </span>process_hashes&lt;F, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     poseidon_params: <span class="kw-2">&amp;</span>PParams,
     comms_xlarge: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
@@ -1346,7 +1344,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>phi = Env::constant(F::zero());
 
     <span class="comment">// Relative position in the hashing block
-    </span><span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>* N_COL_TOTAL + <span class="number">2 </span>{
+    </span><span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">1</span>) {
         <span class="comment">// Computing h_l, h_r, h_o independently
         </span><span class="kw">if </span>block_row_i &lt; <span class="number">6 </span>* n {
             <span class="comment">// Left, right, or output
@@ -1538,7 +1536,7 @@
 }
 
 <span class="doccomment">/// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
-</span><span class="kw">pub fn </span>process_scalars&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+</span><span class="kw">pub fn </span>process_scalars&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     r: F,
     phi: F,
@@ -1556,7 +1554,7 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>phi_np1_r2_limbs = [F::zero(); N_LIMBS_SMALL];
     <span class="kw">let </span><span class="kw-2">mut </span>phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
 
-    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..N_COL_TOTAL + <span class="number">1 </span>{
+    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">2</span>) {
         <span class="kw">let </span>(
             phi_prev_power_f_new,
             phi_curr_power_f_limbs,
@@ -1627,7 +1625,7 @@
     }
 }
 
-<span class="kw">pub fn </span>process_ecadds&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+<span class="kw">pub fn </span>process_ecadds&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     scalar_limbs: ScalarLimbs&lt;F&gt;,
     comms_large: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>],
@@ -1669,7 +1667,7 @@
     // FIXME for now stubbed and just equal to E_L
     </span><span class="kw">let </span>error_term_rprime_large: [F; <span class="number">2 </span>* N_LIMBS_LARGE] = error_terms_large[<span class="number">0</span>];
 
-    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">35 </span>* N_COL_TOTAL + <span class="number">5</span>) {
+    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">3</span>) {
         <span class="comment">// Number of the commitment we&#39;re processing, ∈ [N]
         </span><span class="kw">let </span>com_i = block_row_i % N_COL_TOTAL;
         <span class="comment">// Coefficient limb we&#39;re processing for C_L/C_R/C_O, ∈ [k = 17]
@@ -1847,20 +1845,18 @@
 </span>}
 
 <span class="attr">#[allow(clippy::needless_range_loop)]
-</span><span class="kw">pub fn </span>process_challenges&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+</span><span class="kw">pub fn </span>process_challenges&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     h_r: F,
-    chal_l: Vec&lt;F&gt;,
+    chal_l: <span class="kw-2">&amp;</span>[F; N_CHALS],
     r: F,
 ) <span class="kw">where
     </span>F: PrimeField,
     Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
 {
-    <span class="kw">let </span>chal_num = chal_l.len();
-
     <span class="kw">let </span><span class="kw-2">mut </span>curr_alpha_r_pow: F = F::one();
 
-    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..chal_num {
+    <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">4</span>) {
         curr_alpha_r_pow <span class="kw-2">*</span>= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, <span class="kw-2">&amp;</span>Env::constant(h_r));
@@ -1918,45 +1914,32 @@
 }
 
 <span class="doccomment">/// Builds selectors for the IVC circuit.
+</span><span class="attr">#[allow(clippy::needless_range_loop)]
 </span><span class="kw">pub fn </span>build_selectors&lt;F, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
 ) -&gt; Vec&lt;Vec&lt;F&gt;&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
-    <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + 1 + N_CHALS =
+    <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
     </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: Vec&lt;Vec&lt;F&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[F::zero(); domain_size]; N_BLOCKS];
     <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">3 </span>* N_COL_TOTAL {
-        selectors[<span class="number">0</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
-    }
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>* N_COL_TOTAL + <span class="number">2 </span>{
-        selectors[<span class="number">1</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
-    }
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..N_COL_TOTAL + <span class="number">1 </span>{
-        selectors[<span class="number">2</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
-    }
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..(<span class="number">35 </span>* N_COL_TOTAL + <span class="number">5</span>) {
-        selectors[<span class="number">3</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
-    }
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..N_CHALS {
-        selectors[<span class="number">4</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
-    }
-    <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..<span class="number">1 </span>{
-        selectors[<span class="number">5</span>][curr_row] = F::one();
-        curr_row += <span class="number">1</span>;
+    <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
+        <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(block_i) {
+            selectors[block_i][curr_row] = F::one();
+            curr_row += <span class="number">1</span>;
+        }
     }
 
     selectors
 }
 
-<span class="doccomment">/// This function generates constraitns for the whole IVC circuit.
+<span class="comment">// We might not need to constrain selectors to be 0 or 1 if selectors
+// are public values, and can be verified directly by the verifier.
+// However we might need these constraints in folding, where public
+// input needs to be checked.
+</span><span class="doccomment">/// This function generates constraints for the whole IVC circuit.
 </span><span class="kw">pub fn </span>constrain_selectors&lt;F, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
 <span class="kw">where
     </span>F: PrimeField,
@@ -1978,7 +1961,13 @@
 {
     constrain_selectors(env);
 
-    <span class="kw">let </span>s0 = env.read_column(IVCColumn::BlockSel(<span class="number">0</span>));
+    <span class="comment">// The code below calls constraint method, and internally records
+    // constraints for the corresponding blocks. Before the each call
+    // we prefix the constraint with `selector(block_num)*` so that
+    // the constraints that are created in the block block_num will have
+    // the form selector(block_num)*C(X) and not just C(X).
+
+    </span><span class="kw">let </span>s0 = env.read_column(IVCColumn::BlockSel(<span class="number">0</span>));
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s0.clone() * x));
     constrain_inputs(env);
 
@@ -2007,7 +1996,7 @@
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+</span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     comms_left: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
     comms_right: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
@@ -2015,7 +2004,7 @@
     error_terms: [(Ff, Ff); <span class="number">3</span>], <span class="comment">// E_L, E_R, E_O
     </span>t_terms: [(Ff, Ff); <span class="number">2</span>],     <span class="comment">// T_0, T_1
     </span>u_l: F,                     <span class="comment">// part of the relaxed instance.
-    </span>chal_l: Vec&lt;F&gt;,             <span class="comment">// challenges
+    </span>chal_l: Box&lt;[F; N_CHALS]&gt;,  <span class="comment">// challenges
     </span>poseidon_params: <span class="kw-2">&amp;</span>PParams,
     domain_size: usize,
 ) <span class="kw">where
@@ -2028,17 +2017,24 @@
 {
     <span class="comment">// Total height of all blocks. Probably higher than this number. WIP
     </span><span class="macro">assert!</span>(<span class="number">45 </span>* N_COL_TOTAL + <span class="number">2 </span>&lt; domain_size);
+    <span class="macro">assert!</span>(chal_l.len() == N_CHALS);
 
     <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) =
-        process_inputs(env, [comms_left, comms_right, comms_out]);
+        process_inputs::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, [comms_left, comms_right, comms_out]);
     <span class="kw">let </span>(hash_r_var, r_var, phi_var) =
-        process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, poseidon_params, <span class="kw-2">&amp;</span>comms_xlarge);
+        process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, poseidon_params, <span class="kw-2">&amp;</span>comms_xlarge);
     <span class="kw">let </span>r: F = Env::variable_to_field(r_var);
     <span class="kw">let </span>phi: F = Env::variable_to_field(phi_var);
     <span class="kw">let </span>hash_r: F = Env::variable_to_field(hash_r_var);
-    <span class="kw">let </span>scalar_limbs = process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, r, phi);
-    process_ecadds::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, scalar_limbs, <span class="kw-2">&amp;</span>comms_large, error_terms, t_terms);
-    process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, hash_r, chal_l, r);
+    <span class="kw">let </span>scalar_limbs = process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, r, phi);
+    process_ecadds::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(
+        env,
+        scalar_limbs,
+        <span class="kw-2">&amp;</span>comms_large,
+        error_terms,
+        t_terms,
+    );
+    process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, hash_r, <span class="kw-2">&amp;</span>chal_l, r);
     process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, u_l, r);
     process_misc::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env);
 }

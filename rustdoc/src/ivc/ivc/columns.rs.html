@@ -433,6 +433,19 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
@@ -443,6 +456,19 @@
 
 <span class="doccomment">/// Number of blocks in the circuit.
 </span><span class="kw">pub const </span>N_BLOCKS: usize = <span class="number">6</span>;
+
+<span class="doccomment">/// Defines the height of each block in the IVC circuit.
+</span><span class="kw">pub fn </span>block_height&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(block_num: usize) -&gt; usize {
+    <span class="kw">match </span>block_num {
+        <span class="number">0 </span>=&gt; <span class="number">3 </span>* N_COL_TOTAL,
+        <span class="number">1 </span>=&gt; <span class="number">6 </span>* N_COL_TOTAL + <span class="number">2</span>,
+        <span class="number">2 </span>=&gt; N_COL_TOTAL + <span class="number">1</span>,
+        <span class="number">3 </span>=&gt; <span class="number">35 </span>* N_COL_TOTAL + <span class="number">5</span>,
+        <span class="number">4 </span>=&gt; N_CHALS,
+        <span class="number">5 </span>=&gt; <span class="number">1</span>,
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;block_size: no block number {block_num:?}&quot;</span>),
+    }
+}
 
 <span class="kw">pub const </span>IVC_POSEIDON_STATE_SIZE: usize = <span class="number">3</span>;
 <span class="kw">pub const </span>IVC_POSEIDON_NB_FULL_ROUND: usize = <span class="number">55</span>;

@@ -105,6 +105,9 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -120,9 +123,12 @@
 };
 
 <span class="kw">pub struct </span>ConstraintBuilderEnv&lt;F: PrimeField, LT: LookupTableID&gt; {
-    <span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;,
-    <span class="kw">pub </span>lookups: BTreeMap&lt;LT, Vec&lt;Logup&lt;E&lt;F&gt;, LT&gt;&gt;&gt;,
-    <span class="kw">pub </span>assert_mapper: Box&lt;<span class="kw">dyn </span>Fn(E&lt;F&gt;) -&gt; E&lt;F&gt;&gt;,
+    <span class="doccomment">/// An indexed set of constraints.
+    </span><span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;,
+    <span class="doccomment">/// Aggregated lookups.
+    </span><span class="kw">pub </span>lookups: BTreeMap&lt;LT, Vec&lt;Logup&lt;E&lt;F&gt;, LT&gt;&gt;&gt;,
+    <span class="doccomment">/// The function that maps the argument of `assert_zero`.
+    </span><span class="kw">pub </span>assert_mapper: Box&lt;<span class="kw">dyn </span>Fn(E&lt;F&gt;) -&gt; E&lt;F&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField, LT: LookupTableID&gt; ConstraintBuilderEnv&lt;F, LT&gt; {

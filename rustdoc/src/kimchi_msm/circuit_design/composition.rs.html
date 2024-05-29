@@ -402,6 +402,11 @@
 <a href="#402" id="402">402</a>
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Tools to /compose/ different circuit designers.
 ///
 /// Assume we have several sets of columns:
@@ -478,6 +483,11 @@
 }
 
 <span class="doccomment">/// Identity `MPrism` from any type `T` to itself.
+///
+/// Can be used in many situations. E.g. when `foo1` and `foo2` both
+/// call `bar` that is parameterised by a lens, and `foo1` has
+/// identical context to `bar` (so requires the ID lens), but `foo2`
+/// needs an actual non-ID lens.
 </span><span class="attr">#[derive(Clone, Copy, Debug)]
 </span><span class="kw">pub struct </span>IdMPrism&lt;T&gt;(<span class="kw">pub </span>PhantomData&lt;T&gt;);
 

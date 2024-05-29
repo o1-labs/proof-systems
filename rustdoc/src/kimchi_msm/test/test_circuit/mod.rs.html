@@ -455,6 +455,8 @@
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
 <a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 
@@ -497,11 +499,7 @@
     ) -&gt; TestWitnessBuilderEnv&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>fixed_sel: Vec&lt;Fp&gt; = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain_size {
-            fixed_sel.push(Fp::from(i <span class="kw">as </span>u64));
-        }
-
+        <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
         witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
@@ -595,7 +593,10 @@
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        </span><span class="kw">let </span>constant: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
+        </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+
+        <span class="kw">let </span>constant: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
             <span class="kw">let </span>b: Fp = constant / a;
@@ -689,7 +690,10 @@
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        </span><span class="kw">let </span>row_num = <span class="number">10</span>;
+        </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+
+        <span class="kw">let </span>row_num = <span class="number">10</span>;
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..row_num {
             <span class="kw">let </span>a: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
             <span class="kw">let </span>b: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));

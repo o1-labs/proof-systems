@@ -194,6 +194,10 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -299,7 +303,7 @@
 
         <span class="macro">println!</span>(<span class="string">&quot;Calling the IVC circuit&quot;</span>);
         <span class="comment">// TODO add nonzero E/T values.
-        </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
+        </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
             <span class="kw-2">&amp;mut </span>SubEnvLookup::new(<span class="kw-2">&amp;mut </span>witness_env, lt_lens),
             comms_left,
             comms_right,
@@ -307,7 +311,11 @@
             [(Ff1::zero(), Ff1::zero()); <span class="number">3</span>],
             [(Ff1::zero(), Ff1::zero()); <span class="number">2</span>],
             Fp::zero(),
-            <span class="macro">vec!</span>[Fp::zero(); TEST_N_CHALS],
+            Box::new(
+                (<span class="kw-2">*</span><span class="macro">vec!</span>[Fp::zero(); TEST_N_CHALS].into_boxed_slice())
+                    .try_into()
+                    .unwrap(),
+            ),
             <span class="kw-2">&amp;</span>PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );

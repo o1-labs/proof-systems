@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["IVC_POSEIDON_NB_FULL_ROUND","IVC_POSEIDON_STATE_SIZE","N_BLOCKS"],"enum":["IVCColumn"],"struct":["IVCFECLens","IVCHashLens"],"type":["IVCPoseidonColumn"]};
+window.SIDEBAR_ITEMS = {"constant":["IVC_POSEIDON_NB_FULL_ROUND","IVC_POSEIDON_STATE_SIZE","N_BLOCKS"],"enum":["IVCColumn"],"fn":["block_height"],"struct":["IVCFECLens","IVCHashLens"],"type":["IVCPoseidonColumn"]};
