@@ -103,7 +103,7 @@ mod tests {
 
         println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
-        ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
+        ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
             comms_left,
             comms_right,
@@ -111,7 +111,11 @@ mod tests {
             [(Ff1::zero(), Ff1::zero()); 3],
             [(Ff1::zero(), Ff1::zero()); 2],
             Fp::zero(),
-            vec![Fp::zero(); TEST_N_CHALS],
+            Box::new(
+                (*vec![Fp::zero(); TEST_N_CHALS].into_boxed_slice())
+                    .try_into()
+                    .unwrap(),
+            ),
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );

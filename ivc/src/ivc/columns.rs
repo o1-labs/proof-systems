@@ -9,6 +9,19 @@ use kimchi_msm::{
 /// Number of blocks in the circuit.
 pub const N_BLOCKS: usize = 6;
 
+/// Defines the height of each block in the IVC circuit.
+pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: usize) -> usize {
+    match block_num {
+        0 => 3 * N_COL_TOTAL,
+        1 => 6 * N_COL_TOTAL + 2,
+        2 => N_COL_TOTAL + 1,
+        3 => 35 * N_COL_TOTAL + 5,
+        4 => N_CHALS,
+        5 => 1,
+        _ => panic!("block_size: no block number {block_num:?}"),
+    }
+}
+
 pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
 pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 

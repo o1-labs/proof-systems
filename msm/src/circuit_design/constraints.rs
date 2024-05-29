@@ -13,8 +13,11 @@ use crate::{
 };
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
+    /// An indexed set of constraints.
     pub constraints: Vec<Expr<ConstantExpr<F>, Column>>,
+    /// Aggregated lookups.
     pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
+    /// The function that maps the argument of `assert_zero`.
     pub assert_mapper: Box<dyn Fn(E<F>) -> E<F>>,
 }
 

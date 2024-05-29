@@ -359,7 +359,18 @@ impl<
 
         // Fill out fixed selectors.
         for i in 0..N_FSEL {
+            assert!(self.fixed_selectors[i].len() == domain_size);
             witness.cols[N_REL + N_DSEL + i] = self.fixed_selectors[i].clone();
+        }
+
+        for i in 0..(N_REL + N_DSEL + N_FSEL) {
+            assert!(
+                witness.cols[i].len() == domain_size,
+                "Witness columns length {:?} for column {:?} does not match domain size {:?}",
+                witness.cols[i].len(),
+                i,
+                domain_size
+            );
         }
 
         *witness
