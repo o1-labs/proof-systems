@@ -132,6 +132,9 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides different helpers in creating constant sized
 //! arrays and converting them to different formats.
 //!
@@ -151,33 +154,36 @@
 
 <span class="comment">// @volhovm It could potentially be more efficient with unsafe tricks.
 </span><span class="doccomment">/// Converts a two-dimensional vector to a constant sized two-dimensional array.
-</span><span class="kw">pub fn </span>vec_to_boxed_array2&lt;T, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize&gt;(
+</span><span class="kw">pub fn </span>vec_to_boxed_array2&lt;T: Clone, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize&gt;(
     vec: Vec&lt;Vec&lt;T&gt;&gt;,
 ) -&gt; Box&lt;[[T; N]; M]&gt; {
-    <span class="kw">let </span>vec_of_slices2: Vec&lt;[T; N]&gt; = vec
-        .into_iter()
-        .map(|x: Vec&lt;T&gt;| {
-            <span class="kw">let </span>y: Box&lt;[T]&gt; = x.into_boxed_slice();
-            <span class="kw">let </span>z: Box&lt;[T; N]&gt; = y
-                .try_into()
-                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch inner array&quot;</span>));
-            <span class="kw-2">*</span>z
-        })
-        .collect();
-    <span class="kw">let </span>array: Box&lt;[[T; N]; M]&gt; = vec_of_slices2
+    <span class="kw">let </span><span class="kw-2">mut </span>vec_of_slices2: Vec&lt;[T; N]&gt; = <span class="macro">vec!</span>[];
+    vec.into_iter().for_each(|x: Vec&lt;T&gt;| {
+        <span class="kw">let </span>y: Box&lt;[T]&gt; = x.into_boxed_slice();
+        <span class="kw">let </span>z: Box&lt;[T; N]&gt; = y
+            .try_into()
+            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch inner array&quot;</span>));
+        <span class="kw">let </span>zz: <span class="kw-2">&amp;</span>[[T; N]] = std::slice::from_ref(z.as_ref());
+        vec_of_slices2.extend_from_slice(zz);
+    });
+
+    vec_of_slices2
         .into_boxed_slice()
         .try_into()
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch outer array&quot;</span>));
-
-    array
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch outer array&quot;</span>))
 }
 
 <span class="doccomment">/// Converts a three-dimensional vector to a constant sized two-dimensional array.
-</span><span class="kw">pub fn </span>vec_to_boxed_array3&lt;T, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize, <span class="kw">const </span>K: usize&gt;(
+</span><span class="kw">pub fn </span>vec_to_boxed_array3&lt;T: Clone, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize, <span class="kw">const </span>K: usize&gt;(
     vec: Vec&lt;Vec&lt;Vec&lt;T&gt;&gt;&gt;,
 ) -&gt; Box&lt;[[[T; N]; M]; K]&gt; {
-    <span class="kw">let </span>vec_of_slices2: Vec&lt;[[T; N]; M]&gt; =
-        vec.into_iter().map(|v| <span class="kw-2">*</span>vec_to_boxed_array2(v)).collect();
+    <span class="kw">let </span><span class="kw-2">mut </span>vec_of_slices2: Vec&lt;[[T; N]; M]&gt; = <span class="macro">vec!</span>[];
+    vec.into_iter().for_each(|x| {
+        <span class="kw">let </span>r: Box&lt;[[T; N]; M]&gt; = vec_to_boxed_array2(x);
+        <span class="kw">let </span>zz: <span class="kw-2">&amp;</span>[[[T; N]; M]] = std::slice::from_ref(r.as_ref());
+        vec_of_slices2.extend_from_slice(zz);
+    });
+
     vec_of_slices2
         .into_boxed_slice()
         .try_into()
@@ -218,23 +224,23 @@
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>box_array2 {
     (<span class="macro-nonterminal">$val</span>:expr; <span class="macro-nonterminal">$len1</span>:expr; <span class="macro-nonterminal">$len2</span>:expr) =&gt; {{
-        <span class="kw">pub fn </span>vec_to_boxed_array2&lt;T&gt;(vec: Vec&lt;Vec&lt;T&gt;&gt;) -&gt; Box&lt;[[T; <span class="macro-nonterminal">$len1</span>]; <span class="macro-nonterminal">$len2</span>]&gt; {
-            <span class="kw">let </span>vec_of_slices2: Vec&lt;[T; <span class="macro-nonterminal">$len1</span>]&gt; = vec
-                .into_iter()
-                .map(|x: Vec&lt;T&gt;| {
-                    <span class="kw">let </span>y: Box&lt;[T]&gt; = x.into_boxed_slice();
-                    <span class="kw">let </span>z: Box&lt;[T; <span class="macro-nonterminal">$len1</span>]&gt; = y
-                        .try_into()
-                        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;box_array2: length mismatch inner array&quot;</span>));
-                    <span class="kw-2">*</span>z
-                })
-                .collect();
-            <span class="kw">let </span>array: Box&lt;[[T; <span class="macro-nonterminal">$len1</span>]; <span class="macro-nonterminal">$len2</span>]&gt; = vec_of_slices2
+        <span class="kw">fn </span>vec_to_boxed_array2&lt;T: Clone, <span class="kw">const </span>N: usize, <span class="kw">const </span>M: usize&gt;(
+            vec: Vec&lt;Vec&lt;T&gt;&gt;,
+        ) -&gt; Box&lt;[[T; N]; M]&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>vec_of_slices2: Vec&lt;[T; N]&gt; = <span class="macro">vec!</span>[];
+            vec.into_iter().for_each(|x: Vec&lt;T&gt;| {
+                <span class="kw">let </span>y: Box&lt;[T]&gt; = x.into_boxed_slice();
+                <span class="kw">let </span>z: Box&lt;[T; N]&gt; = y
+                    .try_into()
+                    .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch inner array&quot;</span>));
+                <span class="kw">let </span>zz: <span class="kw-2">&amp;</span>[[T; N]] = std::slice::from_ref(z.as_ref());
+                vec_of_slices2.extend_from_slice(zz);
+            });
+
+            vec_of_slices2
                 .into_boxed_slice()
                 .try_into()
-                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;box_array2: length mismatch outer array&quot;</span>));
-
-            array
+                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;vec_to_boxed_array2: length mismatch outer array&quot;</span>))
         }
 
         vec_to_boxed_array2(<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro-nonterminal">$val</span>; <span class="macro-nonterminal">$len1</span>]; <span class="macro-nonterminal">$len2</span>])
@@ -255,15 +261,15 @@
     </span><span class="doccomment">/// Tests whether initialising different arrays creates a stack
     /// overflow. The usual default size of the stack is 128kB.
     </span><span class="kw">fn </span>test_boxed_stack_overflow() {
-        <span class="comment">// Each point is assumed to be 256 bits, so 512 points is
-        // 16MB. This often overflows the stack if created as an
-        // array.
-        </span><span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">256</span>]; <span class="number">1</span>]&gt; =
-            vec_to_boxed_array2(<span class="macro">vec!</span>[<span class="macro">vec!</span>[BaseField::zero(); <span class="number">256</span>]; <span class="number">1</span>]);
-        <span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">64</span>]; <span class="number">4</span>]&gt; =
-            vec_to_boxed_array2(<span class="macro">vec!</span>[<span class="macro">vec!</span>[BaseField::zero(); <span class="number">64</span>]; <span class="number">4</span>]);
-        <span class="kw">let </span>_boxed: Box&lt;[BaseField; <span class="number">256</span>]&gt; = <span class="macro">box_array!</span>[BaseField::zero(); <span class="number">256</span>];
-        <span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">256</span>]; <span class="number">1</span>]&gt; = <span class="macro">box_array2!</span>[BaseField::zero(); <span class="number">256</span>; <span class="number">1</span>];
+        <span class="comment">// Each field element is assumed to be 256 bits, so 1.000.000
+        // elements is 30MB. This often overflows the stack if created
+        // as an array.
+        </span><span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">1000000</span>]; <span class="number">1</span>]&gt; =
+            vec_to_boxed_array2(<span class="macro">vec!</span>[<span class="macro">vec!</span>[BaseField::zero(); <span class="number">1000000</span>]; <span class="number">1</span>]);
+        <span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">250000</span>]; <span class="number">4</span>]&gt; =
+            vec_to_boxed_array2(<span class="macro">vec!</span>[<span class="macro">vec!</span>[BaseField::zero(); <span class="number">250000</span>]; <span class="number">4</span>]);
+        <span class="kw">let </span>_boxed: Box&lt;[BaseField; <span class="number">1000000</span>]&gt; = <span class="macro">box_array!</span>[BaseField::zero(); <span class="number">1000000</span>];
+        <span class="kw">let </span>_boxed: Box&lt;[[BaseField; <span class="number">250000</span>]; <span class="number">4</span>]&gt; = <span class="macro">box_array2!</span>[BaseField::zero(); <span class="number">250000</span>; <span class="number">4</span>];
     }
 }
 </code></pre></div></section></main></body></html>
