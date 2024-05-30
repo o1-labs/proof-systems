@@ -99,7 +99,7 @@
 //! the "relaxation" of a polynomial means we make it homogenous for a certain
 //! degree `d` by introducing the new variable `u`, and introduce the concept of
 //! "error terms" that will englobe the "cross-terms". The prover takes care of
-//! computing the cross-terms and commit to it.
+//! computing the cross-terms and commit to them.
 //!
 //! While folding, we aggregate the error terms of all instances into a single
 //! error term, E.
