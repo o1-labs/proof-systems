@@ -80,6 +80,7 @@
 //! + r [u (u' - X_{3}) + u' (u - X_{3})] + r [X_{1} X_{2}'   +   X_{2} X_{1}']
 //!   \---------------------------------/   \----------------------------------/
 //!  cross terms of monomials of degree 1   cross terms of monomials of degree 2
+//!              and degree 0
 //! ```
 //! The error term `T` (or "cross term") is the last term of the expression,
 //! multiplied by `r`.
@@ -122,7 +123,8 @@
 //!
 //! More generally, if for each row, our computation is constrained by the polynomial
 //! list `[P_{1}, P_{2}, ..., P_{n}]`, we can aggregate them into a single
-//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the $\alpha$ terms consequently increases the overall degree of the expression.
+//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the α terms
+//! consequently increases the overall degree of the expression.
 //!
 //! In particular, when we reduce a polynomial to degree 2, we have this case
 //! where the circuit is described by a list of polynomials and we aggregate
@@ -164,7 +166,8 @@
 //! ```
 //!
 //! Note that we end up with everything of the same degree, which is `3` in this
-//! case.
+//! case. The variables `α_{1}` and `α_{2}` increases the degree of the
+//! homogeneous expressions by one.
 //!
 //! For two given instances `(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})` and
 //! `(X_{1}', X_{2}', X_{3}', u', α_{1}', α_{2}')`, we coin a random value `r` and we compute:
