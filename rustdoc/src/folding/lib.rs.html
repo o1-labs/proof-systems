@@ -360,6 +360,20 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -561,12 +575,12 @@
 
         <span class="kw">let </span>u = (a.<span class="number">0</span>.u, b.<span class="number">0</span>.u);
 
-        <span class="kw">let </span>(ins1, wit1) = a;
-        <span class="kw">let </span>(ins2, wit2) = b;
+        <span class="kw">let </span>(left_instance, left_witness) = a;
+        <span class="kw">let </span>(right_instance, right_witness) = b;
         <span class="kw">let </span>env = ExtendedEnv::new(
             <span class="kw-2">&amp;</span><span class="self">self</span>.structure,
-            [ins1, ins2],
-            [wit1, wit2],
+            [left_instance, right_instance],
+            [left_witness, right_witness],
             <span class="self">self</span>.domain,
             <span class="prelude-val">None</span>,
         );
@@ -597,10 +611,24 @@
 
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
-        <span class="kw">let </span>([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        <span class="kw">let </span>folded_instance =
-            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, <span class="kw-2">&amp;</span>error_commitments);
-        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        <span class="kw">let </span>(
+            [relaxed_extended_left_instance, relaxed_extended_right_instance],
+            [relaxed_extended_left_witness, relaxed_extended_right_witness],
+        ) = env.unwrap();
+
+        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
+            challenge,
+            <span class="kw-2">&amp;</span>error_commitments,
+        );
+
+        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(
+            relaxed_extended_left_witness,
+            relaxed_extended_right_witness,
+            challenge,
+            error,
+        );
         FoldingOutput {
             folded_instance,
             folded_witness,

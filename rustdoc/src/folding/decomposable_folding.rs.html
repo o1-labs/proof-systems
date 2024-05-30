@@ -132,6 +132,21 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -210,15 +225,16 @@
 
         <span class="kw">let </span>u = (a.<span class="number">0</span>.u, b.<span class="number">0</span>.u);
 
-        <span class="kw">let </span>(ins1, wit1) = a;
-        <span class="kw">let </span>(ins2, wit2) = b;
+        <span class="kw">let </span>(left_instance, left_witness) = a;
+        <span class="kw">let </span>(right_instance, right_witness) = b;
         <span class="kw">let </span>env = ExtendedEnv::new(
             <span class="kw-2">&amp;</span>scheme.structure,
-            [ins1, ins2],
-            [wit1, wit2],
+            [left_instance, right_instance],
+            [left_witness, right_witness],
             scheme.domain,
             selector,
         );
+
         <span class="kw">let </span>env = env.compute_extension(<span class="kw-2">&amp;</span>scheme.extended_witness_generator, scheme.srs);
         <span class="kw">let </span>error = compute_error(<span class="kw-2">&amp;</span>scheme.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
@@ -246,10 +262,24 @@
 
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
-        <span class="kw">let </span>([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        <span class="kw">let </span>folded_instance =
-            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, <span class="kw-2">&amp;</span>error_commitments);
-        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        <span class="kw">let </span>(
+            [relaxed_extended_left_instance, relaxed_extended_right_instance],
+            [relaxed_extended_left_witness, relaxed_extended_right_witness],
+        ) = env.unwrap();
+
+        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
+            challenge,
+            <span class="kw-2">&amp;</span>error_commitments,
+        );
+
+        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(
+            relaxed_extended_left_witness,
+            relaxed_extended_right_witness,
+            challenge,
+            error,
+        );
         FoldingOutput {
             folded_instance,
             folded_witness,
