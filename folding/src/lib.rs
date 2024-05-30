@@ -177,8 +177,9 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         };
         (scheme, final_expression)
     }
-    //the number of columns added by quadraticization to lower the degree
-    pub fn quadraticization_columns(&self) -> usize {
+
+    /// Return the number of additional columns added by quadraticization
+    pub fn get_number_of_additional_columns(&self) -> usize {
         self.quadraticization_columns
     }
 

@@ -45,6 +45,7 @@ impl Foldable<Fp> for TestWitness {
 }
 
 impl Witness<Curve> for TestWitness {}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Col {
     A,
@@ -102,6 +103,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 }
+
 fn degree_1_constraint(col: Col) -> FoldingCompatibleExpr<TestConfig> {
     let col = Variable {
         col,
@@ -109,13 +111,13 @@ fn degree_1_constraint(col: Col) -> FoldingCompatibleExpr<TestConfig> {
     };
     FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
 }
+
 fn degree_n_constraint(n: usize, col: Col) -> FoldingCompatibleExpr<TestConfig> {
     match n {
-        //as I don't use it
         0 => {
-            panic!()
+            panic!("Degree 0 is not supposed to be used by the test suite.")
         }
-        //base case
+        // base case
         1 => degree_1_constraint(col),
         _ => {
             let one = degree_1_constraint(col);
@@ -124,14 +126,14 @@ fn degree_n_constraint(n: usize, col: Col) -> FoldingCompatibleExpr<TestConfig> 
         }
     }
 }
-//create 2 constraints of degree a and b
+// create 2 constraints of degree a and b
 fn constraints(a: usize, b: usize) -> Vec<FoldingCompatibleExpr<TestConfig>> {
     vec![
         degree_n_constraint(a, Col::A),
         degree_n_constraint(b, Col::B),
     ]
 }
-//creates and scheme with the constraints and returns the number of columns added
+// creates a scheme with the constraints and returns the number of columns added
 fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) -> usize {
     use ark_poly::EvaluationDomain;
 
@@ -141,10 +143,10 @@ fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) ->
 
     let (scheme, _) = FoldingScheme::<TestConfig>::new(constraints, &srs, domain, &());
     // println!("exp:\n {}", exp.to_string());
-    scheme.quadraticization_columns()
+    scheme.get_number_of_additional_columns()
 }
 
-//1 constraint of degree 1
+// 1 constraint of degree 1
 #[test]
 fn quadraticization_test_1() {
     let mut constraints = constraints(1, 1);
@@ -152,21 +154,23 @@ fn quadraticization_test_1() {
     assert_eq!(test_with_constraints(constraints), 0);
 }
 
-//1 constraint of degree 2
+// 1 constraint of degree 2
 #[test]
 fn quadraticization_test_2() {
     let mut constraints = constraints(2, 1);
     constraints.truncate(1);
     assert_eq!(test_with_constraints(constraints), 0);
 }
-//1 constraint of degree 3
+
+// 1 constraint of degree 3
 #[test]
 fn quadraticization_test_3() {
     let mut constraints = constraints(3, 1);
     constraints.truncate(1);
     assert_eq!(test_with_constraints(constraints), 1);
 }
-//1 constraint of degree 4 to 8 (as we usually support up to 8).
+
+// 1 constraint of degree 4 to 8 (as we usually support up to 8).
 #[test]
 fn quadraticization_test_4() {
     let cols = [2, 3, 4, 5, 6];
@@ -176,35 +180,39 @@ fn quadraticization_test_4() {
         assert_eq!(test_with_constraints(constraints), cols[i - 4]);
     }
 }
-//2 constraints of degree 1
+
+// 2 constraints of degree 1
 #[test]
 fn quadraticization_test_5() {
     let constraints = constraints(1, 1);
     assert_eq!(test_with_constraints(constraints), 0);
 }
-//2 constraints, one of degree 1 and one of degree 2
+
+// 2 constraints, one of degree 1 and one of degree 2
 #[test]
 fn quadraticization_test_6() {
     let constraints = constraints(1, 2);
     assert_eq!(test_with_constraints(constraints), 0);
 }
-//2 constraints: one of degree 1 and one of degree 3
+
+// 2 constraints: one of degree 1 and one of degree 3
 #[test]
 fn quadraticization_test_7() {
     let constraints = constraints(1, 3);
     assert_eq!(test_with_constraints(constraints), 1);
 }
-//2 constraints, each with degree higher than 2.
+
+// 2 constraints, each with degree higher than 2.
 #[test]
 fn quadraticization_test_8() {
     let constraints = constraints(4, 3);
     assert_eq!(test_with_constraints(constraints), 3);
 }
 
-//shared subexpression
+// shared subexpression
 #[test]
 fn quadraticization_test_9() {
-    //here I duplicate the first constraint
+    // here I duplicate the first constraint
     let mut constraints = constraints(3, 1);
     constraints.truncate(1);
     constraints.push(constraints[0].clone());
