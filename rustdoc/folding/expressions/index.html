@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Implement a library to represent expressions/multivariate polynomials that can be used with folding schemes like Nova."><title>folding::expressions - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module expressions</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">folding</a>::<wbr><a class="mod" href="#">expressions</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/folding/expressions.rs.html#1-788">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Implement a library to represent expressions/multivariate polynomials that
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Implement a library to represent expressions/multivariate polynomials that can be used with folding schemes like Nova."><title>folding::expressions - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module expressions</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">folding</a>::<wbr><a class="mod" href="#">expressions</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/folding/expressions.rs.html#1-988">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Implement a library to represent expressions/multivariate polynomials that
 can be used with folding schemes like
 <a href="https://eprint.iacr.org/2021/370">Nova</a>.</p>
 <p>We do enforce expressions to be degree <code>2</code> maximum to apply our folding
@@ -23,12 +23,167 @@ using the function <a href="fn.folding_expression.html" title="fn folding::expre
 </ul>
 <p>The user can also choose to build a structure <a href="../struct.FoldingScheme.html" title="struct folding::FoldingScheme">crate::FoldingScheme</a> from a
 list of <a href="enum.FoldingCompatibleExpr.html" title="enum folding::expressions::FoldingCompatibleExpr">FoldingCompatibleExpr</a>.</p>
-</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.IntegratedFoldingExpr.html" title="struct folding::expressions::IntegratedFoldingExpr">IntegratedFoldingExpr</a></div><div class="desc docblock-short">A simplified expression with all terms separated by degree</div></li><li><div class="item-name"><a class="struct" href="struct.Term.html" title="struct folding::expressions::Term">Term</a></div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Degree.html" title="enum folding::expressions::Degree">Degree</a></div><div class="desc docblock-short">Describe the degree of a constraint.
-Only degree up to <code>2</code> is supported.</div></li><li><div class="item-name"><a class="enum" href="enum.ExpExtension.html" title="enum folding::expressions::ExpExtension">ExpExtension</a></div><div class="desc docblock-short">Extra expressions that can be created by folding</div></li><li><div class="item-name"><a class="enum" href="enum.FoldingCompatibleExpr.html" title="enum folding::expressions::FoldingCompatibleExpr">FoldingCompatibleExpr</a></div><div class="desc docblock-short">Compatible folding expressions that can be used with folding schemes.
+<p>As a reminder, after we reduce to degree 2, the multivariate polynomial
+<code>P(X_{1}, ..., X_{n})</code> describing the NP relation will be
+“relaxed” in another polynomial of the form <code>P_relaxed(X_{1}, ..., X_{n}, u)</code>.
+First, we decompose the polynomial <code>P</code> in its monomials of degree <code>0</code>, <code>1</code> and <code>2</code>:</p>
+<div class="example-wrap"><pre class="language-text"><code>P(X_{1}, ..., X_{n}) = ∑_{i} f_{i, 0}(X_{1}, ..., X_{n}) +
+                       ∑_{i} f_{i, 1}(X_{1}, ..., X_{n}) +
+                       ∑_{i} f_{i, 2}(X_{1}, ..., X_{n})
+</code></pre></div>
+<p>where <code>f_{i, 0}</code> is a monomial of degree <code>0</code>, <code>f_{i, 1}</code> is a monomial of degree
+<code>1</code> and <code>f_{i, 2}</code> is a monomial of degree <code>2</code>.
+For instance, for the polynomial <code>P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})</code>, we have:</p>
+<div class="example-wrap"><pre class="language-text"><code>f_{0, 0}(X_{1}, X_{2}, X_{3}) = 1
+f_{0, 1}(X_{1}, X_{2}, X_{3}) = -X_{3}
+f_{0, 2}(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2}
+</code></pre></div>
+<p>Then, we can relax the polynomial <code>P</code> in <code>P_relaxed</code> by adding a new
+variable <code>u</code> in the following way:</p>
+<ul>
+<li>For the monomials <code>f_{i, 0}</code>, i.e. the monomials of degree <code>0</code>, we add <code>u^2</code>
+to the expression.</li>
+<li>For the monomials <code>f_{i, 1}</code>, we add <code>u</code> to the expression.</li>
+<li>For the monomials <code>f_{i, 2}</code>, we keep the expression as is.</li>
+</ul>
+<p>For the polynomial <code>P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})</code>, we have:</p>
+<div class="example-wrap"><pre class="language-text"><code>P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})
+</code></pre></div>
+<p>From the relaxed form of the polynomial, we can “fold” multiple instances of
+the NP relation by randomising it into a single instance by adding an error
+term <code>E</code>.
+For instance, for the polynomial <code>P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})</code>,
+for two instances <code>(X_{1}, X_{2}, X_{3}, u)</code> and <code>(X_{1}', X_{2}', X_{3}', u')</code>, we can fold them into a single instance by coining a random value <code>r</code>:</p>
+<div class="example-wrap"><pre class="language-text"><code>X&#39;&#39;_{1} = X_{1} + r X_{1}&#39;
+X&#39;&#39;_{2} = X_{2} + r X_{2}&#39;
+X&#39;&#39;_{3} = X_{3} + r X_{3}&#39;
+u&#39;&#39; = u + r u&#39;
+</code></pre></div>
+<p>Computing the polynomial <code>P_relaxed(X''_{1}, X''_{2}, X''_{3}, u'')</code> will
+give:</p>
+<div class="example-wrap"><pre class="language-text"><code>  (X_{1} + r X&#39;_{1}) (X_{2} + r X&#39;_{2}) \
++ (u + r u&#39;) [(u + r u&#39;) - (X_{3} + r X&#39;_{3})]
+</code></pre></div>
+<p>which can be simplified into:</p>
+<div class="example-wrap"><pre class="language-text"><code>  P_relaxed(X_{1}, X_{2}, X_{3}, u) + P_relaxed(r X_{1}&#39;, r X_{2}&#39;, r X_{3}&#39;, r u&#39;)
++ r [u (u&#39; - X_{3}) + u&#39; (u - X_{3})] + r [X_{1} X_{2}&#39;   +   X_{2} X_{1}&#39;]
+  \---------------------------------/   \----------------------------------/
+ cross terms of monomials of degree 1   cross terms of monomials of degree 2
+             and degree 0
+</code></pre></div>
+<p>The error term <code>T</code> (or “cross term”) is the last term of the expression,
+multiplied by <code>r</code>.
+More generally, the error term is the sum of all monomials introduced by
+the “cross terms” of the instances. For example, if there is a monomial of
+degree 2 like <code>X_{1} * X_{2}</code>, it introduces the cross terms
+<code>r X_{1} X_{2}' + r X_{2} X_{1}'</code>. For a monomial of degree 1, for example
+<code>u X_{1}</code>, it introduces the cross terms <code>r u X_{1}' + r u' X_{1}</code>.</p>
+<p>Note that:</p>
+<div class="example-wrap"><pre class="language-text"><code>      P_relaxed(r X_{1}&#39;, r X_{2}&#39;, r X_{3}&#39;, r u&#39;)
+= r^2 P_relaxed(X_{1}&#39;,   X_{2}&#39;,   X_{3}&#39;,   u&#39;)
+</code></pre></div>
+<p>and <code>P_relaxed</code> is of degree <code>2</code>. More
+precisely, <code>P_relaxed</code> is homogenous. And that is the main idea of folding:
+the “relaxation” of a polynomial means we make it homogenous for a certain
+degree <code>d</code> by introducing the new variable <code>u</code>, and introduce the concept of
+“error terms” that will englobe the “cross-terms”. The prover takes care of
+computing the cross-terms and commit to them.</p>
+<p>While folding, we aggregate the error terms of all instances into a single
+error term, E.
+In our example, if we have a folded instance with the non-zero
+error terms <code>E_{1}</code> and <code>E_{2}</code>, we have:</p>
+<div class="example-wrap"><pre class="language-text"><code>E = E_{1} + r T + E_{2}
+</code></pre></div><h3 id="aggregating-constraints"><a href="#aggregating-constraints">Aggregating constraints</a></h3>
+<p>The library also provides a way to fold NP relations described by a list of
+multi-variate polynomials, like we usually have in a zkSNARK circuit.</p>
+<p>In PlonK, we aggregate all the polynomials into a single polynomial by
+coining a random value <code>α</code>. For instance, if we have two polynomials <code>P</code> and
+<code>Q</code> describing our computation in a zkSNARK circuit, we usually use the
+randomized polynomial <code>P + α Q</code> (used to build the quotient polynomial in
+PlonK).</p>
+<p>More generally, if for each row, our computation is constrained by the polynomial
+list <code>[P_{1}, P_{2}, ..., P_{n}]</code>, we can aggregate them into a single
+polynomial <code>P_{agg} = ∑_{i} α^{i} P_{i}</code>. Multiplying by the α terms
+consequently increases the overall degree of the expression.</p>
+<p>In particular, when we reduce a polynomial to degree 2, we have this case
+where the circuit is described by a list of polynomials and we aggregate
+them into a single polynomial.</p>
+<p>For instance, if we have two polynomials <code>P(X_{1}, X_{2}, X_{3})</code> and
+<code>Q(X_{1}, X_{2}, X_{3})</code> such that:</p>
+<div class="example-wrap"><pre class="language-text"><code>P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})
+Q(X_{1}, X_{2}, X_{3}) = X_{1} + X_{2}
+</code></pre></div>
+<p>The relaxed form of the polynomials are:</p>
+<div class="example-wrap"><pre class="language-text"><code>P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})
+Q_relaxed(X_{1}, X_{2}, X_{3}, u) = u X_{1} + u X_{2}
+</code></pre></div>
+<p>We start by coining <code>α_{1}</code> and <code>α_{2}</code> and we compute the polynomial
+<code>P'(X_{1}, X_{2}, X_{3}, u, α_{1})</code> and <code>Q'(X_{1}, X_{2}, X_{3}, α_{2})</code> such that:</p>
+<div class="example-wrap"><pre class="language-text"><code>P&#39;(X_{1}, X_{2}, X_{3}, u, α_{1}) = α_{1} P_relaxed(X_{1}, X_{2}, X_{3}, u)
+                                  = α_{1} (X_{1} * X_{2} + u (u - X_{3}))
+                                  = α_{1} X_{1} * X_{2} + α_{1} u^2 - α_{1} u X_{3}
+Q&#39;(X_{1}, X_{2}, X_{3}, u, α_{2}) = α_{2} Q_relaxed(X_{1}, X_{2}, X_{3}, u)
+                                  = α_{2} (u X_{1} + u X_{2})
+                                  = α_{2} u X_{1} + α_{2} u X_{2}
+</code></pre></div>
+<p>and we want to fold the multivariate polynomial S defined over six
+variables:</p>
+<div class="example-wrap"><pre class="language-text"><code>  S(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})
+= P&#39;(X_{1}, X_{2}, X_{3}, u, α_{1}) + Q&#39;(X_{1}, X_{2}, X_{3}, u, α_{2})`.
+= α_{1} X_{1} X_{2} +
+  α_{1} u^2 -
+  α_{1} u X_{3} +
+  α_{2} u X_{1} +
+  α_{2} u X_{2}
+</code></pre></div>
+<p>Note that we end up with everything of the same degree, which is <code>3</code> in this
+case. The variables <code>α_{1}</code> and <code>α_{2}</code> increase the degree of the
+homogeneous expressions by one.</p>
+<p>For two given instances <code>(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})</code> and
+<code>(X_{1}', X_{2}', X_{3}', u', α_{1}', α_{2}')</code>, we coin a random value <code>r</code> and we compute:</p>
+<div class="example-wrap"><pre class="language-text"><code>X&#39;&#39;_{1} = X_{1} + r X&#39;_{1}
+X&#39;&#39;_{2} = X_{2} + r X&#39;_{2}
+X&#39;&#39;_{3} = X_{3} + r X&#39;_{3}
+u&#39;&#39; = u + r u&#39;
+α&#39;&#39;_{1} = α_{1} + r α&#39;_{1}
+α&#39;&#39;_{2} = α_{2} + r α&#39;_{2}
+</code></pre></div>
+<p>From there, we compute the evaluations of the polynomial S at the point
+<code>S(X''_{1}, X''_{2}, X''_{3}, u'', α''_{1}, α''_{2})</code>, which gives:</p>
+<div class="example-wrap"><pre class="language-text"><code>  S(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})
++ S(r X&#39;_{1}, r X&#39;_{2}, r X&#39;_{3}, r u&#39;, r α&#39;_{1}, r α&#39;_{2})
++ r T_{0}
++ r^2 T_{1}
+</code></pre></div>
+<p>where <code>T_{0}</code> (respectively <code>T_{1}</code>) are cross terms that are multiplied by
+<code>r</code> (respectively <code>r^2</code>). More precisely, for <code>T_{0}</code> we have:</p>
+<div class="example-wrap"><pre class="language-text"><code>T_{0} = a_{1} X_{1} X&#39;{2} +
+        X_{2} (α_{1} X&#39;_{1} + α&#39;_{1} X_{1}) +
+        // we repeat for a_{1} u^{2}, ... as described below
+</code></pre></div>
+<p>We must see each monomial as a polynomial P(X, Y, Z) of degree 3, and the
+cross-term for each monomial will be, for (X’, Y’, Z’) and (X, Y, Z):</p>
+<div class="example-wrap"><pre class="language-text"><code>X Y Z&#39; + Z (X Y&#39; + X&#39; Y)
+</code></pre></div>
+<p>As for the degree<code>2</code> case described before, we notice that the polynomial S
+is homogeneous of degree 3, i.e.</p>
+<div class="example-wrap"><pre class="language-text"><code>      S(r X&#39;_{1}, r X&#39;_{2}, r X&#39;_{3}, r u&#39;, r α&#39;_{1}, r α&#39;_{2})
+= r^3 S(X&#39;_{1},   X&#39;_{2},   X&#39;_{3},   u&#39;,   α&#39;_{1},   α&#39;_{2})
+</code></pre></div></div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.IntegratedFoldingExpr.html" title="struct folding::expressions::IntegratedFoldingExpr">IntegratedFoldingExpr</a></div><div class="desc docblock-short">A value of type <a href="struct.IntegratedFoldingExpr.html" title="struct folding::expressions::IntegratedFoldingExpr">IntegratedFoldingExpr</a> is the result of the split of a
+polynomial in its monomials of degree <code>0</code>, <code>1</code> and <code>2</code>.
+It is used to compute the error terms. For an example, have a look at the
+<a href="index.html" title="mod folding::expressions">top level documentation</a>.</div></li><li><div class="item-name"><a class="struct" href="struct.Term.html" title="struct folding::expressions::Term">Term</a></div><div class="desc docblock-short">A term of a polynomial
+For instance, in the polynomial <code>3 X_{1} X_{2} + 2 X_{3}</code>, the terms are
+<code>3 X_{1} X_{2}</code> and <code>2 X_{3}</code>.
+The sign is used to encode the sign of the term at the expression level.
+It is used to split a polynomial in its terms/monomials of degree <code>0</code>, <code>1</code>
+and <code>2</code>.</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Degree.html" title="enum folding::expressions::Degree">Degree</a></div><div class="desc docblock-short">Describe the degree of a constraint.
+As described in the <a href="index.html" title="mod folding::expressions">top level documentation</a>, we only
+support constraints with degree up to <code>2</code></div></li><li><div class="item-name"><a class="enum" href="enum.ExpExtension.html" title="enum folding::expressions::ExpExtension">ExpExtension</a></div><div class="desc docblock-short">Extra expressions that can be created by folding</div></li><li><div class="item-name"><a class="enum" href="enum.FoldingCompatibleExpr.html" title="enum folding::expressions::FoldingCompatibleExpr">FoldingCompatibleExpr</a></div><div class="desc docblock-short">Compatible folding expressions that can be used with folding schemes.
 An expression from <a href="../../kimchi/circuits/expr/type.Expr.html" title="type kimchi::circuits::expr::Expr">kimchi::circuits::expr::Expr</a> can be converted into a
 <a href="enum.FoldingCompatibleExpr.html" title="enum folding::expressions::FoldingCompatibleExpr">FoldingCompatibleExpr</a> using the trait <a href="https://doc.rust-lang.org/1.72.1/core/convert/trait.From.html" title="trait core::convert::From">From</a>.
 From there, an expression of type <a href="struct.IntegratedFoldingExpr.html" title="struct folding::expressions::IntegratedFoldingExpr">IntegratedFoldingExpr</a> can be created
 using the function <a href="fn.folding_expression.html" title="fn folding::expressions::folding_expression">folding_expression</a>.</div></li><li><div class="item-name"><a class="enum" href="enum.FoldingCompatibleExprInner.html" title="enum folding::expressions::FoldingCompatibleExprInner">FoldingCompatibleExprInner</a></div><div class="desc docblock-short">Components to be used to convert multivariate polynomials into “compatible”
 multivariate polynomials that will be translated to folding expressions.</div></li><li><div class="item-name"><a class="enum" href="enum.FoldingExp.html" title="enum folding::expressions::FoldingExp">FoldingExp</a></div><div class="desc docblock-short">Internal expression used for folding.
 A “folding” expression is a multivariate polynomial like defined in
-<a href="../../kimchi/circuits/expr/index.html" title="mod kimchi::circuits::expr">kimchi::circuits::expr</a> with the following differences.</div></li><li><div class="item-name"><a class="enum" href="enum.Sign.html" title="enum folding::expressions::Sign">Sign</a></div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.FoldingColumnTrait.html" title="trait folding::expressions::FoldingColumnTrait">FoldingColumnTrait</a></div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.extract_terms.html" title="fn folding::expressions::extract_terms">extract_terms</a></div></li><li><div class="item-name"><a class="fn" href="fn.folding_expression.html" title="fn folding::expressions::folding_expression">folding_expression</a></div><div class="desc docblock-short">Convert a list of folding compatible expression into the folded form.</div></li></ul></section></div></main></body></html>
+<a href="../../kimchi/circuits/expr/index.html" title="mod kimchi::circuits::expr">kimchi::circuits::expr</a> with the following differences.</div></li><li><div class="item-name"><a class="enum" href="enum.Sign.html" title="enum folding::expressions::Sign">Sign</a></div><div class="desc docblock-short">Used to encode the sign of a term in a polynomial.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.FoldingColumnTrait.html" title="trait folding::expressions::FoldingColumnTrait">FoldingColumnTrait</a></div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.extract_terms.html" title="fn folding::expressions::extract_terms">extract_terms</a></div></li><li><div class="item-name"><a class="fn" href="fn.folding_expression.html" title="fn folding::expressions::folding_expression">folding_expression</a></div><div class="desc docblock-short">Convert a list of folding compatible expression into the folded form.</div></li></ul></section></div></main></body></html>
