@@ -374,6 +374,21 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -584,7 +599,8 @@
             <span class="self">self</span>.domain,
             <span class="prelude-val">None</span>,
         );
-        <span class="kw">let </span>env: ExtendedEnv&lt;CF&gt; =
+        <span class="comment">// Side-effect: commitments are added in both relaxed (extended) instance.
+        </span><span class="kw">let </span>env: ExtendedEnv&lt;CF&gt; =
             env.compute_extension(<span class="kw-2">&amp;</span><span class="self">self</span>.extended_witness_generator, <span class="self">self</span>.srs);
         <span class="kw">let </span>error: [Vec&lt;ScalarField&lt;CF&gt;&gt;; <span class="number">2</span>] = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
@@ -617,8 +633,9 @@
         ) = env.unwrap();
 
         <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
-            relaxed_extended_left_instance,
-            relaxed_extended_right_instance,
+            <span class="comment">// FIXME: remove clone
+            </span>relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
             challenge,
             <span class="kw-2">&amp;</span>error_commitments,
         );
@@ -634,6 +651,8 @@
             folded_witness,
             t_0: error_commitments[<span class="number">0</span>].clone(),
             t_1: error_commitments[<span class="number">1</span>].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }
@@ -673,12 +692,23 @@
 
 <span class="doccomment">/// Output of the folding prover
 </span><span class="kw">pub struct </span>FoldingOutput&lt;C: FoldingConfig&gt; {
-    <span class="doccomment">/// Folded instance
+    <span class="doccomment">/// The folded instance, containing, in particular, the result `C_l + r C_r`
     </span><span class="kw">pub </span>folded_instance: RelaxedInstance&lt;C::Curve, C::Instance&gt;,
-    <span class="doccomment">/// Folded witness
+    <span class="doccomment">/// Folded witness, containing, in particular, the result of the evaluations
+    /// `W_l + r W_r`
     </span><span class="kw">pub </span>folded_witness: RelaxedWitness&lt;C::Curve, C::Witness&gt;,
-    <span class="kw">pub </span>t_0: PolyComm&lt;C::Curve&gt;,
-    <span class="kw">pub </span>t_1: PolyComm&lt;C::Curve&gt;,
+    <span class="doccomment">/// The error terms of degree 1, see the top-level documentation of
+    /// [crate::expressions]
+    </span><span class="kw">pub </span>t_0: PolyComm&lt;C::Curve&gt;,
+    <span class="doccomment">/// The error terms of degree 2, see the top-level documentation of
+    /// [crate::expressions]
+    </span><span class="kw">pub </span>t_1: PolyComm&lt;C::Curve&gt;,
+    <span class="doccomment">/// The left relaxed instance, including the potential additional columns
+    /// added by quadritization
+    </span><span class="kw">pub </span>relaxed_extended_left_instance: RelaxedInstance&lt;C::Curve, C::Instance&gt;,
+    <span class="doccomment">/// The right relaxed instance, including the potential additional columns
+    /// added by quadritization
+    </span><span class="kw">pub </span>relaxed_extended_right_instance: RelaxedInstance&lt;C::Curve, C::Instance&gt;,
     <span class="doccomment">/// Elements to absorbed in IVC, in the same order as done in folding
     </span><span class="kw">pub </span>to_absorb: (Vec&lt;ScalarField&lt;C&gt;&gt;, Vec&lt;C::Curve&gt;),
 }

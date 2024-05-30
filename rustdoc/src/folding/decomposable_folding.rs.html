@@ -147,6 +147,9 @@
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -268,8 +271,9 @@
         ) = env.unwrap();
 
         <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
-            relaxed_extended_left_instance,
-            relaxed_extended_right_instance,
+            <span class="comment">// FIXME: remove clone
+            </span>relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
             challenge,
             <span class="kw-2">&amp;</span>error_commitments,
         );
@@ -285,6 +289,8 @@
             folded_witness,
             t_0: error_commitments[<span class="number">0</span>].clone(),
             t_1: error_commitments[<span class="number">1</span>].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }
