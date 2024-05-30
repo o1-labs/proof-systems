@@ -24,6 +24,189 @@
 //!
 //! The user can also choose to build a structure [crate::FoldingScheme] from a
 //! list of [FoldingCompatibleExpr].
+//!
+//! As a reminder, after we reduce to degree 2, the multivariate polynomial
+//! `P(X_{1}, ..., X_{n})` describing the NP relation will be
+//! "relaxed" in another polynomial of the form `P_relaxed(X_{1}, ..., X_{n}, u)`.
+//! First, we decompose the polynomial `P` in its monomials of degree `0`, `1` and `2`:
+//! ```text
+//! P(X_{1}, ..., X_{n}) = ∑_{i} f_{i, 0}(X_{1}, ..., X_{n}) +
+//!                        ∑_{i} f_{i, 1}(X_{1}, ..., X_{n}) +
+//!                        ∑_{i} f_{i, 2}(X_{1}, ..., X_{n})
+//! ```
+//! where `f_{i, 0}` is a monomial of degree `0`, `f_{i, 1}` is a monomial of degree
+//! `1` and `f_{i, 2}` is a monomial of degree `2`.
+//! For instance, for the polynomial `P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} +
+//! (1 - X_{3})`, we have:
+//! ```text
+//! f_{0, 0}(X_{1}, X_{2}, X_{3}) = 1
+//! f_{0, 1}(X_{1}, X_{2}, X_{3}) = -X_{3}
+//! f_{0, 2}(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2}
+//! ```
+//! Then, we can relax the polynomial `P` in `P_relaxed` by adding a new
+//! variable `u` in the following way:
+//! - For the monomials `f_{i, 0}`, i.e. the monomials of degree `0`, we add `u^2`
+//! to the expression.
+//! - For the monomials `f_{i, 1}`, we add `u` to the expression.
+//! - For the monomials `f_{i, 2}`, we keep the expression as is.
+//!
+//! For the polynomial `P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})`, we have:
+//! ```text
+//! P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})
+//! ```
+//!
+//! From the relaxed form of the polynomial, we can "fold" multiple instances of
+//! the NP relation by randomising it into a single instance by adding an error
+//! term `E`.
+//! For instance, for the polynomial `P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} *
+//! X_{2} + u (u - X_{3})`,
+//! for two instances `(X_{1}, X_{2}, X_{3}, u)` and `(X_{1}', X_{2}', X_{3}',
+//! u')`, we can fold them into a single instance by coining a random value `r`:
+//! ```text
+//! X''_{1} = X_{1} + r X_{1}'
+//! X''_{2} = X_{2} + r X_{2}'
+//! X''_{3} = X_{3} + r X_{3}'
+//! u'' = u + r u'
+//! ```
+//! Computing the polynomial `P_relaxed(X''_{1}, X''_{2}, X''_{3}, u'')` will
+//! give:
+//! ```text
+//!   (X_{1} + r X'_{1}) (X_{2} + r X'_{2}) \
+//! + (u + r u') [(u + r u') - (X_{3} + r X'_{3})]
+//! ```
+//! which can be simplified into:
+//! ```text
+//!   P_relaxed(X_{1}, X_{2}, X_{3}, u) + P_relaxed(r X_{1}', r X_{2}', r X_{3}', r u')
+//! + r [u (u' - X_{3}) + u' (u - X_{3})] + r [X_{1} X_{2}'   +   X_{2} X_{1}']
+//!   \---------------------------------/   \----------------------------------/
+//!  cross terms of monomials of degree 1   cross terms of monomials of degree 2
+//!              and degree 0
+//! ```
+//! The error term `T` (or "cross term") is the last term of the expression,
+//! multiplied by `r`.
+//! More generally, the error term is the sum of all monomials introduced by
+//! the "cross terms" of the instances. For example, if there is a monomial of
+//! degree 2 like `X_{1} * X_{2}`, it introduces the cross terms
+//! `r X_{1} X_{2}' + r X_{2} X_{1}'`. For a monomial of degree 1, for example
+//! `u X_{1}`, it introduces the cross terms `r u X_{1}' + r u' X_{1}`.
+//!
+//! Note that:
+//! ```text
+//!       P_relaxed(r X_{1}', r X_{2}', r X_{3}', r u')
+//! = r^2 P_relaxed(X_{1}',   X_{2}',   X_{3}',   u')
+//! ```
+//! and `P_relaxed` is of degree `2`. More
+//! precisely, `P_relaxed` is homogenous. And that is the main idea of folding:
+//! the "relaxation" of a polynomial means we make it homogenous for a certain
+//! degree `d` by introducing the new variable `u`, and introduce the concept of
+//! "error terms" that will englobe the "cross-terms". The prover takes care of
+//! computing the cross-terms and commit to them.
+//!
+//! While folding, we aggregate the error terms of all instances into a single
+//! error term, E.
+//! In our example, if we have a folded instance with the non-zero
+//! error terms `E_{1}` and `E_{2}`, we have:
+//! ```text
+//! E = E_{1} + r T + E_{2}
+//! ```
+//!
+//! ## Aggregating constraints
+//!
+//! The library also provides a way to fold NP relations described by a list of
+//! multi-variate polynomials, like we usually have in a zkSNARK circuit.
+//!
+//! In PlonK, we aggregate all the polynomials into a single polynomial by
+//! coining a random value `α`. For instance, if we have two polynomials `P` and
+//! `Q` describing our computation in a zkSNARK circuit, we usually use the
+//! randomized polynomial `P + α Q` (used to build the quotient polynomial in
+//! PlonK).
+//!
+//! More generally, if for each row, our computation is constrained by the polynomial
+//! list `[P_{1}, P_{2}, ..., P_{n}]`, we can aggregate them into a single
+//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the α terms
+//! consequently increases the overall degree of the expression.
+//!
+//! In particular, when we reduce a polynomial to degree 2, we have this case
+//! where the circuit is described by a list of polynomials and we aggregate
+//! them into a single polynomial.
+//!
+//! For instance, if we have two polynomials `P(X_{1}, X_{2}, X_{3})` and
+//! `Q(X_{1}, X_{2}, X_{3})` such that:
+//! ```text
+//! P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})
+//! Q(X_{1}, X_{2}, X_{3}) = X_{1} + X_{2}
+//! ```
+//!
+//! The relaxed form of the polynomials are:
+//! ```text
+//! P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})
+//! Q_relaxed(X_{1}, X_{2}, X_{3}, u) = u X_{1} + u X_{2}
+//! ```
+//!
+//! We start by coining `α_{1}` and `α_{2}` and we compute the polynomial
+//! `P'(X_{1}, X_{2}, X_{3}, u, α_{1})` and `Q'(X_{1}, X_{2}, X_{3}, α_{2})` such that:
+//! ```text
+//! P'(X_{1}, X_{2}, X_{3}, u, α_{1}) = α_{1} P_relaxed(X_{1}, X_{2}, X_{3}, u)
+//!                                   = α_{1} (X_{1} * X_{2} + u (u - X_{3}))
+//!                                   = α_{1} X_{1} * X_{2} + α_{1} u^2 - α_{1} u X_{3}
+//! Q'(X_{1}, X_{2}, X_{3}, u, α_{2}) = α_{2} Q_relaxed(X_{1}, X_{2}, X_{3}, u)
+//!                                   = α_{2} (u X_{1} + u X_{2})
+//!                                   = α_{2} u X_{1} + α_{2} u X_{2}
+//! ```
+//! and we want to fold the multivariate polynomial S defined over six
+//! variables:
+//! ```text
+//!   S(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})
+//! = P'(X_{1}, X_{2}, X_{3}, u, α_{1}) + Q'(X_{1}, X_{2}, X_{3}, u, α_{2})`.
+//! = α_{1} X_{1} X_{2} +
+//!   α_{1} u^2 -
+//!   α_{1} u X_{3} +
+//!   α_{2} u X_{1} +
+//!   α_{2} u X_{2}
+//! ```
+//!
+//! Note that we end up with everything of the same degree, which is `3` in this
+//! case. The variables `α_{1}` and `α_{2}` increase the degree of the
+//! homogeneous expressions by one.
+//!
+//! For two given instances `(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})` and
+//! `(X_{1}', X_{2}', X_{3}', u', α_{1}', α_{2}')`, we coin a random value `r` and we compute:
+//! ```text
+//! X''_{1} = X_{1} + r X'_{1}
+//! X''_{2} = X_{2} + r X'_{2}
+//! X''_{3} = X_{3} + r X'_{3}
+//! u'' = u + r u'
+//! α''_{1} = α_{1} + r α'_{1}
+//! α''_{2} = α_{2} + r α'_{2}
+//! ```
+//!
+//! From there, we compute the evaluations of the polynomial S at the point
+//! `S(X''_{1}, X''_{2}, X''_{3}, u'', α''_{1}, α''_{2})`, which gives:
+//! ```text
+//!   S(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})
+//! + S(r X'_{1}, r X'_{2}, r X'_{3}, r u', r α'_{1}, r α'_{2})
+//! + r T_{0}
+//! + r^2 T_{1}
+//! ```
+//! where `T_{0}` (respectively `T_{1}`) are cross terms that are multiplied by
+//! `r` (respectively `r^2`). More precisely, for `T_{0}` we have:
+//! ```text
+//! T_{0} = a_{1} X_{1} X'{2} +
+//!         X_{2} (α_{1} X'_{1} + α'_{1} X_{1}) +
+//!         // we repeat for a_{1} u^{2}, ... as described below
+//! ```
+//! We must see each monomial as a polynomial P(X, Y, Z) of degree 3, and the
+//! cross-term for each monomial will be, for (X', Y', Z') and (X, Y, Z):
+//! ```text
+//! X Y Z' + Z (X Y' + X' Y)
+//! ```
+//!
+//! As for the degree`2` case described before, we notice that the polynomial S
+//! is homogeneous of degree 3, i.e.
+//! ```text
+//!       S(r X'_{1}, r X'_{2}, r X'_{3}, r u', r α'_{1}, r α'_{2})
+//! = r^3 S(X'_{1},   X'_{2},   X'_{3},   u',   α'_{1},   α'_{2})
+//! ```
 
 use crate::{
     columns::ExtendedFoldingColumn,
@@ -40,7 +223,8 @@ use kimchi::circuits::{
 use num_traits::Zero;
 
 /// Describe the degree of a constraint.
-/// Only degree up to `2` is supported.
+/// As described in the [top level documentation](super::expressions), we only
+/// support constraints with degree up to `2`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Degree {
     Zero,
@@ -77,7 +261,10 @@ impl std::ops::Mul for &Degree {
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
 
-    // TODO: why witnesses are degree 1, otherwise 0?
+    /// Return the degree of the column
+    /// - `0` if the column is a constant
+    /// - `1` if the column will take part of the randomisation (see [top level
+    /// documentation](super::expressions)
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
@@ -89,12 +276,15 @@ pub trait FoldingColumnTrait: Copy + Clone {
 /// Extra expressions that can be created by folding
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpExtension<C: FoldingConfig> {
+    /// The variable `u` used to make the polynomial homogenous
     U,
+    /// The error term
     Error,
-    // from quadraticization
+    /// Additional columns created by quadraticization
     ExtendedWitness(usize),
+    /// The random values `α_{i}` used to aggregate constraints
     Alpha(usize),
-    // in case of using decomposable folding
+    /// Represent a dynamic selector, in the case of using decomposable folding
     Selector(C::Selector),
 }
 
@@ -329,6 +519,10 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
 }
 
 impl<C: FoldingConfig> FoldingExp<C> {
+    /// Compute the degree of a folding expression.
+    /// Only constants are of degree `0`, the rest is of degree `1`.
+    /// An atom of degree `1` means that the atom is going to be randomised as
+    /// described in the [top level documentation](super::expressions).
     pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
         match self {
@@ -361,9 +555,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 
     /// Convert a folding expression into a compatible one.
-    // TODO: explain why do we need it. It is transformations between the two
-    // categories FoldingCompatibleExpr and FoldingExpr. Is there a one-to-one
-    // conversion?
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         use FoldingCompatibleExprInner::*;
@@ -411,7 +602,8 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
-// TODO: doc - what is the sign?
+/// Used to encode the sign of a term in a polynomial.
+// FIXME: is it really needed?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Sign {
     Pos,
@@ -429,7 +621,12 @@ impl std::ops::Neg for Sign {
     }
 }
 
-// TODO: doc - What is a term?
+/// A term of a polynomial
+/// For instance, in the polynomial `3 X_{1} X_{2} + 2 X_{3}`, the terms are
+/// `3 X_{1} X_{2}` and `2 X_{3}`.
+/// The sign is used to encode the sign of the term at the expression level.
+/// It is used to split a polynomial in its terms/monomials of degree `0`, `1`
+/// and `2`.
 #[derive(Clone, Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
@@ -469,7 +666,10 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
     }
 }
 
-/// A simplified expression with all terms separated by degree
+/// A value of type [IntegratedFoldingExpr] is the result of the split of a
+/// polynomial in its monomials of degree `0`, `1` and `2`.
+/// It is used to compute the error terms. For an example, have a look at the
+/// [top level documentation](super::expressions).
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     // (exp,sign,alpha)
