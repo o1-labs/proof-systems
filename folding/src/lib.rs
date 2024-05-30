@@ -45,6 +45,7 @@ pub mod decomposable_folding;
 
 mod error_term;
 
+pub mod default_implementation;
 mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
