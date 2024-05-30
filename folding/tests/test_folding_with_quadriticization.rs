@@ -440,6 +440,8 @@ fn test_quadriticization() {
             folded_witness,
             t_0,
             t_1,
+            relaxed_extended_left_instance: _,
+            relaxed_extended_right_instance: _,
             to_absorb: _,
         } = folded;
 

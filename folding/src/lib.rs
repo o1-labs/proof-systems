@@ -208,6 +208,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             self.domain,
             None,
         );
+        // Side-effect: commitments are added in both relaxed (extended) instance.
         let env: ExtendedEnv<CF> =
             env.compute_extension(&self.extended_witness_generator, self.srs);
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
@@ -241,8 +242,9 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         ) = env.unwrap();
 
         let folded_instance = RelaxedInstance::combine_and_sub_error(
-            relaxed_extended_left_instance,
-            relaxed_extended_right_instance,
+            // FIXME: remove clone
+            relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
             challenge,
             &error_commitments,
         );
@@ -258,6 +260,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             folded_witness,
             t_0: error_commitments[0].clone(),
             t_1: error_commitments[1].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }
@@ -297,12 +301,23 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
 /// Output of the folding prover
 pub struct FoldingOutput<C: FoldingConfig> {
-    /// Folded instance
+    /// The folded instance, containing, in particular, the result `C_l + r C_r`
     pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
-    /// Folded witness
+    /// Folded witness, containing, in particular, the result of the evaluations
+    /// `W_l + r W_r`
     pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
+    /// The error terms of degree 1, see the top-level documentation of
+    /// [crate::expressions]
     pub t_0: PolyComm<C::Curve>,
+    /// The error terms of degree 2, see the top-level documentation of
+    /// [crate::expressions]
     pub t_1: PolyComm<C::Curve>,
+    /// The left relaxed instance, including the potential additional columns
+    /// added by quadritization
+    pub relaxed_extended_left_instance: RelaxedInstance<C::Curve, C::Instance>,
+    /// The right relaxed instance, including the potential additional columns
+    /// added by quadritization
+    pub relaxed_extended_right_instance: RelaxedInstance<C::Curve, C::Instance>,
     /// Elements to absorbed in IVC, in the same order as done in folding
     pub to_absorb: (Vec<ScalarField<C>>, Vec<C::Curve>),
 }

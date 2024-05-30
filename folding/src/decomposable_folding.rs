@@ -119,8 +119,9 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         ) = env.unwrap();
 
         let folded_instance = RelaxedInstance::combine_and_sub_error(
-            relaxed_extended_left_instance,
-            relaxed_extended_right_instance,
+            // FIXME: remove clone
+            relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
             challenge,
             &error_commitments,
         );
@@ -136,6 +137,8 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
             folded_witness,
             t_0: error_commitments[0].clone(),
             t_1: error_commitments[1].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }

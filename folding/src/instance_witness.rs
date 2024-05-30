@@ -119,6 +119,8 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 /// quadriticization, the scalar `u` and a commitment to the
 /// slack/error term.
 /// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
+// FIXME: We should forbid cloning, for memory footprint.
+#[derive(Clone)]
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The original instance, extended with the columns added by
     /// quadriticization
@@ -253,6 +255,8 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 }
 
 // -- Extended instance
+// FIXME: We should forbid cloning, for memory footprint.
+#[derive(Clone)]
 pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     pub inner: I,
     /// Commitments to the extra columns added by quadraticization
