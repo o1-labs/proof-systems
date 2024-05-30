@@ -43,9 +43,9 @@ pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 pub mod columns;
 pub mod decomposable_folding;
 
-mod error_term;
+pub mod error_term;
 
-mod eval_leaf;
+pub mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
@@ -59,8 +59,8 @@ pub mod checker;
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
-type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
+pub type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+pub type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
 
 // 'static seems to be used for expressions. Can we get rid of it?
 pub trait FoldingConfig: Debug + 'static {
@@ -375,8 +375,8 @@ impl<F: Field> Foldable<F> for Alphas<F> {
 }
 
 impl<F: Field> Alphas<F> {
-    pub fn new(alpha: F) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    pub fn new(alpha: F, count: usize) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(count)))
     }
 
     pub fn get(&self, i: usize) -> Option<F> {

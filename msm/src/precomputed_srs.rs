@@ -42,6 +42,7 @@ pub fn get_bn254_srs(domain: EvaluationDomains<Fp>) -> PairingSRS<BN254> {
     } else {
         PairingSRS::create(Fp::rand(&mut rand::rngs::OsRng), domain.d1.size as usize)
     };
+    // We could also do d2, d4, d8.
     srs.full_srs.add_lagrange_basis(domain.d1); // not added if already present.
     srs
 }

@@ -9,7 +9,11 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use log::debug;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{
+    collections::{BTreeMap, HashSet},
+    iter,
+    marker::PhantomData,
+};
 
 /// Witness builder environment. Operates on multiple rows at the same
 /// time. `CIx::N_COL` must be equal to `N_WIT + N_FSEL`; passing these two
@@ -44,6 +48,9 @@ pub struct WitnessBuilderEnv<
 
     /// Function used to map assertions.
     pub assert_mapper: Box<dyn Fn(F) -> F>,
+
+    /// History of all cells written.
+    pub cells_written: HashSet<(usize, Column)>,
 
     // A Phantom Data for CIx -- right now WitnessBUilderEnv does not
     // depend on CIx, but in the future (with associated generics
@@ -100,6 +107,15 @@ impl<
     > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
+        assert!(
+            !self
+                .cells_written
+                .contains(&(self.curr_row(), ix.to_column())),
+            "double write at {:?} {:?}",
+            self.curr_row(),
+            ix.to_column()
+        );
+        self.cells_written.insert((self.curr_row(), ix.to_column()));
         self.write_column_raw(ix.to_column(), *value);
     }
 }
@@ -306,8 +322,9 @@ impl<
             lookup_multiplicities,
             lookups: vec![lookups_row],
             fixed_selectors,
-            phantom_cix: PhantomData,
+            cells_written: HashSet::new(),
             assert_mapper: Box::new(|x| x),
+            phantom_cix: PhantomData,
         }
     }
 

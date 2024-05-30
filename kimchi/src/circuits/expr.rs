@@ -1026,7 +1026,7 @@ pub enum Domain {
 }
 
 #[derive(Clone)]
-enum EvalResult<'a, F: FftField> {
+pub enum EvalResult<'a, F: FftField> {
     Constant(F),
     Evals {
         domain: Domain,

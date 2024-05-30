@@ -178,6 +178,7 @@ where
                 }
             }
         } else {
+            // TODO use fixed columns here
             &self.structure[col]
         }
     }

@@ -648,7 +648,7 @@ mod folding {
         let joint_combiner = fq_sponge.challenge();
         let alpha = fq_sponge.challenge();
         let challenges = [beta, gamma, joint_combiner];
-        let alphas = Alphas::new(alpha);
+        let alphas = Alphas::new(alpha, 0);
         let blinder = Fp::one();
 
         FoldingInstance {

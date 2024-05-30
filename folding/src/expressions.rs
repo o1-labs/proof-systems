@@ -923,7 +923,9 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>, usize) {
+    // detect selectors?
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
+    // detect selectors?
     let (
         Quadraticized {
             original_constraints: expressions,
@@ -961,7 +963,9 @@ pub fn folding_expression<C: FoldingConfig>(
     (integrated, extended_witness_generator, added_columns)
 }
 
-// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
+////////////////////////////////////////////////////////////////////////////
+// Conversions: Expr -> Folding Compatible Expr
+////////////////////////////////////////////////////////////////////////////
 
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
 where
@@ -1106,6 +1110,67 @@ where
             Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
             Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
             _ => panic!("Operation not supported in folding expressions"),
+        }
+    }
+}
+////////////////////////////////////////////////////////////////////////////
+// Conversions (TryFrom): Folding Compatible Expr -> Expr
+////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug)]
+pub enum FromFoldingConversionError {
+    Generic(String),
+}
+
+impl<F, Col, Config> TryFrom<FoldingCompatibleExpr<Config>>
+    for Operations<ExprInner<Operations<ConstantExprInner<F>>, Col>>
+where
+    Config: FoldingConfig<Column = Col>,
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: TryInto<ChallengeTerm, Error = FromFoldingConversionError>,
+{
+    type Error = FromFoldingConversionError;
+
+    fn try_from(expr: FoldingCompatibleExpr<Config>) -> Result<Self, Self::Error> {
+        match expr {
+            FoldingCompatibleExpr::Atom(inner) => match inner {
+                FoldingCompatibleExprInner::Constant(c) => {
+                    Ok(Operations::Atom(ExprInner::Constant(Operations::Atom(
+                        ConstantExprInner::Constant(ConstantTerm::Literal(c)),
+                    ))))
+                }
+                FoldingCompatibleExprInner::Challenge(chal) => {
+                    let regular_chal = chal.try_into()?;
+                    Ok(Operations::Atom(ExprInner::Constant(Operations::Atom(
+                        ConstantExprInner::Challenge(regular_chal),
+                    ))))
+                }
+                FoldingCompatibleExprInner::Cell(variable) => {
+                    Ok(Operations::Atom(ExprInner::Cell(variable)))
+                }
+                _ => panic!("Not supported yet"),
+            },
+            FoldingCompatibleExpr::Add(x, y) => Ok(Operations::Add(
+                Box::new((*x).try_into().unwrap()),
+                Box::new((*y).try_into().unwrap()),
+            )),
+            FoldingCompatibleExpr::Mul(x, y) => Ok(Operations::Mul(
+                Box::new((*x).try_into().unwrap()),
+                Box::new((*y).try_into().unwrap()),
+            )),
+            FoldingCompatibleExpr::Sub(x, y) => Ok(Operations::Sub(
+                Box::new((*x).try_into().unwrap()),
+                Box::new((*y).try_into().unwrap()),
+            )),
+            FoldingCompatibleExpr::Double(x) => {
+                Ok(Operations::Double(Box::new((*x).try_into().unwrap())))
+            }
+            FoldingCompatibleExpr::Square(x) => {
+                Ok(Operations::Square(Box::new((*x).try_into().unwrap())))
+            }
+            FoldingCompatibleExpr::Pow(e, p) => {
+                Ok(Operations::Pow(Box::new((*e).try_into().unwrap()), p))
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::poseidon_8_56_5_3_2::bn254::{
 
 use crate::{
     ivc::{
-        columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
+        columns::{block_height, total_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
         constraints::{
             constrain_challenges, constrain_ecadds, constrain_inputs, constrain_scalars,
             constrain_u,
@@ -17,7 +17,8 @@ use crate::{
     },
     poseidon_8_56_5_3_2::{
         bn254::{
-            NB_TOTAL_ROUND as IVC_POSEIDON_NB_TOTAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+            PoseidonBN254Parameters, NB_TOTAL_ROUND as IVC_POSEIDON_NB_TOTAL_ROUND,
+            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
         },
         interpreter::{poseidon_circuit, PoseidonParams},
     },
@@ -231,7 +232,8 @@ where
     PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: MultiRowReadCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
-    // These should be some proper seeds. Passed from the outside
+    // These should be some proper seeds. Passed from the outside (a.k.a from
+    // the environment. use a trait IVC capability for that)
     let sponge_l_init: F = F::zero();
     let sponge_r_init: F = F::zero();
     let sponge_o_init: F = F::zero();
@@ -253,7 +255,11 @@ where
         );
 
         // On the first 6 * N_COL_TOTAL, we process the commitments
-        // Computing h_l, h_r, h_o independently
+        // Computing h_l, h_r, h_o independently. Recall that e.g.
+        // computing h_l takes 2N lines, since each input line
+        // commitment C_{L,i}, for i ∈ N, is processed by two hashing
+        // lines, since C_{L,i} is represented as four 150-bit elements,
+        // and one hash (per line) processes only two 150-bit elements.
         if block_row_i < 6 * N_COL_TOTAL {
             // Left, right, or output
             // we process first all left, after that all right, and after that
@@ -504,9 +510,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     Ff: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    // TODO FIXME multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
-    let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
-
     // Compute error and t terms limbs.
     let error_terms_large: Box<[[F; 2 * N_LIMBS_LARGE]; 3]> = o1_utils::array::vec_to_boxed_array2(
         error_terms
@@ -530,6 +533,38 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
             })
             .collect(),
     );
+
+    let stub_bucket = {
+        // FIXME This is a STUB right now it uses randomly generated points (not even on curve)
+        // Must use bucket input which is looked up.
+        let mut rng = rand::thread_rng();
+        let stub_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_x_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_x);
+        let stub_y_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_y);
+        (stub_x_large, stub_y_large)
+    };
+
+    // TODO FIXME STUBBED. multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
+    //let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
+    let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = {
+        let mut rng = rand::thread_rng();
+        let r_hat_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let r_hat_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let r_hat_x_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&r_hat_x);
+        let r_hat_y_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&r_hat_y);
+        let decomposition: [F; 2 * N_LIMBS_LARGE] = r_hat_x_large
+            .into_iter()
+            .chain(r_hat_y_large)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        o1_utils::array::vec_to_boxed_array(vec![decomposition; N_COL_TOTAL])
+    };
 
     // E_R' = r·T_0 + r^2·T_1 + r^3·E_R
     // FIXME for now stubbed and just equal to E_L
@@ -615,13 +650,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
             panic!("Dead case");
         };
 
-        // FIXME This is a STUB right now it uses C_{O,i} commitments.
-        // Must use bucket input which is looked up.
-        let stub_bucket = (
-            comms_large[2][com_i][..N_LIMBS_LARGE].try_into().unwrap(),
-            comms_large[2][com_i][N_LIMBS_LARGE..].try_into().unwrap(),
-        );
-
         // Second FEC input point, Q.
         let (xq_limbs, yq_limbs) = if block_row_i < 34 * N_COL_TOTAL {
             stub_bucket
@@ -644,10 +672,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
         };
 
         env.write_column(IVCColumn::Block4Coeff, &Env::constant(coeff));
-        write_column_array_const(env, &xp_limbs, IVCColumn::Block4Input1);
-        write_column_array_const(env, &yp_limbs, |i| IVCColumn::Block4Input1(i + 4));
-        write_column_array_const(env, &xq_limbs, IVCColumn::Block4Input2);
-        write_column_array_const(env, &yq_limbs, |i| IVCColumn::Block4Input2(i + 4));
 
         // TODO These two should be used when RAMLookups are enabled.
         env.write_column(IVCColumn::Block4Input2AccessTime, &Env::constant(F::zero()));
@@ -699,6 +723,10 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     }
 }
 
+// TODO: Do we need to check that the challenges are not merely
+// recombined properly, but also are computed properly for the right
+// (strict) instance; as hashes of fq_sponge, squeezed after the
+// alpha?
 #[allow(clippy::needless_range_loop)]
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
@@ -768,18 +796,25 @@ pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
 /// The size of the array is the total number of public values required for the
 /// IVC. Therefore, it includes the potential round constants required by
 /// the hash function.
-// FIXME: rc should be handled here or in the lens
 #[allow(clippy::needless_range_loop)]
-pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS]
-where
-    F: PrimeField,
-{
+) -> [Vec<kimchi_msm::Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] {
+    // Selectors can be only generated for BN254G1 for now, because
+    // that's what Poseidon works with.
+    use ark_ff::{One, Zero};
+    use kimchi_msm::Fp;
+
+    assert!(
+        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
+        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
+        total_height::<N_COL_TOTAL, N_CHALS>(),
+    );
+
     // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    let mut selectors: [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS] =
-        core::array::from_fn(|_| vec![F::zero(); domain_size]);
+    let mut selectors: [Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] =
+        core::array::from_fn(|_| vec![Fp::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
@@ -787,9 +822,21 @@ where
                 curr_row < domain_size,
                 "The domain size is too small to handle the IVC circuit"
             );
-            selectors[block_i][curr_row] = F::one();
+            selectors[block_i][curr_row] = Fp::one();
             curr_row += 1;
         }
+    }
+
+    for i in N_BLOCKS..IVC_NB_TOTAL_FIXED_SELECTORS - N_BLOCKS {
+        PoseidonBN254Parameters
+            .constants()
+            .iter()
+            .enumerate()
+            .for_each(|(_round, rcs)| {
+                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
+                    selectors[i] = vec![*rc; domain_size];
+                });
+            });
     }
 
     selectors
@@ -831,15 +878,26 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
         + HybridCopyCap<F, IVCColumn>
         + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    // Total height of all blocks. Probably higher than this number. WIP
-    assert!(45 * N_COL_TOTAL + 2 < domain_size);
+    assert!(
+        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
+        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
+        total_height::<N_COL_TOTAL, N_CHALS>(),
+    );
     assert!(chal_l.len() == N_CHALS);
+    assert!(fold_iteration == 1); // We'll allow different >1 values later
 
     let (_comms_small, comms_large, comms_xlarge) = process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(
         env,
         fold_iteration,
         [comms_left, comms_right, comms_out],
     );
+
+    // FIXME: only right, out and right scaled must be absorbed, not left. We
+    // can suppose that left has been absorbed before. It is only the new
+    // instance that must be absorbed, with the output
+    // FIXME: we do want to have different poseidon instances.
+    // FIXME: do we want to pass the random folding combiner as a parameter of
+    // the function and check here that the value is the same?
     let (hash_r_var, r_var, phi_var) = process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(
         env,
         fold_iteration,
@@ -869,11 +927,15 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 /// As each constraint is multiplied by the fold iteration, this will simulate a
 /// "deactivation" of the IVC circuit.
 // FIXME: this is not the final version.
-pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(env: &mut Env)
-where
+pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+    env: &mut Env,
+    domain_size: usize,
+) where
     F: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
+    assert!(45 * N_COL_TOTAL + 2 < domain_size);
+
     // Assuming tables are initialized to zero we don't even have to do this.
     let fold_iteration = 0;
     for block_i in 0..N_BLOCKS {

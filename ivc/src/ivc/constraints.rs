@@ -249,6 +249,10 @@ where
         let sel = env.read_column(IVCColumn::BlockSel(i));
         env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
     }
+
+    // For now iteration is only 0 or 1
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
+    env.assert_zero(fold_iteration.clone() * (fold_iteration.clone() - Env::constant(F::one())));
 }
 
 /// This function generates constraints for the whole IVC circuit.

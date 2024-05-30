@@ -20,7 +20,7 @@ use poly_commitment::{PolyComm, SRS};
 // bigint where we only apply the modulus when needed.
 
 /// This type refers to the two instances to be folded
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Side {
     Left = 0,
     Right = 1,
@@ -36,7 +36,7 @@ impl Side {
 }
 
 /// Evaluates the expression in the provided side
-pub(crate) fn eval_sided<'a, C: FoldingConfig>(
+pub fn eval_sided<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,
     side: Side,
@@ -287,7 +287,7 @@ pub(crate) fn compute_error<C: FoldingConfig>(
 /// the two instances and witnesses that are being folded.
 /// The domain is required to define the polynomial size of the evaluations of
 /// the error terms.
-pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
+pub struct ExtendedEnv<CF: FoldingConfig> {
     inner: CF::Env,
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
