@@ -185,15 +185,17 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     // possible, and inline code.
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
-    let zero = || EvalLeaf::Result(env.inner().zero_vec(env.domain.size as usize));
+    let zero = || EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize));
 
     let alphas_l = env
         .get_relaxed_instance(Side::Left)
-        .inner_instance()
+        .extended_instance
+        .instance
         .get_alphas();
     let alphas_r = env
         .get_relaxed_instance(Side::Right)
-        .inner_instance()
+        .extended_instance
+        .instance
         .get_alphas();
 
     let t_0 = {
@@ -280,13 +282,14 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         selector: Option<CF::Selector>,
     ) -> Self {
-        // FIXME: avoid indirection
         let inner_instances = [
-            instances[0].inner_instance().inner(),
-            instances[1].inner_instance().inner(),
+            &instances[0].extended_instance.instance,
+            &instances[1].extended_instance.instance,
         ];
-        // FIXME: avoid indirection
-        let inner_witnesses = [witnesses[0].inner().inner(), witnesses[1].inner().inner()];
+        let inner_witnesses = [
+            &witnesses[0].extended_witness.witness,
+            &witnesses[1].extended_witness.witness,
+        ];
         let inner = <CF::Env>::new(structure, inner_instances, inner_witnesses);
         Self {
             inner,
@@ -299,10 +302,6 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
 
     pub fn enabled_selector(&self) -> Option<&CF::Selector> {
         self.selector.as_ref()
-    }
-
-    pub fn inner(&self) -> &CF::Env {
-        &self.inner
     }
 
     #[allow(clippy::type_complexity)]
@@ -331,51 +330,51 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<ScalarField<CF>> {
         use EvalLeaf::Col;
         use ExtendedFoldingColumn::*;
-        let instance = self.get_relaxed_instance(side);
-        let witness = self.get_relaxed_witness(side);
-        let alphas = instance.inner_instance().get_alphas();
+        let relaxed_instance = self.get_relaxed_instance(side);
+        let relaxed_witness = self.get_relaxed_witness(side);
+        let alphas = relaxed_instance.extended_instance.instance.get_alphas();
         match col {
-            Inner(Variable { col, row }) => Col(self.inner().col(*col, *row, side)),
-            WitnessExtended(i) => Col(&witness
-                .inner()
+            Inner(Variable { col, row }) => Col(self.inner.col(*col, *row, side)),
+            WitnessExtended(i) => Col(&relaxed_witness
+                .extended_witness
                 .extended
                 .get(i)
                 .expect("extended column not present")
                 .evals),
             Error => panic!("shouldn't happen"),
             Constant(c) => EvalLeaf::Const(*c),
-            Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall, side)),
+            Challenge(chall) => EvalLeaf::Const(self.inner.challenge(*chall, side)),
             Alpha(i) => {
                 let alpha = alphas.get(*i).expect("alpha not present");
                 EvalLeaf::Const(alpha)
             }
-            Selector(s) => Col(self.inner().selector(s, side)),
+            Selector(s) => Col(self.inner.selector(s, side)),
         }
     }
 
     pub fn col_try(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> bool {
         use ExtendedFoldingColumn::*;
-        let witness = self.get_relaxed_witness(side);
+        let relaxed_witness = self.get_relaxed_witness(side);
         match col {
-            WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
+            WitnessExtended(i) => relaxed_witness.extended_witness.extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
             Inner(_) | Constant(_) | Challenge(_) | Alpha(_) | Selector(_) => true,
         }
     }
 
     pub fn add_witness_evals(&mut self, i: usize, evals: Vec<ScalarField<CF>>, side: Side) {
-        let (_instance, witness) = match side {
+        let (_instance, relaxed_witness) = match side {
             Side::Left => (&self.instances[0], &mut self.witnesses[0]),
             Side::Right => (&self.instances[1], &mut self.witnesses[1]),
         };
         let evals = Evaluations::from_vec_and_domain(evals, self.domain);
-        witness.inner_mut().add_witness_evals(i, evals);
+        relaxed_witness.extended_witness.add_witness_evals(i, evals);
     }
 
     pub fn needs_extension(&self, side: Side) -> bool {
         !match side {
-            Side::Left => self.witnesses[0].inner().is_extended(),
-            Side::Right => self.witnesses[1].inner().is_extended(),
+            Side::Left => self.witnesses[0].extended_witness.is_extended(),
+            Side::Right => self.witnesses[1].extended_witness.is_extended(),
         }
     }
 
@@ -399,17 +398,17 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     /// The commitments are added to the instance, in the same order for both
     /// side.
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
-        let (instance, witness) = match side {
+        let (relaxed_instance, relaxed_witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),
             Side::Right => (&mut self.instances[1], &self.witnesses[1]),
         };
 
         // FIXME: use parallelisation
-        for (expected_i, (i, wit)) in witness.inner().extended.iter().enumerate() {
+        for (expected_i, (i, wit)) in relaxed_witness.extended_witness.extended.iter().enumerate() {
             //in case any where to be missing for some reason
             assert_eq!(*i, expected_i);
             let commit = srs.commit_evaluations_non_hiding(self.domain, wit);
-            instance.inner_mut().extended.push(commit)
+            relaxed_instance.extended_instance.extended.push(commit)
         }
         // FIXME: maybe returning a value is not necessary as it does inplace operations.
         // It implies copying on the stack and possibly copy multiple times.
