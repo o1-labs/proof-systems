@@ -9,7 +9,7 @@ use crate::{
         column::{
             ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            MIPS_PREIMAGE_BYTES_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +33,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
+pub const SCRATCH_SIZE: usize = 91; // MIPS + hash_counter + bytes_read + bytes_left + bytes + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -639,7 +639,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
+                // Do nothing for the count of bytes of the preimage.
+                // TODO: do we want to check anything for these bytes as well? Like length?
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
@@ -647,7 +648,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             } else {
                 preimage_read_len += 1; // At most, it will be actual_read_len
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
+
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
