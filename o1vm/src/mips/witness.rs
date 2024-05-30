@@ -9,7 +9,7 @@ use crate::{
         column::{
             ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
-            MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +33,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
+pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -605,9 +605,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
-        // This is a syscall row, otherwise is zero
-        self.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), 1);
-
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
             for i in 0..8 {

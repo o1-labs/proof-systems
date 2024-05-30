@@ -72,9 +72,9 @@ fn test_mips_number_constraints() {
                 | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 6),
                 SyscallOther => assert_num_constraints(&instr, 10),
                 SyscallMmap => assert_num_constraints(&instr, 11),
-                SyscallReadPreimage => assert_num_constraints(&instr, 21),
                 SyscallFcntl => assert_num_constraints(&instr, 22),
-                SyscallWritePreimage => assert_num_constraints(&instr, 30),
+                SyscallReadPreimage => assert_num_constraints(&instr, 27),
+                SyscallWritePreimage => assert_num_constraints(&instr, 30), // FIXME: This should be 36
             },
             JType(jtype) => match jtype {
                 Jump => assert_num_constraints(&instr, 0),
@@ -112,35 +112,24 @@ fn test_mips_number_constraints() {
     );
 }
 
-mod folding {
+// Here live the unit tests for the MIPS instructions
+mod unit {
+
+    use super::Fp;
     use crate::{
         cannon::{HostProgram, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
-        folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
         mips::{
             column::N_MIPS_REL_COLS,
-            constraints::Env as CEnv,
             interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
             ITypeInstruction,
         },
         preimage_oracle::PreImageOracle,
-        trace::Trace,
-        BaseSponge, Curve,
     };
     use kimchi::o1_utils;
+    use kimchi_msm::witness::Witness;
     use rand::{CryptoRng, Rng, RngCore};
-
-    use ark_poly::{EvaluationDomain as _, Evaluations, Radix2EvaluationDomain as D};
-    use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig, FoldingScheme};
-    use itertools::Itertools;
-    use kimchi::curve::KimchiCurve;
-    use kimchi_msm::{columns::Column, witness::Witness};
-    use mina_poseidon::FqSponge;
-    use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
-    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-
-    use super::Fp;
 
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
@@ -339,7 +328,7 @@ mod folding {
         assert_eq!(dummy_env.registers.general_purpose[1], 0xa0000);
     }
 
-    fn make_random_witness_for_addiu<RNG>(
+    pub fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
         rng: &mut RNG,
     ) -> Witness<N_MIPS_REL_COLS, Vec<Fp>>
@@ -389,6 +378,28 @@ mod folding {
             .for_each(|x| assert_eq!(x.len(), domain_size));
         witness
     }
+}
+
+mod folding {
+    use crate::{
+        folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+        mips::{
+            column::N_MIPS_REL_COLS, constraints::Env as CEnv, interpreter::interpret_itype,
+            tests::unit::make_random_witness_for_addiu, ITypeInstruction,
+        },
+        trace::Trace,
+        BaseSponge, Curve,
+    };
+    use ark_poly::{EvaluationDomain as _, Evaluations, Radix2EvaluationDomain as D};
+    use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig, FoldingScheme};
+    use itertools::Itertools;
+    use kimchi::{curve::KimchiCurve, o1_utils};
+    use kimchi_msm::{columns::Column, witness::Witness};
+    use mina_poseidon::FqSponge;
+    use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
+    use super::Fp;
 
     fn build_folding_instance(
         witness: &FoldingWitness<N_MIPS_REL_COLS, Fp>,

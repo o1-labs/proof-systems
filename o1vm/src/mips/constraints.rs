@@ -19,8 +19,6 @@ use kimchi::circuits::{
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
 
-use super::column::MIPS_IS_SYSCALL_OFFSET;
-
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -381,14 +379,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i))
         });
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4)
-        // FIXME: can it be zero?
+        // TODO: could it be zero?
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i))
         });
         // Whether this step has read any bytes of the preimage or not (boolean)
         let reading_preimage =
             self.variable(Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET));
-        let is_syscall = self.variable(Self::Position::ScratchState(MIPS_IS_SYSCALL_OFFSET));
         // How many hashes have been performed so far in the circuit
         let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET));
         // Whether this is the last step of the preimage or not (boolean)
@@ -405,13 +402,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // Booleanity constraints
         {
+            // FIXME: for some reason these 6 constraints are counted in SyscallReadPreimage but not in SyscallWritePreimage
             for var in has_n_bytes.iter() {
                 self.assert_boolean(var.clone());
             }
             self.assert_boolean(reading_preimage.clone());
-            self.assert_boolean(is_syscall.clone());
             self.assert_boolean(end_of_preimage.clone());
-            // TODO: do we want to constrain this?
+            // TODO: should we constrain this?
             // If this is the end of the preimage, then it is also a syscall and a preimage read
             // The possible combinations are:
             // is_syscall reading_preimage end_of_preimage
@@ -419,18 +416,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // 1          0                0
             // 1          1                0
             // 1          1                1
-        }
-
-        // Byte checks with lookups
-        // FIXME: probably not needed as the preimage bytes are checked on the Keccak side as well.
-        //        Do we want to keep them here so that the bytelength bytes are also checked?
-        {
-            for b in bytes.iter() {
-                self.add_lookup(Lookup::write_one(
-                    LookupTableIDs::ByteLookup,
-                    vec![b.clone()],
-                ));
-            }
         }
 
         {
@@ -563,6 +548,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             LookupTableIDs::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));
+
+        // Byte checks with lookups
+        // FIXME: probably not needed as the preimage bytes are checked on the Keccak side as well.
+        //        Do we want to keep them here so that the bytelength bytes are also checked?
+        {
+            for b in bytes.iter() {
+                self.add_lookup(Lookup::write_one(
+                    LookupTableIDs::ByteLookup,
+                    vec![b.clone()],
+                ));
+            }
+        }
 
         // Return chunk of preimage as variable
         this_chunk

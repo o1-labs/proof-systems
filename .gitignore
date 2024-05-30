@@ -36,5 +36,7 @@ o1vm/meta.json
 o1vm/out.json
 o1vm/op-program-db*
 o1vm/state.json
+o1vm/2023-*
+o1vm/2024-*
 meta.json
 state.json
