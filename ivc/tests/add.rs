@@ -1,3 +1,7 @@
+//! This is a simple example of how to use the folding crate with the IVC crate
+//! to fold a simple addition circuit. The addition circuit consists of a single
+//! constraint of degree 1 over 3 columns (A + B - C = 0).
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_poly::Evaluations;
 use folding::{
@@ -8,7 +12,7 @@ use kimchi::{
     circuits::{expr::ChallengeTerm, gate::CurrOrNext},
     curve::KimchiCurve,
 };
-use kimchi_msm::witness::Witness as GenericWitness;
+use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use rayon::iter::IntoParallelIterator as _;
 use std::{array, collections::BTreeMap, ops::Index};
@@ -26,17 +30,50 @@ use kimchi_msm::{
 use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
 use rayon::iter::ParallelIterator as _;
 
-use self::columns::AdditionColumn;
 use itertools::Itertools;
-
-mod columns;
-mod interpreters;
 
 pub type Fp = ark_bn254::Fr;
 pub type Curve = ark_bn254::G1Affine;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, EnumIter, EnumCountMacro, Hash)]
+pub enum AdditionColumn {
+    A,
+    B,
+    C,
+}
+
+impl ColumnIndexer for AdditionColumn {
+    const N_COL: usize = 3;
+
+    fn to_column(self) -> Column {
+        match self {
+            AdditionColumn::A => Column::Relation(0),
+            AdditionColumn::B => Column::Relation(1),
+            AdditionColumn::C => Column::Relation(2),
+        }
+    }
+}
+
+use ark_ff::PrimeField;
+use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
+
+/// Simply compute A + B - C
+pub fn interpreter_simple_add<
+    F: PrimeField,
+    Env: ColAccessCap<F, AdditionColumn> + HybridCopyCap<F, AdditionColumn>,
+>(
+    env: &mut Env,
+) {
+    let a = env.read_column(AdditionColumn::A);
+    let b = env.read_column(AdditionColumn::B);
+    env.hcopy(&(a.clone() + b.clone()), AdditionColumn::C);
+    let c = env.read_column(AdditionColumn::C);
+    let eq = a.clone() + b.clone() - c;
+    env.assert_zero(eq);
+}
 
 #[test]
 pub fn test_simple_add() {
@@ -275,7 +312,7 @@ pub fn test_simple_add() {
 
     let constraints = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-        interpreters::interpreter_simple_add::<Fp, _>(&mut constraint_env);
+        interpreter_simple_add::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         constraint_env.get_relation_constraints()
     };
@@ -294,7 +331,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         witness_one.write_column(AdditionColumn::A, &a);
         witness_one.write_column(AdditionColumn::B, &b);
-        interpreters::interpreter_simple_add(&mut witness_one);
+        interpreter_simple_add(&mut witness_one);
         witness_two.next_row();
     }
 
@@ -304,12 +341,12 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         witness_two.write_column(AdditionColumn::A, &a);
         witness_two.write_column(AdditionColumn::B, &b);
-        interpreters::interpreter_simple_add(&mut witness_two);
+        interpreter_simple_add(&mut witness_two);
         witness_two.next_row();
     }
 
-    let proof_inputs_one = witness_one.get_proof_inputs(domain, empty_lookups.clone());
-    let proof_inputs_two = witness_two.get_proof_inputs(domain, empty_lookups.clone());
+    let proof_inputs_one = witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
+    let proof_inputs_two = witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
 
     let folding_witness_one = PlonkishWitness {
         witness: (proof_inputs_one.evaluations)
@@ -349,7 +386,5 @@ pub fn test_simple_add() {
 
     let one = (folding_instance_one, folding_witness_one);
     let two = (folding_instance_two, folding_witness_two);
-    let (_relaxed_instance, _relatex_witness) = folding_scheme
-        .fold_instance_witness_pair(one, two, &mut fq_sponge)
-        .pair();
+    let _folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
 }
