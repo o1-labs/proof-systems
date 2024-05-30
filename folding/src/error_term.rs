@@ -394,6 +394,10 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     }
 
     // FIXME: use reference to avoid indirect copying/cloning.
+    /// Computes the commitments of the columns added by quadriaticization, for
+    /// the given side.
+    /// The commitments are added to the instance, in the same order for both
+    /// side.
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
         let (instance, witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),

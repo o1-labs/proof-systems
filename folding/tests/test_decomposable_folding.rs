@@ -385,7 +385,11 @@ fn test_decomposable_folding() {
         let FoldingOutput {
             folded_instance,
             folded_witness,
-            ..
+            t_0: _,
+            t_1: _,
+            relaxed_extended_left_instance: _,
+            relaxed_extended_right_instance: _,
+            to_absorb: _,
         } = folded;
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
         debug!("exp: \n {:#?}", final_constraint.to_string());
@@ -417,7 +421,11 @@ fn test_decomposable_folding() {
         let FoldingOutput {
             folded_instance,
             folded_witness,
-            ..
+            t_0: _,
+            t_1: _,
+            relaxed_extended_left_instance: _,
+            relaxed_extended_right_instance: _,
+            to_absorb: _,
         } = folded;
 
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
@@ -439,6 +447,8 @@ fn test_decomposable_folding() {
             folded_witness,
             t_0,
             t_1,
+            relaxed_extended_left_instance: _,
+            relaxed_extended_right_instance: _,
             to_absorb: _,
         } = folded;
 
