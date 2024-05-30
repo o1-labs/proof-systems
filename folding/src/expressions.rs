@@ -166,7 +166,7 @@
 //! ```
 //!
 //! Note that we end up with everything of the same degree, which is `3` in this
-//! case. The variables `α_{1}` and `α_{2}` increases the degree of the
+//! case. The variables `α_{1}` and `α_{2}` increase the degree of the
 //! homogeneous expressions by one.
 //!
 //! For two given instances `(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})` and
