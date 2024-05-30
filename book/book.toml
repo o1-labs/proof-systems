@@ -13,6 +13,16 @@ git-repository-url = "https://www.github.com/o1-labs/proof-systems"
 additional-css = ["./assets/css/mdbook-admonish.css", "./mdbook-admonish.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
+[output.html.print]
+enable = true
+
+[output.pdf]
+scale = 0.4
+margin-top = 0.1
+margin-bottom = 0.1
+margin-left = 0.1
+margin-right = 0.1
+
 # for LaTeX
 [output.katex]
 [preprocessor.katex]
@@ -42,3 +52,4 @@ renderer = ["html"]
 follow-web-links = false
 traverse-parent-directories = false
 latex-support = true
+

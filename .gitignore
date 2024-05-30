@@ -3,6 +3,7 @@ bazel-*
 .bazel/
 user.bazelrc
 .cpcache
+.direnv
 
 *.log
 log/

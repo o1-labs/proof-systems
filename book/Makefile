@@ -8,6 +8,7 @@ MDBOOK_ADMONISH_VERSION = 1.14.0
 MDBOOK_LINKCHECK_VERSION = 0.7.7
 MDBOOK_MERMAID_VERSION = 0.12.6
 MDBOOK_TOC_VERSION = 0.14.1
+#MDBOOK_PDF_VERSION = 0.1.8
 
 
 all: deps check build serve
@@ -23,6 +24,7 @@ deps:
 	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck
 	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
 	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)"
+	#cargo install --locked "mdbook-pdf@$(MDBOOK_PDF_VERSION)"
 
 #
 # Checks if your installed dependencies match what we've listed above
