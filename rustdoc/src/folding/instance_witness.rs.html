@@ -610,7 +610,7 @@
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxedInstance&lt;G, I&gt; {
     <span class="doccomment">/// Return the original instance that has been relaxed, with the extra
     /// columns added by quadraticization
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner_instance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedInstance&lt;G, I&gt; {
+    </span><span class="kw">pub fn </span>inner_instance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedInstance&lt;G, I&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.instance
     }
 
@@ -654,7 +654,7 @@
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; RelaxedWitness&lt;G, W&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedWitness&lt;G, W&gt; {
+    <span class="kw">pub fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedWitness&lt;G, W&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.witness
     }
 
