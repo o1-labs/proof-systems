@@ -6,30 +6,26 @@
 /// ```text
 /// cargo nextest run test_folding_instance --release --all-features
 /// ```
-use crate::{FoldingOutput, FoldingScheme};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-use checker::{ExtendedProvider, Provider};
-use folding::*;
-use kimchi::curve::KimchiCurve;
-use mina_poseidon::FqSponge;
-use std::println as debug;
-
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
-use ark_poly::Radix2EvaluationDomain;
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use checker::{ExtendedProvider, Provider};
 use folding::{
     checker::{Checker, Column, Provide},
     expressions::FoldingCompatibleExprInner,
     instance_witness::Foldable,
-    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
-    RelaxedInstance, RelaxedWitness, Side, Witness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingOutput,
+    FoldingScheme, Instance, RelaxedInstance, RelaxedWitness, Side, Witness,
 };
 use itertools::Itertools;
-use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
+use kimchi::{
+    circuits::{expr::Variable, gate::CurrOrNext},
+    curve::KimchiCurve,
+};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
-
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use std::println as debug;
 
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
@@ -379,7 +375,7 @@ mod checker {
 #[test]
 fn test_folding_instance() {
     let constraints = constraints();
-    let domain = D::<Fp>::new(2).unwrap();
+    let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
 

@@ -76,15 +76,16 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         let u = (a.0.u, b.0.u);
 
-        let (ins1, wit1) = a;
-        let (ins2, wit2) = b;
+        let (left_instance, left_witness) = a;
+        let (right_instance, right_witness) = b;
         let env = ExtendedEnv::new(
             &scheme.structure,
-            [ins1, ins2],
-            [wit1, wit2],
+            [left_instance, right_instance],
+            [left_witness, right_witness],
             scheme.domain,
             selector,
         );
+
         let env = env.compute_extension(&scheme.extended_witness_generator, scheme.srs);
         let error = compute_error(&scheme.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
@@ -112,10 +113,24 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         let challenge = fq_sponge.challenge();
 
-        let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let folded_instance =
-            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        let (
+            [relaxed_extended_left_instance, relaxed_extended_right_instance],
+            [relaxed_extended_left_witness, relaxed_extended_right_witness],
+        ) = env.unwrap();
+
+        let folded_instance = RelaxedInstance::combine_and_sub_error(
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
+            challenge,
+            &error_commitments,
+        );
+
+        let folded_witness = RelaxedWitness::combine_and_sub_error(
+            relaxed_extended_left_witness,
+            relaxed_extended_right_witness,
+            challenge,
+            error,
+        );
         FoldingOutput {
             folded_instance,
             folded_witness,
