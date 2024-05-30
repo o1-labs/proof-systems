@@ -1,11 +1,12 @@
 //! quadraticization test, check that diferent cases result in the expected number of columns
 //! being added
-use crate::{
+use ark_poly::Radix2EvaluationDomain;
+use folding::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     instance_witness::Foldable,
-    FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingScheme, Instance, Witness,
+    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingScheme, Instance, Side,
+    Witness,
 };
-use ark_poly::Radix2EvaluationDomain;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::srs::SRS;
 
@@ -25,7 +26,7 @@ impl Foldable<Fp> for TestInstance {
 }
 
 impl Instance<Curve> for TestInstance {
-    fn get_alphas(&self) -> &crate::Alphas<Fp> {
+    fn get_alphas(&self) -> &Alphas<Fp> {
         todo!()
     }
 
@@ -89,15 +90,15 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: crate::Side) -> &Vec<Fp> {
+    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<Fp> {
         todo!()
     }
 
-    fn challenge(&self, _challenge: (), _side: crate::Side) -> Fp {
+    fn challenge(&self, _challenge: (), _side: Side) -> Fp {
         todo!()
     }
 
-    fn selector(&self, _s: &(), _side: crate::Side) -> &Vec<Fp> {
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
         todo!()
     }
 }

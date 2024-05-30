@@ -1,21 +1,31 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
-use crate::{
-    checker::{Checker, ExtendedProvider},
-    error_term::Side,
-    examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
-    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    instance_witness::Foldable,
-    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
-};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::UniformRand;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use folding::{
+    checker::{Checker, ExtendedProvider},
+    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    instance_witness::Foldable,
+    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, Side, Witness,
+};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
 use std::{collections::BTreeMap, ops::Index};
+
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use folding::{decomposable_folding::DecomposableFoldingScheme, FoldingOutput};
+use kimchi::curve::KimchiCurve;
+use mina_poseidon::FqSponge;
+use std::println as debug;
+
+type Fp = ark_bn254::Fr;
+type Curve = ark_bn254::G1Affine;
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -89,6 +99,26 @@ pub struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
+/// Our witness is going to be the polynomials that we will commit too.
+/// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
+/// This witness includes not only the 3 normal witness columns, but also the
+/// 2 dynamic selector columns that are esentially witness
+#[derive(Clone)]
+pub struct TestWitness([Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5]);
+
+impl Foldable<Fp> for TestWitness {
+    fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
+        for (a, b) in a.0.iter_mut().zip(b.0) {
+            for (a, b) in a.evals.iter_mut().zip(b.evals) {
+                *a += challenge * b;
+            }
+        }
+        a
+    }
+}
+
+impl Witness<Curve> for TestWitness {}
+
 // implementing the an environment trait compatible with our config
 impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, DynamicSelector>
     for TestFoldingEnv
@@ -107,7 +137,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
-            for col in side.iter_mut() {
+            for col in side.0.iter_mut() {
                 // TODO: check this, while not relevant for this example I think
                 // it should be right rotation
                 col.evals.rotate_left(1);
@@ -128,9 +158,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            TestColumn::A => &wit[0].evals,
-            TestColumn::B => &wit[1].evals,
-            TestColumn::C => &wit[2].evals,
+            TestColumn::A => &wit.0[0].evals,
+            TestColumn::B => &wit.0[1].evals,
+            TestColumn::C => &wit.0[2].evals,
         }
     }
 
@@ -150,8 +180,8 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
         let wit = &self.curr_witnesses[side as usize];
         match s {
-            DynamicSelector::SelecAdd => &wit[3].evals,
-            DynamicSelector::SelecMul => &wit[4].evals,
+            DynamicSelector::SelecAdd => &wit.0[3].evals,
+            DynamicSelector::SelecMul => &wit.0[4].evals,
         }
     }
 }
@@ -189,6 +219,8 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestFoldingConfig;
 
+// Flag used as the challenges are never built.
+// FIXME: should we use unit?
 #[allow(dead_code)]
 // Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -217,6 +249,7 @@ fn instance_from_witness(
     domain: Radix2EvaluationDomain<Fp>,
 ) -> TestInstance {
     let commitments = witness
+        .0
         .iter()
         .map(|w| srs.commit_evaluations_non_hiding(domain, w))
         .map(|c| c.elems[0])
@@ -256,9 +289,9 @@ impl Index<TestColumn> for TestWitness {
 
     fn index(&self, index: TestColumn) -> &Self::Output {
         match index {
-            TestColumn::A => &self[0],
-            TestColumn::B => &self[1],
-            TestColumn::C => &self[2],
+            TestColumn::A => &self.0[0],
+            TestColumn::B => &self.0[1],
+            TestColumn::C => &self.0[2],
         }
     }
 }
@@ -268,158 +301,148 @@ impl Index<DynamicSelector> for TestWitness {
 
     fn index(&self, index: DynamicSelector) -> &Self::Output {
         match index {
-            DynamicSelector::SelecAdd => &self[3],
-            DynamicSelector::SelecMul => &self[4],
+            DynamicSelector::SelecAdd => &self.0[3],
+            DynamicSelector::SelecMul => &self.0[4],
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    // Trick to print debug message while testing, as we in the test config env
-    use crate::{decomposable_folding::DecomposableFoldingScheme, FoldingOutput};
-    use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-    use kimchi::curve::KimchiCurve;
-    use mina_poseidon::FqSponge;
-    use std::println as debug;
+// Trick to print debug message while testing, as we in the test config env
+// two functions to create the entire witness from just the a and b columns
+fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+    let [a1, a2] = a;
+    let [b1, b2] = b;
+    let c = [a1 + b1, a2 + b2];
+    [a, b, c, [1, 1], [0, 0]]
+}
+fn mul_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+    let [a1, a2] = a;
+    let [b1, b2] = b;
+    let c = [a1 * b1, a2 * b2];
+    [a, b, c, [0, 0], [1, 1]]
+}
+fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestWitness {
+    TestWitness(x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain)))
+}
 
-    // two functions to create the entire witness from just the a and b columns
-    fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
-        let [a1, a2] = a;
-        let [b1, b2] = b;
-        let c = [a1 + b1, a2 + b2];
-        [a, b, c, [1, 1], [0, 0]]
-    }
-    fn mul_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
-        let [a1, a2] = a;
-        let [b1, b2] = b;
-        let c = [a1 * b1, a2 * b2];
-        [a, b, c, [0, 0], [1, 1]]
-    }
-    fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestWitness {
-        x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
-    }
+// in this test we will create 2 add witnesses, fold them together, create 2
+// mul witnesses, fold them together, and then further fold the 2 resulting
+// pairs into one mixed add-mul witness
+// instances are also folded, but not that relevant in the examples as we
+// don't make a proof for them and instead directly check the witness
+#[test]
+fn test_quadriticization() {
+    let constraints = constraints();
+    let domain = D::<Fp>::new(2).unwrap();
+    let mut srs = SRS::<Curve>::create(2);
+    srs.add_lagrange_basis(domain);
 
-    // in this test we will create 2 add witnesses, fold them together, create 2
-    // mul witnesses, fold them together, and then further fold the 2 resulting
-    // pairs into one mixed add-mul witness
-    // instances are also folded, but not that relevant in the examples as we
-    // don't make a proof for them and instead directly check the witness
-    #[test]
-    fn test_quadriticization() {
-        let constraints = constraints();
-        let domain = D::<Fp>::new(2).unwrap();
-        let mut srs = SRS::<Curve>::create(2);
-        srs.add_lagrange_basis(domain);
+    let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
-        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+    // initiallize the scheme, also getting the final single expression for
+    // the entire constraint system
+    let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
+        constraints.clone(),
+        vec![],
+        &srs,
+        domain,
+        &(),
+    );
 
-        // initiallize the scheme, also getting the final single expression for
-        // the entire constraint system
-        let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
-            constraints.clone(),
-            vec![],
-            &srs,
-            domain,
-            &(),
+    // some inputs to be used by both add and mul
+    let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
+    let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
+
+    // creates an instance witness pair
+    let make_pair = |wit: TestWitness| {
+        let ins = instance_from_witness(&wit, &srs, domain);
+        (wit, ins)
+    };
+
+    debug!("exp: \n {:#?}", final_constraint.to_string());
+
+    // fold adds
+    debug!("fold add");
+
+    let left = {
+        let [a, b] = inputs1;
+        let wit1 = add_witness(a, b);
+        let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
+
+        let [a, b] = inputs2;
+        let wit2 = add_witness(a, b);
+        let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
+
+        let left = (instance1, witness1);
+        let right = (instance2, witness2);
+        // here we provide normal instance-witness pairs, which will be
+        // automatically relaxed
+        let folded = scheme.fold_instance_witness_pair(
+            left,
+            right,
+            Some(DynamicSelector::SelecAdd),
+            &mut fq_sponge,
         );
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            ..
+        } = folded;
+        let checker = ExtendedProvider::new(folded_instance, folded_witness);
+        checker.check(&final_constraint, domain);
+        let ExtendedProvider {
+            instance, witness, ..
+        } = checker;
+        (instance, witness)
+    };
 
-        // some inputs to be used by both add and mul
-        let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
-        let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
+    debug!("fold muls");
 
-        // creates an instance witness pair
-        let make_pair = |wit: TestWitness| {
-            let ins = instance_from_witness(&wit, &srs, domain);
-            (wit, ins)
-        };
+    let right = {
+        let [a, b] = inputs1;
+        let wit1 = mul_witness(a, b);
+        let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
 
-        debug!("exp: \n {:#?}", final_constraint.to_string());
+        let [a, b] = inputs2;
+        let wit2 = mul_witness(a, b);
+        let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
 
-        // fold adds
-        debug!("fold add");
+        let left = (instance1, witness1);
+        let right = (instance2, witness2);
+        let folded = scheme.fold_instance_witness_pair(
+            left,
+            right,
+            Some(DynamicSelector::SelecMul),
+            &mut fq_sponge,
+        );
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            ..
+        } = folded;
 
-        let left = {
-            let [a, b] = inputs1;
-            let wit1 = add_witness(a, b);
-            let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
+        let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            let [a, b] = inputs2;
-            let wit2 = add_witness(a, b);
-            let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
+        checker.check(&final_constraint, domain);
+        let ExtendedProvider {
+            instance, witness, ..
+        } = checker;
+        (instance, witness)
+    };
 
-            let left = (instance1, witness1);
-            let right = (instance2, witness2);
-            // here we provide normal instance-witness pairs, which will be
-            // automatically relaxed
-            let folded = scheme.fold_instance_witness_pair(
-                left,
-                right,
-                Some(DynamicSelector::SelecAdd),
-                &mut fq_sponge,
-            );
-            let FoldingOutput {
-                folded_instance,
-                folded_witness,
-                ..
-            } = folded;
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            checker.check(&final_constraint, domain);
-            let ExtendedProvider {
-                instance, witness, ..
-            } = checker;
-            (instance, witness)
-        };
+    debug!("fold mixed");
 
-        debug!("fold muls");
+    {
+        // here we use already relaxed pairs, which have a trival x -> x implementation
+        let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
+        let FoldingOutput {
+            folded_instance,
+            folded_witness,
+            ..
+        } = folded;
 
-        let right = {
-            let [a, b] = inputs1;
-            let wit1 = mul_witness(a, b);
-            let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
+        let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
-            let [a, b] = inputs2;
-            let wit2 = mul_witness(a, b);
-            let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
-
-            let left = (instance1, witness1);
-            let right = (instance2, witness2);
-            let folded = scheme.fold_instance_witness_pair(
-                left,
-                right,
-                Some(DynamicSelector::SelecMul),
-                &mut fq_sponge,
-            );
-            let FoldingOutput {
-                folded_instance,
-                folded_witness,
-                ..
-            } = folded;
-
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-
-            checker.check(&final_constraint, domain);
-            let ExtendedProvider {
-                instance, witness, ..
-            } = checker;
-            (instance, witness)
-        };
-
-        debug!("fold mixed");
-
-        {
-            // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
-            let FoldingOutput {
-                folded_instance,
-                folded_witness,
-                ..
-            } = folded;
-
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-
-            checker.check(&final_constraint, domain);
-        };
-    }
+        checker.check(&final_constraint, domain);
+    };
 }

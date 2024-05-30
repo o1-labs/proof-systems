@@ -49,15 +49,6 @@ mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
-#[cfg(test)]
-#[cfg(feature = "bn254")]
-mod quadraticization_tests;
-
-// Modules strictly related to tests
-// TODO: should we move them into an explicit subdirectory `test`?
-#[cfg(test)]
-#[cfg(feature = "bn254")]
-mod examples;
 
 /// Define the different structures required for the examples (both internal and
 /// external)
