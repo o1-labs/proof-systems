@@ -122,7 +122,7 @@
 //!
 //! More generally, if for each row, our computation is constrained by the polynomial
 //! list `[P_{1}, P_{2}, ..., P_{n}]`, we can aggregate them into a single
-//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`.
+//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the $\alpha$ terms consequently increases the overall degree of the expression.
 //!
 //! In particular, when we reduce a polynomial to degree 2, we have this case
 //! where the circuit is described by a list of polynomials and we aggregate
