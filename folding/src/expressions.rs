@@ -87,7 +87,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 }
 
 /// Extra expressions that can be created by folding
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ExpExtension<C: FoldingConfig> {
     U,
     Error,
@@ -98,9 +98,32 @@ pub enum ExpExtension<C: FoldingConfig> {
     Selector(C::Selector),
 }
 
+impl<C: FoldingConfig> PartialEq for ExpExtension<C> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::ExtendedWitness(l0), Self::ExtendedWitness(r0)) => l0 == r0,
+            (Self::Alpha(l0), Self::Alpha(r0)) => l0 == r0,
+            (Self::Selector(l0), Self::Selector(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl<C: FoldingConfig> Clone for ExpExtension<C> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::U => Self::U,
+            Self::Error => Self::Error,
+            Self::ExtendedWitness(arg0) => Self::ExtendedWitness(arg0.clone()),
+            Self::Alpha(arg0) => Self::Alpha(arg0.clone()),
+            Self::Selector(arg0) => Self::Selector(arg0.clone()),
+        }
+    }
+}
+
 /// Components to be used to convert multivariate polynomials into "compatible"
 /// multivariate polynomials that will be translated to folding expressions.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Debug)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
@@ -109,12 +132,35 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Extensions(ExpExtension<C>),
 }
 
+impl<C: FoldingConfig> PartialEq for FoldingCompatibleExprInner<C> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Constant(l0), Self::Constant(r0)) => l0 == r0,
+            (Self::Challenge(l0), Self::Challenge(r0)) => l0 == r0,
+            (Self::Cell(l0), Self::Cell(r0)) => l0 == r0,
+            (Self::Extensions(l0), Self::Extensions(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl<C: FoldingConfig> Clone for FoldingCompatibleExprInner<C> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Constant(arg0) => Self::Constant(arg0.clone()),
+            Self::Challenge(arg0) => Self::Challenge(arg0.clone()),
+            Self::Cell(arg0) => Self::Cell(arg0.clone()),
+            Self::Extensions(arg0) => Self::Extensions(arg0.clone()),
+        }
+    }
+}
+
 /// Compatible folding expressions that can be used with folding schemes.
 /// An expression from [kimchi::circuits::expr::Expr] can be converted into a
 /// [FoldingCompatibleExpr] using the trait [From].
 /// From there, an expression of type [IntegratedFoldingExpr] can be created
 /// using the function [folding_expression].
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
     Pow(Box<Self>, u64),
@@ -123,6 +169,35 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Mul(Box<Self>, Box<Self>),
     Double(Box<Self>),
     Square(Box<Self>),
+}
+
+impl<C: FoldingConfig> PartialEq for FoldingCompatibleExpr<C> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Atom(l0), Self::Atom(r0)) => l0 == r0,
+            (Self::Pow(l0, l1), Self::Pow(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Add(l0, l1), Self::Add(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Sub(l0, l1), Self::Sub(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Mul(l0, l1), Self::Mul(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Double(l0), Self::Double(r0)) => l0 == r0,
+            (Self::Square(l0), Self::Square(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl<C: FoldingConfig> Clone for FoldingCompatibleExpr<C> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Atom(arg0) => Self::Atom(arg0.clone()),
+            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), arg1.clone()),
+            Self::Add(arg0, arg1) => Self::Add(arg0.clone(), arg1.clone()),
+            Self::Sub(arg0, arg1) => Self::Sub(arg0.clone(), arg1.clone()),
+            Self::Mul(arg0, arg1) => Self::Mul(arg0.clone(), arg1.clone()),
+            Self::Double(arg0) => Self::Double(arg0.clone()),
+            Self::Square(arg0) => Self::Square(arg0.clone()),
+        }
+    }
 }
 
 impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
@@ -212,7 +287,6 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
 /// shape, with additional columns strictly related to the folding scheme (error
 /// term, etc).
 // TODO: renamed in "RelaxedExpression"?
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
     Pow(Box<Self>, u64),
@@ -221,6 +295,57 @@ pub enum FoldingExp<C: FoldingConfig> {
     Sub(Box<Self>, Box<Self>),
     Double(Box<Self>),
     Square(Box<Self>),
+}
+
+impl<C: FoldingConfig> std::hash::Hash for FoldingExp<C> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+    }
+}
+
+impl<C: FoldingConfig> std::fmt::Debug for FoldingExp<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Atom(arg0) => f.debug_tuple("Atom").field(arg0).finish(),
+            Self::Pow(arg0, arg1) => f.debug_tuple("Pow").field(arg0).field(arg1).finish(),
+            Self::Add(arg0, arg1) => f.debug_tuple("Add").field(arg0).field(arg1).finish(),
+            Self::Mul(arg0, arg1) => f.debug_tuple("Mul").field(arg0).field(arg1).finish(),
+            Self::Sub(arg0, arg1) => f.debug_tuple("Sub").field(arg0).field(arg1).finish(),
+            Self::Double(arg0) => f.debug_tuple("Double").field(arg0).finish(),
+            Self::Square(arg0) => f.debug_tuple("Square").field(arg0).finish(),
+        }
+    }
+}
+
+impl<C: FoldingConfig> Clone for FoldingExp<C> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Atom(arg0) => Self::Atom(arg0.clone()),
+            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), arg1.clone()),
+            Self::Add(arg0, arg1) => Self::Add(arg0.clone(), arg1.clone()),
+            Self::Mul(arg0, arg1) => Self::Mul(arg0.clone(), arg1.clone()),
+            Self::Sub(arg0, arg1) => Self::Sub(arg0.clone(), arg1.clone()),
+            Self::Double(arg0) => Self::Double(arg0.clone()),
+            Self::Square(arg0) => Self::Square(arg0.clone()),
+        }
+    }
+}
+
+impl<C: FoldingConfig> Eq for FoldingExp<C> {}
+
+impl<C: FoldingConfig> PartialEq for FoldingExp<C> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Atom(l0), Self::Atom(r0)) => l0 == r0,
+            (Self::Pow(l0, l1), Self::Pow(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Add(l0, l1), Self::Add(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Mul(l0, l1), Self::Mul(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Sub(l0, l1), Self::Sub(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Double(l0), Self::Double(r0)) => l0 == r0,
+            (Self::Square(l0), Self::Square(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
 }
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
@@ -430,10 +555,19 @@ impl std::ops::Neg for Sign {
 }
 
 // TODO: doc - What is a term?
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
+}
+
+impl<C: FoldingConfig> Clone for Term<C> {
+    fn clone(&self) -> Self {
+        Self {
+            exp: self.exp.clone(),
+            sign: self.sign.clone(),
+        }
+    }
 }
 
 impl<C: FoldingConfig> Term<C> {
@@ -470,12 +604,31 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 }
 
 /// A simplified expression with all terms separated by degree
-#[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
+}
+
+impl<C: FoldingConfig> std::fmt::Debug for IntegratedFoldingExpr<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IntegratedFoldingExpr")
+            .field("degree_0", &self.degree_0)
+            .field("degree_1", &self.degree_1)
+            .field("degree_2", &self.degree_2)
+            .finish()
+    }
+}
+
+impl<C: FoldingConfig> Clone for IntegratedFoldingExpr<C> {
+    fn clone(&self) -> Self {
+        Self {
+            degree_0: self.degree_0.clone(),
+            degree_1: self.degree_1.clone(),
+            degree_2: self.degree_2.clone(),
+        }
+    }
 }
 
 impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
