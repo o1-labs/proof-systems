@@ -103,7 +103,7 @@
 //!
 //! While folding, we aggregate the error terms of all instances into a single
 //! error term, E.
-//! For instance, with our example, if we have a folded instance with the non-zero
+//! In our example, if we have a folded instance with the non-zero
 //! error terms `E_{1}` and `E_{2}`, we have:
 //! ```text
 //! E = E_{1} + r T + E_{2}
