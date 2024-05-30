@@ -130,7 +130,7 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     /// Return the original instance that has been relaxed, with the extra
     /// columns added by quadraticization
-    pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
+    pub fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
 
@@ -174,7 +174,7 @@ pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
+    pub fn inner(&self) -> &ExtendedWitness<G, W> {
         &self.witness
     }
 

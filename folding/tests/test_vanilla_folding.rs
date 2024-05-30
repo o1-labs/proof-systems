@@ -4,24 +4,37 @@
 /// The test requires the features `bn254`, therefore use the following command
 /// to execute it:
 /// ```text
-/// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
+/// cargo nextest run test_folding_instance --release --all-features
 /// ```
-use crate::{
+use crate::{FoldingOutput, FoldingScheme};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use checker::{ExtendedProvider, Provider};
+use folding::*;
+use kimchi::curve::KimchiCurve;
+use mina_poseidon::FqSponge;
+use std::println as debug;
+
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{One, UniformRand, Zero};
+use ark_poly::Radix2EvaluationDomain;
+use folding::{
     checker::{Checker, Column, Provide},
-    error_term::Side,
-    examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
     instance_witness::Foldable,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
-    RelaxedInstance, RelaxedWitness, Witness,
+    RelaxedInstance, RelaxedWitness, Side, Witness,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, UniformRand, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
+
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+
+type Fp = ark_bn254::Fr;
+type Curve = ark_bn254::G1Affine;
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 /// The instance is the commitments to the polynomials and the challenges
 /// There are 3 commitments and challanges because there are 3 columns, A, B and
@@ -62,11 +75,12 @@ impl Instance<Curve> for TestInstance {
 
 /// Our witness is going to be the polynomials that we will commit too.
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
+#[derive(Clone)]
+struct TestWitness([Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3]);
 
 impl Foldable<Fp> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-        for (a, b) in a.iter_mut().zip(b) {
+        for (a, b) in a.0.iter_mut().zip(b.0) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
                 *a += challenge * b;
             }
@@ -105,7 +119,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
-            for col in side.iter_mut() {
+            for col in side.0.iter_mut() {
                 // TODO: check this, while not relevant for this example I think
                 // it should be right rotation
                 col.evals.rotate_left(1);
@@ -125,9 +139,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            Column::X(0) => &wit[0].evals,
-            Column::X(1) => &wit[1].evals,
-            Column::X(2) => &wit[2].evals,
+            Column::X(0) => &wit.0[0].evals,
+            Column::X(1) => &wit.0[1].evals,
+            Column::X(2) => &wit.0[2].evals,
             Column::Selector(0) => &self.structure.s_add,
             Column::Selector(1) => &self.structure.s_mul,
             // Only 3 columns and 2 selectors
@@ -177,8 +191,10 @@ fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
 struct TestFoldingConfig;
 
 // Does not contain alpha because this one should be provided by folding itself
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+// Flag used as the challenges are never built.
+// FIXME: should we use unit?
+#[allow(dead_code)]
 enum TestChallenge {
     Beta,
     Gamma,
@@ -203,6 +219,7 @@ fn instance_from_witness(
     domain: Radix2EvaluationDomain<Fp>,
 ) -> TestInstance {
     let commitments = witness
+        .0
         .iter()
         .map(|w| srs.commit_evaluations_non_hiding(domain, w))
         .map(|c| c.elems[0])
@@ -275,9 +292,9 @@ mod checker {
                 FoldingCompatibleExprInner::Cell(var) => {
                     let Variable { col, row } = var;
                     let col = match col {
-                        Column::X(0) => &self.witness[0].evals,
-                        Column::X(1) => &self.witness[1].evals,
-                        Column::X(2) => &self.witness[2].evals,
+                        Column::X(0) => &self.witness.0[0].evals,
+                        Column::X(1) => &self.witness.0[1].evals,
+                        Column::X(2) => &self.witness.0[2].evals,
                         Column::Selector(0) => &self.structure.s_add,
                         Column::Selector(1) => &self.structure.s_mul,
                         // Only 3 columns and 2 selectors
@@ -357,106 +374,95 @@ mod checker {
     impl Checker<TestFoldingConfig> for ExtendedProvider {}
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{FoldingOutput, FoldingScheme};
-    use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-    use checker::{ExtendedProvider, Provider};
-    use kimchi::curve::KimchiCurve;
-    use mina_poseidon::FqSponge;
-    use std::println as debug;
+// this checks a single folding, it would be good to expand it in the future
+// to do several foldings, as a few thigs are trivial in the first fold
+#[test]
+fn test_folding_instance() {
+    let constraints = constraints();
+    let domain = D::<Fp>::new(2).unwrap();
+    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+    srs.add_lagrange_basis(domain);
 
-    // this checks a single folding, it would be good to expand it in the future
-    // to do several foldings, as a few thigs are trivial in the first fold
-    #[test]
-    fn test_folding_instance() {
-        let constraints = constraints();
-        let domain = D::<Fp>::new(2).unwrap();
-        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
-        srs.add_lagrange_basis(domain);
+    let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
-        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+    let [s_add, s_mul] = circuit();
+    let structure = TestStructure {
+        s_add,
+        s_mul,
+        constants: vec![],
+    };
 
-        let [s_add, s_mul] = circuit();
-        let structure = TestStructure {
-            s_add,
-            s_mul,
-            constants: vec![],
-        };
+    let (scheme, final_constraint) =
+        FoldingScheme::<TestFoldingConfig>::new(constraints.clone(), &srs, domain, &structure);
 
-        let (scheme, final_constraint) =
-            FoldingScheme::<TestFoldingConfig>::new(constraints.clone(), &srs, domain, &structure);
+    // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
 
-        // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
+    // Left: 1 + 2 - 3 = 0
+    let left_witness = [
+        vec![Fp::from(1u32), Fp::from(2u32)],
+        vec![Fp::from(2u32), Fp::from(3u32)],
+        vec![Fp::from(3u32), Fp::from(6u32)],
+    ];
+    let left_witness: TestWitness =
+        TestWitness(left_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain)));
+    // Right: 4 + 5 - 9 = 0
+    let right_witness = [
+        vec![Fp::from(4u32), Fp::from(3u32)],
+        vec![Fp::from(5u32), Fp::from(6u32)],
+        vec![Fp::from(9u32), Fp::from(18u32)],
+    ];
+    let right_witness: TestWitness =
+        TestWitness(right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain)));
 
-        // Left: 1 + 2 - 3 = 0
-        let left_witness = [
-            vec![Fp::from(1u32), Fp::from(2u32)],
-            vec![Fp::from(2u32), Fp::from(3u32)],
-            vec![Fp::from(3u32), Fp::from(6u32)],
-        ];
-        let left_witness: TestWitness =
-            left_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
-        // Right: 4 + 5 - 9 = 0
-        let right_witness = [
-            vec![Fp::from(4u32), Fp::from(3u32)],
-            vec![Fp::from(5u32), Fp::from(6u32)],
-            vec![Fp::from(9u32), Fp::from(18u32)],
-        ];
-        let right_witness: TestWitness =
-            right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
+    // instances
+    let left_instance = instance_from_witness(&left_witness, &srs, domain);
+    let right_instance = instance_from_witness(&left_witness, &srs, domain);
 
-        // instances
-        let left_instance = instance_from_witness(&left_witness, &srs, domain);
-        let right_instance = instance_from_witness(&left_witness, &srs, domain);
+    // check left
+    {
+        debug!("check left");
+        let checker = Provider::new(
+            structure.clone(),
+            left_instance.clone(),
+            left_witness.clone(),
+        );
+        constraints
+            .iter()
+            .for_each(|constraint| checker.check(constraint, domain));
+    }
+    // check right
+    {
+        debug!("check right");
+        let checker = Provider::new(
+            structure.clone(),
+            right_instance.clone(),
+            right_witness.clone(),
+        );
+        constraints
+            .iter()
+            .for_each(|constraint| checker.check(constraint, domain));
+    }
 
-        // check left
-        {
-            debug!("check left");
-            let checker = Provider::new(
-                structure.clone(),
-                left_instance.clone(),
-                left_witness.clone(),
-            );
-            constraints
-                .iter()
-                .for_each(|constraint| checker.check(constraint, domain));
-        }
-        // check right
-        {
-            debug!("check right");
-            let checker = Provider::new(
-                structure.clone(),
-                right_instance.clone(),
-                right_witness.clone(),
-            );
-            constraints
-                .iter()
-                .for_each(|constraint| checker.check(constraint, domain));
-        }
+    // pairs
+    let left = (left_instance, left_witness);
+    let right = (right_instance, right_witness);
 
-        // pairs
-        let left = (left_instance, left_witness);
-        let right = (right_instance, right_witness);
-
-        let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
-        let FoldingOutput {
-            folded_instance,
-            folded_witness,
-            to_absorb,
-            ..
-        } = folded;
-        // checking that we have the expected number of elements to absorb
-        // 3+2 from each instance + 1 from u, times 2 instances
-        assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
-        // 3 from each instance + 1 from E, times 2 instances + t_0 + t_1
-        assert_eq!(to_absorb.1.len(), (3 + 1) * 2 + 2);
-        {
-            let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            debug!("exp: \n {:#?}", final_constraint);
-            debug!("check folded");
-            checker.check(&final_constraint, domain);
-        }
+    let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
+    let FoldingOutput {
+        folded_instance,
+        folded_witness,
+        to_absorb,
+        ..
+    } = folded;
+    // checking that we have the expected number of elements to absorb
+    // 3+2 from each instance + 1 from u, times 2 instances
+    assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
+    // 3 from each instance + 1 from E, times 2 instances + t_0 + t_1
+    assert_eq!(to_absorb.1.len(), (3 + 1) * 2 + 2);
+    {
+        let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
+        debug!("exp: \n {:#?}", final_constraint);
+        debug!("check folded");
+        checker.check(&final_constraint, domain);
     }
 }
