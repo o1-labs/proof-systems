@@ -1,7 +1,7 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     checker::{Checker, ExtendedProvider},
@@ -438,8 +438,18 @@ fn test_quadriticization() {
         let FoldingOutput {
             folded_instance,
             folded_witness,
-            ..
+            t_0,
+            t_1,
+            to_absorb: _,
         } = folded;
+
+        // Verifying that error terms are not points at infinity
+        // It doesn't test that the computation happens correctly, but at least
+        // show that there is some non trivial computation.
+        assert_eq!(t_0.len(), 1);
+        assert_eq!(t_1.len(), 1);
+        assert!(!t_0.elems[0].is_zero());
+        assert!(!t_1.elems[0].is_zero());
 
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
 

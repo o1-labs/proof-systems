@@ -451,9 +451,19 @@ fn test_folding_instance() {
     let FoldingOutput {
         folded_instance,
         folded_witness,
+        t_0,
+        t_1,
         to_absorb,
-        ..
     } = folded;
+
+    // Verifying that error terms are not points at infinity
+    // It doesn't test that the computation happens correctly, but at least
+    // show that there is some non trivial computation.
+    assert_eq!(t_0.len(), 1);
+    assert_eq!(t_1.len(), 1);
+    assert!(!t_0.elems[0].is_zero());
+    assert!(!t_1.elems[0].is_zero());
+
     // checking that we have the expected number of elements to absorb
     // 3+2 from each instance + 1 from u, times 2 instances
     assert_eq!(to_absorb.0.len(), (3 + 2 + 1) * 2);
