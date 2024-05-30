@@ -651,7 +651,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
-                // Write the individual byte to the witness
+                // Write the individual byte of the preimage to the witness
                 self.write_column(
                     Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
                     preimage_byte as u64,
@@ -667,6 +667,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // Update the flags to count how many bytes are contained at least
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
             if preimage_read_len > i as u64 {
+                // This amount is only nonzero when it has read some preimage bytes.
                 self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
             }
         }
