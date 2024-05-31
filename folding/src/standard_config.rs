@@ -1,3 +1,5 @@
+//! This module offers an standard implementation of [FoldingConfig] supporting
+//! many use cases
 use crate::instance_witness::Witness;
 use crate::{expressions::FoldingColumnTrait, Instance};
 use crate::{FoldingConfig, FoldingEnv, Side};
@@ -8,7 +10,7 @@ use poly_commitment::srs;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 #[derive(Clone, Default)]
-/// default type for when you don't need structure
+/// Default type for when you don't need structure
 pub struct EmptyStructure<G: KimchiCurve>(PhantomData<G::ScalarField>);
 
 impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
@@ -19,14 +21,40 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
     }
 }
 
-/// An standard folding config that should supports  
+/// An standard folding config that supports:  
 /// `G`: any curve  
 /// `Col`: any column implementing [FoldingColumnTrait]  
 /// `Chall`: any challenge  
 /// `Sel`: any dynamic selector  
 /// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`  
-/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`
+/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`  
 /// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
+/// ```rust
+/// use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+/// use mina_poseidon::FqSponge;
+/// use folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
+///
+/// // instanciating the config with our types and the defaults for selectors and structure
+/// type MyConfig = StandardConfig<Curve, MyCol, MyChallenge, MyInstance<Curve>, MyWitness<Curve>>;
+/// let constraints = vec![constraint()];
+/// let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
+/// let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+/// srs.add_lagrange_basis(domain);
+/// // this is the default structure, which does nothing or panics if
+/// // indexed (as it shouldn't be indexed)
+/// let structure = EmptyStructure::default();
+///
+/// // here we can use the config
+/// let (scheme, _) =
+/// FoldingScheme::<MyConfig>::new(constraints, &srs, domain, &structure);
+///
+/// let [left, right] = pairs;
+/// let left = (left.0, left.1);
+/// let right = (right.0, right.1);
+///
+/// let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+/// let _output = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
+/// ```
 pub struct StandardConfig<G, Col, Chall, I, W, Sel = (), Str = EmptyStructure<G>>(
     PhantomData<(G, Col, Chall, Sel, Str, I, W)>,
 );
@@ -89,7 +117,7 @@ where
 
     type Env = Env<G, Col, Chall, Sel, Str, I, W>;
 }
-//a generic Index based environment
+///A generic Index based environment
 pub struct Env<G, Col, Chall, Sel, Str, I, W>
 where
     G: CommitmentCurve,
@@ -171,10 +199,10 @@ where
 #[cfg(feature = "bn254")]
 mod example {
     use crate::{
-        default_implementation::{EmptyStructure, StandardConfig},
         examples::{BaseSponge, Curve, Fp},
         expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
         instance_witness::Foldable,
+        standard_config::{EmptyStructure, StandardConfig},
         FoldingCompatibleExpr, Instance, Witness,
     };
     use ark_ec::ProjectiveCurve;
