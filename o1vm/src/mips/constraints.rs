@@ -371,7 +371,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         &mut self,
         _addr: &Self::Variable,
         _len: &Self::Variable,
-        _pos: Self::Position,
+        pos: Self::Position,
     ) -> Self::Variable {
         // The (at most) 4-byte chunk that has been read from the preimage
         let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
@@ -429,8 +429,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3));
 
-            // Note there is no need to multiply by the Syscall flag because the
-            // constraints are zero when the witnesses are zero
+            // Note these constraints also hold when 0 bytes are read
             {
                 // Constrain the byte decomposition of the preimage chunk When
                 // only 1 byte is read, the chunk is equal to the byte[0]
@@ -511,6 +510,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             ));
         }
         // COMMUNICATION CHANNEL: Read hash output
+        // FIXME: is it a problem that 256 bits do not fit in a single field?
         let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
             acc * Expr::from(2u64.pow(32))
                 + self.variable(Self::Position::ScratchState(
@@ -519,7 +519,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         });
 
         // If no more bytes left to be read, then the end of the preimage is
-        // true TODO: keep track of counter to diminish the number of bytes at
+        // true.
+        // TODO: keep track of counter to diminish the number of bytes at
         //        each step and check it is zero at the end?
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
@@ -528,11 +529,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         ));
 
         // Byte checks with lookups: The preimage bytes are checked to be 8-bits
-        // on the Keccak side. TODO: do we want to check byte-ness of the
+        // on the Keccak side.
+        // TODO: do we want to check byte-ness of the
         // bytelength bytes as well?
 
-        // Return chunk of preimage as variable
-        this_chunk
+        // Return actual length read as variable, stored in `pos`
+        self.variable(pos)
     }
 
     fn request_hint_write(&mut self, _addr: &Self::Variable, _len: &Self::Variable) {
