@@ -234,7 +234,7 @@
 //! β + f(x) = m(x) (β + t(x))
 //! ```
 //! where β is the challenge, `f(x)` is the polynomial whose evaluations describe
-//! the value Alice wants to prove to Bob that they are in the table, `m(x)` is
+//! the value Alice wants to prove to Bob that is in the table, `m(x)` is
 //! the polynomial describing the multiplicities, and `t(x)` is the
 //! polynomial describing the (fixed) table.
 //!
