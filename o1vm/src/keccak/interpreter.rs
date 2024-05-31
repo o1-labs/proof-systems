@@ -416,22 +416,23 @@ where
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    /// Creates all possible 2361 lookups to the Keccak constraints environment:
-    /// - 2222 lookups for the step row
+    /// Creates all possible lookups to the Keccak constraints environment:
+    /// - 2225 lookups for the step row
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
     /// Of which:
-    /// - 1623 lookups if Step::Round          (1741 + 2)
-    /// - 737  lookups if Step::Absorb::First  (600 + 1 + 136)
-    /// - 738  lookups if Step::Absorb::Middle (600 + 2 + 136)
-    /// - 739  lookups if Step::Absorb::Last   (601 + 2 + 136)
-    /// - 738  lookups if Step::Absorb::Only   (601 + 1 + 136)
+    /// - 1623 lookups if Step::Round          (1621 + 2)
+    /// - 537  lookups if Step::Absorb::First  (400 + 1 + 136)
+    /// - 538  lookups if Step::Absorb::Middle (400 + 2 + 136)
+    /// - 539  lookups if Step::Absorb::Last   (401 + 2 + 136)
+    /// - 538  lookups if Step::Absorb::Only   (401 + 1 + 136)
     /// - 602 lookups if Step::Squeeze         (600 + 1 + 1)
     fn lookups(&mut self, step: Steps) {
         // SPONGE LOOKUPS
-        // -> adds 600 lookups if is_sponge
-        // -> adds 601 lookups if is_pad
+        // -> adds  400 lookups if is_sponge
+        // -> adds +200 lookups if is_squeeze
+        // -> adds +1   lookups if is_pad
         self.lookups_sponge(step);
 
         // ROUND LOOKUPS
@@ -510,7 +511,8 @@ where
     }
 
     /// Adds the 601 lookups required for the sponge
-    /// - 600 lookups if is_sponge()
+    /// - 400 lookups if is_sponge()
+    /// - 200 extra lookups if is_squeeze()
     /// - 1 extra lookup if is_pad()
     fn lookups_sponge(&mut self, step: Steps) {
         // PADDING LOOKUPS
@@ -529,9 +531,14 @@ where
             ],
         );
         // BYTES LOOKUPS
+        // Checking the 200 bytes of the absorb phase together with the length
+        // bytes is performed in the SyscallReadPreimage rows (4 byte lookups
+        // per row).
+        // Here, this only checks the 200 bytes of the squeeze phase (digest)
+        // TODO: could this be just 32 and we check the shifts only for those?
         for i in 0..200 {
             // Bytes are <2^8
-            self.lookup_byte(self.is_sponge(step), self.sponge_byte(i));
+            self.lookup_byte(self.is_squeeze(step), self.sponge_byte(i));
         }
         // SHIFTS LOOKUPS
         for i in 100..SHIFTS_LEN {
@@ -539,7 +546,7 @@ where
             self.lookup_sparse(self.is_sponge(step), self.sponge_shifts(i));
         }
         for i in 0..STATE_LEN {
-            // Shifts0 together with Bits composition by pairs are in the Reset table
+            // Shifts0 together with Bytes composition by pairs are in the Reset table
             let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
             self.lookup_reset(self.is_sponge(step), dense, self.sponge_shifts(i));
         }
