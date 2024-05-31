@@ -160,7 +160,7 @@ where
     Col: Hash + Eq + Debug + Clone + FoldingColumnTrait,
     Sel: Ord + Copy + Hash + Debug,
     Chall: Hash + Eq + Debug + Copy,
-    Str: Clone,
+    Str: Clone + Index<Col, Output = Vec<G::ScalarField>>,
 {
     type Column = Col;
 
@@ -189,6 +189,7 @@ where
 {
     instances: [FoldableInstance<G, I, Chall>; 2],
     witnesses: [FoldableWitness<G::ScalarField, W, Col, Sel>; 2],
+    structure: Str,
     _todo: PhantomData<(Sel, Str)>,
 }
 
@@ -208,6 +209,7 @@ where
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
     Col: FoldingColumnTrait,
     Sel: Copy,
+    Str: Clone + Index<Col, Output = Vec<G::ScalarField>>,
 {
     type Structure = Str;
 
@@ -218,9 +220,11 @@ where
     ) -> Self {
         let instances = instances.map(Clone::clone);
         let witnesses = witnesses.map(Clone::clone);
+        let structure = structure.clone();
         Self {
             instances,
             witnesses,
+            structure,
             _todo: PhantomData,
         }
     }
@@ -243,8 +247,7 @@ where
         if col.is_witness() {
             &witness.inner[col]
         } else {
-            //TODO: support structure
-            panic!("structure not handled yet")
+            &self.structure[col]
         }
     }
 
@@ -272,7 +275,7 @@ mod example {
         circuits::{expr::Variable, gate::CurrOrNext},
         curve::KimchiCurve,
     };
-    use std::ops::Index;
+    use std::{marker::PhantomData, ops::Index};
 
     #[derive(Clone, Debug)]
     struct MyInstance<G: KimchiCurve> {
@@ -363,8 +366,18 @@ mod example {
             }
         }
     }
+    #[derive(Clone, Default)]
+    struct EmptyStructure<G: KimchiCurve>(PhantomData<G::ScalarField>);
+    impl<G: KimchiCurve> Index<MyCol> for EmptyStructure<G> {
+        type Output = Vec<G::ScalarField>;
 
-    type MyConfig<G> = StandardConfig<G, MyCol, MyChallenge, (), (), MyInstance<G>, MyWitness<G>>;
+        fn index(&self, _index: MyCol) -> &Self::Output {
+            panic!("shouldn'r reach this point, as there are only witness columns involved");
+        }
+    }
+
+    type MyConfig<G> =
+        StandardConfig<G, MyCol, MyChallenge, (), EmptyStructure<G>, MyInstance<G>, MyWitness<G>>;
 
     fn constraint<G: KimchiCurve>() -> FoldingCompatibleExpr<MyConfig<G>> {
         let column = |col| {
@@ -397,7 +410,7 @@ mod example {
         let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
-        let structure = ();
+        let structure = EmptyStructure::default();
 
         let (scheme, _) =
             FoldingScheme::<MyConfig<Curve>>::new(constraints, &srs, domain, &structure);
