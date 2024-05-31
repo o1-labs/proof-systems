@@ -665,11 +665,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
 
                 // Update the chunk of at most 4 bytes read from the preimage
-                debug!("idx: {}", byte_i);
-                debug!("chunk: {:x}", chunk);
                 chunk = chunk << 8 | preimage_byte as u64;
-                debug!("preimage_byte: {:x}", preimage_byte);
-                debug!("updated chunk: {:x}", chunk);
 
                 // At most, it will be actual_read_len when the length is not
                 // read in this call
