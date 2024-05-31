@@ -1,12 +1,11 @@
 //! This module offers an standard implementation of [FoldingConfig] supporting
 //! many use cases
-use crate::instance_witness::Witness;
-use crate::{expressions::FoldingColumnTrait, Instance};
-use crate::{FoldingConfig, FoldingEnv, Side};
-use kimchi::circuits::gate::CurrOrNext;
-use kimchi::curve::KimchiCurve;
-use poly_commitment::commitment::CommitmentCurve;
-use poly_commitment::srs;
+use crate::{
+    expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
+    Instance, Side,
+};
+use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
+use poly_commitment::{commitment::CommitmentCurve, srs};
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 #[derive(Clone, Default)]
