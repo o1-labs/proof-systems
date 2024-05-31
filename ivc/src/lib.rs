@@ -1,6 +1,5 @@
 pub mod ivc;
 pub mod poseidon;
-// mod sumcheck;
 
 /*
 IVC circuit
