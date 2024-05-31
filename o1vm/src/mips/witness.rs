@@ -9,8 +9,7 @@ use crate::{
         column::{
             ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
-            MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_NUM_BYTES_READ_OFF, MIPS_ORACLE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -34,8 +33,8 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 97; // MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + length + has_n_bytes
-
+// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 93;
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
     pub last_hint: Option<Vec<u8>>,
@@ -650,7 +649,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // Write the individual byte of the length to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_LENGTH_BYTES_OFF + len_i),
+                    Column::ScratchState(MIPS_ORACLE_BYTES_OFF + len_i),
                     length_byte as u64,
                 );
 
@@ -670,7 +669,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // Write the individual byte of the preimage to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i),
+                    Column::ScratchState(MIPS_ORACLE_BYTES_OFF + byte_i),
                     preimage_byte as u64,
                 );
 
@@ -704,7 +703,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             preimage_read_len,
         );
 
-        // Update the flags to count how many bytes are contained at least
+        // Update flags to count how many preimage bytes are contained at least
         for i in 0..MIPS_CHUNK_BYTES_LEN {
             if preimage_read_len > i as u64 {
                 // This amount is only nonzero when it has read some preimage

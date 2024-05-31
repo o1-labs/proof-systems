@@ -24,12 +24,10 @@ pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = 82;
 pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = 83;
 /// The at most 4-byte chunk of the preimage that has been read in this step
 pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 84;
-/// The at most 4-bytes of the preimage that are currently being processed
-pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 85;
-/// The at most 4-bytes of the length that are currently being processed
-pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = 89;
+/// The at most 4-bytes that are currently being processed
+pub(crate) const MIPS_ORACLE_BYTES_OFF: usize = 85;
 /// Flags indicating whether at least N bytes have been processed in this step
-pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 93;
+pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 89;
 /// The maximum size of a chunk (4 bytes)
 pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
 
