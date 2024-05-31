@@ -2,12 +2,12 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias as MIPSColumn, MIPS_CHUNK_BYTES_LEN, MIPS_END_OF_PREIMAGE_OFF,
-            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
-            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
+            MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
+            MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::InterpreterEnv,
-        registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
+        registers::REGISTER_PREIMAGE_KEY_START,
     },
     E,
 };
@@ -373,26 +373,33 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
-        // The (at most) 4-byte chunk that has been read from the preimage
+        // How many hashes have been performed so far in the circuit
+        let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFF));
+
+        // How many bytes have been read from the preimage so far
+        let byte_counter = self.variable(Self::Position::ScratchState(MIPS_BYTE_COUNTER_OFF));
+
+        // Whether this is the last step of the preimage or not (boolean)
+        let end_of_preimage = self.variable(Self::Position::ScratchState(MIPS_END_OF_PREIMAGE_OFF));
+
+        // How many preimage bytes are being processed in this instruction
+        // FIXME: need to connect this to REGISTER_PREIMAGE_OFFSET or pos?
+        let num_read_bytes = self.variable(Self::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
+
+        // The chunk of at most 4 bytes that is being processed from the
+        // preimage in this instruction
+        let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
+
+        // The (at most) 4 bytes that are being processed from the preimage
         let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
         });
+
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
         // It will be zero when the syscall reads the bytelength prefix.
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
-        // How many hashes have been performed so far in the circuit
-        let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFF));
-        // Whether this is the last step of the preimage or not (boolean)
-        let end_of_preimage = self.variable(Self::Position::ScratchState(MIPS_END_OF_PREIMAGE_OFF));
-        // How many bytes have been read from the preimage so far
-        let byte_counter = self.variable(Self::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
-        // How many bytes have been read from the preimage in this row
-        let num_read_bytes = self.variable(Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET));
-        // The chunk of at most 4 bytes that has been read from the preimage in
-        // this instruction
-        let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
 
         // TODO: any constraints we should we add for pos?
 
@@ -429,7 +436,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3));
 
-            // Note these constraints also hold when 0 bytes are read
+            // Note these constraints also hold when 0 preimage bytes are read
             {
                 // Constrain the byte decomposition of the preimage chunk When
                 // only 1 byte is read, the chunk is equal to the byte[0]
@@ -491,6 +498,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                         * (num_read_bytes.clone() - Expr::from(3))
                         * (num_read_bytes.clone() - Expr::from(4)),
                 );
+
                 // When has_4_byte, then only can read 4
                 self.constraints
                     .push(has_n_bytes[3].clone() * (num_read_bytes.clone() - Expr::from(4)));
@@ -509,8 +517,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ],
             ));
         }
-        // COMMUNICATION CHANNEL: Read hash output
-        // FIXME: is it a problem that 256 bits do not fit in a single field?
+        // COMMUNICATION CHANNEL: Read hash output FIXME: is it a problem that
+        // 256 bits do not fit in a single field?
         let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
             acc * Expr::from(2u64.pow(32))
                 + self.variable(Self::Position::ScratchState(
@@ -519,9 +527,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         });
 
         // If no more bytes left to be read, then the end of the preimage is
-        // true.
-        // TODO: keep track of counter to diminish the number of bytes at
-        //        each step and check it is zero at the end?
+        // true. TODO: keep track of counter to diminish the number of bytes at
+        // each step and check it is zero at the end?
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
@@ -529,8 +536,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         ));
 
         // Byte checks with lookups: The preimage bytes are checked to be 8-bits
-        // on the Keccak side.
-        // TODO: do we want to check byte-ness of the
+        // on the Keccak side. TODO: do we want to check byte-ness of the
         // bytelength bytes as well?
 
         // Return actual length read as variable, stored in `pos`

@@ -7,9 +7,9 @@ use crate::{
     lookups::Lookup,
     mips::{
         column::{
-            ColumnAlias as Column, MIPS_CHUNK_BYTES_LEN, MIPS_END_OF_PREIMAGE_OFF,
-            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
-            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
+            MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
+            MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +33,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -654,13 +654,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 // Compute the byte index in the chunk of at most 4 bytes read
                 // from the preimage
                 let byte_i = (idx - LENGTH_SIZE) % MIPS_CHUNK_BYTES_LEN;
+
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
+
                 // Write the individual byte of the preimage to the witness
                 self.write_column(
                     Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i as usize),
                     preimage_byte as u64,
                 );
+
                 // Update the chunk of at most 4 bytes read from the preimage
                 debug!("idx: {}", byte_i);
                 debug!("chunk: {:x}", chunk);
@@ -668,7 +671,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 debug!("preimage_byte: {:x}", preimage_byte);
                 debug!("updated chunk: {:x}", chunk);
 
-                preimage_read_len += 1; // At most, it will be actual_read_len when the length is not read in this call
+                // At most, it will be actual_read_len when the length is not read in this call
+                preimage_read_len += 1;
 
                 // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
                 // is redundant with lines below
@@ -687,6 +691,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // bytelength and preimage bytes)
         self.write_column(pos, actual_read_len);
 
+        // Number of preimage bytes processed in this instruction
+        self.write_column(
+            Column::ScratchState(MIPS_NUM_BYTES_READ_OFF),
+            preimage_read_len,
+        );
+
         // Update the flags to count how many bytes are contained at least
         for i in 0..MIPS_CHUNK_BYTES_LEN {
             if preimage_read_len > i as u64 {
@@ -699,7 +709,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += preimage_read_len;
         self.write_column(
-            Column::ScratchState(MIPS_NUM_BYTES_READ_OFF),
+            Column::ScratchState(MIPS_BYTE_COUNTER_OFF),
             self.preimage_bytes_read,
         );
 
