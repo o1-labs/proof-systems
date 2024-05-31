@@ -521,7 +521,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         // COMMUNICATION CHANNEL: Read hash output.
-        // FIXME: is it a problem that 256 bits do not fit in a single field?
         let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
             acc * Expr::from(2u64.pow(32))
                 + self.variable(Self::Position::ScratchState(

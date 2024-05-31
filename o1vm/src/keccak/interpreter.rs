@@ -482,14 +482,17 @@ where
         }
     }
 
-    /// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    /// When in Squeeze mode, writes a Lookup containing the 32byte output of the hash
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
+    /// NOTE: this is not excluding the MSB (which is then substituted with the
+    /// file descriptor) to match the MIPS side, which obtains the preimage_key
+    /// from the 8 columns between REGISTER_PREIMAGE_KEY_START and REGISTER_PREIMAGE_KEY_END
     fn lookup_syscall_hash(&mut self, step: Steps) {
-        let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
+        let bytes32 = (0..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.write_syscall(self.is_squeeze(step), vec![self.hash_index(), bytes31]);
+        self.write_syscall(self.is_squeeze(step), vec![self.hash_index(), bytes32]);
     }
 
     /// Reads a Lookup containing the input of a step
