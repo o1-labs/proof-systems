@@ -207,6 +207,55 @@
 //!       S(r X'_{1}, r X'_{2}, r X'_{3}, r u', r α'_{1}, r α'_{2})
 //! = r^3 S(X'_{1},   X'_{2},   X'_{3},   u',   α'_{1},   α'_{2})
 //! ```
+//!
+//! ## Fiat-Shamir challenges, interactive protocols and lookup arguments
+//!
+//! Until now, we have described a way to fold multi-variate polynomials, which
+//! is mostly a generalization of [Nova](https://eprint.iacr.org/2021/370) for
+//! any multi-variate polynomial.
+//! However, we did not describe how it can be used to describe and fold
+//! interactive protocols based on polynomials, like PlonK. We do suppose the
+//! interactive protocol can be made non-interactive by using the Fiat-Shamir
+//! transformation.
+//!
+//! To fold interactive protocols, our folding scheme must also support
+//! Fiat-Shamir challenges. This implementation handles this by representing
+//! challenges as new variables in the polynomial describing the NP relation.
+//! The challenges are then aggregated in the same way as the other variables.
+//!
+//! For instance, let's consider the additive
+//! lookup/logup argument. For a detailed description of the protocol, see [the
+//! online
+//! documentation](https://o1-labs.github.io/proof-systems/rustdoc/kimchi_msm/logup/index.html).
+//! We will suppose we have only one table `T` and Alice wants to prove to Bob
+//! that she knows that all evaluations of `f(X)` is in `t(X)`. The additive
+//! lookup argument is described by the polynomial equation:
+//! ```text
+//! β + f(x) = m(x) (β + t(x))
+//! ```
+//! where β is the challenge, `f(x)` is the polynomial whose evaluations describe
+//! the value Alice wants to prove to Bob that is in the table, `m(x)` is
+//! the polynomial describing the multiplicities, and `t(x)` is the
+//! polynomial describing the (fixed) table.
+//!
+//! The equation can be described by the multi-variate polynomial `LOGUP`:
+//! ```text
+//! LOGUP(β, F, M, T) = β + F - M (β + T)
+//! ```
+//!
+//! The relaxed/homogeneous version of the polynomial LOGUP is:
+//! ```text
+//! LOGUP_relaxed(β, F, M, T, u) = u β + u F - M (β + T)
+//! ```
+//!
+//! Folding this polynomial means that we will coin a random value `r`, and we compute:
+//! ```text
+//! β'' = β + r β'
+//! F'' = F + r F'
+//! M'' = M + r M'
+//! T'' = T + r T'
+//! u'' = u + r u'
+//! ```
 
 use crate::{
     columns::ExtendedFoldingColumn,
