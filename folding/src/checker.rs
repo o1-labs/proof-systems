@@ -69,8 +69,8 @@ impl<C: FoldingConfig> ExtendedProvider<C> {
         witness: RelaxedWitness<C::Curve, C::Witness>,
     ) -> Self {
         let inner_provider = {
-            let instance = instance.inner_instance().inner.clone();
-            let witness = witness.inner().inner.clone();
+            let instance = instance.extended_instance.instance.clone();
+            let witness = witness.extended_witness.witness.clone();
             Provider::new(instance, witness)
         };
         Self {
@@ -171,14 +171,19 @@ where
                     vec![u; domain_size]
                 }
                 ExpExtension::Error => self.witness.error_vec.evals.clone(),
-                ExpExtension::ExtendedWitness(i) => {
-                    self.witness.inner().extended.get(&i).unwrap().evals.clone()
-                }
+                ExpExtension::ExtendedWitness(i) => self
+                    .witness
+                    .extended_witness
+                    .extended
+                    .get(&i)
+                    .unwrap()
+                    .evals
+                    .clone(),
                 ExpExtension::Alpha(i) => {
                     let alpha = self
                         .instance
-                        .inner_instance()
-                        .inner
+                        .extended_instance
+                        .instance
                         .get_alphas()
                         .get(i)
                         .unwrap();
