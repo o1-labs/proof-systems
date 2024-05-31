@@ -2,9 +2,9 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET,
+            ColumnAlias as MIPSColumn, MIPS_CHUNK_BYTES_LEN, MIPS_END_OF_PREIMAGE_OFF,
+            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
+            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
@@ -44,14 +44,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// variable/input of our circuit.
     type Position = MIPSColumn;
 
-    // Use one of the available columns. It won't
-    // create a new column every time this function is called. The number
-    // of columns is defined upfront by crate::mips::witness::SCRATCH_SIZE.
+    // Use one of the available columns. It won't create a new column every time
+    // this function is called. The number of columns is defined upfront by
+    // crate::mips::witness::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
-        // to the index.
-        // See crate::SCRATCH_SIZE for the maximum number of columns the circuit
-        // can use.
+        // to the index. See crate::SCRATCH_SIZE for the maximum number of
+        // columns the circuit can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
@@ -372,34 +371,37 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         &mut self,
         _addr: &Self::Variable,
         _len: &Self::Variable,
-        pos: Self::Position,
+        _pos: Self::Position,
     ) -> Self::Variable {
         // The (at most) 4-byte chunk that has been read from the preimage
-        let bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
-            self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i))
+        let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
         });
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
         // It will be zero when the syscall reads the bytelength prefix.
-        let has_n_bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
-            self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i))
+        let has_n_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
         // How many hashes have been performed so far in the circuit
-        let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET));
+        let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFF));
         // Whether this is the last step of the preimage or not (boolean)
-        let end_of_preimage =
-            self.variable(Self::Position::ScratchState(MIPS_END_OF_PREIMAGE_OFFSET));
+        let end_of_preimage = self.variable(Self::Position::ScratchState(MIPS_END_OF_PREIMAGE_OFF));
         // How many bytes have been read from the preimage so far
-        let byte_counter = self.variable(Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET));
+        let byte_counter = self.variable(Self::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
         // How many bytes have been read from the preimage in this row
         let num_read_bytes = self.variable(Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET));
-        // The chunk of at most 4 bytes that has been read from the preimage in this instruction
-        let this_chunk = self.variable(pos);
+        // The chunk of at most 4 bytes that has been read from the preimage in
+        // this instruction
+        let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
+
+        // TODO: any constraints we should we add for pos?
 
         // EXTRA CONSTRAINTS
 
         // Booleanity constraints
         {
-            // FIXME: for some reason these 6 constraints are counted in SyscallReadPreimage but not in SyscallWritePreimage
+            // FIXME: for some reason these 6 constraints are counted in
+            // SyscallReadPreimage but not in SyscallWritePreimage
             for var in has_n_bytes.iter() {
                 self.assert_boolean(var.clone());
             }
@@ -407,34 +409,42 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         {
-            // Expressions that are nonzero when the exact corresponding number of bytes are read
-            let read_1 = (num_read_bytes.clone() - Expr::from(2))
+            // Expressions that are nonzero when the exact corresponding number
+            // of bytes are read (case 0 bytes used when bytelength is read)
+            // TODO: any ideas to make these lower degree?
+            let read_1 = (num_read_bytes.clone())
+                * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3))
                 * (num_read_bytes.clone() - Expr::from(4));
-            let read_2 = (num_read_bytes.clone() - Expr::from(1))
+            let read_2 = (num_read_bytes.clone())
+                * (num_read_bytes.clone() - Expr::from(1))
                 * (num_read_bytes.clone() - Expr::from(3))
                 * (num_read_bytes.clone() - Expr::from(4));
-            let read_3 = (num_read_bytes.clone() - Expr::from(1))
+            let read_3 = (num_read_bytes.clone())
+                * (num_read_bytes.clone() - Expr::from(1))
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(4));
-            let read_4 = (num_read_bytes.clone() - Expr::from(1))
+            let read_4 = (num_read_bytes.clone())
+                * (num_read_bytes.clone() - Expr::from(1))
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3));
 
-            // Note there is no need to multiply by the Syscall flag because the constraints are zero when the witnesses are zero
+            // Note there is no need to multiply by the Syscall flag because the
+            // constraints are zero when the witnesses are zero
             {
-                // Constrain the byte decomposition of the preimage chunk
-                // TODO: smaller degree?
-                // When only 1 byte is read, the chunk is equal to the byte[0]
+                // Constrain the byte decomposition of the preimage chunk When
+                // only 1 byte is read, the chunk is equal to the byte[0]
                 self.constraints
                     .push(read_1.clone() * (this_chunk.clone() - bytes[0].clone()));
-                // When 2 bytes are read, the chunk is equal to the byte[0] * 2^8 + byte[1]
+                // When 2 bytes are read, the chunk is equal to the byte[0] *
+                // 2^8 + byte[1]
                 self.constraints.push(
                     read_2.clone()
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(8)) + bytes[1].clone())),
                 );
-                // When 3 bytes are read, the chunk is equal to the byte[0] * 2^16 + byte[1] * 2^8 + byte[2]
+                // When 3 bytes are read, the chunk is equal to the byte[0] *
+                // 2^16 + byte[1] * 2^8 + byte[2]
                 self.constraints.push(
                     read_3.clone()
                         * (this_chunk.clone()
@@ -442,7 +452,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                                 + bytes[1].clone() * Expr::from(2u64.pow(8))
                                 + bytes[2].clone())),
                 );
-                // When all 4 bytes are read, the chunk is equal to the byte[0] * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
+                // When all 4 bytes are read, the chunk is equal to the byte[0]
+                // * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
                 self.constraints.push(
                     read_4.clone()
                         * (this_chunk.clone()
@@ -453,10 +464,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
             }
 
-            // Constrain the bytes flags depending on the number of bytes read in this row
+            // Constrain the bytes flags depending on the number of bytes read
+            // in this row
             {
-                // When at least has_1_byte, then any number of bytes can be read
-                // <=> Check that you can only read 1, 2, 3 or 4 bytes
+                // When at least has_1_byte, then any number of bytes can be
+                // read <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.constraints.push(
                     has_n_bytes[0].clone()
                         * (num_read_bytes.clone() - Expr::from(1))
@@ -465,14 +477,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                         * (num_read_bytes.clone() - Expr::from(4)),
                 );
 
-                // When at least has_2_byte, then any number of bytes can be read except 1
+                // When at least has_2_byte, then any number of bytes can be
+                // read except 1
                 self.constraints.push(
                     has_n_bytes[1].clone()
                         * (num_read_bytes.clone() - Expr::from(2))
                         * (num_read_bytes.clone() - Expr::from(3))
                         * (num_read_bytes.clone() - Expr::from(4)),
                 );
-                // When at least has_3_byte, then any number of bytes can be read except 1 nor 2
+                // When at least has_3_byte, then any number of bytes can be
+                // read except 1 nor 2
                 self.constraints.push(
                     has_n_bytes[2].clone()
                         * (num_read_bytes.clone() - Expr::from(3))
@@ -485,7 +499,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
-        for i in 0..MIPS_CHUNK_BYTES_LENGTH {
+        for i in 0..MIPS_CHUNK_BYTES_LEN {
             self.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
                 LookupTableIDs::SyscallLookup,
@@ -504,18 +518,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ))
         });
 
-        // If no more bytes left to be read, then the end of the preimage is true
-        // TODO: keep track of counter to diminish the number of bytes at each step
-        //        and check it is zero at the end?
+        // If no more bytes left to be read, then the end of the preimage is
+        // true TODO: keep track of counter to diminish the number of bytes at
+        //        each step and check it is zero at the end?
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));
 
-        // Byte checks with lookups:
-        // The preimage bytes are checked to be 8-bits on the Keccak side.
-        // TODO: do we want to check byte-ness of the bytelength bytes as well?
+        // Byte checks with lookups: The preimage bytes are checked to be 8-bits
+        // on the Keccak side. TODO: do we want to check byte-ness of the
+        // bytelength bytes as well?
 
         // Return chunk of preimage as variable
         this_chunk

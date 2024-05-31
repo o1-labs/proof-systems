@@ -7,9 +7,9 @@ use crate::{
     lookups::Lookup,
     mips::{
         column::{
-            ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_END_OF_PREIMAGE_OFFSET, MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET,
+            ColumnAlias as Column, MIPS_CHUNK_BYTES_LEN, MIPS_END_OF_PREIMAGE_OFF,
+            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
+            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +33,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 91; // MIPS + hash_counter + bytes_read + bytes_left + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -49,11 +49,10 @@ impl SyscallEnv {
 }
 
 /// This structure represents the environment the virtual machine state will use
-/// to transition. This environment will be used by the interpreter.
-/// The virtual machine has access to its internal state and some external memory.
-/// In addition to that, it has access to the environment of the Keccak
-/// interpreter that is used to verify the preimage requested during the
-/// execution.
+/// to transition. This environment will be used by the interpreter. The virtual
+/// machine has access to its internal state and some external memory. In
+/// addition to that, it has access to the environment of the Keccak interpreter
+/// that is used to verify the preimage requested during the execution.
 pub struct Env<Fp> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
@@ -101,11 +100,12 @@ fn memory_size(total: usize) -> String {
 
         let prefix =
         ////////////////////////////////////////////////////////////////////////////
-        // Famous last words: 1023 exabytes ought to be enough for anybody        //
+        // Famous last words: 1023 exabytes ought to be enough for anybody
         //                                                                        //
-        // Corollary: unwrap() below shouldn't fail                               //
+        // // Corollary: unwrap() below shouldn't fail
         //                                                                        //
-        // The maximum representation for usize corresponds to 16 exabytes anyway //
+        // // The maximum representation for usize corresponds to 16 exabytes
+        // anyway //
         ////////////////////////////////////////////////////////////////////////////
             PREFIXES.chars().nth(idx).unwrap();
 
@@ -124,7 +124,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u64;
 
-    // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    // TODO: update variable() function once scratch_state is [u64;
+    // SCRATCH_SIZE]
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!();
         /*
@@ -143,9 +144,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
-        // No-op for witness
-        // Do not assert that _assert_equals_zero is zero here! Some variables may have
-        // placeholders that do not faithfully represent the underlying values.
+        // No-op for witness Do not assert that _assert_equals_zero is zero
+        // here! Some variables may have placeholders that do not faithfully
+        // represent the underlying values.
     }
 
     fn check_is_zero(assert_equals_zero: &Self::Variable) {
@@ -632,56 +633,79 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 - preimage_offset;
         // We read at most 4 bytes, ensuring that we respect word alignment.
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
-        // This variable will contain the amount of bytes read which belong to the actual preimage
+        // This variable will contain the amount of bytes read which belong to
+        // the actual preimage
         let mut preimage_read_len = 0;
+        let mut chunk = 0;
         for i in 0..actual_read_len {
             let idx = (preimage_offset + i) as usize;
-            // The first 8 bytes of the read preimage are the preimage length, followed by the body
-            // of the preimage
+            // The first 8 bytes of the read preimage are the preimage length,
+            // followed by the body of the preimage
             if idx < LENGTH_SIZE {
-                // Do nothing for the count of bytes of the preimage.
-                // TODO: do we want to check anything for these bytes as well? Like length?
+                // Do nothing for the count of bytes of the preimage. TODO: do
+                // we want to check anything for these bytes as well? Like
+                // length?
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
                 }
             } else {
-                preimage_read_len += 1; // At most, it will be actual_read_len
-
+                // Compute the byte index in the chunk of at most 4 bytes read
+                // from the preimage
+                let byte_i = (idx - LENGTH_SIZE) % MIPS_CHUNK_BYTES_LEN;
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte of the preimage to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i as usize),
                     preimage_byte as u64,
                 );
+                // Update the chunk of at most 4 bytes read from the preimage
+                debug!("idx: {}", byte_i);
+                debug!("chunk: {:x}", chunk);
+                chunk = chunk << 8 | preimage_byte as u64;
+                debug!("preimage_byte: {:x}", preimage_byte);
+                debug!("updated chunk: {:x}", chunk);
+
+                preimage_read_len += 1; // At most, it will be actual_read_len when the length is not read in this call
+
+                // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
+                // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), preimage_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
                 }
             }
         }
+        // Update the chunk of at most 4 bytes read from the preimage FIXME:
+        // this is not linked to the registers content in any way. Is there
+        //        anywhere else where the bytes are stored in the scratch state?
+        self.write_column(Column::ScratchState(MIPS_PREIMAGE_CHUNK_OFF), chunk);
+
+        // Update the total number of bytes read from the oracle (can include
+        // bytelength and preimage bytes)
         self.write_column(pos, actual_read_len);
 
         // Update the flags to count how many bytes are contained at least
-        for i in 0..MIPS_CHUNK_BYTES_LENGTH {
+        for i in 0..MIPS_CHUNK_BYTES_LEN {
             if preimage_read_len > i as u64 {
-                // This amount is only nonzero when it has read some preimage bytes.
-                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
+                // This amount is only nonzero when it has read some preimage
+                // bytes.
+                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFF + i), 1);
             }
         }
 
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += preimage_read_len;
         self.write_column(
-            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            Column::ScratchState(MIPS_NUM_BYTES_READ_OFF),
             self.preimage_bytes_read,
         );
 
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
-            self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFFSET), 1);
+            self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFF), 1);
 
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
@@ -693,10 +717,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
             // Update hash counter column
             self.write_column(
-                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                Column::ScratchState(MIPS_HASH_COUNTER_OFF),
                 self.hash_counter,
             );
-            // Number of preimage bytes left to be read should be zero at this point
+            // Number of preimage bytes left to be read should be zero at this
+            // point
 
             // Reset environment
             self.preimage_bytes_read = 0;
@@ -1017,11 +1042,13 @@ impl<Fp: Field> Env<Fp> {
                 0x2b => Instruction::IType(ITypeInstruction::Store32),
                 0x2e => Instruction::IType(ITypeInstruction::StoreWordRight),
                 0x30 => {
-                    // Note: This is ll (LoadLinked), but we're only simulating a single processor.
+                    // Note: This is ll (LoadLinked), but we're only simulating
+                    // a single processor.
                     Instruction::IType(ITypeInstruction::Load32)
                 }
                 0x38 => {
-                    // Note: This is sc (StoreConditional), but we're only simulating a single processor.
+                    // Note: This is sc (StoreConditional), but we're only
+                    // simulating a single processor.
                     Instruction::IType(ITypeInstruction::Store32Conditional)
                 }
                 _ => {
@@ -1032,8 +1059,8 @@ impl<Fp: Field> Env<Fp> {
         (opcode, instruction)
     }
 
-    /// Execute a single step of the MIPS program.
-    /// Returns the instruction that was executed.
+    /// Execute a single step of the MIPS program. Returns the instruction that
+    /// was executed.
     pub fn step(
         &mut self,
         config: &VmConfiguration,
@@ -1134,7 +1161,8 @@ impl<Fp: Field> Env<Fp> {
                 lo: self.registers.lo,
                 hi: self.registers.hi,
                 heap: self.registers.heap_pointer,
-                // FIXME: it should be the exit code. We do not keep it in the witness atm
+                // FIXME: it should be the exit code. We do not keep it in the
+                // witness atm
                 exit: if self.halt { 1 } else { 0 },
                 last_hint: self.syscall_env.last_hint.clone(),
                 exited: self.halt,

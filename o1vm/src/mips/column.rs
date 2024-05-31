@@ -14,12 +14,13 @@ use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
-pub(crate) const MIPS_HASH_COUNTER_OFFSET: usize = 80;
-pub(crate) const MIPS_BYTES_READ_OFFSET: usize = 81;
-pub(crate) const MIPS_END_OF_PREIMAGE_OFFSET: usize = 82;
-pub(crate) const MIPS_PREIMAGE_BYTES_OFFSET: usize = 83;
-pub(crate) const MIPS_HAS_N_BYTES_OFFSET: usize = 87;
-pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
+pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
+pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 81;
+pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = 82;
+pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = 83;
+pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 84;
+pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 88;
+pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
 
 /// The number of columns used for relation witness in the MIPS circuit
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
@@ -31,8 +32,8 @@ pub const N_MIPS_SEL_COLS: usize =
 /// All the witness columns used in MIPS
 pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
-/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
-/// describe our constraints.
+/// Abstract columns (or variables of our multi-variate polynomials) that will
+/// be used to describe our constraints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
@@ -40,10 +41,10 @@ pub enum ColumnAlias {
     InstructionCounter,
 }
 
-/// The columns used by the MIPS circuit.
-/// The MIPS circuit is split into three main opcodes: RType, JType, IType.
-/// The columns are shared between different instruction types.
-/// (the total number of columns refers to the maximum of columns used by each mode)
+/// The columns used by the MIPS circuit. The MIPS circuit is split into three
+/// main opcodes: RType, JType, IType. The columns are shared between different
+/// instruction types. (the total number of columns refers to the maximum of
+/// columns used by each mode)
 impl Indexer for ColumnAlias {
     fn ix(&self) -> usize {
         // Note that SCRATCH_SIZE + 1 is for the error
@@ -68,12 +69,11 @@ impl Indexer for Instruction {
     }
 }
 
-/// Represents one line of the execution trace of the virtual machine
-/// It does contain
-/// [N_MIPS_SEL_COLS] columns for the instruction selectors
+/// Represents one line of the execution trace of the virtual machine It does
+/// contain [N_MIPS_SEL_COLS] columns for the instruction selectors
 /// + [SCRATCH_SIZE] columns
-/// + 2 additional columns to keep track of the instruction index and one for the system error code.
-/// The columns are, in order,
+/// + 2 additional columns to keep track of the instruction index and one for
+/// the system error code. The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -90,7 +90,8 @@ impl Indexer for Instruction {
 /// - the flag to indicate if the current instruction is reading a preimage
 /// - the number of bytes read so far for the current preimage
 /// - how many bytes are left to be read for the current preimage
-/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - the (at most) 4 bytes of the preimage key that are currently being
+///   processed
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<N_MIPS_COLS, T>;
 
