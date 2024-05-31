@@ -543,6 +543,34 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
 
+        // FIXED LOOKUPS
+
+        // Byte checks with lookups: both preimage and length bytes are checked
+        for byte in bytes.iter() {
+            self.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                vec![byte.clone()],
+            ));
+        }
+
+        // COMMUNICATION CHANNEL: Read hash output FIXME: is it a problem that
+        // 256 bits do not fit in a single field?
+        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
+            acc * Expr::from(2u64.pow(32))
+                + self.variable(Self::Position::ScratchState(
+                    REGISTER_PREIMAGE_KEY_START + i,
+                ))
+        });
+        // If no more bytes left to be read, then the end of the preimage is
+        // true.
+        // TODO: keep track of counter to diminish the number of bytes at
+        // each step and check it is zero at the end?
+        self.add_lookup(Lookup::read_if(
+            end_of_preimage,
+            LookupTableIDs::SyscallLookup,
+            vec![hash_counter.clone(), preimage_key],
+        ));
+
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LEN {
             self.add_lookup(Lookup::write_if(
@@ -555,29 +583,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ],
             ));
         }
-        // COMMUNICATION CHANNEL: Read hash output
-        // FIXME: check if the most significant byte is zero or 0x02
-        //       so we know what exactly needs to be passed to the lookup
-        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
-            acc * Expr::from(2u64.pow(32))
-                + self.variable(Self::Position::ScratchState(
-                    REGISTER_PREIMAGE_KEY_START + i,
-                ))
-        });
-
-        // If no more bytes left to be read, then the end of the preimage is
-        // true.
-        // TODO: keep track of counter to diminish the number of bytes at
-        // each step and check it is zero at the end?
-        self.add_lookup(Lookup::read_if(
-            end_of_preimage,
-            LookupTableIDs::SyscallLookup,
-            vec![hash_counter, preimage_key],
-        ));
-
-        // Byte checks with lookups: The preimage bytes are checked to be 8-bits
-        // on the Keccak side.
-        // TODO: do we want to check byte-ness of the bytelength bytes as well?
 
         // Return actual length read as variable, stored in `pos`
         self.variable(pos)
