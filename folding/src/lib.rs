@@ -45,7 +45,6 @@ pub mod decomposable_folding;
 
 mod error_term;
 
-pub mod default_implementation;
 mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
@@ -53,6 +52,7 @@ pub mod quadraticization;
 #[cfg(test)]
 #[cfg(feature = "bn254")]
 mod quadraticization_tests;
+pub mod standard_config;
 
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
