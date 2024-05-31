@@ -389,6 +389,7 @@
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -568,8 +569,9 @@
         };
         (scheme, final_expression)
     }
-    <span class="comment">//the number of columns added by quadraticization to lower the degree
-    </span><span class="kw">pub fn </span>quadraticization_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+
+    <span class="doccomment">/// Return the number of additional columns added by quadraticization
+    </span><span class="kw">pub fn </span>get_number_of_additional_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.quadraticization_columns
     }
 
