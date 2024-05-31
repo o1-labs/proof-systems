@@ -19,6 +19,8 @@ use kimchi::circuits::{
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
 
+use super::column::MIPS_LENGTH_BYTES_OFF;
+
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -409,6 +411,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
         });
 
+        // The (at most) 4 bytes that are being read from the bytelength
+        let length_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_LENGTH_BYTES_OFF + i))
+        });
+
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
         // It will be zero when the syscall reads the bytelength prefix.
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
@@ -550,6 +557,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.add_lookup(Lookup::read_one(
                 LookupTableIDs::ByteLookup,
                 vec![byte.clone()],
+            ));
+        }
+        // TODO: think of a way to merge these together to perform 4 lookups
+        // instead of 8 per row
+        for b in length_bytes.iter() {
+            self.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                vec![b.clone()],
             ));
         }
 
