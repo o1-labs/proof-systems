@@ -353,9 +353,9 @@ impl<C: FoldingConfig> Clone for ExpExtension<C> {
         match self {
             Self::U => Self::U,
             Self::Error => Self::Error,
-            Self::ExtendedWitness(arg0) => Self::ExtendedWitness(arg0.clone()),
-            Self::Alpha(arg0) => Self::Alpha(arg0.clone()),
-            Self::Selector(arg0) => Self::Selector(arg0.clone()),
+            Self::ExtendedWitness(arg0) => Self::ExtendedWitness(*arg0),
+            Self::Alpha(arg0) => Self::Alpha(*arg0),
+            Self::Selector(arg0) => Self::Selector(*arg0),
         }
     }
 }
@@ -386,9 +386,9 @@ impl<C: FoldingConfig> PartialEq for FoldingCompatibleExprInner<C> {
 impl<C: FoldingConfig> Clone for FoldingCompatibleExprInner<C> {
     fn clone(&self) -> Self {
         match self {
-            Self::Constant(arg0) => Self::Constant(arg0.clone()),
-            Self::Challenge(arg0) => Self::Challenge(arg0.clone()),
-            Self::Cell(arg0) => Self::Cell(arg0.clone()),
+            Self::Constant(arg0) => Self::Constant(*arg0),
+            Self::Challenge(arg0) => Self::Challenge(*arg0),
+            Self::Cell(arg0) => Self::Cell(*arg0),
             Self::Extensions(arg0) => Self::Extensions(arg0.clone()),
         }
     }
@@ -429,7 +429,7 @@ impl<C: FoldingConfig> Clone for FoldingCompatibleExpr<C> {
     fn clone(&self) -> Self {
         match self {
             Self::Atom(arg0) => Self::Atom(arg0.clone()),
-            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), arg1.clone()),
+            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), *arg1),
             Self::Add(arg0, arg1) => Self::Add(arg0.clone(), arg1.clone()),
             Self::Sub(arg0, arg1) => Self::Sub(arg0.clone(), arg1.clone()),
             Self::Mul(arg0, arg1) => Self::Mul(arg0.clone(), arg1.clone()),
@@ -560,7 +560,7 @@ impl<C: FoldingConfig> Clone for FoldingExp<C> {
     fn clone(&self) -> Self {
         match self {
             Self::Atom(arg0) => Self::Atom(arg0.clone()),
-            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), arg1.clone()),
+            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), *arg1),
             Self::Add(arg0, arg1) => Self::Add(arg0.clone(), arg1.clone()),
             Self::Mul(arg0, arg1) => Self::Mul(arg0.clone(), arg1.clone()),
             Self::Sub(arg0, arg1) => Self::Sub(arg0.clone(), arg1.clone()),
@@ -811,7 +811,7 @@ impl<C: FoldingConfig> Clone for Term<C> {
     fn clone(&self) -> Self {
         Self {
             exp: self.exp.clone(),
-            sign: self.sign.clone(),
+            sign: self.sign,
         }
     }
 }

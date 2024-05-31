@@ -49,13 +49,13 @@ impl<C: FoldingConfig> std::fmt::Debug for ExtendedFoldingColumn<C> {
 impl<C: FoldingConfig> Clone for ExtendedFoldingColumn<C> {
     fn clone(&self) -> Self {
         match self {
-            Self::Inner(arg0) => Self::Inner(arg0.clone()),
-            Self::WitnessExtended(arg0) => Self::WitnessExtended(arg0.clone()),
+            Self::Inner(arg0) => Self::Inner(*arg0),
+            Self::WitnessExtended(arg0) => Self::WitnessExtended(*arg0),
             Self::Error => Self::Error,
-            Self::Constant(arg0) => Self::Constant(arg0.clone()),
-            Self::Challenge(arg0) => Self::Challenge(arg0.clone()),
-            Self::Alpha(arg0) => Self::Alpha(arg0.clone()),
-            Self::Selector(arg0) => Self::Selector(arg0.clone()),
+            Self::Constant(arg0) => Self::Constant(*arg0),
+            Self::Challenge(arg0) => Self::Challenge(*arg0),
+            Self::Alpha(arg0) => Self::Alpha(*arg0),
+            Self::Selector(arg0) => Self::Selector(*arg0),
         }
     }
 }
