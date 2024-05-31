@@ -660,7 +660,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // Write the individual byte of the preimage to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i as usize),
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i),
                     preimage_byte as u64,
                 );
 
