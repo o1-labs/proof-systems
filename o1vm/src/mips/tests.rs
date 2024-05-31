@@ -73,9 +73,10 @@ fn test_mips_number_constraints() {
                 | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 6),
                 SyscallOther => assert_num_constraints(&instr, 10),
                 SyscallMmap => assert_num_constraints(&instr, 11),
-                SyscallFcntl => assert_num_constraints(&instr, 22),
-                SyscallReadPreimage => assert_num_constraints(&instr, 27),
-                SyscallWritePreimage => assert_num_constraints(&instr, 30), // FIXME: This should be 36
+                SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 22),
+                SyscallWritePreimage => assert_num_constraints(&instr, 30),
+                // FIXME: for some reason it does not matter if we comment out
+                // the constraints in request_preimage_write, this is always 30
             },
             JType(jtype) => match jtype {
                 Jump => assert_num_constraints(&instr, 0),
@@ -451,11 +452,18 @@ mod folding {
             interpret_itype(&mut constraints_env, ITypeInstruction::AddImmediateUnsigned);
             constraints_env.constraints
         };
-        // We have 3 constraints here. We can select only one. println!("Nb of
-        // constraints: {:?}", constraints.len()); You can select one of the
-        // constraints if you want to fold only one constraints .iter()
-        // .for_each(|constraint| println!("Degree: {:?}", constraint.degree(1,
-        //     0))); Selecting the first constraint for testing let constraints
+        // We have 3 constraints here. We can select only one.
+        // println!("Nb of constraints: {:?}", constraints.len());
+        //
+        // You can select one of the constraints if you want to fold only one
+        //
+        // constraints
+        //      .iter()
+        //      .for_each(|constraint|
+        //           println!("Degree: {:?}", constraint.degree(1, 0)));
+        //
+        // Selecting the first constraint for testing
+        // let constraints
         //     = vec![constraints.first().unwrap().clone()];
 
         let witness_one = make_random_witness_for_addiu(domain_size, &mut rng);

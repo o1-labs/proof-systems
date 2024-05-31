@@ -403,12 +403,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // TODO: any constraints we should we add for pos?
 
-        // EXTRA CONSTRAINTS
+        // EXTRA 13 CONSTRAINTS
+        // FIXME: for some reason constraints are counted correctly in
+        // SyscallReadPreimage but not in SyscallWritePreimage
 
         // Booleanity constraints
         {
-            // FIXME: for some reason these 6 constraints are counted in
-            // SyscallReadPreimage but not in SyscallWritePreimage
             for var in has_n_bytes.iter() {
                 self.assert_boolean(var.clone());
             }
