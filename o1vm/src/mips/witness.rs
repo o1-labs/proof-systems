@@ -99,14 +99,14 @@ fn memory_size(total: usize) -> String {
         let value = total as f64 / d as f64;
 
         let prefix =
-        ////////////////////////////////////////////////////////////////////////////
-        // Famous last words: 1023 exabytes ought to be enough for anybody
-        //                                                                        //
-        // // Corollary: unwrap() below shouldn't fail
-        //                                                                        //
-        // // The maximum representation for usize corresponds to 16 exabytes
-        // anyway //
-        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        // Famous last words: 1023 exabytes ought to be enough for anybody    //
+        //                                                                    //
+        // Corollary:                                                         //
+        // unwrap() below shouldn't fail                                      //
+        // The maximum representation for usize corresponds to 16 exabytes    //
+        // anyway                                                             //
+        ////////////////////////////////////////////////////////////////////////
             PREFIXES.chars().nth(idx).unwrap();
 
         format!("{:.1} {}iB", value, prefix)
@@ -671,7 +671,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 debug!("preimage_byte: {:x}", preimage_byte);
                 debug!("updated chunk: {:x}", chunk);
 
-                // At most, it will be actual_read_len when the length is not read in this call
+                // At most, it will be actual_read_len when the length is not
+                // read in this call
                 preimage_read_len += 1;
 
                 // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
@@ -687,8 +688,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         //        anywhere else where the bytes are stored in the scratch state?
         self.write_column(Column::ScratchState(MIPS_PREIMAGE_CHUNK_OFF), chunk);
 
-        // Update the total number of bytes read from the oracle (can include
-        // bytelength and preimage bytes)
+        // Update the number of bytes read from the oracle in this step (can
+        // include bytelength and preimage bytes)
         self.write_column(pos, actual_read_len);
 
         // Number of preimage bytes processed in this instruction

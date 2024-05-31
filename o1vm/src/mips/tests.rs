@@ -15,7 +15,8 @@ use strum::{EnumCount, IntoEnumIterator};
 
 type Fp = ark_bn254::Fr;
 
-// Manually change the number of constraints if they are modififed in the interpreter
+// Manually change the number of constraints if they are modififed in the
+// interpreter
 #[test]
 fn test_mips_number_constraints() {
     let domain_size = 1 << 8;
@@ -223,8 +224,7 @@ mod unit {
         // same register
         let reg_src = 1;
         let reg_dest = 2;
-        // Instruction: 0b00100100001000010110110011101000
-        // addiu $at, $at, 27880
+        // Instruction: 0b00100100001000010110110011101000 addiu $at, $at, 27880
         write_instruction(
             &mut dummy_env,
             InstructionParts {
@@ -250,11 +250,8 @@ mod unit {
         let mut rng = o1_utils::tests::make_test_rng();
         // lw instruction
         let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b10001111101001000000000000000000
-        // lw $a0, 0(29)
-        // a0 = 4
-        // Random address in SP
-        // Address has only one index
+        // Instruction: 0b10001111101001000000000000000000 lw $a0, 0(29) a0 = 4
+        // Random address in SP Address has only one index
 
         let addr: u32 = rng.gen_range(0u32..100u32);
         let aligned_addr: u32 = (addr / 4) * 4;
@@ -286,8 +283,7 @@ mod unit {
         let mut rng = o1_utils::tests::make_test_rng();
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b10001111101001000000000000000000
-        // addi	a1,sp,4
+        // Instruction: 0b10001111101001000000000000000000 addi a1,sp,4
         write_instruction(
             &mut dummy_env,
             InstructionParts {
@@ -311,8 +307,7 @@ mod unit {
         let mut rng = o1_utils::tests::make_test_rng();
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b00111100000000010000000000001010
-        // lui at, 0xa
+        // Instruction: 0b00111100000000010000000000001010 lui at, 0xa
         write_instruction(
             &mut dummy_env,
             InstructionParts {
@@ -456,14 +451,12 @@ mod folding {
             interpret_itype(&mut constraints_env, ITypeInstruction::AddImmediateUnsigned);
             constraints_env.constraints
         };
-        // We have 3 constraints here. We can select only one.
-        // println!("Nb of constraints: {:?}", constraints.len());
-        // You can select one of the constraints if you want to fold only one
-        // constraints
-        //     .iter()
-        //     .for_each(|constraint| println!("Degree: {:?}", constraint.degree(1, 0)));
-        // Selecting the first constraint for testing
-        // let constraints = vec![constraints.first().unwrap().clone()];
+        // We have 3 constraints here. We can select only one. println!("Nb of
+        // constraints: {:?}", constraints.len()); You can select one of the
+        // constraints if you want to fold only one constraints .iter()
+        // .for_each(|constraint| println!("Degree: {:?}", constraint.degree(1,
+        //     0))); Selecting the first constraint for testing let constraints
+        //     = vec![constraints.first().unwrap().clone()];
 
         let witness_one = make_random_witness_for_addiu(domain_size, &mut rng);
         let witness_two = make_random_witness_for_addiu(domain_size, &mut rng);
