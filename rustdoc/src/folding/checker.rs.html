@@ -254,6 +254,11 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A kind of pseudo-prover, will compute the expressions over the witness a check row by row
 //! for a zero result.
 
@@ -325,8 +330,8 @@
         witness: RelaxedWitness&lt;C::Curve, C::Witness&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>inner_provider = {
-            <span class="kw">let </span>instance = instance.inner_instance().inner.clone();
-            <span class="kw">let </span>witness = witness.inner().inner.clone();
+            <span class="kw">let </span>instance = instance.extended_instance.instance.clone();
+            <span class="kw">let </span>witness = witness.extended_witness.witness.clone();
             Provider::new(instance, witness)
         };
         <span class="self">Self </span>{
@@ -427,14 +432,19 @@
                     <span class="macro">vec!</span>[u; domain_size]
                 }
                 ExpExtension::Error =&gt; <span class="self">self</span>.witness.error_vec.evals.clone(),
-                ExpExtension::ExtendedWitness(i) =&gt; {
-                    <span class="self">self</span>.witness.inner().extended.get(<span class="kw-2">&amp;</span>i).unwrap().evals.clone()
-                }
+                ExpExtension::ExtendedWitness(i) =&gt; <span class="self">self
+                    </span>.witness
+                    .extended_witness
+                    .extended
+                    .get(<span class="kw-2">&amp;</span>i)
+                    .unwrap()
+                    .evals
+                    .clone(),
                 ExpExtension::Alpha(i) =&gt; {
                     <span class="kw">let </span>alpha = <span class="self">self
                         </span>.instance
-                        .inner_instance()
-                        .inner
+                        .extended_instance
+                        .instance
                         .get_alphas()
                         .get(i)
                         .unwrap();

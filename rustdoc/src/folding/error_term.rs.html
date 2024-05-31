@@ -430,7 +430,6 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -618,15 +617,17 @@
     // possible, and inline code.
     </span><span class="kw">let </span>(ul, ur) = (u.<span class="number">0</span>, u.<span class="number">1</span>);
     <span class="kw">let </span>u_cross = ul * ur;
-    <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner().zero_vec(env.domain.size <span class="kw">as </span>usize));
+    <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize));
 
     <span class="kw">let </span>alphas_l = env
         .get_relaxed_instance(Side::Left)
-        .inner_instance()
+        .extended_instance
+        .instance
         .get_alphas();
     <span class="kw">let </span>alphas_r = env
         .get_relaxed_instance(Side::Right)
-        .inner_instance()
+        .extended_instance
+        .instance
         .get_alphas();
 
     <span class="kw">let </span>t_0 = {
@@ -713,13 +714,14 @@
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
         selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="comment">// FIXME: avoid indirection
-        </span><span class="kw">let </span>inner_instances = [
-            instances[<span class="number">0</span>].inner_instance().inner(),
-            instances[<span class="number">1</span>].inner_instance().inner(),
+        <span class="kw">let </span>inner_instances = [
+            <span class="kw-2">&amp;</span>instances[<span class="number">0</span>].extended_instance.instance,
+            <span class="kw-2">&amp;</span>instances[<span class="number">1</span>].extended_instance.instance,
         ];
-        <span class="comment">// FIXME: avoid indirection
-        </span><span class="kw">let </span>inner_witnesses = [witnesses[<span class="number">0</span>].inner().inner(), witnesses[<span class="number">1</span>].inner().inner()];
+        <span class="kw">let </span>inner_witnesses = [
+            <span class="kw-2">&amp;</span>witnesses[<span class="number">0</span>].extended_witness.witness,
+            <span class="kw-2">&amp;</span>witnesses[<span class="number">1</span>].extended_witness.witness,
+        ];
         <span class="kw">let </span>inner = &lt;CF::Env&gt;::new(structure, inner_instances, inner_witnesses);
         <span class="self">Self </span>{
             inner,
@@ -732,10 +734,6 @@
 
     <span class="kw">pub fn </span>enabled_selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>CF::Selector&gt; {
         <span class="self">self</span>.selector.as_ref()
-    }
-
-    <span class="kw">pub fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CF::Env {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.inner
     }
 
     <span class="attr">#[allow(clippy::type_complexity)]
@@ -764,51 +762,51 @@
     <span class="kw">pub fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>ExtendedFoldingColumn&lt;CF&gt;, side: Side) -&gt; EvalLeaf&lt;ScalarField&lt;CF&gt;&gt; {
         <span class="kw">use </span>EvalLeaf::Col;
         <span class="kw">use </span>ExtendedFoldingColumn::<span class="kw-2">*</span>;
-        <span class="kw">let </span>instance = <span class="self">self</span>.get_relaxed_instance(side);
-        <span class="kw">let </span>witness = <span class="self">self</span>.get_relaxed_witness(side);
-        <span class="kw">let </span>alphas = instance.inner_instance().get_alphas();
+        <span class="kw">let </span>relaxed_instance = <span class="self">self</span>.get_relaxed_instance(side);
+        <span class="kw">let </span>relaxed_witness = <span class="self">self</span>.get_relaxed_witness(side);
+        <span class="kw">let </span>alphas = relaxed_instance.extended_instance.instance.get_alphas();
         <span class="kw">match </span>col {
-            Inner(Variable { col, row }) =&gt; Col(<span class="self">self</span>.inner().col(<span class="kw-2">*</span>col, <span class="kw-2">*</span>row, side)),
-            WitnessExtended(i) =&gt; Col(<span class="kw-2">&amp;</span>witness
-                .inner()
+            Inner(Variable { col, row }) =&gt; Col(<span class="self">self</span>.inner.col(<span class="kw-2">*</span>col, <span class="kw-2">*</span>row, side)),
+            WitnessExtended(i) =&gt; Col(<span class="kw-2">&amp;</span>relaxed_witness
+                .extended_witness
                 .extended
                 .get(i)
                 .expect(<span class="string">&quot;extended column not present&quot;</span>)
                 .evals),
             Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
             Constant(c) =&gt; EvalLeaf::Const(<span class="kw-2">*</span>c),
-            Challenge(chall) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().challenge(<span class="kw-2">*</span>chall, side)),
+            Challenge(chall) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner.challenge(<span class="kw-2">*</span>chall, side)),
             Alpha(i) =&gt; {
                 <span class="kw">let </span>alpha = alphas.get(<span class="kw-2">*</span>i).expect(<span class="string">&quot;alpha not present&quot;</span>);
                 EvalLeaf::Const(alpha)
             }
-            Selector(s) =&gt; Col(<span class="self">self</span>.inner().selector(s, side)),
+            Selector(s) =&gt; Col(<span class="self">self</span>.inner.selector(s, side)),
         }
     }
 
     <span class="kw">pub fn </span>col_try(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>ExtendedFoldingColumn&lt;CF&gt;, side: Side) -&gt; bool {
         <span class="kw">use </span>ExtendedFoldingColumn::<span class="kw-2">*</span>;
-        <span class="kw">let </span>witness = <span class="self">self</span>.get_relaxed_witness(side);
+        <span class="kw">let </span>relaxed_witness = <span class="self">self</span>.get_relaxed_witness(side);
         <span class="kw">match </span>col {
-            WitnessExtended(i) =&gt; witness.inner().extended.get(i).is_some(),
+            WitnessExtended(i) =&gt; relaxed_witness.extended_witness.extended.get(i).is_some(),
             Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
             Inner(<span class="kw">_</span>) | Constant(<span class="kw">_</span>) | Challenge(<span class="kw">_</span>) | Alpha(<span class="kw">_</span>) | Selector(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }
     }
 
     <span class="kw">pub fn </span>add_witness_evals(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, evals: Vec&lt;ScalarField&lt;CF&gt;&gt;, side: Side) {
-        <span class="kw">let </span>(_instance, witness) = <span class="kw">match </span>side {
+        <span class="kw">let </span>(_instance, relaxed_witness) = <span class="kw">match </span>side {
             Side::Left =&gt; (<span class="kw-2">&amp;</span><span class="self">self</span>.instances[<span class="number">0</span>], <span class="kw-2">&amp;mut </span><span class="self">self</span>.witnesses[<span class="number">0</span>]),
             Side::Right =&gt; (<span class="kw-2">&amp;</span><span class="self">self</span>.instances[<span class="number">1</span>], <span class="kw-2">&amp;mut </span><span class="self">self</span>.witnesses[<span class="number">1</span>]),
         };
         <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals, <span class="self">self</span>.domain);
-        witness.inner_mut().add_witness_evals(i, evals);
+        relaxed_witness.extended_witness.add_witness_evals(i, evals);
     }
 
     <span class="kw">pub fn </span>needs_extension(<span class="kw-2">&amp;</span><span class="self">self</span>, side: Side) -&gt; bool {
         !<span class="kw">match </span>side {
-            Side::Left =&gt; <span class="self">self</span>.witnesses[<span class="number">0</span>].inner().is_extended(),
-            Side::Right =&gt; <span class="self">self</span>.witnesses[<span class="number">1</span>].inner().is_extended(),
+            Side::Left =&gt; <span class="self">self</span>.witnesses[<span class="number">0</span>].extended_witness.is_extended(),
+            Side::Right =&gt; <span class="self">self</span>.witnesses[<span class="number">1</span>].extended_witness.is_extended(),
         }
     }
 
@@ -832,17 +830,17 @@
     /// The commitments are added to the instance, in the same order for both
     /// side.
     </span><span class="kw">fn </span>compute_extended_commitments(<span class="kw-2">mut </span><span class="self">self</span>, srs: <span class="kw-2">&amp;</span>CF::Srs, side: Side) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>(instance, witness) = <span class="kw">match </span>side {
+        <span class="kw">let </span>(relaxed_instance, relaxed_witness) = <span class="kw">match </span>side {
             Side::Left =&gt; (<span class="kw-2">&amp;mut </span><span class="self">self</span>.instances[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.witnesses[<span class="number">0</span>]),
             Side::Right =&gt; (<span class="kw-2">&amp;mut </span><span class="self">self</span>.instances[<span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.witnesses[<span class="number">1</span>]),
         };
 
         <span class="comment">// FIXME: use parallelisation
-        </span><span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>witness.inner().extended.iter().enumerate() {
+        </span><span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>relaxed_witness.extended_witness.extended.iter().enumerate() {
             <span class="comment">//in case any where to be missing for some reason
             </span><span class="macro">assert_eq!</span>(<span class="kw-2">*</span>i, expected_i);
             <span class="kw">let </span>commit = srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, wit);
-            instance.inner_mut().extended.push(commit)
+            relaxed_instance.extended_instance.extended.push(commit)
         }
         <span class="comment">// FIXME: maybe returning a value is not necessary as it does inplace operations.
         // It implies copying on the stack and possibly copy multiple times.

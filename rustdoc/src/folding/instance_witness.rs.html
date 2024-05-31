@@ -452,36 +452,6 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -549,9 +519,9 @@
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
     </span><span class="kw">fn </span>relax(<span class="self">self</span>, zero_commit: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, <span class="self">Self</span>&gt; {
-        <span class="kw">let </span>instance = ExtendedInstance::extend(<span class="self">self</span>);
+        <span class="kw">let </span>extended_instance = ExtendedInstance::extend(<span class="self">self</span>);
         RelaxedInstance {
-            instance,
+            extended_instance,
             u: G::ScalarField::one(),
             error_commitment: zero_commit,
         }
@@ -566,9 +536,9 @@
     /// returning a relaxed witness which is composed by the extended witness and the error vector
     /// that is set to the zero polynomial.
     </span><span class="kw">fn </span>relax(<span class="self">self</span>, zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;) -&gt; RelaxedWitness&lt;G, <span class="self">Self</span>&gt; {
-        <span class="kw">let </span>witness = ExtendedWitness::extend(<span class="self">self</span>);
+        <span class="kw">let </span>extended_witness = ExtendedWitness::extend(<span class="self">self</span>);
         RelaxedWitness {
-            witness,
+            extended_witness,
             error_vec: zero_poly.clone(),
         }
     }
@@ -580,10 +550,7 @@
     /// The map will be later filled by the quadraticization witness generator.
     </span><span class="kw">fn </span>extend(witness: W) -&gt; ExtendedWitness&lt;G, W&gt; {
         <span class="kw">let </span>extended = BTreeMap::new();
-        ExtendedWitness {
-            inner: witness,
-            extended,
-        }
+        ExtendedWitness { witness, extended }
     }
 }
 
@@ -592,7 +559,7 @@
     /// followed by an empty vector.
     </span><span class="kw">fn </span>extend(instance: I) -&gt; ExtendedInstance&lt;G, I&gt; {
         ExtendedInstance {
-            inner: instance,
+            instance,
             extended: <span class="macro">vec!</span>[],
         }
     }
@@ -608,74 +575,46 @@
 </span><span class="kw">pub struct </span>RelaxedInstance&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; {
     <span class="doccomment">/// The original instance, extended with the columns added by
     /// quadriticization
-    </span>instance: ExtendedInstance&lt;G, I&gt;,
+    </span><span class="kw">pub </span>extended_instance: ExtendedInstance&lt;G, I&gt;,
     <span class="kw">pub </span>u: G::ScalarField,
-    error_commitment: PolyComm&lt;G&gt;,
+    <span class="kw">pub </span>error_commitment: PolyComm&lt;G&gt;,
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxedInstance&lt;G, I&gt; {
-    <span class="doccomment">/// Return the original instance that has been relaxed, with the extra
-    /// columns added by quadraticization
-    </span><span class="kw">pub fn </span>inner_instance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedInstance&lt;G, I&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.instance
-    }
-
     <span class="doccomment">/// Returns the elements to be absorbed by the sponge
     ///
     /// The scalar elements of the are appended with the scalar `u` and the
     /// commitments are appended by the commitment to the error term.
     </span><span class="kw">pub fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
-        <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.instance.to_absorb();
+        <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.extended_instance.to_absorb();
         elements.<span class="number">0</span>.push(<span class="self">self</span>.u);
         <span class="macro">assert_eq!</span>(<span class="self">self</span>.error_commitment.elems.len(), <span class="number">1</span>);
         elements.<span class="number">1</span>.push(<span class="self">self</span>.error_commitment.elems[<span class="number">0</span>]);
         elements
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ExtendedInstance&lt;G, I&gt; {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.instance
-    }
-
     <span class="doccomment">/// Provides access to commitments to the extra columns added by
     /// quadraticization
     </span><span class="kw">pub fn </span>get_extended_column_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PolyComm&lt;G&gt;&gt; {
-        <span class="self">self</span>.instance.extended.get(i)
-    }
-
-    <span class="doccomment">/// Provides access to a commitment to the error column
-    </span><span class="kw">pub fn </span>get_error_column_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PolyComm&lt;G&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.error_commitment
+        <span class="self">self</span>.extended_instance.extended.get(i)
     }
 
     <span class="doccomment">/// Return the number of additional columns added by quadraticization
     </span><span class="kw">pub fn </span>get_number_of_additional_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.instance.extended.len()
+        <span class="self">self</span>.extended_instance.extended.len()
     }
 }
 
 <span class="comment">// -- Relaxed witnesses
 </span><span class="kw">pub struct </span>RelaxedWitness&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; {
-    <span class="kw">pub </span>witness: ExtendedWitness&lt;G, W&gt;,
+    <span class="kw">pub </span>extended_witness: ExtendedWitness&lt;G, W&gt;,
     <span class="kw">pub </span>error_vec: Evals&lt;G::ScalarField&gt;,
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; RelaxedWitness&lt;G, W&gt; {
-    <span class="kw">pub fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExtendedWitness&lt;G, W&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.witness
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ExtendedWitness&lt;G, W&gt; {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.witness
-    }
-
     <span class="doccomment">/// Provides access to the extra columns added by quadraticization
     </span><span class="kw">pub fn </span>get_extended_column(<span class="kw-2">&amp;</span><span class="self">self</span>, i: <span class="kw-2">&amp;</span>usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;&gt; {
-        <span class="self">self</span>.inner().extended.get(i)
-    }
-
-    <span class="doccomment">/// Provides access to the error column
-    </span><span class="kw">pub fn </span>get_error_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.error_vec
+        <span class="self">self</span>.extended_witness.extended.get(i)
     }
 }
 
@@ -683,23 +622,23 @@
 </span><span class="doccomment">/// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
 </span><span class="kw">pub struct </span>ExtendedWitness&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; {
-    <span class="kw">pub </span>inner: W,
-    <span class="doccomment">/// Extra columns added by quadraticization to lower the degree of expressions
-    /// to 2
+    <span class="kw">pub </span>witness: W,
+    <span class="doccomment">/// Extra columns added by quadraticization to lower the degree of
+    /// expressions to 2
     </span><span class="kw">pub </span>extended: BTreeMap&lt;usize, Evals&lt;G::ScalarField&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>ExtendedWitness&lt;G, W&gt; {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: &lt;G&gt;::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="self">Self </span>{
-            inner: inner1,
+            witness: witness1,
             extended: ex1,
         } = a;
         <span class="kw">let </span><span class="self">Self </span>{
-            inner: inner2,
+            witness: witness2,
             extended: ex2,
         } = b;
-        <span class="kw">let </span>inner = W::combine(inner1, inner2, challenge);
+        <span class="kw">let </span>witness = W::combine(witness1, witness2, challenge);
         <span class="kw">let </span>extended = ex1
             .into_iter()
             .zip(ex2)
@@ -714,17 +653,13 @@
                 (i, evals)
             })
             .collect();
-        <span class="self">Self </span>{ inner, extended }
+        <span class="self">Self </span>{ witness, extended }
     }
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; Witness&lt;G&gt; <span class="kw">for </span>ExtendedWitness&lt;G, W&gt; {}
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; ExtendedWitness&lt;G, W&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>W {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.inner
-    }
-
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_witness_evals(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, evals: Evals&lt;G::ScalarField&gt;) {
         <span class="self">self</span>.extended.insert(i, evals);
     }
@@ -739,10 +674,18 @@
 }
 
 <span class="comment">// -- Extended instance
-// FIXME: We should forbid cloning, for memory footprint.
+</span><span class="doccomment">/// An extended instance is an instance that has been extended with extra
+/// columns by quadraticization.
+/// The original instance is stored in the `instance` field.
+/// The extra columns are stored in the `extended` field.
+/// For instance, if the original instance has `n` columns, and the system is
+/// described by a degree 3 polynomial, an additional column will be added, and
+/// `extended` will contain `1` commitment.
+</span><span class="comment">// FIXME: We should forbid cloning, for memory footprint.
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ExtendedInstance&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; {
-    <span class="kw">pub </span>inner: I,
+    <span class="doccomment">/// The original instance.
+    </span><span class="kw">pub </span>instance: I,
     <span class="doccomment">/// Commitments to the extra columns added by quadraticization
     </span><span class="kw">pub </span>extended: Vec&lt;PolyComm&lt;G&gt;&gt;,
 }
@@ -750,20 +693,20 @@
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>ExtendedInstance&lt;G, I&gt; {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: &lt;G&gt;::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="self">Self </span>{
-            inner: inner1,
+            instance: instance1,
             extended: ex1,
         } = a;
         <span class="kw">let </span><span class="self">Self </span>{
-            inner: inner2,
+            instance: instance2,
             extended: ex2,
         } = b;
-        <span class="kw">let </span>inner = I::combine(inner1, inner2, challenge);
+        <span class="kw">let </span>instance = I::combine(instance1, instance2, challenge);
         <span class="kw">let </span>extended = ex1
             .into_iter()
             .zip(ex2)
             .map(|(a, b)| <span class="kw-2">&amp;</span>a + <span class="kw-2">&amp;</span>b.scale(challenge))
             .collect();
-        <span class="self">Self </span>{ inner, extended }
+        <span class="self">Self </span>{ instance, extended }
     }
 }
 
@@ -774,7 +717,7 @@
     /// are appended to the existing commitments of the initial instance
     /// to be absorbed. The scalars are unchanged.
     </span><span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
-        <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.inner.to_absorb();
+        <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.instance.to_absorb();
         <span class="kw">let </span>extended_commitments = <span class="self">self</span>.extended.iter().map(|commit| {
             <span class="macro">assert_eq!</span>(commit.elems.len(), <span class="number">1</span>);
             commit.elems[<span class="number">0</span>]
@@ -784,13 +727,7 @@
     }
 
     <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
-        <span class="self">self</span>.inner.get_alphas()
-    }
-}
-
-<span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; ExtendedInstance&lt;G, I&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>I {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.inner
+        <span class="self">self</span>.instance.get_alphas()
     }
 }
 
@@ -873,20 +810,20 @@
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: &lt;G&gt;::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>challenge_cube = challenge * challenge * challenge;
         <span class="kw">let </span>RelaxedInstance {
-            instance: ins1,
+            extended_instance: instance1,
             u: u1,
             error_commitment: e1,
         } = a;
         <span class="kw">let </span>RelaxedInstance {
-            instance: ins2,
+            extended_instance: instance2,
             u: u2,
             error_commitment: e2,
         } = b;
-        <span class="kw">let </span>instance = &lt;ExtendedInstance&lt;G, I&gt;&gt;::combine(ins1, ins2, challenge);
+        <span class="kw">let </span>extended_instance = &lt;ExtendedInstance&lt;G, I&gt;&gt;::combine(instance1, instance2, challenge);
         <span class="kw">let </span>u = u1 + u2 * challenge;
         <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>e1 + <span class="kw-2">&amp;</span>e2.scale(challenge_cube);
         RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment,
         }
@@ -896,14 +833,14 @@
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxedInstance&lt;G, I&gt; {
     <span class="kw">fn </span>sub_errors(<span class="self">self</span>, error_commitments: <span class="kw-2">&amp;</span>[PolyComm&lt;G&gt;; <span class="number">2</span>], challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment: error,
         } = <span class="self">self</span>;
         <span class="kw">let </span>[e0, e1] = error_commitments;
         <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>error - (<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>e0.scale(challenge) + <span class="kw-2">&amp;</span>e1.scale(challenge.square())));
         RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment,
         }
@@ -922,20 +859,23 @@
 <span class="kw">impl</span>&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>RelaxedWitness&lt;G, W&gt; {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: &lt;G&gt;::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>RelaxedWitness {
-            witness: a,
+            extended_witness: a,
             error_vec: <span class="kw-2">mut </span>e1,
         } = a;
         <span class="kw">let </span>RelaxedWitness {
-            witness: b,
+            extended_witness: b,
             error_vec: e2,
         } = b;
         <span class="kw">let </span>challenge_cube = (challenge * challenge) * challenge;
-        <span class="kw">let </span>witness = &lt;ExtendedWitness&lt;G, W&gt;&gt;::combine(a, b, challenge);
+        <span class="kw">let </span>extended_witness = &lt;ExtendedWitness&lt;G, W&gt;&gt;::combine(a, b, challenge);
         <span class="kw">for </span>(a, b) <span class="kw">in </span>e1.evals.iter_mut().zip(e2.evals.into_iter()) {
             <span class="kw-2">*</span>a += b * challenge_cube;
         }
         <span class="kw">let </span>error_vec = e1;
-        RelaxedWitness { witness, error_vec }
+        RelaxedWitness {
+            extended_witness,
+            error_vec,
+        }
     }
 }
 
