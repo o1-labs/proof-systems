@@ -1,12 +1,26 @@
 use crate::instance_witness::Witness;
 use crate::{expressions::FoldingColumnTrait, Instance};
-use crate::{instance_witness::Foldable, FoldingConfig, FoldingEnv, Side};
+use crate::{FoldingConfig, FoldingEnv, Side};
 use kimchi::circuits::gate::CurrOrNext;
+use kimchi::curve::KimchiCurve;
 use poly_commitment::commitment::CommitmentCurve;
 use poly_commitment::srs;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
-struct StandardConfig<G, Col, Chall, Sel, Str, I, W>(PhantomData<(G, Col, Chall, Sel, Str, I, W)>);
+/// An standard folding config that should supports  
+/// `G`: any curve  
+/// `Col`: any column implementing [FoldingColumnTrait]  
+/// `Chall`: any challenge  
+/// `Sel`: any dynamic selector  
+/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`  
+/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`
+/// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
+pub struct StandardConfig<G, Col, Chall, I, W, Sel = (), Str = ()>(
+    PhantomData<(G, Col, Chall, Sel, Str, I, W)>,
+);
+
+// manual implementation to avoid the bounds of the macro, same as what the macro would create,
+// but without unnecessary bounds
 
 impl<G, Col, Chall, Sel, Str, I, W> PartialEq for StandardConfig<G, Col, Chall, Sel, Str, I, W> {
     fn eq(&self, other: &Self) -> bool {
@@ -32,6 +46,7 @@ impl<G, Col, Chall, Sel, Str, I, W> Clone for StandardConfig<G, Col, Chall, Sel,
     }
 }
 
+//implementing FoldingConfig
 impl<G, Col, Chall, Sel, Str, I, W> FoldingConfig for StandardConfig<G, Col, Chall, Sel, Str, I, W>
 where
     Self: 'static,
@@ -62,11 +77,12 @@ where
 
     type Env = Env<G, Col, Chall, Sel, Str, I, W>;
 }
-struct Env<G, Col, Chall, Sel, Str, I, W>
+//a generic Index based environment
+pub struct Env<G, Col, Chall, Sel, Str, I, W>
 where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
-    W: Foldable<G::ScalarField> + Clone,
+    W: Witness<G> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
 {
     instances: [I; 2],
@@ -75,12 +91,13 @@ where
     _todo: PhantomData<(G, Col, Chall, Sel, Str)>,
 }
 
+//implementing FoldingEnv
 impl<G, Col, Chall, Sel, Str, I, W> FoldingEnv<G::ScalarField, I, W, Col, Chall, Sel>
     for Env<G, Col, Chall, Sel, Str, I, W>
 where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
-    W: Foldable<G::ScalarField> + Clone,
+    W: Witness<G> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
     Col: FoldingColumnTrait,
     Sel: Copy,
@@ -89,6 +106,8 @@ where
     type Structure = Str;
 
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self {
+        // cloning for now, ideally should work with references, but that requires deeper
+        // refactorings of folding
         let instances = instances.map(Clone::clone);
         let witnesses = witnesses.map(Clone::clone);
         let structure = structure.clone();
@@ -105,16 +124,20 @@ where
             Side::Left => &self.instances[0],
             Side::Right => &self.instances[1],
         };
+        // handled through Index in I
         instance[challenge]
     }
 
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<G::ScalarField> {
-        //TODO: support Next
+        // TODO: support Next
         assert!(matches!(curr_or_next, CurrOrNext::Curr));
         let witness = match side {
             Side::Left => &self.witnesses[0],
             Side::Right => &self.witnesses[1],
         };
+        // this should hold as long the Index implementations are consistent with the
+        // FoldingColumnTrait implementation.
+        // either search in witness for witness columns, or in the structure otherwise
         if col.is_witness() {
             &witness[col]
         } else {
@@ -123,6 +146,7 @@ where
     }
 
     fn selector(&self, s: &Sel, side: Side) -> &Vec<G::ScalarField> {
+        //similar to the witness case of col, as expected
         let witness = match side {
             Side::Left => &self.witnesses[0],
             Side::Right => &self.witnesses[1],
