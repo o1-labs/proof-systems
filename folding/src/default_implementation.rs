@@ -1,128 +1,10 @@
+use crate::instance_witness::Witness;
 use crate::{expressions::FoldingColumnTrait, Instance};
-use crate::{
-    instance_witness::{self, Foldable},
-    FoldingConfig, FoldingEnv, Side,
-};
-use ark_ff::Field;
+use crate::{instance_witness::Foldable, FoldingConfig, FoldingEnv, Side};
 use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::commitment::CommitmentCurve;
 use poly_commitment::srs;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
-
-pub struct FoldableWitness<F: Field, W, Col, Sel>
-where
-    W: Foldable<F> + Index<Col, Output = Vec<F>> + Index<Sel, Output = Vec<F>>,
-{
-    inner: W,
-    _phantom: PhantomData<(F, Col, Sel)>,
-}
-
-impl<F: Field + Clone, W: Clone, Col, Sel> Clone for FoldableWitness<F, W, Col, Sel>
-where
-    W: Foldable<F> + Index<Col, Output = Vec<F>> + Index<Sel, Output = Vec<F>>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            _phantom: self._phantom.clone(),
-        }
-    }
-}
-
-impl<F: Field, W, Col, Sel> FoldableWitness<F, W, Col, Sel>
-where
-    W: Foldable<F> + Index<Col, Output = Vec<F>> + Index<Sel, Output = Vec<F>>,
-{
-    pub fn wrap(inner: W) -> Self {
-        Self {
-            inner,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<F: Field, W, Col, Sel> Foldable<F> for FoldableWitness<F, W, Col, Sel>
-where
-    W: Foldable<F> + Index<Col, Output = Vec<F>> + Index<Sel, Output = Vec<F>>,
-{
-    fn combine(a: Self, b: Self, challenge: F) -> Self {
-        let inner = W::combine(a.inner, b.inner, challenge);
-        Self {
-            inner,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<G: CommitmentCurve, W, Col, Sel> instance_witness::Witness<G>
-    for FoldableWitness<G::ScalarField, W, Col, Sel>
-where
-    W: Foldable<G::ScalarField>,
-    W: Index<Col, Output = Vec<G::ScalarField>>,
-    W: Index<Sel, Output = Vec<G::ScalarField>>,
-{
-}
-
-pub struct FoldableInstance<G: CommitmentCurve, I, Chall>
-where
-    I: Foldable<G::ScalarField>,
-    I: Index<Chall, Output = G::ScalarField>,
-{
-    inner: I,
-    _phantom: PhantomData<(G, Chall)>,
-}
-
-impl<G: CommitmentCurve + Clone, I: Clone, Chall> Clone for FoldableInstance<G, I, Chall>
-where
-    I: Foldable<G::ScalarField>,
-    I: Index<Chall, Output = G::ScalarField>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            _phantom: self._phantom.clone(),
-        }
-    }
-}
-
-impl<G: CommitmentCurve, I, Chall> FoldableInstance<G, I, Chall>
-where
-    I: Instance<G>,
-    I: Index<Chall, Output = G::ScalarField>,
-{
-    pub fn wrap(inner: I) -> Self {
-        Self {
-            inner,
-            _phantom: PhantomData,
-        }
-    }
-}
-impl<G: CommitmentCurve, I, Chall> Foldable<G::ScalarField> for FoldableInstance<G, I, Chall>
-where
-    I: Foldable<G::ScalarField>,
-    I: Index<Chall, Output = G::ScalarField>,
-{
-    fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
-        let inner = I::combine(a.inner, b.inner, challenge);
-        Self {
-            inner,
-            _phantom: PhantomData,
-        }
-    }
-}
-impl<G: CommitmentCurve, I, Chall> instance_witness::Instance<G> for FoldableInstance<G, I, Chall>
-where
-    I: instance_witness::Instance<G>,
-    I: Index<Chall, Output = G::ScalarField>,
-{
-    fn to_absorb(&self) -> (Vec<<G>::ScalarField>, Vec<G>) {
-        self.inner.to_absorb()
-    }
-
-    fn get_alphas(&self) -> &crate::Alphas<<G>::ScalarField> {
-        self.inner.get_alphas()
-    }
-}
 
 struct StandardConfig<G, Col, Chall, Sel, Str, I, W>(PhantomData<(G, Col, Chall, Sel, Str, I, W)>);
 
@@ -155,7 +37,7 @@ where
     Self: 'static,
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
-    W: Foldable<G::ScalarField> + Clone,
+    W: Witness<G> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
     Col: Hash + Eq + Debug + Clone + FoldingColumnTrait,
     Sel: Ord + Copy + Hash + Debug,
@@ -172,9 +54,9 @@ where
 
     type Srs = srs::SRS<G>;
 
-    type Instance = FoldableInstance<G, I, Chall>;
+    type Instance = I;
 
-    type Witness = FoldableWitness<G::ScalarField, W, Col, Sel>;
+    type Witness = W;
 
     type Structure = Str;
 
@@ -187,21 +69,14 @@ where
     W: Foldable<G::ScalarField> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
 {
-    instances: [FoldableInstance<G, I, Chall>; 2],
-    witnesses: [FoldableWitness<G::ScalarField, W, Col, Sel>; 2],
+    instances: [I; 2],
+    witnesses: [W; 2],
     structure: Str,
-    _todo: PhantomData<(Sel, Str)>,
+    _todo: PhantomData<(G, Col, Chall, Sel, Str)>,
 }
 
-impl<G, Col, Chall, Sel, Str, I, W>
-    FoldingEnv<
-        G::ScalarField,
-        FoldableInstance<G, I, Chall>,
-        FoldableWitness<G::ScalarField, W, Col, Sel>,
-        Col,
-        Chall,
-        Sel,
-    > for Env<G, Col, Chall, Sel, Str, I, W>
+impl<G, Col, Chall, Sel, Str, I, W> FoldingEnv<G::ScalarField, I, W, Col, Chall, Sel>
+    for Env<G, Col, Chall, Sel, Str, I, W>
 where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
@@ -213,11 +88,7 @@ where
 {
     type Structure = Str;
 
-    fn new(
-        structure: &Self::Structure,
-        instances: [&FoldableInstance<G, I, Chall>; 2],
-        witnesses: [&FoldableWitness<G::ScalarField, W, Col, Sel>; 2],
-    ) -> Self {
+    fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self {
         let instances = instances.map(Clone::clone);
         let witnesses = witnesses.map(Clone::clone);
         let structure = structure.clone();
@@ -234,7 +105,7 @@ where
             Side::Left => &self.instances[0],
             Side::Right => &self.instances[1],
         };
-        instance.inner[challenge]
+        instance[challenge]
     }
 
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<G::ScalarField> {
@@ -245,7 +116,7 @@ where
             Side::Right => &self.witnesses[1],
         };
         if col.is_witness() {
-            &witness.inner[col]
+            &witness[col]
         } else {
             &self.structure[col]
         }
@@ -256,7 +127,7 @@ where
             Side::Left => &self.witnesses[0],
             Side::Right => &self.witnesses[1],
         };
-        &witness.inner[*s]
+        &witness[*s]
     }
 }
 
@@ -398,13 +269,9 @@ mod example {
 
     #[allow(dead_code)]
     fn fold(pairs: [(MyInstance<Curve>, MyWitness<Curve>); 2]) {
+        use crate::FoldingScheme;
         use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
         use mina_poseidon::FqSponge;
-
-        use crate::{
-            default_implementation::{FoldableInstance, FoldableWitness},
-            FoldingScheme,
-        };
 
         let constraints = vec![constraint()];
         let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
@@ -416,17 +283,10 @@ mod example {
             FoldingScheme::<MyConfig<Curve>>::new(constraints, &srs, domain, &structure);
 
         let [left, right] = pairs;
-        let left = (
-            FoldableInstance::wrap(left.0),
-            FoldableWitness::wrap(left.1),
-        );
-        let right = (
-            FoldableInstance::wrap(right.0),
-            FoldableWitness::wrap(right.1),
-        );
+        let left = (left.0, left.1);
+        let right = (right.0, right.1);
 
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
-        // scheme.fold_instance_pair(left, right, error_commitments, fq_sponge);
         scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
     }
 }
