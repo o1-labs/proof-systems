@@ -4,7 +4,8 @@ use crate::{
         column::{
             ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
+            MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::InterpreterEnv,
         registers::REGISTER_PREIMAGE_KEY_START,
@@ -395,6 +396,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
         });
 
+        // The (at most) 4 bytes that are being read from the bytelength
+        let length_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_LENGTH_BYTES_OFF + i))
+        });
+
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
         // It will be zero when the syscall reads the bytelength prefix.
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
@@ -512,6 +518,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.add_lookup(Lookup::read_one(
                 LookupTableIDs::ByteLookup,
                 vec![byte.clone()],
+            ));
+        }
+        // TODO: think of a way to merge these together to perform 4 lookups
+        // instead of 8 per row
+        for b in length_bytes.iter() {
+            self.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                vec![b.clone()],
             ));
         }
 

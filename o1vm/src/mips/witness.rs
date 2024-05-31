@@ -9,7 +9,8 @@ use crate::{
         column::{
             ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
+            MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +34,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 97; // MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + length + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -642,10 +643,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // The first 8 bytes of the read preimage are the preimage length,
             // followed by the body of the preimage
             if idx < LENGTH_SIZE {
-                // Do nothing for the count of bytes of the preimage. TODO: do
-                // we want to check anything for these bytes as well? Like
-                // length?
+                // Compute the byte index read from the length
+                let len_i = idx % MIPS_CHUNK_BYTES_LEN;
+
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
+
+                // Write the individual byte of the length to the witness
+                self.write_column(
+                    Column::ScratchState(MIPS_LENGTH_BYTES_OFF + len_i),
+                    length_byte as u64,
+                );
+
+                // TODO: Proabably, the scratch state of MIPS_LENGTH_BYTES_OFF
+                // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
