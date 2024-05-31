@@ -144,11 +144,6 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
         self.extended_instance.extended.get(i)
     }
-
-    /// Return the number of additional columns added by quadraticization
-    pub fn get_number_of_additional_columns(&self) -> usize {
-        self.extended_instance.extended.len()
-    }
 }
 
 // -- Relaxed witnesses
