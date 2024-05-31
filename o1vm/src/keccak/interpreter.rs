@@ -427,7 +427,7 @@ where
     /// - 538  lookups if Step::Absorb::Middle (400 + 2 + 136)
     /// - 539  lookups if Step::Absorb::Last   (401 + 2 + 136)
     /// - 538  lookups if Step::Absorb::Only   (401 + 1 + 136)
-    /// - 602 lookups if Step::Squeeze         (600 + 1 + 1)
+    /// - 602  lookups if Step::Squeeze        (600 + 1 + 1)
     fn lookups(&mut self, step: Steps) {
         // SPONGE LOOKUPS
         // -> adds  400 lookups if is_sponge
