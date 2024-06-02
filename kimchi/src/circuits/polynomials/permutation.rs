@@ -41,6 +41,8 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
+        expr::{prologue::*, Column, ConstantExpr, DomainPolynomial, Variable},
+        gate::CurrOrNext,
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
@@ -49,7 +51,7 @@ use crate::{
     proof::{PointEvaluations, ProofEvaluations},
     prover_index::ProverIndex,
 };
-use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+use ark_ff::{FftField, Field, One, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -191,6 +193,88 @@ where
     }
 }
 
+//~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
+//~ They will be used by the prover.
+//~
+
+/// Compute the permutation constraint
+//~ $$
+//~ \begin{align}
+//~ perm(x) =
+//~     & \; a^{PERM0} \cdot zkpl(x) \cdot [ \\
+//~     & \;\;   z(x) \cdot \\
+//~     & \;\;   (w_0(x) + \gamma + x \cdot \beta \cdot \text{shift}_0) \cdot \\
+//~     & \;\;   (w_1(x) + \gamma + x \cdot \beta \cdot \text{shift}_1) \cdot \\
+//~     & \;\;   (w_2(x) + \gamma + x \cdot \beta \cdot \text{shift}_2) \cdot \\
+//~     & \;\;   (w_3(x) + \gamma + x \cdot \beta \cdot \text{shift}_3) \cdot \\
+//~     & \;\;   (w_4(x) + \gamma + x \cdot \beta \cdot \text{shift}_4) \cdot \\
+//~     & \;\;   (w_5(x) + \gamma + x \cdot \beta \cdot \text{shift}_5) \cdot \\
+//~     & \;\;   (w_6(x) + \gamma + x \cdot \beta \cdot \text{shift}_6) \cdot \\
+//~     & \;   - \\
+//~     & \;\;   z(x \cdot w) \cdot \\
+//~     & \;\;   (w_0(x) + \gamma + \sigma_0 \cdot \beta) \cdot \\
+//~     & \;\;   (w_1(x) + \gamma + \sigma_1 \cdot \beta) \cdot \\
+//~     & \;\;   (w_2(x) + \gamma + \sigma_2 \cdot \beta) \cdot \\
+//~     & \;\;   (w_3(x) + \gamma + \sigma_3 \cdot \beta) \cdot \\
+//~     & \;\;   (w_4(x) + \gamma + \sigma_4 \cdot \beta) \cdot \\
+//~     & \;\;   (w_5(x) + \gamma + \sigma_5 \cdot \beta) \cdot \\
+//~     & \;\;   (w_6(x) + \gamma + \sigma_6 \cdot \beta) \cdot \\
+//~     &]
+//~ \end{align}
+//~ $$
+//~
+pub fn permutation_constraint<F: Field>() -> E<F> {
+    let pos_expr = (0..PERMUTS)
+        .map(|i| {
+            (E::Constant(ConstantExpr::Gamma)
+                + (E::Constant(ConstantExpr::Beta) * E::from(DomainPolynomial::X))
+                    * E::Constant(ConstantExpr::Sigma(i)))
+                + witness_curr(i)
+        })
+        .fold(
+            E::Cell(Variable {
+                col: Column::Z,
+                row: CurrOrNext::Curr,
+            }),
+            |x, y| x * y,
+        );
+    let neg_expr = (0..PERMUTS)
+        .map(|i| {
+            (E::Constant(ConstantExpr::Gamma)
+                + E::Constant(ConstantExpr::Beta)
+                    * E::Cell(Variable {
+                        col: Column::Permutation(i),
+                        row: CurrOrNext::Curr,
+                    }))
+                + witness_curr(i)
+        })
+        .fold(
+            E::Cell(Variable {
+                col: Column::Z,
+                row: CurrOrNext::Next,
+            }),
+            |x, y| x * y,
+        );
+    E::from(DomainPolynomial::ZeroKnowledge) * (pos_expr - neg_expr)
+}
+
+pub fn constraints<F: Field>() -> Vec<E<F>> {
+    vec![
+        permutation_constraint(),
+        //~ and `bnd`:
+        //~
+        //~ $$bnd(x) =
+        //~     a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}
+        //~     +
+        //~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
+        //~ $$
+        E::from(DomainPolynomial::UnnormalizedLagrangeBasis(0))
+            * (E::cell(Column::Z, CurrOrNext::Curr) - E::one()),
+        E::from(DomainPolynomial::UnnormalizedLagrangeBasis(-3))
+            * (E::cell(Column::Z, CurrOrNext::Curr) - E::one()),
+    ]
+}
+
 impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation quotient poly contribution computation
     ///
@@ -217,34 +301,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
 
-        //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
-        //~ They will be used by the prover.
-        //~
-        //~ $$
-        //~ \begin{align}
-        //~ perm(x) =
-        //~     & \; a^{PERM0} \cdot zkpl(x) \cdot [ \\
-        //~     & \;\;   z(x) \cdot \\
-        //~     & \;\;   (w_0(x) + \gamma + x \cdot \beta \cdot \text{shift}_0) \cdot \\
-        //~     & \;\;   (w_1(x) + \gamma + x \cdot \beta \cdot \text{shift}_1) \cdot \\
-        //~     & \;\;   (w_2(x) + \gamma + x \cdot \beta \cdot \text{shift}_2) \cdot \\
-        //~     & \;\;   (w_3(x) + \gamma + x \cdot \beta \cdot \text{shift}_3) \cdot \\
-        //~     & \;\;   (w_4(x) + \gamma + x \cdot \beta \cdot \text{shift}_4) \cdot \\
-        //~     & \;\;   (w_5(x) + \gamma + x \cdot \beta \cdot \text{shift}_5) \cdot \\
-        //~     & \;\;   (w_6(x) + \gamma + x \cdot \beta \cdot \text{shift}_6) \cdot \\
-        //~     & \;   - \\
-        //~     & \;\;   z(x \cdot w) \cdot \\
-        //~     & \;\;   (w_0(x) + \gamma + \sigma_0 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_1(x) + \gamma + \sigma_1 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_2(x) + \gamma + \sigma_2 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_3(x) + \gamma + \sigma_3 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_4(x) + \gamma + \sigma_4 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_5(x) + \gamma + \sigma_5 \cdot \beta) \cdot \\
-        //~     & \;\;   (w_6(x) + \gamma + \sigma_6 \cdot \beta) \cdot \\
-        //~     &]
-        //~ \end{align}
-        //~ $$
-        //~
+        // computes `permutation_constraint` manually
         let perm = {
             // shifts = z(x) *
             // (w[0](x) + gamma + x * beta * shift[0]) *
@@ -278,13 +335,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
             &(&shifts - &sigmas).scale(alpha0) * &self.cs.precomputations().zkpl
         };
 
-        //~ and `bnd`:
-        //~
-        //~ $$bnd(x) =
-        //~     a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}
-        //~     +
-        //~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
-        //~ $$
+        // computes the quotients the remaining constraints from `constraints` manually
         let bnd = {
             let one_poly = DensePolynomial::from_coefficients_slice(&[F::one()]);
             let z_minus_1 = z - &one_poly;

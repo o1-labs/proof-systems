@@ -7,7 +7,7 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_4_rows,
+        polynomials::permutation::{eval_vanishes_on_last_4_rows, eval_zk_polynomial},
         wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
@@ -63,6 +63,8 @@ pub struct Constants<F: 'static> {
     /// The challenge joint_combiner which is used to combine
     /// joint lookup tables.
     pub joint_combiner: Option<F>,
+    /// The constants used in the permutation argument
+    pub sigma: Vec<F>,
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -269,6 +271,8 @@ pub enum ConstantExpr<F> {
     Beta,
     Gamma,
     JointCombiner,
+    // TODO: Factor this out to its own enum
+    Sigma(usize),
     // TODO: EndoCoefficient and Mds differ from the other 4 base constants in
     // that they are known at compile time. This should be extracted out into two
     // separate constant expression types.
@@ -290,6 +294,7 @@ impl<F: Copy> ConstantExpr<F> {
             ConstantExpr::Beta => res.push(PolishToken::Beta),
             ConstantExpr::Gamma => res.push(PolishToken::Gamma),
             ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
+            ConstantExpr::Sigma(i) => res.push(PolishToken::Sigma(*i)),
             ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
             ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
                 row: *row,
@@ -340,6 +345,7 @@ impl<F: Field> ConstantExpr<F> {
             Beta => c.beta,
             Gamma => c.gamma,
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
+            Sigma(i) => c.sigma[*i],
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
@@ -457,6 +463,23 @@ impl FeatureFlag {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DomainPolynomial {
+    /// The polynomial f(x) = x
+    X,
+    VanishesOnLast4Rows,
+    /// UnnormalizedLagrangeBasis(i) is
+    /// (x^n - 1) / (x - omega^i)
+    UnnormalizedLagrangeBasis(i32),
+    ZeroKnowledge,
+}
+
+impl<C> From<DomainPolynomial> for Expr<C> {
+    fn from(x: DomainPolynomial) -> Expr<C> {
+        Expr::Polynomial(x)
+    }
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -474,10 +497,7 @@ pub enum Expr<C> {
     Double(Box<Expr<C>>),
     Square(Box<Expr<C>>),
     BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
-    VanishesOnLast4Rows,
-    /// UnnormalizedLagrangeBasis(i) is
-    /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(i32),
+    Polynomial(DomainPolynomial),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
@@ -488,9 +508,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
     fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
         use Expr::*;
         match self {
-            Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
-                (self.clone(), false)
-            }
+            Constant(_) | Cell(_) | Polynomial(_) => (self.clone(), false),
             Double(c) => {
                 let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 if reduce_further && c_reduced.is_zero() {
@@ -633,6 +651,7 @@ pub enum PolishToken<F> {
     Beta,
     Gamma,
     JointCombiner,
+    Sigma(usize),
     EndoCoefficient,
     Mds {
         row: usize,
@@ -645,8 +664,7 @@ pub enum PolishToken<F> {
     Add,
     Mul,
     Sub,
-    VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(i32),
+    Polynomial(DomainPolynomial),
     Store,
     Load(usize),
     /// Skip the given number of tokens if the feature is enabled.
@@ -755,10 +773,17 @@ impl<F: FftField> PolishToken<F> {
                 JointCombiner => {
                     stack.push(c.joint_combiner.expect("no joint lookup was expected"))
                 }
+                Sigma(i) => stack.push(c.sigma[*i]),
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) => {
+                Polynomial(DomainPolynomial::X) => stack.push(pt),
+                Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                    stack.push(eval_vanishes_on_last_4_rows(d, pt))
+                }
+                Polynomial(DomainPolynomial::ZeroKnowledge) => {
+                    stack.push(eval_zk_polynomial(d, pt))
+                }
+                Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
                 }
                 Literal(x) => stack.push(*x),
@@ -835,8 +860,10 @@ impl<C> Expr<C> {
         match self {
             Double(x) => x.degree(d1_size),
             Constant(_) => 0,
-            VanishesOnLast4Rows => 4,
-            UnnormalizedLagrangeBasis(_) => d1_size,
+            Polynomial(DomainPolynomial::X) => 1,
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => 4,
+            Polynomial(DomainPolynomial::ZeroKnowledge) => 3,
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(_)) => d1_size,
             Cell(_) => d1_size,
             Square(x) => 2 * x.degree(d1_size),
             BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
@@ -1453,11 +1480,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 c.to_polish_(res);
             }
             Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
-            Expr::VanishesOnLast4Rows => {
-                res.push(PolishToken::VanishesOnLast4Rows);
-            }
-            Expr::UnnormalizedLagrangeBasis(i) => {
-                res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
+            Expr::Polynomial(x) => {
+                res.push(PolishToken::Polynomial(*x));
             }
             Expr::BinOp(op, x, y) => {
                 x.to_polish_(cache, res);
@@ -1523,8 +1547,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Square(x) => x.evaluate_constants_(c).square(),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
-            VanishesOnLast4Rows => VanishesOnLast4Rows,
-            UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
+            Polynomial(x) => Polynomial(*x),
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
@@ -1577,8 +1600,14 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            Polynomial(DomainPolynomial::X) => Ok(pt),
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                Ok(eval_vanishes_on_last_4_rows(d, pt))
+            }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => Ok(eval_zk_polynomial(d, pt)),
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
+                Ok(unnormalized_lagrange_basis(&d, *i, &pt))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
             IfFeature(feature, e1, e2) => {
@@ -1636,8 +1665,14 @@ impl<F: FftField> Expr<F> {
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            Polynomial(DomainPolynomial::X) => Ok(pt),
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                Ok(eval_vanishes_on_last_4_rows(d, pt))
+            }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => Ok(eval_zk_polynomial(d, pt)),
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
+                Ok(unnormalized_lagrange_basis(&d, *i, &pt))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
             IfFeature(feature, e1, e2) => {
@@ -1769,13 +1804,15 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
-            Expr::VanishesOnLast4Rows => EvalResult::SubEvals {
+            Expr::Polynomial(DomainPolynomial::X) => todo!(),
+            Expr::Polynomial(DomainPolynomial::VanishesOnLast4Rows) => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
                 evals: env.vanishes_on_last_4_rows,
             },
+            Expr::Polynomial(DomainPolynomial::ZeroKnowledge) => todo!(),
             Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
+            Expr::Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => EvalResult::Evals {
                 domain: d,
                 evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
             },
@@ -1969,8 +2006,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             Cell(v) => evaluated.contains(&v.col),
             Double(x) => x.is_constant(evaluated),
             BinOp(_, x, y) => x.is_constant(evaluated) && y.is_constant(evaluated),
-            VanishesOnLast4Rows => true,
-            UnnormalizedLagrangeBasis(_) => true,
+            Polynomial(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
             IfFeature(_, e1, e2) => e1.is_constant(evaluated) && e2.is_constant(evaluated),
         }
@@ -2014,8 +2050,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 HashMap::from_iter(e.monomials(ev).into_iter().map(|(m, c)| (m, c.double())))
             }
             Cache(_, e) => e.monomials(ev),
-            UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
-            VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
+            Polynomial(x) => constant(Polynomial(*x)),
             Constant(c) => constant(Constant(c.clone())),
             Cell(var) => sing(vec![*var], Constant(F::one())),
             BinOp(Op2::Add, e1, e2) => {
@@ -2380,6 +2415,7 @@ where
             Beta => "beta".to_string(),
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
+            Sigma(i) => format!("sigma({i})"),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
@@ -2400,6 +2436,7 @@ where
             Beta => "\\beta".to_string(),
             Gamma => "\\gamma".to_string(),
             JointCombiner => "joint\\_combiner".to_string(),
+            Sigma(i) => format!("sigma_{{{i}}}"),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
@@ -2420,6 +2457,7 @@ where
             Beta => "beta".to_string(),
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
+            Sigma(i) => format!("sigma({i})"),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("0x{}", x.to_hex()),
@@ -2467,8 +2505,14 @@ where
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
+                format!("unnormalized_lagrange_basis({})", *i)
+            }
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                "vanishes_on_last_4_rows".to_string()
+            }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
@@ -2516,8 +2560,14 @@ where
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),
             Cell(v) => v.latex(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized\\_lagrange\\_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes\\_on\\_last\\_4\\_rows".to_string(),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
+                format!("unnormalized\\_lagrange\\_basis({})", *i)
+            }
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                "vanishes\\_on\\_last\\_4\\_rows".to_string()
+            }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk\\_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
@@ -2539,8 +2589,14 @@ where
             Double(x) => format!("double({})", x.text(cache)),
             Constant(x) => x.text(),
             Cell(v) => v.text(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
+            Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
+                format!("unnormalized_lagrange_basis({})", *i)
+            }
+            Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
+                "vanishes_on_last_4_rows".to_string()
+            }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
@@ -2945,6 +3001,7 @@ pub mod test {
                 beta: one,
                 gamma: one,
                 joint_combiner: None,
+                sigma: index.cs.shift.iter().cloned().collect(),
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
             },

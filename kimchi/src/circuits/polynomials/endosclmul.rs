@@ -143,6 +143,7 @@ impl<F: PrimeField> CircuitGate<F> {
             beta: F::zero(),
             gamma: F::zero(),
             joint_combiner: None,
+            sigma: cs.shift.iter().cloned().collect(),
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
         };

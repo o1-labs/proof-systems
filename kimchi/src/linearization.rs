@@ -26,7 +26,7 @@ use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
-    wires::COLUMNS,
+    wires::{COLUMNS, PERMUTS},
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
@@ -298,6 +298,11 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the permutation polynomial
     h.insert(Z);
+
+    // the permutation columns
+    for i in 0..PERMUTS - 1 {
+        h.insert(Permutation(i));
+    }
 
     // the poseidon selector polynomial
     h.insert(Index(GateType::Poseidon));

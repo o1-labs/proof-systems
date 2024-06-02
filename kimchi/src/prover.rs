@@ -667,6 +667,7 @@ where
                     alpha,
                     beta,
                     gamma,
+                    sigma: index.cs.shift.iter().cloned().collect(),
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
