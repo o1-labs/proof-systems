@@ -6,8 +6,9 @@ use crate::{
     evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
     srs::SRS,
 };
+use ark_ec::AffineRepr;
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};

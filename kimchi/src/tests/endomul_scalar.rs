@@ -52,10 +52,10 @@ fn endomul_scalar_test() {
     //let start = Instant::now();
     for _ in 0..num_scalars {
         let x = {
-            let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
+            let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_bigint())
                 .take(num_bits)
                 .collect();
-            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..])).unwrap()
+            F::from_bigint(<F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..])).unwrap()
         };
 
         assert_eq!(

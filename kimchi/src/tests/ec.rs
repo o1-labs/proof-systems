@@ -2,8 +2,8 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -11,6 +11,7 @@ use mina_poseidon::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+use std::ops::Mul;
 
 use super::framework::TestFramework;
 
@@ -40,31 +41,29 @@ fn ec_test() {
     let rng = &mut StdRng::from_seed([0; 32]);
 
     let ps = {
-        let p = Other::prime_subgroup_generator()
-            .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
-            .into_affine();
+        let p = Other::generator()
+            .into_group()
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
         let mut res = vec![];
         let mut acc = p;
         for _ in 0..num_additions {
             res.push(acc);
             acc = acc + p;
         }
-        res
+        <Other as AffineRepr>::Group::normalize_batch(&mut res)
     };
 
     let qs = {
-        let q = Other::prime_subgroup_generator()
-            .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
-            .into_affine();
+        let q = Other::generator()
+            .into_group()
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
         let mut res = vec![];
         let mut acc = q;
         for _ in 0..num_additions {
             res.push(acc);
             acc = acc + q;
         }
-        res
+        <Other as AffineRepr>::Group::normalize_batch(&mut res)
     };
 
     for &p in ps.iter().take(num_doubles) {

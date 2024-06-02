@@ -15,7 +15,7 @@ pub mod prologue {
     pub use super::constants::{fp_constants, fq_constants, Constants};
     pub use super::prover::{generate_prover_index, prove, CoordinateCurve};
     pub use super::writer::{Cs, Var};
-    pub use ark_ec::{AffineCurve, ProjectiveCurve};
+    pub use ark_ec::{AffineRepr, CurveGroup};
     pub use ark_ff::{FftField, PrimeField, UniformRand};
     pub use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     pub use groupmap::GroupMap;

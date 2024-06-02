@@ -1,6 +1,6 @@
 //! Range check gate
 
-use ark_ff::{FftField, PrimeField, SquareRootField};
+use ark_ff::{FftField, PrimeField};
 
 use crate::{
     alphas::Alphas,
@@ -20,7 +20,7 @@ use super::circuitgates::{RangeCheck0, RangeCheck1};
 
 pub const GATE_COUNT: usize = 2;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
     ///     Outputs tuple (`next_row`, `circuit_gates`) where

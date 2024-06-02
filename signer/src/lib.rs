@@ -15,16 +15,16 @@ pub use schnorr::Schnorr;
 pub use seckey::SecKey;
 pub use signature::Signature;
 
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 
 /// Affine curve point type
 pub use mina_curves::pasta::Pallas as CurvePoint;
 
 /// Base field element type
-pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
 /// Scalar field element type
-pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
+pub type ScalarField = <CurvePoint as AffineRepr>::ScalarField;
 
 /// Mina network (or blockchain) identifier
 #[derive(Debug, Clone)]

@@ -6,7 +6,7 @@ use crate::circuits::{
     lookup::lookups::LookupPattern,
     wires::{COLUMNS, PERMUTS},
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
 use o1_utils::ExtendedDensePolynomial;
@@ -109,7 +109,7 @@ pub struct ProofEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct LookupCommitments<G: AffineCurve> {
+pub struct LookupCommitments<G: AffineRepr> {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec<PolyComm<G>>,
     /// Commitment to the lookup aggregation polynomial
@@ -122,7 +122,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<G: AffineCurve> {
+pub struct ProverCommitments<G: AffineRepr> {
     /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
@@ -137,7 +137,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G: AffineRepr> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
@@ -161,7 +161,7 @@ pub struct ProverProof<G: AffineCurve> {
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct RecursionChallenge<G>
 where
-    G: AffineCurve,
+    G: AffineRepr,
 {
     /// Vector of scalar field elements
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -338,7 +338,7 @@ impl<Eval> ProofEvaluations<Eval> {
     }
 }
 
-impl<G: AffineCurve> RecursionChallenge<G> {
+impl<G: AffineRepr> RecursionChallenge<G> {
     pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
     }
@@ -497,7 +497,7 @@ pub mod caml {
 
     impl<G, CamlG, CamlF> From<RecursionChallenge<G>> for CamlRecursionChallenge<CamlG, CamlF>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
@@ -511,7 +511,7 @@ pub mod caml {
 
     impl<G, CamlG, CamlF> From<CamlRecursionChallenge<CamlG, CamlF>> for RecursionChallenge<G>
     where
-        G: AffineCurve + From<CamlG>,
+        G: AffineRepr + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
         fn from(caml_ch: CamlRecursionChallenge<CamlG, CamlF>) -> RecursionChallenge<G> {
