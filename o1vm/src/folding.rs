@@ -80,6 +80,10 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
     fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
     }
+
+    fn get_challenges(&self) -> &[G::ScalarField] {
+        &self.challenges
+    }
 }
 
 impl<const N: usize, G: CommitmentCurve> Index<Challenge> for FoldingInstance<N, G> {

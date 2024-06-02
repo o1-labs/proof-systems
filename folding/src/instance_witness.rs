@@ -75,6 +75,9 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
 
     /// Returns the alphas values for the instance
     fn get_alphas(&self) -> &Alphas<G::ScalarField>;
+
+    /// Returns the challenges of the instance
+    fn get_challenges(&self) -> &[G::ScalarField];
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
