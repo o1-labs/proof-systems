@@ -320,6 +320,39 @@ mod unit {
         }
 
         #[test]
+        fn test_unit_load16_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng();
+            // lh instruction
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b100001 11101 00100 00000 00000 000000 lh $a0, 0(29) a0 = 4
+            // Random address in SP Address has only one index
+
+            let addr: u32 = rng.gen_range(0u32..100u32);
+            let aligned_addr: u32 = (addr / 4) * 4;
+            dummy_env.registers[29] = aligned_addr;
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+            let v0 = mem[aligned_addr as usize];
+            let v1 = mem[(aligned_addr + 1) as usize];
+            let v = ((v0 as u32) << 8) + (v1 as u32);
+            let high_bit = (v >> 15) & 1;
+            let exp_v = high_bit * (((1 << 16) - 1) << 16) + v;
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b100001,
+                    rs: 0b11101,
+                    rt: 0b00100,
+                    rd: 0b00000,
+                    shamt: 0b00000,
+                    funct: 0b000000,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::Load16);
+            assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
+        }
+
+        #[test]
         fn test_unit_load32_instruction() {
             let mut rng = o1_utils::tests::make_test_rng();
             // lw instruction
