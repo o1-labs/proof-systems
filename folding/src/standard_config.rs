@@ -220,8 +220,10 @@ where
 mod memoization {
     use ark_ff::Field;
     use std::{
-        cell::OnceCell, cell::RefCell, collections::HashMap, hash::Hash, sync::atomic::AtomicUsize,
-        sync::atomic::Ordering,
+        cell::{OnceCell, RefCell},
+        collections::HashMap,
+        hash::Hash,
+        sync::atomic::{AtomicUsize, Ordering},
     };
 
     /// a segment with up to N stored columns, and the potential
