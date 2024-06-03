@@ -239,21 +239,21 @@ mod memoization {
             let next = OnceCell::new();
             Self { cols, next }
         }
-        // This will find the column if i < 10, and get a reference to it,
+        // This will find the column if i < N, and get a reference to it,
         // initializing it with `f` if needed.
-        // If i > 9 it will continue recursing to the next segment, initializing
+        // If i >= N it will continue recursing to the next segment, initializing
         // it if needed
         pub fn get_or_insert<I>(&self, i: usize, f: I) -> &Vec<F>
         where
             I: FnOnce() -> Vec<F>,
         {
             match i {
-                i if i < 10 => {
+                i if i < N => {
                     let col = &self.cols[i];
                     col.get_or_init(f)
                 }
                 i => {
-                    let i = i - 10;
+                    let i = i - N;
                     let new = || Box::new(Self::new());
                     let next = self.next.get_or_init(new);
                     next.get_or_insert(i, f)
