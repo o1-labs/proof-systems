@@ -91,14 +91,22 @@ impl<
 {
     type SRS = PairingSRS<Pair>;
 
+    /// Parameters:
+    /// - `srs`: the structured reference string
+    /// - `plnms`: vector of polynomials with optional degree bound and
+    /// commitment randomness
+    /// - `elm`: vector of evaluation points
+    /// - `polyscale`: scaling factor for polynoms
+    /// group_maps, sponge, rng and evalscale are not used. The parameters are
+    /// kept to fit the trait and to be used generically.
     fn open<EFqSponge, RNG, D: EvaluationDomain<F>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
-        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with commitment randomness (blinders)
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        _sponge: EFqSponge,                // sponge
+        plnms: PolynomialsToCombine<G, D>,
+        elm: &[<G as AffineCurve>::ScalarField],
+        polyscale: <G as AffineCurve>::ScalarField,
+        _evalscale: <G as AffineCurve>::ScalarField,
+        _sponge: EFqSponge,
         _rng: &mut RNG,
     ) -> Self
     where
@@ -232,17 +240,17 @@ fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> 
         todo!()
     };
 
-    // The polynomial that evaluates to `p(zeta)` at `zeta` and `p(zeta_omega)` at
-    // `zeta_omega`.
+    // The polynomial that evaluates to `p(ζ)` at `ζ` and `p(ζω)` at
+    // `ζω`.
     // We write `p(x) = a + bx`, which gives
     // ```text
-    // p(zeta) = a + b * zeta
-    // p(zeta_omega) = a + b * zeta_omega
+    // p(ζ) = a + b * ζ
+    // p(ζω) = a + b * ζω
     // ```
     // and so
     // ```text
-    // b = (p(zeta_omega) - p(zeta)) / (zeta_omega - zeta)
-    // a = p(zeta) - b * zeta
+    // b = (p(ζω) - p(ζ)) / (ζω - ζ)
+    // a = p(ζ) - b * ζ
     // ```
     let b = (eval_zeta_omega - eval_zeta) / (zeta_omega - zeta);
     let a = eval_zeta - b * zeta;
@@ -315,6 +323,7 @@ impl<
 
             VariableBaseMSM::multi_scalar_mul(&points, &scalars)
         };
+
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
