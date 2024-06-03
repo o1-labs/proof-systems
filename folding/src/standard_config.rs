@@ -5,6 +5,7 @@ use crate::{
     Instance, Side,
 };
 use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
+use memoization::ColumnMemoizer;
 use poly_commitment::{commitment::CommitmentCurve, srs};
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
@@ -28,7 +29,7 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`  
 /// `I`: instances (implementing [Instance]) that can be indexed by `Chall`  
 /// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
-/// ```rust
+/// ```ignore
 /// use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 /// use mina_poseidon::FqSponge;
 /// use folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
@@ -123,9 +124,11 @@ where
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
+    Col: Hash + Eq,
 {
     instances: [I; 2],
     witnesses: [W; 2],
+    next_evals: ColumnMemoizer<Col, G::ScalarField, 10>,
     structure: Str,
     _todo: PhantomData<(G, Col, Chall, Sel, Str)>,
 }
@@ -138,7 +141,7 @@ where
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
     W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
-    Col: FoldingColumnTrait,
+    Col: FoldingColumnTrait + Eq + Hash,
     Sel: Copy,
     Str: Clone + Index<Col, Output = Vec<G::ScalarField>>,
 {
@@ -154,6 +157,7 @@ where
             instances,
             witnesses,
             structure,
+            next_evals: ColumnMemoizer::new(),
             _todo: PhantomData,
         }
     }
@@ -168,8 +172,6 @@ where
     }
 
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<G::ScalarField> {
-        // TODO: support Next
-        assert!(matches!(curr_or_next, CurrOrNext::Curr));
         let witness = match side {
             Side::Left => &self.witnesses[0],
             Side::Right => &self.witnesses[1],
@@ -178,7 +180,26 @@ where
         // FoldingColumnTrait implementation.
         // either search in witness for witness columns, or in the structure otherwise
         if col.is_witness() {
-            &witness[col]
+            match curr_or_next {
+                CurrOrNext::Curr => &witness[col],
+                CurrOrNext::Next => {
+                    let f = || {
+                        // simple but not the best, ideally there would be a single vector,
+                        // where you push its first element and offer either evals[0..] or
+                        // evals[1..].
+                        // that would relatively easy to implement in a custom implementation
+                        // with just a small change to this trait, but in this generic implementation
+                        // it is harder to implement.
+                        // The cost is mostly the cost of a clone
+                        let evals = &witness[col];
+                        let mut next = Vec::with_capacity(evals.len());
+                        next.extend(evals[1..].iter());
+                        next.push(evals[0]);
+                        next
+                    };
+                    self.next_evals.get_or_insert(col, f)
+                }
+            }
         } else {
             &self.structure[col]
         }
@@ -191,6 +212,84 @@ where
             Side::Right => &self.witnesses[1],
         };
         &witness[*s]
+    }
+}
+
+/// contains a data structure useful to support the [CurrOrNext::Next] case
+/// in [FoldingEnv::col]
+mod memoization {
+    use ark_ff::Field;
+    use std::{
+        cell::OnceCell, cell::RefCell, collections::HashMap, hash::Hash, sync::atomic::AtomicUsize,
+        sync::atomic::Ordering,
+    };
+
+    /// a segment with up to N stored columns, and the potential
+    /// next segment, similar to a linked list N-length arrays
+    pub struct ColumnMemoizerSegment<F: Field, const N: usize> {
+        cols: [OnceCell<Vec<F>>; N],
+        next: OnceCell<Box<Self>>,
+    }
+
+    impl<F: Field, const N: usize> ColumnMemoizerSegment<F, N> {
+        pub fn new() -> Self {
+            let cols = [(); N].map(|_| OnceCell::new());
+            let next = OnceCell::new();
+            Self { cols, next }
+        }
+        // This will find the column if i < 10, and get a reference to it,
+        // initializing it with `f` if needed.
+        // If i > 9 it will continue recursing to the next segment, initializing
+        // it if needed
+        pub fn get_or_insert<I>(&self, i: usize, f: I) -> &Vec<F>
+        where
+            I: FnOnce() -> Vec<F>,
+        {
+            match i {
+                i if i < 10 => {
+                    let col = &self.cols[i];
+                    col.get_or_init(f)
+                }
+                i => {
+                    let i = i - 10;
+                    let new = || Box::new(Self::new());
+                    let next = self.next.get_or_init(new);
+                    next.get_or_insert(i, f)
+                }
+            }
+        }
+    }
+    /// a hashmap like data structure supporting get-or-insert with
+    /// an inmutable reference and returning an inmutable reference
+    /// without guard
+    pub struct ColumnMemoizer<C: Hash + Eq, F: Field, const N: usize> {
+        first_segment: ColumnMemoizerSegment<F, N>,
+        next: AtomicUsize,
+        ids: RefCell<HashMap<C, usize>>,
+    }
+
+    impl<C: Hash + Eq, F: Field, const N: usize> ColumnMemoizer<C, F, N> {
+        pub fn new() -> Self {
+            let first_segment = ColumnMemoizerSegment::new();
+            let next = AtomicUsize::from(0);
+            let ids = RefCell::new(HashMap::new());
+            Self {
+                first_segment,
+                next,
+                ids,
+            }
+        }
+        pub fn get_or_insert<I>(&self, col: C, f: I) -> &Vec<F>
+        where
+            I: FnOnce() -> Vec<F>,
+        {
+            // this will find or asign an id for the column and then
+            // search the segments using the id
+            let mut ids = self.ids.borrow_mut();
+            let new_id = || self.next.fetch_add(1, Ordering::Relaxed);
+            let id = ids.entry(col).or_insert_with(new_id);
+            self.first_segment.get_or_insert(*id, f)
+        }
     }
 }
 
