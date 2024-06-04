@@ -124,6 +124,16 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>chunked;
 <span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
@@ -209,7 +219,17 @@
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt;;
     <span class="doccomment">///for now needed by snarky-rs
-    </span><span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
+
+    /// Commit to evaluations with custom blinding factors.
+    /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
+    </span><span class="kw">fn </span>commit_evaluations_custom(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: D&lt;G::ScalarField&gt;,
+        plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
+        blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt;;
+
+    <span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
     <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;);
     <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }

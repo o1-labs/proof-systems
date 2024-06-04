@@ -1195,6 +1195,15 @@
 <a href="#1195" id="1195">1195</a>
 <a href="#1196" id="1196">1196</a>
 <a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1855,6 +1864,15 @@
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt; {
         <span class="self">self</span>.mask(<span class="self">self</span>.commit_evaluations_non_hiding(domain, plnm), rng)
+    }
+
+    <span class="kw">fn </span>commit_evaluations_custom(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: D&lt;G::ScalarField&gt;,
+        plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
+        blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt; {
+        <span class="self">self</span>.mask_custom(<span class="self">self</span>.commit_evaluations_non_hiding(domain, plnm), blinders)
     }
 
     <span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
