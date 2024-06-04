@@ -295,6 +295,10 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
 </span><span class="kw">use crate</span>::{commitment::CommitmentCurve, PolyComm};
@@ -313,7 +317,8 @@
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
 #[serde(bound = <span class="string">&quot;G: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>SRS&lt;G&gt; {
-    <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form
+    <span class="doccomment">/// The vector of group elements for committing to polynomials in
+    /// coefficient form
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>g: Vec&lt;G&gt;,
     <span class="doccomment">/// A group element used for blinding commitments
@@ -501,7 +506,8 @@
         <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
     }
 
-    <span class="doccomment">/// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
+    <span class="doccomment">/// This function creates a trusted-setup SRS instance for circuits with
+    /// number of rows up to `depth`.
     </span><span class="kw">pub fn </span>create_trusted_setup(x: G::ScalarField, depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();
 
@@ -531,7 +537,8 @@
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
-    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
+    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up
+    /// to `depth`.
     </span><span class="kw">pub fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();
 
@@ -564,7 +571,8 @@
     </span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map: Sync,
     G::BaseField: PrimeField,
 {
-    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
+    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up
+    /// to `depth`.
     </span><span class="kw">pub fn </span>create_parallel(depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();
 

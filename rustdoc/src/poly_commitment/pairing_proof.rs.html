@@ -436,6 +436,15 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     commitment::<span class="kw-2">*</span>, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
     PolynomialsToCombine, SRS <span class="kw">as </span>SRSTrait,
@@ -529,15 +538,23 @@
 {
     <span class="kw">type </span>SRS = PairingSRS&lt;Pair&gt;;
 
-    <span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;F&gt;&gt;(
+    <span class="doccomment">/// Parameters:
+    /// - `srs`: the structured reference string
+    /// - `plnms`: vector of polynomials with optional degree bound and
+    /// commitment randomness
+    /// - `elm`: vector of evaluation points
+    /// - `polyscale`: scaling factor for polynoms
+    /// group_maps, sponge, rng and evalscale are not used. The parameters are
+    /// kept to fit the trait and to be used generically.
+    </span><span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;F&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         _group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,
-        plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with commitment randomness (blinders)
-        </span>elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField], <span class="comment">// vector of evaluation points
-        </span>polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for polynoms
-        </span>_evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for evaluation point powers
-        </span>_sponge: EFqSponge,                <span class="comment">// sponge
-        </span>_rng: <span class="kw-2">&amp;mut </span>RNG,
+        plnms: PolynomialsToCombine&lt;G, D&gt;,
+        elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
+        polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        _evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        _sponge: EFqSponge,
+        _rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>EFqSponge: Clone + FqSponge&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::BaseField, G, F&gt;,
@@ -680,17 +697,17 @@
         <span class="macro">todo!</span>()
     };
 
-    <span class="comment">// The polynomial that evaluates to `p(zeta)` at `zeta` and `p(zeta_omega)` at
-    // `zeta_omega`.
+    <span class="comment">// The polynomial that evaluates to `p(ζ)` at `ζ` and `p(ζω)` at
+    // `ζω`.
     // We write `p(x) = a + bx`, which gives
     // ```text
-    // p(zeta) = a + b * zeta
-    // p(zeta_omega) = a + b * zeta_omega
+    // p(ζ) = a + b * ζ
+    // p(ζω) = a + b * ζω
     // ```
     // and so
     // ```text
-    // b = (p(zeta_omega) - p(zeta)) / (zeta_omega - zeta)
-    // a = p(zeta) - b * zeta
+    // b = (p(ζω) - p(ζ)) / (ζω - ζ)
+    // a = p(ζ) - b * ζ
     // ```
     </span><span class="kw">let </span>b = (eval_zeta_omega - eval_zeta) / (zeta_omega - zeta);
     <span class="kw">let </span>a = eval_zeta - b * zeta;
@@ -763,6 +780,7 @@
 
             VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars)
         };
+
         <span class="kw">let </span>evals = combine_evaluations(evaluations, polyscale);
         <span class="kw">let </span>blinding_commitment = srs.full_srs.h.mul(<span class="self">self</span>.blinding);
         <span class="kw">let </span>divisor_commitment = srs

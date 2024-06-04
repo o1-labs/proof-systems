@@ -134,6 +134,23 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>chunked;
 <span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
@@ -170,7 +187,8 @@
     <span class="doccomment">/// Get the group element used for blinding commitments
     </span><span class="kw">fn </span>blinding_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G;
 
-    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple commitments.
+    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
     </span><span class="kw">fn </span>commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
@@ -185,7 +203,9 @@
         blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt;;
 
-    <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with a random `w` per commitment.
+    <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial
+    /// commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with
+    /// a random `w` per commitment.
     </span><span class="kw">fn </span>mask(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         comm: PolyComm&lt;G&gt;,
@@ -197,9 +217,10 @@
 
     <span class="doccomment">/// This function commits a polynomial using the SRS&#39; basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
-    /// The function returns an unbounded commitment vector
-    /// (which splits the commitment into several commitments of size at most `n`).
+    /// - `num_chunks`: the number of commitments to be included in the output
+    /// polynomial commitment
+    /// The function returns an unbounded commitment vector (which splits the
+    /// commitment into several commitments of size at most `n`).
     </span><span class="kw">fn </span>commit_non_hiding(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
@@ -212,15 +233,16 @@
         plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
     ) -&gt; PolyComm&lt;G&gt;;
 
-    <span class="kw">fn </span>commit_evaluations(
+    <span class="doccomment">/// Commit to evaluations with blinding factors, generated using the random
+    /// number generator `rng`.
+    </span><span class="kw">fn </span>commit_evaluations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain: D&lt;G::ScalarField&gt;,
         plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt;;
-    <span class="doccomment">///for now needed by snarky-rs
 
-    /// Commit to evaluations with custom blinding factors.
+    <span class="doccomment">/// Commit to evaluations with custom blinding factors.
     /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
     </span><span class="kw">fn </span>commit_evaluations_custom(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -230,7 +252,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt;;
 
     <span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
+
     <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;);
+
     <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
@@ -244,15 +268,25 @@
 <span class="kw">pub trait </span>OpenProof&lt;G: CommitmentCurve&gt;: Sized + Clone {
     <span class="kw">type </span>SRS: SRS&lt;G&gt;;
 
-    <span class="attr">#[allow(clippy::too_many_arguments)]
+    <span class="doccomment">/// Parameters:
+    /// - `srs`: the structured reference string
+    /// - `group_map`: the group map
+    /// - `plnms`: vector of polynomials with optional degree bound and
+    /// commitment randomness
+    /// - `elm`: vector of evaluation points
+    /// - `polyscale`: scaling factor for polynoms
+    /// - `evalscale`: scaling factor for evaluation point powers
+    /// - `sponge`: Sponge used to coin and absorb values
+    /// - `rng`: The RNG to use to generate random elements in the open
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,
-        plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-        </span>elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField], <span class="comment">// vector of evaluation points
-        </span>polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for polynoms
-        </span>evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for evaluation point powers
-        </span>sponge: EFqSponge,                 <span class="comment">// sponge
+        plnms: PolynomialsToCombine&lt;G, D&gt;,
+        elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
+        polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        sponge: EFqSponge, <span class="comment">// sponge
         </span>rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="self">Self
     </span><span class="kw">where
