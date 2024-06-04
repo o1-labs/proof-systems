@@ -1,4 +1,4 @@
-//! This module offers an standard implementation of [FoldingConfig] supporting
+//! This module offers a standard implementation of [FoldingConfig] supporting
 //! many use cases
 use crate::{
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
