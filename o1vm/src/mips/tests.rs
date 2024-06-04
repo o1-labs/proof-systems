@@ -158,8 +158,10 @@ mod unit {
             memory: vec![
                 // Read/write memory
                 // Initializing with random data
-                (0, vec![rng.gen_range(0u8..=255); PAGE_SIZE as usize]),
-                // Executable memory. Allocating 4 * 4kB
+                (
+                    0,
+                    (0..PAGE_SIZE).map(|_| rng.gen_range(0u8..=255)).collect(),
+                ), // Executable memory. Allocating 4 * 4kB
                 (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
                 (
                     PAGE_INDEX_EXECUTABLE_MEMORY + 1,
