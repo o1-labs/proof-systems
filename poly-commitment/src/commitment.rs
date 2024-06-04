@@ -416,7 +416,7 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// to meet the proof.
 ///
 /// Returns
-/// ```
+/// ```text
 /// |polys| |segments[k]|
 ///    Σ         Σ         polyscale^{k*n+i} (Σ polys[k][j][i] * evalscale^j)
 ///  k = 1     i = 1                          j
