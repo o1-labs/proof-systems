@@ -213,6 +213,16 @@ impl<
         self.full_srs.commit_evaluations(domain, plnm, rng)
     }
 
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<<G>::ScalarField>,
+        plnm: &Evaluations<<G>::ScalarField, D<<G>::ScalarField>>,
+        blinders: &PolyComm<<G>::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.full_srs
+            .commit_evaluations_custom(domain, plnm, blinders)
+    }
+
     fn create(_depth: usize) -> Self {
         todo!()
     }

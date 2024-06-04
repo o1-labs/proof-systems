@@ -89,6 +89,15 @@ pub trait SRS<G: CommitmentCurve>: Clone {
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
 
+    /// Commit to evaluations with custom blinding factors.
+    /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError>;
+
     fn create(depth: usize) -> Self;
 
     fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>);
