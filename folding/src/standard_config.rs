@@ -21,7 +21,7 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
     }
 }
 
-/// An standard folding config that supports:
+/// A standard folding config that supports:
 /// `G`: any curve
 /// `Col`: any column implementing [FoldingColumnTrait]
 /// `Chall`: any challenge
