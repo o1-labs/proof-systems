@@ -660,6 +660,15 @@ where
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
 
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_evaluations_non_hiding(domain, plnm), blinders)
+    }
+
     fn create(depth: usize) -> Self {
         SRS::create(depth)
     }
