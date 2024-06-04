@@ -21,13 +21,13 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
     }
 }
 
-/// An standard folding config that supports:  
-/// `G`: any curve  
-/// `Col`: any column implementing [FoldingColumnTrait]  
-/// `Chall`: any challenge  
-/// `Sel`: any dynamic selector  
-/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`  
-/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`  
+/// An standard folding config that supports:
+/// `G`: any curve
+/// `Col`: any column implementing [FoldingColumnTrait]
+/// `Chall`: any challenge
+/// `Sel`: any dynamic selector
+/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`
+/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`
 /// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
 /// ```ignore
 /// use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
