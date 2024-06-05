@@ -35,6 +35,11 @@ pub trait SRS<G: CommitmentCurve>: Clone {
     fn blinding_commitment(&self) -> G;
 
     /// Same as [SRS::mask] except that you can pass the blinders manually.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
@@ -44,6 +49,9 @@ pub trait SRS<G: CommitmentCurve>: Clone {
     /// Turns a non-hiding polynomial commitment into a hidding polynomial
     /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
     /// a random `w` per commitment.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
     fn mask(
         &self,
         comm: PolyComm<G>,
@@ -59,6 +67,8 @@ pub trait SRS<G: CommitmentCurve>: Clone {
     /// polynomial commitment
     /// The function returns an unbounded commitment vector (which splits the
     /// commitment into several commitments of size at most `n`).
+    /// It is analogous to [SRS::commit_evaluations_non_hiding] but for
+    /// polynomials.
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -93,6 +103,8 @@ pub trait SRS<G: CommitmentCurve>: Clone {
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
+    /// Commit to evaluations, without blinding factors.
+    /// It is analogous to [SRS::commit_non_hiding] but for evaluations.
     fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
@@ -101,6 +113,10 @@ pub trait SRS<G: CommitmentCurve>: Clone {
 
     /// Commit to evaluations with blinding factors, generated using the random
     /// number generator `rng`.
+    /// It is analogous to [SRS::commit] but for evaluations.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
     fn commit_evaluations(
         &self,
         domain: D<G::ScalarField>,
@@ -110,6 +126,12 @@ pub trait SRS<G: CommitmentCurve>: Clone {
 
     /// Commit to evaluations with custom blinding factors.
     /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
+    /// It is analogous to [SRS::commit_custom] but for evaluations.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
     fn commit_evaluations_custom(
         &self,
         domain: D<G::ScalarField>,

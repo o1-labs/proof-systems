@@ -137,7 +137,7 @@ where
 
     let witness_comms: Witness<N_WIT, PolyComm<G>> = {
         let blinders = PolyComm {
-            elems: vec![G::ScalarField::one()]
+            elems: vec![G::ScalarField::one()],
         };
         let comm = {
             |poly: &DensePolynomial<G::ScalarField>| {
