@@ -264,6 +264,7 @@ use crate::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::One;
+use derivative::Derivative;
 use itertools::Itertools;
 use kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
@@ -526,6 +527,14 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
 /// shape, with additional columns strictly related to the folding scheme (error
 /// term, etc).
 // TODO: renamed in "RelaxedExpression"?
+#[derive(Derivative)]
+#[derivative(
+    Hash(bound = "C:FoldingConfig"),
+    Debug(bound = "C:FoldingConfig"),
+    Clone(bound = "C:FoldingConfig"),
+    PartialEq(bound = "C:FoldingConfig"),
+    Eq(bound = "C:FoldingConfig")
+)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
     Pow(Box<Self>, u64),
@@ -534,57 +543,6 @@ pub enum FoldingExp<C: FoldingConfig> {
     Sub(Box<Self>, Box<Self>),
     Double(Box<Self>),
     Square(Box<Self>),
-}
-
-impl<C: FoldingConfig> std::hash::Hash for FoldingExp<C> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-    }
-}
-
-impl<C: FoldingConfig> std::fmt::Debug for FoldingExp<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Atom(arg0) => f.debug_tuple("Atom").field(arg0).finish(),
-            Self::Pow(arg0, arg1) => f.debug_tuple("Pow").field(arg0).field(arg1).finish(),
-            Self::Add(arg0, arg1) => f.debug_tuple("Add").field(arg0).field(arg1).finish(),
-            Self::Mul(arg0, arg1) => f.debug_tuple("Mul").field(arg0).field(arg1).finish(),
-            Self::Sub(arg0, arg1) => f.debug_tuple("Sub").field(arg0).field(arg1).finish(),
-            Self::Double(arg0) => f.debug_tuple("Double").field(arg0).finish(),
-            Self::Square(arg0) => f.debug_tuple("Square").field(arg0).finish(),
-        }
-    }
-}
-
-impl<C: FoldingConfig> Clone for FoldingExp<C> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Atom(arg0) => Self::Atom(arg0.clone()),
-            Self::Pow(arg0, arg1) => Self::Pow(arg0.clone(), *arg1),
-            Self::Add(arg0, arg1) => Self::Add(arg0.clone(), arg1.clone()),
-            Self::Mul(arg0, arg1) => Self::Mul(arg0.clone(), arg1.clone()),
-            Self::Sub(arg0, arg1) => Self::Sub(arg0.clone(), arg1.clone()),
-            Self::Double(arg0) => Self::Double(arg0.clone()),
-            Self::Square(arg0) => Self::Square(arg0.clone()),
-        }
-    }
-}
-
-impl<C: FoldingConfig> Eq for FoldingExp<C> {}
-
-impl<C: FoldingConfig> PartialEq for FoldingExp<C> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Atom(l0), Self::Atom(r0)) => l0 == r0,
-            (Self::Pow(l0, l1), Self::Pow(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::Add(l0, l1), Self::Add(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::Mul(l0, l1), Self::Mul(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::Sub(l0, l1), Self::Sub(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::Double(l0), Self::Double(r0)) => l0 == r0,
-            (Self::Square(l0), Self::Square(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
 }
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
@@ -853,41 +811,17 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 /// polynomial in its monomials of degree `0`, `1` and `2`.
 /// It is used to compute the error terms. For an example, have a look at the
 /// [top level documentation](super::expressions).
+#[derive(Derivative)]
+#[derivative(
+    Debug(bound = "C: FoldingConfig"),
+    Clone(bound = "C: FoldingConfig"),
+    Default(bound = "C: FoldingConfig")
+)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
-}
-
-impl<C: FoldingConfig> std::fmt::Debug for IntegratedFoldingExpr<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("IntegratedFoldingExpr")
-            .field("degree_0", &self.degree_0)
-            .field("degree_1", &self.degree_1)
-            .field("degree_2", &self.degree_2)
-            .finish()
-    }
-}
-
-impl<C: FoldingConfig> Clone for IntegratedFoldingExpr<C> {
-    fn clone(&self) -> Self {
-        Self {
-            degree_0: self.degree_0.clone(),
-            degree_1: self.degree_1.clone(),
-            degree_2: self.degree_2.clone(),
-        }
-    }
-}
-
-impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
-    fn default() -> Self {
-        Self {
-            degree_0: vec![],
-            degree_1: vec![],
-            degree_2: vec![],
-        }
-    }
 }
 
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {

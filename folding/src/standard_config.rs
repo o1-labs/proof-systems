@@ -4,6 +4,7 @@ use crate::{
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
     Instance, Side,
 };
+use derivative::Derivative;
 use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
 use memoization::ColumnMemoizer;
 use poly_commitment::{commitment::CommitmentCurve, srs};
@@ -55,36 +56,11 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 /// let _output = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
 /// ```
+#[derive(Derivative)]
+#[derivative(Hash, PartialEq, Eq, Debug)]
 pub struct StandardConfig<G, Col, Chall, I, W, Sel = (), Str = EmptyStructure<G>>(
     PhantomData<(G, Col, Chall, Sel, Str, I, W)>,
 );
-
-// manual implementation to avoid the bounds of the macro, same as what the macro would create,
-// but without unnecessary bounds
-
-impl<G, Col, Chall, Sel, Str, I, W> PartialEq for StandardConfig<G, Col, Chall, Sel, Str, I, W> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<G, Col, Chall, Sel, Str, I, W> Hash for StandardConfig<G, Col, Chall, Sel, Str, I, W> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
-impl<G, Col, Chall, Sel, Str, I, W> Debug for StandardConfig<G, Col, Chall, Sel, Str, I, W> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("StandardConfig").field(&self.0).finish()
-    }
-}
-
-impl<G, Col, Chall, Sel, Str, I, W> Clone for StandardConfig<G, Col, Chall, Sel, Str, I, W> {
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
 
 //implementing FoldingConfig
 impl<G, Col, Chall, Sel, Str, I, W> FoldingConfig for StandardConfig<G, Col, Chall, I, W, Sel, Str>
