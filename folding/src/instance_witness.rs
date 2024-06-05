@@ -246,6 +246,30 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
         self.extended_instance.extended.get(i)
     }
+
+    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
+        let RelaxedInstance {
+            extended_instance,
+            u,
+            error_commitment: error,
+        } = self;
+        let [e0, e1] = error_commitments;
+        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
+        RelaxedInstance {
+            extended_instance,
+            u,
+            error_commitment,
+        }
+    }
+
+    pub(super) fn combine_and_sub_error(
+        a: Self,
+        b: Self,
+        challenge: <G>::ScalarField,
+        error_commitments: &[PolyComm<G>; 2],
+    ) -> Self {
+        Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
+    }
 }
 
 // -- Relaxed witnesses
@@ -258,9 +282,59 @@ pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
+    fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
+        let [e0, e1] = errors;
+
+        for (a, (e0, e1)) in self
+            .error_vec
+            .evals
+            .iter_mut()
+            .zip(e0.into_iter().zip(e1.into_iter()))
+        {
+            // FIXME: for optimisation, use inplace operators. Allocating can be
+            // costly
+            // should be the same as e0 * c + e1 * c^2
+            *a -= ((e1 * challenge) + e0) * challenge;
+        }
+        self
+    }
+
+    pub(super) fn combine_and_sub_error(
+        a: Self,
+        b: Self,
+        challenge: <G>::ScalarField,
+        error: [Vec<G::ScalarField>; 2],
+    ) -> Self {
+        Self::combine(a, b, challenge).sub_error(error, challenge)
+    }
+
     /// Provides access to the extra columns added by quadraticization
     pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
         self.extended_witness.extended.get(i)
+    }
+}
+
+/// A relaxed/homogenized witness can be folded.
+impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
+    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        let RelaxedWitness {
+            extended_witness: a,
+            error_vec: mut e1,
+        } = a;
+        let RelaxedWitness {
+            extended_witness: b,
+            error_vec: e2,
+        } = b;
+        let challenge_cube = (challenge * challenge) * challenge;
+        let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
+        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
+            *a += b * challenge_cube;
+        }
+        let error_vec = e1;
+        RelaxedWitness {
+            extended_witness,
+            error_vec,
+        }
     }
 }
 
@@ -378,82 +452,5 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
             u,
             error_commitment,
         }
-    }
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
-    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
-        let RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment: error,
-        } = self;
-        let [e0, e1] = error_commitments;
-        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
-        RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment,
-        }
-    }
-
-    pub(super) fn combine_and_sub_error(
-        a: Self,
-        b: Self,
-        challenge: <G>::ScalarField,
-        error_commitments: &[PolyComm<G>; 2],
-    ) -> Self {
-        Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
-    }
-}
-
-impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
-    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let RelaxedWitness {
-            extended_witness: a,
-            error_vec: mut e1,
-        } = a;
-        let RelaxedWitness {
-            extended_witness: b,
-            error_vec: e2,
-        } = b;
-        let challenge_cube = (challenge * challenge) * challenge;
-        let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
-        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
-            *a += b * challenge_cube;
-        }
-        let error_vec = e1;
-        RelaxedWitness {
-            extended_witness,
-            error_vec,
-        }
-    }
-}
-
-impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
-        let [e0, e1] = errors;
-
-        for (a, (e0, e1)) in self
-            .error_vec
-            .evals
-            .iter_mut()
-            .zip(e0.into_iter().zip(e1.into_iter()))
-        {
-            // FIXME: for optimisation, use inplace operators. Allocating can be
-            // costly
-            // should be the same as e0 * c + e1 * c^2
-            *a -= ((e1 * challenge) + e0) * challenge;
-        }
-        self
-    }
-
-    pub(super) fn combine_and_sub_error(
-        a: Self,
-        b: Self,
-        challenge: <G>::ScalarField,
-        error: [Vec<G::ScalarField>; 2],
-    ) -> Self {
-        Self::combine(a, b, challenge).sub_error(error, challenge)
     }
 }
