@@ -264,6 +264,7 @@ use crate::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::One;
+use derivative::Derivative;
 use itertools::Itertools;
 use kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
@@ -323,7 +324,12 @@ pub trait FoldingColumnTrait: Copy + Clone {
 }
 
 /// Extra expressions that can be created by folding
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: FoldingConfig"),
+    Debug(bound = "C: FoldingConfig"),
+    PartialEq(bound = "C: FoldingConfig")
+)]
 pub enum ExpExtension<C: FoldingConfig> {
     /// The variable `u` used to make the polynomial homogenous
     U,
@@ -339,7 +345,12 @@ pub enum ExpExtension<C: FoldingConfig> {
 
 /// Components to be used to convert multivariate polynomials into "compatible"
 /// multivariate polynomials that will be translated to folding expressions.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: FoldingConfig"),
+    PartialEq(bound = "C: FoldingConfig"),
+    Debug(bound = "C: FoldingConfig")
+)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
@@ -353,7 +364,12 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
 /// [FoldingCompatibleExpr] using the trait [From].
 /// From there, an expression of type [IntegratedFoldingExpr] can be created
 /// using the function [folding_expression].
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: FoldingConfig"),
+    PartialEq(bound = "C: FoldingConfig"),
+    Debug(bound = "C: FoldingConfig")
+)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
     Pow(Box<Self>, u64),
@@ -451,7 +467,14 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
 /// shape, with additional columns strictly related to the folding scheme (error
 /// term, etc).
 // TODO: renamed in "RelaxedExpression"?
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Derivative)]
+#[derivative(
+    Hash(bound = "C:FoldingConfig"),
+    Debug(bound = "C:FoldingConfig"),
+    Clone(bound = "C:FoldingConfig"),
+    PartialEq(bound = "C:FoldingConfig"),
+    Eq(bound = "C:FoldingConfig")
+)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
     Pow(Box<Self>, u64),
@@ -676,7 +699,8 @@ impl std::ops::Neg for Sign {
 /// The sign is used to encode the sign of the term at the expression level.
 /// It is used to split a polynomial in its terms/monomials of degree `0`, `1`
 /// and `2`.
-#[derive(Clone, Debug)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone(bound = "C: FoldingConfig"))]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
@@ -719,22 +743,17 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 /// polynomial in its monomials of degree `0`, `1` and `2`.
 /// It is used to compute the error terms. For an example, have a look at the
 /// [top level documentation](super::expressions).
-#[derive(Clone, Debug)]
+#[derive(Derivative)]
+#[derivative(
+    Debug(bound = "C: FoldingConfig"),
+    Clone(bound = "C: FoldingConfig"),
+    Default(bound = "C: FoldingConfig")
+)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
-}
-
-impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
-    fn default() -> Self {
-        Self {
-            degree_0: vec![],
-            degree_1: vec![],
-            degree_2: vec![],
-        }
-    }
 }
 
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {

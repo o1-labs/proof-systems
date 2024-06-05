@@ -32,6 +32,7 @@ ark-ec.workspace = true
 rand.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
+derivative = "2"
 
 [dev-dependencies]
 ark-bn254.workspace = true

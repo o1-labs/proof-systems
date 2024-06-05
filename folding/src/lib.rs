@@ -49,6 +49,7 @@ mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
+pub mod standard_config;
 
 /// Define the different structures required for the examples (both internal and
 /// external)
@@ -62,7 +63,7 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
 
 // 'static seems to be used for expressions. Can we get rid of it?
-pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
+pub trait FoldingConfig: Debug + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
 
     // in case of using docomposable folding, if not it can be just ()
