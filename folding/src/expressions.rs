@@ -521,7 +521,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
 // FIXME: test independently the behavior of pow_to_mul, and explain only why 8
 // maximum
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
-    pub(crate) fn simplify(self) -> FoldingExp<C> {
+    pub fn simplify(self) -> FoldingExp<C> {
         use FoldingExp::*;
         match self {
             FoldingCompatibleExpr::Atom(atom) => match atom {

@@ -9,6 +9,10 @@ use folding::{
 };
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::srs::SRS;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
 pub type Fp = ark_bn254::Fr;
 pub type Curve = ark_bn254::G1Affine;
@@ -217,4 +221,94 @@ fn quadraticization_test_9() {
     constraints.truncate(1);
     constraints.push(constraints[0].clone());
     assert_eq!(test_with_constraints(constraints), 1);
+}
+
+#[test]
+fn test_equality_folding_compatible_expressions() {
+    let x: FoldingCompatibleExpr<TestConfig> =
+        FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+            col: Col::A,
+            row: CurrOrNext::Curr,
+        }));
+    let y = FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+        col: Col::A,
+        row: CurrOrNext::Curr,
+    }));
+
+    let z = FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+        col: Col::B,
+        row: CurrOrNext::Curr,
+    }));
+
+    assert_eq!(x, y);
+    assert_eq!(x, x);
+    assert_ne!(x, z);
+}
+
+#[test]
+fn test_discriminant_folding_expressions() {
+    let x: FoldingCompatibleExpr<TestConfig> =
+        FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+            col: Col::A,
+            row: CurrOrNext::Curr,
+        }));
+    let y: FoldingCompatibleExpr<TestConfig> =
+        FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+            col: Col::A,
+            row: CurrOrNext::Curr,
+        }));
+
+    let z: FoldingCompatibleExpr<TestConfig> =
+        FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
+            col: Col::B,
+            row: CurrOrNext::Curr,
+        }));
+
+    let x = x.simplify();
+    let y = y.simplify();
+    let z = z.simplify();
+
+    let x_hasher = {
+        let mut x_hasher = DefaultHasher::new();
+        x.hash(&mut x_hasher);
+        x_hasher.finish()
+    };
+
+    // Checking hashing the same element twice give the same result
+    {
+        let x_prime_hasher = {
+            let mut x_hasher = DefaultHasher::new();
+            x.hash(&mut x_hasher);
+            x_hasher.finish()
+        };
+        assert_eq!(x_hasher, x_prime_hasher);
+    }
+
+    let y_hasher = {
+        let mut y_hasher = DefaultHasher::new();
+        y.hash(&mut y_hasher);
+        y_hasher.finish()
+    };
+
+    let z_hasher = {
+        let mut z_hasher = DefaultHasher::new();
+        z.hash(&mut z_hasher);
+        z_hasher.finish()
+    };
+
+    {
+        let (y_hasher, z_hasher) = {
+            let mut hasher = DefaultHasher::new();
+            y.hash(&mut hasher);
+            let y_hasher = hasher.finish();
+
+            z.hash(&mut hasher);
+            (y_hasher, hasher.finish())
+        };
+        assert_ne!(y_hasher, z_hasher);
+    }
+
+    assert_eq!(x_hasher, x_hasher);
+    assert_eq!(x_hasher, y_hasher);
+    assert_ne!(x_hasher, z_hasher);
 }
