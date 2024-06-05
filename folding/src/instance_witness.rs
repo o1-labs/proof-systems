@@ -244,7 +244,10 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The original instance, extended with the columns added by
     /// quadriticization
     pub extended_instance: ExtendedInstance<G, I>,
+    /// The scalar `u` that is used to homogenize the polynomials
     pub u: G::ScalarField,
+    /// The commitment to the error term, introduced when homogenizing the
+    /// polynomials
     pub error_commitment: PolyComm<G>,
 }
 
@@ -270,7 +273,10 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
 
 // -- Relaxed witnesses
 pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
+    /// The original witness, extended with the columns added by
+    /// quadriticization.
     pub extended_witness: ExtendedWitness<G, W>,
+    /// The error vector, introduced when homogenizing the polynomials.
     pub error_vec: Evals<G::ScalarField>,
 }
 
@@ -298,6 +304,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInst
     }
 }
 
+/// Trait to make a witness relaxable/homogenizable
 pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W>;
 }
@@ -369,7 +376,8 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
             u: u2,
             error_commitment: e2,
         } = b;
-        let extended_instance = <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
+        let extended_instance =
+            <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
         let u = u1 + u2 * challenge;
         let error_commitment = &e1 + &e2.scale(challenge_cube);
         RelaxedInstance {
