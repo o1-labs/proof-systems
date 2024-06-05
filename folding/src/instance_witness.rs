@@ -69,18 +69,7 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     fn get_alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
-pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
-    /// This method takes a witness and a vector of evaluations to the zero polynomial,
-    /// returning a relaxed witness which is composed by the extended witness and the error vector
-    /// that is set to the zero polynomial.
-    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
-        let extended_witness = ExtendedWitness::extend(self);
-        RelaxedWitness {
-            extended_witness,
-            error_vec: zero_poly.clone(),
-        }
-    }
-}
+pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {}
 
 // -- Structures that consist of extending the original instance and witness
 // -- with the extra columns added by quadraticization.
@@ -294,6 +283,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
     }
 }
 
+/// A relaxed instance is trivially relaxable.
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
     fn relax(self, _zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
         self
@@ -306,8 +296,15 @@ pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for W {
-    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
-        self.relax(zero_poly)
+    /// This method takes a witness and a vector of evaluations to the zero polynomial,
+    /// returning a relaxed witness which is composed by the extended witness and the error vector
+    /// that is set to the zero polynomial.
+    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
+        let extended_witness = ExtendedWitness::extend(self);
+        RelaxedWitness {
+            extended_witness,
+            error_vec: zero_poly.clone(),
+        }
     }
 }
 
