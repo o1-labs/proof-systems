@@ -272,6 +272,32 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     }
 }
 
+/// A relaxed instance can be folded.
+impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
+    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        let challenge_cube = challenge * challenge * challenge;
+        let RelaxedInstance {
+            extended_instance: extended_instance_1,
+            u: u1,
+            error_commitment: e1,
+        } = a;
+        let RelaxedInstance {
+            extended_instance: extended_instance_2,
+            u: u2,
+            error_commitment: e2,
+        } = b;
+        let extended_instance =
+            <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
+        let u = u1 + u2 * challenge;
+        let error_commitment = &e1 + &e2.scale(challenge_cube);
+        RelaxedInstance {
+            extended_instance,
+            u,
+            error_commitment,
+        }
+    }
+}
+
 // -- Relaxed witnesses
 pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// The original witness, extended with the columns added by
@@ -427,30 +453,5 @@ where
         _zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         self
-    }
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
-    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let challenge_cube = challenge * challenge * challenge;
-        let RelaxedInstance {
-            extended_instance: extended_instance_1,
-            u: u1,
-            error_commitment: e1,
-        } = a;
-        let RelaxedInstance {
-            extended_instance: extended_instance_2,
-            u: u2,
-            error_commitment: e2,
-        } = b;
-        let extended_instance =
-            <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
-        let u = u1 + u2 * challenge;
-        let error_commitment = &e1 + &e2.scale(challenge_cube);
-        RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment,
-        }
     }
 }
