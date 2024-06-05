@@ -364,11 +364,12 @@ mod tests {
     };
     use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
     use ark_ec::bn::Bn;
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use ark_poly::{
         univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
         UVPolynomial,
     };
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -443,5 +444,37 @@ mod tests {
 
         let res = pairing_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
         assert!(res);
+    }
+
+    /// Our points in G2 are not actually in the correct subgroup and serialize well.
+    #[test]
+    fn check_srs_g2_valid_and_serializes() {
+        type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
+        type BN254G2BaseField = <BN254 as ark_ec::PairingEngine>::Fqe;
+        type Fp = ark_bn254::Fr;
+
+        let x = Fp::rand(&mut rand::rngs::OsRng);
+        let srs: PairingSRS<BN254> = PairingSRS::create(x, 1 << 5);
+
+        let mut vec: Vec<u8> = vec![0u8; 1024];
+
+        for actual in [
+            srs.verifier_srs.h,
+            srs.verifier_srs.g[0],
+            srs.verifier_srs.g[1],
+        ] {
+            // Check it's valid
+            assert!(!actual.is_zero());
+            assert!(actual.is_on_curve());
+            assert!(actual.is_in_correct_subgroup_assuming_on_curve());
+
+            // Check it serializes well
+            let actual_y: BN254G2BaseField = actual.y;
+            let res = actual_y.serialize(vec.as_mut_slice());
+            assert!(res.is_ok());
+            let expected: BN254G2BaseField =
+                CanonicalDeserialize::deserialize(vec.as_slice()).unwrap();
+            assert!(expected == actual_y, "serialization failed");
+        }
     }
 }
