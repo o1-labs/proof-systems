@@ -153,9 +153,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
-        let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
-        let zero_commitment = srs.commit_evaluations_non_hiding(domain, &zero_vec_evals);
-        let zero_vec = zero_vec_evals;
+        let zero_vec = Evaluations::from_vec_and_domain(evals, domain);
+        let zero_commitment = srs.commit_evaluations_non_hiding(domain, &zero_vec);
         let final_expression = expression.clone().final_expression();
         let scheme = Self {
             expression,
