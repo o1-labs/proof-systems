@@ -386,7 +386,7 @@
     }
     <span class="kw">let </span>t = G::BaseField::from_base_prime_field_elems(<span class="kw-2">&amp;</span>base_fields).unwrap();
     <span class="kw">let </span>(x, y) = map.to_group(t);
-    G::of_coordinates(x, y)
+    G::of_coordinates(x, y).mul_by_cofactor()
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
