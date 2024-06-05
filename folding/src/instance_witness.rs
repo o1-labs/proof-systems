@@ -99,6 +99,7 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 /// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
+    /// This is the original witness, without quadraticization
     pub witness: W,
     /// Extra columns added by quadraticization to lower the degree of
     /// expressions to 2
@@ -370,14 +371,16 @@ pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
-    /// This method takes an Instance and a commitment to zero and extends the instance,
-    /// returning a relaxed instance which is composed by the extended instance, the scalar one,
-    /// and the error commitment which is set to the commitment to zero.
+    /// This method takes an Instance and a commitment to zero and extends the
+    /// instance, returning a relaxed instance which is composed by the extended
+    /// instance, the scalar one, and the error commitment which is set to the
+    /// commitment to zero.
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
         let extended_instance = ExtendedInstance::extend(self);
+        let u = G::ScalarField::one();
         RelaxedInstance {
             extended_instance,
-            u: G::ScalarField::one(),
+            u,
             error_commitment: zero_commit,
         }
     }
@@ -396,9 +399,10 @@ pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for W {
-    /// This method takes a witness and a vector of evaluations to the zero polynomial,
-    /// returning a relaxed witness which is composed by the extended witness and the error vector
-    /// that is set to the zero polynomial.
+    /// This method takes a witness and a vector of evaluations to the zero
+    /// polynomial, returning a relaxed witness which is composed by the
+    /// extended witness and the error vector that is set to the zero
+    /// polynomial.
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
         let extended_witness = ExtendedWitness::extend(self);
         RelaxedWitness {

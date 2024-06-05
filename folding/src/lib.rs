@@ -175,6 +175,16 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         self.quadraticization_columns
     }
 
+    /// This is the main entry point to fold two instances and their witnesses.
+    /// The process is as follows:
+    /// - Both pairs are relaxed.
+    /// - Both witnesses and instances are extended, i.e. all polynomials are
+    /// reduced to degree 2 and additional constraints are added to the
+    /// expression.
+    /// - While computing the commitments to the additional columns, the
+    /// commitments are added into a list to absorb them into the sponge later.
+    /// - The error terms are computed and committed.
+    /// - The sponge absorbs the commitments and challenges.
     #[allow(clippy::type_complexity)]
     pub fn fold_instance_witness_pair<A, B, Sponge>(
         &self,
@@ -201,12 +211,17 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             self.domain,
             None,
         );
+        // Computing the additional columns, resulting of the quadritization
+        // process.
         // Side-effect: commitments are added in both relaxed (extended) instance.
         let env: ExtendedEnv<CF> =
             env.compute_extension(&self.extended_witness_generator, self.srs);
+
+        // Computing the error terms
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
+        // Committing to the error terms
         let error_commitments = error_evals
             .iter()
             .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e))
@@ -223,6 +238,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let t_0 = &error_commitments[0].elems[0];
         let t_1 = &error_commitments[1].elems[0];
 
+        // Absorbing the commitments into the sponge
         let to_absorb = env.to_absorb(t_0, t_1);
         fq_sponge.absorb_fr(&to_absorb.0);
         fq_sponge.absorb_g(&to_absorb.1);

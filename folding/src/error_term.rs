@@ -1,3 +1,7 @@
+//! This module contains the functions used to compute the error terms, as
+//! described in the [top-level documentation of the expressions
+//! module](crate::expressions).
+
 use crate::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -178,6 +182,12 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     }
 }
 
+/// Computes the error terms of a folding/homogeneous expression.
+/// The extended environment contains all the evaluations of the columns,
+/// including the ones added by the quadraticization process.
+/// `u` is the variables used to homogeneize the expression.
+/// The output is a pair of error terms. To see how it is computed, see the
+/// [top-level documentation of the expressions module](crate::expressions).
 pub(crate) fn compute_error<C: FoldingConfig>(
     exp: &IntegratedFoldingExpr<C>,
     env: &ExtendedEnv<C>,
@@ -272,6 +282,11 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     }
 }
 
+/// An extended environment contains the evaluations of all the columns, including
+/// the ones added by the quadraticization process. It also contains the
+/// the two instances and witnesses that are being folded.
+/// The domain is required to define the polynomial size of the evaluations of
+/// the error terms.
 pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     inner: CF::Env,
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
