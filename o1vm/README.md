@@ -26,22 +26,22 @@ block and its predecessor:
 ./run-code.sh
 ```
 
-By default this will also create script `env-for-latest-block.sh` with a
+By default this will also create script `env-for-latest-l2-block.sh` with a
 snapshot of all the information that you need to rerun the same test again:
 ```bash
-FILENAME=env-for-latest-block.sh bash run-code.sh
+FILENAME=env-for-latest-l2-block.sh bash run-code.sh
 ```
 
 Alternatively, you also have the option to test the state transition between a
 specific block and its predecessor: 
 ```bash
-# Set L2_BLOCK_NUMBER to the desired block transition you want to test.
-./setenv-for.sh -b 12826645
+# Set -n to the desired block transition you want to test.
+./setenv-for-l2-block.sh -n 12826645
 ```
 
 In this case, you can run the demo using the following format:
 ```bash
-FILENAME=env-for-block-12826645.sh bash run-code.sh
+FILENAME=env-for-l2-block-12826645.sh bash run-code.sh
 ````
 
 In either case, `run-code.sh` will:
@@ -58,6 +58,6 @@ Run:
 ```
 
 The default value for `OP_DB_DIRECTORY` would be the one from
-`setenv-for-latest-block.sh` if the parameter is omitted.
+`setenv-for-latest-l2-block.sh` if the parameter is omitted.
 
 The `NETWORK_NAME` defaults to `sepolia`.

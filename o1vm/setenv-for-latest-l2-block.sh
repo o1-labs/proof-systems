@@ -24,12 +24,12 @@ L1_HEAD=$L1_FINALIZED_HASH
 
 echo "The claim of the transition to block ${L2_BLOCK_NUMBER} is $L2_CLAIM" 1>&2
 
-FILENAME=env-for-latest-block.sh
+FILENAME=env-for-latest-l2-block.sh
 
 # Delete all lines in the file if it already exists
 cat /dev/null > ${FILENAME}
 
-OP_PROGRAM_DATA_DIR=$(pwd)/op-program-db-for-latest-block
+OP_PROGRAM_DATA_DIR=$(pwd)/op-program-db-for-latest-l2-block
 
 echo "export L1_HEAD=${L1_HEAD}" >> "${FILENAME}"
 echo "export L2_HEAD=${L2_HEAD}" >> "${FILENAME}"

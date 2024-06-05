@@ -1,11 +1,11 @@
 #!/bin/bash
 
-while getopts ":b:" opt; do
+while getopts ":n:" opt; do
     case "$opt" in
-    b)  L2_BLOCK_NUMBER=$OPTARG
+    n)  L2_BLOCK_NUMBER=$OPTARG
         ;;
     *)
-        echo "Usage: $0 -b L2_BLOCK_NUMBER" 1>&2
+        echo "Usage: $0 -n L2_BLOCK_NUMBER" 1>&2
         exit 0
         ;;
     esac
@@ -17,13 +17,13 @@ shift $((OPTIND-1))
 if [ -z "${L2_BLOCK_NUMBER}" ]; then
     # You can check for a block at:
     # https://sepolia-optimism.etherscan.io/block/L2_BLOCK_NUMBER
-   echo "Usage: $0 -b L2_BLOCK_NUMBER" 1>&2
+   echo "Usage: $0 -n L2_BLOCK_NUMBER" 1>&2
    exit 0
 fi
 
 re='^[0-9]+$'
 if ! [[ $L2_BLOCK_NUMBER =~ $re ]] ; then
-   echo "The -b argument must be a number" 1>&2
+   echo "The -n argument must be a number" 1>&2
    exit 0
 fi
 
@@ -45,11 +45,11 @@ L2_HEAD=$(echo $OUTPUT_L2_PREVIOUS_BLOCK | jq -r .blockRef.hash)
 
 echo "The claim of the transition to block ${L2_BLOCK_NUMBER} is $L2_CLAIM" 1>&2
 
-FILENAME=env-for-block-${L2_BLOCK_NUMBER}.sh
+FILENAME=env-for-l2-block-${L2_BLOCK_NUMBER}.sh
 # Delete all lines in the file if it already exists
 cat /dev/null > ${FILENAME}
 
-OP_PROGRAM_DATA_DIR=$(pwd)/op-program-db-for-block-${L2_BLOCK_NUMBER}
+OP_PROGRAM_DATA_DIR=$(pwd)/op-program-db-for-l2-block-${L2_BLOCK_NUMBER}
 
 echo "export L1_HEAD=${L1_HEAD}" >> "${FILENAME}"
 echo "export L2_HEAD=${L2_HEAD}" >> "${FILENAME}"

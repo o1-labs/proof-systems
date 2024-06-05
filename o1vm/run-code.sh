@@ -3,8 +3,8 @@ set -euo pipefail
 
 set +u
 if [ -z "${FILENAME}" ]; then
-    echo "Using the latest block information to configure the env variables..."
-    FILENAME="$(./setenv-for-latest-block.sh)"
+    echo "Using the latest finalized l2 block information to configure the env variables..."
+    FILENAME="$(./setenv-for-latest-l2-block.sh)"
 fi
 set -u
 

@@ -6,7 +6,7 @@ source rpcs.sh
 
 set +u
 if [ -z "${FILENAME}" ]; then
-    FILENAME="$(./setenv-for-latest-block.sh)"
+    FILENAME="$(./setenv-for-latest-l2-block.sh)"
 fi
 set -u
 
