@@ -114,7 +114,7 @@ fn test_mips_number_constraints() {
 
 mod folding {
     use crate::{
-        cannon::{HostProgram, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
+        cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
         mips::{
             column::N_MIPS_REL_COLS,
@@ -124,12 +124,13 @@ mod folding {
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
             ITypeInstruction,
         },
-        preimage_oracle::PreImageOracle,
+        preimage_oracle::PreImageOracleT,
         trace::Trace,
         BaseSponge, Curve,
     };
     use kimchi::o1_utils;
     use rand::{CryptoRng, Rng, RngCore};
+    use std::{fs, path::PathBuf};
 
     use ark_poly::{EvaluationDomain as _, Evaluations, Radix2EvaluationDomain as D};
     use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig, FoldingScheme};
@@ -144,15 +145,27 @@ mod folding {
 
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
-    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, PreImageOracle>
+    struct OnDiskPreImageOracle;
+
+    impl PreImageOracleT for OnDiskPreImageOracle {
+        fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+            let key_s = hex::encode(key);
+            let full_path = format!("resources/tests/0x{key_s}.txt");
+            let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            d.push(full_path);
+            let contents = fs::read_to_string(d).expect("Should have been able to read the file");
+
+            Preimage::create(contents.into())
+        }
+
+        fn hint(&mut self, _hint: Hint) {}
+    }
+
+    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
-        let host_program = Some(HostProgram {
-            name: String::from("true"),
-            arguments: vec![],
-        });
-        let dummy_preimage_oracle = PreImageOracle::create(&host_program);
+        let dummy_preimage_oracle = OnDiskPreImageOracle;
         let mut env = WEnv {
             instruction_counter: 0,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
@@ -214,7 +227,10 @@ mod folding {
     }
 
     // Write the instruction to the location of the instruction pointer.
-    fn write_instruction(env: &mut WEnv<Fp, PreImageOracle>, instruction_parts: InstructionParts) {
+    fn write_instruction(
+        env: &mut WEnv<Fp, OnDiskPreImageOracle>,
+        instruction_parts: InstructionParts,
+    ) {
         let instr = instruction_parts.encode();
         let instr_pointer: u32 = env.get_instruction_pointer().try_into().unwrap();
         let page = instr_pointer >> PAGE_ADDRESS_SIZE;
@@ -223,6 +239,18 @@ mod folding {
         env.memory[page as usize].1[page_address + 1] = ((instr >> 16) & 0xFF) as u8;
         env.memory[page as usize].1[page_address + 2] = ((instr >> 8) & 0xFF) as u8;
         env.memory[page as usize].1[page_address + 3] = (instr & 0xFF) as u8;
+    }
+
+    #[test]
+    fn test_on_disk_preimage_can_read_file() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        let mut dummy_env = dummy_env(&mut rng);
+        let preimage_key_u8: [u8; 32] = [
+            0x02, 0x21, 0x07, 0x30, 0x78, 0x79, 0x25, 0x85, 0x77, 0x23, 0x0c, 0x5a, 0xa2, 0xf9,
+            0x05, 0x67, 0xbd, 0xa4, 0x08, 0x77, 0xa7, 0xe8, 0x5d, 0xce, 0xb6, 0xff, 0x1f, 0x37,
+            0x48, 0x0f, 0xef, 0x3d,
+        ];
+        let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
     }
 
     #[test]
