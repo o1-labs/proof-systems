@@ -144,7 +144,7 @@ mod folding {
 
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
-    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp>
+    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, PreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
@@ -214,7 +214,7 @@ mod folding {
     }
 
     // Write the instruction to the location of the instruction pointer.
-    fn write_instruction(env: &mut WEnv<Fp>, instruction_parts: InstructionParts) {
+    fn write_instruction(env: &mut WEnv<Fp, PreImageOracle>, instruction_parts: InstructionParts) {
         let instr = instruction_parts.encode();
         let instr_pointer: u32 = env.get_instruction_pointer().try_into().unwrap();
         let page = instr_pointer >> PAGE_ADDRESS_SIZE;

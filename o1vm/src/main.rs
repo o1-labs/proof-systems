@@ -77,7 +77,8 @@ pub fn main() -> ExitCode {
 
     // Initialize the environments
     // The Keccak environment is extracted inside the loop
-    let mut mips_wit_env = mips_witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_wit_env =
+        mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
     let mut mips_con_env = mips_constraints::Env::<Fp>::default();
     // The keccak environment is extracted inside the loop
 

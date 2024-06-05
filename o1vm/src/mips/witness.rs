@@ -16,7 +16,7 @@ use crate::{
         },
         registers::Registers,
     },
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::PreImageOracleT,
 };
 use ark_ff::Field;
 use core::panic;
@@ -49,12 +49,11 @@ impl SyscallEnv {
 }
 
 /// This structure represents the environment the virtual machine state will use
-/// to transition. This environment will be used by the interpreter.
-/// The virtual machine has access to its internal state and some external memory.
-/// In addition to that, it has access to the environment of the Keccak
-/// interpreter that is used to verify the preimage requested during the
-/// execution.
-pub struct Env<Fp> {
+/// to transition. This environment will be used by the interpreter. The virtual
+/// machine has access to its internal state and some external memory. In
+/// addition to that, it has access to the environment of the Keccak interpreter
+/// that is used to verify the preimage requested during the execution.
+pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
@@ -113,7 +112,7 @@ fn memory_size(total: usize) -> String {
     }
 }
 
-impl<Fp: Field> InterpreterEnv for Env<Fp> {
+impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -762,7 +761,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 }
 
-impl<Fp: Field> Env<Fp> {
+impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
