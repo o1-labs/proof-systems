@@ -19,6 +19,12 @@ pub struct PreImageOracle {
     pub hint_server: RW,
 }
 
+pub trait PreImageOracleT {
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage;
+
+    fn hint(&mut self, hint: Hint);
+}
+
 pub struct ReadWrite<R, W> {
     pub reader: R,
     pub writer: W,
@@ -149,7 +155,9 @@ impl PreImageOracle {
             .spawn()
             .expect("Could not spawn pre-image oracle process")
     }
+}
 
+impl PreImageOracleT for PreImageOracle {
     // The preimage protocol goes as follows
     // 1. Ask for data through a key
     // 2. Get the answers in the following format
@@ -158,7 +166,7 @@ impl PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
-    pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
         let r = writer.write_all(&key);
@@ -196,7 +204,7 @@ impl PreImageOracle {
     //       +----------------------------+
     //
     // 2. Get back a single ack byte informing the hint has been processed.
-    pub fn hint(&mut self, hint: Hint) {
+    fn hint(&mut self, hint: Hint) {
         let RW(ReadWrite { reader, writer }) = &mut self.hint_client;
 
         // Write hint request
