@@ -1577,7 +1577,7 @@
 // FIXME: test independently the behavior of pow_to_mul, and explain only why 8
 // maximum
 </span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingCompatibleExpr&lt;C&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>simplify(<span class="self">self</span>) -&gt; FoldingExp&lt;C&gt; {
+    <span class="kw">pub fn </span>simplify(<span class="self">self</span>) -&gt; FoldingExp&lt;C&gt; {
         <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             FoldingCompatibleExpr::Atom(atom) =&gt; <span class="kw">match </span>atom {
