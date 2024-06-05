@@ -348,9 +348,6 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 
     /// This function is a debugging helper.
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::type_complexity)]
-    #[allow(clippy::many_single_char_names)]
     pub fn prover_polynomials_to_verifier_evaluations<D: EvaluationDomain<G::ScalarField>>(
         &self,
         plnms: PolynomialsToCombine<G, D>,
