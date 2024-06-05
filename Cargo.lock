@@ -1041,6 +1041,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "derivative",
  "groupmap",
  "itertools 0.12.1",
  "kimchi",
