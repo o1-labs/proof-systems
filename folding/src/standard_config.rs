@@ -106,7 +106,8 @@ where
     witnesses: [W; 2],
     next_evals: ColumnMemoizer<Col, G::ScalarField, 10>,
     structure: Str,
-    _todo: PhantomData<(G, Col, Chall, Sel, Str)>,
+    //not used but needed as generics for the bounds
+    _phantom: PhantomData<(G, Col, Chall, Sel, Str)>,
 }
 
 //implementing FoldingEnv
@@ -134,7 +135,7 @@ where
             witnesses,
             structure,
             next_evals: ColumnMemoizer::new(),
-            _todo: PhantomData,
+            _phantom: PhantomData,
         }
     }
 
@@ -271,7 +272,6 @@ mod memoization {
     }
 }
 
-#[cfg(test)]
 #[cfg(feature = "bn254")]
 mod example {
     use crate::{
