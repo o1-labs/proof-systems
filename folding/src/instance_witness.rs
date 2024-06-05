@@ -65,18 +65,6 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// ```
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
 
-    /// This method takes an Instance and a commitment to zero and extends the instance,
-    /// returning a relaxed instance which is composed by the extended instance, the scalar one,
-    /// and the error commitment which is set to the commitment to zero.
-    fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
-        let extended_instance = ExtendedInstance::extend(self);
-        RelaxedInstance {
-            extended_instance,
-            u: G::ScalarField::one(),
-            error_commitment: zero_commit,
-        }
-    }
-
     /// Returns the alphas values for the instance
     fn get_alphas(&self) -> &Alphas<G::ScalarField>;
 }
@@ -293,8 +281,16 @@ pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
-    fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
-        self.relax(zero_commitment)
+    /// This method takes an Instance and a commitment to zero and extends the instance,
+    /// returning a relaxed instance which is composed by the extended instance, the scalar one,
+    /// and the error commitment which is set to the commitment to zero.
+    fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
+        let extended_instance = ExtendedInstance::extend(self);
+        RelaxedInstance {
+            extended_instance,
+            u: G::ScalarField::one(),
+            error_commitment: zero_commit,
+        }
     }
 }
 
