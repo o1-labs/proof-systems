@@ -87,3 +87,43 @@ where
         T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
+
+/// Same as `SerdeAs` but using unchecked (de)serialization.
+pub struct SerdeAsUnchecked;
+
+impl<T> serde_with::SerializeAs<T> for SerdeAsUnchecked
+where
+    T: CanonicalSerialize,
+{
+    fn serialize_as<S>(val: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut bytes = vec![];
+        val.serialize_unchecked(&mut bytes)
+            .map_err(serde::ser::Error::custom)?;
+
+        if serializer.is_human_readable() {
+            hex::serde::serialize(bytes, serializer)
+        } else {
+            Bytes::serialize_as(&bytes, serializer)
+        }
+    }
+}
+
+impl<'de, T> serde_with::DeserializeAs<'de, T> for SerdeAsUnchecked
+where
+    T: CanonicalDeserialize,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let bytes: Vec<u8> = if deserializer.is_human_readable() {
+            hex::serde::deserialize(deserializer)?
+        } else {
+            Bytes::deserialize_as(deserializer)?
+        };
+        T::deserialize_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
+    }
+}
