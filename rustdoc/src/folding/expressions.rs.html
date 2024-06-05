@@ -1035,6 +1035,25 @@
 <a href="#1035" id="1035">1035</a>
 <a href="#1036" id="1036">1036</a>
 <a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1301,6 +1320,7 @@
 };
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::One;
+<span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
@@ -1360,7 +1380,12 @@
 }
 
 <span class="doccomment">/// Extra expressions that can be created by folding
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Debug(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    PartialEq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub enum </span>ExpExtension&lt;C: FoldingConfig&gt; {
     <span class="doccomment">/// The variable `u` used to make the polynomial homogenous
     </span>U,
@@ -1376,7 +1401,12 @@
 
 <span class="doccomment">/// Components to be used to convert multivariate polynomials into &quot;compatible&quot;
 /// multivariate polynomials that will be translated to folding expressions.
-</span><span class="attr">#[derive(Clone, PartialEq, Debug)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    PartialEq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Debug(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
@@ -1390,7 +1420,12 @@
 /// [FoldingCompatibleExpr] using the trait [From].
 /// From there, an expression of type [IntegratedFoldingExpr] can be created
 /// using the function [folding_expression].
-</span><span class="attr">#[derive(Clone, PartialEq, Debug)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    PartialEq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Debug(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
     Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
@@ -1488,7 +1523,14 @@
 /// shape, with additional columns strictly related to the folding scheme (error
 /// term, etc).
 </span><span class="comment">// TODO: renamed in &quot;RelaxedExpression&quot;?
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Hash(bound = <span class="string">&quot;C:FoldingConfig&quot;</span>),
+    Debug(bound = <span class="string">&quot;C:FoldingConfig&quot;</span>),
+    Clone(bound = <span class="string">&quot;C:FoldingConfig&quot;</span>),
+    PartialEq(bound = <span class="string">&quot;C:FoldingConfig&quot;</span>),
+    Eq(bound = <span class="string">&quot;C:FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub enum </span>FoldingExp&lt;C: FoldingConfig&gt; {
     Atom(ExtendedFoldingColumn&lt;C&gt;),
     Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
@@ -1713,7 +1755,8 @@
 /// The sign is used to encode the sign of the term at the expression level.
 /// It is used to split a polynomial in its terms/monomials of degree `0`, `1`
 /// and `2`.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(Debug, Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>))]
 </span><span class="kw">pub struct </span>Term&lt;C: FoldingConfig&gt; {
     <span class="kw">pub </span>exp: FoldingExp&lt;C&gt;,
     <span class="kw">pub </span>sign: Sign,
@@ -1756,22 +1799,17 @@
 /// polynomial in its monomials of degree `0`, `1` and `2`.
 /// It is used to compute the error terms. For an example, have a look at the
 /// [top level documentation](super::expressions).
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Debug(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Default(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub struct </span>IntegratedFoldingExpr&lt;C: FoldingConfig&gt; {
     <span class="comment">// (exp,sign,alpha)
     </span><span class="kw">pub</span>(<span class="kw">super</span>) degree_0: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) degree_1: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) degree_2: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
-}
-
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; Default <span class="kw">for </span>IntegratedFoldingExpr&lt;C&gt; {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            degree_0: <span class="macro">vec!</span>[],
-            degree_1: <span class="macro">vec!</span>[],
-            degree_2: <span class="macro">vec!</span>[],
-        }
-    }
 }
 
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; IntegratedFoldingExpr&lt;C&gt; {

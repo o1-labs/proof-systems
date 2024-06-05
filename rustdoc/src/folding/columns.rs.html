@@ -26,19 +26,33 @@
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// This module contains description of the additional columns used by our
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::FoldingConfig;
+<span class="doccomment">/// This module contains description of the additional columns used by our
 /// folding scheme implementation. The columns are the base layer of the folding
 /// scheme as they describe the basic expressiveness of the system.
 </span><span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
-
-<span class="kw">use </span><span class="kw">crate</span>::FoldingConfig;
 
 <span class="doccomment">/// Describes the additional columns. It is parametrized by a configuration for
 /// the folding scheme, described in the trait [FoldingConfig]. For instance,
 /// the configuration describes the initial columns of the circuit, the
 /// challenges and the underlying field.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+</span><span class="attr">#[derive(Derivative)]
+#[derivative(
+    Hash(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Debug(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Clone(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    PartialEq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>),
+    Eq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
+)]
 </span><span class="kw">pub enum </span>ExtendedFoldingColumn&lt;C: FoldingConfig&gt; {
     Inner(Variable&lt;C::Column&gt;),
     <span class="doccomment">/// For the extra columns added by the module `quadraticization`.

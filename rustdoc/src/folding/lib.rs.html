@@ -390,6 +390,7 @@
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -441,6 +442,7 @@
 <span class="kw">pub mod </span>expressions;
 <span class="kw">pub mod </span>instance_witness;
 <span class="kw">pub mod </span>quadraticization;
+<span class="kw">pub mod </span>standard_config;
 
 <span class="doccomment">/// Define the different structures required for the examples (both internal and
 /// external)
@@ -454,7 +456,7 @@
 <span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
 <span class="comment">// &#39;static seems to be used for expressions. Can we get rid of it?
-</span><span class="kw">pub trait </span>FoldingConfig: Clone + Debug + Eq + Hash + <span class="lifetime">&#39;static </span>{
+</span><span class="kw">pub trait </span>FoldingConfig: Debug + <span class="lifetime">&#39;static </span>{
     <span class="kw">type </span>Column: FoldingColumnTrait + Debug + Eq + Hash;
 
     <span class="comment">// in case of using docomposable folding, if not it can be just ()

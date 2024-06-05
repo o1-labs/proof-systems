@@ -1,7 +1,7 @@
 var sourcesIndex = JSON.parse('{\
 "export_test_vectors":["",[],["main.rs","vectors.rs"]],\
 "flamegraph":["",[],["flamegraph.rs"]],\
-"folding":["",[],["checker.rs","columns.rs","decomposable_folding.rs","error_term.rs","eval_leaf.rs","expressions.rs","instance_witness.rs","lib.rs","quadraticization.rs"]],\
+"folding":["",[],["checker.rs","columns.rs","decomposable_folding.rs","error_term.rs","eval_leaf.rs","expressions.rs","instance_witness.rs","lib.rs","quadraticization.rs","standard_config.rs"]],\
 "groupmap":["",[],["lib.rs"]],\
 "internal_tracing":["",[],["lib.rs"]],\
 "ivc":["",[["ivc",[],["columns.rs","interpreter.rs","lookups.rs","mod.rs"]],["poseidon",[],["columns.rs","interpreter.rs","mod.rs","params.rs"]]],["lib.rs"]],\
