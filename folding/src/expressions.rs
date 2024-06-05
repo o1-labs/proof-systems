@@ -344,7 +344,11 @@ impl<C: FoldingConfig> PartialEq for ExpExtension<C> {
             (Self::ExtendedWitness(l0), Self::ExtendedWitness(r0)) => l0 == r0,
             (Self::Alpha(l0), Self::Alpha(r0)) => l0 == r0,
             (Self::Selector(l0), Self::Selector(r0)) => l0 == r0,
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+            (Self::U, Self::U) => core::mem::discriminant(self) == core::mem::discriminant(other),
+            (Self::Error, Self::Error) => {
+                core::mem::discriminant(self) == core::mem::discriminant(other)
+            }
+            _ => false,
         }
     }
 }

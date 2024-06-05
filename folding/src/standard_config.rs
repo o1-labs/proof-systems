@@ -1,4 +1,4 @@
-//! This module offers an standard implementation of [FoldingConfig] supporting
+//! This module offers a standard implementation of [FoldingConfig] supporting
 //! many use cases
 use crate::{
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
@@ -22,13 +22,13 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
     }
 }
 
-/// An standard folding config that supports:  
-/// `G`: any curve  
-/// `Col`: any column implementing [FoldingColumnTrait]  
-/// `Chall`: any challenge  
-/// `Sel`: any dynamic selector  
-/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`  
-/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`  
+/// A standard folding config that supports:
+/// `G`: any curve
+/// `Col`: any column implementing [FoldingColumnTrait]
+/// `Chall`: any challenge
+/// `Sel`: any dynamic selector
+/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`
+/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`
 /// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
 /// ```ignore
 /// use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
@@ -238,7 +238,7 @@ mod memoization {
         }
     }
     /// a hashmap like data structure supporting get-or-insert with
-    /// an inmutable reference and returning an inmutable reference
+    /// an immutable reference and returning an inmutable reference
     /// without guard
     pub struct ColumnMemoizer<C: Hash + Eq, F: Field, const N: usize> {
         first_segment: ColumnMemoizerSegment<F, N>,
