@@ -136,15 +136,14 @@ where
     };
 
     let witness_comms: Witness<N_WIT, PolyComm<G>> = {
+        let blinders = PolyComm {
+            elems: vec![G::ScalarField::one()]
+        };
         let comm = {
             |poly: &DensePolynomial<G::ScalarField>| {
-                let mut comm = srs.commit_non_hiding(poly, 1);
                 // In case the column polynomial is all zeroes, we want to mask the commitment
-                comm = srs
-                    .mask_custom(comm.clone(), &comm.map(|_| G::ScalarField::one()))
-                    .unwrap()
-                    .commitment;
-                comm
+                let comm = srs.commit_custom(poly, 1, &blinders).unwrap();
+                comm.commitment
             }
         };
         (&witness_polys)

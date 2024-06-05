@@ -34,15 +34,6 @@ pub trait SRS<G: CommitmentCurve>: Clone {
     /// Get the group element used for blinding commitments
     fn blinding_commitment(&self) -> G;
 
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    fn commit(
-        &self,
-        plnm: &DensePolynomial<G::ScalarField>,
-        num_chunks: usize,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G>;
-
     /// Same as [SRS::mask] except that you can pass the blinders manually.
     fn mask_custom(
         &self,
@@ -73,6 +64,34 @@ pub trait SRS<G: CommitmentCurve>: Clone {
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
     ) -> PolyComm<G>;
+
+    /// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    /// It is analogous to [SRS::commit_evaluations] but for polynomials.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    fn commit(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G>;
+
+    /// Commit to a polynomial, with custom blinding factors.
+    /// It is a combination of [SRS::commit] and [SRS::mask_custom].
+    /// It is analogous to [SRS::commit_evaluations_custom] but for polynomials.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
+    fn commit_custom(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
     fn commit_evaluations_non_hiding(
         &self,
