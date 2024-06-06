@@ -196,8 +196,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
-        let a = a.relax(&self.zero_vec, self.zero_commitment.clone());
-        let b = b.relax(&self.zero_vec, self.zero_commitment.clone());
+        let a = a.relax(&self.zero_vec);
+        let b = b.relax(&self.zero_vec);
 
         let u = (a.0.u, b.0.u);
 
@@ -290,8 +290,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         B: RelaxableInstance<CF::Curve, CF::Instance>,
         Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
-        let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax(self.zero_commitment.clone());
-        let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
+        let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax();
+        let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax();
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
