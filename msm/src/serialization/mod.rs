@@ -56,7 +56,7 @@ mod tests {
         }
         let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
-        let constraints = {
+        let fixed_proof_inputs = {
             let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
             deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
             constrain_multiplication(&mut constraints_env);
@@ -72,7 +72,7 @@ mod tests {
                     == 1
             );
 
-            constraints_env.get_constraints()
+            constraints_env.get_fixed_proof_inputs::<SerializationColumn>(domain_size)
         };
 
         for (i, limbs) in field_elements.iter().enumerate() {
@@ -100,12 +100,6 @@ mod tests {
             0,
             LookupTable<Ff1>,
             _,
-        >(
-            constraints,
-            Box::new([]),
-            proof_inputs,
-            domain_size,
-            &mut rng,
-        );
+        >(fixed_proof_inputs, proof_inputs, domain_size, &mut rng);
     }
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ark_ff::Field;
 use folding::expressions::FoldingColumnTrait;
 use kimchi::circuits::expr::{CacheId, FormattedOutput};
 
@@ -80,8 +81,14 @@ pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
     fn to_column(self) -> Column;
 }
 
-// Implementation to be compatible with folding if we use generic column
-// constraints
+/// Trait extending `ColumnIndexer` that represents everything a
+/// "prepared circuit column" is supposed to have.
+pub trait CircuitColumn<F: Field>: ColumnIndexer {
+    /// Return the vector of fixed selectors for a given domain.
+    fn fixed_selectors(domain_size: usize) -> Vec<Vec<F>>;
+}
+
+// Implementation to be compatible with folding if we use generic column constraints
 impl FoldingColumnTrait for Column {
     fn is_witness(&self) -> bool {
         match self {

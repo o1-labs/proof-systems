@@ -1,4 +1,5 @@
 use crate::{
+    expr::E,
     logup::{LookupProof, LookupTableID},
     lookups::{LookupTableIDs, LookupWitness},
     witness::Witness,
@@ -16,6 +17,16 @@ use kimchi::{
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 
+/// "Fixed" inputs for the proof system --- the ones that define the
+/// language we are operating over. Used by both prover and verifier.
+pub struct FixedProofInputs<F: PrimeField> {
+    /// Circuit constraints
+    pub constraints: Vec<E<F>>,
+    /// Fixed selectors, unique for the given circuit.
+    pub fixed_selectors: Vec<Vec<F>>,
+}
+
+// TODO Rename into ProverInputs, since these are specific for the prover only?
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofInputs<const N_WIT: usize, F: PrimeField, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in

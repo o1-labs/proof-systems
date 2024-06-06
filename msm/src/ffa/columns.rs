@@ -1,6 +1,8 @@
-use crate::columns::{Column, ColumnIndexer};
-
-use crate::N_LIMBS;
+use crate::{
+    columns::{CircuitColumn, Column, ColumnIndexer},
+    N_LIMBS,
+};
+use ark_ff::Field;
 
 /// Number of columns in the FFA circuits.
 pub const FFA_N_COLUMNS: usize = 5 * N_LIMBS;
@@ -38,5 +40,11 @@ impl ColumnIndexer for FFAColumn {
             }
             FFAColumn::Quotient => to_column_inner(4, N_LIMBS - 1),
         }
+    }
+}
+
+impl<F: Field> CircuitColumn<F> for FFAColumn {
+    fn fixed_selectors(_domain_size: usize) -> Vec<Vec<F>> {
+        vec![]
     }
 }

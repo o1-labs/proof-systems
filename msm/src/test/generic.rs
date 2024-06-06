@@ -1,7 +1,13 @@
 /// Generic test runners for prover/verifier.
 use crate::{
-    expr::E, logup::LookupTableID, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
-    verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+    expr::E,
+    logup::LookupTableID,
+    lookups::LookupTableIDs,
+    proof::{FixedProofInputs, ProofInputs},
+    prover::prove,
+    verifier::verify,
+    witness::Witness,
+    BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
 use ark_ff::Zero;
 use kimchi::circuits::domains::EvaluationDomains;
@@ -18,8 +24,10 @@ pub fn test_completeness_generic_only_relation<const N_REL: usize, RNG>(
     RNG: RngCore + CryptoRng,
 {
     test_completeness_generic_no_lookups::<N_REL, N_REL, 0, 0, _>(
-        constraints,
-        Box::new([]),
+        FixedProofInputs {
+            constraints,
+            fixed_selectors: vec![],
+        },
         evaluations,
         domain_size,
         rng,
@@ -33,8 +41,7 @@ pub fn test_completeness_generic_no_lookups<
     const N_FSEL: usize,
     RNG,
 >(
-    constraints: Vec<E<Fp>>,
-    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    fixed_proof_inputs: FixedProofInputs<Fp>,
     evaluations: Witness<N_WIT, Vec<Fp>>,
     domain_size: usize,
     rng: &mut RNG,
@@ -46,8 +53,7 @@ pub fn test_completeness_generic_no_lookups<
         logups: vec![],
     };
     test_completeness_generic::<N_WIT, N_REL, N_DSEL, N_FSEL, LookupTableIDs, _>(
-        constraints,
-        fixed_selectors,
+        fixed_proof_inputs,
         proof_inputs,
         domain_size,
         rng,
@@ -64,8 +70,7 @@ pub fn test_completeness_generic<
     LT: LookupTableID,
     RNG,
 >(
-    constraints: Vec<E<Fp>>,
-    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    fixed_proof_inputs: FixedProofInputs<Fp>,
     proof_inputs: ProofInputs<N_WIT, Fp, LT>,
     domain_size: usize,
     rng: &mut RNG,
@@ -80,8 +85,7 @@ pub fn test_completeness_generic<
         prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors.clone(),
+            &fixed_proof_inputs,
             proof_inputs.clone(),
             rng,
         )
@@ -113,7 +117,8 @@ pub fn test_completeness_generic<
         // Checking the number of chunks of the quotient polynomial
         let max_degree = {
             if proof_inputs.logups.is_empty() {
-                constraints
+                fixed_proof_inputs
+                    .constraints
                     .iter()
                     .map(|expr| expr.degree(1, 0))
                     .max()
@@ -134,8 +139,7 @@ pub fn test_completeness_generic<
         verify::<_, OpeningProof, BaseSponge, ScalarSponge, N_WIT, N_REL, N_DSEL, N_FSEL, 0, LT>(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors,
+            &fixed_proof_inputs,
             &proof,
             Witness::zero_vec(domain_size),
         );
@@ -150,8 +154,7 @@ pub fn test_soundness_generic<
     LT: LookupTableID,
     RNG,
 >(
-    constraints: Vec<E<Fp>>,
-    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    fixed_proof_inputs: FixedProofInputs<Fp>,
     proof_inputs: ProofInputs<N_WIT, Fp, LT>,
     proof_inputs_prime: ProofInputs<N_WIT, Fp, LT>,
     domain_size: usize,
@@ -168,8 +171,7 @@ pub fn test_soundness_generic<
         prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors.clone(),
+            &fixed_proof_inputs,
             proof_inputs,
             rng,
         )
@@ -180,8 +182,7 @@ pub fn test_soundness_generic<
         prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N_WIT, N_REL, N_DSEL, N_FSEL, LT>(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors.clone(),
+            &fixed_proof_inputs,
             proof_inputs_prime,
             rng,
         )
@@ -205,8 +206,7 @@ pub fn test_soundness_generic<
         >(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors.clone(),
+            &fixed_proof_inputs,
             &proof_clone,
             Witness::zero_vec(domain_size),
         );
@@ -233,8 +233,7 @@ pub fn test_soundness_generic<
         >(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors.clone(),
+            &fixed_proof_inputs,
             &proof_clone,
             Witness::zero_vec(domain_size),
         );
@@ -262,8 +261,7 @@ pub fn test_soundness_generic<
         >(
             domain,
             &srs,
-            &constraints,
-            fixed_selectors,
+            &fixed_proof_inputs,
             &proof_clone,
             Witness::zero_vec(domain_size),
         );

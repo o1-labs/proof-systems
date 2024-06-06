@@ -1,15 +1,16 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
-use crate::logup::LookupTableID;
+use crate::{
+    logup::LookupTableID,
+    proof::{FixedProofInputs, Proof},
+    witness::Witness,
+};
 use ark_ff::{Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
 };
-use rand::thread_rng;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
@@ -27,8 +28,8 @@ use poly_commitment::{
     },
     OpenProof, SRS,
 };
-
-use crate::{expr::E, proof::Proof, witness::Witness};
+use rand::thread_rng;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub fn verify<
     G: KimchiCurve,
@@ -44,8 +45,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<E<G::ScalarField>>,
-    fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
+    fixed_inputs: &FixedProofInputs<G::ScalarField>,
     proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
@@ -58,6 +58,9 @@ where
         opening_proof,
     } = proof;
 
+    let constraints = &fixed_inputs.constraints;
+    let fixed_selectors = &fixed_inputs.fixed_selectors;
+
     ////////////////////////////////////////////////////////////////////////////
     // Re-evaluating public inputs
     ////////////////////////////////////////////////////////////////////////////
@@ -65,6 +68,7 @@ where
     let fixed_selectors_evals_d1: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> = {
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors
+                .clone()
                 .into_par_iter()
                 .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
                 .collect(),

@@ -1,8 +1,9 @@
 use crate::{
-    columns::{Column, ColumnIndexer},
+    columns::{CircuitColumn, Column, ColumnIndexer},
     serialization::N_INTERMEDIATE_LIMBS,
     N_LIMBS,
 };
+use ark_ff::Field;
 
 /// Total number of columns in the serialization circuit
 pub const SER_N_COLUMNS: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 9;
@@ -66,5 +67,11 @@ impl ColumnIndexer for SerializationColumn {
                 Column::Relation(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
             }
         }
+    }
+}
+
+impl<F: Field> CircuitColumn<F> for SerializationColumn {
+    fn fixed_selectors(_domain_size: usize) -> Vec<Vec<F>> {
+        vec![]
     }
 }

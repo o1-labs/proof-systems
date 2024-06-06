@@ -1,7 +1,8 @@
 use crate::{
-    columns::{Column, ColumnIndexer},
+    columns::{CircuitColumn, Column, ColumnIndexer},
     N_LIMBS,
 };
+use ark_ff::Field;
 
 /// Number of columns in the test circuits.
 pub const TEST_N_COLUMNS: usize = 4 * N_LIMBS + 1;
@@ -35,5 +36,11 @@ impl ColumnIndexer for TestColumn {
             TestColumn::D(i) => to_column_inner(3, i),
             TestColumn::FixedE => Column::FixedSelector(0),
         }
+    }
+}
+
+impl<F: Field> CircuitColumn<F> for TestColumn {
+    fn fixed_selectors(domain_size: usize) -> Vec<Vec<F>> {
+        vec![(0..domain_size).map(|i| F::from(i as u64)).collect()]
     }
 }

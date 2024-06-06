@@ -206,12 +206,12 @@ mod tests {
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
         constrain_ivc::<Ff1, _>(&mut constraint_env);
-        let constraints = constraint_env.get_relation_constraints();
+        let fixed_proof_inputs = constraint_env.get_fixed_proof_inputs::<TestColumn>(domain_size);
 
-        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
-            TEST_N_COL_TOTAL,
-            TEST_N_CHALS,
-        >(domain_size));
+        //let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
+        //    TEST_N_COL_TOTAL,
+        //    TEST_N_CHALS,
+        //>(domain_size));
 
         kimchi_msm::test::test_completeness_generic_no_lookups::<
             { IVCColumn::N_COL - N_BLOCKS },

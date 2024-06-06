@@ -3,10 +3,9 @@
 
 use crate::{
     column_env::ColumnEnvironment,
-    expr::E,
     logup,
     logup::{prover::Env, LookupProof, LookupTableID},
-    proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
+    proof::{FixedProofInputs, Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
     MAX_SUPPORTED_DEGREE,
 };
@@ -63,8 +62,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<E<G::ScalarField>>,
-    fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
+    fixed_inputs: &FixedProofInputs<G::ScalarField>,
     inputs: ProofInputs<N_WIT, G::ScalarField, ID>,
     rng: &mut RNG,
 ) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>, ProverError>
@@ -72,6 +70,9 @@ where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
+    let constraints = &fixed_inputs.constraints;
+    let fixed_selectors = &fixed_inputs.fixed_selectors;
+
     ////////////////////////////////////////////////////////////////////////////
     // Setting up the protocol
     ////////////////////////////////////////////////////////////////////////////
@@ -87,6 +88,7 @@ where
     let fixed_selectors_evals_d1: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> =
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors
+                .clone()
                 .into_par_iter()
                 .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
                 .collect(),

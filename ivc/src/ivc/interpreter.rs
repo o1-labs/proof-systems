@@ -780,58 +780,6 @@ pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
     env.next_row();
 }
 
-/// Builds selectors for the IVC circuit.
-/// The round constants for Poseidon are not added in this function, and must be
-/// done separately.
-/// The size of the array is the total number of public values required for the
-/// IVC. Therefore, it includes the potential round constants required by
-/// the hash function.
-#[allow(clippy::needless_range_loop)]
-pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
-    domain_size: usize,
-) -> [Vec<kimchi_msm::Fp>; N_FSEL_IVC] {
-    // Selectors can be only generated for BN254G1 for now, because
-    // that's what Poseidon works with.
-    use ark_ff::{One, Zero};
-    use kimchi_msm::Fp;
-
-    assert!(
-        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
-        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
-        total_height::<N_COL_TOTAL, N_CHALS>(),
-    );
-
-    // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
-    // 45N + 9 + N_CHALS
-    let mut selectors: [Vec<Fp>; N_FSEL_IVC] =
-        core::array::from_fn(|_| vec![Fp::zero(); domain_size]);
-    let mut curr_row = 0;
-    for block_i in 0..N_BLOCKS {
-        for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
-            assert!(
-                curr_row < domain_size,
-                "The domain size is too small to handle the IVC circuit"
-            );
-            selectors[block_i][curr_row] = Fp::one();
-            curr_row += 1;
-        }
-    }
-
-    for i in N_BLOCKS..N_FSEL_IVC - N_BLOCKS {
-        PoseidonBN254Parameters
-            .constants()
-            .iter()
-            .enumerate()
-            .for_each(|(_round, rcs)| {
-                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
-                    selectors[i] = vec![*rc; domain_size];
-                });
-            });
-    }
-
-    selectors
-}
-
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columns for IVC + APP.

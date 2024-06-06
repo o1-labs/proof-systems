@@ -1,7 +1,8 @@
 use crate::{
-    columns::{Column, ColumnIndexer},
+    columns::{CircuitColumn, Column, ColumnIndexer},
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
+use ark_ff::Field;
 
 /// Number of columns in the FEC circuits.
 pub const FEC_N_COLUMNS: usize =
@@ -156,5 +157,11 @@ impl ColumnIndexer for FECColumn {
                 .to_column()
                 .add_rel_offset(FECColumnInput::N_COL + FECColumnInter::N_COL),
         }
+    }
+}
+
+impl<F: Field> CircuitColumn<F> for FECColumn {
+    fn fixed_selectors(_domain_size: usize) -> Vec<Vec<F>> {
+        vec![]
     }
 }

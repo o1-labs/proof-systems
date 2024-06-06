@@ -2,7 +2,7 @@
 mod tests {
     use crate::{
         lookups::{Lookup, LookupTableIDs},
-        proof::ProofInputs,
+        proof::{FixedProofInputs, ProofInputs},
         prover::prove,
         verifier::verify,
         witness::Witness,
@@ -31,7 +31,10 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut inputs = ProofInputs::random(domain);
-        let constraints = vec![];
+        let fixed_proof_inputs = FixedProofInputs {
+            constraints: vec![],
+            fixed_selectors: vec![],
+        };
         // Take one random f_i (FIXME: taking first one for now)
         let looked_up_values = inputs.logups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
@@ -54,7 +57,7 @@ mod tests {
             0,
             0,
             LookupTableIDs,
-        >(domain, &srs, &constraints, Box::new([]), inputs, &mut rng)
+        >(domain, &srs, &fixed_proof_inputs, inputs, &mut rng)
         .unwrap();
         let verifies = verify::<
             _,
@@ -70,8 +73,7 @@ mod tests {
         >(
             domain,
             &srs,
-            &constraints,
-            Box::new([]),
+            &fixed_proof_inputs,
             &proof,
             Witness::zero_vec(domain_size),
         );

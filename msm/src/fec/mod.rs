@@ -140,7 +140,7 @@ mod tests {
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
-        let constraints = constraint_env.get_constraints();
+        let fixed_proof_inputs = constraint_env.get_fixed_proof_inputs::<FECColumn>(domain_size);
 
         let witness_env = build_fec_addition_circuit(&mut rng, domain_size);
 
@@ -158,12 +158,6 @@ mod tests {
             0,
             LookupTable<Ff1>,
             _,
-        >(
-            constraints,
-            Box::new([]),
-            proof_inputs,
-            domain_size,
-            &mut rng,
-        );
+        >(fixed_proof_inputs, proof_inputs, domain_size, &mut rng);
     }
 }

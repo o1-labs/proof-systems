@@ -67,7 +67,7 @@ mod tests {
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable>::create();
         ffa_interpreter::constrain_ff_addition(&mut constraint_env);
-        let constraints = constraint_env.get_constraints();
+        let fixed_proof_inputs = constraint_env.get_fixed_proof_inputs::<FFAColumn>(domain_size);
 
         let witness_env = build_ffa_circuit(&mut rng, domain_size);
 
@@ -85,12 +85,6 @@ mod tests {
             0,
             LookupTable,
             _,
-        >(
-            constraints,
-            Box::new([]),
-            proof_inputs,
-            domain_size,
-            &mut rng,
-        );
+        >(fixed_proof_inputs, proof_inputs, domain_size, &mut rng);
     }
 }
