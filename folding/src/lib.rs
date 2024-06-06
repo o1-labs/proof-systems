@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
@@ -217,10 +217,17 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
-        // Committing to the error terms
+        // Committing to the cross terms
+        // Default blinder for commiting to the cross terms
+        let blinders = PolyComm::new(vec![ScalarField::<CF>::one()]);
         let error_commitments = error_evals
             .iter()
-            .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e))
+            .map(|e| {
+                self.srs
+                    .commit_evaluations_custom(self.domain, e, &blinders)
+                    .unwrap()
+                    .commitment
+            })
             .collect::<Vec<_>>();
         let error_commitments: [PolyComm<CF::Curve>; 2] = error_commitments.try_into().unwrap();
 

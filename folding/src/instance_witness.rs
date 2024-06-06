@@ -67,6 +67,9 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
 
     /// Returns the alphas values for the instance
     fn get_alphas(&self) -> &Alphas<G::ScalarField>;
+
+    /// Return the blinder that can be used while committing to polynomials.
+    fn get_blinder(&self) -> G::ScalarField;
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {}
@@ -215,6 +218,11 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         self.instance.get_alphas()
     }
+
+    /// Returns the blinder value. It is the same as the one of the original
+    fn get_blinder(&self) -> G::ScalarField {
+        self.instance.get_blinder()
+    }
 }
 
 // -- "Relaxed"/"Homogenized" structures
@@ -235,6 +243,8 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The commitment to the error term, introduced when homogenizing the
     /// polynomials
     pub error_commitment: PolyComm<G>,
+    /// Blinder used for the commitments to the cross terms
+    pub blinder: G::ScalarField,
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
@@ -289,17 +299,24 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
         // E <- E1 - (c T1 + c^2 T2) + c^3 E2
         // (page 15, eq 3 of the Nova paper)
         // The term T1 and T2 are the cross terms
-        let challenge_cube = challenge * challenge * challenge;
+        let challenge_square = challenge * challenge;
+        let challenge_cube = challenge_square * challenge;
         let RelaxedInstance {
             extended_instance: extended_instance_1,
             u: u1,
             error_commitment: e1,
+            blinder: blinder1,
         } = a;
         let RelaxedInstance {
             extended_instance: extended_instance_2,
             u: u2,
             error_commitment: e2,
+            blinder: blinder2,
         } = b;
+        // We simply fold the blinders
+        //                 = 1        = 1
+        // r_E <- r_E1 + c r_T1 + c^2 r_T2 + c^3 r_E2
+        let blinder = blinder1 + challenge + challenge_square + challenge_cube * blinder2;
         let extended_instance =
             <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
         // Combining the challenges
@@ -315,6 +332,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
             u,
             // E <- E1 - (c T1 + c^2 T2) + c^3 E2
             error_commitment,
+            blinder,
         }
     }
 }
@@ -411,12 +429,14 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
     /// commitment to zero.
     fn relax(self) -> RelaxedInstance<G, Self> {
         let extended_instance = ExtendedInstance::extend(self);
+        let blinder = extended_instance.instance.get_blinder();
         let u = G::ScalarField::one();
         let error_commitment = PolyComm::new(vec![G::zero()]);
         RelaxedInstance {
             extended_instance,
             u,
             error_commitment,
+            blinder,
         }
     }
 }

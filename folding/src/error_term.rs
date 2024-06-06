@@ -13,7 +13,7 @@ use crate::{
 use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
-use poly_commitment::SRS;
+use poly_commitment::{PolyComm, SRS};
 
 // FIXME: for optimisation, as values are not necessarily Fp elements and are
 // relatively small, we could get rid of the scalar field objects, and only use
@@ -426,10 +426,16 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         };
 
         // FIXME: use parallelisation
+        let blinder = PolyComm::new(vec![relaxed_instance.blinder]);
         for (expected_i, (i, wit)) in relaxed_witness.extended_witness.extended.iter().enumerate() {
-            //in case any where to be missing for some reason
+            // in case any where to be missing for some reason
             assert_eq!(*i, expected_i);
-            let commit = srs.commit_evaluations_non_hiding(self.domain, wit);
+            // Blinding the commitments to support the case the witness is zero.
+            // The IVC circuit expects to have non-zero commitments.
+            let commit = srs
+                .commit_evaluations_custom(self.domain, wit, &blinder)
+                .unwrap()
+                .commitment;
             relaxed_instance.extended_instance.extended.push(commit)
         }
         // FIXME: maybe returning a value is not necessary as it does inplace operations.

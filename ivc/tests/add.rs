@@ -19,7 +19,7 @@ use std::{array, collections::BTreeMap, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use ark_ff::UniformRand;
+use ark_ff::{One, UniformRand};
 use ark_poly::Radix2EvaluationDomain;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::{
@@ -166,6 +166,7 @@ pub fn test_simple_add() {
         commitments: [Curve; AdditionColumn::COUNT],
         challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
+        blinder: Fp,
     }
 
     impl Foldable<Fp> for PlonkishInstance {
@@ -176,6 +177,7 @@ pub fn test_simple_add() {
                 }),
                 challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
                 alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+                blinder: a.blinder + challenge * b.blinder,
             }
         }
     }
@@ -193,6 +195,10 @@ pub fn test_simple_add() {
 
         fn get_alphas(&self) -> &Alphas<Fp> {
             &self.alphas
+        }
+
+        fn get_blinder(&self) -> Fp {
+            self.blinder
         }
     }
 
@@ -228,10 +234,13 @@ pub fn test_simple_add() {
             let alpha = fq_sponge.challenge();
             let alphas = Alphas::new(alpha);
 
+            let blinder = Fp::one();
+
             Self {
                 commitments,
                 challenges,
                 alphas,
+                blinder,
             }
         }
     }

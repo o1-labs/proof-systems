@@ -128,6 +128,7 @@ mod folding {
         trace::Trace,
         BaseSponge, Curve,
     };
+    use ark_ff::One;
     use kimchi::o1_utils;
     use rand::{CryptoRng, Rng, RngCore};
     use std::{fs, path::PathBuf};
@@ -447,11 +448,13 @@ mod folding {
         let alpha = fq_sponge.challenge();
         let challenges = [beta, gamma, joint_combiner];
         let alphas = Alphas::new(alpha);
+        let blinder = Fp::one();
 
         FoldingInstance {
             commitments,
             challenges,
             alphas,
+            blinder,
         }
     }
 

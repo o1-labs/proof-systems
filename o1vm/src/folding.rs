@@ -52,6 +52,9 @@ pub struct FoldingInstance<const N: usize, G: CommitmentCurve> {
     pub challenges: [<G as AffineCurve>::ScalarField; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
     pub alphas: Alphas<<G as AffineCurve>::ScalarField>,
+
+    /// Blinder used in the polynomial commitment scheme
+    pub blinder: <G as AffineCurve>::ScalarField,
 }
 
 impl<const N: usize, G: CommitmentCurve> Foldable<G::ScalarField> for FoldingInstance<N, G> {
@@ -62,6 +65,7 @@ impl<const N: usize, G: CommitmentCurve> Foldable<G::ScalarField> for FoldingIns
             }),
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+            blinder: a.blinder + challenge * b.blinder,
         }
     }
 }
@@ -79,6 +83,10 @@ impl<const N: usize, G: CommitmentCurve> Instance<G> for FoldingInstance<N, G> {
 
     fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         &self.alphas
+    }
+
+    fn get_blinder(&self) -> <G>::ScalarField {
+        self.blinder
     }
 }
 
