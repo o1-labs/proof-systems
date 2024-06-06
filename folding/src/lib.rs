@@ -49,15 +49,7 @@ mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
-#[cfg(test)]
-#[cfg(feature = "bn254")]
-mod quadraticization_tests;
-
-// Modules strictly related to tests
-// TODO: should we move them into an explicit subdirectory `test`?
-#[cfg(test)]
-#[cfg(feature = "bn254")]
-mod examples;
+pub mod standard_config;
 
 /// Define the different structures required for the examples (both internal and
 /// external)
@@ -71,7 +63,7 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
 
 // 'static seems to be used for expressions. Can we get rid of it?
-pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
+pub trait FoldingConfig: Debug + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
 
     // in case of using docomposable folding, if not it can be just ()
@@ -186,8 +178,9 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         };
         (scheme, final_expression)
     }
-    //the number of columns added by quadraticization to lower the degree
-    pub fn quadraticization_columns(&self) -> usize {
+
+    /// Return the number of additional columns added by quadraticization
+    pub fn get_number_of_additional_columns(&self) -> usize {
         self.quadraticization_columns
     }
 
@@ -208,15 +201,16 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         let u = (a.0.u, b.0.u);
 
-        let (ins1, wit1) = a;
-        let (ins2, wit2) = b;
+        let (left_instance, left_witness) = a;
+        let (right_instance, right_witness) = b;
         let env = ExtendedEnv::new(
             &self.structure,
-            [ins1, ins2],
-            [wit1, wit2],
+            [left_instance, right_instance],
+            [left_witness, right_witness],
             self.domain,
             None,
         );
+        // Side-effect: commitments are added in both relaxed (extended) instance.
         let env: ExtendedEnv<CF> =
             env.compute_extension(&self.extended_witness_generator, self.srs);
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
@@ -244,15 +238,32 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         let challenge = fq_sponge.challenge();
 
-        let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let folded_instance =
-            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        let (
+            [relaxed_extended_left_instance, relaxed_extended_right_instance],
+            [relaxed_extended_left_witness, relaxed_extended_right_witness],
+        ) = env.unwrap();
+
+        let folded_instance = RelaxedInstance::combine_and_sub_error(
+            // FIXME: remove clone
+            relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
+            challenge,
+            &error_commitments,
+        );
+
+        let folded_witness = RelaxedWitness::combine_and_sub_error(
+            relaxed_extended_left_witness,
+            relaxed_extended_right_witness,
+            challenge,
+            error,
+        );
         FoldingOutput {
             folded_instance,
             folded_witness,
             t_0: error_commitments[0].clone(),
             t_1: error_commitments[1].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }
@@ -292,12 +303,23 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
 /// Output of the folding prover
 pub struct FoldingOutput<C: FoldingConfig> {
-    /// Folded instance
+    /// The folded instance, containing, in particular, the result `C_l + r C_r`
     pub folded_instance: RelaxedInstance<C::Curve, C::Instance>,
-    /// Folded witness
+    /// Folded witness, containing, in particular, the result of the evaluations
+    /// `W_l + r W_r`
     pub folded_witness: RelaxedWitness<C::Curve, C::Witness>,
+    /// The error terms of degree 1, see the top-level documentation of
+    /// [crate::expressions]
     pub t_0: PolyComm<C::Curve>,
+    /// The error terms of degree 2, see the top-level documentation of
+    /// [crate::expressions]
     pub t_1: PolyComm<C::Curve>,
+    /// The left relaxed instance, including the potential additional columns
+    /// added by quadritization
+    pub relaxed_extended_left_instance: RelaxedInstance<C::Curve, C::Instance>,
+    /// The right relaxed instance, including the potential additional columns
+    /// added by quadritization
+    pub relaxed_extended_right_instance: RelaxedInstance<C::Curve, C::Instance>,
     /// Elements to absorbed in IVC, in the same order as done in folding
     pub to_absorb: (Vec<ScalarField<C>>, Vec<C::Curve>),
 }

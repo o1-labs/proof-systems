@@ -1,7 +1,8 @@
 //! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
-//! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
+//! from a set of list of constraints, each set associated with a particular
+//! selector, as opposed to a single list of constraints.
 
 use crate::{
     columns::ExtendedFoldingColumn,
@@ -23,13 +24,17 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
     /// Creates a new folding scheme for decomposable circuits.
     /// It takes as input:
     /// - a set of constraints, each associated with a particular selector;
-    /// - a list of common constraints, that are applied to every instance regardless of the selector (can be empty);
+    /// - a list of common constraints, that are applied to every instance
+    /// regardless of the selector (can be empty);
     /// - a structured reference string;
     /// - a domain;
     /// - a structure of the associated folding configuration.
-    /// The function uses the normal `FoldingScheme::new()` function to create the decomposable scheme, using for that
-    /// the concatenation of the constraints associated with each selector multiplied by the selector, and the common constraints.
-    /// This product is performed with `FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s))`.
+    /// The function uses the normal `FoldingScheme::new()` function to create
+    /// the decomposable scheme, using for that the concatenation of the
+    /// constraints associated with each selector multiplied by the selector,
+    /// and the common constraints.
+    /// This product is performed with
+    /// `FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s))`.
     pub fn new(
         // constraints with a dynamic selector
         constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
@@ -54,10 +59,16 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         (DecomposableFoldingScheme { inner }, exp)
     }
 
+    /// Return the number of additional columns added by quadraticization
+    pub fn get_number_of_additional_columns(&self) -> usize {
+        self.inner.get_number_of_additional_columns()
+    }
+
     #[allow(clippy::type_complexity)]
-    /// folding with a selector will assume that only the selector in question is enabled (1)
-    /// in all rows, and any other selector is 0 over all rows.
-    /// If that is not the case, providing None will fold without assumptions
+    /// folding with a selector will assume that only the selector in question
+    /// is enabled (i.e. set to 1) in all rows, and any other selector is 0 over
+    /// all rows.
+    /// If that is not the case, providing `None` will fold without assumptions
     pub fn fold_instance_witness_pair<A, B, Sponge>(
         &self,
         a: A,
@@ -76,15 +87,16 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         let u = (a.0.u, b.0.u);
 
-        let (ins1, wit1) = a;
-        let (ins2, wit2) = b;
+        let (left_instance, left_witness) = a;
+        let (right_instance, right_witness) = b;
         let env = ExtendedEnv::new(
             &scheme.structure,
-            [ins1, ins2],
-            [wit1, wit2],
+            [left_instance, right_instance],
+            [left_witness, right_witness],
             scheme.domain,
             selector,
         );
+
         let env = env.compute_extension(&scheme.extended_witness_generator, scheme.srs);
         let error = compute_error(&scheme.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
@@ -112,15 +124,32 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         let challenge = fq_sponge.challenge();
 
-        let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
-        let folded_instance =
-            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
-        let folded_witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        let (
+            [relaxed_extended_left_instance, relaxed_extended_right_instance],
+            [relaxed_extended_left_witness, relaxed_extended_right_witness],
+        ) = env.unwrap();
+
+        let folded_instance = RelaxedInstance::combine_and_sub_error(
+            // FIXME: remove clone
+            relaxed_extended_left_instance.clone(),
+            relaxed_extended_right_instance.clone(),
+            challenge,
+            &error_commitments,
+        );
+
+        let folded_witness = RelaxedWitness::combine_and_sub_error(
+            relaxed_extended_left_witness,
+            relaxed_extended_right_witness,
+            challenge,
+            error,
+        );
         FoldingOutput {
             folded_instance,
             folded_witness,
             t_0: error_commitments[0].clone(),
             t_1: error_commitments[1].clone(),
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb,
         }
     }

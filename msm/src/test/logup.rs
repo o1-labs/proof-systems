@@ -54,7 +54,7 @@ mod tests {
             0,
             0,
             LookupTableIDs,
-        >(domain, &srs, &constraints, inputs, &mut rng)
+        >(domain, &srs, &constraints, Box::new([]), inputs, &mut rng)
         .unwrap();
         let verifies = verify::<
             _,
@@ -71,6 +71,7 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            Box::new([]),
             &proof,
             Witness::zero_vec(domain_size),
         );

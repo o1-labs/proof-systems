@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::boxed_local)]
+
 use crate::logup::LookupTableID;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
@@ -29,7 +32,7 @@ pub fn verify<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
-    const N: usize,
+    const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
@@ -39,7 +42,8 @@ pub fn verify<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraints: &Vec<E<G::ScalarField>>,
-    proof: &Proof<N, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>,
+    fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
+    proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
 where
@@ -55,8 +59,37 @@ where
     // Re-evaluating public inputs
     ////////////////////////////////////////////////////////////////////////////
 
+    let fixed_selectors_evals_d1: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> = {
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors
+                .into_par_iter()
+                .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
+                .collect(),
+        )
+    };
+
+    let fixed_selectors_polys: Box<[DensePolynomial<G::ScalarField>; N_FSEL]> = {
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors_evals_d1
+                .into_par_iter()
+                .map(|evals| evals.interpolate())
+                .collect(),
+        )
+    };
+
+    let fixed_selectors_comms: Box<[PolyComm<G>; N_FSEL]> = {
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        o1_utils::array::vec_to_boxed_array(
+            fixed_selectors_polys
+                .as_ref()
+                .into_par_iter()
+                .map(comm)
+                .collect(),
+        )
+    };
+
     // Interpolate public input columns on d1, using trait Into.
-    let public_input_evals: Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+    let public_input_evals_d1: Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
         public_inputs
             .into_par_iter()
             .map(|evals| {
@@ -69,7 +102,7 @@ where
     let public_input_polys: Witness<NPUB, DensePolynomial<G::ScalarField>> = {
         let interpolate =
             |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
-        public_input_evals
+        public_input_evals_d1
             .into_par_iter()
             .map(interpolate)
             .collect::<Witness<NPUB, DensePolynomial<G::ScalarField>>>()
@@ -84,7 +117,7 @@ where
     };
 
     assert!(
-        NPUB <= N,
+        NPUB <= N_WIT,
         "Number of public inputs exceeds number of witness columns"
     );
     for i in 0..NPUB {
@@ -96,8 +129,11 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    (&proof_comms.witness_comms)
-        .into_iter()
+
+    fixed_selectors_comms
+        .as_ref()
+        .iter()
+        .chain(&proof_comms.witness_comms)
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     ////////////////////////////////////////////////////////////////////////////
@@ -164,6 +200,16 @@ where
             }),
     );
 
+    coms_and_evaluations.extend(
+        (fixed_selectors_comms)
+            .into_iter()
+            .zip(proof_evals.fixed_selectors_evals.iter())
+            .map(|(commitment, point_eval)| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
+            }),
+    );
+
     if let Some(logup_comms) = &proof_comms.logup_comms {
         coms_and_evaluations.extend(
             logup_comms
@@ -186,6 +232,12 @@ where
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
+
+    for PointEvaluations { zeta, zeta_omega } in proof_evals.fixed_selectors_evals.as_ref().iter() {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
+    }
+
     if proof_comms.logup_comms.is_some() {
         // Logup FS
         for PointEvaluations { zeta, zeta_omega } in

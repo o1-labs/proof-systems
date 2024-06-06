@@ -18,9 +18,7 @@ path = "src/test_preimage_read.rs"
 
 [dependencies]
 ark-bn254.workspace = true
-# We activate the feature bn254 of folding as we do use some structures of
-# folding in tests that are only activated by this flag
-folding = { workspace = true, features = [ "bn254" ] }
+folding.workspace = true
 kimchi = { workspace = true, features = [ "bn254" ] }
 kimchi-msm.workspace = true
 poly-commitment.workspace = true

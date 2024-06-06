@@ -3,7 +3,7 @@ use log::{debug, error};
 use o1vm::{
     cannon::PreimageKey,
     cannon_cli::{main_cli, read_configuration},
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{PreImageOracle, PreImageOracleT},
 };
 use std::{
     io::{self},
