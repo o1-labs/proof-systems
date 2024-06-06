@@ -16,7 +16,8 @@ use std::{array, cmp::min, collections::HashMap};
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
 #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
 pub struct SRS<G> {
-    /// The vector of group elements for committing to polynomials in coefficient form
+    /// The vector of group elements for committing to polynomials in
+    /// coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
     /// A group element used for blinding commitments
@@ -84,7 +85,7 @@ where
     }
     let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
     let (x, y) = map.to_group(t);
-    G::of_coordinates(x, y)
+    G::of_coordinates(x, y).mul_by_cofactor()
 }
 
 impl<G: CommitmentCurve> SRS<G> {
@@ -204,7 +205,8 @@ impl<G: CommitmentCurve> SRS<G> {
         self.lagrange_bases.insert(n, chunked_commitments);
     }
 
-    /// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
+    /// This function creates a trusted-setup SRS instance for circuits with
+    /// number of rows up to `depth`.
     pub fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
         let m = G::Map::setup();
 
@@ -234,7 +236,8 @@ impl<G: CommitmentCurve> SRS<G> {
 }
 
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function creates SRS instance for circuits with number of rows up to `depth`.
+    /// This function creates SRS instance for circuits with number of rows up
+    /// to `depth`.
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
@@ -267,7 +270,8 @@ where
     <G as CommitmentCurve>::Map: Sync,
     G::BaseField: PrimeField,
 {
-    /// This function creates SRS instance for circuits with number of rows up to `depth`.
+    /// This function creates SRS instance for circuits with number of rows up
+    /// to `depth`.
     pub fn create_parallel(depth: usize) -> Self {
         let m = G::Map::setup();
 

@@ -367,6 +367,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn report_exit(&mut self, _exit_code: &Self::Variable) {}
 
+    /// This function checks that the preimage is read correctly.
+    /// It adds 13 constraints, and 5 lookups for the communication channel.
+    /// In particular, at every step it writes the bytes of the preimage into
+    /// the channel (excluding the length bytes) and it reads the hash digest
+    /// from the channel when the preimage is fully read.
     fn request_preimage_write(
         &mut self,
         _addr: &Self::Variable,
@@ -406,8 +411,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // TODO: any constraints we should we add for pos?
 
         // EXTRA 13 CONSTRAINTS
-        // FIXME: for some reason constraints are counted correctly in
-        // SyscallReadPreimage but not in SyscallWritePreimage
 
         // Booleanity constraints
         {
@@ -438,6 +441,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3));
 
+            // Byte decomposition of the chunk processed
             // Note these constraints also hold when 0 preimage bytes are read
             {
                 // Constrain the byte decomposition of the preimage chunk When
@@ -520,8 +524,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             ));
         }
 
-        // COMMUNICATION CHANNEL: Read hash output.
-        // FIXME: is it a problem that 256 bits do not fit in a single field?
+        // COMMUNICATION CHANNEL: Read hash output
+        // FIXME: check if the most significant byte is zero or 0x02
+        //        so we know what exactly needs to be passed to the lookup
         let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
             acc * Expr::from(2u64.pow(32))
                 + self.variable(Self::Position::ScratchState(

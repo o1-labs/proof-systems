@@ -47,11 +47,14 @@
 ///
 /// Similar "mapping" intuition applies to lookup tables.
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
+    circuit_design::capabilities::{
+        ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+    },
     columns::ColumnIndexer,
     logup::LookupTableID,
 };
 use ark_ff::PrimeField;
+use std::marker::PhantomData;
 
 /// `MPrism` allows one to Something like a Prism, but for Maybe and not just any Applicative.
 ///
@@ -68,6 +71,34 @@ pub trait MPrism {
     fn traverse(&self, source: Self::Source) -> Option<Self::Target>;
 
     fn re_get(&self, target: Self::Target) -> Self::Source;
+}
+
+/// Identity `MPrism` from any type `T` to itself.
+///
+/// Can be used in many situations. E.g. when `foo1` and `foo2` both
+/// call `bar` that is parameterised by a lens, and `foo1` has
+/// identical context to `bar` (so requires the ID lens), but `foo2`
+/// needs an actual non-ID lens.
+#[derive(Clone, Copy, Debug)]
+pub struct IdMPrism<T>(pub PhantomData<T>);
+
+impl<T> Default for IdMPrism<T> {
+    fn default() -> Self {
+        IdMPrism(PhantomData)
+    }
+}
+
+impl<T> MPrism for IdMPrism<T> {
+    type Source = T;
+    type Target = T;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        Some(source)
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        target
+    }
 }
 
 pub struct ComposedMPrism<LHS, RHS> {
@@ -123,7 +154,7 @@ where
 struct SubEnv<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> {
     env: &'a mut Env1,
     lens: L,
-    phantom: core::marker::PhantomData<(F, CIx1)>,
+    phantom: PhantomData<(F, CIx1)>,
 }
 
 /// Sub environment with a lens that is mapping columns.
@@ -183,6 +214,10 @@ impl<
         self.env.assert_zero(cst);
     }
 
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
+        self.env.set_assert_mapper(mapper);
+    }
+
     fn constant(value: F) -> Self::Variable {
         Env1::constant(value)
     }
@@ -235,6 +270,10 @@ impl<
         self.0.assert_zero(cst);
     }
 
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
+        self.0.set_assert_mapper(mapper);
+    }
+
     fn constant(value: F) -> Self::Variable {
         Env1::constant(value)
     }
@@ -279,6 +318,10 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> Col
 
     fn assert_zero(&mut self, cst: Self::Variable) {
         self.0.env.assert_zero(cst);
+    }
+
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>) {
+        self.0.env.set_assert_mapper(mapper);
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -335,3 +378,32 @@ impl<
         self.0.env.lookup(lookup_id, value)
     }
 }
+
+impl<'a, F: PrimeField, CIx: ColumnIndexer, Env1: MultiRowReadCap<F, CIx>, L>
+    MultiRowReadCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
+{
+    /// Read value from a (row,column) position.
+    fn read_row_column(&mut self, row: usize, col: CIx) -> Self::Variable {
+        self.0.env.read_row_column(row, col)
+    }
+
+    /// Progresses to the next row.
+    fn next_row(&mut self) {
+        self.0.env.next_row();
+    }
+
+    /// Returns the current row.
+    fn curr_row(&self) -> usize {
+        self.0.env.curr_row()
+    }
+}
+
+impl<'a, F: PrimeField, CIx: ColumnIndexer, Env1: DirectWitnessCap<F, CIx>, L>
+    DirectWitnessCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
+{
+    fn variable_to_field(value: Self::Variable) -> F {
+        Env1::variable_to_field(value)
+    }
+}
+
+// TODO add traits for SubEnvColumn

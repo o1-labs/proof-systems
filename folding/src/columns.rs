@@ -1,16 +1,23 @@
+use crate::FoldingConfig;
 /// This module contains description of the additional columns used by our
 /// folding scheme implementation. The columns are the base layer of the folding
 /// scheme as they describe the basic expressiveness of the system.
 use ark_ec::AffineCurve;
+use derivative::Derivative;
 use kimchi::circuits::expr::Variable;
-
-use crate::FoldingConfig;
 
 /// Describes the additional columns. It is parametrized by a configuration for
 /// the folding scheme, described in the trait [FoldingConfig]. For instance,
 /// the configuration describes the initial columns of the circuit, the
 /// challenges and the underlying field.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Derivative)]
+#[derivative(
+    Hash(bound = "C: FoldingConfig"),
+    Debug(bound = "C: FoldingConfig"),
+    Clone(bound = "C: FoldingConfig"),
+    PartialEq(bound = "C: FoldingConfig"),
+    Eq(bound = "C: FoldingConfig")
+)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Variable<C::Column>),
     /// For the extra columns added by the module `quadraticization`.
