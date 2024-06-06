@@ -618,17 +618,6 @@ where
         self.h
     }
 
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    fn commit(
-        &self,
-        plnm: &DensePolynomial<G::ScalarField>,
-        num_chunks: usize,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
-    }
-
     /// Turns a non-hiding polynomial commitment into a hidding polynomial
     /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
     /// a random `w` per commitment.
@@ -691,6 +680,26 @@ where
         }
 
         PolyComm::<G> { elems }
+    }
+
+    /// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    fn commit(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
+    }
+
+    fn commit_custom(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_non_hiding(plnm, num_chunks), blinders)
     }
 
     fn commit_evaluations_non_hiding(

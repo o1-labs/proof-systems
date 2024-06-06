@@ -167,15 +167,6 @@ impl<
         self.full_srs.blinding_commitment()
     }
 
-    fn commit(
-        &self,
-        plnm: &DensePolynomial<F>,
-        num_chunks: usize,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        self.full_srs.commit(plnm, num_chunks, rng)
-    }
-
     fn mask_custom(
         &self,
         com: PolyComm<G>,
@@ -192,12 +183,30 @@ impl<
         self.full_srs.mask(comm, rng)
     }
 
+    fn commit(
+        &self,
+        plnm: &DensePolynomial<F>,
+        num_chunks: usize,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        self.full_srs.commit(plnm, num_chunks, rng)
+    }
+
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
     ) -> PolyComm<G> {
         self.full_srs.commit_non_hiding(plnm, num_chunks)
+    }
+
+    fn commit_custom(
+        &self,
+        plnm: &DensePolynomial<<G>::ScalarField>,
+        num_chunks: usize,
+        blinders: &PolyComm<<G>::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.full_srs.commit_custom(plnm, num_chunks, blinders)
     }
 
     fn commit_evaluations_non_hiding(
