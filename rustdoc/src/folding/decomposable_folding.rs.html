@@ -292,7 +292,7 @@
             [relaxed_extended_left_witness, relaxed_extended_right_witness],
         ) = env.unwrap();
 
-        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
+        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_cross_terms(
             <span class="comment">// FIXME: remove clone
             </span>relaxed_extended_left_instance.clone(),
             relaxed_extended_right_instance.clone(),
@@ -300,7 +300,7 @@
             <span class="kw-2">&amp;</span>error_commitments,
         );
 
-        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(
+        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_cross_terms(
             relaxed_extended_left_witness,
             relaxed_extended_right_witness,
             challenge,

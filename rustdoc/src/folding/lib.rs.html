@@ -382,6 +382,21 @@
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -537,9 +552,8 @@
             folding_expression(constraints);
         <span class="kw">let </span>zero = &lt;ScalarField&lt;CF&gt;&gt;::zero();
         <span class="kw">let </span>evals = std::iter::repeat(zero).take(domain.size()).collect();
-        <span class="kw">let </span>zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
-        <span class="kw">let </span>zero_commitment = srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>zero_vec_evals);
-        <span class="kw">let </span>zero_vec = zero_vec_evals;
+        <span class="kw">let </span>zero_vec = Evaluations::from_vec_and_domain(evals, domain);
+        <span class="kw">let </span>zero_commitment = srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>zero_vec);
         <span class="kw">let </span>final_expression = expression.clone().final_expression();
         <span class="kw">let </span>scheme = <span class="self">Self </span>{
             expression,
@@ -559,7 +573,17 @@
         <span class="self">self</span>.quadraticization_columns
     }
 
-    <span class="attr">#[allow(clippy::type_complexity)]
+    <span class="doccomment">/// This is the main entry point to fold two instances and their witnesses.
+    /// The process is as follows:
+    /// - Both pairs are relaxed.
+    /// - Both witnesses and instances are extended, i.e. all polynomials are
+    /// reduced to degree 2 and additional constraints are added to the
+    /// expression.
+    /// - While computing the commitments to the additional columns, the
+    /// commitments are added into a list to absorb them into the sponge later.
+    /// - The error terms are computed and committed.
+    /// - The sponge absorbs the commitments and challenges.
+    </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>fold_instance_witness_pair&lt;A, B, Sponge&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         a: A,
@@ -585,13 +609,18 @@
             <span class="self">self</span>.domain,
             <span class="prelude-val">None</span>,
         );
-        <span class="comment">// Side-effect: commitments are added in both relaxed (extended) instance.
+        <span class="comment">// Computing the additional columns, resulting of the quadritization
+        // process.
+        // Side-effect: commitments are added in both relaxed (extended) instance.
         </span><span class="kw">let </span>env: ExtendedEnv&lt;CF&gt; =
             env.compute_extension(<span class="kw-2">&amp;</span><span class="self">self</span>.extended_witness_generator, <span class="self">self</span>.srs);
-        <span class="kw">let </span>error: [Vec&lt;ScalarField&lt;CF&gt;&gt;; <span class="number">2</span>] = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
+
+        <span class="comment">// Computing the error terms
+        </span><span class="kw">let </span>error: [Vec&lt;ScalarField&lt;CF&gt;&gt;; <span class="number">2</span>] = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
 
-        <span class="kw">let </span>error_commitments = error_evals
+        <span class="comment">// Committing to the error terms
+        </span><span class="kw">let </span>error_commitments = error_evals
             .iter()
             .map(|e| <span class="self">self</span>.srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, e))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -607,7 +636,8 @@
         <span class="kw">let </span>t_0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>];
         <span class="kw">let </span>t_1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>];
 
-        <span class="kw">let </span>to_absorb = env.to_absorb(t_0, t_1);
+        <span class="comment">// Absorbing the commitments into the sponge
+        </span><span class="kw">let </span>to_absorb = env.to_absorb(t_0, t_1);
         fq_sponge.absorb_fr(<span class="kw-2">&amp;</span>to_absorb.<span class="number">0</span>);
         fq_sponge.absorb_g(<span class="kw-2">&amp;</span>to_absorb.<span class="number">1</span>);
 
@@ -618,7 +648,7 @@
             [relaxed_extended_left_witness, relaxed_extended_right_witness],
         ) = env.unwrap();
 
-        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_error(
+        <span class="kw">let </span>folded_instance = RelaxedInstance::combine_and_sub_cross_terms(
             <span class="comment">// FIXME: remove clone
             </span>relaxed_extended_left_instance.clone(),
             relaxed_extended_right_instance.clone(),
@@ -626,7 +656,7 @@
             <span class="kw-2">&amp;</span>error_commitments,
         );
 
-        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_error(
+        <span class="kw">let </span>folded_witness = RelaxedWitness::combine_and_sub_cross_terms(
             relaxed_extended_left_witness,
             relaxed_extended_right_witness,
             challenge,
@@ -672,7 +702,7 @@
 
         <span class="kw">let </span>challenge = fq_sponge.challenge();
 
-        RelaxedInstance::combine_and_sub_error(a, b, challenge, <span class="kw-2">&amp;</span>error_commitments)
+        RelaxedInstance::combine_and_sub_cross_terms(a, b, challenge, <span class="kw-2">&amp;</span>error_commitments)
     }
 }
 

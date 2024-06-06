@@ -437,7 +437,26 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the functions used to compute the error terms, as
+//! described in the [top-level documentation of the expressions
+//! module](crate::expressions).
+
+</span><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
     eval_leaf::EvalLeaf,
@@ -617,7 +636,13 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_error&lt;C: FoldingConfig&gt;(
+<span class="doccomment">/// Computes the error terms of a folding/homogeneous expression.
+/// The extended environment contains all the evaluations of the columns,
+/// including the ones added by the quadraticization process.
+/// `u` is the variables used to homogeneize the expression.
+/// The output is a pair of error terms. To see how it is computed, see the
+/// [top-level documentation of the expressions module](crate::expressions).
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_error&lt;C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>IntegratedFoldingExpr&lt;C&gt;,
     env: <span class="kw-2">&amp;</span>ExtendedEnv&lt;C&gt;,
     u: (ScalarField&lt;C&gt;, ScalarField&lt;C&gt;),
@@ -711,7 +736,12 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExtendedEnv&lt;CF: FoldingConfig&gt; {
+<span class="doccomment">/// An extended environment contains the evaluations of all the columns, including
+/// the ones added by the quadraticization process. It also contains the
+/// the two instances and witnesses that are being folded.
+/// The domain is required to define the polynomial size of the evaluations of
+/// the error terms.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExtendedEnv&lt;CF: FoldingConfig&gt; {
     inner: CF::Env,
     instances: [RelaxedInstance&lt;CF::Curve, CF::Instance&gt;; <span class="number">2</span>],
     witnesses: [RelaxedWitness&lt;CF::Curve, CF::Witness&gt;; <span class="number">2</span>],

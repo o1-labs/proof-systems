@@ -33,11 +33,16 @@
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::FoldingConfig;
-<span class="doccomment">/// This module contains description of the additional columns used by our
-/// folding scheme implementation. The columns are the base layer of the folding
-/// scheme as they describe the basic expressiveness of the system.
-</span><span class="kw">use </span>ark_ec::AffineCurve;
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module contains description of the additional columns used by our
+//! folding scheme implementation. The columns are the base layer of the folding
+//! scheme as they describe the basic expressiveness of the system.
+
+</span><span class="kw">use </span><span class="kw">crate</span>::FoldingConfig;
+<span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
 
@@ -54,12 +59,15 @@
     Eq(bound = <span class="string">&quot;C: FoldingConfig&quot;</span>)
 )]
 </span><span class="kw">pub enum </span>ExtendedFoldingColumn&lt;C: FoldingConfig&gt; {
-    Inner(Variable&lt;C::Column&gt;),
+    <span class="doccomment">/// The variables of the initial circuit, without quadraticization and not
+    /// homogeonized.
+    </span>Inner(Variable&lt;C::Column&gt;),
     <span class="doccomment">/// For the extra columns added by the module `quadraticization`.
     </span>WitnessExtended(usize),
     <span class="doccomment">/// The error term introduced in the &quot;relaxed&quot; instance.
     </span>Error,
-    Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
+    <span class="doccomment">/// A constant value in our expression
+    </span>Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     <span class="doccomment">/// A challenge used by the PIOP or the folding scheme.
     </span>Challenge(C::Challenge),
     <span class="doccomment">/// A list of randomizer to combine expressions
