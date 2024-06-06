@@ -309,6 +309,13 @@ pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
+    /// [sub_error] takes two cross-terms `T1` and `T2` and a challenge `c`, and
+    /// compute the evaluations `c T1 + c^2 T2`. This is the expected behavior
+    /// when working with homogeneous polynomials of degree 3. The values is
+    /// saved into the field `error_vec` of the relaxed witness.
+    /// This corresponds to the step 4, page 15 of the Nova paper, but with two
+    /// cross terms (T1 and T2), see [top-level
+    /// documentation](crate::expressions).
     fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
         let [e0, e1] = errors;
 
