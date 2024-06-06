@@ -151,6 +151,47 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>chunked;
 <span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
@@ -187,16 +228,12 @@
     <span class="doccomment">/// Get the group element used for blinding commitments
     </span><span class="kw">fn </span>blinding_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G;
 
-    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    </span><span class="kw">fn </span>commit(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
-        num_chunks: usize,
-        rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
-    ) -&gt; BlindedCommitment&lt;G&gt;;
-
     <span class="doccomment">/// Same as [SRS::mask] except that you can pass the blinders manually.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
     </span><span class="kw">fn </span>mask_custom(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         com: PolyComm&lt;G&gt;,
@@ -206,6 +243,9 @@
     <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial
     /// commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with
     /// a random `w` per commitment.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
     </span><span class="kw">fn </span>mask(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         comm: PolyComm&lt;G&gt;,
@@ -221,13 +261,45 @@
     /// polynomial commitment
     /// The function returns an unbounded commitment vector (which splits the
     /// commitment into several commitments of size at most `n`).
+    /// It is analogous to [SRS::commit_evaluations_non_hiding] but for
+    /// polynomials.
     </span><span class="kw">fn </span>commit_non_hiding(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
         num_chunks: usize,
     ) -&gt; PolyComm&lt;G&gt;;
 
-    <span class="kw">fn </span>commit_evaluations_non_hiding(
+    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    /// It is analogous to [SRS::commit_evaluations] but for polynomials.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    </span><span class="kw">fn </span>commit(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+        num_chunks: usize,
+        rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
+    ) -&gt; BlindedCommitment&lt;G&gt;;
+
+    <span class="doccomment">/// Commit to a polynomial, with custom blinding factors.
+    /// It is a combination of [SRS::commit] and [SRS::mask_custom].
+    /// It is analogous to [SRS::commit_evaluations_custom] but for polynomials.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
+    </span><span class="kw">fn </span>commit_custom(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+        num_chunks: usize,
+        blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt;;
+
+    <span class="doccomment">/// Commit to evaluations, without blinding factors.
+    /// It is analogous to [SRS::commit_non_hiding] but for evaluations.
+    </span><span class="kw">fn </span>commit_evaluations_non_hiding(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain: D&lt;G::ScalarField&gt;,
         plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
@@ -235,6 +307,10 @@
 
     <span class="doccomment">/// Commit to evaluations with blinding factors, generated using the random
     /// number generator `rng`.
+    /// It is analogous to [SRS::commit] but for evaluations.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
     </span><span class="kw">fn </span>commit_evaluations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain: D&lt;G::ScalarField&gt;,
@@ -244,6 +320,12 @@
 
     <span class="doccomment">/// Commit to evaluations with custom blinding factors.
     /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
+    /// It is analogous to [SRS::commit_custom] but for evaluations.
+    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
+    /// keep the blinding factors and the commitment together. The blinded
+    /// commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// are not the same length than the number of chunks commitments have.
     </span><span class="kw">fn </span>commit_evaluations_custom(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain: D&lt;G::ScalarField&gt;,

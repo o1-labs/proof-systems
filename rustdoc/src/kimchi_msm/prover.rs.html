@@ -558,7 +558,6 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -697,15 +696,14 @@
     };
 
     <span class="kw">let </span>witness_comms: Witness&lt;N_WIT, PolyComm&lt;G&gt;&gt; = {
+        <span class="kw">let </span>blinders = PolyComm {
+            elems: <span class="macro">vec!</span>[G::ScalarField::one()],
+        };
         <span class="kw">let </span>comm = {
             |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| {
-                <span class="kw">let </span><span class="kw-2">mut </span>comm = srs.commit_non_hiding(poly, <span class="number">1</span>);
                 <span class="comment">// In case the column polynomial is all zeroes, we want to mask the commitment
-                </span>comm = srs
-                    .mask_custom(comm.clone(), <span class="kw-2">&amp;</span>comm.map(|<span class="kw">_</span>| G::ScalarField::one()))
-                    .unwrap()
-                    .commitment;
-                comm
+                </span><span class="kw">let </span>comm = srs.commit_custom(poly, <span class="number">1</span>, <span class="kw-2">&amp;</span>blinders).unwrap();
+                comm.commitment
             }
         };
         (<span class="kw-2">&amp;</span>witness_polys)

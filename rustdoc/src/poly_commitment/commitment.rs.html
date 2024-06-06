@@ -1382,6 +1382,15 @@
 <a href="#1382" id="1382">1382</a>
 <a href="#1383" id="1383">1383</a>
 <a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -2002,17 +2011,6 @@
         <span class="self">self</span>.h
     }
 
-    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    </span><span class="kw">fn </span>commit(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
-        num_chunks: usize,
-        rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
-    ) -&gt; BlindedCommitment&lt;G&gt; {
-        <span class="self">self</span>.mask(<span class="self">self</span>.commit_non_hiding(plnm, num_chunks), rng)
-    }
-
     <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial
     /// commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with
     /// a random `w` per commitment.
@@ -2075,6 +2073,26 @@
         }
 
         PolyComm::&lt;G&gt; { elems }
+    }
+
+    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    </span><span class="kw">fn </span>commit(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+        num_chunks: usize,
+        rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
+    ) -&gt; BlindedCommitment&lt;G&gt; {
+        <span class="self">self</span>.mask(<span class="self">self</span>.commit_non_hiding(plnm, num_chunks), rng)
+    }
+
+    <span class="kw">fn </span>commit_custom(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+        num_chunks: usize,
+        blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt; {
+        <span class="self">self</span>.mask_custom(<span class="self">self</span>.commit_non_hiding(plnm, num_chunks), blinders)
     }
 
     <span class="kw">fn </span>commit_evaluations_non_hiding(
