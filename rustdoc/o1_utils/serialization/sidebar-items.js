@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["ser"],"struct":["SerdeAs"]};
+window.SIDEBAR_ITEMS = {"mod":["ser"],"struct":["SerdeAs","SerdeAsUnchecked"]};

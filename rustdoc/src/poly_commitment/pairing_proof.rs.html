@@ -548,7 +548,7 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Serialize, Deserialize)]
+<span class="attr">#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PairingSRS&lt;Pair: PairingEngine&gt; {
     <span class="doccomment">/// The full SRS is the one used by the prover. Can be seen as the &quot;proving
     /// key&quot;/&quot;secret key&quot;
