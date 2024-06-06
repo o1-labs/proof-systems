@@ -65,9 +65,9 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
-        let instance = ExtendedInstance::extend(self);
+        let extended_instance = ExtendedInstance::extend(self);
         RelaxedInstance {
-            instance,
+            extended_instance,
             u: G::ScalarField::one(),
             error_commitment: zero_commit,
         }
@@ -82,9 +82,9 @@ pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// returning a relaxed witness which is composed by the extended witness and the error vector
     /// that is set to the zero polynomial.
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
-        let witness = ExtendedWitness::extend(self);
+        let extended_witness = ExtendedWitness::extend(self);
         RelaxedWitness {
-            witness,
+            extended_witness,
             error_vec: zero_poly.clone(),
         }
     }
@@ -96,10 +96,7 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     /// The map will be later filled by the quadraticization witness generator.
     fn extend(witness: W) -> ExtendedWitness<G, W> {
         let extended = BTreeMap::new();
-        ExtendedWitness {
-            inner: witness,
-            extended,
-        }
+        ExtendedWitness { witness, extended }
     }
 }
 
@@ -108,7 +105,7 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     /// followed by an empty vector.
     fn extend(instance: I) -> ExtendedInstance<G, I> {
         ExtendedInstance {
-            inner: instance,
+            instance,
             extended: vec![],
         }
     }
@@ -119,77 +116,46 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 /// quadriticization, the scalar `u` and a commitment to the
 /// slack/error term.
 /// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
+// FIXME: We should forbid cloning, for memory footprint.
+#[derive(Clone)]
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The original instance, extended with the columns added by
     /// quadriticization
-    instance: ExtendedInstance<G, I>,
+    pub extended_instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
-    error_commitment: PolyComm<G>,
+    pub error_commitment: PolyComm<G>,
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
-    /// Return the original instance that has been relaxed, with the extra
-    /// columns added by quadraticization
-    pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
-        &self.instance
-    }
-
     /// Returns the elements to be absorbed by the sponge
     ///
     /// The scalar elements of the are appended with the scalar `u` and the
     /// commitments are appended by the commitment to the error term.
     pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        let mut elements = self.instance.to_absorb();
+        let mut elements = self.extended_instance.to_absorb();
         elements.0.push(self.u);
         assert_eq!(self.error_commitment.elems.len(), 1);
         elements.1.push(self.error_commitment.elems[0]);
         elements
     }
 
-    pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
-        &mut self.instance
-    }
-
     /// Provides access to commitments to the extra columns added by
     /// quadraticization
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
-        self.instance.extended.get(i)
-    }
-
-    /// Provides access to a commitment to the error column
-    pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
-        &self.error_commitment
-    }
-
-    /// Return the number of additional columns added by quadraticization
-    pub fn get_number_of_additional_columns(&self) -> usize {
-        self.instance.extended.len()
+        self.extended_instance.extended.get(i)
     }
 }
 
 // -- Relaxed witnesses
 pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
-    pub witness: ExtendedWitness<G, W>,
+    pub extended_witness: ExtendedWitness<G, W>,
     pub error_vec: Evals<G::ScalarField>,
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
-        &self.witness
-    }
-
-    pub(crate) fn inner_mut(&mut self) -> &mut ExtendedWitness<G, W> {
-        &mut self.witness
-    }
-
     /// Provides access to the extra columns added by quadraticization
     pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
-        self.inner().extended.get(i)
-    }
-
-    /// Provides access to the error column
-    pub fn get_error_column(&self) -> &Evals<G::ScalarField> {
-        &self.error_vec
+        self.extended_witness.extended.get(i)
     }
 }
 
@@ -197,23 +163,23 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
 /// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
-    pub inner: W,
-    /// Extra columns added by quadraticization to lower the degree of expressions
-    /// to 2
+    pub witness: W,
+    /// Extra columns added by quadraticization to lower the degree of
+    /// expressions to 2
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWitness<G, W> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
-            inner: inner1,
+            witness: witness1,
             extended: ex1,
         } = a;
         let Self {
-            inner: inner2,
+            witness: witness2,
             extended: ex2,
         } = b;
-        let inner = W::combine(inner1, inner2, challenge);
+        let witness = W::combine(witness1, witness2, challenge);
         let extended = ex1
             .into_iter()
             .zip(ex2)
@@ -228,17 +194,13 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWit
                 (i, evals)
             })
             .collect();
-        Self { inner, extended }
+        Self { witness, extended }
     }
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {}
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
-    pub(crate) fn inner(&self) -> &W {
-        &self.inner
-    }
-
     pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
         self.extended.insert(i, evals);
     }
@@ -253,8 +215,18 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 }
 
 // -- Extended instance
+/// An extended instance is an instance that has been extended with extra
+/// columns by quadraticization.
+/// The original instance is stored in the `instance` field.
+/// The extra columns are stored in the `extended` field.
+/// For instance, if the original instance has `n` columns, and the system is
+/// described by a degree 3 polynomial, an additional column will be added, and
+/// `extended` will contain `1` commitment.
+// FIXME: We should forbid cloning, for memory footprint.
+#[derive(Clone)]
 pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
-    pub inner: I,
+    /// The original instance.
+    pub instance: I,
     /// Commitments to the extra columns added by quadraticization
     pub extended: Vec<PolyComm<G>>,
 }
@@ -262,20 +234,20 @@ pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
 impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for ExtendedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
-            inner: inner1,
+            instance: instance1,
             extended: ex1,
         } = a;
         let Self {
-            inner: inner2,
+            instance: instance2,
             extended: ex2,
         } = b;
-        let inner = I::combine(inner1, inner2, challenge);
+        let instance = I::combine(instance1, instance2, challenge);
         let extended = ex1
             .into_iter()
             .zip(ex2)
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
-        Self { inner, extended }
+        Self { instance, extended }
     }
 }
 
@@ -286,7 +258,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     /// are appended to the existing commitments of the initial instance
     /// to be absorbed. The scalars are unchanged.
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        let mut elements = self.inner.to_absorb();
+        let mut elements = self.instance.to_absorb();
         let extended_commitments = self.extended.iter().map(|commit| {
             assert_eq!(commit.elems.len(), 1);
             commit.elems[0]
@@ -296,13 +268,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     }
 
     fn get_alphas(&self) -> &Alphas<G::ScalarField> {
-        self.inner.get_alphas()
-    }
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
-    pub(crate) fn inner(&self) -> &I {
-        &self.inner
+        self.instance.get_alphas()
     }
 }
 
@@ -385,20 +351,20 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let challenge_cube = challenge * challenge * challenge;
         let RelaxedInstance {
-            instance: ins1,
+            extended_instance: instance1,
             u: u1,
             error_commitment: e1,
         } = a;
         let RelaxedInstance {
-            instance: ins2,
+            extended_instance: instance2,
             u: u2,
             error_commitment: e2,
         } = b;
-        let instance = <ExtendedInstance<G, I>>::combine(ins1, ins2, challenge);
+        let extended_instance = <ExtendedInstance<G, I>>::combine(instance1, instance2, challenge);
         let u = u1 + u2 * challenge;
         let error_commitment = &e1 + &e2.scale(challenge_cube);
         RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment,
         }
@@ -408,14 +374,14 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
         let RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment: error,
         } = self;
         let [e0, e1] = error_commitments;
         let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
         RelaxedInstance {
-            instance,
+            extended_instance,
             u,
             error_commitment,
         }
@@ -434,20 +400,23 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
 impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let RelaxedWitness {
-            witness: a,
+            extended_witness: a,
             error_vec: mut e1,
         } = a;
         let RelaxedWitness {
-            witness: b,
+            extended_witness: b,
             error_vec: e2,
         } = b;
         let challenge_cube = (challenge * challenge) * challenge;
-        let witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
+        let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
         for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
             *a += b * challenge_cube;
         }
         let error_vec = e1;
-        RelaxedWitness { witness, error_vec }
+        RelaxedWitness {
+            extended_witness,
+            error_vec,
+        }
     }
 }
 
