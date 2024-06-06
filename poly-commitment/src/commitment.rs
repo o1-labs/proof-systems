@@ -28,9 +28,11 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial as _};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use std::iter::Iterator;
+use serde::{de::Visitor, Deserialize, Serialize};
+use serde_with::{
+    de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
+};
+use std::{iter::Iterator, marker::PhantomData};
 
 use super::evaluation_proof::*;
 
@@ -55,6 +57,65 @@ where
 impl<T> PolyComm<T> {
     pub fn new(elems: Vec<T>) -> Self {
         Self { elems }
+    }
+}
+
+impl<T, U> SerializeAs<PolyComm<T>> for PolyComm<U>
+where
+    U: SerializeAs<T>,
+{
+    fn serialize_as<S>(source: &PolyComm<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_seq(source.elems.iter().map(|e| SerializeAsWrap::<T, U>::new(e)))
+    }
+}
+
+impl<'de, T, U> DeserializeAs<'de, PolyComm<T>> for PolyComm<U>
+where
+    U: DeserializeAs<'de, T>,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<PolyComm<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SeqVisitor<T, U> {
+            marker: PhantomData<(T, U)>,
+        }
+
+        impl<'de, T, U> Visitor<'de> for SeqVisitor<T, U>
+        where
+            U: DeserializeAs<'de, T>,
+        {
+            type Value = PolyComm<T>;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                #[allow(clippy::redundant_closure_call)]
+                let mut elems = vec![];
+
+                while let Some(value) = seq
+                    .next_element()?
+                    .map(|v: DeserializeAsWrap<T, U>| v.into_inner())
+                {
+                    elems.push(value);
+                }
+
+                Ok(PolyComm { elems })
+            }
+        }
+
+        let visitor = SeqVisitor::<T, U> {
+            marker: PhantomData,
+        };
+        deserializer.deserialize_seq(visitor)
     }
 }
 

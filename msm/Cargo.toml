@@ -13,6 +13,7 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
+ark-std.workspace = true
 ark-bn254.workspace = true
 ark-serialize.workspace = true
 log.workspace = true

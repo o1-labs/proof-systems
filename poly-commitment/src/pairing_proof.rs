@@ -43,7 +43,7 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: PairingEngine> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
     /// key"/"secret key"
