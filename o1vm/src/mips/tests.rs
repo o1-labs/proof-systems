@@ -75,8 +75,6 @@ fn test_mips_number_constraints() {
                 SyscallMmap => assert_num_constraints(&instr, 11),
                 SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 22),
                 SyscallWritePreimage => assert_num_constraints(&instr, 30),
-                // FIXME: for some reason it does not matter if we comment out
-                // the constraints in request_preimage_write, this is always 30
             },
             JType(jtype) => match jtype {
                 Jump => assert_num_constraints(&instr, 0),
@@ -225,7 +223,8 @@ mod unit {
         // same register
         let reg_src = 1;
         let reg_dest = 2;
-        // Instruction: 0b00100100001000010110110011101000 addiu $at, $at, 27880
+        // Instruction: 0b00100100001000010110110011101000
+        // addiu $at, $at, 27880
         write_instruction(
             &mut dummy_env,
             InstructionParts {
@@ -251,7 +250,9 @@ mod unit {
         let mut rng = o1_utils::tests::make_test_rng();
         // lw instruction
         let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b10001111101001000000000000000000 lw $a0, 0(29) a0 = 4
+        // Instruction: 0b10001111101001000000000000000000
+        // lw $a0, 0(29) a0 = 4
+
         // Random address in SP Address has only one index
 
         let addr: u32 = rng.gen_range(0u32..100u32);
@@ -308,7 +309,8 @@ mod unit {
         let mut rng = o1_utils::tests::make_test_rng();
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b00111100000000010000000000001010 lui at, 0xa
+        // Instruction: 0b00111100000000010000000000001010
+        // lui at, 0xa
         write_instruction(
             &mut dummy_env,
             InstructionParts {

@@ -144,8 +144,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
-        // No-op for witness Do not assert that _assert_equals_zero is zero
-        // here! Some variables may have placeholders that do not faithfully
+        // No-op for witness
+        // Do not assert that _assert_equals_zero is zero here!
+        // Some variables may have placeholders that do not faithfully
         // represent the underlying values.
     }
 
@@ -679,9 +680,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             }
         }
-        // Update the chunk of at most 4 bytes read from the preimage FIXME:
-        // this is not linked to the registers content in any way. Is there
-        //        anywhere else where the bytes are stored in the scratch state?
+        // Update the chunk of at most 4 bytes read from the preimage
+        // FIXME: this is not linked to the registers content in any way.
+        //        Is there anywhere else where the bytes are stored in the
+        //        scratch state?
         self.write_column(Column::ScratchState(MIPS_PREIMAGE_CHUNK_OFF), chunk);
 
         // Update the number of bytes read from the oracle in this step (can
