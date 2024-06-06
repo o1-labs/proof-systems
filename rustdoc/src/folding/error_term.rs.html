@@ -452,6 +452,18 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the functions used to compute the error terms, as
 //! described in the [top-level documentation of the expressions
 //! module](crate::expressions).
@@ -467,7 +479,7 @@
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
-<span class="kw">use </span>poly_commitment::SRS;
+<span class="kw">use </span>poly_commitment::{PolyComm, SRS};
 
 <span class="comment">// FIXME: for optimisation, as values are not necessarily Fp elements and are
 // relatively small, we could get rid of the scalar field objects, and only use
@@ -873,6 +885,12 @@
     /// the given side.
     /// The commitments are added to the instance, in the same order for both
     /// side.
+    /// Note that this function is only going to be called on the left instance
+    /// once. When we fold the second time, the left instance will already be
+    /// relaxed and will have the extended columns.
+    /// Therefore, the blinder is always the one provided by the user, and it is
+    /// saved in the field `blinder` in the case of a relaxed instance that has
+    /// been built from a non-relaxed one.
     </span><span class="kw">fn </span>compute_extended_commitments(<span class="kw-2">mut </span><span class="self">self</span>, srs: <span class="kw-2">&amp;</span>CF::Srs, side: Side) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(relaxed_instance, relaxed_witness) = <span class="kw">match </span>side {
             Side::Left =&gt; (<span class="kw-2">&amp;mut </span><span class="self">self</span>.instances[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.witnesses[<span class="number">0</span>]),
@@ -880,10 +898,16 @@
         };
 
         <span class="comment">// FIXME: use parallelisation
-        </span><span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>relaxed_witness.extended_witness.extended.iter().enumerate() {
-            <span class="comment">//in case any where to be missing for some reason
+        </span><span class="kw">let </span>blinder = PolyComm::new(<span class="macro">vec!</span>[relaxed_instance.blinder]);
+        <span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>relaxed_witness.extended_witness.extended.iter().enumerate() {
+            <span class="comment">// in case any where to be missing for some reason
             </span><span class="macro">assert_eq!</span>(<span class="kw-2">*</span>i, expected_i);
-            <span class="kw">let </span>commit = srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, wit);
+            <span class="comment">// Blinding the commitments to support the case the witness is zero.
+            // The IVC circuit expects to have non-zero commitments.
+            </span><span class="kw">let </span>commit = srs
+                .commit_evaluations_custom(<span class="self">self</span>.domain, wit, <span class="kw-2">&amp;</span>blinder)
+                .unwrap()
+                .commitment;
             relaxed_instance.extended_instance.extended.push(commit)
         }
         <span class="comment">// FIXME: maybe returning a value is not necessary as it does inplace operations.

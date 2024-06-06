@@ -436,6 +436,14 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -490,6 +498,9 @@
     </span><span class="kw">pub </span>challenges: [&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField; Challenge::COUNT],
     <span class="doccomment">/// Reuses the Alphas defined in the example of folding
     </span><span class="kw">pub </span>alphas: Alphas&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
+
+    <span class="doccomment">/// Blinder used in the polynomial commitment scheme
+    </span><span class="kw">pub </span>blinder: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
@@ -500,6 +511,7 @@
             }),
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+            blinder: a.blinder + challenge * b.blinder,
         }
     }
 }
@@ -517,6 +529,10 @@
 
     <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.alphas
+    }
+
+    <span class="kw">fn </span>get_blinder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; &lt;G&gt;::ScalarField {
+        <span class="self">self</span>.blinder
     }
 }
 

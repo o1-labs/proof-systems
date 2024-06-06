@@ -394,6 +394,13 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -414,7 +421,7 @@
 </span><span class="comment">// TODO: the documentation above might need more descriptions.
 
 </span><span class="kw">use </span>ark_ec::AffineCurve;
-<span class="kw">use </span>ark_ff::{Field, Zero};
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
 <span class="kw">use </span>expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
@@ -613,10 +620,17 @@
         </span><span class="kw">let </span>error: [Vec&lt;ScalarField&lt;CF&gt;&gt;; <span class="number">2</span>] = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
 
-        <span class="comment">// Committing to the error terms
-        </span><span class="kw">let </span>error_commitments = error_evals
+        <span class="comment">// Committing to the cross terms
+        // Default blinder for commiting to the cross terms
+        </span><span class="kw">let </span>blinders = PolyComm::new(<span class="macro">vec!</span>[ScalarField::&lt;CF&gt;::one()]);
+        <span class="kw">let </span>error_commitments = error_evals
             .iter()
-            .map(|e| <span class="self">self</span>.srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, e))
+            .map(|e| {
+                <span class="self">self</span>.srs
+                    .commit_evaluations_custom(<span class="self">self</span>.domain, e, <span class="kw-2">&amp;</span>blinders)
+                    .unwrap()
+                    .commitment
+            })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>error_commitments: [PolyComm&lt;CF::Curve&gt;; <span class="number">2</span>] = error_commitments.try_into().unwrap();
 

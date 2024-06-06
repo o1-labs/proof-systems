@@ -1054,6 +1054,20 @@
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
 <a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1312,6 +1326,20 @@
 //! T&#39;&#39; = T + r T&#39;
 //! u&#39;&#39; = u + r u&#39;
 //! ```
+//!
+//! ## Supporting polynomial commitment blinders
+//!
+//! The library also supports polynomial commitment blinders. The blinding
+//! factors are represented as new variables in the polynomial describing the NP
+//! relation. The blinding factors are then aggregated in the same way as the
+//! other variables.
+//! We want to support blinders in the polynomial commitment scheme to avoid
+//! committing to the zero zero polynomial. Using a blinder, we can always
+//! suppose that our elliptic curves points are not the point at infinity.
+//! The library handles the blinding factors as variables in each instance.
+//!
+//! When doing the final proof, the blinder factor that will need to be used is
+//! the one from the final relaxed instance.
 
 </span><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
