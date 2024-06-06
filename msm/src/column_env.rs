@@ -23,6 +23,11 @@ pub struct ColumnEnvironment<
     /// The witness column polynomials. Includes relation columns,
     /// fixed selector columns, and dynamic selector columns.
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
+    /// Fixed selectors. These are "predefined" with the circuit, and,
+    /// unlike public input or dynamic selectors, are not part of the
+    /// witness that users are supposed to change after the circuit is
+    /// fixed.
+    pub fixed_selectors: &'a [Evaluations<F, Radix2EvaluationDomain<F>>; N_FSEL],
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -39,13 +44,13 @@ pub struct ColumnEnvironment<
 
 impl<
         'a,
-        const N: usize,
+        const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
         const N_FSEL: usize,
         F: FftField,
         ID: LookupTableID,
-    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, N_REL, N_DSEL, N_FSEL, F, ID>
+    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
 {
     type Column = crate::columns::Column;
 
@@ -54,8 +59,8 @@ impl<
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         // TODO: when non-literal constant generics are available, substitute N with N_REG + N_DSEL + N_FSEL
-        assert!(N == N_REL + N_DSEL + N_FSEL);
-        assert!(N == self.witness.len());
+        assert!(N_WIT == N_REL + N_DSEL);
+        assert!(N_WIT == self.witness.len());
         match *col {
             // Handling the "relation columns" at the beginning of the witness columns
             Self::Column::Relation(i) => {
@@ -72,7 +77,7 @@ impl<
             }
             Self::Column::FixedSelector(i) => {
                 assert!(i < N_FSEL, "Requested fixed selector with index {:?} but the given witness is meant for {:?} fixed selector columns", i, N_FSEL);
-                let res = &self.witness[N_REL + N_DSEL + i];
+                let res = &self.fixed_selectors[i];
                 Some(res)
             }
             Self::Column::LookupPartialSum((table_id, i)) => {
@@ -124,9 +129,7 @@ impl<
                 let domain_size = match *col {
                     Self::Column::Relation(i) => self.witness[i].domain().size,
                     Self::Column::DynamicSelector(i) => self.witness[N_REL + i].domain().size,
-                    Self::Column::FixedSelector(i) => {
-                        self.witness[N_REL + N_DSEL + i].domain().size
-                    }
+                    Self::Column::FixedSelector(i) => self.fixed_selectors[i].domain().size,
                     _ => panic!("Impossible"),
                 };
                 if self.domain.d1.size == domain_size {

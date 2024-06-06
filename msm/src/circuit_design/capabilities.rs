@@ -11,16 +11,24 @@ use ark_ff::PrimeField;
 /// Environment capability for accessing and reading columns. This is necessary for
 /// building constraints.
 pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
+    // NB: 'static here means that `Variable` does not contain any
+    // references with a lifetime less than 'static. Which is true in
+    // our case. Necessary for `set_assert_mapper`
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Neg<Output = Self::Variable>
         + From<u64>
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + 'static;
 
     /// Asserts that the value is zero.
     fn assert_zero(&mut self, cst: Self::Variable);
+
+    /// Sets an assert predicate `f(X)` such that when assert_zero is
+    /// called on x, it will actually perform `assert_zero(f(x))`.
+    fn set_assert_mapper(&mut self, mapper: Box<dyn Fn(Self::Variable) -> Self::Variable>);
 
     /// Reads value from a column position.
     fn read_column(&self, col: CIx) -> Self::Variable;

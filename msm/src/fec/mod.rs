@@ -14,14 +14,9 @@ mod tests {
             lookups::LookupTable,
         },
         logup::LookupTableID,
-        prover::prove,
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        Ff1, Fp,
     };
     use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
 
@@ -72,11 +67,6 @@ mod tests {
     pub fn test_fec_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
-
-        let srs_trapdoor = Fp::rand(&mut rng);
-        let mut srs: PairingSRS<BN254> = PairingSRS::create(srs_trapdoor, domain.d1.size as usize);
-        srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
@@ -87,45 +77,23 @@ mod tests {
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64));
         }
-        let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
-        // generate the proof
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            _,
+        crate::test::test_completeness_generic::<
             FEC_N_COLUMNS,
             FEC_N_COLUMNS,
             0,
             0,
-            _,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
-        .unwrap();
-
-        // verify the proof
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            FEC_N_COLUMNS,
-            FEC_N_COLUMNS,
-            0,
-            0,
-            0,
+            LookupTable<Ff1>,
             _,
         >(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(domain_size),
+            constraints,
+            Box::new([]),
+            proof_inputs,
+            domain_size,
+            &mut rng,
         );
-
-        assert!(verifies);
     }
 }

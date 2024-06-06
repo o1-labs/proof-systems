@@ -416,7 +416,11 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// to meet the proof.
 ///
 /// Returns
-///    `res = \sum_{k=1}^{|polys|} \sum_{i=1}^{|segments[k]|} polyscale^{k*n+i} ( \sum_j polys[k][j][i] * evalscale^j )`
+/// ```text
+/// |polys| |segments[k]|
+///    Σ         Σ         polyscale^{k*n+i} (Σ polys[k][j][i] * evalscale^j)
+///  k = 1     i = 1                          j
+/// ```
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
     polyscale: &F,
@@ -456,10 +460,17 @@ pub struct Evaluation<G>
 where
     G: AffineCurve,
 {
-    /// The commitment of the polynomial being evaluated
+    /// The commitment of the polynomial being evaluated.
+    /// Note that PolyComm contains a vector of commitments, which handles the
+    /// case when chunking is used, i.e. when the polynomial degree is higher
+    /// than the SRS size.
     pub commitment: PolyComm<G>,
 
-    /// Contains an evaluation table
+    /// Contains an evaluation table. For instance, for vanilla PlonK, it
+    /// would be a vector of (chunked) evaluations at ζ and ζω.
+    /// The outer vector would be the evaluations at the different points (e.g.
+    /// ζ and ζω for vanilla PlonK) and the inner vector would be the chunks of
+    /// the polynomial.
     pub evaluations: Vec<Vec<G::ScalarField>>,
 }
 
@@ -470,9 +481,13 @@ where
     G: AffineCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 {
+    /// The sponge used to generate/absorb the challenges.
     pub sponge: EFqSponge,
+    /// A list of evaluations, each supposed to correspond to a different
+    /// polynomial.
     pub evaluations: Vec<Evaluation<G>>,
-    /// vector of evaluation points
+    /// The actual evaluation points. Each field `evaluations` of each structure
+    /// of `Evaluation` should have the same (outer) length.
     pub evaluation_points: Vec<G::ScalarField>,
     /// scaling factor for evaluation point powers
     pub polyscale: G::ScalarField,
@@ -483,6 +498,23 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
+/// This function populates the parameters `scalars` and `points`.
+/// It iterates over the evaluations and adds each commitment to the
+/// vector `points`.
+/// The parameter `scalars` is populated with the values:
+/// `rand_base * polyscale^i` for each commitment.
+/// For instance, if we have 3 commitments, the `scalars` vector will
+/// contain the values
+/// ```text
+/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]`
+/// ```
+/// and the vector `points` will contain the commitments.
+///
+/// Note that the function skips the commitments that are empty.
+///
+/// If more than one commitment is present in a single evaluation (i.e. if
+/// `elems` is larger than one), it means that probably chunking was used (i.e.
+/// it is a commitment to a polynomial larger than the SRS).
 pub fn combine_commitments<G: CommitmentCurve>(
     evaluations: &[Evaluation<G>],
     scalars: &mut Vec<G::ScalarField>,
@@ -490,7 +522,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
     polyscale: G::ScalarField,
     rand_base: G::ScalarField,
 ) {
-    // polyscale^i
+    // will contain the power of polyscale
     let mut xi_i = G::ScalarField::one();
 
     for Evaluation { commitment, .. } in evaluations
@@ -502,11 +534,35 @@ pub fn combine_commitments<G: CommitmentCurve>(
             scalars.push(rand_base * xi_i);
             points.push(*comm_ch);
 
+            // compute next power of polyscale
             xi_i *= polyscale;
         }
     }
 }
 
+/// Combine the (chunked) evaluations of multiple polynomials.
+/// This function returns the accumulation of the evaluations, scaled by
+/// `polyscale`.
+/// If no evaluation is given, the function returns an empty vector.
+/// It does also suppose that for each evaluation, the number of evaluations is
+/// the same. It is not constrained yet in the interface, but it should be. If
+/// one list has not the same size, it will be shrunk to the size of the first
+/// element of the list.
+/// For instance, if we have 3 polynomials P1, P2, P3 evaluated at the points
+/// ζ and ζω (like in vanilla PlonK), and for each polynomial, we have two
+/// chunks, i.e. we have
+/// ```text
+///         2 chunks of P1
+///        /---------------\
+/// E1 = [(P1_1(ζ), P1_2(ζ)), (P1_1(ζω), P1_2(ζω))]
+/// E2 = [(P2_1(ζ), P2_2(ζ)), (P2_1(ζω), P2_2(ζω))]
+/// E3 = [(P3_1(ζ), P3_2(ζ)), (P3_1(ζω), P3_2(ζω))]
+/// ```
+/// The output will be a list of 3 elements, equal to:
+/// ```text
+/// P1_1(ζ) + P1_2(ζ) * polyscale + P1_1(ζω) polyscale^2 + P1_2(ζω) * polyscale^3
+/// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
+/// ```
 pub fn combine_evaluations<G: CommitmentCurve>(
     evaluations: &Vec<Evaluation<G>>,
     polyscale: G::ScalarField,
@@ -526,9 +582,10 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         .filter(|x| !x.commitment.elems.is_empty())
     {
         // iterating over the polynomial segments
-        for j in 0..evaluations[0].len() {
-            for i in 0..evaluations.len() {
-                acc[i] += evaluations[i][j] * xi_i;
+        for chunk_idx in 0..evaluations[0].len() {
+            // supposes that all evaluations are of the same size
+            for eval_pt_idx in 0..evaluations.len() {
+                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * xi_i;
             }
             xi_i *= polyscale;
         }
@@ -554,7 +611,8 @@ where
         self.h
     }
 
-    /// Commits a polynomial, potentially splitting the result in multiple commitments.
+    /// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -564,7 +622,9 @@ where
         self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
     }
 
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial
+    /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
+    /// a random `w` per commitment.
     fn mask(
         &self,
         comm: PolyComm<G>,
@@ -660,6 +720,15 @@ where
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
 
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_evaluations_non_hiding(domain, plnm), blinders)
+    }
+
     fn create(depth: usize) -> Self {
         SRS::create(depth)
     }
@@ -674,16 +743,8 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function verifies batch of batched polynomial commitment opening proofs
-    ///     batch: batch of batched polynomial commitment opening proofs
-    ///          vector of evaluation points
-    ///          polynomial scaling factor for this batched openinig proof
-    ///          eval scaling factor for this batched openinig proof
-    ///          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
-    ///          opening proof for this batched opening
-    ///     oracle_params: parameters for the random oracle argument
-    ///     randomness source context
-    ///     RETURN: verification status
+    /// This function verifies a batch of polynomial commitment opening proofs.
+    /// Return `true` if the verification is successful, `false` otherwise.
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
@@ -871,6 +932,125 @@ mod tests {
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
     use std::array;
+
+    #[test]
+    fn test_combine_evaluations() {
+        let nb_of_chunks = 1;
+
+        // we ignore commitments
+        let dummy_commitments = PolyComm::<VestaG> {
+            elems: vec![VestaG::zero(); nb_of_chunks],
+        };
+
+        let polyscale = Fp::from(2);
+        // Using only one evaluation. Starting with eval_p1
+        {
+            let eval_p1 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point. Only one chunk.
+                    vec![Fp::from(1)],
+                    // Eval at second point. Only one chunk.
+                    vec![Fp::from(2)],
+                ],
+            };
+
+            let output = combine_evaluations::<VestaG>(&vec![eval_p1], polyscale);
+            // We have 2 evaluation points.
+            assert_eq!(output.len(), 2);
+            // polyscale is not used.
+            let exp_output = [Fp::from(1), Fp::from(2)];
+            output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
+                assert_eq!(o, e);
+            });
+        }
+
+        // And after that eval_p2
+        {
+            let eval_p2 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point. Only one chunk.
+                    vec![Fp::from(3)],
+                    // Eval at second point. Only one chunk.
+                    vec![Fp::from(4)],
+                ],
+            };
+
+            let output = combine_evaluations::<VestaG>(&vec![eval_p2], polyscale);
+            // We have 2 evaluation points
+            assert_eq!(output.len(), 2);
+            // polyscale is not used.
+            let exp_output = [Fp::from(3), Fp::from(4)];
+            output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
+                assert_eq!(o, e);
+            });
+        }
+
+        // Now with two evaluations
+        {
+            let eval_p1 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point. Only one chunk.
+                    vec![Fp::from(1)],
+                    // Eval at second point. Only one chunk.
+                    vec![Fp::from(2)],
+                ],
+            };
+
+            let eval_p2 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point. Only one chunk.
+                    vec![Fp::from(3)],
+                    // Eval at second point. Only one chunk.
+                    vec![Fp::from(4)],
+                ],
+            };
+
+            let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
+            // We have 2 evaluation points
+            assert_eq!(output.len(), 2);
+            let exp_output = [Fp::from(1 + 3 * 2), Fp::from(2 + 4 * 2)];
+            output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
+                assert_eq!(o, e);
+            });
+        }
+
+        // Now with two evaluations and two chunks
+        {
+            let eval_p1 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point.
+                    vec![Fp::from(1), Fp::from(3)],
+                    // Eval at second point.
+                    vec![Fp::from(2), Fp::from(4)],
+                ],
+            };
+
+            let eval_p2 = Evaluation {
+                commitment: dummy_commitments.clone(),
+                evaluations: vec![
+                    // Eval at first point.
+                    vec![Fp::from(5), Fp::from(7)],
+                    // Eval at second point.
+                    vec![Fp::from(6), Fp::from(8)],
+                ],
+            };
+
+            let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
+            // We have 2 evaluation points
+            assert_eq!(output.len(), 2);
+            let o1 = Fp::from(1 + 3 * 2 + 5 * 4 + 7 * 8);
+            let o2 = Fp::from(2 + 4 * 2 + 6 * 4 + 8 * 8);
+            let exp_output = [o1, o2];
+            output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
+                assert_eq!(o, e);
+            });
+        }
+    }
 
     #[test]
     fn test_lagrange_commitments() {

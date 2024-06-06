@@ -1041,6 +1041,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "derivative",
  "groupmap",
  "itertools 0.12.1",
  "kimchi",
@@ -1365,7 +1366,11 @@ name = "ivc"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
+ "ark-ec",
  "ark-ff",
+ "ark-poly",
+ "folding",
+ "itertools 0.12.1",
  "kimchi",
  "kimchi-msm",
  "mina-poseidon",
@@ -1375,6 +1380,7 @@ dependencies = [
  "once_cell",
  "poly-commitment",
  "rand",
+ "rayon",
  "strum",
  "strum_macros",
 ]

@@ -91,14 +91,22 @@ impl<
 {
     type SRS = PairingSRS<Pair>;
 
+    /// Parameters:
+    /// - `srs`: the structured reference string
+    /// - `plnms`: vector of polynomials with optional degree bound and
+    /// commitment randomness
+    /// - `elm`: vector of evaluation points
+    /// - `polyscale`: scaling factor for polynoms
+    /// group_maps, sponge, rng and evalscale are not used. The parameters are
+    /// kept to fit the trait and to be used generically.
     fn open<EFqSponge, RNG, D: EvaluationDomain<F>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
-        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with commitment randomness (blinders)
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        _sponge: EFqSponge,                // sponge
+        plnms: PolynomialsToCombine<G, D>,
+        elm: &[<G as AffineCurve>::ScalarField],
+        polyscale: <G as AffineCurve>::ScalarField,
+        _evalscale: <G as AffineCurve>::ScalarField,
+        _sponge: EFqSponge,
         _rng: &mut RNG,
     ) -> Self
     where
@@ -205,6 +213,16 @@ impl<
         self.full_srs.commit_evaluations(domain, plnm, rng)
     }
 
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<<G>::ScalarField>,
+        plnm: &Evaluations<<G>::ScalarField, D<<G>::ScalarField>>,
+        blinders: &PolyComm<<G>::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.full_srs
+            .commit_evaluations_custom(domain, plnm, blinders)
+    }
+
     fn create(_depth: usize) -> Self {
         todo!()
     }
@@ -232,17 +250,17 @@ fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> 
         todo!()
     };
 
-    // The polynomial that evaluates to `p(zeta)` at `zeta` and `p(zeta_omega)` at
-    // `zeta_omega`.
+    // The polynomial that evaluates to `p(ζ)` at `ζ` and `p(ζω)` at
+    // `ζω`.
     // We write `p(x) = a + bx`, which gives
     // ```text
-    // p(zeta) = a + b * zeta
-    // p(zeta_omega) = a + b * zeta_omega
+    // p(ζ) = a + b * ζ
+    // p(ζω) = a + b * ζω
     // ```
     // and so
     // ```text
-    // b = (p(zeta_omega) - p(zeta)) / (zeta_omega - zeta)
-    // a = p(zeta) - b * zeta
+    // b = (p(ζω) - p(ζ)) / (ζω - ζ)
+    // a = p(ζ) - b * ζ
     // ```
     let b = (eval_zeta_omega - eval_zeta) / (zeta_omega - zeta);
     let a = eval_zeta - b * zeta;
@@ -315,6 +333,7 @@ impl<
 
             VariableBaseMSM::multi_scalar_mul(&points, &scalars)
         };
+
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
@@ -345,11 +364,12 @@ mod tests {
     };
     use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
     use ark_ec::bn::Bn;
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use ark_poly::{
         univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
         UVPolynomial,
     };
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -424,5 +444,37 @@ mod tests {
 
         let res = pairing_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
         assert!(res);
+    }
+
+    /// Our points in G2 are not actually in the correct subgroup and serialize well.
+    #[test]
+    fn check_srs_g2_valid_and_serializes() {
+        type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
+        type BN254G2BaseField = <BN254 as ark_ec::PairingEngine>::Fqe;
+        type Fp = ark_bn254::Fr;
+
+        let x = Fp::rand(&mut rand::rngs::OsRng);
+        let srs: PairingSRS<BN254> = PairingSRS::create(x, 1 << 5);
+
+        let mut vec: Vec<u8> = vec![0u8; 1024];
+
+        for actual in [
+            srs.verifier_srs.h,
+            srs.verifier_srs.g[0],
+            srs.verifier_srs.g[1],
+        ] {
+            // Check it's valid
+            assert!(!actual.is_zero());
+            assert!(actual.is_on_curve());
+            assert!(actual.is_in_correct_subgroup_assuming_on_curve());
+
+            // Check it serializes well
+            let actual_y: BN254G2BaseField = actual.y;
+            let res = actual_y.serialize(vec.as_mut_slice());
+            assert!(res.is_ok());
+            let expected: BN254G2BaseField =
+                CanonicalDeserialize::deserialize(vec.as_slice()).unwrap();
+            assert!(expected == actual_y, "serialization failed");
+        }
     }
 }

@@ -52,6 +52,15 @@ impl<Ff: PrimeField> LookupTableID for IVCLookupTable<Ff> {
     }
 }
 
+impl<Ff: PrimeField> IVCLookupTable<Ff> {
+    /// Provides a full list of entries for the given table.
+    pub fn entries<F: PrimeField>(&self, domain_d1_size: u64) -> Vec<F> {
+        match self {
+            Self::SerLookupTable(lt) => lt.entries(domain_d1_size),
+        }
+    }
+}
+
 pub struct IVCFECLookupLens<Ff>(pub PhantomData<Ff>);
 
 impl<Ff> MPrism for IVCFECLookupLens<Ff> {
