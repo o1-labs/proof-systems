@@ -497,6 +497,10 @@
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
 <a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     commitment::<span class="kw-2">*</span>,
     srs::{endos, SRS},
@@ -552,11 +556,15 @@
     }
 }
 
-<span class="doccomment">/// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
+<span class="doccomment">/// Combine the polynomials using `polyscale`, creating a single unified
+/// polynomial to open.
+/// Parameters:
+/// - plnms: vector of polynomial with optional degree bound and commitment randomness
+/// - polyscale: scaling factor for polynomials
 </span><span class="kw">pub fn </span>combine_polys&lt;G: CommitmentCurve, D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
-    plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-    </span>polyscale: G::ScalarField,         <span class="comment">// scaling factor for polynomials
-    </span>srs_length: usize,
+    plnms: PolynomialsToCombine&lt;G, D&gt;,
+    polyscale: G::ScalarField,
+    srs_length: usize,
 ) -&gt; (DensePolynomial&lt;G::ScalarField&gt;, G::ScalarField) {
     <span class="kw">let </span><span class="kw-2">mut </span>plnm = ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
     <span class="kw">let </span><span class="kw-2">mut </span>plnm_evals_part = {

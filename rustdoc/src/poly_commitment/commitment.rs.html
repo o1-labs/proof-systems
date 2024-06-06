@@ -1375,6 +1375,13 @@
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1821,7 +1828,10 @@
         <span class="comment">// Iterating over the polynomial segments.
         // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
         // Given that xi_i = polyscale^i0 at this point, after this loop we have:
-        //    res += \sum_i polyscale^{i0+i} ( \sum_j evals_tr[j][i] * evalscale^j )
+        //
+        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
+        //           i                    j
+        //
         </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
             <span class="comment">// p_i(evalscale)
             </span><span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
@@ -1958,7 +1968,11 @@
         .iter()
         .filter(|x| !x.commitment.elems.is_empty())
     {
-        <span class="comment">// iterating over the polynomial segments
+        <span class="comment">// IMPROVEME: we could have a flat array that would contain all the
+        // evaluations and all the chunks. It would avoid fetching the memory
+        // and avoid indirection into RAM.
+        // We could have a single flat array.
+        // iterating over the polynomial segments
         </span><span class="kw">for </span>chunk_idx <span class="kw">in </span><span class="number">0</span>..evaluations[<span class="number">0</span>].len() {
             <span class="comment">// supposes that all evaluations are of the same size
             </span><span class="kw">for </span>eval_pt_idx <span class="kw">in </span><span class="number">0</span>..evaluations.len() {
