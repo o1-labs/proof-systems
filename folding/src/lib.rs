@@ -135,7 +135,6 @@ pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub expression: IntegratedFoldingExpr<CF>,
     pub srs: &'a CF::Srs,
     pub domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    pub zero_commitment: PolyComm<CF::Curve>,
     pub zero_vec: Evals<ScalarField<CF>>,
     pub structure: CF::Structure,
     pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
@@ -154,13 +153,11 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec = Evaluations::from_vec_and_domain(evals, domain);
-        let zero_commitment = srs.commit_evaluations_non_hiding(domain, &zero_vec);
         let final_expression = expression.clone().final_expression();
         let scheme = Self {
             expression,
             srs,
             domain,
-            zero_commitment,
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
