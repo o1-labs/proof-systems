@@ -401,7 +401,7 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitn
 
 // -- Relaxable instance
 pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
-    fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
+    fn relax(self) -> RelaxedInstance<G, I>;
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
@@ -409,20 +409,21 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
     /// instance, returning a relaxed instance which is composed by the extended
     /// instance, the scalar one, and the error commitment which is set to the
     /// commitment to zero.
-    fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
+    fn relax(self) -> RelaxedInstance<G, Self> {
         let extended_instance = ExtendedInstance::extend(self);
         let u = G::ScalarField::one();
+        let error_commitment = PolyComm::new(vec![G::zero()]);
         RelaxedInstance {
             extended_instance,
             u,
-            error_commitment: zero_commit,
+            error_commitment,
         }
     }
 }
 
 /// A relaxed instance is trivially relaxable.
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
-    fn relax(self, _zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
+    fn relax(self) -> RelaxedInstance<G, I> {
         self
     }
 }
@@ -456,7 +457,6 @@ pub trait RelaxablePair<G: CommitmentCurve, I: Instance<G>, W: Witness<G>> {
     fn relax(
         self,
         zero_poly: &Evals<G::ScalarField>,
-        zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>);
 }
 
@@ -469,11 +469,10 @@ where
     fn relax(
         self,
         zero_poly: &Evals<G::ScalarField>,
-        zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         let (instance, witness) = self;
         (
-            RelaxableInstance::relax(instance, zero_commitment),
+            RelaxableInstance::relax(instance),
             RelaxableWitness::relax(witness, zero_poly),
         )
     }
@@ -488,7 +487,6 @@ where
     fn relax(
         self,
         _zero_poly: &Evals<G::ScalarField>,
-        _zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         self
     }

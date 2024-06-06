@@ -82,8 +82,8 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
         let scheme = &self.inner;
-        let a = a.relax(&scheme.zero_vec, scheme.zero_commitment.clone());
-        let b = b.relax(&scheme.zero_vec, scheme.zero_commitment.clone());
+        let a = a.relax(&scheme.zero_vec);
+        let b = b.relax(&scheme.zero_vec);
 
         let u = (a.0.u, b.0.u);
 
