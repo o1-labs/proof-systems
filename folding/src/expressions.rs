@@ -267,6 +267,9 @@
 //! committing to the zero zero polynomial. Using a blinder, we can always
 //! suppose that our elliptic curves points are not the point at infinity.
 //! The library handles the blinding factors as variables in each instance.
+//!
+//! When doing the final proof, the blinder factor that will need to be used is
+//! the one from the final relaxed instance.
 
 use crate::{
     columns::ExtendedFoldingColumn,

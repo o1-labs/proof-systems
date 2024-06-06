@@ -419,6 +419,12 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     /// the given side.
     /// The commitments are added to the instance, in the same order for both
     /// side.
+    /// Note that this function is only going to be called on the left instance
+    /// once. When we fold the second time, the left instance will already be
+    /// relaxed and will have the extended columns.
+    /// Therefore, the blinder is always the one provided by the user, and it is
+    /// saved in the field `blinder` in the case of a relaxed instance that has
+    /// been built from a non-relaxed one.
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
         let (relaxed_instance, relaxed_witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),
