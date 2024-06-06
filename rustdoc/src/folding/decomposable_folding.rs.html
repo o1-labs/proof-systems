@@ -245,8 +245,8 @@
         Sponge: FqSponge&lt;BaseField&lt;CF&gt;, CF::Curve, ScalarField&lt;CF&gt;&gt;,
     {
         <span class="kw">let </span>scheme = <span class="kw-2">&amp;</span><span class="self">self</span>.inner;
-        <span class="kw">let </span>a = a.relax(<span class="kw-2">&amp;</span>scheme.zero_vec, scheme.zero_commitment.clone());
-        <span class="kw">let </span>b = b.relax(<span class="kw-2">&amp;</span>scheme.zero_vec, scheme.zero_commitment.clone());
+        <span class="kw">let </span>a = a.relax(<span class="kw-2">&amp;</span>scheme.zero_vec);
+        <span class="kw">let </span>b = b.relax(<span class="kw-2">&amp;</span>scheme.zero_vec);
 
         <span class="kw">let </span>u = (a.<span class="number">0</span>.u, b.<span class="number">0</span>.u);
 

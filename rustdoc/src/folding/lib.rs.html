@@ -394,9 +394,6 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -534,7 +531,6 @@
     <span class="kw">pub </span>expression: IntegratedFoldingExpr&lt;CF&gt;,
     <span class="kw">pub </span>srs: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CF::Srs,
     <span class="kw">pub </span>domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
-    <span class="kw">pub </span>zero_commitment: PolyComm&lt;CF::Curve&gt;,
     <span class="kw">pub </span>zero_vec: Evals&lt;ScalarField&lt;CF&gt;&gt;,
     <span class="kw">pub </span>structure: CF::Structure,
     <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;CF&gt;,
@@ -553,13 +549,11 @@
         <span class="kw">let </span>zero = &lt;ScalarField&lt;CF&gt;&gt;::zero();
         <span class="kw">let </span>evals = std::iter::repeat(zero).take(domain.size()).collect();
         <span class="kw">let </span>zero_vec = Evaluations::from_vec_and_domain(evals, domain);
-        <span class="kw">let </span>zero_commitment = srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>zero_vec);
         <span class="kw">let </span>final_expression = expression.clone().final_expression();
         <span class="kw">let </span>scheme = <span class="self">Self </span>{
             expression,
             srs,
             domain,
-            zero_commitment,
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
@@ -595,8 +589,8 @@
         B: RelaxablePair&lt;CF::Curve, CF::Instance, CF::Witness&gt;,
         Sponge: FqSponge&lt;BaseField&lt;CF&gt;, CF::Curve, ScalarField&lt;CF&gt;&gt;,
     {
-        <span class="kw">let </span>a = a.relax(<span class="kw-2">&amp;</span><span class="self">self</span>.zero_vec, <span class="self">self</span>.zero_commitment.clone());
-        <span class="kw">let </span>b = b.relax(<span class="kw-2">&amp;</span><span class="self">self</span>.zero_vec, <span class="self">self</span>.zero_commitment.clone());
+        <span class="kw">let </span>a = a.relax(<span class="kw-2">&amp;</span><span class="self">self</span>.zero_vec);
+        <span class="kw">let </span>b = b.relax(<span class="kw-2">&amp;</span><span class="self">self</span>.zero_vec);
 
         <span class="kw">let </span>u = (a.<span class="number">0</span>.u, b.<span class="number">0</span>.u);
 
@@ -689,8 +683,8 @@
         B: RelaxableInstance&lt;CF::Curve, CF::Instance&gt;,
         Sponge: FqSponge&lt;BaseField&lt;CF&gt;, CF::Curve, ScalarField&lt;CF&gt;&gt;,
     {
-        <span class="kw">let </span>a: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = a.relax(<span class="self">self</span>.zero_commitment.clone());
-        <span class="kw">let </span>b: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = b.relax(<span class="self">self</span>.zero_commitment.clone());
+        <span class="kw">let </span>a: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = a.relax();
+        <span class="kw">let </span>b: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = b.relax();
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)

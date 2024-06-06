@@ -491,8 +491,6 @@
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -896,7 +894,7 @@
 
 <span class="comment">// -- Relaxable instance
 </span><span class="kw">pub trait </span>RelaxableInstance&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; {
-    <span class="kw">fn </span>relax(<span class="self">self</span>, zero_commitment: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, I&gt;;
+    <span class="kw">fn </span>relax(<span class="self">self</span>) -&gt; RelaxedInstance&lt;G, I&gt;;
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxableInstance&lt;G, I&gt; <span class="kw">for </span>I {
@@ -904,20 +902,21 @@
     /// instance, returning a relaxed instance which is composed by the extended
     /// instance, the scalar one, and the error commitment which is set to the
     /// commitment to zero.
-    </span><span class="kw">fn </span>relax(<span class="self">self</span>, zero_commit: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, <span class="self">Self</span>&gt; {
+    </span><span class="kw">fn </span>relax(<span class="self">self</span>) -&gt; RelaxedInstance&lt;G, <span class="self">Self</span>&gt; {
         <span class="kw">let </span>extended_instance = ExtendedInstance::extend(<span class="self">self</span>);
         <span class="kw">let </span>u = G::ScalarField::one();
+        <span class="kw">let </span>error_commitment = PolyComm::new(<span class="macro">vec!</span>[G::zero()]);
         RelaxedInstance {
             extended_instance,
             u,
-            error_commitment: zero_commit,
+            error_commitment,
         }
     }
 }
 
 <span class="doccomment">/// A relaxed instance is trivially relaxable.
 </span><span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxableInstance&lt;G, I&gt; <span class="kw">for </span>RelaxedInstance&lt;G, I&gt; {
-    <span class="kw">fn </span>relax(<span class="self">self</span>, _zero_commitment: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, I&gt; {
+    <span class="kw">fn </span>relax(<span class="self">self</span>) -&gt; RelaxedInstance&lt;G, I&gt; {
         <span class="self">self
     </span>}
 }
@@ -951,7 +950,6 @@
     <span class="kw">fn </span>relax(
         <span class="self">self</span>,
         zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;,
-        zero_commitment: PolyComm&lt;G&gt;,
     ) -&gt; (RelaxedInstance&lt;G, I&gt;, RelaxedWitness&lt;G, W&gt;);
 }
 
@@ -964,11 +962,10 @@
     <span class="kw">fn </span>relax(
         <span class="self">self</span>,
         zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;,
-        zero_commitment: PolyComm&lt;G&gt;,
     ) -&gt; (RelaxedInstance&lt;G, I&gt;, RelaxedWitness&lt;G, W&gt;) {
         <span class="kw">let </span>(instance, witness) = <span class="self">self</span>;
         (
-            RelaxableInstance::relax(instance, zero_commitment),
+            RelaxableInstance::relax(instance),
             RelaxableWitness::relax(witness, zero_poly),
         )
     }
@@ -983,7 +980,6 @@
     <span class="kw">fn </span>relax(
         <span class="self">self</span>,
         _zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;,
-        _zero_commitment: PolyComm&lt;G&gt;,
     ) -&gt; (RelaxedInstance&lt;G, I&gt;, RelaxedWitness&lt;G, W&gt;) {
         <span class="self">self
     </span>}
