@@ -53,10 +53,14 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-/// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
+/// Combine the polynomials using `polyscale`, creating a single unified
+/// polynomial to open.
+/// Parameters:
+/// - plnms: vector of polynomial with optional degree bound and commitment randomness
+/// - polyscale: scaling factor for polynomials
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
-    plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-    polyscale: G::ScalarField,         // scaling factor for polynomials
+    plnms: PolynomialsToCombine<G, D>,
+    polyscale: G::ScalarField,
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
     let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();

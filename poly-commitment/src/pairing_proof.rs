@@ -45,7 +45,11 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: PairingEngine> {
+    /// The full SRS is the one used by the prover. Can be seen as the "proving
+    /// key"/"secret key"
     pub full_srs: SRS<Pair::G1Affine>,
+    /// SRS to be used by the verifier. Can be seen as the "verification
+    /// key"/"public key".
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
@@ -282,11 +286,18 @@ impl<
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
 {
+    /// Create a pairing proof.
+    /// Parameters:
+    /// - `srs`: the structured reference string
+    /// - `plnms`: vector of polynomials with optional degree bound and
+    /// commitment randomness
+    /// - `elm`: vector of evaluation points
+    /// - `polyscale`: scaling factor
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
-        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[F],                         // vector of evaluation points
-        polyscale: F,                      // scaling factor for polynoms
+        plnms: PolynomialsToCombine<G, D>,
+        elm: &[F],
+        polyscale: F,
     ) -> Option<Self> {
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, srs.full_srs.g.len());
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();
@@ -312,6 +323,7 @@ impl<
             blinding: blinding_factor,
         })
     }
+
     pub fn verify(
         &self,
         srs: &PairingSRS<Pair>,           // SRS
@@ -334,6 +346,8 @@ impl<
             VariableBaseMSM::multi_scalar_mul(&points, &scalars)
         };
 
+        // IMPROVEME: we could have a single flat array for all evaluations, see
+        // same comment in combine_evaluations
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
@@ -347,6 +361,8 @@ impl<
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 
+        // IMRPROVEME: we could simply do one pairing, and split in two miller
+        // loop + pow
         let numerator = Pair::pairing(
             numerator_commitment,
             Pair::G2Affine::prime_subgroup_generator(),

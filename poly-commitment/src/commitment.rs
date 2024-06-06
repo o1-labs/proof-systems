@@ -444,7 +444,10 @@ pub fn combined_inner_product<F: PrimeField>(
         // Iterating over the polynomial segments.
         // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
         // Given that xi_i = polyscale^i0 at this point, after this loop we have:
-        //    res += \sum_i polyscale^{i0+i} ( \sum_j evals_tr[j][i] * evalscale^j )
+        //
+        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
+        //           i                    j
+        //
         for eval in &evals {
             // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
@@ -581,6 +584,10 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         .iter()
         .filter(|x| !x.commitment.elems.is_empty())
     {
+        // IMPROVEME: we could have a flat array that would contain all the
+        // evaluations and all the chunks. It would avoid fetching the memory
+        // and avoid indirection into RAM.
+        // We could have a single flat array.
         // iterating over the polynomial segments
         for chunk_idx in 0..evaluations[0].len() {
             // supposes that all evaluations are of the same size
