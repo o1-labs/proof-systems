@@ -129,7 +129,7 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
             [relaxed_extended_left_witness, relaxed_extended_right_witness],
         ) = env.unwrap();
 
-        let folded_instance = RelaxedInstance::combine_and_sub_error(
+        let folded_instance = RelaxedInstance::combine_and_sub_cross_terms(
             // FIXME: remove clone
             relaxed_extended_left_instance.clone(),
             relaxed_extended_right_instance.clone(),

@@ -256,32 +256,28 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         self.extended_instance.extended.get(i)
     }
 
-    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
-        let RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment: error,
-        } = self;
-        let [e0, e1] = error_commitments;
-        // Eq 4, page 15 of the Nova paper
-        // Computing E - c T1 - c^2 T2
-        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
-        RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment,
-        }
-    }
-
-    // Combining the commitments of each instance and adding the cross terms
-    // into the error term
-    pub(super) fn combine_and_sub_error(
+    /// Combining the commitments of each instance and adding the cross terms
+    /// into the error term.
+    /// This corresponds to the computation `E <- E1 - c T1 - c^2 T2 + c^3 E2`.
+    /// As we do support folding of degree 3, we have two cross terms `T1` and
+    /// `T2`.
+    /// For more information, see the [top-level
+    /// documentation](crate::expressions).
+    pub(super) fn combine_and_sub_cross_terms(
         a: Self,
         b: Self,
         challenge: <G>::ScalarField,
-        error_commitments: &[PolyComm<G>; 2],
+        cross_terms: &[PolyComm<G>; 2],
     ) -> Self {
-        Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
+        // Compute E1 + c^3 E2 and all other folding of commitments. The
+        // resulting error commitment is stored in res.commitment.
+        let mut res = Self::combine(a, b, challenge);
+        let [t0, t1] = cross_terms;
+        // Eq 4, page 15 of the Nova paper
+        // Computing (E1 + c^3 E2) - c T1 - c^2 T2
+        res.error_commitment =
+            &res.error_commitment - (&(&t0.scale(challenge) + &t1.scale(challenge.square())));
+        res
     }
 }
 
