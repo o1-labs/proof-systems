@@ -116,7 +116,10 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWit
             witness: witness2,
             extended: ex2,
         } = b;
+        // We fold the original witness
         let witness = W::combine(witness1, witness2, challenge);
+        // And we fold the columns created by quadraticization.
+        // W <- W1 + c W2
         let extended = ex1
             .into_iter()
             .zip(ex2)
@@ -178,7 +181,12 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for ExtendedIn
             instance: instance2,
             extended: ex2,
         } = b;
+        // Combining first the existing commitments (i.e. not the one added by
+        // quadraticization)
+        // They are supposed to be blinded already
         let instance = I::combine(instance1, instance2, challenge);
+        // For each commitment, compute
+        // Comm(W) + c * Comm(W')
         let extended = ex1
             .into_iter()
             .zip(ex2)
@@ -255,6 +263,8 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
             error_commitment: error,
         } = self;
         let [e0, e1] = error_commitments;
+        // Eq 4, page 15 of the Nova paper
+        // Computing E - c T1 - c^2 T2
         let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
         RelaxedInstance {
             extended_instance,
@@ -263,6 +273,8 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         }
     }
 
+    // Combining the commitments of each instance and adding the cross terms
+    // into the error term
     pub(super) fn combine_and_sub_error(
         a: Self,
         b: Self,
@@ -275,7 +287,12 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
 
 /// A relaxed instance can be folded.
 impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
+    /// Combine two relaxed instances into a new relaxed instance.
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        // We do support degree 3 folding, therefore, we must compute:
+        // E <- E1 - (c T1 + c^2 T2) + c^3 E2
+        // (page 15, eq 3 of the Nova paper)
+        // The term T1 and T2 are the cross terms
         let challenge_cube = challenge * challenge * challenge;
         let RelaxedInstance {
             extended_instance: extended_instance_1,
@@ -289,11 +306,18 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
         } = b;
         let extended_instance =
             <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
+        // Combining the challenges
+        // eq 3, page 15 of the Nova paper
         let u = u1 + u2 * challenge;
+        // We do have 2 cross terms as we have degree 3 folding
+        // e1 + c^3 e^2
         let error_commitment = &e1 + &e2.scale(challenge_cube);
         RelaxedInstance {
+            // I <- I1 + c I2
             extended_instance,
+            // u <- u1 + c u2
             u,
+            // E <- E1 - (c T1 + c^2 T2) + c^3 E2
             error_commitment,
         }
     }
@@ -305,21 +329,35 @@ pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// quadriticization.
     pub extended_witness: ExtendedWitness<G, W>,
     /// The error vector, introduced when homogenizing the polynomials.
+    /// For degree 3 folding, it is `E1 - c T1 - c^2 T2 + c^3 E2`
     pub error_vec: Evals<G::ScalarField>,
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    /// [sub_error] takes two cross-terms `T1` and `T2` and a challenge `c`, and
-    /// compute the evaluations `c T1 + c^2 T2`. This is the expected behavior
-    /// when working with homogeneous polynomials of degree 3. The values is
-    /// saved into the field `error_vec` of the relaxed witness.
+    /// Combining the existing error terms with the cross-terms T1 and T2 given
+    /// as parameters.
+    ///                 existing error terms      cross terms
+    ///                /--------------------\   /-------------\
+    /// The result is `   E1    +     c^3 E2  - (c T1 + c^2 T2)`
+    /// We do have two cross terms as we work with homogeneous polynomials of
+    /// degree 3. The value is saved into the field `error_vec` of the relaxed
+    /// witness.
     /// This corresponds to the step 4, page 15 of the Nova paper, but with two
     /// cross terms (T1 and T2), see [top-level
     /// documentation](crate::expressions).
-    fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
-        let [e0, e1] = errors;
+    pub(super) fn combine_and_sub_cross_terms(
+        a: Self,
+        b: Self,
+        challenge: <G>::ScalarField,
+        cross_terms: [Vec<G::ScalarField>; 2],
+    ) -> Self {
+        // Computing E1 + c^3 E2
+        let mut res = Self::combine(a, b, challenge);
 
-        for (a, (e0, e1)) in self
+        // Now substracting the cross terms
+        let [e0, e1] = cross_terms;
+
+        for (res, (e0, e1)) in res
             .error_vec
             .evals
             .iter_mut()
@@ -328,18 +366,9 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
             // FIXME: for optimisation, use inplace operators. Allocating can be
             // costly
             // should be the same as e0 * c + e1 * c^2
-            *a -= ((e1 * challenge) + e0) * challenge;
+            *res -= ((e1 * challenge) + e0) * challenge;
         }
-        self
-    }
-
-    pub(super) fn combine_and_sub_error(
-        a: Self,
-        b: Self,
-        challenge: <G>::ScalarField,
-        error: [Vec<G::ScalarField>; 2],
-    ) -> Self {
-        Self::combine(a, b, challenge).sub_error(error, challenge)
+        res
     }
 
     /// Provides access to the extra columns added by quadraticization
@@ -359,6 +388,8 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitn
             extended_witness: b,
             error_vec: e2,
         } = b;
+        // We combine E1 and E2 into E1 + c^3 E2 as we do have two cross-terms
+        // with degree 3 folding
         let challenge_cube = (challenge * challenge) * challenge;
         let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
         for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
