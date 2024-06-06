@@ -3,7 +3,7 @@
 //! The folding library is built over generic traits like [Instance] and
 //! [Witness] that defines the the NP relation R.
 //!
-//! This module describe 3 different types of instance/witness pairs:
+//! This module describes 3 different types of instance/witness pairs:
 //! - [Instance] and [Witness]: the original instance and witness. It is the
 //! ones that the user must provide.
 //! - [ExtendedInstance] and [ExtendedWitness]: the instance and witness
