@@ -256,6 +256,17 @@
 //! T'' = T + r T'
 //! u'' = u + r u'
 //! ```
+//!
+//! ## Supporting polynomial commitment blinders
+//!
+//! The library also supports polynomial commitment blinders. The blinding
+//! factors are represented as new variables in the polynomial describing the NP
+//! relation. The blinding factors are then aggregated in the same way as the
+//! other variables.
+//! We want to support blinders in the polynomial commitment scheme to avoid
+//! committing to the zero zero polynomial. Using a blinder, we can always
+//! suppose that our elliptic curves points are not the point at infinity.
+//! The library handles the blinding factors as variables in each instance.
 
 use crate::{
     columns::ExtendedFoldingColumn,
