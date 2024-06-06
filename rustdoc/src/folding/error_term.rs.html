@@ -430,6 +430,13 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -438,7 +445,7 @@
     quadraticization::ExtendedWitnessGenerator,
     FoldingConfig, FoldingEnv, Instance, RelaxedInstance, RelaxedWitness, ScalarField,
 };
-<span class="kw">use </span>ark_ff::{Field, One};
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
 <span class="kw">use </span>poly_commitment::SRS;
@@ -494,7 +501,10 @@
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             <span class="kw">match </span>selector {
-                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize)),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; {
+                    <span class="kw">let </span>zero_vec = <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); env.domain.size <span class="kw">as </span>usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) | <span class="prelude-val">None </span>=&gt; {
                     <span class="kw">let </span>d1 = e1.folding_degree();
                     <span class="kw">let </span>d2 = e2.folding_degree();
@@ -563,7 +573,10 @@
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             <span class="kw">match </span>selector {
-                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize)),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; {
+                    <span class="kw">let </span>zero_vec = <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); env.domain.size <span class="kw">as </span>usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) | <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>(exp.folding_degree(), e1.folding_degree()) {
                     (Degree::Two, Degree::One) =&gt; {
                         <span class="kw">let </span>first =
@@ -617,7 +630,8 @@
     // possible, and inline code.
     </span><span class="kw">let </span>(ul, ur) = (u.<span class="number">0</span>, u.<span class="number">1</span>);
     <span class="kw">let </span>u_cross = ul * ur;
-    <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner.zero_vec(env.domain.size <span class="kw">as </span>usize));
+    <span class="kw">let </span>zero_vec = <span class="macro">vec!</span>[ScalarField::&lt;C&gt;::zero(); env.domain.size <span class="kw">as </span>usize];
+    <span class="kw">let </span>zero = || EvalLeaf::Result(zero_vec.clone());
 
     <span class="kw">let </span>alphas_l = env
         .get_relaxed_instance(Side::Left)

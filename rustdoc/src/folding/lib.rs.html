@@ -382,15 +382,6 @@
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -509,15 +500,6 @@
     <span class="doccomment">/// Creates a new environment storing the structure, instances and
     /// witnesses.
     </span><span class="kw">fn </span>new(structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure, instances: [<span class="kw-2">&amp;</span>I; <span class="number">2</span>], witnesses: [<span class="kw-2">&amp;</span>W; <span class="number">2</span>]) -&gt; <span class="self">Self</span>;
-
-    <span class="comment">// TODO: move into `FoldingConfig`
-    // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
-    // vec![F::zero(); Self::rows()]
-    </span><span class="doccomment">/// Returns a vector of zeros with the same length as the number of rows in
-    /// the circuit.
-    </span><span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; Vec&lt;F&gt; {
-        <span class="macro">vec!</span>[F::zero(); n]
-    }
 
     <span class="doccomment">/// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
