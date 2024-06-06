@@ -4,7 +4,7 @@
 //! [Witness] that defines the the NP relation R.
 //!
 //! This module describes 3 different types of instance/witness pairs:
-//! - [Instance] and [Witness]: the original instance and witness. It is the
+//! - [Instance] and [Witness]: the original instance and witness. These are the
 //! ones that the user must provide.
 //! - [ExtendedInstance] and [ExtendedWitness]: the instance and witness
 //! extended by quadraticization.
