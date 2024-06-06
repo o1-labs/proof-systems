@@ -6,7 +6,7 @@ use crate::{
     quadraticization::ExtendedWitnessGenerator,
     FoldingConfig, FoldingEnv, Instance, RelaxedInstance, RelaxedWitness, ScalarField,
 };
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
 use poly_commitment::SRS;
@@ -62,7 +62,10 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
+                Some(false) => {
+                    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 Some(true) | None => {
                     let d1 = e1.folding_degree();
                     let d2 = e2.folding_degree();
@@ -131,7 +134,10 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
+                Some(false) => {
+                    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 Some(true) | None => match (exp.folding_degree(), e1.folding_degree()) {
                     (Degree::Two, Degree::One) => {
                         let first =
@@ -185,7 +191,8 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     // possible, and inline code.
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
-    let zero = || EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize));
+    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+    let zero = || EvalLeaf::Result(zero_vec.clone());
 
     let alphas_l = env
         .get_relaxed_instance(Side::Left)

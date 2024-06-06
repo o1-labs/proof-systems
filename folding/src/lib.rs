@@ -117,15 +117,6 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 
-    // TODO: move into `FoldingConfig`
-    // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
-    // vec![F::zero(); Self::rows()]
-    /// Returns a vector of zeros with the same length as the number of rows in
-    /// the circuit.
-    fn zero_vec(&self, n: usize) -> Vec<F> {
-        vec![F::zero(); n]
-    }
-
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
