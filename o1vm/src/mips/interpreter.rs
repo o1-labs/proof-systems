@@ -648,9 +648,8 @@ pub trait InterpreterEnv {
         res
     }
 
-    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
-        self.is_zero(&(x.clone() - y.clone()))
-    }
+    /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable;
 
     /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
     /// `position`.

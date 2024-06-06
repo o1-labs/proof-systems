@@ -345,6 +345,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        // To avoid subtraction overflow in the witness interpreter for u32
+        if x > y {
+            self.is_zero(&(x.clone() - y.clone()))
+        } else {
+            self.is_zero(&(y.clone() - x.clone()))
+        }
+    }
+
     unsafe fn test_less_than(
         &mut self,
         x: &Self::Variable,
