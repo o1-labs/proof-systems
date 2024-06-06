@@ -498,9 +498,6 @@
 <a href="#498" id="498">498</a>
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     commitment::<span class="kw-2">*</span>,
     srs::{endos, SRS},
@@ -855,9 +852,6 @@
     }
 
     <span class="doccomment">/// This function is a debugging helper.
-    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    #[allow(clippy::type_complexity)]
-    #[allow(clippy::many_single_char_names)]
     </span><span class="kw">pub fn </span>prover_polynomials_to_verifier_evaluations&lt;D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnms: PolynomialsToCombine&lt;G, D&gt;,
