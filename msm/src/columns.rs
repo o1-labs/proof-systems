@@ -78,6 +78,13 @@ pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
     fn to_column(self) -> Column;
 }
 
+/// Trait extending `ColumnIndexer` that represents everything a
+/// "prepared circuit column" is supposed to have.
+pub trait CircuitColumn: ColumnIndexer {
+    /// Return the vector of fixed selectors for a given domain.
+    fn fixed_selectors<F, const N_FSEL: usize>(domain_size: usize) -> [Vec<F>; N_FSEL];
+}
+
 // Implementation to be compatible with folding if we use generic column constraints
 impl FoldingColumnTrait for Column {
     fn is_witness(&self) -> bool {

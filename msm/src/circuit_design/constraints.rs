@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     circuit_design::capabilities::{ColAccessCap, HybridCopyCap, LookupCap},
-    columns::{Column, ColumnIndexer},
+    columns::{CircuitColumn, Column, ColumnIndexer},
     expr::E,
     logup::{constraint_lookups, Logup, LookupTableID},
 };
@@ -106,5 +106,14 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
             constraints.extend(self.get_lookup_constraints());
         }
         constraints
+    }
+
+    pub fn get_fixed_proof_inputs<Col: CircuitColumn>(&self, domain_size: usize) {
+        let constraints = self.get_constraints();
+        let fixed_selectors = Col::fixed_selectors(domain_size);
+        FixedProofInputs {
+            constraints,
+            fixed_selectors,
+        }
     }
 }

@@ -72,6 +72,11 @@ mod tests {
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_constraints();
 
+        let fixed_proof_inputs = FixedProofInputs {
+            constraints,
+            fixed_selectors: Box::new([]),
+        };
+
         let witness_env = build_fec_addition_circuit(&mut rng, domain_size);
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
