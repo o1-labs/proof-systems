@@ -1000,6 +1000,8 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     // can suppose that left has been absorbed before. It is only the new
     // instance that must be absorbed, with the output
     // FIXME: we do want to have different poseidon instances.
+    // FIXME: do we want to pass the random folding combiner as a parameter of
+    // the function and check here that the value is the same?
     let (hash_r_var, r_var, phi_var) =
         process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(env, poseidon_params, &comms_xlarge);
     let r: F = Env::variable_to_field(r_var);
