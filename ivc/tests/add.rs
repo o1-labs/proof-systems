@@ -607,18 +607,43 @@ pub fn test_simple_add() {
     type LT = IVCLookupTable<Fp>;
     let mut ivc_witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
 
+    const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
+    let all_ivc_comms_left: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_left[0]
+        } else {
+            comms_left[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_right: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_right[0]
+        } else {
+            comms_right[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_out: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_out[0]
+        } else {
+            comms_out[i - IVCColumn::N_COL]
+        }
+    });
 
-    const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
+    // FIXME: add
+    // - u
+    // - there is no alpha, so ok
+    // - ?
     const N_CHALS: usize = 3;
 
     let lt_lens = IdMPrism::<LT>::default();
     let _ = ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
         &mut SubEnvLookup::new(&mut ivc_witness_env, lt_lens),
-        Box::new(comms_left),
-        Box::new(comms_right),
-        Box::new(comms_out),
+        Box::new(all_ivc_comms_left),
+        Box::new(all_ivc_comms_right),
+        Box::new(all_ivc_comms_out),
         error_terms,
         t_terms,
         u,
