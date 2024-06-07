@@ -10,9 +10,12 @@ use folding::{
     FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme, Instance, Side, Witness,
 };
 use itertools::Itertools;
-use ivc::ivc::{
-    columns::{IVCColumn, N_BLOCKS},
-    interpreter::ivc_circuit,
+use ivc::{
+    ivc::{
+        columns::{IVCColumn, N_BLOCKS},
+        interpreter::ivc_circuit,
+    },
+    poseidon::{interpreter::PoseidonParams, params},
 };
 use kimchi::{
     circuits::{domains::EvaluationDomains, expr::ChallengeTerm, gate::CurrOrNext},
@@ -573,7 +576,24 @@ pub fn test_simple_add() {
     });
 
     let u = relaxed_extended_left_instance.u;
-    let poseidon_params = ivc::poseidon::params::static_params();
+
+    // Poseidon parameters
+    pub struct PoseidonBN254Parameters;
+
+    pub const STATE_SIZE: usize = 3;
+    pub const NB_FULL_ROUND: usize = 55;
+
+    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
+        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
+            let rc = &params::static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+        }
+
+        fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
+            let mds = &params::static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+        }
+    }
 
     type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
         Fp,
@@ -584,12 +604,12 @@ pub fn test_simple_add() {
         N_BLOCKS,
         LT,
     >;
-    let mut ivc_witness_env = IVCWitnessBuilderEnvRaw::<IVCLookupTable<Fp>>::create();
+    type LT = IVCLookupTable<Fp>;
+    let mut ivc_witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
 
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
 
-    type LT = IVCLookupTable<Fp>;
     const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
     const N_CHALS: usize = 3;
 
@@ -603,7 +623,7 @@ pub fn test_simple_add() {
         t_terms,
         u,
         Box::new(folded_instance.extended_instance.instance.challenges),
-        &poseidon_params,
+        &PoseidonBN254Parameters,
         domain_size,
     );
 }
