@@ -981,6 +981,8 @@ where
 /// commitments to also the previous IVC columns
 // FIXME: we must accept the scaled right commitments and the right instance
 // commitments
+// FIXME: Env should be implementing like a IVCCapability trait, which contains
+// the sponge for instance
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
