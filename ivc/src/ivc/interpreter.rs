@@ -330,6 +330,7 @@ where
     // Relative position in the hashing block
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
         // Computing h_l, h_r, h_o independently
+        // FIXME: why 6? don't we have 3 (out, right, right scaled)?
         if block_row_i < 6 * n {
             // Left, right, or output
             let comm_type = block_row_i / (2 * n);
