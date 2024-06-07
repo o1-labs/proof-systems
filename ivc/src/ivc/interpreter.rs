@@ -334,7 +334,8 @@ where
         if block_row_i < 6 * n {
             // Left, right, or output
             let comm_type = block_row_i / (2 * n);
-            // The commitment we target. Commitment i is processed in hash rows 2*i and 2*i+1.
+            // The commitment we target. Commitment i is processed in hash rows
+            // 2*i and 2*i+1.
             let comm_i = (block_row_i % (2 * N_COL_TOTAL)) / 2;
             let (input1, input2) = if block_row_i % 2 == 0 {
                 (
@@ -973,6 +974,11 @@ where
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
 /// this step. `N_COL_TOTAL` is the total number of columns for IVC + APP.
+/// `N_CHALS` is the number of challenges, which contains also the alphas used
+/// to combine constraints, see [top level documentation in
+/// folding](folding::expressions).
+/// The number of commitments is the total number, and it is expecting the
+/// commitments to also the previous IVC columns
 // FIXME: we must accept the scaled right commitments and the right instance
 // commitments
 #[allow(clippy::too_many_arguments)]
