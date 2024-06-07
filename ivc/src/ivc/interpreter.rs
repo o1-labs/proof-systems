@@ -967,7 +967,9 @@ where
 
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
-/// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
+/// this step. `N_COL_TOTAL` is the total number of columns for IVC + APP.
+// FIXME: we must accept the scaled right commitments and the right instance
+// commitments
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
@@ -994,6 +996,10 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 
     let (_comms_small, comms_large, comms_xlarge) =
         process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(env, [comms_left, comms_right, comms_out]);
+    // FIXME: only right, out and right scaled must be absorbed, not left. We
+    // can suppose that left has been absorbed before. It is only the new
+    // instance that must be absorbed, with the output
+    // FIXME: we do want to have different poseidon instances.
     let (hash_r_var, r_var, phi_var) =
         process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(env, poseidon_params, &comms_xlarge);
     let r: F = Env::variable_to_field(r_var);
