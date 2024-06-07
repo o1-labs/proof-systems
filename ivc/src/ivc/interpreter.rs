@@ -312,7 +312,8 @@ where
 {
     let n = N_COL_TOTAL;
 
-    // These should be some proper seeds. Passed from the outside
+    // These should be some proper seeds. Passed from the outside (a.k.a from
+    // the environment. use a trait IVC capability for that)
     let sponge_l_init: F = F::zero();
     let sponge_r_init: F = F::zero();
     let sponge_o_init: F = F::zero();
