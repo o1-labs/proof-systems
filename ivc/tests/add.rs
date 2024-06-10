@@ -13,7 +13,7 @@ use itertools::Itertools;
 use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS},
-        interpreter::ivc_circuit,
+        interpreter::{build_selectors, constrain_ivc, ivc_circuit},
     },
     poseidon::{interpreter::PoseidonParams, params},
 };
@@ -22,7 +22,7 @@ use kimchi::{
     curve::KimchiCurve,
 };
 use kimchi_msm::{
-    circuit_design::{ColWriteCap, ConstraintBuilderEnv, SubEnvLookup, WitnessBuilderEnv},
+    circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
     columns::{Column, ColumnIndexer},
     lookups::DummyLookupTable,
     witness::Witness as GenericWitness,
@@ -62,7 +62,7 @@ impl ColumnIndexer for AdditionColumn {
 
 use ark_ff::PrimeField;
 use ivc::ivc::lookups::IVCLookupTable;
-use kimchi_msm::circuit_design::{composition::IdMPrism, ColAccessCap, HybridCopyCap};
+use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
 
 /// Simply compute A + B - C
 pub fn interpreter_simple_add<
@@ -639,9 +639,12 @@ pub fn test_simple_add() {
     // - ?
     const N_CHALS: usize = 3;
 
-    let lt_lens = IdMPrism::<LT>::default();
-    let _ = ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
-        &mut SubEnvLookup::new(&mut ivc_witness_env, lt_lens),
+    let fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+    ivc_witness_env.set_fixed_selectors(fixed_selectors);
+
+    ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
+        &mut ivc_witness_env,
         Box::new(all_ivc_comms_left),
         Box::new(all_ivc_comms_right),
         Box::new(all_ivc_comms_out),
@@ -649,7 +652,10 @@ pub fn test_simple_add() {
         t_terms,
         u,
         Box::new(folded_instance.extended_instance.instance.challenges),
+        1,
         &PoseidonBN254Parameters,
         domain_size,
     );
+
+    let _relation_witness = ivc_witness_env.get_relation_witness(domain_size);
 }
