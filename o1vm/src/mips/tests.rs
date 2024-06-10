@@ -143,8 +143,10 @@ mod unit {
             let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             d.push(full_path);
             let contents = fs::read_to_string(d).expect("Should have been able to read the file");
-
-            Preimage::create(contents.into())
+            // Decode String (ASCII) as Vec<u8> (hexadecimal bytes)
+            let bytes = hex::decode(contents)
+                .expect("Should have been able to decode the file as hexadecimal bytes");
+            Preimage::create(bytes)
         }
 
         fn hint(&mut self, _hint: Hint) {}
@@ -239,7 +241,10 @@ mod unit {
             0x05, 0x67, 0xbd, 0xa4, 0x08, 0x77, 0xa7, 0xe8, 0x5d, 0xce, 0xb6, 0xff, 0x1f, 0x37,
             0x48, 0x0f, 0xef, 0x3d,
         ];
-        let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
+        let preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
+        let bytes = preimage.get();
+        // Number of bytes inside the corresponding file (preimage)
+        assert_eq!(bytes.len(), 358);
     }
 
     #[test]
