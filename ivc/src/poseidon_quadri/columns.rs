@@ -22,7 +22,7 @@ use kimchi_msm::columns::{Column, ColumnIndexer};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PoseidonColumn<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> {
     Input(usize),
-    // state, nb round
+    // nb round, state
     // we use the constraint:
     // y = x * x  -> x^2 -> i
     // y' = y * y -> x^4 -> i + 1

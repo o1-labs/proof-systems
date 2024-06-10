@@ -153,17 +153,17 @@ where
     let state: Vec<Env::Variable> = elements
         .iter()
         .enumerate()
-        .map(|(i, x_col)| {
-            let x = env.read_column(*x_col);
+        .map(|(i, var_col)| {
+            let var = env.read_column(*var_col);
             // x^2
-            let x_square_col = PoseidonColumn::Round(round, 5 * i);
-            let x_square = env.hcopy(&(x.clone() * x.clone()), x_square_col);
-            let x_four_col = PoseidonColumn::Round(round, 5 * i + 1);
-            let x_four = env.hcopy(&(x_square.clone() * x_square.clone()), x_four_col);
-            let x_six_col = PoseidonColumn::Round(round, 5 * i + 2);
-            let x_six = env.hcopy(&(x_four.clone() * x_square.clone()), x_six_col);
-            let x_seven_col = PoseidonColumn::Round(round, 5 * i + 3);
-            env.hcopy(&(x_six.clone() * x.clone()), x_seven_col)
+            let var_square_col = PoseidonColumn::Round(round, 5 * i);
+            let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
+            let var_four_col = PoseidonColumn::Round(round, 5 * i + 1);
+            let var_four = env.hcopy(&(var_square.clone() * var_square.clone()), var_four_col);
+            let var_six_col = PoseidonColumn::Round(round, 5 * i + 2);
+            let var_six = env.hcopy(&(var_four.clone() * var_square.clone()), var_six_col);
+            let var_seven_col = PoseidonColumn::Round(round, 5 * i + 3);
+            env.hcopy(&(var_six.clone() * var.clone()), var_seven_col)
         })
         .collect();
 
@@ -186,9 +186,9 @@ where
     let state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
-        .map(|(i, x)| {
+        .map(|(i, var)| {
             let rc = env.read_column(PoseidonColumn::RoundConstant(round, i));
-            x.clone() + rc
+            var.clone() + rc
         })
         .collect();
 
