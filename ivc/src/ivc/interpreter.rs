@@ -1121,12 +1121,11 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 }
 
 /// Base case IVC circuit, completely turned off.
-pub fn ivc_circuit_base_case<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     domain_size: usize,
 ) where
     F: PrimeField,
-    Ff: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
     assert!(45 * N_COL_TOTAL + 2 < domain_size);

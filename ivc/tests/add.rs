@@ -13,7 +13,7 @@ use itertools::Itertools;
 use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS},
-        interpreter::{build_selectors, constrain_ivc, ivc_circuit},
+        interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
     },
     poseidon::{interpreter::PoseidonParams, params},
 };
@@ -324,17 +324,47 @@ pub fn test_simple_add() {
     }
     // ---- End of folding configuration ----
 
-    let constraints = {
+    // Poseidon parameters
+    pub struct PoseidonBN254Parameters;
+
+    pub const STATE_SIZE: usize = 3;
+    pub const NB_FULL_ROUND: usize = 55;
+
+    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
+        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
+            let rc = &params::static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+        }
+
+        fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
+            let mds = &params::static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+        }
+    }
+
+    type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
+        Fp,
+        IVCColumn,
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        0,
+        N_BLOCKS,
+        LT,
+    >;
+    type LT = IVCLookupTable<Fp>;
+    let mut ivc_witness_env_0 = IVCWitnessBuilderEnvRaw::<LT>::create();
+
+    let app_constraints = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         constraint_env.get_relation_constraints()
     };
 
-    let mut witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+    let mut app_witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
-    let mut witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+    let mut app_witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
     let empty_lookups = BTreeMap::new();
@@ -343,24 +373,24 @@ pub fn test_simple_add() {
     for _i in 0..domain_size {
         let a: Fp = Fp::rand(&mut rng);
         let b: Fp = Fp::rand(&mut rng);
-        witness_one.write_column(AdditionColumn::A, &a);
-        witness_one.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_one);
-        witness_two.next_row();
+        app_witness_one.write_column(AdditionColumn::A, &a);
+        app_witness_one.write_column(AdditionColumn::B, &b);
+        interpreter_simple_add(&mut app_witness_one);
+        app_witness_one.next_row();
     }
 
     // Witness two
     for _i in 0..domain_size {
         let a: Fp = Fp::rand(&mut rng);
         let b: Fp = Fp::rand(&mut rng);
-        witness_two.write_column(AdditionColumn::A, &a);
-        witness_two.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_two);
-        witness_two.next_row();
+        app_witness_two.write_column(AdditionColumn::A, &a);
+        app_witness_two.write_column(AdditionColumn::B, &b);
+        interpreter_simple_add(&mut app_witness_two);
+        app_witness_two.next_row();
     }
 
-    let proof_inputs_one = witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
-    let proof_inputs_two = witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
+    let proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
+    let proof_inputs_two = app_witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
 
     let folding_witness_one = PlonkishWitness {
         witness: (proof_inputs_one.evaluations)
@@ -369,6 +399,9 @@ pub fn test_simple_add() {
             .collect(),
     };
 
+    ivc_circuit_base_case::<Fp, _, N_COL_TOTAL, N_CHALS>(&mut ivc_witness_env_0, domain_size);
+
+    // TODO add IVC
     let folding_instance_one = PlonkishInstance::from_witness(
         &folding_witness_one.witness,
         &mut fq_sponge,
@@ -390,7 +423,7 @@ pub fn test_simple_add() {
         domain.d1,
     );
 
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = constraints
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
@@ -578,36 +611,6 @@ pub fn test_simple_add() {
 
     let u = relaxed_extended_left_instance.u;
 
-    // Poseidon parameters
-    pub struct PoseidonBN254Parameters;
-
-    pub const STATE_SIZE: usize = 3;
-    pub const NB_FULL_ROUND: usize = 55;
-
-    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
-        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let rc = &params::static_params().round_constants;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
-        }
-
-        fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &params::static_params().mds;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
-        }
-    }
-
-    type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
-        Fp,
-        IVCColumn,
-        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
-        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
-        0,
-        N_BLOCKS,
-        LT,
-    >;
-    type LT = IVCLookupTable<Fp>;
-    let mut ivc_witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
-
     const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
@@ -639,12 +642,13 @@ pub fn test_simple_add() {
     // - ?
     const N_CHALS: usize = 3;
 
+    let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
     let fixed_selectors: Vec<Vec<Fp>> =
         build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
-    ivc_witness_env.set_fixed_selectors(fixed_selectors);
+    ivc_witness_env_1.set_fixed_selectors(fixed_selectors);
 
     ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
-        &mut ivc_witness_env,
+        &mut ivc_witness_env_1,
         Box::new(all_ivc_comms_left),
         Box::new(all_ivc_comms_right),
         Box::new(all_ivc_comms_out),
@@ -657,5 +661,5 @@ pub fn test_simple_add() {
         domain_size,
     );
 
-    let _relation_witness = ivc_witness_env.get_relation_witness(domain_size);
+    let _relation_witness = ivc_witness_env_1.get_relation_witness(domain_size);
 }
