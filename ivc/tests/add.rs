@@ -13,7 +13,7 @@ use itertools::Itertools;
 use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS},
-        interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
+        interpreter::{build_selectors, constrain_ivc, ivc_circuit, ivc_circuit_base_case},
     },
     poseidon::{interpreter::PoseidonParams, params},
 };
@@ -26,6 +26,7 @@ use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     lookups::DummyLookupTable,
     witness::Witness as GenericWitness,
+    BN254G1Affine, Ff1, Fp,
 };
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use o1_utils::FieldHelpers;
@@ -36,8 +37,8 @@ use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 pub type Fq = ark_bn254::Fq;
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
+//pub type Fp = ark_bn254::Fr;
+//pub type Curve = ark_bn254::G1Affine;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 
@@ -88,7 +89,7 @@ pub fn test_simple_add() {
     let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
     let srs = pairing_srs.full_srs;
 
-    let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
+    let mut fq_sponge: BaseSponge = FqSponge::new(BN254G1Affine::other_curve_sponge_params());
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -120,7 +121,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Witness<Curve> for PlonkishWitness {}
+    impl Witness<BN254G1Affine> for PlonkishWitness {}
 
     impl Index<AdditionColumn> for PlonkishWitness {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -168,7 +169,7 @@ pub fn test_simple_add() {
 
     #[derive(Clone, Debug)]
     pub struct PlonkishInstance {
-        commitments: [Curve; AdditionColumn::COUNT],
+        commitments: [BN254G1Affine; AdditionColumn::COUNT],
         challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
         blinder: Fp,
@@ -187,8 +188,8 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Instance<Curve> for PlonkishInstance {
-        fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+    impl Instance<BN254G1Affine> for PlonkishInstance {
+        fn to_absorb(&self) -> (Vec<Fp>, Vec<BN254G1Affine>) {
             // FIXME: check!!!!
             let mut scalars = Vec::new();
             let mut points = Vec::new();
@@ -211,10 +212,10 @@ pub fn test_simple_add() {
         pub fn from_witness(
             w: &GenericWitness<3, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
             fq_sponge: &mut BaseSponge,
-            srs: &SRS<Curve>,
+            srs: &SRS<BN254G1Affine>,
             domain: Radix2EvaluationDomain<Fp>,
         ) -> Self {
-            let commitments: GenericWitness<3, PolyComm<Curve>> = w
+            let commitments: GenericWitness<3, PolyComm<BN254G1Affine>> = w
                 .into_par_iter()
                 .map(|w| srs.commit_evaluations_non_hiding(domain, w))
                 .collect();
@@ -224,7 +225,7 @@ pub fn test_simple_add() {
                 .into_iter()
                 .for_each(|c| absorb_commitment(fq_sponge, c));
 
-            let commitments: [Curve; 3] = commitments
+            let commitments: [BN254G1Affine; 3] = commitments
                 .into_iter()
                 .map(|c| c.elems[0])
                 .collect_vec()
@@ -315,8 +316,8 @@ pub fn test_simple_add() {
         type Column = Column;
         type Selector = ();
         type Challenge = Challenge;
-        type Curve = Curve;
-        type Srs = SRS<Curve>;
+        type Curve = BN254G1Affine;
+        type Srs = SRS<BN254G1Affine>;
         type Instance = PlonkishInstance;
         type Witness = PlonkishWitness;
         type Structure = ();
@@ -423,6 +424,16 @@ pub fn test_simple_add() {
         domain.d1,
     );
 
+    let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
+    constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+    let ivc_constraints = constraint_env.get_relation_constraints();
+
+    let _folding_constraints: Vec<_> = app_constraints
+        .iter()
+        .chain(ivc_constraints.iter())
+        .collect();
+
+    // FIXME tihs must be folding_constraints
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
@@ -462,8 +473,8 @@ pub fn test_simple_add() {
 
     // The polynomial of the computation is linear, therefore, the error terms
     // are zero
-    assert_ne!(t_0.elems[0], Curve::zero());
-    assert_ne!(t_1.elems[0], Curve::zero());
+    assert_ne!(t_0.elems[0], BN254G1Affine::zero());
+    assert_ne!(t_1.elems[0], BN254G1Affine::zero());
 
     // Sanity check that the u values are the same. The u value is there to
     // homogeneoize the polynomial describing the NP relation.
@@ -493,7 +504,7 @@ pub fn test_simple_add() {
     }
     // Checking they are all not zero.
     comms_left.iter().for_each(|c| {
-        assert_ne!(c, &Curve::zero());
+        assert_ne!(c, &BN254G1Affine::zero());
     });
 
     assert_eq!(comms_left.len(), 3);
@@ -523,7 +534,7 @@ pub fn test_simple_add() {
     }
     // Checking they are all not zero.
     comms_right.iter().for_each(|c| {
-        assert_ne!(c, &Curve::zero());
+        assert_ne!(c, &BN254G1Affine::zero());
     });
 
     // IVC is expecting the coordinates.
@@ -547,7 +558,7 @@ pub fn test_simple_add() {
     }
     // Checking they are all not zero.
     comms_out.iter().for_each(|c| {
-        assert_ne!(c, &Curve::zero());
+        assert_ne!(c, &BN254G1Affine::zero());
     });
 
     // IVC is expecting the coordinates.
@@ -585,7 +596,7 @@ pub fn test_simple_add() {
         folded_instance.error_commitment.elems[0],
     ];
     error_terms.iter().for_each(|c| {
-        assert_ne!(c, &Curve::zero());
+        assert_ne!(c, &BN254G1Affine::zero());
     });
 
     // Fq into Fp. Might wrap over.
@@ -599,7 +610,7 @@ pub fn test_simple_add() {
 
     let t_terms = [t_0.elems[0], t_1.elems[0]];
     t_terms.iter().for_each(|c| {
-        assert_ne!(c, &Curve::zero());
+        assert_ne!(c, &BN254G1Affine::zero());
     });
     let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
     let t_terms: [(Fp, Fp); 2] = std::array::from_fn(|i| {
@@ -647,7 +658,8 @@ pub fn test_simple_add() {
         build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
     ivc_witness_env_1.set_fixed_selectors(fixed_selectors);
 
-    ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
+    // TODO FIXME <Fp, Fp> is wrong
+    ivc_circuit::<Fp, Fp, _, _, N_COL_TOTAL, N_CHALS>(
         &mut ivc_witness_env_1,
         Box::new(all_ivc_comms_left),
         Box::new(all_ivc_comms_right),
