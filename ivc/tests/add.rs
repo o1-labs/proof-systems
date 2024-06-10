@@ -85,9 +85,10 @@ pub fn test_simple_add() {
     let domain_size: usize = 1 << 15;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
+    let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
+    let srs = pairing_srs.full_srs;
+
     let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
-    let mut srs = SRS::<Curve>::create(domain_size);
-    srs.add_lagrange_basis(domain.d1);
 
     // ---- Defining the folding configuration ----
     // FoldingConfig

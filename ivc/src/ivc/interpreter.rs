@@ -909,7 +909,9 @@ where
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
-            selectors[block_i][curr_row] = F::one();
+            // TODO FIXME WIP! TURN ON SELECTORS BACK
+            //selectors[block_i][curr_row] = F::one();
+            selectors[block_i][curr_row] = F::zero();
             curr_row += 1;
         }
     }
