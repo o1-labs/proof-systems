@@ -1,5 +1,6 @@
 pub mod ivc;
 pub mod poseidon;
+pub mod poseidon_params;
 pub mod poseidon_quadri;
 
 /*

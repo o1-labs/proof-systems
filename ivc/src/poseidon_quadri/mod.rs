@@ -2,15 +2,13 @@
 
 pub mod columns;
 pub mod interpreter;
-/// Parameters for the Poseidon sponge.
-// FIXME: move it into the crate mina_poseidon
-pub mod params;
 
 #[cfg(test)]
 mod tests {
-    use super::{params, params::PlonkSpongeConstantsIVC};
-    use crate::poseidon_quadri::{
-        columns::PoseidonColumn, interpreter, interpreter::PoseidonParams,
+    use crate::{
+        poseidon_params,
+        poseidon_params::PlonkSpongeConstantsIVC,
+        poseidon_quadri::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
     };
     use ark_ff::UniformRand;
     use kimchi_msm::{
@@ -31,12 +29,12 @@ mod tests {
 
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let rc = &params::static_params().round_constants;
+            let rc = &poseidon_params::static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &params::static_params().mds;
+            let mds = &poseidon_params::static_params().mds;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
@@ -77,7 +75,7 @@ mod tests {
                 let exp_output: Vec<Fp> = {
                     let mut state: Vec<Fp> = vec![x, y, z];
                     poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
-                        params::static_params(),
+                        poseidon_params::static_params(),
                         &mut state,
                     );
                     state

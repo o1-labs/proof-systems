@@ -11,7 +11,8 @@ mod tests {
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon::{interpreter::PoseidonParams, params::static_params},
+        poseidon::interpreter::PoseidonParams,
+        poseidon_params::static_params,
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
