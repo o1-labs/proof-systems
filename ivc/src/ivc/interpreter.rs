@@ -329,8 +329,11 @@ where
 
     // Relative position in the hashing block
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
-        // Computing h_l, h_r, h_o independently
-        // FIXME: why 6? don't we have 3 (out, right, right scaled)?
+        // Computing h_l, h_r, h_o independently. Recall that e.g.
+        // computing h_l takes 2N lines, since each input line
+        // commitment C_{L,i}, for i ∈ N, is processed by two hashing
+        // lines, since C_{L,i} is represented as four 150-bit elements,
+        // and one hash (per line) processes only two 150-bit elements.
         if block_row_i < 6 * n {
             // Left, right, or output
             let comm_type = block_row_i / (2 * n);
