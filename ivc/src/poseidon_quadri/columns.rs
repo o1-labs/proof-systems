@@ -44,7 +44,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
     //   - STATE_SIZE state columns for x^6 -> x^4 * x^2
     //   - STATE_SIZE state columns for x^7 -> x^6 * x
     //   - STATE_SIZE state columns for x^7 * MDS(., L)
-    //   - STATE_SIZE * NB_FULL_ROUND constants
+    // - STATE_SIZE * NB_FULL_ROUND constants
     const N_COL: usize = STATE_SIZE + (5 + 1) * NB_FULL_ROUND * STATE_SIZE;
 
     fn to_column(self) -> Column {
