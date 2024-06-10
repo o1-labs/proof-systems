@@ -83,6 +83,8 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///       TODO: we also need to squeeze challenges for
 ///       the right (strict) instance: β, γ, j (joint_combiner)
 ///
+///       TODO: we can hash (x0,x1+b*2^150) instead of (x0,x1,y0,y1).
+///
 ///
 /// Scalars block.
 ///
