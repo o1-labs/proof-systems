@@ -11,6 +11,7 @@ set -x
 	--network sepolia \
 	--datadir "${OP_PROGRAM_DATA_DIR}" \
 	--l1.head "${L1_HEAD}" \
+    --l1.beacon "${L1_BEACON_RPC}" \
 	--l2.head "${L2_HEAD}" \
 	--l2.outputroot "${STARTING_OUTPUT_ROOT}" \
 	--l2.claim "${L2_CLAIM}" \
