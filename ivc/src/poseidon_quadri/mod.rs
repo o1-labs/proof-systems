@@ -1,12 +1,14 @@
+//! Specialised circuit for Poseidon where we have maximum degree 2 constraints.
+
 pub mod columns;
 pub mod interpreter;
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        poseidon::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
         poseidon_params,
         poseidon_params::PlonkSpongeConstantsIVC,
+        poseidon_quadri::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
     };
     use ark_ff::UniformRand;
     use kimchi_msm::{
@@ -79,11 +81,11 @@ mod tests {
                     state
                 };
                 let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 0);
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 4);
                 let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 1);
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 9);
                 let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 2);
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 14);
                 assert_eq!(witness_env.read_column(x_col), exp_output[0]);
                 assert_eq!(witness_env.read_column(y_col), exp_output[1]);
                 assert_eq!(witness_env.read_column(z_col), exp_output[2]);
@@ -121,15 +123,10 @@ mod tests {
             interpreter::apply_permutation(&mut constraint_env, &PoseidonBN254Parameters);
             let constraints = constraint_env.get_constraints();
 
-            // Constraints properties check. For this test, we do have 165 constraints
-            assert_eq!(constraints.len(), STATE_SIZE * NB_FULL_ROUND);
-            // Maximum degree of the constraints
-            assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 7);
-            // We only have degree 7 constraints
-            constraints
-                .iter()
-                .map(|c| c.degree(1, 0))
-                .for_each(|d| assert_eq!(d, 7));
+            // We have 825 constraints in total
+            assert_eq!(constraints.len(), 5 * STATE_SIZE * NB_FULL_ROUND);
+            // Maximum degree of the constraints is 2
+            assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 2);
 
             constraints
         };
