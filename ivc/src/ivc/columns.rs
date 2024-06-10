@@ -38,6 +38,11 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///
 ///```text
 ///
+///         Inputs:
+///      Each point is 2 base field coordinates in 17 15-bit limbs
+///       recomposed as 8 75-bit limbs
+///       recomposed as 4 150-bit limbs.
+///
 ///              34            8      4
 ///            Input1         R75   R150
 ///  1   |-----------------|-------|----|
@@ -75,6 +80,8 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///      |                                         .| r = h_lr = h(h_l,h_r)
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
 /// 6N+2 |------------------------------------------|
+///       TODO: we also need to squeeze challenges for
+///       the right (strict) instance: β, γ, j (joint_combiner)
 ///
 ///
 /// Scalars block.
@@ -165,24 +172,25 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// 1
 ///
 ///
+///   TODO: add different challenges: β, γ, joint_combiner
 /// Challenges block.
 ///
 ///            relaxed
 ///                       strict
 ///                    (relaxed in-place)
 ///        r   α_{L,i}    α_{R}^i     α_{O,i}
-///  1    |--|--------|-----------|-------------------|
-///       |  |        | α_R = h_R |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        | α_R^i     | α_{L,i} + r·α_R^i |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-/// #chal |--|--------|-----------|-------------------|
+///  1    |--|--------|-----------|-----------------------|
+///       |  |        | α_R = h_R |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        | α_R^i     | α_{L,i} + r·α_{R,i}^i |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+/// #chal |--|--------|-----------|-----------------------|
 ///
 /// #chal is the number of constraints. Our optimistic expectation is
 /// that it is around const*N for const < 3.

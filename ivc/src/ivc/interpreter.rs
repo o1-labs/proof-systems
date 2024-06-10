@@ -652,6 +652,19 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
             .collect(),
     );
 
+    let stub_bucket = {
+        // FIXME This is a STUB right now it uses randomly generated points (not even on curve)
+        // Must use bucket input which is looked up.
+        let mut rng = rand::thread_rng();
+        let stub_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_x_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_x);
+        let stub_y_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_y);
+        (stub_x_large, stub_y_large)
+    };
+
     // E_R' = r·T_0 + r^2·T_1 + r^3·E_R
     // FIXME for now stubbed and just equal to E_L
     let error_term_rprime_large: [F; 2 * N_LIMBS_LARGE] = error_terms_large[0];
@@ -730,13 +743,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
         } else {
             panic!("Dead case");
         };
-
-        // FIXME This is a STUB right now it uses C_{O,i} commitments.
-        // Must use bucket input which is looked up.
-        let stub_bucket = (
-            comms_large[2][com_i][..N_LIMBS_LARGE].try_into().unwrap(),
-            comms_large[2][com_i][N_LIMBS_LARGE..].try_into().unwrap(),
-        );
 
         // Second FEC input point, Q.
         let (xq_limbs, yq_limbs) = if block_row_i < 34 * N_COL_TOTAL {
@@ -833,6 +839,10 @@ where
     // TODO constrain that α_{r,1} = h_R (from hash table)
 }
 
+// TODO: Do we need to check that the challenges are not merely
+// recombined properly, but also are computed properly for the right
+// (strict) instance; as hashes of fq_sponge, squeezed after the
+// alpha?
 #[allow(clippy::needless_range_loop)]
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,

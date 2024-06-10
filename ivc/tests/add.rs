@@ -231,13 +231,13 @@ pub fn test_simple_add() {
                 .try_into()
                 .unwrap();
 
+            let alpha = fq_sponge.challenge();
+            let alphas = Alphas::new(alpha);
+
             let beta = fq_sponge.challenge();
             let gamma = fq_sponge.challenge();
             let joint_combiner = fq_sponge.challenge();
             let challenges = [beta, gamma, joint_combiner];
-
-            let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new(alpha);
 
             let blinder = Fp::one();
 
