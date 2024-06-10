@@ -242,7 +242,7 @@ pub enum IVCColumn {
     /// A single column containing the folding iteration number,
     /// starting with 0 for the base case, and non-zero positive for
     /// inductive case.
-    Iteration,
+    FoldIteration,
 
     /// Selector for blocks. Inner usize is ∈ [0,#blocks).
     BlockSel(usize),
@@ -324,7 +324,7 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
-            IVCColumn::Iteration => Column::Relation(0),
+            IVCColumn::FoldIteration => Column::Relation(0),
 
             IVCColumn::BlockSel(i) => {
                 assert!(i < N_BLOCKS);

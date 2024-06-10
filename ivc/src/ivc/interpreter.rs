@@ -246,7 +246,7 @@ where
 #[allow(clippy::type_complexity)]
 pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
-    iteration: usize,
+    fold_iteration: usize,
     comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
     Box<[[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3]>,
@@ -266,8 +266,8 @@ where
         let row_num = env.curr_row();
 
         env.write_column(
-            IVCColumn::Iteration,
-            &Env::constant(F::from(iteration as u64)),
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
         );
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
@@ -308,7 +308,7 @@ where
 /// Instantiates the IVC circuit for folding. N is the total number of columns
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
-    iteration: usize,
+    fold_iteration: usize,
     poseidon_params: &PParams,
     comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
 ) -> (Env::Variable, Env::Variable, Env::Variable)
@@ -337,8 +337,8 @@ where
     // Relative position in the hashing block
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
         env.write_column(
-            IVCColumn::Iteration,
-            &Env::constant(F::from(iteration as u64)),
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
         );
 
         // Computing h_l, h_r, h_o independently. Recall that e.g.
@@ -539,7 +539,7 @@ pub struct ScalarLimbs<F> {
 /// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
 pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
-    iteration: usize,
+    fold_iteration: usize,
     r: F,
     phi: F,
 ) -> ScalarLimbs<F>
@@ -558,8 +558,8 @@ where
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(2) {
         env.write_column(
-            IVCColumn::Iteration,
-            &Env::constant(F::from(iteration as u64)),
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
         );
 
         let (
@@ -634,7 +634,7 @@ where
 
 pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
-    iteration: usize,
+    fold_iteration: usize,
     scalar_limbs: ScalarLimbs<F>,
     comms_large: &[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
@@ -706,8 +706,8 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(3) {
         env.write_column(
-            IVCColumn::Iteration,
-            &Env::constant(F::from(iteration as u64)),
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
         );
 
         // Number of the commitment we're processing, ∈ [N]
@@ -886,7 +886,7 @@ where
 #[allow(clippy::needless_range_loop)]
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
-    iteration: usize,
+    fold_iteration: usize,
     h_r: F,
     chal_l: &[F; N_CHALS],
     r: F,
@@ -898,8 +898,8 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(4) {
         env.write_column(
-            IVCColumn::Iteration,
-            &Env::constant(F::from(iteration as u64)),
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
         );
 
         curr_alpha_r_pow *= h_r;
@@ -937,14 +937,18 @@ where
 }
 
 #[allow(clippy::needless_range_loop)]
-pub fn process_u<F, Env, const N_COL_TOTAL: usize>(env: &mut Env, iteration: usize, u_l: F, r: F)
-where
+pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
+    env: &mut Env,
+    fold_iteration: usize,
+    u_l: F,
+    r: F,
+) where
     F: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn>,
 {
     env.write_column(
-        IVCColumn::Iteration,
-        &Env::constant(F::from(iteration as u64)),
+        IVCColumn::FoldIteration,
+        &Env::constant(F::from(fold_iteration as u64)),
     );
 
     env.write_column(IVCColumn::Block6ConstR, &Env::constant(r));
@@ -995,8 +999,8 @@ where
     }
 
     // For now iteration is only 0 or 1
-    let iteration = env.read_column(IVCColumn::Iteration);
-    env.assert_zero(iteration.clone() * (iteration.clone() - Env::constant(F::one())));
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
+    env.assert_zero(fold_iteration.clone() * (fold_iteration.clone() - Env::constant(F::one())));
 }
 
 /// This function generates constraints for the whole IVC circuit.
@@ -1014,31 +1018,31 @@ where
     // the constraints that are created in the block block_num will have
     // the form selector(block_num)*C(X) and not just C(X).
 
-    let iteration = env.read_column(IVCColumn::Iteration);
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s0 = env.read_column(IVCColumn::BlockSel(0));
-    env.set_assert_mapper(Box::new(move |x| iteration.clone() * s0.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s0.clone() * x));
     constrain_inputs(env);
 
     // TODO FIXME add constraints for hashes
 
-    let iteration = env.read_column(IVCColumn::Iteration);
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s2 = env.read_column(IVCColumn::BlockSel(2));
-    env.set_assert_mapper(Box::new(move |x| iteration.clone() * s2.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s2.clone() * x));
     constrain_scalars(env);
 
-    let iteration = env.read_column(IVCColumn::Iteration);
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s3 = env.read_column(IVCColumn::BlockSel(3));
-    env.set_assert_mapper(Box::new(move |x| iteration.clone() * s3.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s3.clone() * x));
     constrain_ecadds(env);
 
-    let iteration = env.read_column(IVCColumn::Iteration);
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s4 = env.read_column(IVCColumn::BlockSel(4));
-    env.set_assert_mapper(Box::new(move |x| iteration.clone() * s4.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s4.clone() * x));
     constrain_challenges(env);
 
-    let iteration = env.read_column(IVCColumn::Iteration);
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s5 = env.read_column(IVCColumn::BlockSel(5));
-    env.set_assert_mapper(Box::new(move |x| iteration.clone() * s5.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s5.clone() * x));
     constrain_u(env);
 
     env.set_assert_mapper(Box::new(move |x| x));
@@ -1066,7 +1070,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     t_terms: [(Ff, Ff); 2],     // T_0, T_1
     u_l: F,                     // part of the relaxed instance.
     chal_l: Box<[F; N_CHALS]>,  // challenges
-    iteration: usize,
+    fold_iteration: usize,
     poseidon_params: &PParams,
     domain_size: usize,
 ) where
@@ -1080,11 +1084,11 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     // Total height of all blocks. Probably higher than this number. WIP
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
     assert!(chal_l.len() == N_CHALS);
-    assert!(iteration == 0 || iteration == 1); // We'll allow different values later
+    assert!(fold_iteration == 1); // We'll allow different >1 values later
 
     let (_comms_small, comms_large, comms_xlarge) = process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(
         env,
-        iteration,
+        fold_iteration,
         [comms_left, comms_right, comms_out],
     );
     // FIXME: only right, out and right scaled must be absorbed, not left. We
@@ -1095,22 +1099,46 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     // the function and check here that the value is the same?
     let (hash_r_var, r_var, phi_var) = process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(
         env,
-        iteration,
+        fold_iteration,
         poseidon_params,
         &comms_xlarge,
     );
     let r: F = Env::variable_to_field(r_var);
     let phi: F = Env::variable_to_field(phi_var);
     let hash_r: F = Env::variable_to_field(hash_r_var);
-    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, iteration, r, phi);
+    let scalar_limbs =
+        process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, fold_iteration, r, phi);
     process_ecadds::<_, Ff, _, N_COL_TOTAL, N_CHALS>(
         env,
-        iteration,
+        fold_iteration,
         scalar_limbs,
         &comms_large,
         error_terms,
         t_terms,
     );
-    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, iteration, hash_r, &chal_l, r);
-    process_u::<_, _, N_COL_TOTAL>(env, iteration, u_l, r);
+    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, fold_iteration, hash_r, &chal_l, r);
+    process_u::<_, _, N_COL_TOTAL>(env, fold_iteration, u_l, r);
+}
+
+/// Base case IVC circuit, completely turned off.
+pub fn ivc_circuit_base_case<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+    env: &mut Env,
+    domain_size: usize,
+) where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
+{
+    assert!(45 * N_COL_TOTAL + 2 < domain_size);
+
+    // Assuming tables are initialized to zero we don't even have to do this.
+    let fold_iteration = 0;
+    for block_i in 0..N_BLOCKS {
+        for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
+            env.write_column(
+                IVCColumn::FoldIteration,
+                &Env::constant(F::from(fold_iteration as u64)),
+            );
+        }
+    }
 }
