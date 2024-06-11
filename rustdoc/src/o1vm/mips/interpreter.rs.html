@@ -2571,6 +2571,8 @@
 <a href="#2571" id="2571">2571</a>
 <a href="#2572" id="2572">2572</a>
 <a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3135,6 +3137,8 @@
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
     /// bits.
+    ///
+    /// Do not call this function with highest_bit - lowest_bit &gt;= 32.
     </span><span class="kw">unsafe fn </span>bitmask(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
