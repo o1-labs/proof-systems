@@ -3,38 +3,41 @@
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_poly::Evaluations;
+use ark_ff::{One, UniformRand, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     expressions::FoldingColumnTrait, instance_witness::Foldable, Alphas, FoldingCompatibleExpr,
-    FoldingConfig, FoldingEnv, FoldingScheme, Instance, Side, Witness,
+    FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme, Instance, Side, Witness,
+};
+use itertools::Itertools;
+use ivc::{
+    ivc::{
+        columns::{IVCColumn, N_BLOCKS},
+        interpreter::{build_selectors, constrain_ivc, ivc_circuit, ivc_circuit_base_case},
+    },
+    poseidon::interpreter::PoseidonParams,
 };
 use kimchi::{
-    circuits::{expr::ChallengeTerm, gate::CurrOrNext},
+    circuits::{domains::EvaluationDomains, expr::ChallengeTerm, gate::CurrOrNext},
     curve::KimchiCurve,
 };
-use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
+use kimchi_msm::{
+    circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
+    columns::{Column, ColumnIndexer},
+    lookups::DummyLookupTable,
+    witness::Witness as GenericWitness,
+    BN254G1Affine, Fp,
+};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use rayon::iter::IntoParallelIterator as _;
+use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{array, collections::BTreeMap, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use ark_ff::{One, UniformRand};
-use ark_poly::Radix2EvaluationDomain;
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::{
-    circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-    columns::Column,
-    lookups::DummyLookupTable,
-};
-use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
-use rayon::iter::ParallelIterator as _;
-
-use itertools::Itertools;
-
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
-
+pub type Fq = ark_bn254::Fq;
+//pub type Fp = ark_bn254::Fr;
+//pub type Curve = ark_bn254::G1Affine;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 
@@ -58,6 +61,7 @@ impl ColumnIndexer for AdditionColumn {
 }
 
 use ark_ff::PrimeField;
+use ivc::ivc::lookups::IVCLookupTable;
 use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
 
 /// Simply compute A + B - C
@@ -78,12 +82,13 @@ pub fn interpreter_simple_add<
 #[test]
 pub fn test_simple_add() {
     let mut rng = o1_utils::tests::make_test_rng();
-    let domain_size: usize = 1 << 5;
+    let domain_size: usize = 1 << 15;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-    let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
-    let mut srs = SRS::<Curve>::create(domain_size);
-    srs.add_lagrange_basis(domain.d1);
+    let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
+    let srs = pairing_srs.full_srs;
+
+    let mut fq_sponge: BaseSponge = FqSponge::new(BN254G1Affine::other_curve_sponge_params());
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -115,7 +120,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Witness<Curve> for PlonkishWitness {}
+    impl Witness<BN254G1Affine> for PlonkishWitness {}
 
     impl Index<AdditionColumn> for PlonkishWitness {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -163,7 +168,7 @@ pub fn test_simple_add() {
 
     #[derive(Clone, Debug)]
     pub struct PlonkishInstance {
-        commitments: [Curve; AdditionColumn::COUNT],
+        commitments: [BN254G1Affine; AdditionColumn::COUNT],
         challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
         blinder: Fp,
@@ -182,8 +187,8 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Instance<Curve> for PlonkishInstance {
-        fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
+    impl Instance<BN254G1Affine> for PlonkishInstance {
+        fn to_absorb(&self) -> (Vec<Fp>, Vec<BN254G1Affine>) {
             // FIXME: check!!!!
             let mut scalars = Vec::new();
             let mut points = Vec::new();
@@ -206,10 +211,10 @@ pub fn test_simple_add() {
         pub fn from_witness(
             w: &GenericWitness<3, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
             fq_sponge: &mut BaseSponge,
-            srs: &SRS<Curve>,
+            srs: &SRS<BN254G1Affine>,
             domain: Radix2EvaluationDomain<Fp>,
         ) -> Self {
-            let commitments: GenericWitness<3, PolyComm<Curve>> = w
+            let commitments: GenericWitness<3, PolyComm<BN254G1Affine>> = w
                 .into_par_iter()
                 .map(|w| srs.commit_evaluations_non_hiding(domain, w))
                 .collect();
@@ -219,20 +224,20 @@ pub fn test_simple_add() {
                 .into_iter()
                 .for_each(|c| absorb_commitment(fq_sponge, c));
 
-            let commitments: [Curve; 3] = commitments
+            let commitments: [BN254G1Affine; 3] = commitments
                 .into_iter()
                 .map(|c| c.elems[0])
                 .collect_vec()
                 .try_into()
                 .unwrap();
 
+            let alpha = fq_sponge.challenge();
+            let alphas = Alphas::new(alpha);
+
             let beta = fq_sponge.challenge();
             let gamma = fq_sponge.challenge();
             let joint_combiner = fq_sponge.challenge();
             let challenges = [beta, gamma, joint_combiner];
-
-            let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new(alpha);
 
             let blinder = Fp::one();
 
@@ -310,8 +315,8 @@ pub fn test_simple_add() {
         type Column = Column;
         type Selector = ();
         type Challenge = Challenge;
-        type Curve = Curve;
-        type Srs = SRS<Curve>;
+        type Curve = BN254G1Affine;
+        type Srs = SRS<BN254G1Affine>;
         type Instance = PlonkishInstance;
         type Witness = PlonkishWitness;
         type Structure = ();
@@ -319,17 +324,47 @@ pub fn test_simple_add() {
     }
     // ---- End of folding configuration ----
 
-    let constraints = {
+    // Poseidon parameters
+    pub struct PoseidonBN254Parameters;
+
+    pub const STATE_SIZE: usize = 3;
+    pub const NB_FULL_ROUND: usize = 55;
+
+    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
+        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
+            let rc = &ivc::poseidon::params::static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+        }
+
+        fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
+            let mds = &ivc::poseidon::params::static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+        }
+    }
+
+    type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
+        Fp,
+        IVCColumn,
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        0,
+        N_BLOCKS,
+        LT,
+    >;
+    type LT = IVCLookupTable<Fq>;
+    let mut ivc_witness_env_0 = IVCWitnessBuilderEnvRaw::<LT>::create();
+
+    let app_constraints = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         constraint_env.get_relation_constraints()
     };
 
-    let mut witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+    let mut app_witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
-    let mut witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+    let mut app_witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
     let empty_lookups = BTreeMap::new();
@@ -338,24 +373,24 @@ pub fn test_simple_add() {
     for _i in 0..domain_size {
         let a: Fp = Fp::rand(&mut rng);
         let b: Fp = Fp::rand(&mut rng);
-        witness_one.write_column(AdditionColumn::A, &a);
-        witness_one.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_one);
-        witness_two.next_row();
+        app_witness_one.write_column(AdditionColumn::A, &a);
+        app_witness_one.write_column(AdditionColumn::B, &b);
+        interpreter_simple_add(&mut app_witness_one);
+        app_witness_one.next_row();
     }
 
     // Witness two
     for _i in 0..domain_size {
         let a: Fp = Fp::rand(&mut rng);
         let b: Fp = Fp::rand(&mut rng);
-        witness_two.write_column(AdditionColumn::A, &a);
-        witness_two.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_two);
-        witness_two.next_row();
+        app_witness_two.write_column(AdditionColumn::A, &a);
+        app_witness_two.write_column(AdditionColumn::B, &b);
+        interpreter_simple_add(&mut app_witness_two);
+        app_witness_two.next_row();
     }
 
-    let proof_inputs_one = witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
-    let proof_inputs_two = witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
+    let proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
+    let proof_inputs_two = app_witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
 
     let folding_witness_one = PlonkishWitness {
         witness: (proof_inputs_one.evaluations)
@@ -364,6 +399,9 @@ pub fn test_simple_add() {
             .collect(),
     };
 
+    ivc_circuit_base_case::<Fp, _, N_COL_TOTAL, N_CHALS>(&mut ivc_witness_env_0, domain_size);
+
+    // TODO add IVC
     let folding_instance_one = PlonkishInstance::from_witness(
         &folding_witness_one.witness,
         &mut fq_sponge,
@@ -385,7 +423,17 @@ pub fn test_simple_add() {
         domain.d1,
     );
 
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = constraints
+    let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
+    constrain_ivc::<Fp, Fq, _>(&mut constraint_env);
+    let ivc_constraints = constraint_env.get_relation_constraints();
+
+    let _folding_constraints: Vec<_> = app_constraints
+        .iter()
+        .chain(ivc_constraints.iter())
+        .collect();
+
+    // FIXME tihs must be folding_constraints
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
@@ -393,7 +441,207 @@ pub fn test_simple_add() {
     let (folding_scheme, _) =
         FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &());
 
+    // -- Folding
+    // To start, we only fold two instances.
+    // We must call fold_instance_witness_pair in a nested call `fold`.
+    // Something like:
+    // ```
+    // instances.tail().fold(instances.head(), |acc, two| {
+    //     let folding_output = folding_scheme.fold_instance_witness_pair(acc, two, &mut fq_sponge);
+    //     // Compute IVC
+    //     // ...
+    //     // We return the folding instance, which will be used in the next
+    //     // iteration, which is the folded value `acc` with `two`.
+    //     folding_instance
+    // });
+    // ```
     let one = (folding_instance_one, folding_witness_one);
     let two = (folding_instance_two, folding_witness_two);
-    let _folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    let folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    let FoldingOutput {
+        folded_instance,
+        // Should not be required for the IVC circuit as it is encoding the
+        // verifier.
+        folded_witness: _,
+        t_0,
+        t_1,
+        relaxed_extended_left_instance,
+        relaxed_extended_right_instance,
+        to_absorb: _,
+    } = folding_output;
+
+    // The polynomial of the computation is linear, therefore, the error terms
+    // are zero
+    assert_ne!(t_0.elems[0], BN254G1Affine::zero());
+    assert_ne!(t_1.elems[0], BN254G1Affine::zero());
+
+    // Sanity check that the u values are the same. The u value is there to
+    // homogeneoize the polynomial describing the NP relation.
+    assert_eq!(
+        relaxed_extended_left_instance.u,
+        relaxed_extended_right_instance.u
+    );
+
+    // -- Sanity check regarding folding.
+    // No additional columns should be created.
+    let additional_columns = folding_scheme.get_number_of_additional_columns();
+    assert_eq!(additional_columns, 0);
+
+    // 1. Get all the commitments from the left instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_left: Vec<BN254G1Affine> =
+        Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    comms_left.extend(
+        relaxed_extended_left_instance
+            .extended_instance
+            .instance
+            .commitments,
+    );
+    // Additional columns of quadri
+    {
+        let extended = relaxed_extended_left_instance.extended_instance.extended;
+        comms_left.extend(extended.iter().map(|x| x.elems[0]));
+    }
+    // Checking they are all not zero.
+    comms_left.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    assert_eq!(comms_left.len(), 3);
+
+    // IVC is expecting the coordinates.
+    // Fq into Fp. Might wrap over.
+    let comms_left: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_left[i].x, comms_left[i].y));
+
+    // 2. Get all the commitments from the right instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_right = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    comms_right.extend(
+        relaxed_extended_left_instance
+            .extended_instance
+            .instance
+            .commitments,
+    );
+    {
+        let extended = relaxed_extended_right_instance.extended_instance.extended;
+        comms_right.extend(extended.iter().map(|x| x.elems[0]));
+    }
+    // Checking they are all not zero.
+    comms_right.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    // IVC is expecting the coordinates.
+    // Fq into Fp. Might wrap over.
+    let comms_right: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_right[i].x, comms_right[i].y));
+    assert_eq!(comms_right.len(), 3);
+
+    // 3. Get all the commitments from the folded instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_out = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    comms_out.extend(folded_instance.extended_instance.instance.commitments);
+    {
+        let extended = folded_instance.extended_instance.extended;
+        comms_out.extend(extended.iter().map(|x| x.elems[0]));
+    }
+    // Checking they are all not zero.
+    comms_out.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    // IVC is expecting the coordinates.
+    // Fq into Fp. Might wrap over.
+    let comms_out: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_out[i].x, comms_out[i].y));
+    assert_eq!(comms_out.len(), 3);
+
+    // FIXME: Should be handled in folding
+    let left_error_term = srs
+        .mask_custom(
+            relaxed_extended_left_instance.error_commitment,
+            &PolyComm::new(vec![Fp::one()]),
+        )
+        .unwrap()
+        .commitment;
+
+    // FIXME: Should be handled in folding
+    let right_error_term = srs
+        .mask_custom(
+            relaxed_extended_right_instance.error_commitment,
+            &PolyComm::new(vec![Fp::one()]),
+        )
+        .unwrap()
+        .commitment;
+
+    let error_terms = [
+        left_error_term.elems[0],
+        right_error_term.elems[0],
+        folded_instance.error_commitment.elems[0],
+    ];
+    error_terms.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    // Fq into Fp. Might wrap over.
+    let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
+
+    let t_terms = [t_0.elems[0], t_1.elems[0]];
+    t_terms.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+    let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
+
+    let u = relaxed_extended_left_instance.u;
+
+    const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
+    // FIXME: add columns of the previous IVC circuit in the comms_left,
+    // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
+    let all_ivc_comms_left: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_left[0]
+        } else {
+            comms_left[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_right: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_right[0]
+        } else {
+            comms_right[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_out: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_out[0]
+        } else {
+            comms_out[i - IVCColumn::N_COL]
+        }
+    });
+
+    // FIXME: add
+    // - u
+    // - there is no alpha, so ok
+    // - ?
+    const N_CHALS: usize = 3;
+
+    let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
+    let fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+    ivc_witness_env_1.set_fixed_selectors(fixed_selectors);
+
+    // TODO FIXME <Fp, Fp> is wrong
+    ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL, N_CHALS>(
+        &mut ivc_witness_env_1,
+        Box::new(all_ivc_comms_left),
+        Box::new(all_ivc_comms_right),
+        Box::new(all_ivc_comms_out),
+        error_terms,
+        t_terms,
+        u,
+        Box::new(folded_instance.extended_instance.instance.challenges),
+        1,
+        &PoseidonBN254Parameters,
+        domain_size,
+    );
+
+    let _relation_witness = ivc_witness_env_1.get_relation_witness(domain_size);
 }

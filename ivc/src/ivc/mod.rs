@@ -110,6 +110,7 @@ mod tests {
                     .try_into()
                     .unwrap(),
             ),
+            1,
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );
