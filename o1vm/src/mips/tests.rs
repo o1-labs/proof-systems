@@ -147,7 +147,7 @@ mod unit {
         fn hint(&mut self, _hint: Hint) {}
     }
 
-    pub(crate) fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
+    pub(crate) fn dummy_env<RNG>(rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
