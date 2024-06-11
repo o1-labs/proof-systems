@@ -1135,7 +1135,7 @@ fn verify_64_bit_range_check() {
 
 #[test]
 fn compact_multi_range_check() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Create prover index
     let index = create_test_prover_index(0, true);
@@ -1217,7 +1217,7 @@ fn verify_range_check_valid_proof1() {
 
 #[test]
 fn verify_compact_multi_range_check_proof() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let limbs: [PallasField; 3] =
         array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();

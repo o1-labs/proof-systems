@@ -92,7 +92,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..64);
     // Create
     let gates = create_rot_gadget::<G>(rot, RotMode::Left);
@@ -159,7 +159,7 @@ where
 #[test]
 // Test that a random offset between 1 and 63 work as expected, both left and right
 fn test_rot_random() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Vesta>(word, rot, RotMode::Left);
@@ -171,7 +171,7 @@ fn test_rot_random() {
 #[test]
 // Test that a bad rotation fails as expected
 fn test_zero_rot() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Pallas>(word, 0, RotMode::Left);
 }
@@ -179,7 +179,7 @@ fn test_zero_rot() {
 #[test]
 // Test that a bad rotation fails as expected
 fn test_large_rot() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Pallas>(word, 64, RotMode::Left);
 }
@@ -187,7 +187,7 @@ fn test_large_rot() {
 #[test]
 // Test bad rotation
 fn test_bad_constraints() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     let (mut witness, cs) = setup_rot::<Vesta>(word, rot, RotMode::Left);
