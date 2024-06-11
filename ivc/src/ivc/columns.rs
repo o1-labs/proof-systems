@@ -62,7 +62,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///      0       ...     34*2    76    80
 ///
 ///
-///                      Hashes
+///                      Hashes (temporarily DISABLED)
 ///     (one hash at a row, passing data to the next one)
 ///     (for i∈N, the input row #i containing 4 150-bit elements
 ///      is processed by hash rows 2*i and 2*i+1)
@@ -256,9 +256,8 @@ pub enum IVCColumn {
     /// 2*2 150-bit limbs
     Block1InputRepacked150(usize),
 
-    /// 1 hash per row
-    Block2Hash(PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>),
-
+    ///// 1 hash per row
+    //Block2Hash(PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>),
     /// Constant phi
     Block3ConstPhi,
     /// Constant r
@@ -347,8 +346,7 @@ impl ColumnIndexer for IVCColumn {
                     Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
                 }
 
-                IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
-
+                //IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
                 IVCColumn::Block3ConstPhi => Column::Relation(0),
                 IVCColumn::Block3ConstR => Column::Relation(1),
                 IVCColumn::Block3PhiPow => Column::Relation(2),
@@ -411,23 +409,23 @@ impl ColumnIndexer for IVCColumn {
     }
 }
 
-pub struct IVCHashLens {}
-
-impl MPrism for IVCHashLens {
-    type Source = IVCColumn;
-    type Target = IVCPoseidonColumn;
-
-    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
-        match source {
-            IVCColumn::Block2Hash(col) => Some(col),
-            _ => None,
-        }
-    }
-
-    fn re_get(&self, target: Self::Target) -> Self::Source {
-        IVCColumn::Block2Hash(target)
-    }
-}
+//pub struct IVCHashLens {}
+//
+//impl MPrism for IVCHashLens {
+//    type Source = IVCColumn;
+//    type Target = IVCPoseidonColumn;
+//
+//    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+//        match source {
+//            IVCColumn::Block2Hash(col) => Some(col),
+//            _ => None,
+//        }
+//    }
+//
+//    fn re_get(&self, target: Self::Target) -> Self::Source {
+//        IVCColumn::Block2Hash(target)
+//    }
+//}
 
 pub struct IVCFECLens {}
 

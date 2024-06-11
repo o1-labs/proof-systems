@@ -3,12 +3,12 @@
 use crate::{
     ivc::{
         columns::{
-            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
+            block_height, IVCColumn, IVCFECLens, IVC_POSEIDON_NB_FULL_ROUND,
             IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon::interpreter::{poseidon_circuit, PoseidonParams},
+    poseidon::interpreter::PoseidonParams,
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{
@@ -297,6 +297,30 @@ where
     )
 }
 
+// Stub wrapper around real poseidon
+pub fn ivc_poseidon_circuit<F: PrimeField, PParams, Env>(
+    _env: &mut Env,
+    _poseidon_params: &PParams,
+    _init_state: [Env::Variable; IVC_POSEIDON_STATE_SIZE],
+) -> [Env::Variable; IVC_POSEIDON_STATE_SIZE]
+where
+    F: PrimeField,
+    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
+    Env: ColWriteCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
+{
+    // FIXME hashes are temporarily disabled due to the fact they take a lot of columns.
+    //poseidon_circuit(
+    //    &mut SubEnvColumn::new(env, IVCHashLens {}),
+    //    poseidon_params,
+    //    init_state,
+    //)
+    [
+        Env::constant(F::zero()),
+        Env::constant(F::zero()),
+        Env::constant(F::zero()),
+    ]
+}
+
 // TODO We need to have alpha
 // TODO We need to hash i (or i+1)?
 // TODO We need to hash T_0 and T_1?
@@ -373,8 +397,8 @@ where
                 prev_hash_output.clone()
             };
 
-            let [_, _, output] = poseidon_circuit(
-                &mut SubEnvColumn::new(env, IVCHashLens {}),
+            let [_, _, output] = ivc_poseidon_circuit(
+                env,
                 poseidon_params,
                 [Env::constant(input1), Env::constant(input2), input3],
             );
@@ -395,8 +419,8 @@ where
             }
         } else if block_row_i == 6 * n {
             // Computing r
-            let [_, _, r_res] = poseidon_circuit(
-                &mut SubEnvColumn::new(env, IVCHashLens {}),
+            let [_, _, r_res] = ivc_poseidon_circuit(
+                env,
                 poseidon_params,
                 [
                     hash_l.clone(),
@@ -407,8 +431,8 @@ where
             r = r_res;
         } else if block_row_i == 6 * n + 1 {
             // Computing phi
-            let [_, _, phi_res] = poseidon_circuit(
-                &mut SubEnvColumn::new(env, IVCHashLens {}),
+            let [_, _, phi_res] = ivc_poseidon_circuit(
+                env,
                 poseidon_params,
                 [hash_o.clone(), r.clone(), Env::constant(sponge_lro_init)],
             );
