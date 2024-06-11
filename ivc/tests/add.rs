@@ -427,14 +427,16 @@ pub fn test_simple_add() {
     constrain_ivc::<Fp, Fq, _>(&mut constraint_env);
     let ivc_constraints = constraint_env.get_relation_constraints();
 
-    let _folding_constraints: Vec<_> = app_constraints
+    // FIXME: this will not work. One must map variables inside
+    // expressions properly. E.g. app_constraints think witness#0 is A
+    // (left input) column, while IVC thinks it's ITERATION.
+    let folding_constraints: Vec<_> = app_constraints
         .iter()
         .chain(ivc_constraints.iter())
         .collect();
 
-    // FIXME tihs must be folding_constraints
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
-        .iter()
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = folding_constraints
+        .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
 
