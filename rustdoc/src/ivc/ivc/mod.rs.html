@@ -287,7 +287,7 @@
     <span class="attr">#[test]
     </span><span class="doccomment">/// Tests if building the IVC circuit succeeds.
     </span><span class="kw">pub fn </span>test_ivc_circuit() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
             <span class="kw-2">&amp;mut </span>rng,
             <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
@@ -297,7 +297,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness_ivc() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
 
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 

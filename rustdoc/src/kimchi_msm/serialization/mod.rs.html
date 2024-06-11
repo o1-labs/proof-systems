@@ -148,7 +148,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="comment">// Must be at least 1 &lt;&lt; 15 to support rangecheck15
         </span><span class="kw">let </span>domain_size: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 

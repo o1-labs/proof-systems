@@ -666,7 +666,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>check_negation() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
             rng.gen_biguint(<span class="number">256</span>).negate();
         }
@@ -674,7 +674,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>check_good_limbs() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">100 </span>{
             <span class="kw">let </span>x = rng.gen_biguint(<span class="number">264</span>);
             <span class="macro">assert_eq!</span>(x.to_limbs().len(), <span class="number">3</span>);
@@ -700,28 +700,28 @@
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_1() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_limbs().len(), <span class="number">3</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_2() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_compact_limbs().len(), <span class="number">2</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_3() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_field_limbs::&lt;BaseField&gt;().len(), <span class="number">3</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_4() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="macro">assert_ne!</span>(
             rng.gen_biguint(<span class="number">265</span>)
                 .to_compact_field_limbs::&lt;BaseField&gt;()

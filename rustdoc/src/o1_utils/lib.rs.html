@@ -66,8 +66,8 @@
     <span class="kw">use </span>rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     <span class="doccomment">/// Create a new test rng with a random seed
-    </span><span class="kw">pub fn </span>make_test_rng() -&gt; StdRng {
-        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+    </span><span class="kw">pub fn </span>make_test_rng(seed: <span class="prelude-ty">Option</span>&lt;[u8; <span class="number">32</span>]&gt;) -&gt; StdRng {
+        <span class="kw">let </span>seed = seed.unwrap_or(thread_rng().gen());
         <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
         StdRng::from_seed(seed)
     }

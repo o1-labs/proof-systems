@@ -152,13 +152,13 @@
     <span class="attr">#[test]
     </span><span class="doccomment">/// Tests if FFA circuit is valid.
     </span><span class="kw">pub fn </span>test_ffa_circuit() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         build_ffa_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">pub fn </span>test_ffa_completeness() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>; <span class="comment">// Otherwise we can&#39;t do 15-bit lookups.
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&gt;::create();

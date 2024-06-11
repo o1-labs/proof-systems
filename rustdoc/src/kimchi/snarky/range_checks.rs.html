@@ -451,7 +451,7 @@
 
         <span class="kw">let </span>(<span class="kw-2">mut </span>prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
 
         <span class="kw">use </span>rand::Rng;
         <span class="comment">// prove

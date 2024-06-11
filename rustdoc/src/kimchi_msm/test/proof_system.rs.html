@@ -469,7 +469,7 @@
     <span class="comment">// Test a constraint of degree one: X_{0} - X_{1}
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness_degree_one() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">2</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -499,7 +499,7 @@
     <span class="comment">// Test a constraint of degree two: X_{0} * X_{0} - X_{1} - X_{2}
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness_degree_two() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">3</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -538,7 +538,7 @@
     // + X_{3}
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness_degree_three() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">4</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -580,7 +580,7 @@
     <span class="attr">#[test]
     </span><span class="comment">// X_{0} * (X_{1} * X_{2} * X_{3} + 1)
     </span><span class="kw">fn </span>test_completeness_degree_four() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">4</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -619,7 +619,7 @@
     <span class="attr">#[test]
     </span><span class="comment">// X_{0}^5 + X_{1}
     </span><span class="kw">fn </span>test_completeness_degree_five() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">2</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -652,7 +652,7 @@
     <span class="attr">#[test]
     </span><span class="comment">// X_{0}^3 + X_{1} AND X_{2}^2 - 3 X_{3}
     </span><span class="kw">fn </span>test_completeness_different_constraints_different_degrees() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">4</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -695,7 +695,7 @@
     <span class="attr">#[test]
     </span><span class="comment">// X_{0}^6 + X_{1}^4 - X_{2}^3 - 2 X_{3}
     </span><span class="kw">fn </span>test_completeness_degree_six() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">4</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
@@ -750,7 +750,7 @@
     <span class="attr">#[test]
     </span><span class="comment">// X_{0}^7 + X_{1}^4 - X_{2}^3 - 2 X_{3}
     </span><span class="kw">fn </span>test_completeness_degree_seven() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">const </span>N: usize = <span class="number">4</span>;
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 

@@ -1642,7 +1642,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_decomposition_random_first_limb_only() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>x = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">88</span>) - <span class="number">1</span>);
         test_decomposition_generic(Fp::from(x));
     }
@@ -1658,14 +1658,14 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_decomposition_random_second_limb_only() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>x = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">88</span>) - <span class="number">1</span>);
         test_decomposition_generic(Fp::from(<span class="number">2u128</span>.pow(<span class="number">88</span>) + x));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_decomposition_random() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = make_test_rng(<span class="prelude-val">None</span>);
         test_decomposition_generic(Fp::rand(<span class="kw-2">&amp;mut </span>rng));
     }
 
@@ -1704,7 +1704,7 @@
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     </span><span class="kw">pub fn </span>test_serialization_mul_circuit() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         build_serialization_mul_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
     }
 }
