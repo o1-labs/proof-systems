@@ -15,7 +15,7 @@ use ivc::{
         columns::{IVCColumn, N_BLOCKS},
         interpreter::{build_selectors, constrain_ivc, ivc_circuit, ivc_circuit_base_case},
     },
-    poseidon::{interpreter::PoseidonParams, params},
+    poseidon::interpreter::PoseidonParams,
 };
 use kimchi::{
     circuits::{domains::EvaluationDomains, expr::ChallengeTerm, gate::CurrOrNext},
@@ -26,10 +26,9 @@ use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     lookups::DummyLookupTable,
     witness::Witness as GenericWitness,
-    BN254G1Affine, Ff1, Fp,
+    BN254G1Affine, Fp,
 };
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use o1_utils::FieldHelpers;
 use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{array, collections::BTreeMap, ops::Index};
@@ -333,12 +332,12 @@ pub fn test_simple_add() {
 
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let rc = &params::static_params().round_constants;
+            let rc = &ivc::poseidon::params::static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &params::static_params().mds;
+            let mds = &ivc::poseidon::params::static_params().mds;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
@@ -352,7 +351,7 @@ pub fn test_simple_add() {
         N_BLOCKS,
         LT,
     >;
-    type LT = IVCLookupTable<Fp>;
+    type LT = IVCLookupTable<Fq>;
     let mut ivc_witness_env_0 = IVCWitnessBuilderEnvRaw::<LT>::create();
 
     let app_constraints = {
@@ -424,8 +423,8 @@ pub fn test_simple_add() {
         domain.d1,
     );
 
-    let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
-    constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+    let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
+    constrain_ivc::<Fp, Fq, _>(&mut constraint_env);
     let ivc_constraints = constraint_env.get_relation_constraints();
 
     let _folding_constraints: Vec<_> = app_constraints
@@ -490,7 +489,8 @@ pub fn test_simple_add() {
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
-    let mut comms_left = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    let mut comms_left: Vec<BN254G1Affine> =
+        Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
     comms_left.extend(
         relaxed_extended_left_instance
             .extended_instance
@@ -512,12 +512,6 @@ pub fn test_simple_add() {
     // IVC is expecting the coordinates.
     // Fq into Fp. Might wrap over.
     let comms_left: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_left[i].x, comms_left[i].y));
-    let comms_left: [(Fp, Fp); 3] = std::array::from_fn(|i| {
-        (
-            Fp::from_biguint(&comms_left[i].0.to_biguint()).unwrap(),
-            Fp::from_biguint(&comms_left[i].1.to_biguint()).unwrap(),
-        )
-    });
 
     // 2. Get all the commitments from the right instance.
     // We want a way to get also the potential additional columns.
@@ -540,12 +534,6 @@ pub fn test_simple_add() {
     // IVC is expecting the coordinates.
     // Fq into Fp. Might wrap over.
     let comms_right: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_right[i].x, comms_right[i].y));
-    let comms_right: [(Fp, Fp); 3] = std::array::from_fn(|i| {
-        (
-            Fp::from_biguint(&comms_right[i].0.to_biguint()).unwrap(),
-            Fp::from_biguint(&comms_right[i].1.to_biguint()).unwrap(),
-        )
-    });
     assert_eq!(comms_right.len(), 3);
 
     // 3. Get all the commitments from the folded instance.
@@ -564,12 +552,6 @@ pub fn test_simple_add() {
     // IVC is expecting the coordinates.
     // Fq into Fp. Might wrap over.
     let comms_out: [(Fq, Fq); 3] = std::array::from_fn(|i| (comms_out[i].x, comms_out[i].y));
-    let comms_out: [(Fp, Fp); 3] = std::array::from_fn(|i| {
-        (
-            Fp::from_biguint(&comms_out[i].0.to_biguint()).unwrap(),
-            Fp::from_biguint(&comms_out[i].1.to_biguint()).unwrap(),
-        )
-    });
     assert_eq!(comms_out.len(), 3);
 
     // FIXME: Should be handled in folding
@@ -601,45 +583,33 @@ pub fn test_simple_add() {
 
     // Fq into Fp. Might wrap over.
     let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
-    let error_terms: [(Fp, Fp); 3] = std::array::from_fn(|i| {
-        (
-            Fp::from_biguint(&error_terms[i].0.to_biguint()).unwrap(),
-            Fp::from_biguint(&error_terms[i].1.to_biguint()).unwrap(),
-        )
-    });
 
     let t_terms = [t_0.elems[0], t_1.elems[0]];
     t_terms.iter().for_each(|c| {
         assert_ne!(c, &BN254G1Affine::zero());
     });
     let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
-    let t_terms: [(Fp, Fp); 2] = std::array::from_fn(|i| {
-        (
-            Fp::from_biguint(&t_terms[i].0.to_biguint()).unwrap(),
-            Fp::from_biguint(&t_terms[i].1.to_biguint()).unwrap(),
-        )
-    });
 
     let u = relaxed_extended_left_instance.u;
 
     const N_COL_TOTAL: usize = 3 + IVCColumn::N_COL;
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
-    let all_ivc_comms_left: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_left: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_left[0]
         } else {
             comms_left[i - IVCColumn::N_COL]
         }
     });
-    let all_ivc_comms_right: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_right: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_right[0]
         } else {
             comms_right[i - IVCColumn::N_COL]
         }
     });
-    let all_ivc_comms_out: [(Fp, Fp); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_out: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_out[0]
         } else {
@@ -659,7 +629,7 @@ pub fn test_simple_add() {
     ivc_witness_env_1.set_fixed_selectors(fixed_selectors);
 
     // TODO FIXME <Fp, Fp> is wrong
-    ivc_circuit::<Fp, Fp, _, _, N_COL_TOTAL, N_CHALS>(
+    ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL, N_CHALS>(
         &mut ivc_witness_env_1,
         Box::new(all_ivc_comms_left),
         Box::new(all_ivc_comms_right),
