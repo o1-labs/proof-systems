@@ -469,6 +469,9 @@ pub trait InterpreterEnv {
             vec![addr.clone(), new_accessed, new_value.clone()],
         ));
         self.range_check64(&elapsed_time);
+
+        // Update instruction counter after accessing a memory address.
+        self.increase_instruction_counter();
     }
 
     fn read_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
