@@ -120,7 +120,7 @@ mod tests {
     #[test]
     /// Tests if building the IVC circuit succeeds.
     pub fn test_ivc_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
             1 << 15,
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_completeness_ivc() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         let domain_size = 1 << 15;
 

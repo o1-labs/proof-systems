@@ -21,7 +21,7 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 #[test]
 fn ec_test() {
     use o1_utils::tests::make_test_rng;
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     let num_doubles = 100;
     let num_additions = 100;

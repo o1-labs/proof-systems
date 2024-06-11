@@ -362,9 +362,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
         // To avoid subtraction overflow in the witness interpreter for u32
         if x > y {
-            self.is_zero(&(x.clone() - y.clone()))
+            self.is_zero(&(*x - *y))
         } else {
-            self.is_zero(&(y.clone() - x.clone()))
+            self.is_zero(&(*y - *x))
         }
     }
 
@@ -476,15 +476,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         out_position: Self::Position,
         underflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let u64_res = x - y;
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let u32_res = x - y;
-        let u32_res = u32_res as u64;
-        let underflows = if u32_res == u64_res { 0u64 } else { 1u64 };
-        self.write_column(out_position, u32_res);
-        self.write_column(underflow_position, underflows);
-        (u32_res, underflows)
+        // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_sub
+        let res = x.overflowing_sub(y);
+        let (res_, underflow) = (res.0 as u64, res.1 as u64);
+        self.write_column(out_position, res_);
+        self.write_column(underflow_position, underflow);
+        (res_, underflow)
     }
 
     unsafe fn mul_signed_witness(

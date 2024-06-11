@@ -53,7 +53,7 @@ mod tests {
     /// specification of Poseidon. Fast to run, can be used for
     /// debugging.
     pub fn test_poseidon_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 4;
 
         let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     /// Checks that poseidon circuit can be proven and verified. Big domain.
     pub fn test_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size: usize = 1 << 15;
 
         let relation_witness = {
