@@ -116,7 +116,7 @@ fn setup_not_xor<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let input = rng.gen(input, bits);
 
@@ -165,7 +165,7 @@ fn setup_not_gnrc<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let inputs = if let Some(inps) = inputs {
         assert!(len.is_none());
@@ -250,7 +250,7 @@ fn check_not_gnrc<G: KimchiCurve>(
 // End-to-end test of NOT using XOR gadget
 fn test_prove_and_verify_not_xor() {
     let bits = 64;
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Create circuit
     let gates = {
@@ -283,7 +283,7 @@ fn test_prove_and_verify_not_xor() {
 // End-to-end test of NOT using generic gadget
 fn test_prove_and_verify_five_not_gnrc() {
     let bits = 64;
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Create circuit
     let gates = {
@@ -333,7 +333,7 @@ fn test_not_xor_all_crumb() {
 fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
         let bits = 2u32.pow(i) as usize;
-        let rng = &mut o1_utils::tests::make_test_rng();
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let input = rng.gen_field_with_bits(bits);
         test_not_xor::<Vesta>(Some(input), Some(bits));
         test_not_xor::<Vesta>(Some(input), None);
@@ -343,7 +343,7 @@ fn test_not_xor_crumbs_random() {
 #[test]
 // Tests a NOT for a random-length big input
 fn test_not_xor_big_random() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let input = rng.gen_field_with_bits(200);
     test_not_xor::<Vesta>(Some(input), None);
     let input = rng.gen_field_with_bits(200);
@@ -367,7 +367,7 @@ fn test_not_gnrc_single() {
 #[test]
 // Tests a chain of 5 NOTs with different lengths but padded to 254 bits with the generic builder
 fn test_not_gnrc_vector() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     // up to 2^16, 2^32, 2^64, 2^128, 2^254
     let inputs = (0..5)
         .map(|i| rng.gen_field_with_bits(4 + i))

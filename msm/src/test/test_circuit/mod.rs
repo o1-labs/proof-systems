@@ -51,13 +51,13 @@ mod tests {
 
     #[test]
     pub fn test_build_test_fixed_sel_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_test_fixed_sel_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
     }
 
     #[test]
     fn test_completeness_fixed_sel() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         // Include tests for completeness for Logup as the random witness
         // includes all arguments
@@ -119,13 +119,13 @@ mod tests {
 
     #[test]
     pub fn test_build_test_constant_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_test_const_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
     }
 
     #[test]
     fn test_completeness_constant() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         // Include tests for completeness for Logup as the random witness
         // includes all arguments
@@ -185,13 +185,13 @@ mod tests {
     #[test]
     /// Tests if the "test" circuit is valid without running the proof.
     pub fn test_build_test_mul_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
     }
 
     #[test]
     fn test_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         // Include tests for completeness for Logup as the random witness
         // includes all arguments
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_soundness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         // We generate two different witness and two different proofs.
         let domain_size: usize = 1 << 8;

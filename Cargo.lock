@@ -1469,6 +1469,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "ark-std",
  "folding",
  "groupmap",
  "itertools 0.12.1",

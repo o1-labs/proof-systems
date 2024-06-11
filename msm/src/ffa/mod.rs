@@ -56,13 +56,13 @@ mod tests {
     #[test]
     /// Tests if FFA circuit is valid.
     pub fn test_ffa_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_ffa_circuit(&mut rng, 1 << 4);
     }
 
     #[test]
     pub fn test_ffa_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable>::create();

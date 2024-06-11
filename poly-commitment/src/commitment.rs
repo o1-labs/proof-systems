@@ -28,9 +28,11 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial as _};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use std::iter::Iterator;
+use serde::{de::Visitor, Deserialize, Serialize};
+use serde_with::{
+    de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
+};
+use std::{iter::Iterator, marker::PhantomData};
 
 use super::evaluation_proof::*;
 
@@ -55,6 +57,65 @@ where
 impl<T> PolyComm<T> {
     pub fn new(elems: Vec<T>) -> Self {
         Self { elems }
+    }
+}
+
+impl<T, U> SerializeAs<PolyComm<T>> for PolyComm<U>
+where
+    U: SerializeAs<T>,
+{
+    fn serialize_as<S>(source: &PolyComm<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_seq(source.elems.iter().map(|e| SerializeAsWrap::<T, U>::new(e)))
+    }
+}
+
+impl<'de, T, U> DeserializeAs<'de, PolyComm<T>> for PolyComm<U>
+where
+    U: DeserializeAs<'de, T>,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<PolyComm<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SeqVisitor<T, U> {
+            marker: PhantomData<(T, U)>,
+        }
+
+        impl<'de, T, U> Visitor<'de> for SeqVisitor<T, U>
+        where
+            U: DeserializeAs<'de, T>,
+        {
+            type Value = PolyComm<T>;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                #[allow(clippy::redundant_closure_call)]
+                let mut elems = vec![];
+
+                while let Some(value) = seq
+                    .next_element()?
+                    .map(|v: DeserializeAsWrap<T, U>| v.into_inner())
+                {
+                    elems.push(value);
+                }
+
+                Ok(PolyComm { elems })
+            }
+        }
+
+        let visitor = SeqVisitor::<T, U> {
+            marker: PhantomData,
+        };
+        deserializer.deserialize_seq(visitor)
     }
 }
 
@@ -444,7 +505,10 @@ pub fn combined_inner_product<F: PrimeField>(
         // Iterating over the polynomial segments.
         // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
         // Given that xi_i = polyscale^i0 at this point, after this loop we have:
-        //    res += \sum_i polyscale^{i0+i} ( \sum_j evals_tr[j][i] * evalscale^j )
+        //
+        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
+        //           i                    j
+        //
         for eval in &evals {
             // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
@@ -581,6 +645,10 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         .iter()
         .filter(|x| !x.commitment.elems.is_empty())
     {
+        // IMPROVEME: we could have a flat array that would contain all the
+        // evaluations and all the chunks. It would avoid fetching the memory
+        // and avoid indirection into RAM.
+        // We could have a single flat array.
         // iterating over the polynomial segments
         for chunk_idx in 0..evaluations[0].len() {
             // supposes that all evaluations are of the same size
@@ -609,17 +677,6 @@ where
 
     fn blinding_commitment(&self) -> G {
         self.h
-    }
-
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    fn commit(
-        &self,
-        plnm: &DensePolynomial<G::ScalarField>,
-        num_chunks: usize,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial
@@ -684,6 +741,26 @@ where
         }
 
         PolyComm::<G> { elems }
+    }
+
+    /// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    fn commit(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
+    }
+
+    fn commit_custom(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_non_hiding(plnm, num_chunks), blinders)
     }
 
     fn commit_evaluations_non_hiding(

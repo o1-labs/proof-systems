@@ -40,6 +40,7 @@ struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
     alphas: Alphas<Fp>,
+    blinder: Fp,
 }
 
 impl Foldable<Fp> for TestInstance {
@@ -50,6 +51,7 @@ impl Foldable<Fp> for TestInstance {
             }),
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+            blinder: a.blinder + challenge * b.blinder,
         }
     }
 }
@@ -66,6 +68,10 @@ impl Instance<Curve> for TestInstance {
 
     fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
+    }
+
+    fn get_blinder(&self) -> Fp {
+        self.blinder
     }
 }
 
@@ -222,17 +228,20 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 3] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later compute challenges
-    // but for this example I just use random values
+    // here we should absorve the commitments and similar things to later
+    // compute challenges but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);
     let challenges = [(); 3].map(|_| challenge());
     let alpha = challenge();
     let alphas = Alphas::new(alpha);
+    // We suppose we always have a blinder to one.
+    let blinder = Fp::one();
     TestInstance {
         commitments,
         challenges,
         alphas,
+        blinder,
     }
 }
 

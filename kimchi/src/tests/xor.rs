@@ -104,7 +104,7 @@ fn setup_xor<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     // Initialize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
     let input1 = rng.gen(in1, bits);
@@ -147,7 +147,7 @@ where
 #[test]
 // End-to-end test of XOR
 fn test_prove_and_verify_xor() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bits = 64;
     // Create
@@ -270,7 +270,7 @@ fn test_bad_xor_decompsition() {
 // Tests that the extend xor function works as expected
 fn test_extend_xor() {
     let bits = Some(16);
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
@@ -312,7 +312,7 @@ fn test_extend_xor() {
 #[test]
 fn test_bad_xor() {
     let bits = Some(16);
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 

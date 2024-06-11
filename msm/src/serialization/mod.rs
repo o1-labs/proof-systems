@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         // Must be at least 1 << 15 to support rangecheck15
         let domain_size: usize = 1 << 15;
 
