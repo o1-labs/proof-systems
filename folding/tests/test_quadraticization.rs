@@ -37,6 +37,10 @@ impl Instance<Curve> for TestInstance {
     fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
         todo!()
     }
+
+    fn get_blinder(&self) -> Fp {
+        todo!()
+    }
 }
 
 #[derive(Clone)]

@@ -1,21 +1,25 @@
 //! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
-//! [Witness] that defines the the NP relation.
+//! [Witness] that defines the the NP relation R.
 //!
-//! Here a brief description of the traits and structures:
-//! - [Instance]: represents the instance (public input)
-//! - [Witness]: represents the witness (private input)
-//! - [ExtendedInstance]: represents the instance extended with extra columns
-//! that are added by quadraticization
-//! - [ExtendedWitness]: represents the witness extended with extra columns that
-//! are added by quadraticization
-//! - [RelaxedInstance]: represents a relaxed instance
-//! - [RelaxedWitness]: represents a relaxed witness
-//! - [RelaxableInstance]: a trait that allows to relax an instance. It is
-//! implemented for [Instance] and [RelaxedInstance] so methods that require a
-//! relaxed instance can also be called on a normal instance
-//! - [RelaxableWitness]: same than [RelaxableInstance] but for witnesses.
+//! This module describes 3 different types of instance/witness pairs:
+//! - [Instance] and [Witness]: the original instance and witness. These are the
+//! ones that the user must provide.
+//! - [ExtendedInstance] and [ExtendedWitness]: the instance and witness
+//! extended by quadraticization.
+//! - [RelaxedInstance] and [RelaxedWitness]: the instance and witness related
+//! to the relaxed/homogeneous polynomials.
+//!
+//! Note that [Instance], [ExtendedInstance] and [RelaxedInstance] are
+//! supposed to be used to encapsulate the public inputs and challenges. It is
+//! the common information the prover and verifier have.
+//! [Witness], [ExtendedWitness] and [RelaxedWitness] are supposed to be used
+//! to encapsulate the private inputs. For instance, it is the evaluations of
+//! the polynomials.
+//!
+//! A generic trait [Foldable] is defined to combine two objects of the same
+//! type using a challenge.
 
 // FIXME: for optimisation, as values are not necessarily Fp elements and are
 // relatively small, we could get rid of the scalar field objects, and only use
@@ -61,34 +65,17 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// ```
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>);
 
-    /// This method takes an Instance and a commitment to zero and extends the instance,
-    /// returning a relaxed instance which is composed by the extended instance, the scalar one,
-    /// and the error commitment which is set to the commitment to zero.
-    fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
-        let extended_instance = ExtendedInstance::extend(self);
-        RelaxedInstance {
-            extended_instance,
-            u: G::ScalarField::one(),
-            error_commitment: zero_commit,
-        }
-    }
-
     /// Returns the alphas values for the instance
     fn get_alphas(&self) -> &Alphas<G::ScalarField>;
+
+    /// Return the blinder that can be used while committing to polynomials.
+    fn get_blinder(&self) -> G::ScalarField;
 }
 
-pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
-    /// This method takes a witness and a vector of evaluations to the zero polynomial,
-    /// returning a relaxed witness which is composed by the extended witness and the error vector
-    /// that is set to the zero polynomial.
-    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
-        let extended_witness = ExtendedWitness::extend(self);
-        RelaxedWitness {
-            extended_witness,
-            error_vec: zero_poly.clone(),
-        }
-    }
-}
+pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {}
+
+// -- Structures that consist of extending the original instance and witness
+// -- with the extra columns added by quadraticization.
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     /// This method returns an extended witness which is defined as the witness itself,
@@ -111,58 +98,11 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     }
 }
 
-/// A relaxed instance is an instance that has been relaxed by the folding scheme.
-/// It contains the original instance, extended with the columns added by
-/// quadriticization, the scalar `u` and a commitment to the
-/// slack/error term.
-/// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
-// FIXME: We should forbid cloning, for memory footprint.
-#[derive(Clone)]
-pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
-    /// The original instance, extended with the columns added by
-    /// quadriticization
-    pub extended_instance: ExtendedInstance<G, I>,
-    pub u: G::ScalarField,
-    pub error_commitment: PolyComm<G>,
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
-    /// Returns the elements to be absorbed by the sponge
-    ///
-    /// The scalar elements of the are appended with the scalar `u` and the
-    /// commitments are appended by the commitment to the error term.
-    pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
-        let mut elements = self.extended_instance.to_absorb();
-        elements.0.push(self.u);
-        assert_eq!(self.error_commitment.elems.len(), 1);
-        elements.1.push(self.error_commitment.elems[0]);
-        elements
-    }
-
-    /// Provides access to commitments to the extra columns added by
-    /// quadraticization
-    pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
-        self.extended_instance.extended.get(i)
-    }
-}
-
-// -- Relaxed witnesses
-pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
-    pub extended_witness: ExtendedWitness<G, W>,
-    pub error_vec: Evals<G::ScalarField>,
-}
-
-impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    /// Provides access to the extra columns added by quadraticization
-    pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
-        self.extended_witness.extended.get(i)
-    }
-}
-
 // -- Extended witness
 /// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
+    /// This is the original witness, without quadraticization
     pub witness: W,
     /// Extra columns added by quadraticization to lower the degree of
     /// expressions to 2
@@ -179,7 +119,10 @@ impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for ExtendedWit
             witness: witness2,
             extended: ex2,
         } = b;
+        // We fold the original witness
         let witness = W::combine(witness1, witness2, challenge);
+        // And we fold the columns created by quadraticization.
+        // W <- W1 + c W2
         let extended = ex1
             .into_iter()
             .zip(ex2)
@@ -241,7 +184,12 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for ExtendedIn
             instance: instance2,
             extended: ex2,
         } = b;
+        // Combining first the existing commitments (i.e. not the one added by
+        // quadraticization)
+        // They are supposed to be blinded already
         let instance = I::combine(instance1, instance2, challenge);
+        // For each commitment, compute
+        // Comm(W) + c * Comm(W')
         let extended = ex1
             .into_iter()
             .zip(ex2)
@@ -270,32 +218,252 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     fn get_alphas(&self) -> &Alphas<G::ScalarField> {
         self.instance.get_alphas()
     }
+
+    /// Returns the blinder value. It is the same as the one of the original
+    fn get_blinder(&self) -> G::ScalarField {
+        self.instance.get_blinder()
+    }
+}
+
+// -- "Relaxed"/"Homogenized" structures
+
+/// A relaxed instance is an instance that has been relaxed by the folding scheme.
+/// It contains the original instance, extended with the columns added by
+/// quadriticization, the scalar `u` and a commitment to the
+/// slack/error term.
+/// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
+// FIXME: We should forbid cloning, for memory footprint.
+#[derive(Clone)]
+pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
+    /// The original instance, extended with the columns added by
+    /// quadriticization
+    pub extended_instance: ExtendedInstance<G, I>,
+    /// The scalar `u` that is used to homogenize the polynomials
+    pub u: G::ScalarField,
+    /// The commitment to the error term, introduced when homogenizing the
+    /// polynomials
+    pub error_commitment: PolyComm<G>,
+    /// Blinder used for the commitments to the cross terms
+    pub blinder: G::ScalarField,
+}
+
+impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
+    /// Returns the elements to be absorbed by the sponge
+    ///
+    /// The scalar elements of the are appended with the scalar `u` and the
+    /// commitments are appended by the commitment to the error term.
+    pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        let mut elements = self.extended_instance.to_absorb();
+        elements.0.push(self.u);
+        assert_eq!(self.error_commitment.elems.len(), 1);
+        elements.1.push(self.error_commitment.elems[0]);
+        elements
+    }
+
+    /// Provides access to commitments to the extra columns added by
+    /// quadraticization
+    pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
+        self.extended_instance.extended.get(i)
+    }
+
+    /// Combining the commitments of each instance and adding the cross terms
+    /// into the error term.
+    /// This corresponds to the computation `E <- E1 - c T1 - c^2 T2 + c^3 E2`.
+    /// As we do support folding of degree 3, we have two cross terms `T1` and
+    /// `T2`.
+    /// For more information, see the [top-level
+    /// documentation](crate::expressions).
+    pub(super) fn combine_and_sub_cross_terms(
+        a: Self,
+        b: Self,
+        challenge: <G>::ScalarField,
+        cross_terms: &[PolyComm<G>; 2],
+    ) -> Self {
+        // Compute E1 + c^3 E2 and all other folding of commitments. The
+        // resulting error commitment is stored in res.commitment.
+        let mut res = Self::combine(a, b, challenge);
+        let [t0, t1] = cross_terms;
+        // Eq 4, page 15 of the Nova paper
+        // Computing (E1 + c^3 E2) - c T1 - c^2 T2
+        res.error_commitment =
+            &res.error_commitment - (&(&t0.scale(challenge) + &t1.scale(challenge.square())));
+        res
+    }
+}
+
+/// A relaxed instance can be folded.
+impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
+    /// Combine two relaxed instances into a new relaxed instance.
+    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        // We do support degree 3 folding, therefore, we must compute:
+        // E <- E1 - (c T1 + c^2 T2) + c^3 E2
+        // (page 15, eq 3 of the Nova paper)
+        // The term T1 and T2 are the cross terms
+        let challenge_square = challenge * challenge;
+        let challenge_cube = challenge_square * challenge;
+        let RelaxedInstance {
+            extended_instance: extended_instance_1,
+            u: u1,
+            error_commitment: e1,
+            blinder: blinder1,
+        } = a;
+        let RelaxedInstance {
+            extended_instance: extended_instance_2,
+            u: u2,
+            error_commitment: e2,
+            blinder: blinder2,
+        } = b;
+        // We simply fold the blinders
+        //                 = 1        = 1
+        // r_E <- r_E1 + c r_T1 + c^2 r_T2 + c^3 r_E2
+        let blinder = blinder1 + challenge + challenge_square + challenge_cube * blinder2;
+        let extended_instance =
+            <ExtendedInstance<G, I>>::combine(extended_instance_1, extended_instance_2, challenge);
+        // Combining the challenges
+        // eq 3, page 15 of the Nova paper
+        let u = u1 + u2 * challenge;
+        // We do have 2 cross terms as we have degree 3 folding
+        // e1 + c^3 e^2
+        let error_commitment = &e1 + &e2.scale(challenge_cube);
+        RelaxedInstance {
+            // I <- I1 + c I2
+            extended_instance,
+            // u <- u1 + c u2
+            u,
+            // E <- E1 - (c T1 + c^2 T2) + c^3 E2
+            error_commitment,
+            blinder,
+        }
+    }
+}
+
+// -- Relaxed witnesses
+pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
+    /// The original witness, extended with the columns added by
+    /// quadriticization.
+    pub extended_witness: ExtendedWitness<G, W>,
+    /// The error vector, introduced when homogenizing the polynomials.
+    /// For degree 3 folding, it is `E1 - c T1 - c^2 T2 + c^3 E2`
+    pub error_vec: Evals<G::ScalarField>,
+}
+
+impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
+    /// Combining the existing error terms with the cross-terms T1 and T2 given
+    /// as parameters.
+    ///                 existing error terms      cross terms
+    ///                /--------------------\   /-------------\
+    /// The result is `   E1    +     c^3 E2  - (c T1 + c^2 T2)`
+    /// We do have two cross terms as we work with homogeneous polynomials of
+    /// degree 3. The value is saved into the field `error_vec` of the relaxed
+    /// witness.
+    /// This corresponds to the step 4, page 15 of the Nova paper, but with two
+    /// cross terms (T1 and T2), see [top-level
+    /// documentation](crate::expressions).
+    pub(super) fn combine_and_sub_cross_terms(
+        a: Self,
+        b: Self,
+        challenge: <G>::ScalarField,
+        cross_terms: [Vec<G::ScalarField>; 2],
+    ) -> Self {
+        // Computing E1 + c^3 E2
+        let mut res = Self::combine(a, b, challenge);
+
+        // Now substracting the cross terms
+        let [e0, e1] = cross_terms;
+
+        for (res, (e0, e1)) in res
+            .error_vec
+            .evals
+            .iter_mut()
+            .zip(e0.into_iter().zip(e1.into_iter()))
+        {
+            // FIXME: for optimisation, use inplace operators. Allocating can be
+            // costly
+            // should be the same as e0 * c + e1 * c^2
+            *res -= ((e1 * challenge) + e0) * challenge;
+        }
+        res
+    }
+
+    /// Provides access to the extra columns added by quadraticization
+    pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
+        self.extended_witness.extended.get(i)
+    }
+}
+
+/// A relaxed/homogenized witness can be folded.
+impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
+    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
+        let RelaxedWitness {
+            extended_witness: a,
+            error_vec: mut e1,
+        } = a;
+        let RelaxedWitness {
+            extended_witness: b,
+            error_vec: e2,
+        } = b;
+        // We combine E1 and E2 into E1 + c^3 E2 as we do have two cross-terms
+        // with degree 3 folding
+        let challenge_cube = (challenge * challenge) * challenge;
+        let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
+        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
+            *a += b * challenge_cube;
+        }
+        let error_vec = e1;
+        RelaxedWitness {
+            extended_witness,
+            error_vec,
+        }
+    }
 }
 
 // -- Relaxable instance
 pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
-    fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
+    fn relax(self) -> RelaxedInstance<G, I>;
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
-    fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
-        self.relax(zero_commitment)
+    /// This method takes an Instance and a commitment to zero and extends the
+    /// instance, returning a relaxed instance which is composed by the extended
+    /// instance, the scalar one, and the error commitment which is set to the
+    /// commitment to zero.
+    fn relax(self) -> RelaxedInstance<G, Self> {
+        let extended_instance = ExtendedInstance::extend(self);
+        let blinder = extended_instance.instance.get_blinder();
+        let u = G::ScalarField::one();
+        let error_commitment = PolyComm::new(vec![G::zero()]);
+        RelaxedInstance {
+            extended_instance,
+            u,
+            error_commitment,
+            blinder,
+        }
     }
 }
 
+/// A relaxed instance is trivially relaxable.
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
-    fn relax(self, _zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
+    fn relax(self) -> RelaxedInstance<G, I> {
         self
     }
 }
 
+/// Trait to make a witness relaxable/homogenizable
 pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W>;
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for W {
-    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
-        self.relax(zero_poly)
+    /// This method takes a witness and a vector of evaluations to the zero
+    /// polynomial, returning a relaxed witness which is composed by the
+    /// extended witness and the error vector that is set to the zero
+    /// polynomial.
+    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
+        let extended_witness = ExtendedWitness::extend(self);
+        RelaxedWitness {
+            extended_witness,
+            error_vec: zero_poly.clone(),
+        }
     }
 }
 
@@ -309,7 +477,6 @@ pub trait RelaxablePair<G: CommitmentCurve, I: Instance<G>, W: Witness<G>> {
     fn relax(
         self,
         zero_poly: &Evals<G::ScalarField>,
-        zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>);
 }
 
@@ -322,11 +489,10 @@ where
     fn relax(
         self,
         zero_poly: &Evals<G::ScalarField>,
-        zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         let (instance, witness) = self;
         (
-            RelaxableInstance::relax(instance, zero_commitment),
+            RelaxableInstance::relax(instance),
             RelaxableWitness::relax(witness, zero_poly),
         )
     }
@@ -341,109 +507,7 @@ where
     fn relax(
         self,
         _zero_poly: &Evals<G::ScalarField>,
-        _zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         self
-    }
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedInstance<G, I> {
-    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let challenge_cube = challenge * challenge * challenge;
-        let RelaxedInstance {
-            extended_instance: instance1,
-            u: u1,
-            error_commitment: e1,
-        } = a;
-        let RelaxedInstance {
-            extended_instance: instance2,
-            u: u2,
-            error_commitment: e2,
-        } = b;
-        let extended_instance = <ExtendedInstance<G, I>>::combine(instance1, instance2, challenge);
-        let u = u1 + u2 * challenge;
-        let error_commitment = &e1 + &e2.scale(challenge_cube);
-        RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment,
-        }
-    }
-}
-
-impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
-    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
-        let RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment: error,
-        } = self;
-        let [e0, e1] = error_commitments;
-        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
-        RelaxedInstance {
-            extended_instance,
-            u,
-            error_commitment,
-        }
-    }
-
-    pub(super) fn combine_and_sub_error(
-        a: Self,
-        b: Self,
-        challenge: <G>::ScalarField,
-        error_commitments: &[PolyComm<G>; 2],
-    ) -> Self {
-        Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
-    }
-}
-
-impl<G: CommitmentCurve, W: Witness<G>> Foldable<G::ScalarField> for RelaxedWitness<G, W> {
-    fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let RelaxedWitness {
-            extended_witness: a,
-            error_vec: mut e1,
-        } = a;
-        let RelaxedWitness {
-            extended_witness: b,
-            error_vec: e2,
-        } = b;
-        let challenge_cube = (challenge * challenge) * challenge;
-        let extended_witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
-        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
-            *a += b * challenge_cube;
-        }
-        let error_vec = e1;
-        RelaxedWitness {
-            extended_witness,
-            error_vec,
-        }
-    }
-}
-
-impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
-        let [e0, e1] = errors;
-
-        for (a, (e0, e1)) in self
-            .error_vec
-            .evals
-            .iter_mut()
-            .zip(e0.into_iter().zip(e1.into_iter()))
-        {
-            // FIXME: for optimisation, use inplace operators. Allocating can be
-            // costly
-            // should be the same as e0 * c + e1 * c^2
-            *a -= ((e1 * challenge) + e0) * challenge;
-        }
-        self
-    }
-
-    pub(super) fn combine_and_sub_error(
-        a: Self,
-        b: Self,
-        challenge: <G>::ScalarField,
-        error: [Vec<G::ScalarField>; 2],
-    ) -> Self {
-        Self::combine(a, b, challenge).sub_error(error, challenge)
     }
 }

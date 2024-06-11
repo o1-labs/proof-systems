@@ -1,3 +1,7 @@
+//! This module contains the functions used to compute the error terms, as
+//! described in the [top-level documentation of the expressions
+//! module](crate::expressions).
+
 use crate::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -6,10 +10,10 @@ use crate::{
     quadraticization::ExtendedWitnessGenerator,
     FoldingConfig, FoldingEnv, Instance, RelaxedInstance, RelaxedWitness, ScalarField,
 };
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
-use poly_commitment::SRS;
+use poly_commitment::{PolyComm, SRS};
 
 // FIXME: for optimisation, as values are not necessarily Fp elements and are
 // relatively small, we could get rid of the scalar field objects, and only use
@@ -62,7 +66,10 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
+                Some(false) => {
+                    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 Some(true) | None => {
                     let d1 = e1.folding_degree();
                     let d2 = e2.folding_degree();
@@ -131,7 +138,10 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
                 .zip(env.enabled_selector())
                 .map(|(s1, s2)| s1 == s2);
             match selector {
-                Some(false) => EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize)),
+                Some(false) => {
+                    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+                    EvalLeaf::Result(zero_vec)
+                }
                 Some(true) | None => match (exp.folding_degree(), e1.folding_degree()) {
                     (Degree::Two, Degree::One) => {
                         let first =
@@ -172,6 +182,12 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     }
 }
 
+/// Computes the error terms of a folding/homogeneous expression.
+/// The extended environment contains all the evaluations of the columns,
+/// including the ones added by the quadraticization process.
+/// `u` is the variables used to homogeneize the expression.
+/// The output is a pair of error terms. To see how it is computed, see the
+/// [top-level documentation of the expressions module](crate::expressions).
 pub(crate) fn compute_error<C: FoldingConfig>(
     exp: &IntegratedFoldingExpr<C>,
     env: &ExtendedEnv<C>,
@@ -185,7 +201,8 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     // possible, and inline code.
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
-    let zero = || EvalLeaf::Result(env.inner.zero_vec(env.domain.size as usize));
+    let zero_vec = vec![ScalarField::<C>::zero(); env.domain.size as usize];
+    let zero = || EvalLeaf::Result(zero_vec.clone());
 
     let alphas_l = env
         .get_relaxed_instance(Side::Left)
@@ -265,6 +282,11 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     }
 }
 
+/// An extended environment contains the evaluations of all the columns, including
+/// the ones added by the quadraticization process. It also contains the
+/// the two instances and witnesses that are being folded.
+/// The domain is required to define the polynomial size of the evaluations of
+/// the error terms.
 pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     inner: CF::Env,
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
@@ -397,6 +419,12 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     /// the given side.
     /// The commitments are added to the instance, in the same order for both
     /// side.
+    /// Note that this function is only going to be called on the left instance
+    /// once. When we fold the second time, the left instance will already be
+    /// relaxed and will have the extended columns.
+    /// Therefore, the blinder is always the one provided by the user, and it is
+    /// saved in the field `blinder` in the case of a relaxed instance that has
+    /// been built from a non-relaxed one.
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
         let (relaxed_instance, relaxed_witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),
@@ -404,10 +432,16 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         };
 
         // FIXME: use parallelisation
+        let blinder = PolyComm::new(vec![relaxed_instance.blinder]);
         for (expected_i, (i, wit)) in relaxed_witness.extended_witness.extended.iter().enumerate() {
-            //in case any where to be missing for some reason
+            // in case any where to be missing for some reason
             assert_eq!(*i, expected_i);
-            let commit = srs.commit_evaluations_non_hiding(self.domain, wit);
+            // Blinding the commitments to support the case the witness is zero.
+            // The IVC circuit expects to have non-zero commitments.
+            let commit = srs
+                .commit_evaluations_custom(self.domain, wit, &blinder)
+                .unwrap()
+                .commitment;
             relaxed_instance.extended_instance.extended.push(commit)
         }
         // FIXME: maybe returning a value is not necessary as it does inplace operations.

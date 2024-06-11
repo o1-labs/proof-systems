@@ -1,7 +1,7 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     checker::{Checker, ExtendedProvider},
@@ -61,6 +61,8 @@ pub struct TestInstance {
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
     alphas: Alphas<Fp>,
+    // To blind the commitments,
+    blinder: Fp,
 }
 
 impl Foldable<Fp> for TestInstance {
@@ -71,6 +73,7 @@ impl Foldable<Fp> for TestInstance {
             }),
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+            blinder: a.blinder + challenge * b.blinder,
         }
     }
 }
@@ -83,6 +86,10 @@ impl Instance<Curve> for TestInstance {
 
     fn get_alphas(&self) -> &Alphas<Fp> {
         &self.alphas
+    }
+
+    fn get_blinder(&self) -> Fp {
+        self.blinder
     }
 }
 
@@ -263,10 +270,12 @@ fn instance_from_witness(
     let challenges = [(); 3].map(|_| challenge());
     let alpha = challenge();
     let alphas = Alphas::new(alpha);
+    let blinder = Fp::one();
     TestInstance {
         commitments,
         challenges,
         alphas,
+        blinder,
     }
 }
 

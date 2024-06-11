@@ -64,7 +64,7 @@ pub fn main() -> ExitCode {
 
     let domain = kimchi::circuits::domains::EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     let srs = {
         // Trusted setup toxic waste

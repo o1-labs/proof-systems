@@ -1,7 +1,8 @@
+//! This module contains description of the additional columns used by our
+//! folding scheme implementation. The columns are the base layer of the folding
+//! scheme as they describe the basic expressiveness of the system.
+
 use crate::FoldingConfig;
-/// This module contains description of the additional columns used by our
-/// folding scheme implementation. The columns are the base layer of the folding
-/// scheme as they describe the basic expressiveness of the system.
 use ark_ec::AffineCurve;
 use derivative::Derivative;
 use kimchi::circuits::expr::Variable;
@@ -19,11 +20,14 @@ use kimchi::circuits::expr::Variable;
     Eq(bound = "C: FoldingConfig")
 )]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
+    /// The variables of the initial circuit, without quadraticization and not
+    /// homogeonized.
     Inner(Variable<C::Column>),
     /// For the extra columns added by the module `quadraticization`.
     WitnessExtended(usize),
     /// The error term introduced in the "relaxed" instance.
     Error,
+    /// A constant value in our expression
     Constant(<C::Curve as AffineCurve>::ScalarField),
     /// A challenge used by the PIOP or the folding scheme.
     Challenge(C::Challenge),

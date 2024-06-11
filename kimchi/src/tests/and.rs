@@ -73,7 +73,7 @@ fn setup_and<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let gates = create_test_gates_and::<G>(bytes);
     let cs = ConstraintSystem::create(gates).build().unwrap();
@@ -116,7 +116,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Create
     let mut gates = vec![];
@@ -292,7 +292,7 @@ fn test_and_bad_decomposition() {
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_bad_and() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bytes = 2;
     let gates = create_test_gates_and::<Vesta>(bytes);
