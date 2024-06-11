@@ -281,9 +281,19 @@ mod unit {
 
             // At first, offset is 0
 
-            // Set an address for register 5 that is not aligned
-            let addr = 201;
+            // Set an address for register 5 that might not be aligned
+            let addr = rng.gen_range(100..200);
             dummy_env.registers[5] = addr;
+
+            // Determine how many bytes should be read in the first call to the
+            // oracle to align the addresses from here afterwards
+            let first = 4 - (addr % 4);
+
+            // Determine how many bytes should be read in the last call to the
+            // oracle (if modulus is 0 then the last call reads 4 bytes).
+            let last = ((total_length - first - 1) % 4) + 1;
+
+            println!("addr = {}, first = {}, last = {}", addr, first, last);
 
             // Set a length for register 6 -> bytes of the preimage + 8 bytes for length
             dummy_env.registers[6] = total_length;
@@ -294,10 +304,22 @@ mod unit {
             //       because the interpreter sets it back to 0 when the preimage
             //       is read fully and the Keccak process is triggered (meaning
             //       that condition would generate an infinite loop instead)
+            let mut i = 0;
             while dummy_env.registers[REGISTER_PREIMAGE_OFFSET] < total_length {
+                println!("i = {}", i);
                 dummy_env.reset_scratch_state();
                 interpret_rtype(&mut dummy_env, RTypeInstruction::SyscallReadPreimage);
+                println!("reg 2 = {}", dummy_env.registers[2]);
+                if i == 0 {
+                    assert_eq!(dummy_env.registers[2], first);
+                } else if dummy_env.registers[REGISTER_PREIMAGE_OFFSET] < total_length {
+                    // If still not the last call, the middle calls read 4 bytes
+                    assert_eq!(dummy_env.registers[2], 4);
+                }
+                i += 1;
             }
+            // The number of bytes read at each step is stored in register 2
+            assert_eq!(dummy_env.registers[2], last);
 
             // Number of bytes inside the corresponding file (preimage)
             // This should be the length read from the oracle in the first 8 bytes
