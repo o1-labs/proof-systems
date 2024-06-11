@@ -112,41 +112,26 @@ fn test_mips_number_constraints() {
     );
 }
 
-mod folding {
+// Here live the unit tests for the MIPS instructions
+mod unit {
+    use super::Fp;
     use crate::{
         cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
-        folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
         mips::{
-            column::N_MIPS_REL_COLS,
-            constraints::Env as CEnv,
             interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
             ITypeInstruction,
         },
         preimage_oracle::PreImageOracleT,
-        trace::Trace,
-        BaseSponge, Curve,
     };
-    use ark_ff::One;
     use kimchi::o1_utils;
     use rand::{CryptoRng, Rng, RngCore};
     use std::{fs, path::PathBuf};
 
-    use ark_poly::{EvaluationDomain as _, Evaluations, Radix2EvaluationDomain as D};
-    use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig, FoldingScheme};
-    use itertools::Itertools;
-    use kimchi::curve::KimchiCurve;
-    use kimchi_msm::{columns::Column, witness::Witness};
-    use mina_poseidon::FqSponge;
-    use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
-    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-
-    use super::Fp;
-
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
-    struct OnDiskPreImageOracle;
+    pub(crate) struct OnDiskPreImageOracle;
 
     impl PreImageOracleT for OnDiskPreImageOracle {
         fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
@@ -162,7 +147,7 @@ mod folding {
         fn hint(&mut self, _hint: Hint) {}
     }
 
-    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
+    pub(crate) fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
@@ -228,7 +213,7 @@ mod folding {
     }
 
     // Write the instruction to the location of the instruction pointer.
-    fn write_instruction(
+    pub(crate) fn write_instruction(
         env: &mut WEnv<Fp, OnDiskPreImageOracle>,
         instruction_parts: InstructionParts,
     ) {
@@ -254,119 +239,149 @@ mod folding {
         let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
     }
 
-    #[test]
-    fn test_unit_addiu_instruction() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        // We only care about instruction parts and instruction pointer
-        let mut dummy_env = dummy_env(&mut rng);
-        // FIXME: at the moment, we do not support writing and reading into the
-        // same register
-        let reg_src = 1;
-        let reg_dest = 2;
-        // Instruction: 0b00100100001000010110110011101000
-        // addiu $at, $at, 27880
-        write_instruction(
-            &mut dummy_env,
-            InstructionParts {
-                op_code: 0b001001,
-                rs: reg_src,  // source register
-                rt: reg_dest, // destination register
-                // The rest is the immediate value
-                rd: 0b01101,
-                shamt: 0b10011,
-                funct: 0b101000,
-            },
-        );
-        let exp_res = dummy_env.registers[reg_src as usize] + 27880;
-        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
-        assert_eq!(
-            dummy_env.registers.general_purpose[reg_dest as usize],
-            exp_res
-        );
-    }
+    mod itype {
+        use super::*;
 
-    #[test]
-    fn test_unit_load32_instruction() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        // lw instruction
-        let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b10001111101001000000000000000000
-        // lw $a0, 0(29)
-        // a0 = 4
-        // Random address in SP
-        // Address has only one index
+        #[test]
+        fn test_unit_addi_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng();
+            // We only care about instruction parts and instruction pointer
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b10001111101001000000000000000000 addi a1,sp,4
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b000010,
+                    rs: 0b11101,
+                    rt: 0b00101,
+                    rd: 0b00000,
+                    shamt: 0b00000,
+                    funct: 0b000100,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
+            assert_eq!(
+                dummy_env.registers.general_purpose[5],
+                dummy_env.registers.general_purpose[29] + 4
+            );
+        }
 
-        let addr: u32 = rng.gen_range(0u32..100u32);
-        let aligned_addr: u32 = (addr / 4) * 4;
-        dummy_env.registers[29] = aligned_addr;
-        let mem = &dummy_env.memory[0];
-        let mem = &mem.1;
-        let v0 = mem[aligned_addr as usize];
-        let v1 = mem[(aligned_addr + 1) as usize];
-        let v2 = mem[(aligned_addr + 2) as usize];
-        let v3 = mem[(aligned_addr + 3) as usize];
-        let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
-        write_instruction(
-            &mut dummy_env,
-            InstructionParts {
-                op_code: 0b000010,
-                rs: 0b11101,
-                rt: 0b00100,
-                rd: 0b00000,
-                shamt: 0b00000,
-                funct: 0b000000,
-            },
-        );
-        interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
-        assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
-    }
+        #[test]
+        fn test_unit_addiu_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng();
+            // We only care about instruction parts and instruction pointer
+            let mut dummy_env = dummy_env(&mut rng);
+            // FIXME: at the moment, we do not support writing and reading into the
+            // same register
+            let reg_src = 1;
+            let reg_dest = 2;
+            // Instruction: 0b00100100001000010110110011101000
+            // addiu $at, $at, 27880
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b001001,
+                    rs: reg_src,  // source register
+                    rt: reg_dest, // destination register
+                    // The rest is the immediate value
+                    rd: 0b01101,
+                    shamt: 0b10011,
+                    funct: 0b101000,
+                },
+            );
+            let exp_res = dummy_env.registers[reg_src as usize] + 27880;
+            interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
+            assert_eq!(
+                dummy_env.registers.general_purpose[reg_dest as usize],
+                exp_res
+            );
+        }
 
-    #[test]
-    fn test_unit_addi_instruction() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        // We only care about instruction parts and instruction pointer
-        let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b10001111101001000000000000000000
-        // addi	a1,sp,4
-        write_instruction(
-            &mut dummy_env,
-            InstructionParts {
-                op_code: 0b000010,
-                rs: 0b11101,
-                rt: 0b00101,
-                rd: 0b00000,
-                shamt: 0b00000,
-                funct: 0b000100,
-            },
-        );
-        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
-        assert_eq!(
-            dummy_env.registers.general_purpose[5],
-            dummy_env.registers.general_purpose[29] + 4
-        );
-    }
+        #[test]
+        fn test_unit_lui_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng();
+            // We only care about instruction parts and instruction pointer
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b00111100000000010000000000001010
+            // lui at, 0xa
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b000010,
+                    rs: 0b00000,
+                    rt: 0b00001,
+                    rd: 0b00000,
+                    shamt: 0b00000,
+                    funct: 0b001010,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
+            assert_eq!(dummy_env.registers.general_purpose[1], 0xa0000);
+        }
 
-    #[test]
-    fn test_unit_lui_instruction() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        // We only care about instruction parts and instruction pointer
-        let mut dummy_env = dummy_env(&mut rng);
-        // Instruction: 0b00111100000000010000000000001010
-        // lui at, 0xa
-        write_instruction(
-            &mut dummy_env,
-            InstructionParts {
-                op_code: 0b000010,
-                rs: 0b00000,
-                rt: 0b00001,
-                rd: 0b00000,
-                shamt: 0b00000,
-                funct: 0b001010,
-            },
-        );
-        interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
-        assert_eq!(dummy_env.registers.general_purpose[1], 0xa0000);
+        #[test]
+        fn test_unit_load32_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng();
+            // lw instruction
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b10001111101001000000000000000000 lw $a0, 0(29) a0 = 4
+            // Random address in SP Address has only one index
+
+            let addr: u32 = rng.gen_range(0u32..100u32);
+            let aligned_addr: u32 = (addr / 4) * 4;
+            dummy_env.registers[29] = aligned_addr;
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+            let v0 = mem[aligned_addr as usize];
+            let v1 = mem[(aligned_addr + 1) as usize];
+            let v2 = mem[(aligned_addr + 2) as usize];
+            let v3 = mem[(aligned_addr + 3) as usize];
+            let exp_v =
+                ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b100011,
+                    rs: 0b11101,
+                    rt: 0b00100,
+                    rd: 0b00000,
+                    shamt: 0b00000,
+                    funct: 0b000000,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
+            assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
+        }
     }
+}
+
+mod folding {
+    use super::{
+        unit::{dummy_env, write_instruction},
+        Fp,
+    };
+    use crate::{
+        folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+        mips::{
+            column::N_MIPS_REL_COLS,
+            constraints::Env as CEnv,
+            interpreter::{debugging::InstructionParts, interpret_itype},
+            witness::SCRATCH_SIZE,
+            ITypeInstruction,
+        },
+        trace::Trace,
+        BaseSponge, Curve,
+    };
+    use ark_ff::One;
+    use ark_poly::{EvaluationDomain as _, Evaluations, Radix2EvaluationDomain as D};
+    use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig, FoldingScheme};
+    use itertools::Itertools;
+    use kimchi::{curve::KimchiCurve, o1_utils};
+    use kimchi_msm::{columns::Column, witness::Witness};
+    use mina_poseidon::FqSponge;
+    use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+    use rand::{CryptoRng, Rng, RngCore};
+    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
     fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
