@@ -27,6 +27,16 @@ use std::{
     io::{BufWriter, Write},
 };
 
+// TODO: do we want to be more restrictive and refer to the number of accesses
+//       to the SAME register/memory addrss?
+
+/// Maximum number of register accesses per instruction (based on demo)
+pub const MAX_NB_REG_ACC: u64 = 7;
+/// Maximum number of memory accesses per instruction (based on demo)
+pub const MAX_NB_MEM_ACC: u64 = 12;
+/// Maximum number of memory or register accesses per instruction
+pub const MAX_ACC: u64 = MAX_NB_REG_ACC + MAX_NB_MEM_ACC;
+
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
@@ -167,6 +177,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     fn instruction_counter(&self) -> Self::Variable {
         self.instruction_counter
+    }
+
+    fn increase_instruction_counter(&mut self) {
+        self.instruction_counter += 1;
     }
 
     unsafe fn fetch_register(
@@ -342,6 +356,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         } else {
             self.write_field_column(position, Fp::from(*x).inverse().unwrap());
             1 // Placeholder value
+        }
+    }
+
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        // To avoid subtraction overflow in the witness interpreter for u32
+        if x > y {
+            self.is_zero(&(x.clone() - y.clone()))
+        } else {
+            self.is_zero(&(y.clone() - x.clone()))
         }
     }
 
@@ -1042,6 +1065,24 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (opcode, instruction)
     }
 
+    /// Updates the instruction counter, accounting for the maximum number of
+    /// register and memory accesses per instruction.
+    /// Because MAX_NB_REG_ACC = 7 and MAX_NB_MEM_ACC = 12, at most the same
+    /// instruction will increase the instruction counter by MAX_ACC = 19.
+    ///
+    /// NOTE: actually, in practice it will be less than that, as there is no
+    ///       single instruction that performs all of them.
+    ///
+    /// This means that the actual number of instructions executed will result
+    /// from dividing the instruction counter by MAX_ACC (floor).
+    ///
+    /// Then, in order to update the instruction counter, we need to add 1 to
+    /// the real instruction counter and multiply it by MAX_ACC to have a unique
+    /// representation of each step (which is helpful for debugging).
+    pub fn update_instruction_counter(&mut self) {
+        self.instruction_counter = ((self.instruction_counter / MAX_ACC) + 1) * MAX_ACC;
+    }
+
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
     pub fn step(
@@ -1068,12 +1109,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
         interpreter::interpret_instruction(self, opcode);
 
-        self.instruction_counter += 1;
+        self.update_instruction_counter();
 
+        // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {
             println!(
                 "Halted at step={} instruction={:?}",
-                self.instruction_counter, opcode
+                self.instruction_counter / MAX_ACC,
+                opcode
             );
         }
         opcode
