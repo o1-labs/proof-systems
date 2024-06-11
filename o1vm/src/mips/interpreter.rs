@@ -562,6 +562,8 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
     /// bits.
+    ///
+    /// Do not call this function with highest_bit - lowest_bit >= 32.
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,

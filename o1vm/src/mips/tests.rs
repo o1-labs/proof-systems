@@ -257,7 +257,6 @@ mod unit {
 
     #[test]
     fn test_bitmask() {
-        println!("{:02x}", 1 << 32);
         assert_eq!(bitmask(0xaf, 8, 0), 0xaf);
         assert_eq!(bitmask(0x3671e4cb, 32, 0), 0x3671e4cb);
     }
