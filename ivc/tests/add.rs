@@ -77,7 +77,7 @@ pub fn interpreter_simple_add<
 
 #[test]
 pub fn test_simple_add() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
     let domain_size: usize = 1 << 5;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 

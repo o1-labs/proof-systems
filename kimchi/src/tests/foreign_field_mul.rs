@@ -286,7 +286,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..3 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
@@ -635,7 +635,7 @@ fn test_max_foreign_multiplicands() {
 #[test]
 // Test with nonzero carry0 bits
 fn test_nonzero_carry0() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..4 {
         let mut a = rng.gen_biguint_below(&secp256k1_modulus()).to_limbs();
@@ -801,7 +801,7 @@ fn test_nonzero_carry1_hi() {
 #[test]
 // Test with nonzero second bit of carry1_hi
 fn test_nonzero_second_bit_carry1_hi() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let a = rng.gen_biguint_range(
         &(secp256k1_modulus() - BigUint::two().pow(64)),
         &secp256k1_modulus(),
@@ -1058,7 +1058,7 @@ fn test_mul_invalid_remainder() {
 #[test]
 // Test multiplying some random values and invalidating carry1_lo
 fn test_random_multiplicands_carry1_lo() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
@@ -1223,7 +1223,7 @@ fn test_random_multiplicands_carry1_lo() {
 #[test]
 // Test multiplying some random values with secp256k1 foreign modulus
 fn test_random_multiplicands_valid() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
@@ -1251,7 +1251,7 @@ fn test_random_multiplicands_valid() {
 fn test_smaller_foreign_field_modulus() {
     let foreign_field_modulus = BigUint::two().pow(252u32) - BigUint::one();
 
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
@@ -1338,7 +1338,7 @@ fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
 
 #[test]
 fn test_native_modulus_constraint() {
-    let rng = &mut o1_utils::tests::make_test_rng();
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let left_input = rng.gen_biguint_range(
         &(secp256k1_modulus() - BigUint::two().pow(96)),
         &secp256k1_modulus(),

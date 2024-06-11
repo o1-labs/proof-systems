@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn check_negation() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         for _ in 0..10 {
             rng.gen_biguint(256).negate();
         }
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn check_good_limbs() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         for _ in 0..100 {
             let x = rng.gen_biguint(264);
             assert_eq!(x.to_limbs().len(), 3);
@@ -334,28 +334,28 @@ mod tests {
     #[test]
     #[should_panic]
     fn check_bad_limbs_1() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_limbs().len(), 3);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_2() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_compact_limbs().len(), 2);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_3() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_field_limbs::<BaseField>().len(), 3);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_4() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         assert_ne!(
             rng.gen_biguint(265)
                 .to_compact_field_limbs::<BaseField>()
