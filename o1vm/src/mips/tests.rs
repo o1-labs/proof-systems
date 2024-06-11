@@ -147,7 +147,7 @@ mod unit {
         fn hint(&mut self, _hint: Hint) {}
     }
 
-    pub(crate) fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
+    pub(crate) fn dummy_env<RNG>(rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
@@ -157,7 +157,11 @@ mod unit {
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
                 // Read/write memory
-                (0, vec![0; PAGE_SIZE as usize]),
+                // Initializing with random data
+                (
+                    0,
+                    (0..PAGE_SIZE).map(|_| rng.gen_range(0u8..=255)).collect(),
+                ),
                 // Executable memory. Allocating 4 * 4kB
                 (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
                 (
@@ -207,6 +211,10 @@ mod unit {
             keccak_env: None,
             hash_counter: 0,
         };
+        // Initialize general purpose registers with random values
+        for reg in env.registers.general_purpose.iter_mut() {
+            *reg = rng.gen_range(0u32..=u32::MAX);
+        }
         env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
         env.registers.next_instruction_pointer = env.registers.current_instruction_pointer + 4;
         env
