@@ -2573,6 +2573,10 @@
 <a href="#2573" id="2573">2573</a>
 <a href="#2574" id="2574">2574</a>
 <a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3225,7 +3229,8 @@
         res
     }
 
-    <span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+    <span class="doccomment">/// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
+    </span><span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.is_zero(<span class="kw-2">&amp;</span>(x.clone() - y.clone()))
     }
 
@@ -3465,7 +3470,9 @@
 
     <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>sign_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bitlength: u32) -&gt; <span class="self">Self</span>::Variable {
+    <span class="doccomment">/// Given a variable `x`, this function extends it to a signed integer of
+    /// `bitlength` bits.
+    </span><span class="kw">fn </span>sign_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bitlength: u32) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// FIXME: Constrain `high_bit`
         </span><span class="kw">let </span>high_bit = {
             <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
@@ -3900,15 +3907,16 @@
             <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
             <span class="kw">let </span>fd_cmd = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
             <span class="kw">let </span>is_getfl = env.equal(<span class="kw-2">&amp;</span>fd_cmd, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
+            <span class="kw">let </span>is_stdin = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDIN));
             <span class="kw">let </span>is_stdout = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDOUT));
             <span class="kw">let </span>is_stderr = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDERR));
-            <span class="kw">let </span>is_preimage_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_WRITE));
-            <span class="kw">let </span>is_hint_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_HINT_WRITE));
-            <span class="kw">let </span>is_stdin = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDIN));
-            <span class="kw">let </span>is_preimage_read = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_READ));
             <span class="kw">let </span>is_hint_read = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_HINT_READ));
+            <span class="kw">let </span>is_hint_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_HINT_WRITE));
+            <span class="kw">let </span>is_preimage_read = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_READ));
+            <span class="kw">let </span>is_preimage_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_WRITE));
 
-            <span class="kw">let </span>is_read = is_stdin + is_preimage_read + is_hint_read;
+            <span class="comment">// These variables are 1 if the condition is true, and 0 otherwise.
+            </span><span class="kw">let </span>is_read = is_stdin + is_preimage_read + is_hint_read;
             <span class="kw">let </span>is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
 
             <span class="kw">let </span>v0 = is_getfl.clone()
