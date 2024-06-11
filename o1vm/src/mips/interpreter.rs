@@ -650,6 +650,7 @@ pub trait InterpreterEnv {
         res
     }
 
+    /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
         self.is_zero(&(x.clone() - y.clone()))
     }
@@ -890,6 +891,8 @@ pub trait InterpreterEnv {
 
     fn set_halted(&mut self, flag: Self::Variable);
 
+    /// Given a variable `x`, this function extends it to a signed integer of
+    /// `bitlength` bits.
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
         // FIXME: Constrain `high_bit`
         let high_bit = {
@@ -1325,14 +1328,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let fd_id = env.read_register(&Env::constant(4));
             let fd_cmd = env.read_register(&Env::constant(5));
             let is_getfl = env.equal(&fd_cmd, &Env::constant(3));
+            let is_stdin = env.equal(&fd_id, &Env::constant(FD_STDIN));
             let is_stdout = env.equal(&fd_id, &Env::constant(FD_STDOUT));
             let is_stderr = env.equal(&fd_id, &Env::constant(FD_STDERR));
-            let is_preimage_write = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_WRITE));
-            let is_hint_write = env.equal(&fd_id, &Env::constant(FD_HINT_WRITE));
-            let is_stdin = env.equal(&fd_id, &Env::constant(FD_STDIN));
-            let is_preimage_read = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_READ));
             let is_hint_read = env.equal(&fd_id, &Env::constant(FD_HINT_READ));
+            let is_hint_write = env.equal(&fd_id, &Env::constant(FD_HINT_WRITE));
+            let is_preimage_read = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_READ));
+            let is_preimage_write = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_WRITE));
 
+            // These variables are 1 if the condition is true, and 0 otherwise.
             let is_read = is_stdin + is_preimage_read + is_hint_read;
             let is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
 
