@@ -330,7 +330,7 @@ mod unit {
 
         #[test]
         fn test_unit_load16_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng();
+            let mut rng = o1_utils::tests::make_test_rng(None);
             // lh instruction
             let mut dummy_env = dummy_env(&mut rng);
             // Instruction: 0b100001 11101 00100 00000 00000 000000 lh $a0, 0(29) a0 = 4
