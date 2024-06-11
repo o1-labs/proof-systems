@@ -305,6 +305,7 @@ pub trait InterpreterEnv {
         new_value: &Self::Variable,
         if_is_true: &Self::Variable,
     ) {
+        self.increase_nb_access_register();
         let last_accessed = {
             let last_accessed_location = self.alloc_scratch();
             unsafe { self.fetch_register_access(idx, last_accessed_location) }
@@ -443,6 +444,8 @@ pub trait InterpreterEnv {
         old_value: &Self::Variable,
         new_value: &Self::Variable,
     ) {
+        self.increase_nb_access_memory();
+
         let last_accessed = {
             let last_accessed_location = self.alloc_scratch();
             unsafe { self.fetch_memory_access(addr, last_accessed_location) }
@@ -550,6 +553,10 @@ pub trait InterpreterEnv {
         ));
         ip
     }
+
+    fn increase_nb_access_register(&mut self);
+
+    fn increase_nb_access_memory(&mut self);
 
     fn constant(x: u32) -> Self::Variable;
 

@@ -348,6 +348,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    fn increase_nb_access_register(&mut self) {}
+
+    fn increase_nb_access_memory(&mut self) {}
+
     unsafe fn count_leading_ones(
         &mut self,
         _x: &Self::Variable,

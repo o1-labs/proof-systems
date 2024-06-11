@@ -221,6 +221,8 @@ mod folding {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            nb_times_access_register: 0,
+            nb_times_access_memory: 0,
         };
         env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
         env.registers.next_instruction_pointer = env.registers.current_instruction_pointer + 4;

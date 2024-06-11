@@ -71,6 +71,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub nb_times_access_register: u64,
+    pub nb_times_access_memory: u64,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -139,6 +141,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             Column::InstructionCounter => self.instructions_counter,
         }
         */
+    }
+
+    fn increase_nb_access_register(&mut self) {
+        self.nb_times_access_register += 1;
+    }
+
+    fn increase_nb_access_memory(&mut self) {
+        self.nb_times_access_memory += 1;
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
@@ -828,6 +838,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            nb_times_access_register: 0,
+            nb_times_access_memory: 0,
         }
     }
 
@@ -1069,6 +1081,22 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         interpreter::interpret_instruction(self, opcode);
 
         self.instruction_counter += 1;
+        if self.nb_times_access_register > 5 {
+            println!(
+                "NB times access register for the current step: {:?}",
+                self.nb_times_access_register
+            );
+        }
+
+        if self.nb_times_access_memory > 12 {
+            println!(
+                "NB times access memory for the current step: {:?}",
+                self.nb_times_access_memory
+            );
+        }
+
+        self.nb_times_access_register = 0;
+        self.nb_times_access_memory = 0;
 
         if self.halt {
             println!(
