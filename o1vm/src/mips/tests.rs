@@ -118,10 +118,12 @@ mod unit {
     use crate::{
         cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         mips::{
-            interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
+            interpreter::{
+                debugging::InstructionParts, interpret_itype, interpret_rtype, InterpreterEnv,
+            },
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
-            ITypeInstruction,
+            ITypeInstruction, RTypeInstruction,
         },
         preimage_oracle::PreImageOracleT,
     };
@@ -271,6 +273,39 @@ mod unit {
             0x48, 0x0f, 0xef, 0x3d,
         ];
         let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
+    }
+    mod rtype {
+
+        use super::*;
+
+        #[test]
+        fn test_unit_sub_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            // We only care about instruction parts and instruction pointer
+            let mut dummy_env = dummy_env(&mut rng);
+            // FIXME: at the moment, we do not support writing and reading into the
+            // same register
+            // reg_dst <- reg_src - reg_tar
+            let reg_src = 1;
+            let reg_dst = 2;
+            let reg_tar = 3;
+            // Instruction: 0b00000000001000100001100000100010 sub $at, $at, $at
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b000000,
+                    rs: reg_src as u32, // source register
+                    rt: reg_tar as u32, // target register
+                    rd: reg_dst as u32, // destination register
+                    shamt: 0b00000,
+                    funct: 0b100010,
+                },
+            );
+            let (exp_res, _underflow) =
+                dummy_env.registers[reg_src].overflowing_sub(dummy_env.registers[reg_tar]);
+            interpret_rtype(&mut dummy_env, RTypeInstruction::Sub);
+            assert_eq!(dummy_env.registers.general_purpose[reg_dst], exp_res);
+        }
     }
 
     mod itype {
