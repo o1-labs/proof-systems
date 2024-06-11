@@ -90,6 +90,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(MIPSColumn::InstructionCounter)
     }
 
+    fn increase_instruction_counter(&mut self) {
+        // No-op, witness only
+    }
+
     unsafe fn fetch_register(
         &mut self,
         _idx: &Self::Variable,

@@ -169,6 +169,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         self.instruction_counter
     }
 
+    fn increase_instruction_counter(&mut self) {
+        self.instruction_counter += 1;
+    }
+
     unsafe fn fetch_register(
         &mut self,
         idx: &Self::Variable,
