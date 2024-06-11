@@ -217,6 +217,8 @@ pub trait InterpreterEnv {
 
     fn instruction_counter(&self) -> Self::Variable;
 
+    fn increase_instruction_counter(&mut self);
+
     /// Fetch the value of the general purpose register with index `idx` and store it in local
     /// position `output`.
     ///
@@ -315,10 +317,9 @@ pub trait InterpreterEnv {
             // Here, we write as if the register had been written *at the start of the next
             // instruction*. This ensures that we can't 'time travel' within this
             // instruction, and claim to read the value that we're about to write!
-
-            // FIXME: A register should allow multiple accesses within the same instruction.
-
             instruction_counter + Self::constant(1)
+            // A register should allow multiple accesses to the same register within the same instruction.
+            // In order to allow this, we always increase the instruction counter by 1.
         };
         unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup::write_if(
@@ -332,6 +333,9 @@ pub trait InterpreterEnv {
             vec![idx.clone(), new_accessed, new_value.clone()],
         ));
         self.range_check64(&elapsed_time);
+
+        // Update instruction counter after accessing a register.
+        self.increase_instruction_counter();
     }
 
     fn read_register(&mut self, idx: &Self::Variable) -> Self::Variable {
@@ -465,6 +469,9 @@ pub trait InterpreterEnv {
             vec![addr.clone(), new_accessed, new_value.clone()],
         ));
         self.range_check64(&elapsed_time);
+
+        // Update instruction counter after accessing a memory address.
+        self.increase_instruction_counter();
     }
 
     fn read_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
