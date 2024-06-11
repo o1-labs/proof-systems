@@ -2575,8 +2575,6 @@
 <a href="#2575" id="2575">2575</a>
 <a href="#2576" id="2576">2576</a>
 <a href="#2577" id="2577">2577</a>
-<a href="#2578" id="2578">2578</a>
-<a href="#2579" id="2579">2579</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3230,9 +3228,7 @@
     }
 
     <span class="doccomment">/// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
-    </span><span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.is_zero(<span class="kw-2">&amp;</span>(x.clone() - y.clone()))
-    }
+    </span><span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Returns 1 if `x &lt; y` as unsigned integers, or 0 otherwise, storing the result in
     /// `position`.
