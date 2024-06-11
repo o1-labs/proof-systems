@@ -118,10 +118,12 @@ mod unit {
     use crate::{
         cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         mips::{
-            interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
+            interpreter::{
+                debugging::InstructionParts, interpret_itype, interpret_rtype, InterpreterEnv,
+            },
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
-            ITypeInstruction,
+            ITypeInstruction, RTypeInstruction,
         },
         preimage_oracle::PreImageOracleT,
     };
@@ -272,6 +274,39 @@ mod unit {
         ];
         let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
     }
+    mod rtype {
+
+        use super::*;
+
+        #[test]
+        fn test_unit_sub_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            // We only care about instruction parts and instruction pointer
+            let mut dummy_env = dummy_env(&mut rng);
+            // FIXME: at the moment, we do not support writing and reading into the
+            // same register
+            // reg_dst <- reg_src - reg_tar
+            let reg_src = 1;
+            let reg_dst = 2;
+            let reg_tar = 3;
+            // Instruction: 0b00000000001000100001100000100010 sub $at, $at, $at
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b000000,
+                    rs: reg_src as u32, // source register
+                    rt: reg_tar as u32, // target register
+                    rd: reg_dst as u32, // destination register
+                    shamt: 0b00000,
+                    funct: 0b100010,
+                },
+            );
+            let (exp_res, _underflow) =
+                dummy_env.registers[reg_src].overflowing_sub(dummy_env.registers[reg_tar]);
+            interpret_rtype(&mut dummy_env, RTypeInstruction::Sub);
+            assert_eq!(dummy_env.registers.general_purpose[reg_dst], exp_res);
+        }
+    }
 
     mod itype {
         use super::*;
@@ -351,6 +386,39 @@ mod unit {
             );
             interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
             assert_eq!(dummy_env.registers.general_purpose[1], 0xa0000);
+        }
+
+        #[test]
+        fn test_unit_load16_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            // lh instruction
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b100001 11101 00100 00000 00000 000000 lh $a0, 0(29) a0 = 4
+            // Random address in SP Address has only one index
+
+            let addr: u32 = rng.gen_range(0u32..100u32);
+            let aligned_addr: u32 = (addr / 4) * 4;
+            dummy_env.registers[29] = aligned_addr;
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+            let v0 = mem[aligned_addr as usize];
+            let v1 = mem[(aligned_addr + 1) as usize];
+            let v = ((v0 as u32) << 8) + (v1 as u32);
+            let high_bit = (v >> 15) & 1;
+            let exp_v = high_bit * (((1 << 16) - 1) << 16) + v;
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b100001,
+                    rs: 0b11101,
+                    rt: 0b00100,
+                    rd: 0b00000,
+                    shamt: 0b00000,
+                    funct: 0b000000,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::Load16);
+            assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
         }
 
         #[test]
