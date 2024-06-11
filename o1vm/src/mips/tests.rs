@@ -244,7 +244,8 @@ mod unit {
     }
 
     pub(crate) fn bitmask(x: u32, highest_bit: u32, lowest_bit: u32) -> u32 {
-        let res = (x >> lowest_bit) as u64 & (2u64.pow(highest_bit - lowest_bit) - 1);
+        let res =
+            ((x as u64) >> (lowest_bit as u64)) & ((1 << ((highest_bit - lowest_bit) as u64)) - 1);
         res as u32
     }
 
@@ -261,6 +262,7 @@ mod unit {
     fn test_bitmask() {
         assert_eq!(bitmask(0xaf, 8, 0), 0xaf);
         assert_eq!(bitmask(0x3671e4cb, 32, 0), 0x3671e4cb);
+        assert_eq!(bitmask(0x81938da4, 32, 32), 0);
     }
 
     #[test]
@@ -506,7 +508,7 @@ mod unit {
             // The final value that should be in the register after LWR
             // corresponds to the n_left bytes followed by the n_right bytes
 
-            let exp_v = (left << (8 * n_right)) + right;
+            let exp_v = ((left as u64) << (8 * n_right as u64)) + right as u64;
 
             write_instruction(
                 &mut dummy_env,
@@ -521,7 +523,7 @@ mod unit {
             );
             interpret_itype(&mut dummy_env, ITypeInstruction::LoadWordRight);
 
-            assert_eq!(dummy_env.registers[dst], exp_v);
+            assert_eq!(dummy_env.registers[dst] as u64, exp_v);
         }
     }
 }
