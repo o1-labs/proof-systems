@@ -159,7 +159,7 @@ impl IntoIterator for Instruction {
 
 pub trait InterpreterEnv {
     /// A position can be seen as an indexed variable
-    type Position;
+    type Position: std::fmt::Debug;
 
     /// Allocate a new abstract variable for the current step.
     /// The variable can be used to store temporary values.
