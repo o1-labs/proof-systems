@@ -147,17 +147,22 @@ mod unit {
         fn hint(&mut self, _hint: Hint) {}
     }
 
-    pub(crate) fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
+    pub(crate) fn dummy_env<RNG>(rng: &mut RNG) -> WEnv<Fp, OnDiskPreImageOracle>
     where
         RNG: RngCore + CryptoRng,
     {
         let dummy_preimage_oracle = OnDiskPreImageOracle;
         let mut env = WEnv {
-            instruction_counter: 0,
+            // Set it to 2 to run 1 instruction that access registers if
+            instruction_counter: 2,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
                 // Read/write memory
-                (0, vec![0; PAGE_SIZE as usize]),
+                // Initializing with random data
+                (
+                    0,
+                    (0..PAGE_SIZE).map(|_| rng.gen_range(0u8..=255)).collect(),
+                ),
                 // Executable memory. Allocating 4 * 4kB
                 (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
                 (
@@ -207,6 +212,10 @@ mod unit {
             keccak_env: None,
             hash_counter: 0,
         };
+        // Initialize general purpose registers with random values
+        for reg in env.registers.general_purpose.iter_mut() {
+            *reg = rng.gen_range(0u32..=u32::MAX);
+        }
         env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
         env.registers.next_instruction_pointer = env.registers.current_instruction_pointer + 4;
         env
@@ -229,7 +238,7 @@ mod unit {
 
     #[test]
     fn test_on_disk_preimage_can_read_file() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let mut dummy_env = dummy_env(&mut rng);
         let preimage_key_u8: [u8; 32] = [
             0x02, 0x21, 0x07, 0x30, 0x78, 0x79, 0x25, 0x85, 0x77, 0x23, 0x0c, 0x5a, 0xa2, 0xf9,
@@ -244,7 +253,7 @@ mod unit {
 
         #[test]
         fn test_unit_addi_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng();
+            let mut rng = o1_utils::tests::make_test_rng(None);
             // We only care about instruction parts and instruction pointer
             let mut dummy_env = dummy_env(&mut rng);
             // Instruction: 0b10001111101001000000000000000000 addi a1,sp,4
@@ -268,7 +277,7 @@ mod unit {
 
         #[test]
         fn test_unit_addiu_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng();
+            let mut rng = o1_utils::tests::make_test_rng(None);
             // We only care about instruction parts and instruction pointer
             let mut dummy_env = dummy_env(&mut rng);
             // FIXME: at the moment, we do not support writing and reading into the
@@ -299,7 +308,7 @@ mod unit {
 
         #[test]
         fn test_unit_lui_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng();
+            let mut rng = o1_utils::tests::make_test_rng(None);
             // We only care about instruction parts and instruction pointer
             let mut dummy_env = dummy_env(&mut rng);
             // Instruction: 0b00111100000000010000000000001010
@@ -354,7 +363,7 @@ mod unit {
 
         #[test]
         fn test_unit_load32_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng();
+            let mut rng = o1_utils::tests::make_test_rng(None);
             // lw instruction
             let mut dummy_env = dummy_env(&mut rng);
             // Instruction: 0b10001111101001000000000000000000 lw $a0, 0(29) a0 = 4
@@ -509,7 +518,7 @@ mod folding {
     #[test]
     fn test_folding_mips_addiu_constraint() {
         let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         let domain_size = 1 << 3;
         let domain: D<Fp> = D::<Fp>::new(domain_size).unwrap();

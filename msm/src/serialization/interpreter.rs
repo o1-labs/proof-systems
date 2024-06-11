@@ -787,7 +787,7 @@ mod tests {
 
     #[test]
     fn test_decomposition_random_first_limb_only() {
-        let mut rng = make_test_rng();
+        let mut rng = make_test_rng(None);
         let x = rng.gen_range(0..2u128.pow(88) - 1);
         test_decomposition_generic(Fp::from(x));
     }
@@ -803,14 +803,14 @@ mod tests {
 
     #[test]
     fn test_decomposition_random_second_limb_only() {
-        let mut rng = make_test_rng();
+        let mut rng = make_test_rng(None);
         let x = rng.gen_range(0..2u128.pow(88) - 1);
         test_decomposition_generic(Fp::from(2u128.pow(88) + x));
     }
 
     #[test]
     fn test_decomposition_random() {
-        let mut rng = make_test_rng();
+        let mut rng = make_test_rng(None);
         test_decomposition_generic(Fp::rand(&mut rng));
     }
 
@@ -849,7 +849,7 @@ mod tests {
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     pub fn test_serialization_mul_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_serialization_mul_circuit(&mut rng, 1 << 4);
     }
 }
