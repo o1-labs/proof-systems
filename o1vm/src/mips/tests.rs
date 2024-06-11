@@ -387,6 +387,75 @@ mod unit {
             interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
             assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
         }
+
+        #[test]
+        fn test_unit_lwr_instruction() {
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            // lwr instruction
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction: 0b100110 10101 00001 0000000001000000
+            // lwr rt offset(21)
+
+            // Random address in SP Address has only one index
+
+            // Values used in the instruction
+            let rs = 21;
+            let dst = 1;
+            let offset = sign_extend(64, 16);
+
+            // Set the base address to a small number so dummy_env does not ovf
+            dummy_env.registers[rs] = rng.gen_range(4u32..4000u32);
+            let base = dummy_env.registers[rs];
+            // The effective address
+            let (addr, _ovf) = base.overflowing_add(offset);
+
+            // Number of bytes that will be moved to the right
+            // Example:
+            // if addr % 4 = 0 then want to load bits b0
+            // if addr % 4 = 1 then want to load bits b0 b1
+            // if addr % 4 = 2 then want to load bits b0 b1 b2
+            // if addr % 4 = 3 then want to load bits b0 b1 b2 b3
+            let n_right = addr % 4 + 1;
+
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+
+            // Here starts the least significant byte of the word we will load
+            let v3 = mem[addr as usize];
+            let v2 = mem[(addr - 1) as usize];
+            let v1 = mem[(addr - 2) as usize];
+            let v0 = mem[(addr - 3) as usize];
+
+            // Big endian: small addresses of memory represent more significant
+            let memory =
+                ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+
+            // Right part of the word (must not change content of register)
+            let right = bitmask(memory, 8 * n_right, 0);
+
+            // Left part of the word (must not change content of register)
+            let left = bitmask(dummy_env.registers[dst], 32, 8 * n_right);
+
+            // The final value that should be in the register after LWR
+            // corresponds to the n_left bytes followed by the n_right bytes
+
+            let exp_v = (left << (8 * n_right)) + right;
+
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b100010,
+                    rs: rs as u32,  // where base address is obtained from
+                    rt: dst as u32, // destination
+                    rd: 0b00000,
+                    shamt: 0b00001, // offset = 64
+                    funct: 0b000000,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::LoadWordRight);
+
+            assert_eq!(dummy_env.registers[dst], exp_v);
+        }
     }
 }
 
