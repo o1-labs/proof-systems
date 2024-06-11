@@ -153,8 +153,8 @@ mod unit {
     {
         let dummy_preimage_oracle = OnDiskPreImageOracle;
         let mut env = WEnv {
-            // Set it to 2 to run 1 instruction that access registers if
-            instruction_counter: 2,
+            // Set it to an arbitrary "large" number
+            instruction_counter: 10,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
                 // Read/write memory
