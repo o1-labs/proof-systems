@@ -1081,7 +1081,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         interpreter::interpret_instruction(self, opcode);
 
         self.instruction_counter += 1;
-        if self.nb_times_access_register > 5 {
+        if self.nb_times_access_register > 7 {
             println!(
                 "NB times access register for the current step: {:?}",
                 self.nb_times_access_register
