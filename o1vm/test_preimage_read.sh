@@ -24,8 +24,8 @@ NETWORK=${2:-sepolia}
 #################################################
 # ${OP_DIR}/op-program/bin/op-program \         #
 #     --log.level DEBUG \                       #
-#     --l1 ${L1RPC} \                           #
-#     --l2 ${L2RPC} \                           #
+#     --l1 ${L1_RPC} \                          #
+#     --l2 ${L2_RPC} \                          #
 #     --network ${NETWORK} \                    #
 #     --datadir ${DATADIR} \                    #
 #     --l1.head ${L1_HEAD} \                    #
@@ -40,8 +40,8 @@ RUST_LOG=debug cargo run -r --bin test_optimism_preimage_read -- \
     --preimage-db-dir ${DATADIR} -- \
     op-program \
     --log.level DEBUG \
-    --l1 ${L1RPC} \
-    --l2 ${L2RPC} \
+    --l1 ${L1_RPC} \
+    --l2 ${L2_RPC} \
     --network ${NETWORK} \
     --datadir ${DATADIR} \
     --l1.head ${L1_HEAD} \

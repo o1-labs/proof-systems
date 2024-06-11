@@ -37,8 +37,8 @@ echo "export L2_BLOCK_NUMBER=${L2_BLOCK_NUMBER}" >> "${FILENAME}"
 echo "export STARTING_OUTPUT_ROOT=${STARTING_OUTPUT_ROOT}" >> "${FILENAME}"
 echo "export L2_CLAIM=${L2_CLAIM}" >> ${FILENAME}
 echo "export OP_PROGRAM_DATA_DIR=${OP_PROGRAM_DATA_DIR}" >> "${FILENAME}"
-echo "export L1RPC=${L1_RPC}" >> "${FILENAME}"
-echo "export L2RPC=${L2_RPC}" >> "${FILENAME}"
+echo "export L1_RPC=${L1_RPC}" >> "${FILENAME}"
+echo "export L2_RPC=${L2_RPC}" >> "${FILENAME}"
 echo "export L1_BEACON_RPC=${L1_BEACON_RPC}" >> "${FILENAME}"
 
 echo "${FILENAME}"

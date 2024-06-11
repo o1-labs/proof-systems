@@ -15,8 +15,8 @@ make -C ./ethereum-optimism/cannon cannon
   -- \
   ./ethereum-optimism/op-program/bin/op-program \
   --log.level DEBUG \
-  --l1 "${L1RPC}" \
-  --l2 "${L2RPC}" \
+  --l1 "${L1_RPC}" \
+  --l2 "${L2_RPC}" \
   --network sepolia \
   --datadir "${OP_PROGRAM_DATA_DIR}" \
   --l1.head "${L1_HEAD}" \
