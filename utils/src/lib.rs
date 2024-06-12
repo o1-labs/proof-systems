@@ -29,8 +29,8 @@ pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     /// Create a new test rng with a random seed
-    pub fn make_test_rng() -> StdRng {
-        let seed: [u8; 32] = thread_rng().gen();
+    pub fn make_test_rng(seed: Option<[u8; 32]>) -> StdRng {
+        let seed = seed.unwrap_or(thread_rng().gen());
         eprintln!("Seed: {:?}", seed);
         StdRng::from_seed(seed)
     }

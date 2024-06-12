@@ -18,7 +18,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_soundness_logup() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         // We generate two different witness and two different proofs.
         let domain_size = 1 << 8;

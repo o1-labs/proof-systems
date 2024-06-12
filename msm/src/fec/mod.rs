@@ -59,13 +59,13 @@ mod tests {
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     pub fn test_fec_addition_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         build_fec_addition_circuit(&mut rng, 1 << 4);
     }
 
     #[test]
     pub fn test_fec_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();

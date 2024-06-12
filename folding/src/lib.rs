@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
@@ -117,15 +117,6 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 
-    // TODO: move into `FoldingConfig`
-    // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
-    // vec![F::zero(); Self::rows()]
-    /// Returns a vector of zeros with the same length as the number of rows in
-    /// the circuit.
-    fn zero_vec(&self, n: usize) -> Vec<F> {
-        vec![F::zero(); n]
-    }
-
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
@@ -144,7 +135,6 @@ pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub expression: IntegratedFoldingExpr<CF>,
     pub srs: &'a CF::Srs,
     pub domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    pub zero_commitment: PolyComm<CF::Curve>,
     pub zero_vec: Evals<ScalarField<CF>>,
     pub structure: CF::Structure,
     pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
@@ -162,15 +152,12 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
-        let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
-        let zero_commitment = srs.commit_evaluations_non_hiding(domain, &zero_vec_evals);
-        let zero_vec = zero_vec_evals;
+        let zero_vec = Evaluations::from_vec_and_domain(evals, domain);
         let final_expression = expression.clone().final_expression();
         let scheme = Self {
             expression,
             srs,
             domain,
-            zero_commitment,
             zero_vec,
             structure: structure.clone(),
             extended_witness_generator,
@@ -184,6 +171,16 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         self.quadraticization_columns
     }
 
+    /// This is the main entry point to fold two instances and their witnesses.
+    /// The process is as follows:
+    /// - Both pairs are relaxed.
+    /// - Both witnesses and instances are extended, i.e. all polynomials are
+    /// reduced to degree 2 and additional constraints are added to the
+    /// expression.
+    /// - While computing the commitments to the additional columns, the
+    /// commitments are added into a list to absorb them into the sponge later.
+    /// - The error terms are computed and committed.
+    /// - The sponge absorbs the commitments and challenges.
     #[allow(clippy::type_complexity)]
     pub fn fold_instance_witness_pair<A, B, Sponge>(
         &self,
@@ -196,8 +193,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
-        let a = a.relax(&self.zero_vec, self.zero_commitment.clone());
-        let b = b.relax(&self.zero_vec, self.zero_commitment.clone());
+        let a = a.relax(&self.zero_vec);
+        let b = b.relax(&self.zero_vec);
 
         let u = (a.0.u, b.0.u);
 
@@ -210,15 +207,27 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             self.domain,
             None,
         );
+        // Computing the additional columns, resulting of the quadritization
+        // process.
         // Side-effect: commitments are added in both relaxed (extended) instance.
         let env: ExtendedEnv<CF> =
             env.compute_extension(&self.extended_witness_generator, self.srs);
+
+        // Computing the error terms
         let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
+        // Committing to the cross terms
+        // Default blinder for commiting to the cross terms
+        let blinders = PolyComm::new(vec![ScalarField::<CF>::one()]);
         let error_commitments = error_evals
             .iter()
-            .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e))
+            .map(|e| {
+                self.srs
+                    .commit_evaluations_custom(self.domain, e, &blinders)
+                    .unwrap()
+                    .commitment
+            })
             .collect::<Vec<_>>();
         let error_commitments: [PolyComm<CF::Curve>; 2] = error_commitments.try_into().unwrap();
 
@@ -232,6 +241,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let t_0 = &error_commitments[0].elems[0];
         let t_1 = &error_commitments[1].elems[0];
 
+        // Absorbing the commitments into the sponge
         let to_absorb = env.to_absorb(t_0, t_1);
         fq_sponge.absorb_fr(&to_absorb.0);
         fq_sponge.absorb_g(&to_absorb.1);
@@ -243,7 +253,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             [relaxed_extended_left_witness, relaxed_extended_right_witness],
         ) = env.unwrap();
 
-        let folded_instance = RelaxedInstance::combine_and_sub_error(
+        let folded_instance = RelaxedInstance::combine_and_sub_cross_terms(
             // FIXME: remove clone
             relaxed_extended_left_instance.clone(),
             relaxed_extended_right_instance.clone(),
@@ -251,7 +261,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             &error_commitments,
         );
 
-        let folded_witness = RelaxedWitness::combine_and_sub_error(
+        let folded_witness = RelaxedWitness::combine_and_sub_cross_terms(
             relaxed_extended_left_witness,
             relaxed_extended_right_witness,
             challenge,
@@ -284,8 +294,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         B: RelaxableInstance<CF::Curve, CF::Instance>,
         Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
-        let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax(self.zero_commitment.clone());
-        let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
+        let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax();
+        let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax();
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
@@ -297,7 +307,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         let challenge = fq_sponge.challenge();
 
-        RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+        RelaxedInstance::combine_and_sub_cross_terms(a, b, challenge, &error_commitments)
     }
 }
 
