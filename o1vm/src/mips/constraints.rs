@@ -19,6 +19,8 @@ use kimchi::circuits::{
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
 
+use super::column::MIPS_PREIMAGE_KEY;
+
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -399,6 +401,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // preimage in this instruction
         let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
 
+        // The preimage key composed of 248 bits
+        let preimage_key = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_KEY));
+
         // The (at most) 4 bytes that are being processed from the preimage
         // If they include length bytes, the whole 4 will be length bytes
         // because the oracle reads the 8 length bytes in 2 instructions exactly.
@@ -528,18 +533,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         // COMMUNICATION CHANNEL: Read hash output
-        // FIXME: check if the most significant byte is zero or 0x02
-        //        so we know what exactly needs to be passed to the lookup
-        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
-            acc * Expr::from(2u64.pow(32))
-                + self.variable(Self::Position::ScratchState(
-                    REGISTER_PREIMAGE_KEY_START + i,
-                ))
-        });
+
         // If no more bytes left to be read, then the end of the preimage is
         // true.
         // TODO: keep track of counter to diminish the number of bytes at
-        // each step and check it is zero at the end?
+        //       each step and check it is zero at the end?
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,

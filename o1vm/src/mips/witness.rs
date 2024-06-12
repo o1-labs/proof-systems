@@ -10,6 +10,7 @@ use crate::{
             ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
             MIPS_NUM_BYTES_READ_OFF, MIPS_ORACLE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_PREIMAGE_KEY,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -20,6 +21,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
+use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
     array,
@@ -33,8 +35,9 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + has_n_bytes
-pub const SCRATCH_SIZE: usize = 93;
+// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + has_n_bytes + preimage_key
+pub const SCRATCH_SIZE: usize = 94;
+
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
     pub last_hint: Option<Vec<u8>>,
@@ -626,6 +629,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
+            // Store preimage key in the witness excluding the MSB as 248 bits
+            let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
+                acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
+            });
+            self.write_field_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
         }
 
         const LENGTH_SIZE: usize = 8;
