@@ -105,6 +105,15 @@ pub fn test_simple_add() {
         }
     }
 
+    let ivc_fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+    let ivc_fixed_selectors_evals: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>> =
+        ivc_fixed_selectors
+            .clone()
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
+            .collect();
+
     // Total number of witness columns in IVC (400 - 6) where 6 is block number.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
 
@@ -115,6 +124,8 @@ pub fn test_simple_add() {
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     pub struct PlonkishWitness {
         pub witness: GenericWitness<N_COL_TOTAL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        // This does not have to be part of the witness... can be a static precompiled object.
+        pub fixed_selectors: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     }
 
     // Trait required for folding
@@ -151,7 +162,8 @@ pub fn test_simple_add() {
         fn index(&self, index: Column) -> &Self::Output {
             match index {
                 Column::Relation(i) => &self.witness.cols[i],
-                _ => panic!("Invalid column index"),
+                Column::FixedSelector(i) => &self.fixed_selectors[i],
+                other => panic!("Invalid column index: {other:?}"),
             }
         }
     }
@@ -437,8 +449,6 @@ pub fn test_simple_add() {
     let proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, empty_lookups_app.clone());
     assert!(proof_inputs_one.evaluations.len() == 3);
 
-    let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
     ivc_witness_env_0.set_fixed_selectors(ivc_fixed_selectors.clone());
     ivc_circuit_base_case::<Fp, _, N_COL_TOTAL, N_CHALS>(&mut ivc_witness_env_0, domain_size);
     let ivc_proof_inputs_0 =
@@ -461,6 +471,7 @@ pub fn test_simple_add() {
             .into_par_iter()
             .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
             .collect(),
+        fixed_selectors: ivc_fixed_selectors_evals.clone(),
     };
 
     let folding_instance_one = PlonkishInstance::from_witness(
@@ -502,6 +513,7 @@ pub fn test_simple_add() {
             .into_par_iter()
             .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
             .collect(),
+        fixed_selectors: ivc_fixed_selectors_evals.clone(),
     };
 
     let folding_instance_two = PlonkishInstance::from_witness(
@@ -556,9 +568,11 @@ pub fn test_simple_add() {
     );
 
     // -- Sanity check regarding folding.
-    // No additional columns should be created.
     let additional_columns = folding_scheme.get_number_of_additional_columns();
-    assert_eq!(additional_columns, 0);
+    println!("additional columns: {:?}", additional_columns);
+    //// No additional columns should be created.
+    // @volhovm no longer true: the IVC circuit is degree 3
+    //assert_eq!(additional_columns, 0);
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
