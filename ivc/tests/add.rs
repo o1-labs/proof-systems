@@ -18,7 +18,11 @@ use ivc::{
     poseidon::interpreter::PoseidonParams,
 };
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::ChallengeTerm, gate::CurrOrNext},
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ChallengeTerm, Variable},
+        gate::CurrOrNext,
+    },
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -427,17 +431,44 @@ pub fn test_simple_add() {
     constrain_ivc::<Fp, Fq, _>(&mut constraint_env);
     let ivc_constraints = constraint_env.get_relation_constraints();
 
+    let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
+        .into_iter()
+        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .collect();
+    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_constraints
+        .into_iter()
+        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .collect();
+
+    // IVC column expression should be shifted to the right to accomodate app witness.
+    let ivc_mapper = &(|Variable { col, row }| {
+        // ADD circuit only has 3 relation columns, and no other columns, so it's easy for now.
+        let rel_offset: usize = 3;
+        let fsel_offset: usize = 0;
+        let dsel_offset: usize = 0;
+        use kimchi_msm::columns::Column::*;
+        let new_col = match col {
+            Relation(i) => Relation(i + rel_offset),
+            FixedSelector(i) => FixedSelector(i + fsel_offset),
+            DynamicSelector(i) => DynamicSelector(i + dsel_offset),
+            c @ LookupPartialSum(_) => c,
+            c @ LookupMultiplicity(_) => c,
+            c @ LookupFixedTable(_) => c,
+            c @ LookupAggregation => c,
+        };
+        Variable { col: new_col, row }
+    });
+    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_compat_constraints
+        .into_iter()
+        .map(|e| e.map_variable(ivc_mapper))
+        .collect();
+
     // FIXME: this will not work. One must map variables inside
     // expressions properly. E.g. app_constraints think witness#0 is A
     // (left input) column, while IVC thinks it's ITERATION.
-    let folding_constraints: Vec<_> = app_constraints
-        .iter()
-        .chain(ivc_constraints.iter())
-        .collect();
-
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = folding_constraints
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
         .into_iter()
-        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .chain(ivc_compat_constraints)
         .collect();
 
     let (folding_scheme, _) =
