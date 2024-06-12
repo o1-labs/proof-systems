@@ -8,7 +8,6 @@
 ///                 blocks of degree 2
 ///                   constraints
 /// where (x', y', z') = MDS(x^5, y^5, z^5), i.e. the result of the linear layer
-// IMPROVEME: round constants should be public
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -52,8 +51,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND
         // input
         STATE_SIZE
             + 4 * NB_FULL_ROUND * STATE_SIZE // full round
-            + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND // partial round
-            + STATE_SIZE * (NB_PARTIAL_ROUND + NB_FULL_ROUND); // rc
+            + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND; // partial round
 
     fn to_column(self) -> Column {
         // number of reductions for
@@ -81,16 +79,9 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND
             }
             PoseidonColumn::RoundConstant(round, state_index) => {
                 assert!(state_index < STATE_SIZE);
-                // We start round 0
                 assert!(round < NB_FULL_ROUND + NB_PARTIAL_ROUND);
-                let offset = STATE_SIZE
-                    + (NB_PARTIAL_ROUND * (nb_red + STATE_SIZE - 1))
-                    + (NB_FULL_ROUND * nb_red * STATE_SIZE);
                 let idx = round * STATE_SIZE + state_index;
-                // FIXME: should be FixedSelector.
-                // It is because I'm getting "can't write into fixed selector
-                // columns" because of the initialization of the round constants
-                Column::Relation(offset + idx)
+                Column::FixedSelector(idx)
             }
         }
     }
