@@ -6,9 +6,9 @@ pub mod interpreter;
 #[cfg(test)]
 mod tests {
     use crate::{
-        poseidon_params,
-        poseidon_params::PlonkSpongeConstantsIVC,
-        poseidon_quadri::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
+        poseidon_8_56_5_3_2::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
+        poseidon_params_8_56_5_3,
+        poseidon_params_8_56_5_3::PlonkSpongeConstantsIVC,
     };
     use ark_ff::UniformRand;
     use kimchi_msm::{
@@ -22,19 +22,22 @@ mod tests {
     pub struct PoseidonBN254Parameters;
 
     pub const STATE_SIZE: usize = 3;
-    pub const NB_FULL_ROUND: usize = 55;
-    type TestPoseidonColumn = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>;
+    pub const NB_FULL_ROUND: usize = 8;
+    pub const NB_PARTIAL_ROUND: usize = 56;
+    pub const NB_TOTAL_ROUND: usize = NB_FULL_ROUND + NB_PARTIAL_ROUND;
+
+    type TestPoseidonColumn = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>;
     pub const N_COL: usize = TestPoseidonColumn::N_COL;
     pub const N_DSEL: usize = 0;
 
-    impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
-        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let rc = &poseidon_params::static_params().round_constants;
+    impl PoseidonParams<Fp, STATE_SIZE, NB_TOTAL_ROUND> for PoseidonBN254Parameters {
+        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_TOTAL_ROUND] {
+            let rc = &poseidon_params_8_56_5_3::static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &poseidon_params::static_params().mds;
+            let mds = &poseidon_params_8_56_5_3::static_params().mds;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
@@ -50,6 +53,7 @@ mod tests {
     >;
 
     #[test]
+    #[ignore = "There is no support for partial rounds in the crate poseidon"]
     /// Tests that poseidon circuit is correctly formed (witness
     /// generation + constraints match) and matches the CPU
     /// specification of Poseidon. Fast to run, can be used for
@@ -75,17 +79,17 @@ mod tests {
                 let exp_output: Vec<Fp> = {
                     let mut state: Vec<Fp> = vec![x, y, z];
                     poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
-                        poseidon_params::static_params(),
+                        poseidon_params_8_56_5_3::static_params(),
                         &mut state,
                     );
                     state
                 };
-                let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 4);
-                let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 9);
-                let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 14);
+                let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND> =
+                    PoseidonColumn::FullRound(NB_FULL_ROUND - 1, 3);
+                let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND> =
+                    PoseidonColumn::FullRound(NB_FULL_ROUND - 1, 7);
+                let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND> =
+                    PoseidonColumn::FullRound(NB_FULL_ROUND - 1, 11);
                 assert_eq!(witness_env.read_column(x_col), exp_output[0]);
                 assert_eq!(witness_env.read_column(y_col), exp_output[1]);
                 assert_eq!(witness_env.read_column(z_col), exp_output[2]);
@@ -124,11 +128,23 @@ mod tests {
 
         let constraints = {
             let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-            interpreter::apply_permutation(&mut constraint_env, &PoseidonBN254Parameters);
+            interpreter::apply_permutation::<
+                Fp,
+                3,
+                NB_FULL_ROUND,
+                NB_PARTIAL_ROUND,
+                NB_TOTAL_ROUND,
+                _,
+                _,
+            >(&mut constraint_env, &PoseidonBN254Parameters);
             let constraints = constraint_env.get_constraints();
 
-            // We have 825 constraints in total
-            assert_eq!(constraints.len(), 5 * STATE_SIZE * NB_FULL_ROUND);
+            // We have 432 constraints in total if state size = 3, nb full
+            // rounds = 8, nb partial rounds = 56
+            assert_eq!(
+                constraints.len(),
+                4 * STATE_SIZE * NB_FULL_ROUND + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND
+            );
             // Maximum degree of the constraints is 2
             assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 2);
 

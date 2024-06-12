@@ -1,3 +1,6 @@
+//! Poseidon parameters that can be used by [crate::poseidon_8_56_5_3_2] over
+//! the scalar field of BN254
+
 use ark_bn254::Fr as Fp;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 use once_cell::sync::Lazy;
