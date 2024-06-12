@@ -219,7 +219,7 @@ fn test_is_in_table() {
 
 #[test]
 fn test_keccak_witness_satisfies_constraints() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate random bytelength and preimage for Keccak
     let bytelength = rng.gen_range(1..1000);
@@ -252,7 +252,7 @@ fn test_keccak_witness_satisfies_constraints() {
 
 #[test]
 fn test_regression_number_of_lookups_and_constraints_and_degree() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate random bytelength and preimage for Keccak of 1, 2 or 3 blocks
     // so that there can be both First, Middle, Last and Only absorbs
@@ -352,7 +352,7 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
 
 #[test]
 fn test_keccak_witness_satisfies_lookups() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate random preimage of 1 block for Keccak
     let preimage: Vec<u8> = (0..100).map(|_| rng.gen()).collect();
@@ -369,7 +369,7 @@ fn test_keccak_witness_satisfies_lookups() {
 
 #[test]
 fn test_keccak_fake_witness_wont_satisfy_constraints() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate random preimage of 1 block for Keccak
     let preimage: Vec<u8> = (0..100).map(|_| rng.gen()).collect();
@@ -536,7 +536,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
 
 #[test]
 fn test_keccak_multiplicities() {
-    let mut rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate random preimage of 1 block for Keccak, which will need a second full block for padding
     let preimage: Vec<u8> = (0..136).map(|_| rng.gen()).collect();
@@ -581,7 +581,7 @@ fn test_keccak_multiplicities() {
 fn test_keccak_prover_constraints() {
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 8;
 
         // Generate 3 blocks of preimage data
@@ -662,7 +662,7 @@ fn test_keccak_folding() {
 
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 6;
 
         let domain = D::<Fp>::new(domain_size).unwrap();

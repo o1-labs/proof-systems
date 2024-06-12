@@ -192,10 +192,12 @@ where
         let alpha = fq_sponge.challenge();
         let challenges = [beta, gamma, joint_combiner];
         let alphas = Alphas::new(alpha);
+        let blinder = ScalarField::<C>::one();
         let instance = FoldingInstance {
             commitments,
             challenges,
             alphas,
+            blinder,
         };
 
         (instance, folding_witness)

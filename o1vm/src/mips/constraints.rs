@@ -204,6 +204,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        self.is_zero(&(x.clone() - y.clone()))
+    }
+
     unsafe fn test_less_than(
         &mut self,
         _x: &Self::Variable,

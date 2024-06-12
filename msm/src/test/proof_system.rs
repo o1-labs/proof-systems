@@ -67,7 +67,7 @@ mod tests {
     // Test a constraint of degree one: X_{0} - X_{1}
     #[test]
     fn test_completeness_degree_one() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 2;
         let domain_size = 1 << 8;
 
@@ -97,7 +97,7 @@ mod tests {
     // Test a constraint of degree two: X_{0} * X_{0} - X_{1} - X_{2}
     #[test]
     fn test_completeness_degree_two() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 3;
         let domain_size = 1 << 8;
 
@@ -136,7 +136,7 @@ mod tests {
     // + X_{3}
     #[test]
     fn test_completeness_degree_three() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 4;
         let domain_size = 1 << 8;
 
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     // X_{0} * (X_{1} * X_{2} * X_{3} + 1)
     fn test_completeness_degree_four() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 4;
         let domain_size = 1 << 8;
 
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     // X_{0}^5 + X_{1}
     fn test_completeness_degree_five() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 2;
         let domain_size = 1 << 8;
 
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     // X_{0}^3 + X_{1} AND X_{2}^2 - 3 X_{3}
     fn test_completeness_different_constraints_different_degrees() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 4;
         let domain_size = 1 << 8;
 
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     // X_{0}^6 + X_{1}^4 - X_{2}^3 - 2 X_{3}
     fn test_completeness_degree_six() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 4;
         let domain_size = 1 << 8;
 
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     // X_{0}^7 + X_{1}^4 - X_{2}^3 - 2 X_{3}
     fn test_completeness_degree_seven() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         const N: usize = 4;
         let domain_size = 1 << 8;
 
