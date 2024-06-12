@@ -4,11 +4,9 @@ use crate::{
         column::{
             ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
-            MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_NUM_BYTES_READ_OFF, MIPS_ORACLE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::InterpreterEnv,
-        registers::REGISTER_PREIMAGE_KEY_START,
     },
     E,
 };
@@ -19,6 +17,8 @@ use kimchi::circuits::{
 };
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
+
+use super::column::MIPS_PREIMAGE_KEY;
 
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
@@ -400,14 +400,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // preimage in this instruction
         let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
 
-        // The (at most) 4 bytes that are being processed from the preimage
-        let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
-            self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
-        });
+        // The preimage key composed of 248 bits
+        let preimage_key = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_KEY));
 
-        // The (at most) 4 bytes that are being read from the bytelength
-        let length_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
-            self.variable(Self::Position::ScratchState(MIPS_LENGTH_BYTES_OFF + i))
+        // The (at most) 4 bytes that are being processed from the preimage
+        // If they include length bytes, the whole 4 will be length bytes
+        // because the oracle reads the 8 length bytes in 2 instructions exactly.
+        let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_ORACLE_BYTES_OFF + i))
         });
 
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
@@ -520,35 +520,23 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // FIXED LOOKUPS
 
-        // Byte checks with lookups: both preimage and length bytes are checked
+        // Byte checks with lookups: both preimage and length bytes are checked.
+        // NOTE: length and preimage bytes are never mixed in the same step
+        //       because the oracle reads the 8 bytes of length in exactly
+        //       2 steps of full 4 bytes each.
         for byte in bytes.iter() {
             self.add_lookup(Lookup::read_one(
                 LookupTableIDs::ByteLookup,
                 vec![byte.clone()],
             ));
         }
-        // TODO: think of a way to merge these together to perform 4 lookups
-        // instead of 8 per row
-        for b in length_bytes.iter() {
-            self.add_lookup(Lookup::read_one(
-                LookupTableIDs::ByteLookup,
-                vec![b.clone()],
-            ));
-        }
 
         // COMMUNICATION CHANNEL: Read hash output
-        // FIXME: check if the most significant byte is zero or 0x02
-        //        so we know what exactly needs to be passed to the lookup
-        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
-            acc * Expr::from(2u64.pow(32))
-                + self.variable(Self::Position::ScratchState(
-                    REGISTER_PREIMAGE_KEY_START + i,
-                ))
-        });
+
         // If no more bytes left to be read, then the end of the preimage is
         // true.
         // TODO: keep track of counter to diminish the number of bytes at
-        // each step and check it is zero at the end?
+        //       each step and check it is zero at the end?
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,

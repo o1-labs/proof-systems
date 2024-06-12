@@ -9,8 +9,8 @@ use crate::{
         column::{
             ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
-            MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_NUM_BYTES_READ_OFF, MIPS_ORACLE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            MIPS_PREIMAGE_KEY,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -21,6 +21,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
+use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
     array,
@@ -34,7 +35,8 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 97; // MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + length + has_n_bytes
+// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes + has_n_bytes + preimage_key
+pub const SCRATCH_SIZE: usize = 94;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -659,7 +661,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
                 // Write the individual byte of the length to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_LENGTH_BYTES_OFF + len_i),
+                    Column::ScratchState(MIPS_ORACLE_BYTES_OFF + len_i),
                     length_byte as u64,
                 );
 
@@ -679,7 +681,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
                 // Write the individual byte of the preimage to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i),
+                    Column::ScratchState(MIPS_ORACLE_BYTES_OFF + byte_i),
                     preimage_byte as u64,
                 );
 
@@ -714,7 +716,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             preimage_read_len,
         );
 
-        // Update the flags to count how many bytes are contained at least
+        // Update flags to count how many preimage bytes are contained at least
         for i in 0..MIPS_CHUNK_BYTES_LEN {
             if preimage_read_len > i as u64 {
                 // This amount is only nonzero when it has read some preimage
@@ -733,6 +735,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
             self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFF), 1);
+
+            // Store preimage key in the witness excluding the MSB as 248 bits
+            // so it can be used for the communication channel between Keccak
+            let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
+                acc * Fp::two_pow(8) + Fp::from(self.preimage_key.unwrap()[i])
+            });
+            self.write_field_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
 
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
