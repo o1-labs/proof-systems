@@ -574,10 +574,14 @@ pub fn test_simple_add() {
     // @volhovm no longer true: the IVC circuit is degree 3
     //assert_eq!(additional_columns, 0);
 
+    const N_COL_QUAD: usize = 109;
+    assert_eq!(additional_columns, N_COL_QUAD);
+
+    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
+
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
-    let mut comms_left: Vec<BN254G1Affine> =
-        Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    let mut comms_left: Vec<BN254G1Affine> = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_left.extend(
         relaxed_extended_left_instance
             .extended_instance
@@ -590,19 +594,23 @@ pub fn test_simple_add() {
         comms_left.extend(extended.iter().map(|x| x.elems[0]));
     }
     // Checking they are all not zero.
-    comms_left.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+    comms_left.iter().enumerate().for_each(|(i, c)| {
+        assert_ne!(
+            c,
+            &BN254G1Affine::zero(),
+            "Left commitment number {i:?} is zero"
+        );
     });
 
-    assert_eq!(comms_left.len(), N_COL_TOTAL);
+    assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
 
     // IVC is expecting the coordinates.
-    let comms_left: [(Fq, Fq); N_COL_TOTAL] =
+    let comms_left: [(Fq, Fq); N_COL_TOTAL_QUAD] =
         std::array::from_fn(|i| (comms_left[i].x, comms_left[i].y));
 
     // 2. Get all the commitments from the right instance.
     // We want a way to get also the potential additional columns.
-    let mut comms_right = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    let mut comms_right = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_right.extend(
         relaxed_extended_left_instance
             .extended_instance
@@ -614,12 +622,16 @@ pub fn test_simple_add() {
         comms_right.extend(extended.iter().map(|x| x.elems[0]));
     }
     // Checking they are all not zero.
-    comms_right.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+    comms_right.iter().enumerate().for_each(|(i, c)| {
+        assert_ne!(
+            c,
+            &BN254G1Affine::zero(),
+            "Right commitment number {i:?} is zero"
+        );
     });
 
     // IVC is expecting the coordinates.
-    let comms_right: [(Fq, Fq); N_COL_TOTAL] =
+    let comms_right: [(Fq, Fq); N_COL_TOTAL_QUAD] =
         std::array::from_fn(|i| (comms_right[i].x, comms_right[i].y));
 
     // 3. Get all the commitments from the folded instance.
@@ -636,7 +648,7 @@ pub fn test_simple_add() {
     });
 
     // IVC is expecting the coordinates.
-    let comms_out: [(Fq, Fq); N_COL_TOTAL] =
+    let comms_out: [(Fq, Fq); N_COL_TOTAL_QUAD] =
         std::array::from_fn(|i| (comms_out[i].x, comms_out[i].y));
 
     // FIXME: Should be handled in folding
@@ -678,21 +690,21 @@ pub fn test_simple_add() {
 
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
-    let all_ivc_comms_left: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_left: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_left[0]
         } else {
             comms_left[i - IVCColumn::N_COL]
         }
     });
-    let all_ivc_comms_right: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_right: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_right[0]
         } else {
             comms_right[i - IVCColumn::N_COL]
         }
     });
-    let all_ivc_comms_out: [(Fq, Fq); N_COL_TOTAL] = std::array::from_fn(|i| {
+    let all_ivc_comms_out: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
         if i < IVCColumn::N_COL {
             comms_out[0]
         } else {
@@ -710,7 +722,7 @@ pub fn test_simple_add() {
     ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors);
 
     // TODO FIXME <Fp, Fp> is wrong
-    ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL, N_CHALS>(
+    ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL_QUAD, N_CHALS>(
         &mut ivc_witness_env_1,
         Box::new(all_ivc_comms_left),
         Box::new(all_ivc_comms_right),
