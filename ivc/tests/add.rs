@@ -593,6 +593,7 @@ pub fn test_simple_add() {
         let extended = relaxed_extended_left_instance.extended_instance.extended;
         comms_left.extend(extended.iter().map(|x| x.elems[0]));
     }
+    assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_left.iter().enumerate().for_each(|(i, c)| {
         assert_ne!(
@@ -601,8 +602,6 @@ pub fn test_simple_add() {
             "Left commitment number {i:?} is zero"
         );
     });
-
-    assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
 
     // IVC is expecting the coordinates.
     let comms_left: [(Fq, Fq); N_COL_TOTAL_QUAD] =
@@ -621,6 +620,7 @@ pub fn test_simple_add() {
         let extended = relaxed_extended_right_instance.extended_instance.extended;
         comms_right.extend(extended.iter().map(|x| x.elems[0]));
     }
+    assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_right.iter().enumerate().for_each(|(i, c)| {
         assert_ne!(
