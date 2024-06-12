@@ -629,11 +629,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
-            // Store preimage key in the witness excluding the MSB as 248 bits
-            let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
-                acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
-            });
-            self.write_field_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -740,6 +735,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
             self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFF), 1);
+
+            // Store preimage key in the witness excluding the MSB as 248 bits
+            // so it can be used for the communication channel between Keccak
+            let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
+                acc * Fp::two_pow(8) + Fp::from(self.preimage_key.unwrap()[i])
+            });
+            self.write_field_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
 
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
