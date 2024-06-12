@@ -602,6 +602,42 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             _ => panic!("unsupported"),
         }
     }
+
+    /// Maps variable (column index) in expression using the `mapper`
+    /// function. Can be used to modify (remap) the indexing of
+    /// columns after the expression is built.
+    pub fn map_variable(
+        self,
+        mapper: &(dyn Fn(Variable<C::Column>) -> Variable<C::Column>),
+    ) -> FoldingCompatibleExpr<C> {
+        use FoldingCompatibleExpr::*;
+        match self {
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Cell(col) => {
+                    Atom(FoldingCompatibleExprInner::Cell((mapper)(col)))
+                }
+                atom => Atom(atom),
+            },
+            FoldingCompatibleExpr::Double(exp) => Double(Box::new(exp.map_variable(mapper))),
+            FoldingCompatibleExpr::Square(exp) => Square(Box::new(exp.map_variable(mapper))),
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Mul(e1, e2)
+            }
+            FoldingCompatibleExpr::Pow(e, p) => Pow(Box::new(e.map_variable(mapper)), p),
+        }
+    }
 }
 
 impl<C: FoldingConfig> FoldingExp<C> {
