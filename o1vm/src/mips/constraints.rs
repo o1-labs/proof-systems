@@ -7,7 +7,6 @@ use crate::{
             MIPS_NUM_BYTES_READ_OFF, MIPS_ORACLE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::InterpreterEnv,
-        registers::REGISTER_PREIMAGE_KEY_START,
     },
     E,
 };
