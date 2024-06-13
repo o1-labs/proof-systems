@@ -1,10 +1,10 @@
 use crate::{
-    circuit_design::{ColAccessCap, ColWriteCap},
+    circuit_design::{ColAccessCap, ColWriteCap, DirectWitnessCap},
     serialization::interpreter::limb_decompose_ff,
     test::test_circuit::columns::TestColumn,
     LIMB_BITSIZE, N_LIMBS,
 };
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 
 fn fill_limbs_a_b<
     F: PrimeField,
@@ -136,6 +136,60 @@ pub fn constrain_test_fixed_sel<F: PrimeField, Env: ColAccessCap<F, TestColumn>>
     env.assert_zero(equation.clone());
 }
 
+/// A consraint function for A_0^7 + B_0 - FIXED_E
+pub fn constrain_test_fixed_sel_degree_7<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(
+    env: &mut Env,
+) {
+    let a0 = Env::read_column(env, TestColumn::A(0));
+    let b0 = Env::read_column(env, TestColumn::B(0));
+    let fixed_e = Env::read_column(env, TestColumn::FixedE);
+    let a0_2 = a0.clone() * a0.clone();
+    let a0_4 = a0_2.clone() * a0_2.clone();
+    let a0_6 = a0_4.clone() * a0_2.clone();
+    let a0_7 = a0_6.clone() * a0.clone();
+    let equation = a0_7.clone() + b0.clone() - fixed_e;
+    env.assert_zero(equation.clone());
+}
+
+/// A consraint function for 3 * A_0^7 + 42 * B_0 - FIXED_E
+pub fn constrain_test_fixed_sel_degree_7_with_constants<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn>,
+>(
+    env: &mut Env,
+) {
+    let a0 = Env::read_column(env, TestColumn::A(0));
+    let fourty_two = Env::constant(F::from(42u32));
+    let three = Env::constant(F::from(3u32));
+    let b0 = Env::read_column(env, TestColumn::B(0));
+    let fixed_e = Env::read_column(env, TestColumn::FixedE);
+    let a0_2 = a0.clone() * a0.clone();
+    let a0_4 = a0_2.clone() * a0_2.clone();
+    let a0_6 = a0_4.clone() * a0_2.clone();
+    let a0_7 = a0_6.clone() * a0.clone();
+    let equation = three * a0_7.clone() + fourty_two * b0.clone() - fixed_e;
+    env.assert_zero(equation.clone());
+}
+
+/// A consraint function for 3 * A_0^7 + B_0 * FIXED_E
+pub fn constrain_test_fixed_sel_degree_7_mul_witness<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn>,
+>(
+    env: &mut Env,
+) {
+    let a0 = Env::read_column(env, TestColumn::A(0));
+    let three = Env::constant(F::from(3u32));
+    let b0 = Env::read_column(env, TestColumn::B(0));
+    let fixed_e = Env::read_column(env, TestColumn::FixedE);
+    let a0_2 = a0.clone() * a0.clone();
+    let a0_4 = a0_2.clone() * a0_2.clone();
+    let a0_6 = a0_4.clone() * a0_2.clone();
+    let a0_7 = a0_6.clone() * a0.clone();
+    let equation = three * a0_7.clone() + b0.clone() * fixed_e;
+    env.assert_zero(equation.clone());
+}
+
 /// Circuit generator function for A_0 + B_0 - FIXED_E.
 pub fn test_fixed_sel<
     F: PrimeField,
@@ -149,4 +203,68 @@ pub fn test_fixed_sel<
     env.write_column(TestColumn::B(0), &(fixed_e - Env::constant(a)));
 
     constrain_test_fixed_sel(env);
+}
+
+/// Circuit generator function for A_0^7 + B_0 - FIXED_E.
+pub fn test_fixed_sel_degree_7<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn>,
+>(
+    env: &mut Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(0), &Env::constant(a));
+    let a_2 = a * a;
+    let a_4 = a_2 * a_2;
+    let a_6 = a_4 * a_2;
+    let a_7 = a_6 * a;
+    let fixed_e = env.read_column(TestColumn::FixedE);
+    env.write_column(TestColumn::B(0), &(fixed_e - Env::constant(a_7)));
+    constrain_test_fixed_sel_degree_7(env);
+}
+
+/// Circuit generator function for 3 * A_0^7 + 42 * B_0 - FIXED_E.
+pub fn test_fixed_sel_degree_7_with_constants<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn>,
+>(
+    env: &mut Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(0), &Env::constant(a));
+    let a_2 = a * a;
+    let a_4 = a_2 * a_2;
+    let a_6 = a_4 * a_2;
+    let a_7 = a_6 * a;
+    let fixed_e = env.read_column(TestColumn::FixedE);
+    let inv_42 = F::from(42u32).inverse().unwrap();
+    let three = F::from(3u32);
+    env.write_column(
+        TestColumn::B(0),
+        &((fixed_e - Env::constant(three) * Env::constant(a_7)) * Env::constant(inv_42)),
+    );
+    constrain_test_fixed_sel_degree_7_with_constants(env);
+}
+
+/// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_E.
+pub fn test_fixed_sel_degree_7_mul_witness<
+    F: SquareRootField + PrimeField,
+    Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn> + DirectWitnessCap<F, TestColumn>,
+>(
+    env: &mut Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(0), &Env::constant(a));
+    let a_2 = a * a;
+    let a_4 = a_2 * a_2;
+    let a_6 = a_4 * a_2;
+    let a_7 = a_6 * a;
+    let fixed_e = env.read_column(TestColumn::FixedE);
+    let three = F::from(3u32);
+    let val_fixed_e: F = Env::variable_to_field(fixed_e);
+    let inv_fixed_e: F = val_fixed_e.inverse().unwrap();
+    let res = -three * a_7 * inv_fixed_e;
+    let res_var = Env::constant(res);
+    env.write_column(TestColumn::B(0), &res_var);
+    constrain_test_fixed_sel_degree_7_mul_witness(env);
 }
