@@ -616,7 +616,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     fn report_exit(&mut self, exit_code: &Self::Variable) {
         println!(
             "Exited with code {} at step {}",
-            *exit_code, self.instruction_counter
+            *exit_code,
+            self.instruction_counter / MAX_ACC
         );
     }
 
