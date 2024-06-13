@@ -2379,6 +2379,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let mod_2 = env.equal(&byte_subaddr, &Env::constant(2));
             let mod_3 = env.equal(&byte_subaddr, &Env::constant(3));
 
+            // From docs: "EffAddr is the address of the most-significant of
+            // four consecutive bytes forming a word in memory"
             let m0 = env.read_memory(&addr);
             let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
