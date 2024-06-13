@@ -617,7 +617,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         println!(
             "Exited with code {} at step {}",
             *exit_code,
-            self.instruction_counter / MAX_ACC
+            self.instruction_counter_normalized()
         );
     }
 
@@ -1065,6 +1065,18 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (opcode, instruction)
     }
 
+    /// Because MAX_NB_REG_ACC = 7 and MAX_NB_MEM_ACC = 12, at most the same
+    /// instruction will increase the instruction counter by MAX_ACC = 19.
+    ///
+    /// NOTE: actually, in practice it will be less than that, as there is no
+    ///       single instruction that performs all of them.
+    ///
+    /// This means that the actual number of instructions executed will result
+    /// from dividing the instruction counter by MAX_ACC (floor).
+    pub fn instruction_counter_normalized(&self) -> u64 {
+        self.instruction_counter / MAX_ACC
+    }
+
     /// Updates the instruction counter, accounting for the maximum number of
     /// register and memory accesses per instruction.
     /// Because MAX_NB_REG_ACC = 7 and MAX_NB_MEM_ACC = 12, at most the same
@@ -1080,7 +1092,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     /// the real instruction counter and multiply it by MAX_ACC to have a unique
     /// representation of each step (which is helpful for debugging).
     pub fn update_instruction_counter(&mut self) {
-        self.instruction_counter = ((self.instruction_counter / MAX_ACC) + 1) * MAX_ACC;
+        self.instruction_counter = (self.instruction_counter_normalized() + 1) * MAX_ACC;
     }
 
     /// Execute a single step of the MIPS program.
@@ -1102,7 +1114,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             self.halt = true;
             println!(
                 "Halted as requested at step={} instruction={:?}",
-                self.instruction_counter, opcode
+                self.instruction_counter_normalized(),
+                opcode
             );
             return opcode;
         }
@@ -1115,7 +1128,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         if self.halt {
             println!(
                 "Halted at step={} instruction={:?}",
-                self.instruction_counter / MAX_ACC,
+                self.instruction_counter_normalized(),
                 opcode
             );
         }
@@ -1123,7 +1136,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {
-        let m: u64 = self.instruction_counter;
+        let m: u64 = self.instruction_counter_normalized();
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
@@ -1199,7 +1212,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             let _ = serde_json::to_writer(&mut writer, &s);
             info!(
                 "Snapshot state in {}, step {}",
-                filename, self.instruction_counter
+                filename,
+                self.instruction_counter_normalized()
             );
             writer.flush().expect("Flush writer failing")
         }
@@ -1209,7 +1223,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             // Compute the step number removing the MAX_ACC factor
-            let step = self.instruction_counter / MAX_ACC;
+            let step = self.instruction_counter_normalized();
             let pc = self.registers.current_instruction_pointer;
 
             // Get the 32-bits opcode
