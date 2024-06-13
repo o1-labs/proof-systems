@@ -454,6 +454,81 @@ mod unit {
             interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
             assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
         }
+
+        #[test]
+        fn test_unit_swr_instruction() {
+            // swr instruction
+            // case 0x2e: swr
+            //            val := rt << (24 - (rs&3)*8)
+            //            mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
+            //            return (mem & ^mask) | val
+
+            // Instruction: 0b101110 10101 00001 0000000001000000
+            // swl rt offset(21)
+
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            let mut dummy_env = dummy_env(&mut rng);
+
+            // Values used in the instruction
+            let rs = 21;
+            let dst = 1;
+            let offset = sign_extend(64, 16);
+
+            // Set the base address to a small number so dummy_env does not ovf
+            dummy_env.registers[rs] = rng.gen_range(1000u32..4000u32);
+            let base = dummy_env.registers[rs];
+            // The effective address
+            let (addr, ovf) = base.overflowing_add(offset);
+            assert!(!ovf);
+
+            let shift_right = 24 - (addr & 3) * 8;
+
+            // This is the partial value that will be stored into memory
+            let val = dummy_env.registers[dst] << shift_right;
+
+            let mask = 0xFFFFFFFFu32 << shift_right;
+
+            // Initial value of the memory
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+            let m0 = mem[(addr - 3) as usize];
+            let m1 = mem[(addr - 2) as usize];
+            let m2 = mem[(addr - 1) as usize];
+            let m3 = mem[addr as usize];
+
+            // Big endian: small addresses of memory represent more significant
+            let memory =
+                ((m0 as u32) << 24) + ((m1 as u32) << 16) + ((m2 as u32) << 8) + (m3 as u32);
+
+            let exp_v = (memory & !mask) | val;
+
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b101110,
+                    rs: rs as u32,  // where base address is obtained from
+                    rt: dst as u32, // destination
+                    rd: 0b00000,
+                    shamt: 0b00001, // offset = 64
+                    funct: 0b000000,
+                },
+            );
+
+            interpret_itype(&mut dummy_env, ITypeInstruction::StoreWordRight);
+
+            // Check the memory after the instruction
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+            let m0 = mem[(addr - 3) as usize];
+            let m1 = mem[(addr - 2) as usize];
+            let m2 = mem[(addr - 1) as usize];
+            let m3 = mem[addr as usize];
+
+            assert_eq!(m0, bitmask(exp_v, 32, 24) as u8);
+            assert_eq!(m1, bitmask(exp_v, 24, 16) as u8);
+            assert_eq!(m2, bitmask(exp_v, 16, 8) as u8);
+            assert_eq!(m3, bitmask(exp_v, 8, 0) as u8);
+        }
     }
 }
 

@@ -2464,18 +2464,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
 
-            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
-            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
-            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_1.clone();
-            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0)) + overwrite_2.clone();
+            let mod_0 = env.equal(&byte_subaddr, &Env::constant(0));
+            let mod_1 = env.equal(&byte_subaddr, &Env::constant(1));
+            let mod_2 = env.equal(&byte_subaddr, &Env::constant(2));
+            let mod_3 = env.equal(&byte_subaddr, &Env::constant(3));
 
             // The `-3` here feels odd, but simulates the `<< 24` in cannon, and matches the
             // behavior defined in the spec.
             // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
-            let m0 = env.read_memory(&(addr.clone() - Env::constant(3)));
+            // Because we shift the bytes in memory to the right, we need to access smaller
+            // addresses of memory.
+            // Big-endian notation here
             let m1 = env.read_memory(&(addr.clone() - Env::constant(2)));
             let m2 = env.read_memory(&(addr.clone() - Env::constant(1)));
             let m3 = env.read_memory(&addr);
+            // No need to compute m0 as mem(addr-3) because it is not used here
 
             let [r0, r1, r2, r3] = {
                 let initial_register_value = env.read_register(&rt);
@@ -2503,31 +2506,47 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 ]
             };
 
+            // if mod = 0 -> r3 m1 m2 m3
+            // if mod = 1 -> r2 r3 m2 m3
+            // if mod = 2 -> r1 r2 r3 m3
+            // if mod = 3 -> r0 r1 r2 r3
             let v0 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_0.clone() * r0 + (Env::constant(1) - overwrite_0) * m0),
+                    &(r3.clone() * mod_0.clone()
+                        + r2.clone() * mod_1.clone()
+                        + r1.clone() * mod_2.clone()
+                        + r0 * mod_3.clone()),
                     pos,
                 )
             };
             let v1 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_1.clone() * r1 + (Env::constant(1) - overwrite_1) * m1),
+                    &(m1 * mod_0.clone()
+                        + r3.clone() * mod_1.clone()
+                        + r2.clone() * mod_2.clone()
+                        + r1 * mod_3.clone()),
                     pos,
                 )
             };
+            // if mod = 0 -> r3 m1 m2 m3
+            // if mod = 1 -> r2 r3 m2 m3
+            // if mod = 2 -> r1 r2 r3 m3
+            // if mod = 3 -> r0 r1 r2 r3
             let v2 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_2.clone() * r2 + (Env::constant(1) - overwrite_2) * m2),
+                    &(m2 * (mod_0.clone() + mod_1.clone())
+                        + r3.clone() * mod_2.clone()
+                        + r2 * mod_3.clone()),
                     pos,
                 )
             };
             let v3 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_3.clone() * r3 + (Env::constant(1) - overwrite_3) * m3),
+                    &(m3 * (mod_0.clone() + mod_1.clone() + mod_2.clone()) + r3 * mod_3),
                     pos,
                 )
             };
