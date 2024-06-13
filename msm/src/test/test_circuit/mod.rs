@@ -209,6 +209,69 @@ mod tests {
         );
     }
 
+    fn build_test_fixed_sel_degree_7_circuit_mul_witness<
+        RNG: RngCore + CryptoRng,
+        LT: LookupTableID,
+    >(
+        rng: &mut RNG,
+        domain_size: usize,
+    ) -> TestWitnessBuilderEnv<LT> {
+        let mut witness_env = WitnessBuilderEnv::create();
+
+        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect();
+        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+
+        for row_i in 0..domain_size {
+            let a: Fp = <Fp as UniformRand>::rand(rng);
+            test_interpreter::test_fixed_sel_degree_7_mul_witness(&mut witness_env, a);
+
+            if row_i < domain_size - 1 {
+                witness_env.next_row();
+            }
+        }
+
+        witness_env
+    }
+
+    #[test]
+    fn test_completeness_fixed_sel_degree_7_mul_witness() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        // Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        let domain_size = 1 << 8;
+
+        let witness_env = build_test_fixed_sel_degree_7_circuit_mul_witness::<_, DummyLookupTable>(
+            &mut rng,
+            domain_size,
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
+        test_interpreter::constrain_test_fixed_sel_degree_7_mul_witness::<Fp, _>(
+            &mut constraint_env,
+        );
+        // Don't use lookups for now
+        let constraints = constraint_env.get_relation_constraints();
+
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect()]);
+
+        crate::test::test_completeness_generic_no_lookups::<
+            { TEST_N_COLUMNS - 1 },
+            { TEST_N_COLUMNS - 1 },
+            0,
+            1,
+            _,
+        >(
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
+            &mut rng,
+        );
+    }
+
     fn build_test_const_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
         rng: &mut RNG,
         domain_size: usize,
