@@ -1162,7 +1162,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     fn snapshot_state_at(&mut self, at: &StepFrequency) {
         if self.should_trigger_at(at) {
-            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
+            let step = self.instruction_counter / MAX_ACC;
+            let filename = format!("snapshot-state-{}.json", step);
             let file = File::create(filename.clone()).expect("Impossible to open file");
             let mut writer = BufWriter::new(file);
             let mut preimage_key = [0u8; 32];
@@ -1196,10 +1197,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 preimage: self.preimage.clone(),
             };
             let _ = serde_json::to_writer(&mut writer, &s);
-            info!(
-                "Snapshot state in {}, step {}",
-                filename, self.instruction_counter
-            );
+            info!("Snapshot state in {}, step {}", filename, step);
             writer.flush().expect("Flush writer failing")
         }
     }
