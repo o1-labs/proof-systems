@@ -543,6 +543,10 @@
 <a href="#543" id="543">543</a>
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
@@ -634,6 +638,10 @@
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(MIPSColumn::InstructionCounter)
     }
+
+    <span class="kw">fn </span>increase_instruction_counter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// No-op, witness only
+    </span>}
 
     <span class="kw">unsafe fn </span>fetch_register(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

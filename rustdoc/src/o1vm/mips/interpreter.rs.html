@@ -2575,6 +2575,13 @@
 <a href="#2575" id="2575">2575</a>
 <a href="#2576" id="2576">2576</a>
 <a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
+<a href="#2580" id="2580">2580</a>
+<a href="#2581" id="2581">2581</a>
+<a href="#2582" id="2582">2582</a>
+<a href="#2583" id="2583">2583</a>
+<a href="#2584" id="2584">2584</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -2794,6 +2801,8 @@
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="kw">fn </span>increase_instruction_counter(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
     <span class="doccomment">/// Fetch the value of the general purpose register with index `idx` and store it in local
     /// position `output`.
     ///
@@ -2892,11 +2901,10 @@
             <span class="comment">// Here, we write as if the register had been written *at the start of the next
             // instruction*. This ensures that we can&#39;t &#39;time travel&#39; within this
             // instruction, and claim to read the value that we&#39;re about to write!
-
-            // FIXME: A register should allow multiple accesses within the same instruction.
-
             </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
-        };
+            <span class="comment">// A register should allow multiple accesses to the same register within the same instruction.
+            // In order to allow this, we always increase the instruction counter by 1.
+        </span>};
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         <span class="self">self</span>.add_lookup(Lookup::write_if(
             if_is_true.clone(),
@@ -2909,6 +2917,9 @@
             <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
         ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
+
+        <span class="comment">// Update instruction counter after accessing a register.
+        </span><span class="self">self</span>.increase_instruction_counter();
     }
 
     <span class="kw">fn </span>read_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
@@ -3042,6 +3053,9 @@
             <span class="macro">vec!</span>[addr.clone(), new_accessed, new_value.clone()],
         ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
+
+        <span class="comment">// Update instruction counter after accessing a memory address.
+        </span><span class="self">self</span>.increase_instruction_counter();
     }
 
     <span class="kw">fn </span>read_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
