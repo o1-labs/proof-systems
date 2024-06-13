@@ -2079,23 +2079,20 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 res
             };
 
+            // Corresponds to `(rs & 3)`
             let byte_subaddr = {
                 // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
 
-            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
-            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
-            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_2.clone();
-            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3)) + overwrite_1.clone();
-
+            // Big-endian: smallest address is the most significant byte
             let m0 = env.read_memory(&addr);
             let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
             let m3 = env.read_memory(&(addr.clone() + Env::constant(3)));
 
-            let [r0, r1, r2, r3] = {
+            let [_r0, r1, r2, r3] = {
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
@@ -2120,14 +2117,33 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
+
+            let mod_0 = env.equal(&byte_subaddr, &Env::constant(0));
+            let mod_1 = env.equal(&byte_subaddr, &Env::constant(1));
+            let mod_2 = env.equal(&byte_subaddr, &Env::constant(2));
+            let mod_3 = env.equal(&byte_subaddr, &Env::constant(3));
+
+            // if mod = 0 -> m0 m1 m2 m3
+            // if mod = 1 -> m1 m2 m3 r3
+            // if mod = 2 -> m2 m3 r2 r3
+            // if mod = 3 -> m3 r1 r2 r3
             let value = {
-                let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
-                    * Env::constant(1 << 24))
-                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1) * r1)
-                        * Env::constant(1 << 16))
-                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2) * r2)
-                        * Env::constant(1 << 8))
-                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3) * r3);
+                let value = Env::constant(1 << 24)
+                    * (m0 * mod_0.clone()
+                        + m1.clone() * mod_1.clone()
+                        + m2.clone() * mod_2.clone()
+                        + m3.clone() * mod_3.clone())
+                    + Env::constant(1 << 16)
+                        * (m1 * mod_0.clone()
+                            + m2.clone() * mod_1.clone()
+                            + m3.clone() * mod_2.clone()
+                            + r1.clone() * mod_3.clone())
+                    + Env::constant(1 << 8)
+                        * (m2 * mod_0.clone()
+                            + m3.clone() * mod_1.clone()
+                            + r2 * (mod_2.clone() + mod_3.clone()))
+                    + (m3 * mod_0 + r3 * (mod_1 + mod_2 + mod_3));
+
                 let pos = env.alloc_scratch();
                 env.copy(&value, pos)
             };

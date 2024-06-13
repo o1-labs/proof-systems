@@ -243,11 +243,6 @@ mod unit {
         high_bit * (((1 << (32 - bitlength)) - 1) << bitlength) + x
     }
 
-    pub(crate) fn bitmask(x: u32, highest_bit: u32, lowest_bit: u32) -> u32 {
-        let res = (x >> lowest_bit) as u64 & (2u64.pow(highest_bit - lowest_bit) - 1);
-        res as u32
-    }
-
     #[test]
     fn test_sext() {
         assert_eq!(sign_extend(0b1001_0110, 16), 0b1001_0110);
@@ -255,12 +250,6 @@ mod unit {
             sign_extend(0b1001_0110_0000_0000, 16),
             0b1111_1111_1111_1111_1001_0110_0000_0000
         );
-    }
-
-    #[test]
-    fn test_bitmask() {
-        assert_eq!(bitmask(0xaf, 8, 0), 0xaf);
-        assert_eq!(bitmask(0x3671e4cb, 32, 0), 0x3671e4cb);
     }
 
     #[test]
@@ -457,12 +446,16 @@ mod unit {
 
         #[test]
         fn test_unit_lwl_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng(None);
             // lwl instruction
-            let mut dummy_env = dummy_env(&mut rng);
+            // val := mem << ((rs & 3) * 8)
+            // mask := uint32(0xFFFFFFFF) << ((rs & 3) * 8)
+            // return (rt & ^mask) | val
+
             // Instruction: 0b100010 10101 00001 0000000001000000
             // lwl rt offset(21)
-            // Random address in SP Address has only one index
+
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            let mut dummy_env = dummy_env(&mut rng);
 
             // Values used in the instruction
             let rs = 21;
@@ -476,30 +469,24 @@ mod unit {
             let (addr, ovf) = base.overflowing_add(offset);
             assert!(!ovf);
 
-            // Number of bytes that will remain unchanged on the right
-            let n_right = addr % 4;
+            let shift_left = (addr & 3) * 8;
+            let mask = 0xFFffFFffu32 << shift_left;
 
             let mem = &dummy_env.memory[0];
             let mem = &mem.1;
 
             // Here start the (at most 4) bytes we want to load from memory
-            let v0 = mem[addr as usize];
-            let v1 = mem[(addr + 1) as usize];
-            let v2 = mem[(addr + 2) as usize];
-            let v3 = mem[(addr + 3) as usize];
+            let m0 = mem[addr as usize];
+            let m1 = mem[(addr + 1) as usize];
+            let m2 = mem[(addr + 2) as usize];
+            let m3 = mem[(addr + 3) as usize];
             // Big endian: small addresses of memory represent more significant
             let memory =
-                ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+                ((m0 as u32) << 24) + ((m1 as u32) << 16) + ((m2 as u32) << 8) + (m3 as u32);
 
-            // Load n_left=4-n_right bytes from the memory
-            let left = bitmask(memory, 32, 8 * n_right);
+            let val = memory << shift_left;
 
-            // Right part of the word (must not change content of register)
-            let right = bitmask(dummy_env.registers[dst], 8 * n_right, 0);
-
-            // The final value that should be in the register after LWL
-            // corresponds to the n_left bytes followed from the n_right bytes
-            let exp_v = (left << (8 * n_right)) + right;
+            let exp_v = (dummy_env.registers[dst] & !mask) | val;
 
             write_instruction(
                 &mut dummy_env,
