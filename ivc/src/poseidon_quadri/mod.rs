@@ -90,6 +90,8 @@ mod tests {
                 assert_eq!(witness_env.read_column(y_col), exp_output[1]);
                 assert_eq!(witness_env.read_column(z_col), exp_output[2]);
             }
+
+            witness_env.next_row();
         }
     }
 
@@ -113,6 +115,8 @@ mod tests {
                     &PoseidonBN254Parameters,
                     [x, y, z],
                 );
+
+                witness_env.next_row();
             }
 
             witness_env.get_relation_witness(domain_size)
