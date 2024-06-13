@@ -150,6 +150,39 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{ColAccessCap, ColWriteCap},
     serialization::interpreter::limb_decompose_ff,
@@ -288,6 +321,21 @@
     env.assert_zero(equation.clone());
 }
 
+<span class="doccomment">/// A consraint function for A_0^7 + B_0 - FIXED_E
+</span><span class="kw">pub fn </span>constrain_test_fixed_sel_degree_7&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+) {
+    <span class="kw">let </span>a0 = Env::read_column(env, TestColumn::A(<span class="number">0</span>));
+    <span class="kw">let </span>b0 = Env::read_column(env, TestColumn::B(<span class="number">0</span>));
+    <span class="kw">let </span>fixed_e = Env::read_column(env, TestColumn::FixedE);
+    <span class="kw">let </span>a0_2 = a0.clone() * a0.clone();
+    <span class="kw">let </span>a0_4 = a0_2.clone() * a0_2.clone();
+    <span class="kw">let </span>a0_6 = a0_4.clone() * a0_2.clone();
+    <span class="kw">let </span>a0_7 = a0_6.clone() * a0.clone();
+    <span class="kw">let </span>equation = a0_7.clone() + b0.clone() - fixed_e;
+    env.assert_zero(equation.clone());
+}
+
 <span class="doccomment">/// Circuit generator function for A_0 + B_0 - FIXED_E.
 </span><span class="kw">pub fn </span>test_fixed_sel&lt;
     F: PrimeField,
@@ -301,5 +349,23 @@
     env.write_column(TestColumn::B(<span class="number">0</span>), <span class="kw-2">&amp;</span>(fixed_e - Env::constant(a)));
 
     constrain_test_fixed_sel(env);
+}
+
+<span class="doccomment">/// Circuit generator function for A_0^7 + B_0 - FIXED_E.
+</span><span class="kw">pub fn </span>test_fixed_sel_degree_7&lt;
+    F: PrimeField,
+    Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(<span class="number">0</span>), <span class="kw-2">&amp;</span>Env::constant(a));
+    <span class="kw">let </span>a_2 = a * a;
+    <span class="kw">let </span>a_4 = a_2 * a_2;
+    <span class="kw">let </span>a_6 = a_4 * a_2;
+    <span class="kw">let </span>a_7 = a_6 * a;
+    <span class="kw">let </span>fixed_e = env.read_column(TestColumn::FixedE);
+    env.write_column(TestColumn::B(<span class="number">0</span>), <span class="kw-2">&amp;</span>(fixed_e - Env::constant(a_7)));
+    constrain_test_fixed_sel_degree_7(env);
 }
 </code></pre></div></section></main></body></html>

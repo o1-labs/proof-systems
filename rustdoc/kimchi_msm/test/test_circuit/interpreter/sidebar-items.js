@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["constrain_addition","constrain_multiplication","constrain_test_const","constrain_test_fixed_sel","test_addition","test_const","test_fixed_sel","test_multiplication"]};
+window.SIDEBAR_ITEMS = {"fn":["constrain_addition","constrain_multiplication","constrain_test_const","constrain_test_fixed_sel","constrain_test_fixed_sel_degree_7","test_addition","test_const","test_fixed_sel","test_fixed_sel_degree_7","test_multiplication"]};
