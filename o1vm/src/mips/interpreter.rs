@@ -2160,9 +2160,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
 
             // The `-3` here feels odd, but simulates the `>> 24` in cannon, and matches the
             // behavior defined in the spec.
+            //
             // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
             // Because we shift the bytes in memory to the right, we need to access smaller
             // addresses of memory.
+            //
+            // From docs: "EffAddr is the address of the least-significant of
+            //             four consecutive bytes word in memory"
+            //
             // Big-endian notation here
             let m0 = env.read_memory(&(addr.clone() - Env::constant(3)));
             let m1 = env.read_memory(&(addr.clone() - Env::constant(2)));
