@@ -875,8 +875,17 @@ pub fn test_simple_add() {
             instance_witness::RelaxablePair,
         };
 
+        println!("Expression: {}", expr.to_string());
+
         let expr: FoldingExp<Config> = expr.clone().simplify();
 
+        //println!("Expression (foldingExp): {}", expr.to_string());
+
+        //  (i1,w1)       (i2,w2)         (+ trivial IVC)
+        //         (i3,w3)                (+ nontrivial IVC)
+        //
+        //
+        // APP + IVC
         let relaxable_pair = (
             folding_instance_three.clone(),
             folding_witness_three.clone(),
@@ -888,7 +897,7 @@ pub fn test_simple_add() {
             &(),
             [relaxed_pair.0, relaxed_pair_copy.0],
             [relaxed_pair.1, relaxed_pair_copy.1],
-            domain.d8,
+            domain.d1,
             None,
         );
 
@@ -898,6 +907,15 @@ pub fn test_simple_add() {
             EvalLeaf::Result(res) => {
                 println!("{:?}", res.len());
                 println!("{:?}", res[0]);
+                println!(
+                    "vector contains just zeroes? {}",
+                    res.iter().all(|elem| elem.is_zero())
+                );
+                for (i, e) in res.iter().enumerate() {
+                    if !e.is_zero() {
+                        println!("Row {i:?} is nonzero: {e:?}");
+                    }
+                }
             }
             _ => println!("eval_leaf is not Result"),
         }
