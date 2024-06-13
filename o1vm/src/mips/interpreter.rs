@@ -2086,6 +2086,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
 
+            // From docs: "EffAddr is the address of the most-significant of
+            //             four consecutive bytes word in memory"
             // Big-endian: smallest address is the most significant byte
             let m0 = env.read_memory(&addr);
             let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
