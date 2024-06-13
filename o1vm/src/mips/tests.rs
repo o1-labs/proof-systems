@@ -470,7 +470,7 @@ mod unit {
             assert!(!ovf);
 
             let shift_left = (addr & 3) * 8;
-            let mask = 0xFFffFFffu32 << shift_left;
+            let mask = 0xFFFFFFFFu32 << shift_left;
 
             let mem = &dummy_env.memory[0];
             let mem = &mem.1;
