@@ -238,9 +238,20 @@ mod unit {
         env.memory[page as usize].1[page_address + 3] = (instr & 0xFF) as u8;
     }
 
+    pub(crate) fn bitmask(x: u32, highest_bit: u32, lowest_bit: u32) -> u32 {
+        let res = (x >> lowest_bit) as u64 & (2u64.pow(highest_bit - lowest_bit) - 1);
+        res as u32
+    }
+
     pub(crate) fn sign_extend(x: u32, bitlength: u32) -> u32 {
         let high_bit = (x >> (bitlength - 1)) & 1;
         high_bit * (((1 << (32 - bitlength)) - 1) << bitlength) + x
+    }
+
+    #[test]
+    fn test_bitmask() {
+        assert_eq!(bitmask(0xaf, 8, 0), 0xaf);
+        assert_eq!(bitmask(0x3671e4cb, 32, 0), 0x3671e4cb);
     }
 
     #[test]

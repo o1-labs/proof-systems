@@ -2169,7 +2169,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let m2 = env.read_memory(&(addr.clone() - Env::constant(1)));
             let m3 = env.read_memory(&addr);
 
-            let [r0, r1, r2, _r3] = {
+            // No need to compute r3 as bitmask(reg,8,0,pos) as it is not used
+            let [r0, r1, r2] = {
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
@@ -2186,11 +2187,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                         // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
-                    },
-                    {
-                        // FIXME: Requires a range check
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
                     },
                 ]
             };
