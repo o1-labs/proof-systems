@@ -2374,15 +2374,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
 
-            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
-            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
-            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_2.clone();
-            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3)) + overwrite_1.clone();
+            let mod_0 = env.equal(&byte_subaddr, &Env::constant(0));
+            let mod_1 = env.equal(&byte_subaddr, &Env::constant(1));
+            let mod_2 = env.equal(&byte_subaddr, &Env::constant(2));
+            let mod_3 = env.equal(&byte_subaddr, &Env::constant(3));
 
             let m0 = env.read_memory(&addr);
             let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
-            let m3 = env.read_memory(&(addr.clone() + Env::constant(3)));
+            // No need to define m3 as mem(addr+3) because it is never used in swl
 
             let [r0, r1, r2, r3] = {
                 let initial_register_value = env.read_register(&rt);
@@ -2410,35 +2410,43 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 ]
             };
 
+            // if mod = 0 -> r0 r1 r2 r3
+            // if mod = 1 -> m0 r0 r1 r2
+            // if mod = 2 -> m0 m1 r0 r1
+            // if mod = 3 -> m0 m1 m2 r0
             let v0 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_0.clone() * r0 + (Env::constant(1) - overwrite_0) * m0),
+                    &(r0.clone() * mod_0.clone()
+                        + m0 * (mod_1.clone() + mod_2.clone() + mod_3.clone())),
                     pos,
                 )
             };
             let v1 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_1.clone() * r1 + (Env::constant(1) - overwrite_1) * m1),
+                    &(r1.clone() * mod_0.clone()
+                        + r0.clone() * mod_1.clone()
+                        + m1 * (mod_2.clone() + mod_3.clone())),
                     pos,
                 )
             };
             let v2 = {
                 let pos = env.alloc_scratch();
                 env.copy(
-                    &(overwrite_2.clone() * r2 + (Env::constant(1) - overwrite_2) * m2),
+                    &(r2.clone() * mod_0.clone()
+                        + r1.clone() * mod_1.clone()
+                        + r0.clone() * mod_2.clone()
+                        + m2 * mod_3.clone()),
                     pos,
                 )
             };
             let v3 = {
                 let pos = env.alloc_scratch();
-                env.copy(
-                    &(overwrite_3.clone() * r3 + (Env::constant(1) - overwrite_3) * m3),
-                    pos,
-                )
+                env.copy(&(r3 * mod_0 + r2 * mod_1 + r1 * mod_2 + r0 * mod_3), pos)
             };
 
+            // Big-endian: most significant bytes into smaller addresses
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.write_memory(&(addr.clone() + Env::constant(2)), v2);
