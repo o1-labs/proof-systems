@@ -78,10 +78,21 @@ pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
     fn to_column(self) -> Column;
 }
 
-// Implementation to be compatible with folding if we use generic column constraints
+// Implementation to be compatible with folding if we use generic column
+// constraints
 impl FoldingColumnTrait for Column {
     fn is_witness(&self) -> bool {
-        // TODO: check if we want to treat lookups differently
-        true
+        match self {
+            // Witness
+            Column::Relation(_) => true,
+            Column::DynamicSelector(_) => true,
+            // FIXME: check if we want to treat lookups differently
+            Column::LookupPartialSum(_) => true,
+            Column::LookupMultiplicity(_) => true,
+            Column::LookupAggregation => true,
+            // Not witness/public values
+            Column::FixedSelector(_) => false,
+            Column::LookupFixedTable(_) => false,
+        }
     }
 }
