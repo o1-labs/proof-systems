@@ -1208,7 +1208,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     fn pp_info(&mut self, at: &StepFrequency, meta: &Meta, start: &Start) {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
-            let step = self.instruction_counter;
+            // Compute the step number removing the MAX_ACC factor
+            let step = self.instruction_counter / MAX_ACC;
             let pc = self.registers.current_instruction_pointer;
 
             // Get the 32-bits opcode
