@@ -234,9 +234,15 @@ pub fn test_simple_add() {
             srs: &SRS<BN254G1Affine>,
             domain: Radix2EvaluationDomain<Fp>,
         ) -> Self {
+            // TODO change to blinder 1?
             let commitments: GenericWitness<N_COL_TOTAL, PolyComm<BN254G1Affine>> = w
                 .into_par_iter()
-                .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+                .map(|w| {
+                    let unblinded = srs.commit_evaluations_non_hiding(domain, w);
+                    srs.mask_custom(unblinded, &PolyComm::new(vec![Fp::one()]))
+                        .unwrap()
+                        .commitment
+                })
                 .collect();
 
             // Absorbing commitments
@@ -579,6 +585,8 @@ pub fn test_simple_add() {
 
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
+    // Witness = | A B C | D IVC Columns................ |
+
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
     let mut comms_left: Vec<BN254G1Affine> = Vec::with_capacity(N_COL_TOTAL_QUAD);
@@ -588,10 +596,19 @@ pub fn test_simple_add() {
             .instance
             .commitments,
     );
+
     // Additional columns of quadri
     {
         let extended = relaxed_extended_left_instance.extended_instance.extended;
-        comms_left.extend(extended.iter().map(|x| x.elems[0]));
+        let extended_comms: Vec<_> = extended.iter().map(|x| x.elems[0]).collect();
+        comms_left.extend(extended_comms.clone());
+        extended_comms.iter().enumerate().for_each(|(i, x)| {
+            assert_ne!(
+                x,
+                &BN254G1Affine::zero(),
+                "Left extended commitment number {i:?} is zero"
+            );
+        });
     }
     assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
