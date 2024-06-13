@@ -43,9 +43,9 @@ pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 pub mod columns;
 pub mod decomposable_folding;
 
-mod error_term;
+pub mod error_term;
 
-mod eval_leaf;
+pub mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
@@ -375,8 +375,8 @@ impl<F: Field> Foldable<F> for Alphas<F> {
 }
 
 impl<F: Field> Alphas<F> {
-    pub fn new(alpha: F) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    pub fn new(alpha: F, count: usize) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(count)))
     }
 
     pub fn get(&self, i: usize) -> Option<F> {

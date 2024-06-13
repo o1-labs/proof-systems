@@ -20,13 +20,14 @@ use ivc::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{ChallengeTerm, Variable},
+        expr::{l0_1, ChallengeTerm, Challenges, Constants, Variable},
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
+    column_env::ColumnEnvironment,
     columns::{Column, ColumnIndexer},
     lookups::DummyLookupTable,
     witness::Witness as GenericWitness,
@@ -258,7 +259,12 @@ pub fn test_simple_add() {
                 .unwrap();
 
             let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new(alpha);
+            let alphas = Alphas::new(alpha, N_ALPHAS_INIT);
+            assert!(
+                alphas.clone().powers().len() == N_ALPHAS_INIT,
+                "Expected N_ALPHAS_INIT = {N_ALPHAS_INIT:?}, got {}",
+                alphas.clone().powers().len()
+            );
 
             let beta = fq_sponge.challenge();
             let gamma = fq_sponge.challenge();
@@ -419,16 +425,20 @@ pub fn test_simple_add() {
         .map(|e| e.map_variable(ivc_mapper))
         .collect();
 
-    // FIXME: this will not work. One must map variables inside
-    // expressions properly. E.g. app_constraints think witness#0 is A
-    // (left input) column, while IVC thinks it's ITERATION.
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
         .into_iter()
         .chain(ivc_compat_constraints)
         .collect();
 
+    // We have as many alphas as constraints
+    assert!(
+        folding_compat_constraints.len() == N_ALPHAS_INIT,
+        "expected {N_ALPHAS:?} got {}",
+        folding_compat_constraints.len()
+    );
+
     let (folding_scheme, _) =
-        FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &());
+        FoldingScheme::<Config>::new(folding_compat_constraints.clone(), &srs, domain.d1, &());
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 1
@@ -731,12 +741,14 @@ pub fn test_simple_add() {
     // - u
     // - there is no alpha, so ok
     // - ?
-    const N_CHALS: usize = 3;
+    // TODO
+    const N_ALPHAS_INIT: usize = 58; // number of constraints we have before quad
+    const N_ALPHAS: usize = N_ALPHAS_INIT + N_COL_QUAD; // number of constrainst w/ quad
+    const N_CHALS: usize = N_ALPHAS; // alphas + 3 ({beta gamma joint_combiner})
 
     let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
     ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors);
 
-    // TODO FIXME <Fp, Fp> is wrong
     ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL_QUAD, N_CHALS>(
         &mut ivc_witness_env_1,
         Box::new(all_ivc_comms_left),
@@ -745,7 +757,14 @@ pub fn test_simple_add() {
         error_terms,
         t_terms,
         u,
-        Box::new(folded_instance.extended_instance.instance.challenges),
+        o1_utils::array::vec_to_boxed_array(
+            folded_instance
+                .extended_instance
+                .instance
+                .alphas
+                .clone()
+                .powers(),
+        ),
         1,
         &PoseidonBN254Parameters,
         domain_size,
@@ -806,7 +825,84 @@ pub fn test_simple_add() {
 
     let _folding_output_two = folding_scheme.fold_instance_witness_pair(
         (folded_instance, folded_witness),
-        (folding_instance_three, folding_witness_three),
+        (
+            folding_instance_three.clone(),
+            folding_witness_three.clone(),
+        ),
         &mut fq_sponge,
     );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Testing expressions
+    ////////////////////////////////////////////////////////////////////////////
+
+    let (_, endo_r) = BN254G1Affine::endos();
+    let alpha: Fp = folding_instance_three.alphas.get(1).unwrap();
+    let _column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
+        let challenges = Challenges {
+            alpha,
+            // NB: as there is no permutation argument, we do use the beta
+            // field instead of a new one for the evaluation point.
+            beta: Fp::zero(),
+            gamma: Fp::zero(),
+            joint_combiner: Some(Fp::zero()),
+        };
+        ColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: *endo_r,
+                mds: &BN254G1Affine::sponge_params().mds,
+                zk_rows: 0,
+            },
+            challenges,
+            witness: &folding_witness_three.witness,
+            fixed_selectors: folding_witness_three
+                .fixed_selectors
+                .as_slice()
+                .try_into()
+                .unwrap(),
+            l0_1: l0_1(domain.d1),
+            lookup: None,
+            domain,
+        }
+    };
+
+    // Only for debugging purposes
+    for expr in folding_compat_constraints.iter() {
+        use folding::{
+            error_term::{eval_sided, ExtendedEnv, Side},
+            expressions::FoldingExp,
+            instance_witness::RelaxablePair,
+        };
+
+        let expr: FoldingExp<Config> = expr.clone().simplify();
+
+        let relaxable_pair = (
+            folding_instance_three.clone(),
+            folding_witness_three.clone(),
+        );
+        let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
+        let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
+
+        let eval_env = ExtendedEnv::new(
+            &(),
+            [relaxed_pair.0, relaxed_pair_copy.0],
+            [relaxed_pair.1, relaxed_pair_copy.1],
+            domain.d8,
+            None,
+        );
+
+        let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
+
+        println!("eval_leaf: {:?}", eval_leaf);
+        //// Check this expression are witness satisfied
+        //let (_, res) = expr
+        //    .evaluations(&column_env)
+        //    .interpolate_by_ref()
+        //    .divide_by_vanishing_poly(domain.d1)
+        //    .unwrap();
+
+        //if !res.is_zero() {
+        //    panic!("Unsatisfied expression: {:?}", expr);
+        //}
+    }
 }
