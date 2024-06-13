@@ -117,7 +117,9 @@ pub fn main() -> ExitCode {
         );
     }
 
-    while !mips_wit_env.halt {
+    let mut i = 0;
+    while i < 100_000_000 && !mips_wit_env.halt {
+        i += 1;
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
@@ -209,54 +211,58 @@ pub fn main() -> ExitCode {
     {
         // MIPS
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-            // Prove only if the instruction was executed
-            // and if the number of constraints is nonzero (otherwise quotient polynomial cannot be created)
-            if mips_trace.in_circuit(instr) && !mips_trace[instr].constraints.is_empty() {
-                debug!("Checking MIPS circuit {:?}", instr);
-                let mips_result = prove::<
-                    _,
-                    OpeningProof,
-                    BaseSponge,
-                    ScalarSponge,
-                    _,
-                    N_MIPS_COLS,
-                    N_MIPS_REL_COLS,
-                    N_MIPS_SEL_COLS,
-                    0,
-                    LookupTableIDs,
-                >(
-                    domain,
-                    &srs,
-                    &mips_trace[instr].constraints,
-                    Box::new([]),
-                    mips_folded_instance[&instr].clone(),
-                    &mut rng,
-                );
-                let mips_proof = mips_result.unwrap();
-                debug!("Generated a MIPS {:?} proof:", instr);
-                let mips_verifies = verify::<
-                    _,
-                    OpeningProof,
-                    BaseSponge,
-                    ScalarSponge,
-                    N_MIPS_COLS,
-                    N_MIPS_REL_COLS,
-                    N_MIPS_SEL_COLS,
-                    0,
-                    0,
-                    LookupTableIDs,
-                >(
-                    domain,
-                    &srs,
-                    &mips_trace[instr].constraints,
-                    Box::new([]),
-                    &mips_proof,
-                    Witness::zero_vec(DOMAIN_SIZE),
-                );
-                if mips_verifies {
-                    debug!("The MIPS {:?} proof verifies\n", instr)
-                } else {
-                    debug!("The MIPS {:?} proof doesn't verify\n", instr)
+            if instr == Instruction::RType(o1vm::mips::RTypeInstruction::SyscallReadPreimage)
+                || instr == Instruction::RType(o1vm::mips::RTypeInstruction::SyscallWriteHint)
+            {
+                // Prove only if the instruction was executed
+                // and if the number of constraints is nonzero (otherwise quotient polynomial cannot be created)
+                if mips_trace.in_circuit(instr) && !mips_trace[instr].constraints.is_empty() {
+                    debug!("Checking MIPS circuit {:?}", instr);
+                    let mips_result = prove::<
+                        _,
+                        OpeningProof,
+                        BaseSponge,
+                        ScalarSponge,
+                        _,
+                        N_MIPS_COLS,
+                        N_MIPS_REL_COLS,
+                        N_MIPS_SEL_COLS,
+                        0,
+                        LookupTableIDs,
+                    >(
+                        domain,
+                        &srs,
+                        &mips_trace[instr].constraints,
+                        Box::new([]),
+                        mips_folded_instance[&instr].clone(),
+                        &mut rng,
+                    );
+                    let mips_proof = mips_result.unwrap();
+                    debug!("Generated a MIPS {:?} proof:", instr);
+                    let mips_verifies = verify::<
+                        _,
+                        OpeningProof,
+                        BaseSponge,
+                        ScalarSponge,
+                        N_MIPS_COLS,
+                        N_MIPS_REL_COLS,
+                        N_MIPS_SEL_COLS,
+                        0,
+                        0,
+                        LookupTableIDs,
+                    >(
+                        domain,
+                        &srs,
+                        &mips_trace[instr].constraints,
+                        Box::new([]),
+                        &mips_proof,
+                        Witness::zero_vec(DOMAIN_SIZE),
+                    );
+                    if mips_verifies {
+                        debug!("The MIPS {:?} proof verifies\n", instr)
+                    } else {
+                        debug!("The MIPS {:?} proof doesn't verify\n", instr)
+                    }
                 }
             }
         }

@@ -1174,7 +1174,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     fn snapshot_state_at(&mut self, at: &StepFrequency) {
         if self.should_trigger_at(at) {
-            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
+            let filename = format!(
+                "snapshot-state-{}.json",
+                self.normalized_instruction_counter()
+            );
             let file = File::create(filename.clone()).expect("Impossible to open file");
             let mut writer = BufWriter::new(file);
             let mut preimage_key = [0u8; 32];
