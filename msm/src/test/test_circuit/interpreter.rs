@@ -136,6 +136,21 @@ pub fn constrain_test_fixed_sel<F: PrimeField, Env: ColAccessCap<F, TestColumn>>
     env.assert_zero(equation.clone());
 }
 
+/// A consraint function for A_0^7 + B_0 - FIXED_E
+pub fn constrain_test_fixed_sel_degree_7<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(
+    env: &mut Env,
+) {
+    let a0 = Env::read_column(env, TestColumn::A(0));
+    let b0 = Env::read_column(env, TestColumn::B(0));
+    let fixed_e = Env::read_column(env, TestColumn::FixedE);
+    let a0_2 = a0.clone() * a0.clone();
+    let a0_4 = a0_2.clone() * a0_2.clone();
+    let a0_6 = a0_4.clone() * a0_2.clone();
+    let a0_7 = a0_6.clone() * a0.clone();
+    let equation = a0_7.clone() + b0.clone() - fixed_e;
+    env.assert_zero(equation.clone());
+}
+
 /// Circuit generator function for A_0 + B_0 - FIXED_E.
 pub fn test_fixed_sel<
     F: PrimeField,
@@ -149,4 +164,22 @@ pub fn test_fixed_sel<
     env.write_column(TestColumn::B(0), &(fixed_e - Env::constant(a)));
 
     constrain_test_fixed_sel(env);
+}
+
+/// Circuit generator function for A_0^7 + B_0 - FIXED_E.
+pub fn test_fixed_sel_degree_7<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn>,
+>(
+    env: &mut Env,
+    a: F,
+) {
+    env.write_column(TestColumn::A(0), &Env::constant(a));
+    let a_2 = a * a;
+    let a_4 = a_2 * a_2;
+    let a_6 = a_4 * a_2;
+    let a_7 = a_6 * a;
+    let fixed_e = env.read_column(TestColumn::FixedE);
+    env.write_column(TestColumn::B(0), &(fixed_e - Env::constant(a_7)));
+    constrain_test_fixed_sel_degree_7(env);
 }
