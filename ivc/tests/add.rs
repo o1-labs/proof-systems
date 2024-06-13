@@ -870,6 +870,7 @@ pub fn test_simple_add() {
     for expr in folding_compat_constraints.iter() {
         use folding::{
             error_term::{eval_sided, ExtendedEnv, Side},
+            eval_leaf::EvalLeaf,
             expressions::FoldingExp,
             instance_witness::RelaxablePair,
         };
@@ -893,7 +894,13 @@ pub fn test_simple_add() {
 
         let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
 
-        println!("eval_leaf: {:?}", eval_leaf);
+        match eval_leaf {
+            EvalLeaf::Result(res) => {
+                println!("{:?}", res.len());
+                println!("{:?}", res[0]);
+            }
+            _ => println!("eval_leaf is not Result"),
+        }
         //// Check this expression are witness satisfied
         //let (_, res) = expr
         //    .evaluations(&column_env)
