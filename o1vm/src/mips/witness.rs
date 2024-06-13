@@ -620,7 +620,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         println!(
             "Exited with code {} at step {}",
             *exit_code,
-            self.instruction_counter_normalized()
+            self.normalized_instruction_counter()
         );
     }
 
@@ -672,7 +672,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
-                    self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+                    self.push_memory_access(&(*addr + i), self.next_instruction_counter());
                 }
             } else {
                 // Compute the byte index in the chunk of at most 4 bytes read
@@ -699,7 +699,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
                 // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), preimage_byte as u64);
-                    self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+                    self.push_memory_access(&(*addr + i), self.next_instruction_counter());
                 }
             }
         }
@@ -777,7 +777,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // This should really be handled by the keccak oracle.
         for i in 0..*len {
             // Push memory access
-            unsafe { self.push_memory_access(&(*addr + i), self.instruction_counter + 1) };
+            unsafe { self.push_memory_access(&(*addr + i), self.next_instruction_counter()) };
             // Fetch the value without allocating witness columns
             let value = {
                 let addr: u32 = (*addr).try_into().unwrap();
@@ -1091,34 +1091,27 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (opcode, instruction)
     }
 
-    /// Because MAX_NB_REG_ACC = 7 and MAX_NB_MEM_ACC = 12, at most the same
-    /// instruction will increase the instruction counter by MAX_ACC = 19.
+    /// The actual number of instructions executed results from dividing the
+    /// instruction counter by MAX_ACC (floor).
     ///
     /// NOTE: actually, in practice it will be less than that, as there is no
     ///       single instruction that performs all of them.
-    ///
-    /// This means that the actual number of instructions executed will result
-    /// from dividing the instruction counter by MAX_ACC (floor).
-    pub fn instruction_counter_normalized(&self) -> u64 {
+    pub fn normalized_instruction_counter(&self) -> u64 {
         self.instruction_counter / MAX_ACC
     }
 
-    /// Updates the instruction counter, accounting for the maximum number of
-    /// register and memory accesses per instruction.
+    /// Computes what is the non-normalized next instruction counter, which
+    /// accounts for the maximum number of register and memory accesses per
+    /// instruction.
+    ///
     /// Because MAX_NB_REG_ACC = 7 and MAX_NB_MEM_ACC = 12, at most the same
     /// instruction will increase the instruction counter by MAX_ACC = 19.
-    ///
-    /// NOTE: actually, in practice it will be less than that, as there is no
-    ///       single instruction that performs all of them.
-    ///
-    /// This means that the actual number of instructions executed will result
-    /// from dividing the instruction counter by MAX_ACC (floor).
     ///
     /// Then, in order to update the instruction counter, we need to add 1 to
     /// the real instruction counter and multiply it by MAX_ACC to have a unique
     /// representation of each step (which is helpful for debugging).
-    pub fn update_instruction_counter(&mut self) {
-        self.instruction_counter = (self.instruction_counter_normalized() + 1) * MAX_ACC;
+    pub fn next_instruction_counter(&self) -> u64 {
+        (self.normalized_instruction_counter() + 1) * MAX_ACC
     }
 
     /// Execute a single step of the MIPS program.
@@ -1140,7 +1133,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             self.halt = true;
             println!(
                 "Halted as requested at step={} instruction={:?}",
-                self.instruction_counter_normalized(),
+                self.normalized_instruction_counter(),
                 opcode
             );
             return opcode;
@@ -1148,13 +1141,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
         interpreter::interpret_instruction(self, opcode);
 
-        self.update_instruction_counter();
+        self.instruction_counter = self.next_instruction_counter();
 
         // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {
             println!(
                 "Halted at step={} instruction={:?}",
-                self.instruction_counter_normalized(),
+                self.normalized_instruction_counter(),
                 opcode
             );
         }
@@ -1162,7 +1155,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {
-        let m: u64 = self.instruction_counter_normalized();
+        let m: u64 = self.normalized_instruction_counter();
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
@@ -1202,7 +1195,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     fn snapshot_state_at(&mut self, at: &StepFrequency) {
         if self.should_trigger_at(at) {
-            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
+            let filename = format!(
+                "snapshot-state-{}.json",
+                self.normalized_instruction_counter()
+            );
             let file = File::create(filename.clone()).expect("Impossible to open file");
             let mut writer = BufWriter::new(file);
             let mut preimage_key = [0u8; 32];
@@ -1240,7 +1236,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             info!(
                 "Snapshot state in {}, step {}",
                 filename,
-                self.instruction_counter_normalized()
+                self.normalized_instruction_counter()
             );
             writer.flush().expect("Flush writer failing")
         }
@@ -1250,7 +1246,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             // Compute the step number removing the MAX_ACC factor
-            let step = self.instruction_counter_normalized();
+            let step = self.normalized_instruction_counter();
             let pc = self.registers.current_instruction_pointer;
 
             // Get the 32-bits opcode
