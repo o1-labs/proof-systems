@@ -530,7 +530,7 @@ pub fn test_simple_add() {
     );
 
     ////////////////////////////////////////////////////////////////////////////
-    // Folding
+    // Folding 1
     ////////////////////////////////////////////////////////////////////////////
 
     // To start, we only fold two instances.
@@ -553,7 +553,7 @@ pub fn test_simple_add() {
         folded_instance,
         // Should not be required for the IVC circuit as it is encoding the
         // verifier.
-        folded_witness: _,
+        folded_witness,
         t_0,
         t_1,
         relaxed_extended_left_instance,
@@ -584,8 +584,6 @@ pub fn test_simple_add() {
     assert_eq!(additional_columns, N_COL_QUAD);
 
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
-
-    // Witness = | A B C | D IVC Columns................ |
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
@@ -656,7 +654,7 @@ pub fn test_simple_add() {
     let mut comms_out = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
     comms_out.extend(folded_instance.extended_instance.instance.commitments);
     {
-        let extended = folded_instance.extended_instance.extended;
+        let extended = folded_instance.extended_instance.extended.clone();
         comms_out.extend(extended.iter().map(|x| x.elems[0]));
     }
     // Checking they are all not zero.
@@ -753,5 +751,62 @@ pub fn test_simple_add() {
         domain_size,
     );
 
-    let _relation_witness = ivc_witness_env_1.get_relation_witness(domain_size);
+    let ivc_proof_inputs_1 =
+        ivc_witness_env_1.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
+    assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Witness step 3
+    ////////////////////////////////////////////////////////////////////////////
+
+    let mut app_witness_three: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+        WitnessBuilderEnv::create();
+
+    // Witness three
+    for _i in 0..domain_size {
+        let a: Fp = Fp::rand(&mut rng);
+        let b: Fp = Fp::rand(&mut rng);
+        app_witness_three.write_column(AdditionColumn::A, &a);
+        app_witness_three.write_column(AdditionColumn::B, &b);
+        interpreter_simple_add(&mut app_witness_three);
+        app_witness_three.next_row();
+    }
+
+    let proof_inputs_three =
+        app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
+
+    // IVC for the second witness is the same as for the first one,
+    // since they're both height 0.
+    let joint_witness_three: Vec<_> = proof_inputs_three
+        .evaluations
+        .into_iter()
+        .chain(ivc_proof_inputs_1.evaluations)
+        .collect();
+
+    assert!(joint_witness_three.len() == N_COL_TOTAL);
+
+    let folding_witness_three = PlonkishWitness {
+        witness: joint_witness_three
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect(),
+        fixed_selectors: ivc_fixed_selectors_evals.clone(),
+    };
+
+    let folding_instance_three = PlonkishInstance::from_witness(
+        &folding_witness_three.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Folding 2
+    ////////////////////////////////////////////////////////////////////////////
+
+    let _folding_output_two = folding_scheme.fold_instance_witness_pair(
+        (folded_instance, folded_witness),
+        (folding_instance_three, folding_witness_three),
+        &mut fq_sponge,
+    );
 }
