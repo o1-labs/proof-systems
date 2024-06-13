@@ -155,8 +155,8 @@ mod unit {
     {
         let dummy_preimage_oracle = OnDiskPreImageOracle;
         let mut env = WEnv {
-            // Set it to 2 to run 1 instruction that access registers if
-            instruction_counter: 2,
+            // Set it to an arbitrary "large" number
+            instruction_counter: 10,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
                 // Read/write memory
@@ -453,6 +453,67 @@ mod unit {
             );
             interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
             assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
+        }
+
+        #[test]
+        fn test_unit_lwr_instruction() {
+            // lwr instruction
+            // val := mem >> (24 - (rs&3)*8)
+            // mask := uint32(0xFFFFFFFF) >> (24 - (rs&3)*8)
+            // return (rt & ^mask) | val
+
+            // Instruction: 0b100110 10101 00001 0000000001000000
+            // lwr rt offset(21)
+
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            let mut dummy_env = dummy_env(&mut rng);
+
+            // Values used in the instruction
+            let rs = 21;
+            let dst = 1;
+            let offset = sign_extend(64, 16);
+
+            // Set the base address to a small number so dummy_env does not ovf
+            dummy_env.registers[rs] = rng.gen_range(4u32..4000u32);
+            let base = dummy_env.registers[rs];
+            // The effective address
+            let (addr, ovf) = base.overflowing_add(offset);
+            assert!(!ovf);
+
+            let shift_right = 24 - (dummy_env.registers[rs] & 3) * 8;
+            let mask = 0xFFFFFFFF >> shift_right;
+
+            let mem = &dummy_env.memory[0];
+            let mem = &mem.1;
+
+            // Here starts the least significant byte of the word we will load
+            let m3 = mem[addr as usize];
+            let m2 = mem[(addr - 1) as usize];
+            let m1 = mem[(addr - 2) as usize];
+            let m0 = mem[(addr - 3) as usize];
+
+            // Big endian: small addresses of memory represent more significant
+            let memory =
+                ((m0 as u32) << 24) + ((m1 as u32) << 16) + ((m2 as u32) << 8) + (m3 as u32);
+
+            let val = memory >> shift_right;
+
+            let exp_v = (dummy_env.registers[dst] & !mask) | val;
+
+            write_instruction(
+                &mut dummy_env,
+                InstructionParts {
+                    op_code: 0b100010,
+                    rs: rs as u32,  // where base address is obtained from
+                    rt: dst as u32, // destination
+                    rd: 0b00000,
+                    shamt: 0b00001, // offset = 64
+                    funct: 0b000000,
+                },
+            );
+            interpret_itype(&mut dummy_env, ITypeInstruction::LoadWordRight);
+
+            assert_eq!(dummy_env.registers[dst], exp_v);
         }
     }
 }
