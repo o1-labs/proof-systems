@@ -905,29 +905,16 @@ pub fn test_simple_add() {
 
         match eval_leaf {
             EvalLeaf::Result(res) => {
-                println!("{:?}", res.len());
-                println!("{:?}", res[0]);
-                println!(
-                    "vector contains just zeroes? {}",
-                    res.iter().all(|elem| elem.is_zero())
-                );
+                // We expect every element to be zero.
+                // @volhovm: I'm not sure this is actually checking it.
                 for (i, e) in res.iter().enumerate() {
                     if !e.is_zero() {
                         println!("Row {i:?} is nonzero: {e:?}");
                     }
                 }
+                assert!(res.iter().all(|elem| elem.is_zero()));
             }
-            _ => println!("eval_leaf is not Result"),
+            _ => panic!("eval_leaf is not Result"),
         }
-        //// Check this expression are witness satisfied
-        //let (_, res) = expr
-        //    .evaluations(&column_env)
-        //    .interpolate_by_ref()
-        //    .divide_by_vanishing_poly(domain.d1)
-        //    .unwrap();
-
-        //if !res.is_zero() {
-        //    panic!("Unsatisfied expression: {:?}", expr);
-        //}
     }
 }
