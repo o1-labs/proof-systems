@@ -243,12 +243,6 @@ mod unit {
         high_bit * (((1 << (32 - bitlength)) - 1) << bitlength) + x
     }
 
-    pub(crate) fn bitmask(x: u32, highest_bit: u32, lowest_bit: u32) -> u32 {
-        let res =
-            ((x as u64) >> (lowest_bit as u64)) & ((1 << ((highest_bit - lowest_bit) as u64)) - 1);
-        res as u32
-    }
-
     #[test]
     fn test_sext() {
         assert_eq!(sign_extend(0b1001_0110, 16), 0b1001_0110);
@@ -256,13 +250,6 @@ mod unit {
             sign_extend(0b1001_0110_0000_0000, 16),
             0b1111_1111_1111_1111_1001_0110_0000_0000
         );
-    }
-
-    #[test]
-    fn test_bitmask() {
-        assert_eq!(bitmask(0xaf, 8, 0), 0xaf);
-        assert_eq!(bitmask(0x3671e4cb, 32, 0), 0x3671e4cb);
-        assert_eq!(bitmask(0x81938da4, 32, 32), 0);
     }
 
     #[test]
@@ -459,13 +446,16 @@ mod unit {
 
         #[test]
         fn test_unit_lwr_instruction() {
-            let mut rng = o1_utils::tests::make_test_rng(None);
             // lwr instruction
-            let mut dummy_env = dummy_env(&mut rng);
+            // val := mem >> (24 - (rs&3)*8)
+            // mask := uint32(0xFFFFFFFF) >> (24 - (rs&3)*8)
+            // return (rt & ^mask) | val
+
             // Instruction: 0b100110 10101 00001 0000000001000000
             // lwr rt offset(21)
 
-            // Random address in SP Address has only one index
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            let mut dummy_env = dummy_env(&mut rng);
 
             // Values used in the instruction
             let rs = 21;
@@ -476,39 +466,28 @@ mod unit {
             dummy_env.registers[rs] = rng.gen_range(4u32..4000u32);
             let base = dummy_env.registers[rs];
             // The effective address
-            let (addr, _ovf) = base.overflowing_add(offset);
+            let (addr, ovf) = base.overflowing_add(offset);
+            assert!(!ovf);
 
-            // Number of bytes that will be moved to the right
-            // Example:
-            // if addr % 4 = 0 then want to load bits b0
-            // if addr % 4 = 1 then want to load bits b0 b1
-            // if addr % 4 = 2 then want to load bits b0 b1 b2
-            // if addr % 4 = 3 then want to load bits b0 b1 b2 b3
-            let n_right = addr % 4 + 1;
+            let shift_right = 24 - (dummy_env.registers[rs] & 3) * 8;
+            let mask = 0xFFFFFFFF >> shift_right;
 
             let mem = &dummy_env.memory[0];
             let mem = &mem.1;
 
             // Here starts the least significant byte of the word we will load
-            let v3 = mem[addr as usize];
-            let v2 = mem[(addr - 1) as usize];
-            let v1 = mem[(addr - 2) as usize];
-            let v0 = mem[(addr - 3) as usize];
+            let m3 = mem[addr as usize];
+            let m2 = mem[(addr - 1) as usize];
+            let m1 = mem[(addr - 2) as usize];
+            let m0 = mem[(addr - 3) as usize];
 
             // Big endian: small addresses of memory represent more significant
             let memory =
-                ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+                ((m0 as u32) << 24) + ((m1 as u32) << 16) + ((m2 as u32) << 8) + (m3 as u32);
 
-            // Right part of the word (must not change content of register)
-            let right = bitmask(memory, 8 * n_right, 0);
+            let val = memory >> shift_right;
 
-            // Left part of the word (must not change content of register)
-            let left = bitmask(dummy_env.registers[dst], 32, 8 * n_right);
-
-            // The final value that should be in the register after LWR
-            // corresponds to the n_left bytes followed by the n_right bytes
-
-            let exp_v = ((left as u64) << (8 * n_right as u64)) + right as u64;
+            let exp_v = (dummy_env.registers[dst] & !mask) | val;
 
             write_instruction(
                 &mut dummy_env,
@@ -523,7 +502,7 @@ mod unit {
             );
             interpret_itype(&mut dummy_env, ITypeInstruction::LoadWordRight);
 
-            assert_eq!(dummy_env.registers[dst] as u64, exp_v);
+            assert_eq!(dummy_env.registers[dst], exp_v);
         }
     }
 }
