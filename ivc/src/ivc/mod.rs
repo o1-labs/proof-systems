@@ -7,7 +7,10 @@ mod tests {
 
     use crate::{
         ivc::{
-            columns::{IVCColumn, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
+            columns::{
+                IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_FULL_ROUND,
+                IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
+            },
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
@@ -42,7 +45,7 @@ mod tests {
         { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
         { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
         0,
-        N_BLOCKS,
+        IVC_NB_TOTAL_FIXED_SELECTORS,
         LT,
     >;
 
@@ -91,8 +94,20 @@ mod tests {
         }
 
         println!("Building fixed selectors");
-        let fixed_selectors: Vec<Vec<Fp>> =
-            build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
+        let mut fixed_selectors: Vec<Vec<Fp>> =
+            build_selectors::<Fp, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
+
+        // Write constants
+        {
+            let rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(_, rcs)| {
+                rcs.iter().enumerate().for_each(|(_, rc)| {
+                    let rc = vec![*rc; domain_size];
+                    fixed_selectors.push(rc);
+                });
+            });
+        }
+
         witness_env.set_fixed_selectors(fixed_selectors);
 
         println!("Calling the IVC circuit");
@@ -145,16 +160,28 @@ mod tests {
         constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; N_BLOCKS]> =
+        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
             Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
                 domain_size,
-            ));
+            ))
+        };
+
+        // Write constants
+        {
+            let rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; domain_size];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
+                });
+            });
+        }
 
         kimchi_msm::test::test_completeness_generic_no_lookups::<
             { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
-            N_BLOCKS,
+            IVC_NB_TOTAL_FIXED_SELECTORS,
             _,
         >(
             constraints,

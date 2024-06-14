@@ -25,6 +25,9 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
 pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
 pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 
+pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize =
+    IVC_POSEIDON_NB_FULL_ROUND * IVC_POSEIDON_STATE_SIZE + N_BLOCKS;
+
 pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>;
 
 /// The IVC circuit is tiled vertically. We assume we have as many
