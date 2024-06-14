@@ -67,8 +67,22 @@ where
     apply_permutation(env, param)
 }
 
-/// Apply the whole permutation of Poseidon to the state.
+/// Apply the HADES-based Poseidon to the state.
 /// The environment has to be initialized with the input values.
+/// It mimicks the version described in the paper ["Poseidon: A New Hash
+/// Function"](https://eprint.iacr.org/2019/458.pdf), figure 2. The construction
+/// first starts with `NB_FULL_ROUND/2` full rounds, then `NB_PARTIAL_ROUND`
+/// partial rounds, and finally `NB_FULL_ROUND/2` full rounds.
+///
+/// Each full rounds consists of the following steps:
+/// - adding the round constants on the whole state
+/// - applying the sbox on the whole state
+/// - applying the linear layer on the whole state
+///
+/// Each partial round consists of the following steps:
+/// - adding the round constants on the whole state
+/// - applying the sbox on the last element of the state
+/// - applying the linear layer on the whole state
 pub fn apply_permutation<
     F: PrimeField,
     const STATE_SIZE: usize,
