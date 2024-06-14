@@ -213,7 +213,7 @@ pub mod testing {
                 let log2_size = size.ilog2();
                 let mut srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
                     // TODO: we should trim it if it's smaller
-                    precomputed_srs::get_srs()
+                    precomputed_srs::get_srs_test()
                 } else {
                     // TODO: we should resume the SRS generation starting from the serialized one
                     SRS::<G>::create(size)

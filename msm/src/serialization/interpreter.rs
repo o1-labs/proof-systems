@@ -5,53 +5,92 @@ use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
 
 use crate::{
+    circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
+    columns::ColumnIndexer,
+    logup::LookupTableID,
     serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
+use kimchi::circuits::{
+    expr::{Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<F: PrimeField, Ff: PrimeField> {
-    type Position;
-
-    type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Neg<Output = Self::Variable>
-        + From<u64>
-        + std::fmt::Debug;
-
-    fn add_constraint(&mut self, cst: Self::Variable);
-
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
-
-    fn read_column(&self, pos: Self::Position) -> Self::Variable;
-
-    fn get_column(pos: SerializationColumn) -> Self::Position;
-
-    /// Perform lookup into the specified table.
-    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable);
-
-    fn constant(value: F) -> Self::Variable;
-
-    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
-    /// the result in `position`.
-    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+// Such "helpers" defeat the whole purpose of the interpreter.
+// TODO remove
+pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
+    /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
+    /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
     fn bitmask_be(
         &mut self,
-        x: &Self::Variable,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: Self::Position,
-    ) -> Self::Variable;
+        position: CIx,
+    ) -> Self::Variable
+    where
+        Self: ColAccessCap<F, CIx>;
+}
 
-    // Helper
-    // @volhovm I think we could just use indexer directly without Position.
-    fn read_column_direct(&self, pos: SerializationColumn) -> Self::Variable {
-        self.read_column(Self::get_column(pos))
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+{
+    fn bitmask_be(
+        &mut self,
+        _x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        _highest_bit: u32,
+        _lowest_bit: u32,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        // No constraint added. It is supposed that the caller will constraint
+        // later the returned variable and/or do a range check.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position.to_column(),
+            row: CurrOrNext::Curr,
+        }))
     }
 }
+
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const N_COL: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        LT: LookupTableID,
+    > HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::WitnessBuilderEnv<F, CIx, N_COL, N_REL, N_DSEL, N_FSEL, LT>
+{
+    fn bitmask_be(
+        &mut self,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        // FIXME: we can assume bitmask_be will be called only on value with
+        // maximum 128 bits. We use bitmask_be only for the limbs
+        let x_bytes_u8 = &x.to_bytes()[0..16];
+        let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
+        let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        let res_fp: F = res.into();
+        self.write_column_raw(position.to_column(), res_fp);
+        res_fp
+    }
+}
+
+/// Alias for LIMB_BITSIZE, used for convenience.
+pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
+/// Alias for N_LIMBS, used for convenience.
+pub const N_LIMBS_SMALL: usize = N_LIMBS;
+
+/// In FEC addition we use bigger limbs, of 75 bits, that are still
+/// nicely decomposable into smaller 15bit ones for range checking.
+pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
+pub const N_LIMBS_LARGE: usize = 4;
 
 /// Returns the highest limb of the foreign field modulus. Is used by the lookups.
 pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
@@ -78,41 +117,53 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn deserialize_field_element<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, SerializationColumn>
+        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
+        + HybridCopyCap<F, SerializationColumn>
+        + HybridSerHelpers<F, SerializationColumn, LookupTable<Ff>>,
+>(
     env: &mut Env,
     limbs: [BigUint; 3],
 ) {
-    // Use this to constrain later
-    let kimchi_limbs0 = Env::get_column(SerializationColumn::ChalKimchi(0));
-    let kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(1));
-    let kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(2));
-
     let input_limb0 = Env::constant(F::from(limbs[0].clone()));
     let input_limb1 = Env::constant(F::from(limbs[1].clone()));
     let input_limb2 = Env::constant(F::from(limbs[2].clone()));
+    let input_limbs = [
+        input_limb0.clone(),
+        input_limb1.clone(),
+        input_limb2.clone(),
+    ];
 
     // FIXME: should we assert this in the circuit?
     assert!(limbs[0] < BigUint::from(2u128.pow(88)));
     assert!(limbs[1] < BigUint::from(2u128.pow(88)));
     assert!(limbs[2] < BigUint::from(2u128.pow(79)));
 
-    let limb0_var = env.copy(&input_limb0, kimchi_limbs0);
-    let limb1_var = env.copy(&input_limb1, kimchi_limbs1);
-    let limb2_var = env.copy(&input_limb2, kimchi_limbs2);
+    let limb0_var = env.hcopy(&input_limb0, SerializationColumn::ChalKimchi(0));
+    let limb1_var = env.hcopy(&input_limb1, SerializationColumn::ChalKimchi(1));
+    let limb2_var = env.hcopy(&input_limb2, SerializationColumn::ChalKimchi(2));
 
     let mut limb2_vars = vec![];
+
     // Compute individual 4 bits limbs of b2
     {
         let mut constraint = limb2_var.clone();
         for j in 0..N_INTERMEDIATE_LIMBS {
-            let position = Env::get_column(SerializationColumn::ChalIntermediate(j));
-            let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
+            let var = env.bitmask_be(
+                &input_limb2,
+                4 * (j + 1) as u32,
+                4 * j as u32,
+                SerializationColumn::ChalIntermediate(j),
+            );
             limb2_vars.push(var.clone());
             let pow: u128 = 1 << (4 * j);
             let pow = Env::constant(pow.into());
             constraint = constraint - var * pow;
         }
-        env.add_constraint(constraint)
+        env.assert_zero(constraint)
     }
     // Range check on each limb
     limb2_vars
@@ -120,114 +171,28 @@ pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: Interpreter
         .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
 
     let mut fifteen_bits_vars = vec![];
-    {
-        let c0 = Env::get_column(SerializationColumn::ChalConverted(0));
-        let c0_var = env.bitmask_be(&input_limb0, 15, 0, c0);
-        fifteen_bits_vars.push(c0_var)
-    }
 
-    {
-        let c1 = Env::get_column(SerializationColumn::ChalConverted(1));
-        let c1_var = env.bitmask_be(&input_limb0, 30, 15, c1);
-        fifteen_bits_vars.push(c1_var);
-    }
+    for j in 0..3 {
+        for i in 0..5 {
+            let ci_var = env.bitmask_be(
+                &input_limbs[j],
+                15 * (i + 1) + 2 * j as u32,
+                15 * i + 2 * j as u32,
+                SerializationColumn::ChalConverted(6 * j + i as usize),
+            );
+            fifteen_bits_vars.push(ci_var)
+        }
 
-    {
-        let c2 = Env::get_column(SerializationColumn::ChalConverted(2));
-        let c2_var = env.bitmask_be(&input_limb0, 45, 30, c2);
-        fifteen_bits_vars.push(c2_var);
-    }
-
-    {
-        let c3 = Env::get_column(SerializationColumn::ChalConverted(3));
-        let c3_var = env.bitmask_be(&input_limb0, 60, 45, c3);
-        fifteen_bits_vars.push(c3_var)
-    }
-
-    {
-        let c4 = Env::get_column(SerializationColumn::ChalConverted(4));
-        let c4_var = env.bitmask_be(&input_limb0, 75, 60, c4);
-        fifteen_bits_vars.push(c4_var);
-    }
-
-    {
-        let c5 = Env::get_column(SerializationColumn::ChalConverted(5));
-        let res = (limbs[0].clone() >> 75) & BigUint::from((1u128 << (88 - 75)) - 1);
-        let res_prime = limbs[1].clone() & BigUint::from((1u128 << 2) - 1);
-        let res: BigUint = res + (res_prime << (15 - 2));
-        let res = Env::constant(F::from(res));
-        let c5_var = env.copy(&res, c5);
-        fifteen_bits_vars.push(c5_var);
-    }
-
-    {
-        let c6 = Env::get_column(SerializationColumn::ChalConverted(6));
-        let c6_var = env.bitmask_be(&input_limb1, 17, 2, c6);
-        fifteen_bits_vars.push(c6_var);
-    }
-
-    {
-        let c7 = Env::get_column(SerializationColumn::ChalConverted(7));
-        let c7_var = env.bitmask_be(&input_limb1, 32, 17, c7);
-        fifteen_bits_vars.push(c7_var);
-    }
-
-    {
-        let c8 = Env::get_column(SerializationColumn::ChalConverted(8));
-        let c8_var = env.bitmask_be(&input_limb1, 47, 32, c8);
-        fifteen_bits_vars.push(c8_var);
-    }
-
-    {
-        let c9 = Env::get_column(SerializationColumn::ChalConverted(9));
-        let c9_var = env.bitmask_be(&input_limb1, 62, 47, c9);
-        fifteen_bits_vars.push(c9_var);
-    }
-
-    {
-        let c10 = Env::get_column(SerializationColumn::ChalConverted(10));
-        let c10_var = env.bitmask_be(&input_limb1, 77, 62, c10);
-        fifteen_bits_vars.push(c10_var);
-    }
-
-    {
-        let c11 = Env::get_column(SerializationColumn::ChalConverted(11));
-        let res = (limbs[1].clone() >> 77) & BigUint::from((1u128 << (88 - 77)) - 1);
-        let res_prime = limbs[2].clone() & BigUint::from((1u128 << 4) - 1);
-        let res: BigUint = res + (res_prime << (15 - 4));
-        let res = Env::constant(res.into());
-        let c11_var = env.copy(&res, c11);
-        fifteen_bits_vars.push(c11_var);
-    }
-
-    {
-        let c12 = Env::get_column(SerializationColumn::ChalConverted(12));
-        let c12_var = env.bitmask_be(&input_limb2, 19, 4, c12);
-        fifteen_bits_vars.push(c12_var);
-    }
-
-    {
-        let c13 = Env::get_column(SerializationColumn::ChalConverted(13));
-        let c13_var = env.bitmask_be(&input_limb2, 34, 19, c13);
-        fifteen_bits_vars.push(c13_var);
-    }
-
-    {
-        let c14 = Env::get_column(SerializationColumn::ChalConverted(14));
-        let c14_var = env.bitmask_be(&input_limb2, 49, 34, c14);
-        fifteen_bits_vars.push(c14_var);
-    }
-
-    {
-        let c15 = Env::get_column(SerializationColumn::ChalConverted(15));
-        let c15_var = env.bitmask_be(&input_limb2, 64, 49, c15);
-        fifteen_bits_vars.push(c15_var);
-    }
-
-    {
-        let c16 = Env::get_column(SerializationColumn::ChalConverted(16));
-        let c16_var = env.bitmask_be(&input_limb2, 79, 64, c16);
-        fifteen_bits_vars.push(c16_var);
+        if j < 2 {
+            let shift = 2 * (j + 1); // ∈ [2, 4]
+            let res = (limbs[j].clone() >> (73 + shift))
+                & BigUint::from((1u128 << (88 - 73 + shift)) - 1);
+            let res_prime = limbs[j + 1].clone() & BigUint::from((1u128 << shift) - 1);
+            let res: BigUint = res + (res_prime << (15 - shift));
+            let res = Env::constant(F::from(res));
+            let c5_var = env.hcopy(&res, SerializationColumn::ChalConverted(6 * j + 5));
+            fifteen_bits_vars.push(c5_var);
+        }
     }
 
     // Range check on each limb
@@ -257,7 +222,7 @@ pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: Interpreter
                 )
             },
         );
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 
     // -- Start third constraint
@@ -273,19 +238,9 @@ pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: Interpreter
             let var = limb2_vars[i].clone() * Env::constant(F::from(1u128 << (4 * (i - 1))));
             acc - var
         });
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
-
-/// Alias for LIMB_BITSIZE, used for convenience.
-pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
-/// Alias for N_LIMBS, used for convenience.
-pub const N_LIMBS_SMALL: usize = N_LIMBS;
-
-/// In FEC addition we use bigger limbs, of 75 bits, that are still
-/// nicely decomposable into smaller 15bit ones for range checking.
-pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
-pub const N_LIMBS_LARGE: usize = 4;
 
 /// Interprets bigint `input` as an element of a field modulo `f_bi`,
 /// converts it to `[0,f_bi)` range, and outptus a corresponding
@@ -345,74 +300,103 @@ where
         .fold(Var::from(0u64), |acc, v| acc + v)
 }
 
-// TODO unify with the same function in fec/interpreter.rs after the
-// interpreter interface is unified.
 /// Helper function for limb recombination.
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `5` from the first, and recombining them as
+/// chunks `a_i` of size `K = BITSIZE_N / BITSIZE_M` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<
+pub fn combine_limbs_m_to_n<
     const M: usize,
     const N: usize,
+    const BITSIZE_M: usize,
+    const BITSIZE_N: usize,
     F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv<F, Ff>,
+    V: std::ops::Add<V, Output = V>
+        + std::ops::Sub<V, Output = V>
+        + std::ops::Mul<V, Output = V>
+        + std::ops::Neg<Output = V>
+        + From<u64>
+        + Clone,
+    Func: Fn(F) -> V,
 >(
-    x: [Env::Variable; M],
-) -> [Env::Variable; N] {
-    let constant_u128 = |x: u128| Env::constant(From::from(x));
-    let disparity: usize = M % 5;
+    from_field: Func,
+    x: [V; M],
+) -> [V; N] {
+    assert!(BITSIZE_N % BITSIZE_M == 0);
+    let k = BITSIZE_N / BITSIZE_M;
+    let constant_bui = |x: BigUint| from_field(F::from(x));
+    let disparity: usize = M % k;
     std::array::from_fn(|i| {
         // We have less small limbs in the last large limb
         let upper_bound = if disparity != 0 && i == N - 1 {
             disparity
         } else {
-            5
+            k
         };
         (0..upper_bound)
-            .map(|j| x[5 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
-            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
+            .map(|j| x[k * i + j].clone() * constant_bui(BigUint::from(1u128) << (j * BITSIZE_M)))
+            .fold(V::from(0u64), |acc, v| acc + v)
     })
 }
 
-// TODO unify with the same function in fec/interpreter.rs after the
-// interpreter interface is unified.
+/// Helper function for limb recombination.
+///
+/// Combines small limbs into big limbs.
+pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -> [Env::Variable; N_LIMBS_LARGE] {
+    combine_limbs_m_to_n::<
+        N_LIMBS_SMALL,
+        N_LIMBS_LARGE,
+        LIMB_BITSIZE_SMALL,
+        LIMB_BITSIZE_LARGE,
+        F,
+        Env::Variable,
+        _,
+    >(|f| Env::constant(f), x)
+}
+
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
     std::array::from_fn(|i| {
         (0..6)
-            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
+            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * (LIMB_BITSIZE_SMALL - 1))))
             .fold(Env::Variable::from(0u64), |acc, v| acc + v)
     })
 }
 
 /// This constarins the multiplication part of the circuit.
-pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn constrain_multiplication<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
+>(
     env: &mut Env,
 ) {
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::ChalConverted(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
     let coeff_input_limbs_small: [_; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffInput(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::CoeffInput(i)));
     let coeff_result_limbs_small: [_; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffResult(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::CoeffResult(i)));
 
     let ffield_modulus_limbs_large: [_; N_LIMBS_LARGE] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::FFieldModulus(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::FFieldModulus(i)));
     let quotient_limbs_small: [_; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Quotient(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::Quotient(i)));
     let carry_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Carry(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::Carry(i)));
 
     // u128 covers our limb sizes shifts which is good
-    let constant_u128 = |x: u128| -> Env::Variable { Env::constant(From::from(x)) };
+    let constant_u128 = |x: u128| -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
+        Env::constant(From::from(x))
+    };
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -434,10 +418,11 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck4Abs, x);
+            env.lookup(LookupTable::RangeCheck9Abs, x); // 4 + 5 ?
         } else {
             // TODO add actual lookup
-            // env.range_check_abs15bit(x);
+            env.lookup(LookupTable::RangeCheck14Abs, x);
+            //env.range_check_abs15(x);
             // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
         }
     }
@@ -445,35 +430,31 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
     let chal_converted_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-            chal_converted_limbs_small.clone(),
-        );
-    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        coeff_input_limbs_small.clone(),
-    );
-    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        coeff_result_limbs_small.clone(),
-    );
-    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        quotient_limbs_small.clone(),
-    );
+        combine_small_to_large::<_, _, Env>(chal_converted_limbs_small.clone());
+    let coeff_input_limbs_large =
+        combine_small_to_large::<_, _, Env>(coeff_input_limbs_small.clone());
+    let coeff_result_limbs_large =
+        combine_small_to_large::<_, _, Env>(coeff_result_limbs_small.clone());
+    let quotient_limbs_large = combine_small_to_large::<_, _, Env>(quotient_limbs_small.clone());
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
-    let add_extra_carries =
-        |i: usize, carry_limbs_large: &[Env::Variable; 2 * N_LIMBS_LARGE - 2]| -> Env::Variable {
-            if i == 0 {
-                -(carry_limbs_large[0].clone() * limb_size_large.clone())
-            } else if i < 2 * N_LIMBS_LARGE - 2 {
-                carry_limbs_large[i - 1].clone()
-                    - carry_limbs_large[i].clone() * limb_size_large.clone()
-            } else if i == 2 * N_LIMBS_LARGE - 2 {
-                carry_limbs_large[i - 1].clone()
-            } else {
-                panic!("add_extra_carries: the index {i:?} is too high")
-            }
-        };
+    let add_extra_carries = |i: usize,
+                             carry_limbs_large: &[<Env as ColAccessCap<F, SerializationColumn>>::Variable;
+                                  2 * N_LIMBS_LARGE - 2]|
+     -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
+        if i == 0 {
+            -(carry_limbs_large[0].clone() * limb_size_large.clone())
+        } else if i < 2 * N_LIMBS_LARGE - 2 {
+            carry_limbs_large[i - 1].clone()
+                - carry_limbs_large[i].clone() * limb_size_large.clone()
+        } else if i == 2 * N_LIMBS_LARGE - 2 {
+            carry_limbs_large[i - 1].clone()
+        } else {
+            panic!("add_extra_carries: the index {i:?} is too high")
+        }
+    };
 
     // Equation 1
     // General form:
@@ -492,7 +473,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
             });
         constraint = constraint + add_extra_carries(i, &carry_limbs_large);
 
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
 
@@ -500,7 +481,11 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
 #[allow(dead_code)]
-pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn multiplication_circuit<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColWriteCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
+>(
     env: &mut Env,
     chal: Ff,
     coeff_input: Ff,
@@ -543,7 +528,7 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
          input: [F; N_LIMBS_SMALL],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), Env::get_column(f_column(i)));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -552,7 +537,7 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
          input: [F; N_LIMBS_LARGE],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), Env::get_column(f_column(i)));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -625,13 +610,18 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // However we split them into 14-bit chunks -- each chunk is signed, so in the end
+                // the layout is [14bitabs,14bitabs,14bitabs,14bitabs,14bitabs,9bitabs]
+                // altogether giving a 79bit number (signed).
                 let newcarry_limbs: [F; 6] =
-                    limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    env.copy(
+                    env.write_column(
+                        SerializationColumn::Carry(6 * i + j),
                         &Env::constant(newcarry_sign * limb),
-                        Env::get_column(SerializationColumn::Carry(6 * i + j)),
                     );
                 }
 
@@ -658,4 +648,208 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
 
     constrain_multiplication::<F, Ff, Env>(env);
     coeff_result
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        circuit_design::{ColAccessCap, WitnessBuilderEnv},
+        columns::ColumnIndexer,
+        serialization::{
+            column::SerializationColumn,
+            interpreter::{deserialize_field_element, multiplication_circuit},
+            lookups::LookupTable,
+            N_INTERMEDIATE_LIMBS,
+        },
+        Ff1, LIMB_BITSIZE, N_LIMBS,
+    };
+    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
+    use mina_curves::pasta::Fp;
+    use num_bigint::BigUint;
+    use o1_utils::{tests::make_test_rng, FieldHelpers};
+    use rand::{CryptoRng, Rng, RngCore};
+    use std::str::FromStr;
+
+    type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        SerializationColumn,
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
+
+    fn test_decomposition_generic(x: Fp) {
+        let bits = x.to_bits();
+        let limb0: u128 = {
+            let limb0_le_bits: &[bool] = &bits.clone().into_iter().take(88).collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let limb1: u128 = {
+            let limb0_le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(88)
+                .take(88)
+                .collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let limb2: u128 = {
+            let limb0_le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(2 * 88)
+                .take(79)
+                .collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let mut dummy_env = SerializationWitnessBuilderEnv::create();
+        deserialize_field_element(
+            &mut dummy_env,
+            [
+                BigUint::from(limb0),
+                BigUint::from(limb1),
+                BigUint::from(limb2),
+            ],
+        );
+
+        // Check limb are copied into the environment
+        let limbs_to_assert = [limb0, limb1, limb2];
+        for (i, limb) in limbs_to_assert.iter().enumerate() {
+            assert_eq!(
+                Fp::from(*limb),
+                dummy_env.read_column(SerializationColumn::ChalKimchi(i))
+            );
+        }
+
+        // Check intermediate limbs
+        {
+            let bits = Fp::from(limb2).to_bits();
+            for j in 0..N_INTERMEDIATE_LIMBS {
+                let le_bits: &[bool] = &bits
+                    .clone()
+                    .into_iter()
+                    .skip(j * 4)
+                    .take(4)
+                    .collect::<Vec<bool>>();
+                let t = Fp::from_bits(le_bits).unwrap();
+                let intermediate_v =
+                    dummy_env.read_column(SerializationColumn::ChalIntermediate(j));
+                assert_eq!(
+                    t,
+                    intermediate_v,
+                    "{}",
+                    format_args!(
+                        "Intermediate limb {j}. Exp value is {:?}, computed is {:?}",
+                        t.to_biguint(),
+                        intermediate_v.to_biguint()
+                    )
+                )
+            }
+        }
+
+        // Checking msm limbs
+        for i in 0..N_LIMBS {
+            let le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(i * LIMB_BITSIZE)
+                .take(LIMB_BITSIZE)
+                .collect::<Vec<bool>>();
+            let t = Fp::from_bits(le_bits).unwrap();
+            let converted_v = dummy_env.read_column(SerializationColumn::ChalConverted(i));
+            assert_eq!(
+                t,
+                converted_v,
+                "{}",
+                format_args!(
+                    "MSM limb {i}. Exp value is {:?}, computed is {:?}",
+                    t.to_biguint(),
+                    converted_v.to_biguint()
+                )
+            )
+        }
+    }
+
+    #[test]
+    fn test_decomposition_zero() {
+        test_decomposition_generic(Fp::zero());
+    }
+
+    #[test]
+    fn test_decomposition_one() {
+        test_decomposition_generic(Fp::one());
+    }
+
+    #[test]
+    fn test_decomposition_random_first_limb_only() {
+        let mut rng = make_test_rng(None);
+        let x = rng.gen_range(0..2u128.pow(88) - 1);
+        test_decomposition_generic(Fp::from(x));
+    }
+
+    #[test]
+    fn test_decomposition_second_limb_only() {
+        test_decomposition_generic(Fp::from(2u128.pow(88)));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 1));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 2));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 16));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 23234));
+    }
+
+    #[test]
+    fn test_decomposition_random_second_limb_only() {
+        let mut rng = make_test_rng(None);
+        let x = rng.gen_range(0..2u128.pow(88) - 1);
+        test_decomposition_generic(Fp::from(2u128.pow(88) + x));
+    }
+
+    #[test]
+    fn test_decomposition_random() {
+        let mut rng = make_test_rng(None);
+        test_decomposition_generic(Fp::rand(&mut rng));
+    }
+
+    #[test]
+    fn test_decomposition_order_minus_one() {
+        let x = BigUint::from_bytes_be(&<Fp as PrimeField>::Params::MODULUS.to_bytes_be())
+            - BigUint::from_str("1").unwrap();
+
+        test_decomposition_generic(Fp::from(x));
+    }
+
+    fn build_serialization_mul_circuit<RNG: RngCore + CryptoRng>(
+        rng: &mut RNG,
+        domain_size: usize,
+    ) -> SerializationWitnessBuilderEnv {
+        let mut witness_env = WitnessBuilderEnv::create();
+
+        // To support less rows than domain_size we need to have selectors.
+        //let row_num = rng.gen_range(0..domain_size);
+
+        for row_i in 0..domain_size {
+            let input_chal: Ff1 = <Ff1 as UniformRand>::rand(rng);
+            let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(rng);
+            multiplication_circuit(&mut witness_env, input_chal, coeff_input, true);
+
+            if row_i < domain_size - 1 {
+                witness_env.next_row();
+            }
+        }
+
+        witness_env
+    }
+
+    #[test]
+    /// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    pub fn test_serialization_mul_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        build_serialization_mul_circuit(&mut rng, 1 << 4);
+    }
 }

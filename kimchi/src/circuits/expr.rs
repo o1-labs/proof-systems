@@ -182,6 +182,9 @@ pub trait Literal: Sized + Clone {
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
+    /// Obtains the representation of some constants as a literal.
+    /// This is useful before converting Kimchi expressions with constants
+    /// to folding compatible expressions.
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
 }
 
@@ -280,14 +283,14 @@ impl<F> From<ConstantTerm<F>> for ConstantExprInner<F> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
     Atom(T),
-    Pow(Box<Operations<T>>, u64),
-    Add(Box<Operations<T>>, Box<Operations<T>>),
-    Mul(Box<Operations<T>>, Box<Operations<T>>),
-    Sub(Box<Operations<T>>, Box<Operations<T>>),
-    Double(Box<Operations<T>>),
-    Square(Box<Operations<T>>),
-    Cache(CacheId, Box<Operations<T>>),
-    IfFeature(FeatureFlag, Box<Operations<T>>, Box<Operations<T>>),
+    Pow(Box<Self>, u64),
+    Add(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+    Cache(CacheId, Box<Self>),
+    IfFeature(FeatureFlag, Box<Self>, Box<Self>),
 }
 
 impl<T> From<T> for Operations<T> {
@@ -561,14 +564,6 @@ impl Cache {
     pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
         e.cache(self)
     }
-}
-
-/// A binary operation
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Op2 {
-    Add,
-    Mul,
-    Sub,
 }
 
 /// The feature flags that can be used to enable or disable parts of constraints.

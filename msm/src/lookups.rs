@@ -1,14 +1,62 @@
 //! Instantiate the Logup protocol for the MSM project.
 
 use crate::logup::{Logup, LogupWitness, LookupTableID};
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::{cmp::Ord, iter};
 
+/// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub enum DummyLookupTable {
+    DummyLookupTable,
+}
+
+impl LookupTableID for DummyLookupTable {
+    fn to_u32(&self) -> u32 {
+        1
+    }
+
+    fn from_u32(id: u32) -> Self {
+        match id {
+            1 => DummyLookupTable::DummyLookupTable,
+            _ => panic!("Dummy lookup table has only index 1"),
+        }
+    }
+
+    fn length(&self) -> usize {
+        1
+    }
+
+    /// All tables are fixed tables.
+    fn is_fixed(&self) -> bool {
+        true
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
+        if value == F::zero() {
+            0
+        } else {
+            panic!("Invalid value for DummyLookupTable")
+        }
+    }
+
+    fn all_variants() -> Vec<Self> {
+        vec![DummyLookupTable::DummyLookupTable]
+    }
+}
+
+impl DummyLookupTable {
+    /// Provides a full list of entries for the given table.
+    pub fn entries<F: PrimeField>(&self, domain_d1_size: u64) -> Vec<F> {
+        // All zeroes
+        (0..domain_d1_size).map(|_| F::zero()).collect()
+    }
+}
+
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
@@ -42,6 +90,16 @@ impl LookupTableID for LookupTableIDs {
     /// All tables are fixed tables.
     fn is_fixed(&self) -> bool {
         true
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
+        todo!()
+    }
+
+    fn all_variants() -> Vec<Self> {
+        // TODO in the future this must depend on some associated type
+        // that parameterises the lookup table.
+        vec![Self::RangeCheck16, Self::Custom(0)]
     }
 }
 

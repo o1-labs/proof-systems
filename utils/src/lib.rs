@@ -3,6 +3,7 @@
 //! A collection of utility functions and constants that can be reused from multiple projects
 
 pub mod adjacent_pairs;
+pub mod array;
 pub mod biguint_helpers;
 pub mod bitwise_operations;
 pub mod chunked_evaluations;
@@ -28,8 +29,8 @@ pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     /// Create a new test rng with a random seed
-    pub fn make_test_rng() -> StdRng {
-        let seed: [u8; 32] = thread_rng().gen();
+    pub fn make_test_rng(seed: Option<[u8; 32]>) -> StdRng {
+        let seed = seed.unwrap_or(thread_rng().gen());
         eprintln!("Seed: {:?}", seed);
         StdRng::from_seed(seed)
     }

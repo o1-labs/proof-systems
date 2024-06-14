@@ -8,6 +8,7 @@ use crate::{
 pub const SER_N_COLUMNS: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 9;
 
 /// Columns used by the serialization subcircuit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SerializationColumn {
     /// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
     ChalKimchi(usize),
@@ -29,39 +30,40 @@ pub enum SerializationColumn {
 }
 
 impl ColumnIndexer for SerializationColumn {
+    const N_COL: usize = SER_N_COLUMNS;
     fn to_column(self) -> Column {
         match self {
             Self::ChalKimchi(j) => {
                 assert!(j < 3);
-                Column::X(j)
+                Column::Relation(j)
             }
             Self::ChalIntermediate(j) => {
                 assert!(j < N_INTERMEDIATE_LIMBS);
-                Column::X(3 + j)
+                Column::Relation(3 + j)
             }
             Self::ChalConverted(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 + j)
             }
             Self::CoeffInput(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + N_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + N_LIMBS + 3 + j)
             }
             Self::FFieldModulus(j) => {
                 assert!(j < 4);
-                Column::X(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 3 + j)
             }
             Self::Quotient(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 7 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 7 + j)
             }
             Self::Carry(j) => {
                 assert!(j < 2 * N_LIMBS + 2);
-                Column::X(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
             }
             Self::CoeffResult(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
             }
         }
     }

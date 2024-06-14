@@ -28,11 +28,15 @@ _build
 tools/srs
 
 .ignore
-optimism/*op-program-data-log.sh
-optimism/cpu.pprof
-optimism/meta.json
-optimism/out.json
-optimism/op-program-db*
-optimism/state.json
+o1vm/2023-*
+o1vm/2024-*
+o1vm/env-for-*
+o1vm/cpu.pprof
+o1vm/snapshot-state*
+o1vm/rpcs.sh
+o1vm/meta.json
+o1vm/out.json
+o1vm/op-program-db*
+o1vm/state.json
 meta.json
 state.json

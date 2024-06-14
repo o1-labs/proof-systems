@@ -37,7 +37,8 @@ pub struct EvaluatedCommitment {
     chunked_evals: Vec<ChunkedCommitmentEvaluation>,
 }
 
-/// A polynomial commitment evaluated at a point. Since a commitment can be chunked, the evaluations can also be chunked.
+/// A polynomial commitment evaluated at a point. Since a commitment can be
+/// chunked, the evaluations can also be chunked.
 pub type ChunkedCommitmentEvaluation = Vec<Fp>;
 
 mod prover {
@@ -54,7 +55,8 @@ mod prover {
     }
 }
 
-/// This struct represents an aggregated evaluation proof for a number of polynomial commitments, as well as a number of evaluation points.
+/// This struct represents an aggregated evaluation proof for a number of
+/// polynomial commitments, as well as a number of evaluation points.
 pub struct AggregatedEvaluationProof {
     /// a number of evaluation points
     eval_points: Vec<Fp>,
@@ -71,7 +73,8 @@ pub struct AggregatedEvaluationProof {
 }
 
 impl AggregatedEvaluationProof {
-    /// This function converts an aggregated evaluation proof into something the verify API understands
+    /// This function converts an aggregated evaluation proof into something the
+    /// verify API understands
     pub fn verify_type(
         &self,
     ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
@@ -140,7 +143,8 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
                 DensePolynomial::<Fp>::rand(len, &mut rng)
             };
 
-            // create commitments for each polynomial, and evaluate each polynomial at the 7 random points
+            // create commitments for each polynomial, and evaluate each
+            // polynomial at the 7 random points
             let timer = Instant::now();
             let BlindedCommitment {
                 commitment: chunked_commitment,
@@ -244,7 +248,7 @@ where
     <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // setup
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     test_randomised(&mut rng)
 }
 

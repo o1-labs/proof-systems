@@ -35,6 +35,14 @@ parser.add_argument('name', type=str, help='Name of parameter set (e.g. \'\', 5 
 parser.add_argument('--rounds', type=int, default=100, help='Number of round constants')
 args = parser.parse_args()
 
+# FIXME: This is a hack to make the script work for BN254. We should generalize the script later.
+# BN254/Grumpkin ("Ethereum" curves)
+## BN254 Base field
+_bn254_q = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+## BN254 Scalar field
+_bn254_p = 21888242871839275222246405745257275088696311157297823662689037894645226208583
+
+# Pasta (Pallas/Vesta) curves
 _pasta_p = 28948022309329048855892746252171976963363056481941560715954676764349967630337
 _pasta_q = 28948022309329048855892746252171976963363056481941647379679742748393362948097
 

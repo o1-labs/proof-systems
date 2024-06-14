@@ -1,8 +1,6 @@
 pub mod column;
-pub mod constraints;
 pub mod interpreter;
 pub mod lookups;
-pub mod witness;
 
 /// The number of intermediate limbs of 4 bits required for the circuit
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
@@ -10,47 +8,40 @@ pub const N_INTERMEDIATE_LIMBS: usize = 20;
 #[cfg(test)]
 mod tests {
     use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::pairing_proof::PairingSRS;
-    use std::{collections::BTreeMap, marker::PhantomData};
+    use std::collections::BTreeMap;
 
     use crate::{
-        columns::Column,
-        logup::LogupWitness,
-        precomputed_srs::get_bn254_srs,
-        proof::ProofInputs,
-        prover::prove,
+        circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
+        columns::ColumnIndexer,
+        logup::LookupTableID,
         serialization::{
-            column::SER_N_COLUMNS,
-            constraints::ConstraintBuilderEnv,
+            column::{SerializationColumn, SER_N_COLUMNS},
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
-            lookups::{Lookup, LookupTable},
-            witness::WitnessBuilderEnv,
-            N_INTERMEDIATE_LIMBS,
+            lookups::LookupTable,
         },
-        verifier::verify,
-        witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        Ff1, Fp,
     };
+
+    type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
+        Fp,
+        SerializationColumn,
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL },
+        0,
+        0,
+        LookupTable<Ff1>,
+    >;
 
     #[test]
     fn test_completeness() {
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
         // Must be at least 1 << 15 to support rangecheck15
-        const DOMAIN_SIZE: usize = 1 << 15;
+        let domain_size: usize = 1 << 15;
 
-        let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-
-        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
-
-        let mut witness_env = WitnessBuilderEnv::<Fp, Ff1>::create();
-        // Boxing to avoid stack overflow
-        let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
-            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
-        });
+        let mut witness_env = SerializationWitnessBuilderEnv::create();
 
         // Boxing to avoid stack overflow
         let mut field_elements = vec![];
@@ -60,63 +51,20 @@ mod tests {
         // constant support/public input yet in the quotient polynomial.
         let input_chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
         let [input1, input2, input3]: [Fp; 3] = limb_decompose_ff::<Fp, Ff1, 88, 3>(&input_chal);
-        for _ in 0..DOMAIN_SIZE {
+        for _ in 0..domain_size {
             field_elements.push([input1, input2, input3])
         }
         let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
-        // An extra element in the array stands for the fixed table.
-        let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
-            std::array::from_fn(|_| vec![]);
-        let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
-        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
-            std::array::from_fn(|_| vec![]);
-        let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
-
-        let mut lookup_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
-            BTreeMap::new();
-        lookup_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
-        lookup_tables.insert(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            rangecheckffhighest.to_vec(),
-        );
-
-        for (_i, limbs) in field_elements.iter().enumerate() {
-            // Witness
-            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
-            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
-            // Filling actually used rows
-            for j in 0..SER_N_COLUMNS {
-                witness.cols[j].push(witness_env.witness.cols[j]);
-            }
-
-            for (table_id, table) in lookup_tables.iter_mut() {
-                //println!("Processing table id {:?}", table_id);
-                for (j, lookup) in witness_env
-                    .lookups
-                    .get(table_id)
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    table[j].push(lookup.clone())
-                }
-            }
-
-            witness_env.reset()
-        }
-
         let constraints = {
-            let mut constraints_env = ConstraintBuilderEnv::<Fp, Ff1>::create();
+            let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
             deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
             constrain_multiplication(&mut constraints_env);
 
             // Sanity checks.
             assert!(constraints_env.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
             assert!(constraints_env.lookups[&LookupTable::RangeCheck4].len() == 20);
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
+            assert!(constraints_env.lookups[&LookupTable::RangeCheck9Abs].len() == 6);
             assert!(
                 constraints_env.lookups
                     [&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
@@ -127,71 +75,37 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        let mut lookup_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
-        // Counting multiplicities & adding fixed column into the last column of every table.
-        for (table_id, table) in lookup_tables.iter_mut() {
-            let lookup_m = witness_env.get_lookup_multiplicities(domain, *table_id);
-            lookup_multiplicities.insert(*table_id, lookup_m.clone());
-            let lookup_t = (*table_id)
-                .entries(domain.d1.size)
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| Lookup {
-                    table_id: *table_id,
-                    numerator: -lookup_m[i],
-                    value: vec![v],
-                });
-            *(table.last_mut().unwrap()) = lookup_t.collect();
+        for (i, limbs) in field_elements.iter().enumerate() {
+            // Witness
+            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
+            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
+
+            // Don't reset on the last iteration.
+            if i < domain_size {
+                witness_env.next_row()
+            }
         }
 
-        let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = lookup_tables
-            .iter()
-            .filter_map(|(table_id, table)| {
-                // Only add a table if it's used. Otherwise lookups fail.
-                if !table.is_empty() && !table[0].is_empty() {
-                    Some(LogupWitness {
-                        f: table.clone(),
-                        m: lookup_multiplicities[table_id].clone(),
-                        table_id: *table_id,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
+        // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        let mut lookup_tables_data = BTreeMap::new();
+        for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
+            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64));
+        }
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
-        let proof_inputs = ProofInputs {
-            evaluations: *witness,
-            logups,
-        };
-
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            _,
+        crate::test::test_completeness_generic::<
             SER_N_COLUMNS,
-            LookupTable<Ff1>,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
-        .unwrap();
-
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
             SER_N_COLUMNS,
             0,
+            0,
             LookupTable<Ff1>,
+            _,
         >(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(DOMAIN_SIZE),
+            constraints,
+            Box::new([]),
+            proof_inputs,
+            domain_size,
+            &mut rng,
         );
-        assert!(verifies)
     }
 }

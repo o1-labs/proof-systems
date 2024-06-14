@@ -889,7 +889,7 @@ fn test_pasta_sub_max_pallas() {
 #[test]
 // Test with a random addition
 fn test_random_add() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), true);
     let right_input = random_input(&mut rng, foreign_mod.clone(), true);
@@ -911,7 +911,7 @@ fn test_random_add() {
 // Test with a random subtraction
 fn test_random_sub() {
     let foreign_mod = secp256k1_modulus();
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let left_input = random_input(&mut rng, foreign_mod.clone(), true);
     let right_input = random_input(&mut rng, foreign_mod.clone(), true);
     let left_big = BigUint::from_bytes_be(&left_input);
@@ -935,7 +935,7 @@ fn test_random_sub() {
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_add() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(&mut rng, pallas.clone(), true);
     let right_input = random_input(&mut rng, pallas.clone(), true);
@@ -968,7 +968,7 @@ fn test_foreign_is_native_add() {
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_sub() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(&mut rng, pallas.clone(), true);
     let right_input = random_input(&mut rng, pallas.clone(), true);
@@ -1001,7 +1001,7 @@ fn test_foreign_is_native_sub() {
 #[test]
 // Test with a random addition
 fn test_random_small_add() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
     let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
     let foreign_mod = prime.clone();
@@ -1028,7 +1028,7 @@ fn test_random_small_add() {
 #[test]
 // Test with a random subtraction
 fn test_random_small_sub() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
     let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
@@ -1056,7 +1056,7 @@ fn test_random_small_sub() {
 #[test]
 // Test with bad parameters in bound check
 fn test_bad_bound() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     let foreign_mod = secp256k1_modulus();
     let left_input = BigUint::from_bytes_be(&random_input(&mut rng, foreign_mod.clone(), false));
@@ -1116,7 +1116,7 @@ fn test_bad_bound() {
 #[test]
 // Test with bad left input
 fn test_random_bad_input() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), false);
     let right_input = random_input(&mut rng, foreign_mod, false);
@@ -1160,7 +1160,7 @@ fn test_random_bad_input() {
 #[test]
 // Test with bad parameters
 fn test_random_bad_parameters() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), false);
     let right_input = random_input(&mut rng, foreign_mod, false);
@@ -1224,7 +1224,7 @@ fn test_random_bad_parameters() {
 #[test]
 // Test with chain of random operations
 fn test_random_chain() {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     let nops = 20;
     let foreign_mod = secp256k1_modulus();
@@ -1258,7 +1258,7 @@ fn test_random_chain() {
 
 // Prove and verify used for end-to-end tests
 fn prove_and_verify(operation_count: usize) {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     // Create random operations
     let operations = (0..operation_count)
@@ -1326,7 +1326,7 @@ fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; COLUMNS]) {
 fn test_ffadd_no_rc() {
     let operation_count = 3;
     use o1_utils::tests::make_test_rng;
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     // Create foreign modulus
     let foreign_mod = secp256k1_modulus();
@@ -1399,7 +1399,7 @@ where
     G::BaseField: PrimeField,
     G: KimchiCurve,
 {
-    let mut rng = make_test_rng();
+    let mut rng = make_test_rng(None);
 
     // Create foreign field addition gates
     let (_next_row, gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);

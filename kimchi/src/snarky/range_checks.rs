@@ -200,7 +200,7 @@ mod test {
 
         let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
 
-        let mut rng = o1_utils::tests::make_test_rng();
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         use rand::Rng;
         // prove

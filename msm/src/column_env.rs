@@ -11,11 +11,23 @@ use kimchi::circuits::{
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
-    /// The witness column polynomials
+pub struct ColumnEnvironment<
+    'a,
+    const N: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
+    F: FftField,
+    ID: LookupTableID,
+> {
+    /// The witness column polynomials. Includes relation columns,
+    /// fixed selector columns, and dynamic selector columns.
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
-    /// The coefficient column polynomials
-    pub coefficients: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
+    /// Fixed selectors. These are "predefined" with the circuit, and,
+    /// unlike public input or dynamic selectors, are not part of the
+    /// witness that users are supposed to change after the circuit is
+    /// fixed.
+    pub fixed_selectors: &'a [Evaluations<F, Radix2EvaluationDomain<F>>; N_FSEL],
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -30,8 +42,15 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID>
     pub lookup: Option<logup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
-impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, F>
-    for ColumnEnvironment<'a, N, F, ID>
+impl<
+        'a,
+        const N_WIT: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        F: FftField,
+        ID: LookupTableID,
+    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
 {
     type Column = crate::columns::Column;
 
@@ -39,21 +58,27 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
         &self,
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
-        let witness_length: usize = self.witness.len();
-        let coefficients_length: usize = self.coefficients.len();
+        // TODO: when non-literal constant generics are available, substitute N with N_REG + N_DSEL + N_FSEL
+        assert!(N_WIT == N_REL + N_DSEL);
+        assert!(N_WIT == self.witness.len());
         match *col {
-            // Handling the "relation columns"
-            Self::Column::X(i) => {
-                if i < witness_length {
-                    let res = &self.witness[i];
-                    Some(res)
-                } else if i < witness_length + coefficients_length {
-                    // FIXME and add a test
-                    Some(&self.coefficients[i])
-                } else {
-                    // TODO: add a test for this
-                    panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
-                }
+            // Handling the "relation columns" at the beginning of the witness columns
+            Self::Column::Relation(i) => {
+                // TODO: add a test for this
+                assert!(i < N_REL,"Requested column with index {:?} but the given witness is meant for {:?} relation columns", i, N_REL);
+                let res = &self.witness[i];
+                Some(res)
+            }
+            // Handling the "dynamic selector columns" at the end of the witness columns
+            Self::Column::DynamicSelector(i) => {
+                assert!(i < N_DSEL, "Requested dynamic selector with index {:?} but the given witness is meant for {:?} dynamic selector columns", i, N_DSEL);
+                let res = &self.witness[N_REL + i];
+                Some(res)
+            }
+            Self::Column::FixedSelector(i) => {
+                assert!(i < N_FSEL, "Requested fixed selector with index {:?} but the given witness is meant for {:?} fixed selector columns", i, N_FSEL);
+                let res = &self.fixed_selectors[i];
+                Some(res)
             }
             Self::Column::LookupPartialSum((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
@@ -98,8 +123,15 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
 
     fn column_domain(&self, col: &Self::Column) -> Domain {
         match *col {
-            Self::Column::X(i) => {
-                let domain_size = self.witness[i].domain().size;
+            Self::Column::Relation(_)
+            | Self::Column::DynamicSelector(_)
+            | Self::Column::FixedSelector(_) => {
+                let domain_size = match *col {
+                    Self::Column::Relation(i) => self.witness[i].domain().size,
+                    Self::Column::DynamicSelector(i) => self.witness[N_REL + i].domain().size,
+                    Self::Column::FixedSelector(i) => self.fixed_selectors[i].domain().size,
+                    _ => panic!("Impossible"),
+                };
                 if self.domain.d1.size == domain_size {
                     Domain::D1
                 } else if self.domain.d2.size == domain_size {

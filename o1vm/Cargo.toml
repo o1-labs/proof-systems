@@ -1,0 +1,52 @@
+[package]
+name = "o1vm"
+version = "0.1.0"
+description = "o1VM"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "test_optimism_preimage_read"
+path = "src/test_preimage_read.rs"
+
+[dependencies]
+ark-bn254.workspace = true
+folding.workspace = true
+kimchi = { workspace = true, features = [ "bn254" ] }
+kimchi-msm.workspace = true
+poly-commitment.workspace = true
+groupmap.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+elf.workspace = true
+rmp-serde.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+stacker = "0.1"
+ark-poly.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
+clap.workspace = true
+hex.workspace = true
+regex.workspace = true
+libflate.workspace = true
+base64.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+log.workspace = true
+env_logger.workspace = true
+command-fds.workspace = true
+os_pipe.workspace = true
+rand.workspace = true
+libc.workspace = true
+rayon.workspace = true
+sha3.workspace = true
+itertools.workspace = true
