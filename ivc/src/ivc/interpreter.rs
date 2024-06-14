@@ -8,7 +8,7 @@ use crate::{
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon::interpreter::{poseidon_circuit, PoseidonParams},
+    poseidon_55_0_7_3_7::interpreter::{poseidon_circuit, PoseidonParams},
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{

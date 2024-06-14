@@ -1,4 +1,4 @@
-use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
+use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_55_0_7_3_7::columns::PoseidonColumn};
 use kimchi_msm::{
     circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},

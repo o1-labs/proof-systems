@@ -11,7 +11,7 @@
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
-use crate::poseidon::columns::PoseidonColumn;
+use crate::poseidon_55_0_7_3_7::columns::PoseidonColumn;
 use ark_ff::{FpParameters, PrimeField};
 use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 use num_bigint::BigUint;
