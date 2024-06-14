@@ -469,7 +469,7 @@ mod folding {
             constraints::Env as CEnv,
             interpreter::{debugging::InstructionParts, interpret_itype},
             witness::SCRATCH_SIZE,
-            ITypeInstruction,
+            ITypeInstruction, tests::unit::sign_extend,
         },
         trace::Trace,
         BaseSponge, Curve,
@@ -682,5 +682,67 @@ mod folding {
             .pair();
 
         // FIXME: add IVC
+    }
+
+    #[test]
+    fn test_unit_lwl_instruction() {
+        // lwl instruction
+        // val := mem << ((rs & 3) * 8)
+        // mask := uint32(0xFFFFFFFF) << ((rs & 3) * 8)
+        // return (rt & ^mask) | val
+
+        // Instruction: 0b100010 10101 00001 0000000001000000
+        // lwl rt offset(21)
+
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let mut dummy_env = dummy_env(&mut rng);
+
+        // Values used in the instruction
+        let rs = 21;
+        let dst = 1;
+        let offset = sign_extend(64, 16);
+
+        // Set the base address to a small number so dummy_env does not ovf
+        let addr = rng.gen_range(0u32..4000u32);
+        let aligned_address = (addr / 4) * 4;
+        dummy_env.registers[rs] = aligned_address + 1;
+        let base = dummy_env.registers[rs];
+        // The effective address
+        let (addr, ovf) = base.overflowing_add(offset);
+        assert!(!ovf);
+
+        let shift_left = (addr & 3) * 8;
+        let mask = 0xFFFFFFFFu32 << shift_left;
+
+        let mem = &dummy_env.memory[0];
+        let mem = &mem.1;
+
+        // Here start the (at most 4) bytes we want to load from memory
+        let m0 = mem[addr as usize];
+        let m1 = mem[(addr + 1) as usize];
+        let m2 = mem[(addr + 2) as usize];
+        let m3 = mem[(addr + 3) as usize];
+        // Big endian: small addresses of memory represent more significant
+        let memory = ((m0 as u32) << 24) + ((m1 as u32) << 16) + ((m2 as u32) << 8) + (m3 as u32);
+
+        let val = memory << shift_left;
+
+        let exp_v = (dummy_env.registers[dst] & !mask) | val;
+
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b100010,
+                rs: rs as u32,  // where base address is obtained from
+                rt: dst as u32, // destination
+                rd: 0b00000,
+                shamt: 0b00001, // offset = 64
+                funct: 0b000000,
+            },
+        );
+
+        interpret_itype(&mut dummy_env, ITypeInstruction::LoadWordLeft);
+
+        assert_eq!(dummy_env.registers[dst], exp_v);
     }
 }
