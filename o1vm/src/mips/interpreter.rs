@@ -910,8 +910,7 @@ pub trait InterpreterEnv {
     fn report_exit(&mut self, exit_code: &Self::Variable);
 
     /// Request the preimage oracle for `len` bytes and store the bytes starting
-    /// from the effective address `addr` (already contains offset), and it
-    /// returns the number of bytes actually read.
+    /// from `addr`, and it returns the number of bytes actually read.
     /// The number of bytes actually read will be set into `pos`.
     /// The first 8 bytes will be the length of the preimage, encoded as an
     /// unsigned 64bits, and the rest will be the preimage.
@@ -1119,7 +1118,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 
             let read_length = {
                 let pos = env.alloc_scratch();
-                env.request_preimage_write(&effective_addr, &length, pos)
+                env.request_preimage_write(&addr, &length, pos)
             };
             env.write_register(
                 &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
