@@ -86,15 +86,6 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// The column layout will be as follow, supposing a state size of 3 elements:
 /// | C1 | C2 | C3 | C4  | C5  | C6  | ... | C_(k) | C_(k + 1) | C_(k + 2) |
 /// |--- |----|----|-----|-----|-----|-----|-------|-----------|-----------|
@@ -105,7 +96,6 @@
 ///                 blocks of degree 2
 ///                   constraints
 /// where (x&#39;, y&#39;, z&#39;) = MDS(x^5, y^5, z^5), i.e. the result of the linear layer
-</span><span class="comment">// IMPROVEME: round constants should be public
 </span><span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer};
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -149,8 +139,7 @@
         <span class="comment">// input
         </span>STATE_SIZE
             + <span class="number">4 </span>* NB_FULL_ROUND * STATE_SIZE <span class="comment">// full round
-            </span>+ (<span class="number">4 </span>+ STATE_SIZE - <span class="number">1</span>) * NB_PARTIAL_ROUND <span class="comment">// partial round
-            </span>+ STATE_SIZE * (NB_PARTIAL_ROUND + NB_FULL_ROUND); <span class="comment">// rc
+            </span>+ (<span class="number">4 </span>+ STATE_SIZE - <span class="number">1</span>) * NB_PARTIAL_ROUND; <span class="comment">// partial round
 
     </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// number of reductions for
@@ -178,16 +167,9 @@
             }
             PoseidonColumn::RoundConstant(round, state_index) =&gt; {
                 <span class="macro">assert!</span>(state_index &lt; STATE_SIZE);
-                <span class="comment">// We start round 0
-                </span><span class="macro">assert!</span>(round &lt; NB_FULL_ROUND + NB_PARTIAL_ROUND);
-                <span class="kw">let </span>offset = STATE_SIZE
-                    + (NB_PARTIAL_ROUND * (nb_red + STATE_SIZE - <span class="number">1</span>))
-                    + (NB_FULL_ROUND * nb_red * STATE_SIZE);
+                <span class="macro">assert!</span>(round &lt; NB_FULL_ROUND + NB_PARTIAL_ROUND);
                 <span class="kw">let </span>idx = round * STATE_SIZE + state_index;
-                <span class="comment">// FIXME: should be FixedSelector.
-                // It is because I&#39;m getting &quot;can&#39;t write into fixed selector
-                // columns&quot; because of the initialization of the round constants
-                </span>Column::Relation(offset + idx)
+                Column::FixedSelector(idx)
             }
         }
     }

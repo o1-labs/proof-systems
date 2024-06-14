@@ -192,16 +192,6 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper [&quot;Poseidon: A New Hash
 //! Function&quot;](https://eprint.iacr.org/2019/458.pdf).
@@ -255,16 +245,6 @@
     </span>init_state.iter().enumerate().for_each(|(i, value)| {
         env.write_column(PoseidonColumn::Input(i), value);
     });
-
-    <span class="comment">// Write constants
-    </span>{
-        <span class="kw">let </span>rc = param.constants();
-        rc.iter().enumerate().for_each(|(round, rcs)| {
-            rcs.iter().enumerate().for_each(|(j, rc)| {
-                env.write_column(PoseidonColumn::RoundConstant(round, j), <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>rc));
-            });
-        });
-    }
 
     <span class="comment">// Create, write, and constrain all other columns.
     </span>apply_permutation(env, param)

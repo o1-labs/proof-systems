@@ -446,6 +446,9 @@
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_55_0_7_3_7::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
@@ -472,6 +475,9 @@
 
 <span class="kw">pub const </span>IVC_POSEIDON_STATE_SIZE: usize = <span class="number">3</span>;
 <span class="kw">pub const </span>IVC_POSEIDON_NB_FULL_ROUND: usize = <span class="number">55</span>;
+
+<span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize =
+    IVC_POSEIDON_NB_FULL_ROUND * IVC_POSEIDON_STATE_SIZE + N_BLOCKS;
 
 <span class="kw">pub type </span>IVCPoseidonColumn = PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;;
 

@@ -1010,6 +1010,15 @@
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
 <a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -1044,6 +1053,8 @@
 };
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>std::marker::PhantomData;
+
+<span class="kw">use </span><span class="kw">super</span>::columns::IVC_NB_TOTAL_FIXED_SELECTORS;
 
 <span class="doccomment">/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 </span><span class="kw">pub const </span>LIMB_BITSIZE_XLARGE: usize = <span class="number">150</span>;
@@ -1899,16 +1910,23 @@
 }
 
 <span class="doccomment">/// Builds selectors for the IVC circuit.
+/// The round constants for Poseidon are not added in this function, and must be
+/// done separately.
+/// The size of the array is the total number of public values required for the
+/// IVC. Therefore, it includes the potential round constants required by
+/// the hash function.
+</span><span class="comment">// FIXME: rc should be handled here or in the lens
 </span><span class="attr">#[allow(clippy::needless_range_loop)]
 </span><span class="kw">pub fn </span>build_selectors&lt;F, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
-) -&gt; [Vec&lt;F&gt;; N_BLOCKS]
+) -&gt; [Vec&lt;F&gt;; IVC_NB_TOTAL_FIXED_SELECTORS]
 <span class="kw">where
     </span>F: PrimeField,
 {
     <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;F&gt;; N_BLOCKS] = core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain_size]);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;F&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] =
+        core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain_size]);
     <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
     <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
         <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(block_i) {

@@ -65,13 +65,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// The column layout will be as follow, supposing a state size of 3 elements:
 /// | C1 | C2 | C3 | C4  | C5  | C6  | ... | C_(k) | C_(k + 1) | C_(k + 2) |
 /// |--- |----|----|-----|-----|-----|-----|-------|-----------|-----------|
@@ -86,11 +79,6 @@
 /// - `3` input columns
 /// - `5 N * 3` round columns, indexed by the round number and the index in the state,
 /// the number of rounds.
-/// The round constants are also added as columns.
-</span><span class="comment">// IMPROVEME: should be split the SBOX and the MDS?
-// IMPROVEME: round constants should be public
-// IMPROVEME: round constants should be part of the expression framework. The
-// expression must be changed to support this.
 </span><span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer};
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -119,7 +107,7 @@
     //   - STATE_SIZE state columns for x^7 -&gt; x^6 * x
     //   - STATE_SIZE state columns for x^7 * MDS(., L)
     // - STATE_SIZE * NB_FULL_ROUND constants
-    </span><span class="kw">const </span>N_COL: usize = STATE_SIZE + (<span class="number">5 </span>+ <span class="number">1</span>) * NB_FULL_ROUND * STATE_SIZE;
+    </span><span class="kw">const </span>N_COL: usize = STATE_SIZE + <span class="number">5 </span>* NB_FULL_ROUND * STATE_SIZE;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
@@ -138,10 +126,8 @@
                 <span class="macro">assert!</span>(state_index &lt; STATE_SIZE);
                 <span class="comment">// We start round 0
                 </span><span class="macro">assert!</span>(round &lt; NB_FULL_ROUND);
-                <span class="comment">//             INPUT              ROUND (5, see above)
-                </span><span class="kw">let </span>offset = STATE_SIZE + <span class="number">5 </span>* STATE_SIZE * NB_FULL_ROUND;
-                <span class="kw">let </span>idx = offset + (round * STATE_SIZE + state_index);
-                Column::Relation(idx)
+                <span class="kw">let </span>idx = round * STATE_SIZE + state_index;
+                Column::FixedSelector(idx)
             }
         }
     }
