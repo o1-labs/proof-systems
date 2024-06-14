@@ -6,8 +6,10 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
-    expressions::FoldingColumnTrait, instance_witness::Foldable, Alphas, FoldingCompatibleExpr,
-    FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme, Instance, Side, Witness,
+    expressions::{FoldingColumnTrait, FromFoldingConversionError},
+    instance_witness::Foldable,
+    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme,
+    Instance, Side, Witness,
 };
 use itertools::Itertools;
 use ivc::{
@@ -29,6 +31,7 @@ use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
     column_env::ColumnEnvironment,
     columns::{Column, ColumnIndexer},
+    expr::E,
     lookups::DummyLookupTable,
     witness::Witness as GenericWitness,
     BN254G1Affine, Fp,
@@ -174,6 +177,17 @@ pub fn test_simple_add() {
         Beta,
         Gamma,
         JointCombiner,
+    }
+
+    impl TryFrom<Challenge> for ChallengeTerm {
+        type Error = FromFoldingConversionError;
+        fn try_from(chal: Challenge) -> Result<Self, Self::Error> {
+            match chal {
+                Challenge::Beta => Ok(ChallengeTerm::Beta),
+                Challenge::Gamma => Ok(ChallengeTerm::Gamma),
+                Challenge::JointCombiner => Ok(ChallengeTerm::JointCombiner),
+            }
+        }
     }
 
     impl From<ChallengeTerm> for Challenge {
@@ -391,7 +405,7 @@ pub fn test_simple_add() {
 
     let mut ivc_constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
     constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
-    let ivc_constraints = ivc_constraint_env.get_relation_constraints();
+    let ivc_constraints: Vec<E<Fp>> = ivc_constraint_env.get_relation_constraints();
 
     let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .into_iter()
@@ -836,38 +850,8 @@ pub fn test_simple_add() {
     // Testing expressions
     ////////////////////////////////////////////////////////////////////////////
 
-    let (_, endo_r) = BN254G1Affine::endos();
-    let alpha: Fp = folding_instance_three.alphas.get(1).unwrap();
-    let _column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
-        let challenges = Challenges {
-            alpha,
-            // NB: as there is no permutation argument, we do use the beta
-            // field instead of a new one for the evaluation point.
-            beta: Fp::zero(),
-            gamma: Fp::zero(),
-            joint_combiner: Some(Fp::zero()),
-        };
-        ColumnEnvironment {
-            constants: Constants {
-                endo_coefficient: *endo_r,
-                mds: &BN254G1Affine::sponge_params().mds,
-                zk_rows: 0,
-            },
-            challenges,
-            witness: &folding_witness_three.witness,
-            fixed_selectors: folding_witness_three
-                .fixed_selectors
-                .as_slice()
-                .try_into()
-                .unwrap(),
-            l0_1: l0_1(domain.d1),
-            lookup: None,
-            domain,
-        }
-    };
-
     // Only for debugging purposes
-    for expr in folding_compat_constraints.iter() {
+    for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
         use folding::{
             error_term::{eval_sided, ExtendedEnv, Side},
             eval_leaf::EvalLeaf,
@@ -912,9 +896,61 @@ pub fn test_simple_add() {
                         println!("Row {i:?} is nonzero: {e:?}");
                     }
                 }
-                assert!(res.iter().all(|elem| elem.is_zero()));
+                assert!(
+                    res.iter().all(|elem| elem.is_zero()),
+                    "constraint number {expr_i} is not satisfied: {expr:?}"
+                );
             }
             _ => panic!("eval_leaf is not Result"),
+        }
+    }
+
+    let (_, endo_r) = BN254G1Affine::endos();
+    let alpha: Fp = folding_instance_three.alphas.get(1).unwrap();
+    let column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
+        let challenges = Challenges {
+            alpha,
+            // NB: as there is no permutation argument, we do use the beta
+            // field instead of a new one for the evaluation point.
+            beta: Fp::zero(),
+            gamma: Fp::zero(),
+            joint_combiner: Some(Fp::zero()),
+        };
+        ColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: *endo_r,
+                mds: &BN254G1Affine::sponge_params().mds,
+                zk_rows: 0,
+            },
+            challenges,
+            witness: &folding_witness_three.witness,
+            fixed_selectors: folding_witness_three
+                .fixed_selectors
+                .as_slice()
+                .try_into()
+                .unwrap(),
+            l0_1: l0_1(domain.d1),
+            lookup: None,
+            domain,
+        }
+    };
+
+    let folding_compat_constraints_mapped_back: Vec<E<Fp>> = folding_compat_constraints
+        .clone()
+        .into_iter()
+        .map(|x| E::<Fp>::try_from(x).unwrap())
+        .collect();
+
+    // Only for debugging purposes
+    for expr in folding_compat_constraints_mapped_back.iter() {
+        // Check this expression are witness satisfied
+        let (_, res) = expr
+            .evaluations(&column_env)
+            .interpolate_by_ref()
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap_or_else(|| panic!("oh well"));
+        if !res.is_zero() {
+            panic!("oh well")
         }
     }
 }
