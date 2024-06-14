@@ -62,7 +62,10 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
         for state_i in state.iter_mut() {
             *state_i = sbox::<F, SC>(*state_i);
         }
-        apply_mds_matrix::<F, SC>(params, state);
+        let res = apply_mds_matrix::<F, SC>(params, state);
+        for (i, state_i) in state.iter_mut().enumerate() {
+            *state_i = res[i]
+        }
     }
 
     for r in 0..SC::PERM_ROUNDS_PARTIAL {
@@ -73,7 +76,10 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
             state[i].add_assign(x);
         }
         state[0] = sbox::<F, SC>(state[0]);
-        apply_mds_matrix::<F, SC>(params, state);
+        let res = apply_mds_matrix::<F, SC>(params, state);
+        res.iter().enumerate().for_each(|(i, x)| {
+            state[i] = *x;
+        });
     }
 
     for r in 0..SC::PERM_HALF_ROUNDS_FULL {
@@ -87,7 +93,10 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
         for state_i in state.iter_mut() {
             *state_i = sbox::<F, SC>(*state_i);
         }
-        apply_mds_matrix::<F, SC>(params, state);
+        let res = apply_mds_matrix::<F, SC>(params, state);
+        res.iter().enumerate().for_each(|(i, x)| {
+            state[i] = *x;
+        });
     }
 }
 
