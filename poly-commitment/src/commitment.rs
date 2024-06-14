@@ -786,7 +786,7 @@ where
             }
             std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
             std::cmp::Ordering::Greater => {
-                panic!("desired commitment domain size greater than evaluations' domain size")
+                panic!("desired commitment domain size ({}) greater than evaluations' domain size ({}):", domain.size, plnm.domain().size)
             }
         }
     }

@@ -93,8 +93,14 @@ pub fn test_simple_add() {
     let domain_size: usize = 1 << 15;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-    let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
-    let srs = pairing_srs.full_srs;
+    let srs = {
+        let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
+        let mut srs = pairing_srs.full_srs;
+        srs.add_lagrange_basis(domain.d2); // not added if already present.
+        srs.add_lagrange_basis(domain.d4); // not added if already present.
+        srs.add_lagrange_basis(domain.d8); // not added if already present.
+        srs
+    };
 
     let mut fq_sponge: BaseSponge = FqSponge::new(BN254G1Affine::other_curve_sponge_params());
 
@@ -248,16 +254,18 @@ pub fn test_simple_add() {
             srs: &SRS<BN254G1Affine>,
             domain: R2D<Fp>,
         ) -> Self {
-            // TODO change to blinder 1?
+            // This fails when we try to have it on domain 8.
             let commitments: GenericWitness<N_COL_TOTAL, PolyComm<BN254G1Affine>> = w
-                .into_par_iter()
+                .into_iter() // into_par_iter
                 .map(|w| {
                     let unblinded = srs.commit_evaluations_non_hiding(domain, w);
                     srs.mask_custom(unblinded, &PolyComm::new(vec![Fp::one()]))
                         .unwrap()
                         .commitment
                 })
-                .collect();
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
 
             // Absorbing commitments
             (&commitments)
@@ -443,8 +451,9 @@ pub fn test_simple_add() {
     // Don't contain any U or alphas
     // can be mapped back to E<Fp>
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
+        .clone()
         .into_iter()
-        .chain(ivc_compat_constraints)
+        .chain(ivc_compat_constraints.clone())
         .collect();
 
     // We have as many alphas as constraints
@@ -822,8 +831,9 @@ pub fn test_simple_add() {
     // since they're both height 0.
     let joint_witness_three: Vec<_> = proof_inputs_three
         .evaluations
+        .clone()
         .into_iter()
-        .chain(ivc_proof_inputs_1.evaluations)
+        .chain(ivc_proof_inputs_1.evaluations.clone())
         .collect();
 
     assert!(joint_witness_three.len() == N_COL_TOTAL);
@@ -871,6 +881,13 @@ pub fn test_simple_add() {
     {
         let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
 
+        //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
+        //    (proof_inputs_three.evaluations.cols.clone())
+        //        .into_iter()
+        //        .map(|w| interpolate(Evaluations::from_vec_and_domain(w, domain.d1)))
+        //        .collect()
+        //};
+
         let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
             folding_witness_three_evals
                 .clone()
@@ -882,20 +899,20 @@ pub fn test_simple_add() {
             (folding_witness_three_polys)
                 .into_par_iter()
                 .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect::<Vec<Evaluations<Fp, R2D<Fp>>>>();
+                .collect();
 
         let ivc_fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
             ivc_fixed_selectors_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
-                .collect::<Vec<DensePolynomial<Fp>>>()
+                .collect()
         };
         let ivc_fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> =
             (ivc_fixed_selectors_polys)
                 .into_par_iter()
                 .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect::<Vec<Evaluations<Fp, R2D<Fp>>>>();
+                .collect();
 
         let folding_witness_three_d8 = PlonkishWitness {
             witness: folding_witness_three_evals_d8.try_into().unwrap(),
@@ -906,10 +923,11 @@ pub fn test_simple_add() {
             &folding_witness_three.witness,
             &mut fq_sponge,
             &srs,
-            domain.d1,
+            domain.d8,
         );
 
-        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
+        for (expr_i, expr) in app_compat_constraints.iter().enumerate() {
+            //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             use folding::{
                 error_term::{eval_sided, ExtendedEnv, Side},
                 eval_leaf::EvalLeaf,
@@ -943,7 +961,9 @@ pub fn test_simple_add() {
                 None,
             );
 
+            println!("Eval_leaf");
             let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
+            println!("Eval_leaf done");
 
             match eval_leaf {
                 EvalLeaf::Result(evaluations_d8) => {
