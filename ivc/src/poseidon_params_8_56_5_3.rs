@@ -979,9 +979,9 @@ impl SpongeConstants for PlonkSpongeConstantsIVC {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize = 8;
+    const PERM_ROUNDS_FULL: usize = 0;
     const PERM_ROUNDS_PARTIAL: usize = 56;
-    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 4;
     const PERM_SBOX: u32 = 5;
     const PERM_FULL_MDS: bool = true;
     const PERM_INITIAL_ARK: bool = false;

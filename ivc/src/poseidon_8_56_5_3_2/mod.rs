@@ -53,12 +53,11 @@ mod tests {
         DummyLookupTable,
     >;
 
-    #[test]
-    #[ignore = "There is no support for partial rounds in the crate poseidon"]
     /// Tests that poseidon circuit is correctly formed (witness
     /// generation + constraints match) and matches the CPU
     /// specification of Poseidon. Fast to run, can be used for
     /// debugging.
+    #[test]
     pub fn test_poseidon_circuit() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 4;
