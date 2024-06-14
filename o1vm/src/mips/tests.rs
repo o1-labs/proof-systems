@@ -118,10 +118,9 @@ mod unit {
     use crate::{
         cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         mips::{
-            interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
+            interpreter::{debugging::InstructionParts, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
-            ITypeInstruction,
         },
         preimage_oracle::PreImageOracleT,
     };
@@ -280,9 +279,7 @@ mod unit {
     mod rtype {
 
         use super::*;
-        use crate::mips::{
-            interpreter::interpret_rtype, registers::REGISTER_PREIMAGE_OFFSET, RTypeInstruction,
-        };
+        use crate::mips::{interpreter::interpret_rtype, RTypeInstruction};
 
         #[test]
         fn test_unit_syscall_read_preimage() {
@@ -318,51 +315,32 @@ mod unit {
             let addr = rng.gen_range(100..200);
             dummy_env.registers[5] = addr;
 
-            // Determine how many bytes should be read in the first call to the
-            // oracle to align the addresses from here afterwards
-            let first = 4 - (addr % 4);
-
-            // Determine how many bytes should be read in the last call to the
-            // oracle (if modulus is 0 then the last call reads 4 bytes).
-            let last = ((total_length - first - 1) % 4) + 1;
-
-            // Set a length for register 6 -> bytes of the preimage + 8 bytes for length
-            dummy_env.registers[6] = total_length;
-
             // Read oracle until the totality of the preimage is reached
             // NOTE: the termination condition is not
             //       `while dummy_env.preimage_bytes_read < preimage.len()`
             //       because the interpreter sets it back to 0 when the preimage
             //       is read fully and the Keccak process is triggered (meaning
             //       that condition would generate an infinite loop instead)
-            let mut i: i32 = 0;
-            while dummy_env.registers[REGISTER_PREIMAGE_OFFSET] < total_length {
+            while dummy_env.registers.preimage_offset < total_length {
                 dummy_env.reset_scratch_state();
-                // Set a length for register 6 -> max n bytes to be read in this call
+
+                // Set maximum number of bytes to read in this call
                 dummy_env.registers[6] = rng.gen_range(1..=4);
 
                 interpret_rtype(&mut dummy_env, RTypeInstruction::SyscallReadPreimage);
-                /*  if i == 0 {
-                    // If first call
-                    assert_eq!(dummy_env.registers[2], first);
-                } else if dummy_env.registers[REGISTER_PREIMAGE_OFFSET] < total_length {
-                    // If still not the last call, the middle calls read 4 bytes
-                    assert_eq!(dummy_env.registers[2], 4);
-                }*/
-                i += 1;
+
+                // Update the address to store the next bytes with the offset
+                dummy_env.registers[5] = addr + dummy_env.registers.preimage_offset;
             }
-            // The number of bytes read at each step is stored in register 2
-            // assert_eq!(dummy_env.registers[2], last);
 
             // Number of bytes inside the corresponding file (preimage)
             // This should be the length read from the oracle in the first 8 bytes
-            assert_eq!(dummy_env.registers[REGISTER_PREIMAGE_OFFSET], total_length);
+            assert_eq!(dummy_env.registers.preimage_offset, total_length);
 
             // Check the content of memory addresses corresponds to the oracle
 
             // The first 8 bytes are the length of the preimage
             let length_byte = u64::to_be_bytes(preimage.len() as u64);
-            println!("Length: {:?}", length_byte);
             for (i, b) in length_byte.iter().enumerate() {
                 assert_eq!(
                     dummy_env.memory[0].1[i + addr as usize],
@@ -414,6 +392,7 @@ mod unit {
 
     mod itype {
         use super::*;
+        use crate::mips::{interpreter::interpret_itype, ITypeInstruction};
 
         #[test]
         fn test_unit_addi_instruction() {

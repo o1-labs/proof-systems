@@ -1105,17 +1105,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let preimage_offset =
                 env.read_register(&Env::constant(REGISTER_PREIMAGE_OFFSET as u32));
 
-            // Calculate the effective address to start storing the oracle bytes
-            let effective_addr = {
-                let res_scratch = env.alloc_scratch();
-                let overflow_scratch = env.alloc_scratch();
-                let (res, _overflow) = unsafe {
-                    env.add_witness(&addr, &preimage_offset, res_scratch, overflow_scratch)
-                };
-                // FIXME: Requires a range check
-                res
-            };
-
             let read_length = {
                 let pos = env.alloc_scratch();
                 env.request_preimage_write(&addr, &length, pos)
