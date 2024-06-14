@@ -52,16 +52,6 @@ where
         env.write_column(PoseidonColumn::Input(i), value);
     });
 
-    // Write constants
-    {
-        let rc = param.constants();
-        rc.iter().enumerate().for_each(|(round, rcs)| {
-            rcs.iter().enumerate().for_each(|(j, rc)| {
-                env.write_column(PoseidonColumn::RoundConstant(round, j), &Env::constant(*rc));
-            });
-        });
-    }
-
     // Create, write, and constrain all other columns.
     apply_permutation(env, param)
 }

@@ -12,11 +12,6 @@
 /// - `3` input columns
 /// - `5 N * 3` round columns, indexed by the round number and the index in the state,
 /// the number of rounds.
-/// The round constants are also added as columns.
-// IMPROVEME: should be split the SBOX and the MDS?
-// IMPROVEME: round constants should be public
-// IMPROVEME: round constants should be part of the expression framework. The
-// expression must be changed to support this.
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -45,7 +40,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
     //   - STATE_SIZE state columns for x^7 -> x^6 * x
     //   - STATE_SIZE state columns for x^7 * MDS(., L)
     // - STATE_SIZE * NB_FULL_ROUND constants
-    const N_COL: usize = STATE_SIZE + (5 + 1) * NB_FULL_ROUND * STATE_SIZE;
+    const N_COL: usize = STATE_SIZE + 5 * NB_FULL_ROUND * STATE_SIZE;
 
     fn to_column(self) -> Column {
         match self {
@@ -64,10 +59,8 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
                 assert!(state_index < STATE_SIZE);
                 // We start round 0
                 assert!(round < NB_FULL_ROUND);
-                //             INPUT              ROUND (5, see above)
-                let offset = STATE_SIZE + 5 * STATE_SIZE * NB_FULL_ROUND;
-                let idx = offset + (round * STATE_SIZE + state_index);
-                Column::Relation(idx)
+                let idx = round * STATE_SIZE + state_index;
+                Column::FixedSelector(idx)
             }
         }
     }

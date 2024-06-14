@@ -52,20 +52,6 @@ where
         env.write_column(PoseidonColumn::Input(i), value);
     });
 
-    // Write constants
-    {
-        // FIXME:
-        // Round constants should not be considered as columns. We should
-        // handle differently constants. See the comment in the columns file.
-        // This must be improved!
-        let rc = param.constants();
-        rc.iter().enumerate().for_each(|(round, rcs)| {
-            rcs.iter().enumerate().for_each(|(j, rc)| {
-                env.write_column(PoseidonColumn::RoundConstant(round, j), &Env::constant(*rc));
-            });
-        });
-    }
-
     // Create, write, and constrain all other columns.
     apply_permutation(env, param)
 }
