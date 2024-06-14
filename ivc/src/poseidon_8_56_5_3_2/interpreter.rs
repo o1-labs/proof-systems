@@ -101,7 +101,6 @@ where
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>,
 {
-    let nb_red = 4;
     // Checking that p - 1 is coprime with 5 as it has to be the case for the sbox
     {
         let one = BigUint::from(1u64);
@@ -111,19 +110,11 @@ where
         assert_eq!(p_minus_one.gcd(&five), one);
     }
 
-    let mut state: [Env::Variable; STATE_SIZE] = std::array::from_fn(|_| Env::constant(F::zero()));
+    let mut state: [Env::Variable; STATE_SIZE] =
+        std::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
 
     // Full rounds
     for i in 0..(NB_FULL_ROUND / 2) {
-        let cols = {
-            if i == 0 {
-                std::array::from_fn(PoseidonColumn::Input)
-            } else {
-                let prev_round = i - 1;
-                // Previous outputs are in index 3, 7, and 11 if we have 3 elements
-                std::array::from_fn(|j| PoseidonColumn::FullRound(prev_round, j * nb_red + 3))
-            }
-        };
         state = compute_one_full_round::<
             F,
             STATE_SIZE,
@@ -132,23 +123,11 @@ where
             NB_TOTAL_ROUND,
             PARAMETERS,
             Env,
-        >(env, param, i, &cols);
+        >(env, param, i, &state);
     }
 
     // Partial rounds
     for i in 0..NB_PARTIAL_ROUND {
-        let cols: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>; STATE_SIZE] = {
-            if i == 0 {
-                let prev_round = NB_FULL_ROUND / 2 - 1;
-                // We want 3, 7, 11, ...
-                std::array::from_fn(|j| PoseidonColumn::FullRound(prev_round, j * nb_red + 3))
-            } else {
-                let prev_round = i - 1;
-                // We want 3, 4, 5, ..., 3 + STATE_SIZE
-                std::array::from_fn(|j| PoseidonColumn::PartialRound(prev_round, 3 + j))
-            }
-        };
-
         state = compute_one_partial_round::<
             F,
             STATE_SIZE,
@@ -157,24 +136,11 @@ where
             NB_TOTAL_ROUND,
             PARAMETERS,
             Env,
-        >(env, param, i, &cols);
+        >(env, param, i, &state);
     }
 
     // Remaining full rounds
     for i in (NB_FULL_ROUND / 2)..NB_FULL_ROUND {
-        // We initialize the columns to the previous outputs
-        let cols: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>; STATE_SIZE] = {
-            // If we start, we must get the last partial round
-            if i == 0 {
-                let prev_round = NB_PARTIAL_ROUND - 1;
-                std::array::from_fn(|j| PoseidonColumn::PartialRound(prev_round, 3 + j))
-            } else {
-                let prev_round = i - 1;
-                // Previous outputs are in index 3, 7, and 11 if we have 3 elements
-                std::array::from_fn(|j| PoseidonColumn::FullRound(prev_round, j * nb_red + 3))
-            }
-        };
-
         state = compute_one_full_round::<
             F,
             STATE_SIZE,
@@ -183,7 +149,7 @@ where
             NB_TOTAL_ROUND,
             PARAMETERS,
             Env,
-        >(env, param, i, &cols);
+        >(env, param, i, &state);
     }
 
     state
@@ -202,7 +168,7 @@ fn compute_one_full_round<
     env: &mut Env,
     param: &PARAMETERS,
     round: usize,
-    elements: &[PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>; STATE_SIZE],
+    state: &[Env::Variable; STATE_SIZE],
 ) -> [Env::Variable; STATE_SIZE]
 where
     PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_TOTAL_ROUND>,
@@ -217,8 +183,6 @@ where
         "The round index {:} is higher than the number of full rounds encoded in the type",
         round
     );
-
-    let state: Vec<Env::Variable> = elements.iter().map(|col| env.read_column(*col)).collect();
 
     // Adding the round constants
     let state: Vec<Env::Variable> = state
@@ -298,7 +262,7 @@ fn compute_one_partial_round<
     env: &mut Env,
     param: &PARAMETERS,
     round: usize,
-    elems: &[PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>; STATE_SIZE],
+    state: &[Env::Variable; STATE_SIZE],
 ) -> [Env::Variable; STATE_SIZE]
 where
     F: PrimeField,
@@ -312,8 +276,6 @@ where
         "The round index {:} is higher than the number of partial rounds encoded in the type",
         round
     );
-
-    let state: Vec<Env::Variable> = elems.iter().map(|col| env.read_column(*col)).collect();
 
     // Adding the round constants
     let mut state: Vec<Env::Variable> = state
