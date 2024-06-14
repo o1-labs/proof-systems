@@ -269,7 +269,7 @@ fn instance_from_witness(
     let mut challenge = || Fp::rand(&mut rng);
     let challenges = [(); 3].map(|_| challenge());
     let alpha = challenge();
-    let alphas = Alphas::new(alpha);
+    let alphas = Alphas::new(alpha, 0);
     let blinder = Fp::one();
     TestInstance {
         commitments,
