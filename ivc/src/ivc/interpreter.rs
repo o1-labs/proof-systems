@@ -3,12 +3,11 @@
 use crate::{
     ivc::{
         columns::{
-            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
-            IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
+            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon_55_0_7_3_7::interpreter::{poseidon_circuit, PoseidonParams},
+    poseidon_8_56_5_3_2::interpreter::{poseidon_circuit, PoseidonParams},
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{
@@ -33,7 +32,7 @@ use kimchi_msm::{
 use num_bigint::BigUint;
 use std::marker::PhantomData;
 
-use super::columns::IVC_NB_TOTAL_FIXED_SELECTORS;
+use super::columns::{IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_TOTAL_ROUND};
 
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
@@ -306,7 +305,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: 
 ) -> (Env::Variable, Env::Variable, Env::Variable)
 where
     F: PrimeField,
-    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
+    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: MultiRowReadCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
     let n = N_COL_TOTAL;
@@ -992,7 +991,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 ) where
     F: PrimeField,
     Ff: PrimeField,
-    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
+    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: DirectWitnessCap<F, IVCColumn>
         + HybridCopyCap<F, IVCColumn>
         + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
