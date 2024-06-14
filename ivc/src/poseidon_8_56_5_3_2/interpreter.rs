@@ -217,17 +217,36 @@ where
         "The round index {:} is higher than the number of full rounds encoded in the type",
         round
     );
+
+    let state: Vec<Env::Variable> = elements.iter().map(|col| env.read_column(*col)).collect();
+
+    // Adding the round constants
+    let state: Vec<Env::Variable> = state
+        .iter()
+        .enumerate()
+        .map(|(i, var)| {
+            let offset = {
+                if round < NB_FULL_ROUND / 2 {
+                    0
+                } else {
+                    NB_PARTIAL_ROUND
+                }
+            };
+            let rc = env.read_column(PoseidonColumn::RoundConstant(offset + round, i));
+            var.clone() + rc
+        })
+        .collect();
+
     // Applying sbox
     // For a state transition from (x, y, z) to (x', y', z'), we use the
     // following columns shape:
     // x^2, x^4, x^5, x', y^2, y^4, y^5, y', z^2, z^4, z^5, z')
     //  0    1    2   3    4    5    6   7    8    9   10   11
     let nb_red = 4;
-    let state: Vec<Env::Variable> = elements
+    let state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
-        .map(|(i, var_col)| {
-            let var = env.read_column(*var_col);
+        .map(|(i, var)| {
             // x^2
             let var_square_col = PoseidonColumn::FullRound(round, nb_red * i);
             let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
@@ -252,23 +271,6 @@ where
                 .fold(Env::constant(F::zero()), |acc, (s_i, mds_i_j)| {
                     Env::constant(mds_i_j) * s_i.clone() + acc.clone()
                 })
-        })
-        .collect();
-
-    // Adding the round constants
-    let state: Vec<Env::Variable> = state
-        .iter()
-        .enumerate()
-        .map(|(i, var)| {
-            let offset = {
-                if round < NB_FULL_ROUND / 2 {
-                    0
-                } else {
-                    NB_PARTIAL_ROUND
-                }
-            };
-            let rc = env.read_column(PoseidonColumn::RoundConstant(offset + round, i));
-            var.clone() + rc
         })
         .collect();
 
@@ -310,27 +312,34 @@ where
         "The round index {:} is higher than the number of partial rounds encoded in the type",
         round
     );
-    let state: Vec<Env::Variable> = elems
+
+    let state: Vec<Env::Variable> = elems.iter().map(|col| env.read_column(*col)).collect();
+
+    // Adding the round constants
+    let mut state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
-        .map(|(i, elem)| {
-            // Applying sbox on the last element only
-            if i < STATE_SIZE - 1 {
-                env.read_column(*elem)
-            } else {
-                let var = env.read_column(elems[STATE_SIZE - 1]);
-                // x^2
-                let var_square_col = PoseidonColumn::PartialRound(round, 0);
-                let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
-                // x^4
-                let var_four_col = PoseidonColumn::PartialRound(round, 1);
-                let var_four = env.hcopy(&(var_square.clone() * var_square.clone()), var_four_col);
-                // x^5
-                let var_five_col = PoseidonColumn::PartialRound(round, 2);
-                env.hcopy(&(var_four.clone() * var.clone()), var_five_col)
-            }
+        .map(|(i, var)| {
+            let offset = NB_FULL_ROUND / 2;
+            let rc = env.read_column(PoseidonColumn::RoundConstant(offset + round, i));
+            var.clone() + rc
         })
         .collect();
+
+    // Applying the sbox
+    // Last elem of the state
+    {
+        let var = state[STATE_SIZE - 1].clone();
+        let var_square_col = PoseidonColumn::PartialRound(round, 0);
+        let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
+        // x^4
+        let var_four_col = PoseidonColumn::PartialRound(round, 1);
+        let var_four = env.hcopy(&(var_square.clone() * var_square.clone()), var_four_col);
+        // x^5
+        let var_five_col = PoseidonColumn::PartialRound(round, 2);
+        let var_five = env.hcopy(&(var_four.clone() * var.clone()), var_five_col);
+        state[STATE_SIZE - 1] = var_five;
+    }
 
     // Applying the linear layer
     let mds = PoseidonParams::mds(param);
@@ -344,17 +353,6 @@ where
                 .fold(Env::constant(F::zero()), |acc, (s_i, mds_i_j)| {
                     Env::constant(mds_i_j) * s_i.clone() + acc.clone()
                 })
-        })
-        .collect();
-
-    // Adding the round constants
-    let state: Vec<Env::Variable> = state
-        .iter()
-        .enumerate()
-        .map(|(i, var)| {
-            let offset = NB_FULL_ROUND / 2;
-            let rc = env.read_column(PoseidonColumn::RoundConstant(offset + round, i));
-            var.clone() + rc
         })
         .collect();
 
