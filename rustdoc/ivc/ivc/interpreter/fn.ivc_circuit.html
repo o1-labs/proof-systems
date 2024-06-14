@@ -12,7 +12,7 @@
 )<span class="where fmt-newline">where
     F: PrimeField,
     Ff: PrimeField,
-    PParams: <a class="trait" href="../../poseidon/interpreter/trait.PoseidonParams.html" title="trait ivc::poseidon::interpreter::PoseidonParams">PoseidonParams</a>&lt;F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
+    PParams: <a class="trait" href="../../poseidon_55_0_7_3_7/interpreter/trait.PoseidonParams.html" title="trait ivc::poseidon_55_0_7_3_7::interpreter::PoseidonParams">PoseidonParams</a>&lt;F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
     Env: DirectWitnessCap&lt;F, <a class="enum" href="../columns/enum.IVCColumn.html" title="enum ivc::ivc::columns::IVCColumn">IVCColumn</a>&gt; + HybridCopyCap&lt;F, <a class="enum" href="../columns/enum.IVCColumn.html" title="enum ivc::ivc::columns::IVCColumn">IVCColumn</a>&gt; + LookupCap&lt;F, <a class="enum" href="../columns/enum.IVCColumn.html" title="enum ivc::ivc::columns::IVCColumn">IVCColumn</a>, <a class="enum" href="../lookups/enum.IVCLookupTable.html" title="enum ivc::ivc::lookups::IVCLookupTable">IVCLookupTable</a>&lt;Ff&gt;&gt;,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Instantiates the IVC circuit for folding. L is relaxed (folded)
 instance, and R is strict (new) instance that is being relaxed at
 this step. <code>N_COL_TOTAL</code> is the total number of columnsfor IVC + APP.</p>
