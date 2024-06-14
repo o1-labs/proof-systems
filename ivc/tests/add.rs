@@ -909,7 +909,6 @@ pub fn test_simple_add() {
             domain.d1,
         );
 
-        // Only for debugging purposes
         for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             use folding::{
                 error_term::{eval_sided, ExtendedEnv, Side},
@@ -918,7 +917,7 @@ pub fn test_simple_add() {
                 instance_witness::RelaxablePair,
             };
 
-            println!("Expression: {}", expr.to_string());
+            println!("Expression #{expr_i}: {}", expr.to_string());
 
             let expr: FoldingExp<Config> = expr.clone().simplify();
 
@@ -947,74 +946,18 @@ pub fn test_simple_add() {
             let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
 
             match eval_leaf {
-                EvalLeaf::Result(res) => {
-                    assert!(
-                        res.iter().all(|elem| elem.is_zero()),
-                        "constraint number {expr_i} is not satisfied: {expr:?}"
-                    );
-                    //// We expect every element to be zero.
-                    //// @volhovm: I'm not sure this is actually checking it.
-                    //for (i, e) in res.iter().enumerate() {
-                    //    if !e.is_zero() {
-                    //        println!("Row {i:?} is nonzero: {e:?}");
-                    //    }
-                    //}
+                EvalLeaf::Result(evaluations_d8) => {
+                    let (_, remainder) =
+                        Evaluations::from_vec_and_domain(evaluations_d8, domain.d8)
+                            .interpolate()
+                            .divide_by_vanishing_poly(domain.d1)
+                            .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    if !remainder.is_zero() {
+                        panic!("Remainder is not zero")
+                    }
                 }
                 _ => panic!("eval_leaf is not Result"),
             }
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Testing expressions via converting back to non-folding exprs
-    ////////////////////////////////////////////////////////////////////////////
-
-    let (_, endo_r) = BN254G1Affine::endos();
-    let alpha: Fp = folding_instance_three.alphas.get(1).unwrap();
-    let column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
-        let challenges = Challenges {
-            alpha,
-            // NB: as there is no permutation argument, we do use the beta
-            // field instead of a new one for the evaluation point.
-            beta: Fp::zero(),
-            gamma: Fp::zero(),
-            joint_combiner: Some(Fp::zero()),
-        };
-        ColumnEnvironment {
-            constants: Constants {
-                endo_coefficient: *endo_r,
-                mds: &BN254G1Affine::sponge_params().mds,
-                zk_rows: 0,
-            },
-            challenges,
-            witness: &folding_witness_three.witness,
-            fixed_selectors: folding_witness_three
-                .fixed_selectors
-                .as_slice()
-                .try_into()
-                .unwrap(),
-            l0_1: l0_1(domain.d1),
-            lookup: None,
-            domain,
-        }
-    };
-
-    let folding_compat_constraints_mapped_back: Vec<E<Fp>> = folding_compat_constraints
-        .clone()
-        .into_iter()
-        .map(|x| E::<Fp>::try_from(x).unwrap())
-        .collect();
-
-    // Only for debugging purposes
-    for expr in folding_compat_constraints_mapped_back.iter() {
-        // Check this expression are witness satisfied
-        let (_, res) = expr
-            .evaluations(&column_env)
-            .interpolate_by_ref()
-            .divide_by_vanishing_poly(domain.d1)
-            .unwrap_or_else(|| panic!("oh well"));
-        if !res.is_zero() {
-            panic!("oh well")
         }
     }
 }
