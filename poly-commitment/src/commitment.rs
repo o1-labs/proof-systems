@@ -777,6 +777,9 @@ where
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
+                // When we evaluate a polynomial defined over d8, but
+                // our domain is d1, we will commit to d1,
+                // contsidering only every 8th element.
                 let s = (plnm.domain().size / domain.size) as usize;
                 let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
                 commit_evaluations(&v, basis)

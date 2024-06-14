@@ -4,7 +4,7 @@
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     expressions::{FoldingColumnTrait, FromFoldingConversionError},
     instance_witness::Foldable,
@@ -111,12 +111,11 @@ pub fn test_simple_add() {
 
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
         build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
-    let ivc_fixed_selectors_evals: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>> =
-        ivc_fixed_selectors
-            .clone()
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
-            .collect();
+    let ivc_fixed_selectors_evals: Vec<Evaluations<Fp, R2D<Fp>>> = ivc_fixed_selectors
+        .clone()
+        .into_par_iter()
+        .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
+        .collect();
 
     // Total number of witness columns in IVC (400 - 6) where 6 is block number.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
@@ -127,9 +126,9 @@ pub fn test_simple_add() {
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     pub struct PlonkishWitness {
-        pub witness: GenericWitness<N_COL_TOTAL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        pub witness: GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>>,
         // This does not have to be part of the witness... can be a static precompiled object.
-        pub fixed_selectors: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        pub fixed_selectors: Vec<Evaluations<Fp, R2D<Fp>>>,
     }
 
     // Trait required for folding
@@ -148,7 +147,7 @@ pub fn test_simple_add() {
     impl Witness<BN254G1Affine> for PlonkishWitness {}
 
     impl Index<AdditionColumn> for PlonkishWitness {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+        type Output = Evaluations<Fp, R2D<Fp>>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
             match index {
@@ -160,7 +159,7 @@ pub fn test_simple_add() {
     }
 
     impl Index<Column> for PlonkishWitness {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+        type Output = Evaluations<Fp, R2D<Fp>>;
 
         /// Map a column alias to the corresponding witness column.
         fn index(&self, index: Column) -> &Self::Output {
@@ -244,10 +243,10 @@ pub fn test_simple_add() {
 
     impl PlonkishInstance {
         pub fn from_witness(
-            w: &GenericWitness<N_COL_TOTAL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+            w: &GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>>,
             fq_sponge: &mut BaseSponge,
             srs: &SRS<BN254G1Affine>,
-            domain: Radix2EvaluationDomain<Fp>,
+            domain: R2D<Fp>,
         ) -> Self {
             // TODO change to blinder 1?
             let commitments: GenericWitness<N_COL_TOTAL, PolyComm<BN254G1Affine>> = w
@@ -310,7 +309,7 @@ pub fn test_simple_add() {
     impl FoldingEnv<Fp, PlonkishInstance, PlonkishWitness, Column, Challenge, ()>
         for PlonkishEnvironment
     where
-        PlonkishWitness: Index<Column, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        PlonkishWitness: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
     {
         type Structure = ();
 
@@ -396,16 +395,18 @@ pub fn test_simple_add() {
     // Constraints
     ////////////////////////////////////////////////////////////////////////////
 
-    let app_constraints = {
+    let app_constraints: Vec<E<Fp>> = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         constraint_env.get_relation_constraints()
     };
 
-    let mut ivc_constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
-    constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
-    let ivc_constraints: Vec<E<Fp>> = ivc_constraint_env.get_relation_constraints();
+    let ivc_constraints: Vec<E<Fp>> = {
+        let mut ivc_constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
+        constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
+        ivc_constraint_env.get_relation_constraints()
+    };
 
     let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .into_iter()
@@ -439,6 +440,8 @@ pub fn test_simple_add() {
         .map(|e| e.map_variable(ivc_mapper))
         .collect();
 
+    // Don't contain any U or alphas
+    // can be mapped back to E<Fp>
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
         .into_iter()
         .chain(ivc_compat_constraints)
@@ -451,8 +454,15 @@ pub fn test_simple_add() {
         folding_compat_constraints.len()
     );
 
-    let (folding_scheme, _) =
+    // real_folding_compat_constraints is actual constraint
+    let (folding_scheme, real_folding_compat_constraints) =
         FoldingScheme::<Config>::new(folding_compat_constraints.clone(), &srs, domain.d1, &());
+
+    // this cannot be mapped back to Fp
+    // has some u and {alpha^i}
+    // this one needs to be used in prover(..).
+    let _real_folding_compat_constraints: FoldingCompatibleExpr<Config> =
+        real_folding_compat_constraints;
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 1
@@ -761,7 +771,7 @@ pub fn test_simple_add() {
     const N_CHALS: usize = N_ALPHAS; // alphas + 3 ({beta gamma joint_combiner})
 
     let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
-    ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors);
+    ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors.clone());
 
     ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL_QUAD, N_CHALS>(
         &mut ivc_witness_env_1,
@@ -818,11 +828,13 @@ pub fn test_simple_add() {
 
     assert!(joint_witness_three.len() == N_COL_TOTAL);
 
+    let folding_witness_three_evals: Vec<Evaluations<Fp, R2D<Fp>>> = joint_witness_three
+        .clone()
+        .into_par_iter()
+        .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+        .collect();
     let folding_witness_three = PlonkishWitness {
-        witness: joint_witness_three
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-            .collect(),
+        witness: folding_witness_three_evals.clone().try_into().unwrap(),
         fixed_selectors: ivc_fixed_selectors_evals.clone(),
     };
 
@@ -846,64 +858,116 @@ pub fn test_simple_add() {
         &mut fq_sponge,
     );
 
+    //   one     two      (w/ dummy IVC)
+    //      \   /
+    //       folded_1      three        (w/ real IVC)
+    //           \         /
+    //            folded_2
+
     ////////////////////////////////////////////////////////////////////////////
-    // Testing expressions
+    // Testing via folding exprs
     ////////////////////////////////////////////////////////////////////////////
 
-    // Only for debugging purposes
-    for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
-        use folding::{
-            error_term::{eval_sided, ExtendedEnv, Side},
-            eval_leaf::EvalLeaf,
-            expressions::FoldingExp,
-            instance_witness::RelaxablePair,
+    {
+        let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+
+        let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
+            folding_witness_three_evals
+                .clone()
+                .into_par_iter()
+                .map(interpolate)
+                .collect::<Vec<DensePolynomial<Fp>>>()
+        };
+        let folding_witness_three_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> =
+            (folding_witness_three_polys)
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect::<Vec<Evaluations<Fp, R2D<Fp>>>>();
+
+        let ivc_fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
+            ivc_fixed_selectors_evals
+                .clone()
+                .into_par_iter()
+                .map(interpolate)
+                .collect::<Vec<DensePolynomial<Fp>>>()
+        };
+        let ivc_fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> =
+            (ivc_fixed_selectors_polys)
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect::<Vec<Evaluations<Fp, R2D<Fp>>>>();
+
+        let folding_witness_three_d8 = PlonkishWitness {
+            witness: folding_witness_three_evals_d8.try_into().unwrap(),
+            fixed_selectors: ivc_fixed_selectors_evals_d8,
         };
 
-        println!("Expression: {}", expr.to_string());
-
-        let expr: FoldingExp<Config> = expr.clone().simplify();
-
-        //println!("Expression (foldingExp): {}", expr.to_string());
-
-        //  (i1,w1)       (i2,w2)         (+ trivial IVC)
-        //         (i3,w3)                (+ nontrivial IVC)
-        //
-        //
-        // APP + IVC
-        let relaxable_pair = (
-            folding_instance_three.clone(),
-            folding_witness_three.clone(),
-        );
-        let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
-        let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
-
-        let eval_env = ExtendedEnv::new(
-            &(),
-            [relaxed_pair.0, relaxed_pair_copy.0],
-            [relaxed_pair.1, relaxed_pair_copy.1],
+        let folding_instance_three_d8 = PlonkishInstance::from_witness(
+            &folding_witness_three.witness,
+            &mut fq_sponge,
+            &srs,
             domain.d1,
-            None,
         );
 
-        let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
+        // Only for debugging purposes
+        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
+            use folding::{
+                error_term::{eval_sided, ExtendedEnv, Side},
+                eval_leaf::EvalLeaf,
+                expressions::FoldingExp,
+                instance_witness::RelaxablePair,
+            };
 
-        match eval_leaf {
-            EvalLeaf::Result(res) => {
-                // We expect every element to be zero.
-                // @volhovm: I'm not sure this is actually checking it.
-                for (i, e) in res.iter().enumerate() {
-                    if !e.is_zero() {
-                        println!("Row {i:?} is nonzero: {e:?}");
-                    }
+            println!("Expression: {}", expr.to_string());
+
+            let expr: FoldingExp<Config> = expr.clone().simplify();
+
+            //println!("Expression (foldingExp): {}", expr.to_string());
+
+            //  (i1,w1)       (i2,w2)         (+ trivial IVC)
+            //         (i3,w3)                (+ nontrivial IVC)
+            //
+            //
+            // APP + IVC
+            let relaxable_pair = (
+                folding_instance_three_d8.clone(),
+                folding_witness_three_d8.clone(),
+            );
+            let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
+            let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
+
+            let eval_env = ExtendedEnv::new(
+                &(),
+                [relaxed_pair.0, relaxed_pair_copy.0],
+                [relaxed_pair.1, relaxed_pair_copy.1],
+                domain.d1,
+                None,
+            );
+
+            let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
+
+            match eval_leaf {
+                EvalLeaf::Result(res) => {
+                    assert!(
+                        res.iter().all(|elem| elem.is_zero()),
+                        "constraint number {expr_i} is not satisfied: {expr:?}"
+                    );
+                    //// We expect every element to be zero.
+                    //// @volhovm: I'm not sure this is actually checking it.
+                    //for (i, e) in res.iter().enumerate() {
+                    //    if !e.is_zero() {
+                    //        println!("Row {i:?} is nonzero: {e:?}");
+                    //    }
+                    //}
                 }
-                assert!(
-                    res.iter().all(|elem| elem.is_zero()),
-                    "constraint number {expr_i} is not satisfied: {expr:?}"
-                );
+                _ => panic!("eval_leaf is not Result"),
             }
-            _ => panic!("eval_leaf is not Result"),
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Testing expressions via converting back to non-folding exprs
+    ////////////////////////////////////////////////////////////////////////////
 
     let (_, endo_r) = BN254G1Affine::endos();
     let alpha: Fp = folding_instance_three.alphas.get(1).unwrap();
