@@ -510,6 +510,12 @@ pub fn test_simple_add() {
     let ivc_proof_inputs_0 =
         ivc_witness_env_0.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
     assert!(ivc_proof_inputs_0.evaluations.len() == N_WIT_IVC);
+    for i in 0..10 {
+        assert!(
+            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
+            "Iteration column row #{i:?} must be zero"
+        );
+    }
 
     // FIXME this merely concatenates two witnesses. Most likely, we
     // want to intersperse them in a smarter way later. Our witness is
@@ -519,6 +525,13 @@ pub fn test_simple_add() {
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations.clone())
         .collect();
+
+    for i in 0..10 {
+        assert!(
+            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
+            "Iteration column row #{i:?} must be zero"
+        );
+    }
 
     assert!(joint_witness_one.len() == N_COL_TOTAL);
 
@@ -566,11 +579,14 @@ pub fn test_simple_add() {
         .chain(ivc_proof_inputs_0.evaluations)
         .collect();
 
-    let folding_witness_two = PlonkishWitness {
-        witness: joint_witness_two
+    let folding_witness_two_evals: GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>> =
+        joint_witness_two
+            .clone()
             .into_par_iter()
             .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-            .collect(),
+            .collect();
+    let folding_witness_two = PlonkishWitness {
+        witness: folding_witness_two_evals.clone(),
         fixed_selectors: ivc_fixed_selectors_evals.clone(),
     };
 
@@ -905,8 +921,22 @@ pub fn test_simple_add() {
         //        .collect()
         //};
 
+        for i in 0..100 {
+            let iteration = joint_witness_two[3][i];
+            assert!(
+                iteration == Fp::zero(),
+                "iteration for i={i:?} is not 0, it is {iteration:?}"
+            );
+
+            let q1_sign = joint_witness_two[94][i];
+            assert!(
+                q1_sign == Fp::zero(),
+                "q1_sign for i={i:?} is not 0, it is {q1_sign:?}"
+            );
+        }
+
         let witness_polys: Vec<DensePolynomial<Fp>> = {
-            folding_witness_three_evals
+            folding_witness_two_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
@@ -949,6 +979,7 @@ pub fn test_simple_add() {
             println!("Expression #{expr_i}: {}", expr.to_string());
 
             let expr: FoldingExp<Config> = expr.clone().simplify();
+            println!("Simplified");
 
             //println!("Expression (foldingExp): {}", expr.to_string());
 
@@ -958,8 +989,10 @@ pub fn test_simple_add() {
             //
             // APP + IVC
             let relaxable_pair = (instance_d4.clone(), witness_d4.clone());
+            println!("Relaxing");
             let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
             let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
+            println!("Relaxed done");
 
             let eval_env = ExtendedEnv::new(
                 &(),
@@ -969,19 +1002,21 @@ pub fn test_simple_add() {
                 None,
             );
 
-            println!("Eval_leaf");
             let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
-            println!("Eval_leaf done");
 
             match eval_leaf {
                 EvalLeaf::Result(evaluations_d4) => {
-                    let (_, remainder) =
-                        Evaluations::from_vec_and_domain(evaluations_d4, domain.d4)
-                            .interpolate()
+                    let interpolated =
+                        Evaluations::from_vec_and_domain(evaluations_d4, domain.d4).interpolate();
+                    if !interpolated.is_zero() {
+                        let (_, remainder) = interpolated
                             .divide_by_vanishing_poly(domain.d1)
                             .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
-                    if !remainder.is_zero() {
-                        panic!("Remainder is not zero")
+                        if !remainder.is_zero() {
+                            panic!("Remainder is not zero")
+                        }
+                    } else {
+                        println!("Interpolated polynomial is zero")
                     }
                 }
                 _ => panic!("eval_leaf is not Result"),

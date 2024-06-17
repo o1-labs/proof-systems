@@ -376,6 +376,7 @@ impl ColumnIndexer for IVCColumn {
                 }
                 IVCColumn::Block4Coeff => Column::Relation(8),
                 IVCColumn::Block4Input2AccessTime => Column::Relation(9),
+                // 10 .. 18
                 IVCColumn::Block4Input2(i) => {
                     assert!(i < 2 * N_LIMBS_LARGE);
                     Column::Relation(10 + i)

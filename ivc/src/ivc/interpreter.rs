@@ -1162,6 +1162,7 @@ pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: us
                 IVCColumn::FoldIteration,
                 &Env::constant(F::from(fold_iteration as u64)),
             );
+            env.next_row();
         }
     }
 }
