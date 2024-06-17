@@ -117,19 +117,22 @@ pub fn test_simple_add() {
         }
     }
 
-    let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
-    let ivc_fixed_selectors_evals: Vec<Evaluations<Fp, R2D<Fp>>> = ivc_fixed_selectors
-        .clone()
-        .into_par_iter()
-        .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
-        .collect();
-
     // Total number of witness columns in IVC (400 - 6) where 6 is block number.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
 
     // The total number of columns in our circuit.
     const N_COL_TOTAL: usize = 3 + N_WIT_IVC;
+
+    const N_COL_QUAD: usize = 109;
+    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
+
+    let ivc_fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<_, N_COL_TOTAL_QUAD, N_CHALS>(domain_size).to_vec();
+    let ivc_fixed_selectors_evals: Vec<Evaluations<Fp, R2D<Fp>>> = ivc_fixed_selectors
+        .clone()
+        .into_par_iter()
+        .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
+        .collect();
 
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -650,10 +653,7 @@ pub fn test_simple_add() {
     // @volhovm no longer true: the IVC circuit is degree 3
     //assert_eq!(additional_columns, 0);
 
-    const N_COL_QUAD: usize = 109;
     assert_eq!(additional_columns, N_COL_QUAD);
-
-    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
@@ -846,8 +846,12 @@ pub fn test_simple_add() {
             + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2);
         let ecadds_block_size = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3);
 
+        println!("Total height: {total_height:?}");
+        println!("starting row ecadds: {start_row_ecadds:?}");
+        println!("ecadds_block_size: {ecadds_block_size:?}");
+
         for i in 0..total_height {
-            let iteration = ivc_proof_inputs_1.evaluations[0][start_row_ecadds + i];
+            let iteration = ivc_proof_inputs_1.evaluations[0][i];
             assert!(
                 iteration == Fp::one(),
                 "iteration for i={i:?} is not 1, it is {iteration:?}"
@@ -861,7 +865,7 @@ pub fn test_simple_add() {
                     selector_ecadds == Fp::one(),
                     "selector_ecadds for i={i:?} is not 1, it is {selector_ecadds:?}"
                 );
-                let q1_sign = ivc_proof_inputs_1.evaluations[91][start_row_ecadds + i];
+                let q1_sign = ivc_proof_inputs_1.evaluations[91][i];
                 assert!(
                     q1_sign == Fp::one() || q1_sign == Fp::zero() - Fp::one(),
                     "q1_sign for i={i:?} is not -1 or 1, it is {q1_sign:?}"
@@ -1018,7 +1022,7 @@ pub fn test_simple_add() {
             println!("Relaxing");
             let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
             let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
-            println!("Relaxed done");
+            println!("Creating ExtendedEnv");
 
             let eval_env = ExtendedEnv::new(
                 &(),
