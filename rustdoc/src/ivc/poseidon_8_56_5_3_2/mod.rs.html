@@ -192,7 +192,6 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Specialised circuit for Poseidon where we have maximum degree 2 constraints.
 
 </span><span class="kw">pub mod </span>columns;
@@ -248,12 +247,11 @@
         DummyLookupTable,
     &gt;;
 
-    <span class="attr">#[test]
-    #[ignore = <span class="string">&quot;There is no support for partial rounds in the crate poseidon&quot;</span>]
-    </span><span class="doccomment">/// Tests that poseidon circuit is correctly formed (witness
+    <span class="doccomment">/// Tests that poseidon circuit is correctly formed (witness
     /// generation + constraints match) and matches the CPU
     /// specification of Poseidon. Fast to run, can be used for
     /// debugging.
+    </span><span class="attr">#[test]
     </span><span class="kw">pub fn </span>test_poseidon_circuit() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">4</span>;

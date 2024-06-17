@@ -318,6 +318,10 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper [&quot;Poseidon: A New Hash
 //! Function&quot;](https://eprint.iacr.org/2019/458.pdf).
@@ -391,7 +395,9 @@
 ///
 /// Each partial round consists of the following steps:
 /// - adding the round constants on the whole state
-/// - applying the sbox on the last element of the state
+/// - applying the sbox on the first element of the state (FIXME: the
+/// specification mentions the last element - map the implementation provided in
+/// [mina_poseidon])
 /// - applying the linear layer on the whole state
 </span><span class="kw">pub fn </span>apply_permutation&lt;
     F: PrimeField,
@@ -599,9 +605,11 @@
         .collect();
 
     <span class="comment">// Applying the sbox
-    // Last elem of the state
+    // Apply on the first element of the state
+    // FIXME: the specification mentions the last element. However, this version
+    // maps the iimplementation in [poseidon].
     </span>{
-        <span class="kw">let </span>var = state[STATE_SIZE - <span class="number">1</span>].clone();
+        <span class="kw">let </span>var = state[<span class="number">0</span>].clone();
         <span class="kw">let </span>var_square_col = PoseidonColumn::PartialRound(round, <span class="number">0</span>);
         <span class="kw">let </span>var_square = env.hcopy(<span class="kw-2">&amp;</span>(var.clone() * var.clone()), var_square_col);
         <span class="comment">// x^4
@@ -610,7 +618,7 @@
         <span class="comment">// x^5
         </span><span class="kw">let </span>var_five_col = PoseidonColumn::PartialRound(round, <span class="number">2</span>);
         <span class="kw">let </span>var_five = env.hcopy(<span class="kw-2">&amp;</span>(var_four.clone() * var.clone()), var_five_col);
-        state[STATE_SIZE - <span class="number">1</span>] = var_five;
+        state[<span class="number">0</span>] = var_five;
     }
 
     <span class="comment">// Applying the linear layer

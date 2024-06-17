@@ -1998,9 +1998,9 @@ where the curves have been changed in the script params.sage to use bn254
     <span class="kw">const </span>SPONGE_CAPACITY: usize = <span class="number">1</span>;
     <span class="kw">const </span>SPONGE_WIDTH: usize = <span class="number">3</span>;
     <span class="kw">const </span>SPONGE_RATE: usize = <span class="number">2</span>;
-    <span class="kw">const </span>PERM_ROUNDS_FULL: usize = <span class="number">8</span>;
+    <span class="kw">const </span>PERM_ROUNDS_FULL: usize = <span class="number">0</span>;
     <span class="kw">const </span>PERM_ROUNDS_PARTIAL: usize = <span class="number">56</span>;
-    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize = <span class="number">4</span>;
     <span class="kw">const </span>PERM_SBOX: u32 = <span class="number">5</span>;
     <span class="kw">const </span>PERM_FULL_MDS: bool = <span class="bool-val">true</span>;
     <span class="kw">const </span>PERM_INITIAL_ARK: bool = <span class="bool-val">false</span>;
@@ -2016,7 +2016,7 @@ where the curves have been changed in the script params.sage to use bn254
     <span class="kw">use </span>mina_poseidon::poseidon::{ArithmeticSponge <span class="kw">as </span>Poseidon, Sponge <span class="kw">as _</span>};
 
     <span class="comment">// Regression tests. Test vectors have been generated using the same
-    // code, commit b049ff41ffc0595bc2b026617b3f614a0495bb52
+    // code, commit cdca35851ff27bdaf9277388ea08d83c8a0a75fc
     // This does not mean that the implementation is correct.
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_poseidon() {
@@ -2027,9 +2027,9 @@ where the curves have been changed in the script params.sage to use bn254
             Fp::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
         ];
         <span class="kw">let </span>exp_output_str = [
-            <span class="string">&quot;1f1a9ee0bafa6811f1f9bd1e9a7a1ffe6bed28608a11a07833058622f2089b0e&quot;</span>,
-            <span class="string">&quot;ffce04629c1577f0f812637e69a66d234f51aa5b150769d697d15d02b703c724&quot;</span>,
-            <span class="string">&quot;5ee78bafbc0af8380e028a42559582f3e4a918d1e5f18b218f1c0e0ef1120d06&quot;</span>,
+            <span class="string">&quot;05c09e2e5cf67833f4987c3011ae8c754b70dd8c28cbb619b421e012fad87c16&quot;</span>,
+            <span class="string">&quot;14b598974e69d9cbee4c6b809256152552ec6c008e59f5fe54f60491d8286c23&quot;</span>,
+            <span class="string">&quot;54e82d762fe2994c85fb4d4e1b22cb060b005327bba4265e486e82ae0c2a7125&quot;</span>,
         ];
         <span class="kw">let </span>exp_output = exp_output_str.map(|x| Fp::from_hex(x).unwrap());
         hash.absorb(<span class="kw-2">&amp;</span>input);
