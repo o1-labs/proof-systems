@@ -834,6 +834,41 @@ pub fn test_simple_add() {
         ivc_witness_env_1.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
     assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
 
+    {
+        let start_row_ecadds = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(0)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(1)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2);
+        let ecadds_block_size = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3);
+
+        for i in 0..domain_size {
+            let iteration = ivc_proof_inputs_1.evaluations[0][start_row_ecadds + i];
+            assert!(
+                iteration == Fp::one(),
+                "iteration for i={i:?} is not 1, it is {iteration:?}"
+            );
+        }
+        for i in 0..10 {
+            let selector_ecadds = ivc_fixed_selectors[3][i];
+
+            if i >= start_row_ecadds && i < start_row_ecadds + ecadds_block_size {
+                assert!(
+                    selector_ecadds == Fp::one(),
+                    "selector_ecadds for i={i:?} is not 1, it is {selector_ecadds:?}"
+                );
+                let q1_sign = ivc_proof_inputs_1.evaluations[91][start_row_ecadds + i];
+                assert!(
+                    q1_sign == Fp::one() || q1_sign == Fp::zero() - Fp::one(),
+                    "q1_sign for i={i:?} is not -1 or 1, it is {q1_sign:?}"
+                );
+            } else {
+                assert!(
+                    selector_ecadds == Fp::zero(),
+                    "selector_ecadds for i={i:?} is not 0, it is {selector_ecadds:?}"
+                );
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 3
     ////////////////////////////////////////////////////////////////////////////
@@ -856,8 +891,7 @@ pub fn test_simple_add() {
     let proof_inputs_three =
         app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
 
-    // IVC for the second witness is the same as for the first one,
-    // since they're both height 0.
+    // Here we concatenate with ivc_proof_inputs 1, inductive case
     let joint_witness_three: Vec<_> = proof_inputs_three
         .evaluations
         .clone()
@@ -921,22 +955,8 @@ pub fn test_simple_add() {
         //        .collect()
         //};
 
-        for i in 0..100 {
-            let iteration = joint_witness_two[3][i];
-            assert!(
-                iteration == Fp::zero(),
-                "iteration for i={i:?} is not 0, it is {iteration:?}"
-            );
-
-            let q1_sign = joint_witness_two[94][i];
-            assert!(
-                q1_sign == Fp::zero(),
-                "q1_sign for i={i:?} is not 0, it is {q1_sign:?}"
-            );
-        }
-
         let witness_polys: Vec<DensePolynomial<Fp>> = {
-            folding_witness_two_evals
+            folding_witness_three_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
