@@ -112,6 +112,15 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The permutation module contains the function implementing the permutation
 //! used in Poseidon.
 
@@ -176,7 +185,10 @@
         <span class="kw">for </span>state_i <span class="kw">in </span>state.iter_mut() {
             <span class="kw-2">*</span>state_i = sbox::&lt;F, SC&gt;(<span class="kw-2">*</span>state_i);
         }
-        apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        <span class="kw">let </span>res = apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        <span class="kw">for </span>(i, state_i) <span class="kw">in </span>state.iter_mut().enumerate() {
+            <span class="kw-2">*</span>state_i = res[i]
+        }
     }
 
     <span class="kw">for </span>r <span class="kw">in </span><span class="number">0</span>..SC::PERM_ROUNDS_PARTIAL {
@@ -187,7 +199,10 @@
             state[i].add_assign(x);
         }
         state[<span class="number">0</span>] = sbox::&lt;F, SC&gt;(state[<span class="number">0</span>]);
-        apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        <span class="kw">let </span>res = apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        res.iter().enumerate().for_each(|(i, x)| {
+            state[i] = <span class="kw-2">*</span>x;
+        });
     }
 
     <span class="kw">for </span>r <span class="kw">in </span><span class="number">0</span>..SC::PERM_HALF_ROUNDS_FULL {
@@ -201,7 +216,10 @@
         <span class="kw">for </span>state_i <span class="kw">in </span>state.iter_mut() {
             <span class="kw-2">*</span>state_i = sbox::&lt;F, SC&gt;(<span class="kw-2">*</span>state_i);
         }
-        apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        <span class="kw">let </span>res = apply_mds_matrix::&lt;F, SC&gt;(params, state);
+        res.iter().enumerate().for_each(|(i, x)| {
+            state[i] = <span class="kw-2">*</span>x;
+        });
     }
 }
 
