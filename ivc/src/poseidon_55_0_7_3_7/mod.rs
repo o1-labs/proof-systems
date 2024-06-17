@@ -4,11 +4,11 @@ pub mod interpreter;
 #[cfg(test)]
 mod tests {
     use crate::{
-        poseidon::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
-        poseidon_params,
-        poseidon_params::PlonkSpongeConstantsIVC,
+        poseidon_55_0_7_3_7::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
+        poseidon_params_55_0_7_3,
+        poseidon_params_55_0_7_3::PlonkSpongeConstantsIVC,
     };
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
         circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::ColumnIndexer,
@@ -24,15 +24,16 @@ mod tests {
     type TestPoseidonColumn = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>;
     pub const N_COL: usize = TestPoseidonColumn::N_COL;
     pub const N_DSEL: usize = 0;
+    pub const N_FSEL: usize = 165;
 
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let rc = &poseidon_params::static_params().round_constants;
+            let rc = &poseidon_params_55_0_7_3::static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &poseidon_params::static_params().mds;
+            let mds = &poseidon_params_55_0_7_3::static_params().mds;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
@@ -42,8 +43,8 @@ mod tests {
         TestPoseidonColumn,
         { <TestPoseidonColumn as ColumnIndexer>::N_COL },
         { <TestPoseidonColumn as ColumnIndexer>::N_COL },
-        0,
-        0,
+        N_DSEL,
+        N_FSEL,
         DummyLookupTable,
     >;
 
@@ -57,6 +58,20 @@ mod tests {
         let domain_size = 1 << 4;
 
         let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
+
+        // Write constants
+        {
+            let rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; domain_size];
+                    witness_env.set_fixed_selector_cix(
+                        PoseidonColumn::RoundConstant(round, state_index),
+                        rc,
+                    )
+                });
+            });
+        }
 
         // Generate random inputs at each row
         for _row in 0..domain_size {
@@ -73,7 +88,7 @@ mod tests {
                 let exp_output: Vec<Fp> = {
                     let mut state: Vec<Fp> = vec![x, y, z];
                     poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
-                        poseidon_params::static_params(),
+                        poseidon_params_55_0_7_3::static_params(),
                         &mut state,
                     );
                     state
@@ -88,6 +103,8 @@ mod tests {
                 assert_eq!(witness_env.read_column(y_col), exp_output[1]);
                 assert_eq!(witness_env.read_column(z_col), exp_output[2]);
             }
+
+            witness_env.next_row();
         }
     }
 
@@ -95,10 +112,26 @@ mod tests {
     /// Checks that poseidon circuit can be proven and verified. Big domain.
     pub fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
-        let domain_size: usize = 1 << 15;
+        let domain_size: usize = 1 << 4;
 
-        let relation_witness = {
+        let (relation_witness, fixed_selectors) = {
             let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
+
+            let mut fixed_selectors: [Vec<Fp>; N_FSEL] =
+                std::array::from_fn(|_| vec![Fp::zero(); 1]);
+            // Write constants
+            {
+                let rc = PoseidonBN254Parameters.constants();
+                rc.iter().enumerate().for_each(|(round, rcs)| {
+                    rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                        witness_env.set_fixed_selector_cix(
+                            PoseidonColumn::RoundConstant(round, state_index),
+                            vec![*rc; domain_size],
+                        );
+                        fixed_selectors[round * STATE_SIZE + state_index] = vec![*rc; domain_size];
+                    });
+                });
+            }
 
             // Generate random inputs at each row
             for _row in 0..domain_size {
@@ -111,9 +144,14 @@ mod tests {
                     &PoseidonBN254Parameters,
                     [x, y, z],
                 );
+
+                witness_env.next_row();
             }
 
-            witness_env.get_relation_witness(domain_size)
+            (
+                witness_env.get_relation_witness(domain_size),
+                fixed_selectors,
+            )
         };
 
         let constraints = {
@@ -134,9 +172,9 @@ mod tests {
             constraints
         };
 
-        kimchi_msm::test::test_completeness_generic_no_lookups::<N_COL, N_COL, N_DSEL, 0, _>(
+        kimchi_msm::test::test_completeness_generic_no_lookups::<N_COL, N_COL, N_DSEL, N_FSEL, _>(
             constraints,
-            Box::new([]),
+            Box::new(fixed_selectors),
             relation_witness,
             domain_size,
             &mut rng,

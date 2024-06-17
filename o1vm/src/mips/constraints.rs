@@ -90,6 +90,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(MIPSColumn::InstructionCounter)
     }
 
+    fn increase_instruction_counter(&mut self) {
+        // No-op, witness only
+    }
+
     unsafe fn fetch_register(
         &mut self,
         _idx: &Self::Variable,
@@ -377,10 +381,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// In particular, at every step it writes the bytes of the preimage into
     /// the channel (excluding the length bytes) and it reads the hash digest
     /// from the channel when the preimage is fully read.
+    /// The output is the actual number of bytes that have been read.
     fn request_preimage_write(
         &mut self,
         _addr: &Self::Variable,
-        _len: &Self::Variable,
+        len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
         // How many hashes have been performed so far in the circuit
@@ -431,7 +436,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         {
             // Expressions that are nonzero when the exact corresponding number
             // of bytes are read (case 0 bytes used when bytelength is read)
-            // TODO: any ideas to make these lower degree?
+            // TODO: use equal?
             let read_1 = (num_read_bytes.clone())
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3))
@@ -481,6 +486,32 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                                 + bytes[2].clone() * Expr::from(2u64.pow(8))
                                 + bytes[3].clone())),
                 );
+            }
+
+            // Constrain that at most you read `len` bytes
+            // TODO: use equal?
+            // TODO: embed any more complex logic to know how many bytes are read
+            //       depending on the address and length as in the witness?
+            {
+                // These variables are nonzero when at most have read n bytes
+                // If len = 1 then read_2 = 0, read_3 = 0, read_4 = 0
+                // If len = 2 then read_3 = 0, read_4 = 0
+                // If len = 3 then read_4 = 0
+                let len_is_1 = (len.clone() - Expr::from(2))
+                    * (len.clone() - Expr::from(3))
+                    * (len.clone() - Expr::from(4));
+                let len_is_2 = (len.clone() - Expr::from(1))
+                    * (len.clone() - Expr::from(3))
+                    * (len.clone() - Expr::from(4));
+                let len_is_3 = (len.clone() - Expr::from(1))
+                    * (len.clone() - Expr::from(2))
+                    * (len.clone() - Expr::from(4));
+                self.constraints.push(len_is_1.clone() * read_2);
+                self.constraints.push(len_is_1.clone() * read_3.clone());
+                self.constraints.push(len_is_1 * read_4.clone());
+                self.constraints.push(len_is_2.clone() * read_3);
+                self.constraints.push(len_is_2 * read_4.clone());
+                self.constraints.push(len_is_3 * read_4);
             }
 
             // Constrain the bytes flags depending on the number of bytes read

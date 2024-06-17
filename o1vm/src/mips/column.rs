@@ -1,9 +1,6 @@
-use crate::{
-    mips::{
-        witness::SCRATCH_SIZE,
-        Instruction::{self, IType, JType, RType},
-    },
-    trace::Indexer,
+use crate::mips::{
+    witness::SCRATCH_SIZE,
+    Instruction::{self, IType, JType, RType},
 };
 use kimchi_msm::{
     columns::{Column, ColumnIndexer},
@@ -22,9 +19,11 @@ pub(crate) const MIPS_BYTE_COUNTER_OFF: usize = 81;
 pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = 82;
 /// The number of preimage bytes processed in this step
 pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = 83;
-/// The at most 4-byte chunk of the preimage that has been read in this step
+/// The at most 4-byte chunk of the preimage that has been read in this step.
+/// Contains a field element of at most 4 bytes.
 pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 84;
 /// The at most 4-bytes of the preimage that are currently being processed
+/// Consists of 4 field elements of at most 1 byte each.
 pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 85;
 /// The at most 4-bytes of the length that are currently being processed
 pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = 89;
@@ -56,10 +55,10 @@ pub enum ColumnAlias {
 /// main opcodes: RType, JType, IType. The columns are shared between different
 /// instruction types. (the total number of columns refers to the maximum of
 /// columns used by each mode)
-impl Indexer for ColumnAlias {
-    fn ix(&self) -> usize {
+impl From<ColumnAlias> for usize {
+    fn from(alias: ColumnAlias) -> usize {
         // Note that SCRATCH_SIZE + 1 is for the error
-        match *self {
+        match alias {
             ColumnAlias::ScratchState(i) => {
                 assert!(i < SCRATCH_SIZE);
                 i
@@ -70,9 +69,9 @@ impl Indexer for ColumnAlias {
 }
 
 /// Returns the corresponding index of the corresponding DynamicSelector column.
-impl Indexer for Instruction {
-    fn ix(&self) -> usize {
-        match *self {
+impl From<Instruction> for usize {
+    fn from(instr: Instruction) -> usize {
+        match instr {
             RType(rtype) => rtype as usize,
             JType(jtype) => RTypeInstruction::COUNT + jtype as usize,
             IType(itype) => RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize,
@@ -113,13 +112,13 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
 
     /// Map the column alias to the actual column index.
     fn index(&self, index: ColumnAlias) -> &Self::Output {
-        &self.cols[index.ix()]
+        &self.cols[usize::from(index)]
     }
 }
 
 impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
-        &mut self.cols[index.ix()]
+        &mut self.cols[usize::from(index)]
     }
 }
 
@@ -127,7 +126,7 @@ impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
-        Column::Relation(self.ix())
+        Column::Relation(usize::from(self))
     }
 }
 
@@ -138,13 +137,13 @@ impl<T: Clone> Index<Instruction> for MIPSWitness<T> {
 
     /// Map the column alias to the actual column index.
     fn index(&self, index: Instruction) -> &Self::Output {
-        &self.cols[index.ix()]
+        &self.cols[usize::from(index)]
     }
 }
 
 impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
     fn index_mut(&mut self, index: Instruction) -> &mut Self::Output {
-        &mut self.cols[index.ix()]
+        &mut self.cols[usize::from(index)]
     }
 }
 
@@ -152,6 +151,6 @@ impl ColumnIndexer for Instruction {
     const N_COL: usize = N_MIPS_COLS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
-        Column::DynamicSelector(self.ix())
+        Column::DynamicSelector(usize::from(self))
     }
 }

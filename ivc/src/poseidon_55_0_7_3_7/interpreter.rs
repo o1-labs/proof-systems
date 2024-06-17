@@ -11,7 +11,7 @@
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
-use crate::poseidon_quadri::columns::PoseidonColumn;
+use crate::poseidon_55_0_7_3_7::columns::PoseidonColumn;
 use ark_ff::{FpParameters, PrimeField};
 use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 use num_bigint::BigUint;
@@ -52,16 +52,6 @@ where
         env.write_column(PoseidonColumn::Input(i), value);
     });
 
-    // Write constants
-    {
-        let rc = param.constants();
-        rc.iter().enumerate().for_each(|(round, rcs)| {
-            rcs.iter().enumerate().for_each(|(j, rc)| {
-                env.write_column(PoseidonColumn::RoundConstant(round, j), &Env::constant(*rc));
-            });
-        });
-    }
-
     // Create, write, and constrain all other columns.
     apply_permutation(env, param)
 }
@@ -101,9 +91,7 @@ where
             if i == 0 {
                 std::array::from_fn(PoseidonColumn::Input)
             } else {
-                let prev_round = i - 1;
-                // Previous outputs are in index 4, 9, and 14 if we have 3 elements
-                std::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * 5 + 4))
+                std::array::from_fn(|j| PoseidonColumn::Round(i - 1, j))
             }
         };
         let round_res = compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(
@@ -146,24 +134,13 @@ where
         round
     );
     // Applying sbox
-    // For a state transition from (x, y, z) to (x', y', z'), we use the
-    // following columns shape:
-    // x^2, x^4, x^6, x^7, x', y^2, y^4, y^6, y^7, y', z^2, z^4, z^6, z^7, z')
-    //  0    1    2    3   4   5    6    7    8    9    10   11   12   13  14
     let state: Vec<Env::Variable> = elements
         .iter()
-        .enumerate()
-        .map(|(i, var_col)| {
-            let var = env.read_column(*var_col);
-            // x^2
-            let var_square_col = PoseidonColumn::Round(round, 5 * i);
-            let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
-            let var_four_col = PoseidonColumn::Round(round, 5 * i + 1);
-            let var_four = env.hcopy(&(var_square.clone() * var_square.clone()), var_four_col);
-            let var_six_col = PoseidonColumn::Round(round, 5 * i + 2);
-            let var_six = env.hcopy(&(var_four.clone() * var_square.clone()), var_six_col);
-            let var_seven_col = PoseidonColumn::Round(round, 5 * i + 3);
-            env.hcopy(&(var_six.clone() * var.clone()), var_seven_col)
+        .map(|x| {
+            let x_col = env.read_column(*x);
+            let x_square = x_col.clone() * x_col.clone();
+            let x_four = x_square.clone() * x_square.clone();
+            x_four.clone() * x_square.clone() * x_col.clone()
         })
         .collect();
 
@@ -186,16 +163,16 @@ where
     let state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
-        .map(|(i, var)| {
+        .map(|(i, x)| {
             let rc = env.read_column(PoseidonColumn::RoundConstant(round, i));
-            var.clone() + rc
+            x.clone() + rc
         })
         .collect();
 
     let res_state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
-        .map(|(i, res)| env.hcopy(res, PoseidonColumn::Round(round, 5 * i + 4)))
+        .map(|(i, res)| env.hcopy(res, PoseidonColumn::Round(round, i)))
         .collect();
 
     res_state

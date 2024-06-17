@@ -3,12 +3,11 @@
 use crate::{
     ivc::{
         columns::{
-            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND,
-            IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
+            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
         },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon::interpreter::{poseidon_circuit, PoseidonParams},
+    poseidon_8_56_5_3_2::interpreter::{poseidon_circuit, PoseidonParams},
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{
@@ -32,6 +31,8 @@ use kimchi_msm::{
 };
 use num_bigint::BigUint;
 use std::marker::PhantomData;
+
+use super::columns::{IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_TOTAL_ROUND};
 
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
@@ -304,7 +305,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: 
 ) -> (Env::Variable, Env::Variable, Env::Variable)
 where
     F: PrimeField,
-    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
+    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: MultiRowReadCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
     let n = N_COL_TOTAL;
@@ -887,16 +888,23 @@ where
 }
 
 /// Builds selectors for the IVC circuit.
+/// The round constants for Poseidon are not added in this function, and must be
+/// done separately.
+/// The size of the array is the total number of public values required for the
+/// IVC. Therefore, it includes the potential round constants required by
+/// the hash function.
+// FIXME: rc should be handled here or in the lens
 #[allow(clippy::needless_range_loop)]
 pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> [Vec<F>; N_BLOCKS]
+) -> [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS]
 where
     F: PrimeField,
 {
     // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    let mut selectors: [Vec<F>; N_BLOCKS] = core::array::from_fn(|_| vec![F::zero(); domain_size]);
+    let mut selectors: [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS] =
+        core::array::from_fn(|_| vec![F::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
@@ -983,7 +991,7 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 ) where
     F: PrimeField,
     Ff: PrimeField,
-    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
+    PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: DirectWitnessCap<F, IVCColumn>
         + HybridCopyCap<F, IVCColumn>
         + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
