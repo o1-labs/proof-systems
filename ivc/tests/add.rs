@@ -100,8 +100,8 @@ pub fn test_simple_add() {
         println!("Generating lagrange bases for the SRS...");
         // Adding lagrange bases is /slow/...
         //srs.add_lagrange_basis(domain.d2); // not added if already present.
-        srs.add_lagrange_basis(domain.d8); // not added if already present.
-                                           //srs.add_lagrange_basis(domain.d8); // not added if already present.
+        //srs.add_lagrange_basis(domain.d8); // not added if already present.
+        //srs.add_lagrange_basis(domain.d8); // not added if already present.
         srs
     };
 
