@@ -28,8 +28,6 @@ _build
 tools/srs
 
 .ignore
-o1vm/2023-*
-o1vm/2024-*
 o1vm/env-for-*
 o1vm/cpu.pprof
 o1vm/snapshot-state*
