@@ -7,15 +7,12 @@ mod tests {
 
     use crate::{
         ivc::{
-            columns::{
-                IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_FULL_ROUND,
-                IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
-            },
+            columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_55_0_7_3_7::interpreter::PoseidonParams,
-        poseidon_params_55_0_7_3::static_params,
+        poseidon_8_56_5_3_2::interpreter::PoseidonParams,
+        poseidon_params_8_56_5_3::static_params,
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
@@ -29,6 +26,8 @@ mod tests {
     };
     use o1_utils::box_array;
     use rand::{CryptoRng, RngCore};
+
+    use super::columns::IVC_POSEIDON_NB_TOTAL_ROUND;
 
     // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
@@ -49,10 +48,10 @@ mod tests {
         LT,
     >;
 
-    impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
+    impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>
         for PoseidonBN254Parameters
     {
-        fn constants(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
+        fn constants(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_TOTAL_ROUND] {
             let rc = &static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
