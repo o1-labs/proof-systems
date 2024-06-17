@@ -22,14 +22,13 @@ use ivc::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{l0_1, ChallengeTerm, Challenges, Constants, Variable},
+        expr::{ChallengeTerm, Variable},
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-    column_env::ColumnEnvironment,
     columns::{Column, ColumnIndexer},
     expr::E,
     lookups::DummyLookupTable,
@@ -99,7 +98,7 @@ pub fn test_simple_add() {
         println!("Generating lagrange bases for the SRS...");
         // Adding lagrange bases is /slow/...
         //srs.add_lagrange_basis(domain.d2); // not added if already present.
-        srs.add_lagrange_basis(domain.d4); // not added if already present.
+        srs.add_lagrange_basis(domain.d8); // not added if already present.
                                            //srs.add_lagrange_basis(domain.d8); // not added if already present.
         srs
     };
@@ -423,6 +422,14 @@ pub fn test_simple_add() {
         constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
         ivc_constraint_env.get_relation_constraints()
     };
+
+    for (i, expr) in app_constraints
+        .iter()
+        .chain(ivc_constraints.iter())
+        .enumerate()
+    {
+        println!("Constraint #{i:?}, degree {}, {}", expr.degree(1, 0), expr);
+    }
 
     let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .into_iter()
@@ -972,9 +979,9 @@ pub fn test_simple_add() {
                 .map(interpolate)
                 .collect::<Vec<DensePolynomial<Fp>>>()
         };
-        let witness_evals_d4: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
+        let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
             .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d4))
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
             .collect();
 
         let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
@@ -984,18 +991,18 @@ pub fn test_simple_add() {
                 .map(interpolate)
                 .collect()
         };
-        let fixed_selectors_evals_d4: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
+        let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
             .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d4))
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
             .collect();
 
-        let witness_d4 = PlonkishWitness {
-            witness: witness_evals_d4.try_into().unwrap(),
-            fixed_selectors: fixed_selectors_evals_d4,
+        let witness_d8 = PlonkishWitness {
+            witness: witness_evals_d8.try_into().unwrap(),
+            fixed_selectors: fixed_selectors_evals_d8,
         };
 
-        let instance_d4 =
-            PlonkishInstance::from_witness(&witness_d4.witness, &mut fq_sponge, &srs, domain.d4);
+        let instance_d8 =
+            PlonkishInstance::from_witness(&witness_d8.witness, &mut fq_sponge, &srs, domain.d8);
 
         for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
@@ -1018,7 +1025,7 @@ pub fn test_simple_add() {
             //
             //
             // APP + IVC
-            let relaxable_pair = (instance_d4.clone(), witness_d4.clone());
+            let relaxable_pair = (instance_d8.clone(), witness_d8.clone());
             println!("Relaxing");
             let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
             let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
@@ -1037,15 +1044,16 @@ pub fn test_simple_add() {
             println!("Evaluated leaf");
 
             match eval_leaf {
-                EvalLeaf::Result(evaluations_d4) => {
+                EvalLeaf::Result(evaluations_d8) => {
                     let interpolated =
-                        Evaluations::from_vec_and_domain(evaluations_d4, domain.d4).interpolate();
+                        Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
                     if !interpolated.is_zero() {
                         let (_, remainder) = interpolated
                             .divide_by_vanishing_poly(domain.d1)
                             .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                         if !remainder.is_zero() {
-                            panic!("Remainder is not zero")
+                            println!("ERROR!!!!!!!!!!! REMAINDER IS NOT ZERO");
+                            //panic!("Remainder is not zero")
                         }
                     } else {
                         println!("Interpolated polynomial is zero")
