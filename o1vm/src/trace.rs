@@ -33,6 +33,9 @@ pub struct Trace<const N: usize, C: FoldingConfig> {
     pub witness: Witness<N, Vec<ScalarField<C>>>,
     pub constraints: Vec<E<ScalarField<C>>>,
     pub lookups: Vec<Lookup<E<ScalarField<C>>>>,
+    /// Generic columns involved in the lookups for this step used in delayed argument
+    // NOTE: could be precomputed as they are known per step ahead of time
+    pub delayed_columns: BTreeMap<Column, bool>,
 }
 
 /// Struct representing a circuit execution trace which is decomposable in

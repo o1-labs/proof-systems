@@ -62,6 +62,7 @@ impl
             },
             constraints: env.constraints.clone(),
             lookups: env.lookups.clone(),
+            delayed_columns: BTreeMap::new(),
         };
         env.scratch_state_idx = 0; // Reset the scratch state index for the next instruction
         env.constraints = vec![]; // Clear the constraints for the next instruction

@@ -63,6 +63,7 @@ impl Tracer<N_ZKVM_KECCAK_REL_COLS, KeccakConfig, KeccakEnv<ScalarField<KeccakCo
             },
             constraints: KeccakEnv::constraints_of(step),
             lookups: KeccakEnv::lookups_of(step),
+            delayed_columns: BTreeMap::new(),
         }
     }
 
