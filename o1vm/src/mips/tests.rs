@@ -15,7 +15,8 @@ use strum::{EnumCount, IntoEnumIterator};
 
 type Fp = ark_bn254::Fr;
 
-// Manually change the number of constraints if they are modififed in the interpreter
+// Manually change the number of constraints if they are modififed in the
+// interpreter
 #[test]
 fn test_mips_number_constraints() {
     let domain_size = 1 << 8;
@@ -72,8 +73,8 @@ fn test_mips_number_constraints() {
                 | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 6),
                 SyscallOther => assert_num_constraints(&instr, 10),
                 SyscallMmap => assert_num_constraints(&instr, 11),
-                SyscallReadPreimage => assert_num_constraints(&instr, 21),
                 SyscallFcntl => assert_num_constraints(&instr, 22),
+                SyscallReadPreimage => assert_num_constraints(&instr, 28),
                 SyscallWritePreimage => assert_num_constraints(&instr, 30),
             },
             JType(jtype) => match jtype {
@@ -485,7 +486,7 @@ mod folding {
     use rand::{CryptoRng, Rng, RngCore};
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
-    fn make_random_witness_for_addiu<RNG>(
+    pub fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
         rng: &mut RNG,
     ) -> Witness<N_MIPS_REL_COLS, Vec<Fp>>
@@ -595,12 +596,17 @@ mod folding {
         };
         // We have 3 constraints here. We can select only one.
         // println!("Nb of constraints: {:?}", constraints.len());
+        //
         // You can select one of the constraints if you want to fold only one
+        //
         // constraints
-        //     .iter()
-        //     .for_each(|constraint| println!("Degree: {:?}", constraint.degree(1, 0)));
+        //      .iter()
+        //      .for_each(|constraint|
+        //           println!("Degree: {:?}", constraint.degree(1, 0)));
+        //
         // Selecting the first constraint for testing
-        // let constraints = vec![constraints.first().unwrap().clone()];
+        // let constraints
+        //     = vec![constraints.first().unwrap().clone()];
 
         let witness_one = make_random_witness_for_addiu(domain_size, &mut rng);
         let witness_two = make_random_witness_for_addiu(domain_size, &mut rng);

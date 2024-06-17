@@ -11,14 +11,23 @@ use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
-pub(crate) const MIPS_HASH_COUNTER_OFFSET: usize = 80;
-pub(crate) const MIPS_IS_SYSCALL_OFFSET: usize = 81;
-pub(crate) const MIPS_READING_PREIMAGE_OFFSET: usize = 82;
-pub(crate) const MIPS_BYTES_READ_OFFSET: usize = 83;
-pub(crate) const MIPS_PREIMAGE_LEFT_OFFSET: usize = 84;
-pub(crate) const MIPS_PREIMAGE_BYTES_OFFSET: usize = 85;
-pub(crate) const MIPS_HAS_N_BYTES_OFFSET: usize = 89;
-pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
+/// The number of hashes performed so far in the block
+pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
+/// The number of bytes of the preimage that have been read so far in this hash
+pub(crate) const MIPS_BYTE_COUNTER_OFF: usize = 81;
+/// A flag indicating whether the preimage has been read fully or not
+pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = 82;
+/// The number of preimage bytes processed in this step
+pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = 83;
+/// The at most 4-byte chunk of the preimage that has been read in this step.
+/// Contains a field element of at most 4 bytes.
+pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 84;
+/// The at most 4-bytes of the preimage that are currently being processed
+/// Consists of 4 field elements of at most 1 byte each.
+pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 85;
+/// Flags indicating whether at least N bytes have been processed in this step.
+/// Contains 4 field elements of boolean type each.
+pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 89;
 
 /// The number of columns used for relation witness in the MIPS circuit
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
@@ -30,8 +39,8 @@ pub const N_MIPS_SEL_COLS: usize =
 /// All the witness columns used in MIPS
 pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
-/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
-/// describe our constraints.
+/// Abstract columns (or variables of our multi-variate polynomials) that will
+/// be used to describe our constraints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
@@ -39,10 +48,10 @@ pub enum ColumnAlias {
     InstructionCounter,
 }
 
-/// The columns used by the MIPS circuit.
-/// The MIPS circuit is split into three main opcodes: RType, JType, IType.
-/// The columns are shared between different instruction types.
-/// (the total number of columns refers to the maximum of columns used by each mode)
+/// The columns used by the MIPS circuit. The MIPS circuit is split into three
+/// main opcodes: RType, JType, IType. The columns are shared between different
+/// instruction types. (the total number of columns refers to the maximum of
+/// columns used by each mode)
 impl From<ColumnAlias> for usize {
     fn from(alias: ColumnAlias) -> usize {
         // Note that SCRATCH_SIZE + 1 is for the error
@@ -67,12 +76,11 @@ impl From<Instruction> for usize {
     }
 }
 
-/// Represents one line of the execution trace of the virtual machine
-/// It does contain
-/// [N_MIPS_SEL_COLS] columns for the instruction selectors
+/// Represents one line of the execution trace of the virtual machine It does
+/// contain [N_MIPS_SEL_COLS] columns for the instruction selectors
 /// + [SCRATCH_SIZE] columns
-/// + 2 additional columns to keep track of the instruction index and one for the system error code.
-/// The columns are, in order,
+/// + 2 additional columns to keep track of the instruction index and one for
+/// the system error code. The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -89,7 +97,8 @@ impl From<Instruction> for usize {
 /// - the flag to indicate if the current instruction is reading a preimage
 /// - the number of bytes read so far for the current preimage
 /// - how many bytes are left to be read for the current preimage
-/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - the (at most) 4 bytes of the preimage key that are currently being
+///   processed
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<N_MIPS_COLS, T>;
 

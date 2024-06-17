@@ -7,12 +7,13 @@ use crate::{
     lookups::Lookup,
     mips::{
         column::{
-            ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_END_OF_PREIMAGE_OFF,
+            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
+            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
-            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction,
+            RTypeInstruction, MIPS_CHUNK_BYTES_LEN,
         },
         registers::Registers,
     },
@@ -43,7 +44,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
+pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -109,13 +110,14 @@ fn memory_size(total: usize) -> String {
         let value = total as f64 / d as f64;
 
         let prefix =
-        ////////////////////////////////////////////////////////////////////////////
-        // Famous last words: 1023 exabytes ought to be enough for anybody        //
-        //                                                                        //
-        // Corollary: unwrap() below shouldn't fail                               //
-        //                                                                        //
-        // The maximum representation for usize corresponds to 16 exabytes anyway //
-        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        // Famous last words: 1023 exabytes ought to be enough for anybody    //
+        //                                                                    //
+        // Corollary:                                                         //
+        // unwrap() below shouldn't fail                                      //
+        // The maximum representation for usize corresponds to 16 exabytes    //
+        // anyway                                                             //
+        ////////////////////////////////////////////////////////////////////////
             PREFIXES.chars().nth(idx).unwrap();
 
         format!("{:.1} {}iB", value, prefix)
@@ -133,7 +135,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     type Variable = u64;
 
-    // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    // TODO: update variable() function once scratch_state is [u64;
+    // SCRATCH_SIZE]
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!();
         /*
@@ -628,9 +631,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
-        // This is a syscall row, otherwise is zero
-        self.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), 1);
-
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
             for i in 0..8 {
@@ -642,12 +642,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
-
-            // Initialize bytes left to read from preimage length
-            self.write_column(
-                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-                preimage.len() as u64,
-            );
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -667,57 +661,85 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // This variable will contain the amount of bytes read which belong to
         // the actual preimage
         let mut preimage_read_len = 0;
+        let mut chunk = 0;
         for i in 0..actual_read_len {
             let idx = (preimage_offset + i) as usize;
             // The first 8 bytes of the read preimage are the preimage length,
             // followed by the body of the preimage
             if idx < LENGTH_SIZE {
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
+                // Do nothing for the count of bytes of the preimage. TODO: do
+                // we want to check anything for these bytes as well? Like
+                // length?
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
                     self.push_memory_access(&(*addr + i), self.next_instruction_counter());
                 }
             } else {
-                preimage_read_len += 1; // At most, it will be actual_read_len
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
+                // Compute the byte index in the chunk of at most 4 bytes read
+                // from the preimage
+                let byte_i = (idx - LENGTH_SIZE) % MIPS_CHUNK_BYTES_LEN;
+
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
-                // Write the individual byte to the witness
+
+                // Write the individual byte of the preimage to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i),
                     preimage_byte as u64,
                 );
+
+                // Update the chunk of at most 4 bytes read from the preimage
+                chunk = chunk << 8 | preimage_byte as u64;
+
+                // At most, it will be actual_read_len when the length is not
+                // read in this call
+                preimage_read_len += 1;
+
+                // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
+                // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), preimage_byte as u64);
                     self.push_memory_access(&(*addr + i), self.next_instruction_counter());
                 }
             }
         }
+        // Update the chunk of at most 4 bytes read from the preimage
+        // FIXME: this is not linked to the registers content in any way.
+        //        Is there anywhere else where the bytes are stored in the
+        //        scratch state?
+        self.write_column(Column::ScratchState(MIPS_PREIMAGE_CHUNK_OFF), chunk);
+
+        // Update the number of bytes read from the oracle in this step (can
+        // include bytelength and preimage bytes)
         self.write_column(pos, actual_read_len);
 
+        // Number of preimage bytes processed in this instruction
+        self.write_column(
+            Column::ScratchState(MIPS_NUM_BYTES_READ_OFF),
+            preimage_read_len,
+        );
+
         // Update the flags to count how many bytes are contained at least
-        for i in 0..MIPS_CHUNK_BYTES_LENGTH {
+        for i in 0..MIPS_CHUNK_BYTES_LEN {
             if preimage_read_len > i as u64 {
-                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
+                // This amount is only nonzero when it has read some preimage
+                // bytes.
+                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFF + i), 1);
             }
         }
 
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += preimage_read_len;
         self.write_column(
-            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            Column::ScratchState(MIPS_BYTE_COUNTER_OFF),
             self.preimage_bytes_read,
-        );
-
-        // Update how many bytes are left to be read
-        self.write_column(
-            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-            (preimage_len as u64) - self.preimage_bytes_read,
         );
 
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
+            self.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFF), 1);
+
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
                 self.hash_counter,
@@ -728,7 +750,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
             // Update hash counter column
             self.write_column(
-                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                Column::ScratchState(MIPS_HASH_COUNTER_OFF),
                 self.hash_counter,
             );
             // Number of preimage bytes left to be read should be zero at this
