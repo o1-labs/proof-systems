@@ -322,11 +322,6 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -349,11 +344,6 @@
 <span class="kw">use </span>poly_commitment::{commitment::absorb_commitment, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 <span class="kw">use </span>std::{collections::BTreeMap, ops::Index};
-
-<span class="doccomment">/// Returns the index of the witness column in the trace.
-</span><span class="kw">pub trait </span>Indexer {
-    <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
-}
 
 <span class="doccomment">/// Implement a trace for a single instruction.
 </span><span class="comment">// TODO: we should use the generic traits defined in [kimchi_msm].
@@ -399,7 +389,7 @@
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&gt; DecomposedTrace&lt;N, C&gt;
 <span class="kw">where
-    </span>C::Selector: Indexer,
+    </span>usize: From&lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Selector&gt;,
 {
     <span class="doccomment">/// Returns the number of rows that have been instantiated for the given
     /// selector.
@@ -437,7 +427,7 @@
         number_of_rows: usize,
     ) {
         (N_REL..N).for_each(|i| {
-            <span class="kw">if </span>i == selector.ix() {
+            <span class="kw">if </span>i == usize::from(selector) {
                 <span class="self">self</span>.trace.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().witness.cols[i]
                     .extend((<span class="number">0</span>..number_of_rows).map(|<span class="kw">_</span>| ScalarField::&lt;C&gt;::one()))
             } <span class="kw">else </span>{
@@ -477,7 +467,7 @@
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, C: FoldingConfig&lt;Column = Column&gt;, Sponge&gt; Foldable&lt;N, C, Sponge&gt;
     <span class="kw">for </span>DecomposedTrace&lt;N, C&gt;
 <span class="kw">where
-    </span>C::Selector: Indexer,
+    </span>C::Selector: Into&lt;usize&gt;,
     Sponge: FqSponge&lt;BaseField&lt;C&gt;, C::Curve, ScalarField&lt;C&gt;&gt;,
     &lt;C <span class="kw">as </span>FoldingConfig&gt;::Challenge: From&lt;ChallengeTerm&gt;,
 {
@@ -611,13 +601,13 @@
 <span class="doccomment">/// Generic implementation of the [Tracer] trait for the [DecomposedTrace] struct.
 /// It requires the [DecomposedTrace] to implement the [DecomposableTracer] trait,
 /// and the [Trace] struct to implement the [Tracer] trait with Selector set to (),
-/// and the `C::Selector` to implement the [Indexer] trait.
+/// and `usize` to implement the [From] trait with `C::Selector`.
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, C: FoldingConfig, Env&gt; Tracer&lt;N_REL, C, Env&gt;
     <span class="kw">for </span>DecomposedTrace&lt;N, C&gt;
 <span class="kw">where
     </span>DecomposedTrace&lt;N, C&gt;: DecomposableTracer&lt;Env&gt;,
     Trace&lt;N, C&gt;: Tracer&lt;N_REL, C, Env, Selector = ()&gt;,
-    &lt;C <span class="kw">as </span>FoldingConfig&gt;::Selector: Indexer,
+    usize: From&lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Selector&gt;,
 {
     <span class="kw">type </span>Selector = C::Selector;
 

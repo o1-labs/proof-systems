@@ -142,15 +142,9 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    mips::{
-        witness::SCRATCH_SIZE,
-        Instruction::{<span class="self">self</span>, IType, JType, RType},
-    },
-    trace::Indexer,
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
+    witness::SCRATCH_SIZE,
+    Instruction::{<span class="self">self</span>, IType, JType, RType},
 };
 <span class="kw">use </span>kimchi_msm::{
     columns::{Column, ColumnIndexer},
@@ -193,10 +187,10 @@
 /// The MIPS circuit is split into three main opcodes: RType, JType, IType.
 /// The columns are shared between different instruction types.
 /// (the total number of columns refers to the maximum of columns used by each mode)
-</span><span class="kw">impl </span>Indexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+</span><span class="kw">impl </span>From&lt;ColumnAlias&gt; <span class="kw">for </span>usize {
+    <span class="kw">fn </span>from(alias: ColumnAlias) -&gt; usize {
         <span class="comment">// Note that SCRATCH_SIZE + 1 is for the error
-        </span><span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
+        </span><span class="kw">match </span>alias {
             ColumnAlias::ScratchState(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
                 i
@@ -207,9 +201,9 @@
 }
 
 <span class="doccomment">/// Returns the corresponding index of the corresponding DynamicSelector column.
-</span><span class="kw">impl </span>Indexer <span class="kw">for </span>Instruction {
-    <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
+</span><span class="kw">impl </span>From&lt;Instruction&gt; <span class="kw">for </span>usize {
+    <span class="kw">fn </span>from(instr: Instruction) -&gt; usize {
+        <span class="kw">match </span>instr {
             RType(rtype) =&gt; rtype <span class="kw">as </span>usize,
             JType(jtype) =&gt; RTypeInstruction::COUNT + jtype <span class="kw">as </span>usize,
             IType(itype) =&gt; RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype <span class="kw">as </span>usize,
@@ -250,13 +244,13 @@
 
     <span class="doccomment">/// Map the column alias to the actual column index.
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[index.ix()]
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[usize::from(index)]
     }
 }
 
 <span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;ColumnAlias&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[index.ix()]
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[usize::from(index)]
     }
 }
 
@@ -264,7 +258,7 @@
     <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
-        </span>Column::Relation(<span class="self">self</span>.ix())
+        </span>Column::Relation(usize::from(<span class="self">self</span>))
     }
 }
 
@@ -275,13 +269,13 @@
 
     <span class="doccomment">/// Map the column alias to the actual column index.
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Instruction) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[index.ix()]
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[usize::from(index)]
     }
 }
 
 <span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;Instruction&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: Instruction) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[index.ix()]
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[usize::from(index)]
     }
 }
 
@@ -289,7 +283,7 @@
     <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
-        </span>Column::DynamicSelector(<span class="self">self</span>.ix())
+        </span>Column::DynamicSelector(usize::from(<span class="self">self</span>))
     }
 }
 </code></pre></div></section></main></body></html>
