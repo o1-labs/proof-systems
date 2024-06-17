@@ -96,9 +96,11 @@ pub fn test_simple_add() {
     let srs = {
         let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
         let mut srs = pairing_srs.full_srs;
-        srs.add_lagrange_basis(domain.d2); // not added if already present.
+        println!("Generating lagrange bases for the SRS...");
+        // Adding lagrange bases is /slow/...
+        //srs.add_lagrange_basis(domain.d2); // not added if already present.
         srs.add_lagrange_basis(domain.d4); // not added if already present.
-        srs.add_lagrange_basis(domain.d8); // not added if already present.
+                                           //srs.add_lagrange_basis(domain.d8); // not added if already present.
         srs
     };
 
@@ -254,12 +256,13 @@ pub fn test_simple_add() {
             srs: &SRS<BN254G1Affine>,
             domain: R2D<Fp>,
         ) -> Self {
-            // This fails when we try to have it on domain 8.
             let commitments: GenericWitness<N_COL_TOTAL, PolyComm<BN254G1Affine>> = w
                 .into_iter() // into_par_iter
                 .map(|w| {
                     let unblinded = srs.commit_evaluations_non_hiding(domain, w);
-                    srs.mask_custom(unblinded, &PolyComm::new(vec![Fp::one()]))
+                    // 1 if d1, 4 if d4, etc.
+                    let blinders_len: usize = (domain.size as usize) / srs.g.len();
+                    srs.mask_custom(unblinded, &PolyComm::new(vec![Fp::one(); blinders_len]))
                         .unwrap()
                         .commitment
                 })
@@ -403,6 +406,8 @@ pub fn test_simple_add() {
     // Constraints
     ////////////////////////////////////////////////////////////////////////////
 
+    println!("Building constraints");
+
     let app_constraints: Vec<E<Fp>> = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
@@ -477,6 +482,8 @@ pub fn test_simple_add() {
     // Witness step 1
     ////////////////////////////////////////////////////////////////////////////
 
+    println!("Building witness step 1");
+
     let mut ivc_witness_env_0 = IVCWitnessBuilderEnvRaw::<LT>::create();
 
     let mut app_witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
@@ -534,6 +541,8 @@ pub fn test_simple_add() {
     // Witness step 2
     ////////////////////////////////////////////////////////////////////////////
 
+    println!("Building witness step 2");
+
     let mut app_witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
@@ -575,6 +584,8 @@ pub fn test_simple_add() {
     ////////////////////////////////////////////////////////////////////////////
     // Folding 1
     ////////////////////////////////////////////////////////////////////////////
+
+    println!("Folding 1");
 
     // To start, we only fold two instances.
     // We must call fold_instance_witness_pair in a nested call `fold`.
@@ -811,6 +822,8 @@ pub fn test_simple_add() {
     // Witness step 3
     ////////////////////////////////////////////////////////////////////////////
 
+    println!("Witness step 3");
+
     let mut app_witness_three: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
         WitnessBuilderEnv::create();
 
@@ -859,6 +872,8 @@ pub fn test_simple_add() {
     // Folding 2
     ////////////////////////////////////////////////////////////////////////////
 
+    println!("Folding two");
+
     let _folding_output_two = folding_scheme.fold_instance_witness_pair(
         (folded_instance, folded_witness),
         (
@@ -879,6 +894,8 @@ pub fn test_simple_add() {
     ////////////////////////////////////////////////////////////////////////////
 
     {
+        println!("Testing expressions validity; creating evaluations");
+
         let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
 
         //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
@@ -888,45 +905,39 @@ pub fn test_simple_add() {
         //        .collect()
         //};
 
-        let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
+        let witness_polys: Vec<DensePolynomial<Fp>> = {
             folding_witness_three_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
                 .collect::<Vec<DensePolynomial<Fp>>>()
         };
-        let folding_witness_three_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> =
-            (folding_witness_three_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
+        let witness_evals_d4: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
+            .into_par_iter()
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d4))
+            .collect();
 
-        let ivc_fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
+        let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
             ivc_fixed_selectors_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
                 .collect()
         };
-        let ivc_fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> =
-            (ivc_fixed_selectors_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
+        let fixed_selectors_evals_d4: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
+            .into_par_iter()
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d4))
+            .collect();
 
-        let folding_witness_three_d8 = PlonkishWitness {
-            witness: folding_witness_three_evals_d8.try_into().unwrap(),
-            fixed_selectors: ivc_fixed_selectors_evals_d8,
+        let witness_d4 = PlonkishWitness {
+            witness: witness_evals_d4.try_into().unwrap(),
+            fixed_selectors: fixed_selectors_evals_d4,
         };
 
-        let folding_instance_three_d8 = PlonkishInstance::from_witness(
-            &folding_witness_three.witness,
-            &mut fq_sponge,
-            &srs,
-            domain.d8,
-        );
+        let instance_d4 =
+            PlonkishInstance::from_witness(&witness_d4.witness, &mut fq_sponge, &srs, domain.d4);
 
-        for (expr_i, expr) in app_compat_constraints.iter().enumerate() {
+        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             use folding::{
                 error_term::{eval_sided, ExtendedEnv, Side},
@@ -946,10 +957,7 @@ pub fn test_simple_add() {
             //
             //
             // APP + IVC
-            let relaxable_pair = (
-                folding_instance_three_d8.clone(),
-                folding_witness_three_d8.clone(),
-            );
+            let relaxable_pair = (instance_d4.clone(), witness_d4.clone());
             let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
             let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
 
@@ -966,9 +974,9 @@ pub fn test_simple_add() {
             println!("Eval_leaf done");
 
             match eval_leaf {
-                EvalLeaf::Result(evaluations_d8) => {
+                EvalLeaf::Result(evaluations_d4) => {
                     let (_, remainder) =
-                        Evaluations::from_vec_and_domain(evaluations_d8, domain.d8)
+                        Evaluations::from_vec_and_domain(evaluations_d4, domain.d4)
                             .interpolate()
                             .divide_by_vanishing_poly(domain.d1)
                             .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
