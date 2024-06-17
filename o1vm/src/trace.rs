@@ -49,27 +49,22 @@ impl<const N: usize, C: FoldingConfig> Trace<N, C> {
                 });
             });
         });
+        self.delayed_columns = delayed_columns;
     }
 
     fn columns_in_expr(op: &E<ScalarField<C>>) -> Vec<Column> {
-        // E<F> = Expr<ConstantExpr<F>, Column>;
-        // Expr<C, Column> = Operations<ExprInner<C, Column>>;
-
-        // Expr<ConstantExpr<ScalarField<C>>, Column>;
-        // Operations<ExprInner<ScalarField<C>, Column>>;
-
         match op {
             Atom(x) => match x {
                 Cell(x) => vec![x.col],
                 _ => vec![],
             },
-            Pow(x, _) => Self::columns_in_expr(&x),
+            Pow(x, _) => Self::columns_in_expr(x),
             Add(x, y) | Mul(x, y) | Sub(x, y) => {
-                let mut columns = Self::columns_in_expr(&x);
-                columns.extend(Self::columns_in_expr(&y));
+                let mut columns = Self::columns_in_expr(x);
+                columns.extend(Self::columns_in_expr(y));
                 columns
             }
-            Double(x) | Square(x) => Self::columns_in_expr(&x),
+            Double(x) | Square(x) => Self::columns_in_expr(x),
             Cache(_, _) | IfFeature(_, _, _) => vec![],
         }
     }

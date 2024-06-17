@@ -463,10 +463,12 @@ where
         self.lookup_syscall_hash(step);
     }
 
-    /// When in Absorb mode, reads Lookups containing the 136 bytes of the block of the preimage
+    /// When in Absorb mode:
+    /// Reads Lookups containing the 136 bytes of the block of the preimage
     /// - if is_absorb, adds 136 lookups
     /// - otherwise, adds 0 lookups
-    // TODO: optimize this by using a single lookup reusing PadSuffix
+    /// Uses the following columns:
+    /// - HashIndex, BlockIndex, SpongeBytes(0..136)
     fn lookup_syscall_preimage(&mut self, step: Steps) {
         for i in 0..RATE_IN_BYTES {
             self.read_syscall(
@@ -481,9 +483,12 @@ where
         }
     }
 
-    /// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    /// When in Squeeze mode:
+    /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
+    /// Uses the following columns:
+    /// - HashIndex, SpongeBytes(1..32)
     fn lookup_syscall_hash(&mut self, step: Steps) {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
@@ -496,6 +501,10 @@ where
     /// - if is_root, only adds 1 lookup
     /// - if is_squeeze, only adds 1 lookup
     /// - otherwise, adds 2 lookups
+    /// When not in Root step, uses the following columns:
+    /// - HashIndex, StepIndex, Input(0..100)
+    /// When not in Squeeze step, uses the following columns:
+    /// - HashIndex, StepIndex, Output(0..100)
     fn lookup_steps(&mut self, step: Steps) {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(
@@ -512,6 +521,10 @@ where
     /// Adds the 601 lookups required for the sponge
     /// - 600 lookups if is_sponge()
     /// - 1 extra lookup if is_pad()
+    /// When in Pad step, uses the following columns:
+    /// - PadLength, TwoToPad, PadSuffix(0..5)
+    /// When in Sponge step, uses the following columns:
+    /// - SpongeBytes(0..200), SpongeShifts(0..400)
     fn lookups_sponge(&mut self, step: Steps) {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
@@ -546,6 +559,8 @@ where
     }
 
     /// Adds the 120 lookups required for Theta in the round
+    /// When in Round step, uses the following columns:
+    /// - ThetaRemainderC(i), ThetaDenseRotC(i), ThetaExpandRotC(i), ThetaDenseC(i), ThetaShiftsC(i)
     fn lookups_round_theta(&mut self, step: Steps) {
         for q in 0..QUARTERS {
             for x in 0..DIM {
@@ -572,6 +587,8 @@ where
     }
 
     /// Adds the 700 lookups required for PiRho in the round
+    /// When in Round step, uses the following columns:
+    /// - PiRhoRemainderE(i), PiRhoQuotientE(i), PiRhoDenseRotE(i), PiRhoExpandRotE(i), PiRhoDenseE(i), PiRhoShiftsE(i)
     fn lookups_round_pirho(&mut self, step: Steps) {
         for q in 0..QUARTERS {
             for x in 0..DIM {
@@ -601,6 +618,8 @@ where
     }
 
     /// Adds the 800 lookups required for Chi in the round
+    /// When in Round step, uses the following columns:
+    /// - ChiShiftsB(i), ChiShiftsSum(i)
     fn lookups_round_chi(&mut self, step: Steps) {
         let shifts_b = self.vec_shifts_b();
         let shifts_sum = self.vec_shifts_sum();
@@ -612,6 +631,8 @@ where
     }
 
     /// Adds the 1 lookup required for Iota in the round
+    /// When in Round step, uses the following columns:
+    /// - RoundNumber, RoundConstants(0..4)
     fn lookups_round_iota(&mut self, step: Steps) {
         // Check round constants correspond with the current round
         let round_constants = self.round_constants();
