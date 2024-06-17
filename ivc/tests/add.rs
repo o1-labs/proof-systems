@@ -96,7 +96,7 @@ pub fn test_simple_add() {
 
     let srs = {
         let pairing_srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
-        let mut srs = pairing_srs.full_srs;
+        let srs = pairing_srs.full_srs;
         println!("Generating lagrange bases for the SRS...");
         // Adding lagrange bases is /slow/...
         //srs.add_lagrange_basis(domain.d2); // not added if already present.
@@ -138,15 +138,15 @@ pub fn test_simple_add() {
 
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness {
-        pub witness: GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>>,
+    pub struct PlonkishWitness<const N_COL: usize> {
+        pub witness: GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
         // This does not have to be part of the witness... can be a static precompiled object.
         pub fixed_selectors: Vec<Evaluations<Fp, R2D<Fp>>>,
     }
 
     // Trait required for folding
 
-    impl Foldable<Fp> for PlonkishWitness {
+    impl<const N_COL: usize> Foldable<Fp> for PlonkishWitness<N_COL> {
         fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
             for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
                 for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -157,9 +157,9 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Witness<BN254G1Affine> for PlonkishWitness {}
+    impl<const N_COL: usize> Witness<BN254G1Affine> for PlonkishWitness<N_COL> {}
 
-    impl Index<AdditionColumn> for PlonkishWitness {
+    impl<const N_COL: usize> Index<AdditionColumn> for PlonkishWitness<N_COL> {
         type Output = Evaluations<Fp, R2D<Fp>>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
@@ -171,7 +171,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Index<Column> for PlonkishWitness {
+    impl<const N_COL: usize> Index<Column> for PlonkishWitness<N_COL> {
         type Output = Evaluations<Fp, R2D<Fp>>;
 
         /// Map a column alias to the corresponding witness column.
@@ -316,23 +316,23 @@ pub fn test_simple_add() {
         /// Commitments to the witness columns, for both sides
         pub instances: [PlonkishInstance; 2],
         /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness; 2],
+        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
         /// Corresponds to the zeta*omega evaluations, for both sides
         /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness; 2],
+        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
     }
 
-    impl FoldingEnv<Fp, PlonkishInstance, PlonkishWitness, Column, Challenge, ()>
+    impl FoldingEnv<Fp, PlonkishInstance, PlonkishWitness<N_COL_TOTAL>, Column, Challenge, ()>
         for PlonkishEnvironment
     where
-        PlonkishWitness: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
+        PlonkishWitness<N_COL_TOTAL>: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
     {
         type Structure = ();
 
         fn new(
             structure: &(),
             instances: [&PlonkishInstance; 2],
-            witnesses: [&PlonkishWitness; 2],
+            witnesses: [&PlonkishWitness<N_COL_TOTAL>; 2],
         ) -> Self {
             let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
             let mut next_witnesses = curr_witnesses.clone();
@@ -379,7 +379,7 @@ pub fn test_simple_add() {
         type Curve = BN254G1Affine;
         type Srs = SRS<BN254G1Affine>;
         type Instance = PlonkishInstance;
-        type Witness = PlonkishWitness;
+        type Witness = PlonkishWitness<N_COL_TOTAL>;
         type Structure = ();
         type Env = PlonkishEnvironment;
     }
@@ -387,7 +387,7 @@ pub fn test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv {
         //    inner: CF::Env,
-        witness: PlonkishWitness,
+        witness: PlonkishWitness<N_WIT_IVC>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
     }
@@ -414,7 +414,7 @@ pub fn test_simple_add() {
                     // circuit witnesses
                     Col(&wit[*col].evals)
                 },
-            WitnessExtended(i) => panic!("not expected to happen"),
+            WitnessExtended(_i) => panic!("not expected to happen"),
             Error => panic!("shouldn't happen"),
             Constant(c) => EvalLeaf::Const(*c),
             Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
@@ -508,6 +508,7 @@ pub fn test_simple_add() {
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
     let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_constraints
+        .clone()
         .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
@@ -530,7 +531,8 @@ pub fn test_simple_add() {
         };
         Variable { col: new_col, row }
     });
-    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_compat_constraints
+    let ivc_compat_constraints_mapped: Vec<FoldingCompatibleExpr<Config>> = ivc_compat_constraints
+        .clone()
         .into_iter()
         .map(|e| e.map_variable(ivc_mapper))
         .collect();
@@ -540,7 +542,7 @@ pub fn test_simple_add() {
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
         .clone()
         .into_iter()
-        .chain(ivc_compat_constraints.clone())
+        .chain(ivc_compat_constraints_mapped.clone())
         .collect();
 
     // We have as many alphas as constraints
@@ -1046,13 +1048,18 @@ pub fn test_simple_add() {
             //        .collect()
             //};
 
-            let witness_polys: Vec<DensePolynomial<Fp>> = {
-                folding_witness_three_evals
-                    .clone()
-                    .into_par_iter()
-                    .map(interpolate)
-                    .collect::<Vec<DensePolynomial<Fp>>>()
-            };
+            let input: Vec<_> = ivc_proof_inputs_1
+                .evaluations
+                .into_par_iter()
+                .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+                .collect();
+            //let input = folding_witness_three_evals;
+
+            let witness_polys: Vec<DensePolynomial<Fp>> = input
+                .clone()
+                .into_par_iter()
+                .map(interpolate)
+                .collect::<Vec<DensePolynomial<Fp>>>();
             let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
                 .into_par_iter()
                 .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
@@ -1070,7 +1077,7 @@ pub fn test_simple_add() {
                 .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
                 .collect();
 
-            let witness_d8 = PlonkishWitness {
+            let witness_d8: PlonkishWitness<N_WIT_IVC> = PlonkishWitness {
                 witness: witness_evals_d8.try_into().unwrap(),
                 fixed_selectors: fixed_selectors_evals_d8,
             };
