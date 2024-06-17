@@ -1,10 +1,7 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 use self::{Absorbs::*, Sponges::*, Steps::*};
-use crate::{
-    keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
-    trace::Indexer,
-};
+use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
@@ -162,11 +159,11 @@ impl IntoIterator for Steps {
     }
 }
 
-/// Returns the index of the column corresponding to the given selector.
-/// They are located at the end of the witness columns.
-impl Indexer for Steps {
-    fn ix(&self) -> usize {
-        match *self {
+impl From<Steps> for usize {
+    /// Returns the index of the column corresponding to the given selector.
+    /// They are located at the end of the witness columns.
+    fn from(step: Steps) -> usize {
+        match step {
             Round(_) => FLAG_ROUND_OFF,
             Sponge(sponge) => match sponge {
                 Absorb(absorb) => match absorb {
@@ -181,16 +178,15 @@ impl Indexer for Steps {
     }
 }
 
-/// The columns used by the Keccak circuit.
-/// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
-/// The columns are shared between the Sponge and Round steps
-/// (the total number of columns refers to the maximum of columns used by each mode)
-/// The hash, block, and step indices are shared between both modes.
-impl Indexer for ColumnAlias {
+// The columns used by the Keccak circuit.
+// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
+// The columns are shared between the Sponge and Round steps
+// (the total number of columns refers to the maximum of columns used by each mode)
+// The hash, block, and step indices are shared between both modes.
+impl From<ColumnAlias> for usize {
     /// Returns the witness column index for the given alias
-    // TODO: move selector columns outside the main witness
-    fn ix(&self) -> usize {
-        match *self {
+    fn from(alias: ColumnAlias) -> usize {
+        match alias {
             ColumnAlias::HashIndex => STATUS_OFF,
             ColumnAlias::BlockIndex => STATUS_OFF + 1,
             ColumnAlias::StepIndex => STATUS_OFF + 2,
@@ -367,20 +363,20 @@ impl<T: Clone> Index<ColumnAlias> for KeccakWitness<T> {
     /// For instance, the column 800 represents PadLength in the Sponge step, while it
     /// is used by intermediary values when executing the Round step.
     fn index(&self, index: ColumnAlias) -> &Self::Output {
-        &self.cols[index.ix()]
+        &self.cols[usize::from(index)]
     }
 }
 
 impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
     fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
-        &mut self.cols[index.ix()]
+        &mut self.cols[usize::from(index)]
     }
 }
 
 impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
-        Column::Relation(self.ix())
+        Column::Relation(usize::from(self))
     }
 }
 
@@ -395,19 +391,19 @@ impl<T: Clone> Index<Steps> for KeccakWitness<T> {
     /// is used by intermediary values when executing the Round step.
     /// The selector columns are located at the end of the witness relation columns.
     fn index(&self, index: Steps) -> &Self::Output {
-        &self.cols[index.ix()]
+        &self.cols[usize::from(index)]
     }
 }
 
 impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Steps) -> &mut Self::Output {
-        &mut self.cols[index.ix()]
+        &mut self.cols[usize::from(index)]
     }
 }
 
 impl ColumnIndexer for Steps {
     const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column {
-        Column::DynamicSelector(self.ix() - N_ZKVM_KECCAK_REL_COLS)
+        Column::DynamicSelector(usize::from(self) - N_ZKVM_KECCAK_REL_COLS)
     }
 }
