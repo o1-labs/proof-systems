@@ -71,7 +71,9 @@ where
 ///
 /// Each partial round consists of the following steps:
 /// - adding the round constants on the whole state
-/// - applying the sbox on the last element of the state
+/// - applying the sbox on the first element of the state (FIXME: the
+/// specification mentions the last element - map the implementation provided in
+/// [mina_poseidon])
 /// - applying the linear layer on the whole state
 pub fn apply_permutation<
     F: PrimeField,
@@ -279,9 +281,11 @@ where
         .collect();
 
     // Applying the sbox
-    // Last elem of the state
+    // Apply on the first element of the state
+    // FIXME: the specification mentions the last element. However, this version
+    // maps the iimplementation in [poseidon].
     {
-        let var = state[STATE_SIZE - 1].clone();
+        let var = state[0].clone();
         let var_square_col = PoseidonColumn::PartialRound(round, 0);
         let var_square = env.hcopy(&(var.clone() * var.clone()), var_square_col);
         // x^4
@@ -290,7 +294,7 @@ where
         // x^5
         let var_five_col = PoseidonColumn::PartialRound(round, 2);
         let var_five = env.hcopy(&(var_four.clone() * var.clone()), var_five_col);
-        state[STATE_SIZE - 1] = var_five;
+        state[0] = var_five;
     }
 
     // Applying the linear layer

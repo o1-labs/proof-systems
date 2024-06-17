@@ -979,9 +979,9 @@ impl SpongeConstants for PlonkSpongeConstantsIVC {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize = 8;
+    const PERM_ROUNDS_FULL: usize = 0;
     const PERM_ROUNDS_PARTIAL: usize = 56;
-    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 4;
     const PERM_SBOX: u32 = 5;
     const PERM_FULL_MDS: bool = true;
     const PERM_INITIAL_ARK: bool = false;
@@ -997,7 +997,7 @@ mod tests {
     use mina_poseidon::poseidon::{ArithmeticSponge as Poseidon, Sponge as _};
 
     // Regression tests. Test vectors have been generated using the same
-    // code, commit b049ff41ffc0595bc2b026617b3f614a0495bb52
+    // code, commit cdca35851ff27bdaf9277388ea08d83c8a0a75fc
     // This does not mean that the implementation is correct.
     #[test]
     fn test_poseidon() {
@@ -1008,9 +1008,9 @@ mod tests {
             Fp::from_str("1").unwrap(),
         ];
         let exp_output_str = [
-            "1f1a9ee0bafa6811f1f9bd1e9a7a1ffe6bed28608a11a07833058622f2089b0e",
-            "ffce04629c1577f0f812637e69a66d234f51aa5b150769d697d15d02b703c724",
-            "5ee78bafbc0af8380e028a42559582f3e4a918d1e5f18b218f1c0e0ef1120d06",
+            "05c09e2e5cf67833f4987c3011ae8c754b70dd8c28cbb619b421e012fad87c16",
+            "14b598974e69d9cbee4c6b809256152552ec6c008e59f5fe54f60491d8286c23",
+            "54e82d762fe2994c85fb4d4e1b22cb060b005327bba4265e486e82ae0c2a7125",
         ];
         let exp_output = exp_output_str.map(|x| Fp::from_hex(x).unwrap());
         hash.absorb(&input);
