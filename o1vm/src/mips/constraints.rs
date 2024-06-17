@@ -430,7 +430,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         {
             // Expressions that are nonzero when the exact corresponding number
             // of bytes are read (case 0 bytes used when bytelength is read)
-            // TODO: any ideas to make these lower degree?
+            // TODO: use equal?
             let read_1 = (num_read_bytes.clone())
                 * (num_read_bytes.clone() - Expr::from(2))
                 * (num_read_bytes.clone() - Expr::from(3))
@@ -483,6 +483,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
 
             // Constrain that at most you read `len` bytes
+            // TODO: use equal?
             // TODO: embed any more complex logic to know how many bytes are read
             //       depending on the address and length as in the witness?
             {
