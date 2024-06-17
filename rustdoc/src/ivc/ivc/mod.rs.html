@@ -191,7 +191,6 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -201,15 +200,12 @@
 
     <span class="kw">use crate</span>::{
         ivc::{
-            columns::{
-                IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_FULL_ROUND,
-                IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
-            },
+            columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_55_0_7_3_7::interpreter::PoseidonParams,
-        poseidon_params_55_0_7_3::static_params,
+        poseidon_8_56_5_3_2::interpreter::PoseidonParams,
+        poseidon_params_8_56_5_3::static_params,
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>kimchi_msm::{
@@ -223,6 +219,8 @@
     };
     <span class="kw">use </span>o1_utils::box_array;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
+
+    <span class="kw">use </span><span class="kw">super</span>::columns::IVC_POSEIDON_NB_TOTAL_ROUND;
 
     <span class="comment">// Total number of columns in IVC and Application circuits.
     </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + <span class="number">50</span>;
@@ -243,10 +241,10 @@
         LT,
     &gt;;
 
-    <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
+    <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND&gt;
         <span class="kw">for </span>PoseidonBN254Parameters
     {
-        <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
+        <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_TOTAL_ROUND] {
             <span class="kw">let </span>rc = <span class="kw-2">&amp;</span>static_params().round_constants;
             std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
