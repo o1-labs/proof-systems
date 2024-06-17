@@ -59,8 +59,8 @@ pub mod checker;
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
-type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
+pub type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+pub type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
 
 // 'static seems to be used for expressions. Can we get rid of it?
 pub trait FoldingConfig: Debug + 'static {

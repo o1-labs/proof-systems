@@ -3,10 +3,12 @@
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
-    expressions::{FoldingColumnTrait, FromFoldingConversionError},
+    columns::ExtendedFoldingColumn,
+    eval_leaf::EvalLeaf,
+    expressions::{FoldingColumnTrait, FoldingExp, FromFoldingConversionError},
     instance_witness::Foldable,
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme,
     Instance, Side, Witness,
@@ -122,6 +124,7 @@ pub fn test_simple_add() {
     // The total number of columns in our circuit.
     const N_COL_TOTAL: usize = 3 + N_WIT_IVC;
 
+    // const N_COL_QUAD: usize = 31; // tmp
     const N_COL_QUAD: usize = 109;
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
@@ -380,6 +383,75 @@ pub fn test_simple_add() {
         type Structure = ();
         type Env = PlonkishEnvironment;
     }
+
+    /// Minimal environment needed for evaluating constraints.
+    struct SimpleEvalEnv {
+        //    inner: CF::Env,
+        witness: PlonkishWitness,
+        alphas: Alphas<Fp>,
+        challenges: [Fp; Challenge::COUNT],
+    }
+
+    impl SimpleEvalEnv {
+        pub fn challenge(&self, challenge: Challenge) -> Fp {
+            match challenge {
+                Challenge::Beta => self.challenges[0],
+                Challenge::Gamma => self.challenges[1],
+                Challenge::JointCombiner => self.challenges[2],
+            }
+        }
+
+        pub fn col(&self, col: &ExtendedFoldingColumn<Config>) -> EvalLeaf<Fp> {
+            use EvalLeaf::Col;
+            use ExtendedFoldingColumn::*;
+            match col {
+                Inner(Variable { col, row }) => {
+                    let wit = match row {
+                        CurrOrNext::Curr => &self.witness,
+                        CurrOrNext::Next => panic!("not implemented"),
+                    };
+                    // The following is possible because Index is implemented for our
+                    // circuit witnesses
+                    Col(&wit[*col].evals)
+                },
+            WitnessExtended(i) => panic!("not expected to happen"),
+            Error => panic!("shouldn't happen"),
+            Constant(c) => EvalLeaf::Const(*c),
+            Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
+            Alpha(i) => {
+                let alpha = self.alphas.get(*i).expect("alpha not present");
+                EvalLeaf::Const(alpha)
+            }
+            Selector(_s) => unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations."),
+        }
+        }
+    }
+
+    /// Evaluates the expression in the provided side
+    fn eval_naive<'a>(exp: &FoldingExp<Config>, env: &'a SimpleEvalEnv) -> EvalLeaf<'a, Fp> {
+        use FoldingExp::*;
+
+        match exp {
+            Atom(column) => env.col(column),
+            Double(e) => {
+                let col = eval_naive(e, env);
+                col.map(Field::double, |f| {
+                    Field::double_in_place(f);
+                })
+            }
+            Square(e) => {
+                let col = eval_naive(e, env);
+                col.map(Field::square, |f| {
+                    Field::square_in_place(f);
+                })
+            }
+            Add(e1, e2) => eval_naive(e1, env) + eval_naive(e2, env),
+            Sub(e1, e2) => eval_naive(e1, env) - eval_naive(e2, env),
+            Mul(e1, e2) => eval_naive(e1, env) * eval_naive(e2, env),
+            Pow(_e, _i) => panic!("We're not supposed to use this"),
+        }
+    }
+
     // ---- End of folding configuration ----
 
     // Poseidon parameters
@@ -809,6 +881,7 @@ pub fn test_simple_add() {
     // - there is no alpha, so ok
     // - ?
     // TODO
+    //const N_ALPHAS_INIT: usize = 17; // tmp
     const N_ALPHAS_INIT: usize = 58; // number of constraints we have before quad
     const N_ALPHAS: usize = N_ALPHAS_INIT + N_COL_QUAD; // number of constrainst w/ quad
     const N_CHALS: usize = N_ALPHAS; // alphas + 3 ({beta gamma joint_combiner})
@@ -963,55 +1036,68 @@ pub fn test_simple_add() {
     {
         println!("Testing expressions validity; creating evaluations");
 
-        let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+        let simple_eval_env = {
+            let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
 
-        //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
-        //    (proof_inputs_three.evaluations.cols.clone())
-        //        .into_iter()
-        //        .map(|w| interpolate(Evaluations::from_vec_and_domain(w, domain.d1)))
-        //        .collect()
-        //};
+            //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
+            //    (proof_inputs_three.evaluations.cols.clone())
+            //        .into_iter()
+            //        .map(|w| interpolate(Evaluations::from_vec_and_domain(w, domain.d1)))
+            //        .collect()
+            //};
 
-        let witness_polys: Vec<DensePolynomial<Fp>> = {
-            folding_witness_three_evals
-                .clone()
-                .into_par_iter()
-                .map(interpolate)
-                .collect::<Vec<DensePolynomial<Fp>>>()
-        };
-        let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
-            .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-            .collect();
-
-        let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
-            ivc_fixed_selectors_evals
-                .clone()
-                .into_par_iter()
-                .map(interpolate)
-                .collect()
-        };
-        let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
-            .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-            .collect();
-
-        let witness_d8 = PlonkishWitness {
-            witness: witness_evals_d8.try_into().unwrap(),
-            fixed_selectors: fixed_selectors_evals_d8,
-        };
-
-        let instance_d8 =
-            PlonkishInstance::from_witness(&witness_d8.witness, &mut fq_sponge, &srs, domain.d8);
-
-        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
-            //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
-            use folding::{
-                error_term::{eval_sided_naive, ExtendedEnv, Side},
-                eval_leaf::EvalLeaf,
-                expressions::FoldingExp,
-                instance_witness::RelaxablePair,
+            let witness_polys: Vec<DensePolynomial<Fp>> = {
+                folding_witness_three_evals
+                    .clone()
+                    .into_par_iter()
+                    .map(interpolate)
+                    .collect::<Vec<DensePolynomial<Fp>>>()
             };
+            let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect();
+
+            let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
+                ivc_fixed_selectors_evals
+                    .clone()
+                    .into_par_iter()
+                    .map(interpolate)
+                    .collect()
+            };
+            let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect();
+
+            let witness_d8 = PlonkishWitness {
+                witness: witness_evals_d8.try_into().unwrap(),
+                fixed_selectors: fixed_selectors_evals_d8,
+            };
+
+            let alpha = fq_sponge.challenge();
+            let alphas = Alphas::new(alpha, N_ALPHAS_INIT);
+            assert!(
+                alphas.clone().powers().len() == N_ALPHAS_INIT,
+                "Expected N_ALPHAS_INIT = {N_ALPHAS_INIT:?}, got {}",
+                alphas.clone().powers().len()
+            );
+
+            let beta = fq_sponge.challenge();
+            let gamma = fq_sponge.challenge();
+            let joint_combiner = fq_sponge.challenge();
+            let challenges = [beta, gamma, joint_combiner];
+
+            SimpleEvalEnv {
+                witness: witness_d8,
+                alphas,
+                challenges,
+            }
+        };
+
+        for (expr_i, expr) in ivc_compat_constraints.iter().enumerate() {
+            //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
+            use folding::{eval_leaf::EvalLeaf, expressions::FoldingExp};
 
             println!("Expression #{expr_i}: {}", expr.to_string());
 
@@ -1025,22 +1111,9 @@ pub fn test_simple_add() {
             //
             //
             // APP + IVC
-            let relaxable_pair = (instance_d8.clone(), witness_d8.clone());
-            println!("Relaxing");
-            let relaxed_pair = relaxable_pair.relax(&folding_scheme.zero_vec);
-            let relaxed_pair_copy = (relaxed_pair.0.clone(), relaxed_pair.1.clone());
-            println!("Creating ExtendedEnv");
-
-            let eval_env = ExtendedEnv::new(
-                &(),
-                [relaxed_pair.0, relaxed_pair_copy.0],
-                [relaxed_pair.1, relaxed_pair_copy.1],
-                domain.d1,
-                None,
-            );
 
             println!("Evaluating leaf");
-            let eval_leaf = eval_sided_naive(&expr, &eval_env, Side::Left);
+            let eval_leaf = eval_naive(&expr, &simple_eval_env);
             println!("Evaluated leaf");
 
             match eval_leaf {
