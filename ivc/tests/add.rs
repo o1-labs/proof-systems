@@ -835,19 +835,25 @@ pub fn test_simple_add() {
     assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
 
     {
+        let total_height = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(0)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(1)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(4)
+            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(5);
         let start_row_ecadds = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(0)
             + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(1)
             + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2);
         let ecadds_block_size = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3);
 
-        for i in 0..domain_size {
+        for i in 0..total_height {
             let iteration = ivc_proof_inputs_1.evaluations[0][start_row_ecadds + i];
             assert!(
                 iteration == Fp::one(),
                 "iteration for i={i:?} is not 1, it is {iteration:?}"
             );
         }
-        for i in 0..10 {
+        for i in 0..total_height {
             let selector_ecadds = ivc_fixed_selectors[3][i];
 
             if i >= start_row_ecadds && i < start_row_ecadds + ecadds_block_size {
