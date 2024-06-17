@@ -2,12 +2,15 @@
 
 use crate::{
     ivc::{
-        columns::{
-            block_height, IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_STATE_SIZE, N_BLOCKS,
-        },
+        columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon_8_56_5_3_2::interpreter::{poseidon_circuit, PoseidonParams},
+    poseidon_8_56_5_3_2::{
+        bn254::{
+            NB_TOTAL_ROUND as IVC_POSEIDON_NB_TOTAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+        },
+        interpreter::{poseidon_circuit, PoseidonParams},
+    },
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{
@@ -32,7 +35,7 @@ use kimchi_msm::{
 use num_bigint::BigUint;
 use std::marker::PhantomData;
 
-use super::columns::{IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_NB_TOTAL_ROUND};
+use super::columns::IVC_NB_TOTAL_FIXED_SELECTORS;
 
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
