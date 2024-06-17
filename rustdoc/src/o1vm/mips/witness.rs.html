@@ -1286,6 +1286,13 @@
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1919,7 +1926,8 @@
         len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">if </span><span class="self">self</span>.registers.preimage_offset == <span class="number">0 </span>{
+        <span class="comment">// The beginning of the syscall
+        </span><span class="kw">if </span><span class="self">self</span>.registers.preimage_offset == <span class="number">0 </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u8</span>; <span class="number">32</span>];
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
                 <span class="kw">let </span>bytes = u32::to_be_bytes(<span class="self">self</span>.registers.preimage_key[i]);
@@ -1944,8 +1952,14 @@
         <span class="kw">let </span>max_read_len =
             std::cmp::min(preimage_offset + len, (preimage_len + LENGTH_SIZE) <span class="kw">as </span>u64)
                 - preimage_offset;
+
         <span class="comment">// We read at most 4 bytes, ensuring that we respect word alignment.
+        // Here, if the address is not aligned, the first call will read &lt; 4
+        // but the next calls will be 4 bytes (because the actual address would
+        // be updated with the offset) until reaching the end of the preimage
+        // (where the last call could be less than 4 bytes).
         </span><span class="kw">let </span>actual_read_len = std::cmp::min(max_read_len, <span class="number">4 </span>- (addr &amp; <span class="number">3</span>));
+
         <span class="comment">// This variable will contain the amount of bytes read which belong to
         // the actual preimage
         </span><span class="kw">let </span><span class="kw-2">mut </span>preimage_read_len = <span class="number">0</span>;
@@ -1955,9 +1969,9 @@
             <span class="comment">// The first 8 bytes of the read preimage are the preimage length,
             // followed by the body of the preimage
             </span><span class="kw">if </span>idx &lt; LENGTH_SIZE {
-                <span class="comment">// Do nothing for the count of bytes of the preimage. TODO: do
-                // we want to check anything for these bytes as well? Like
-                // length?
+                <span class="comment">// Do nothing for the count of bytes of the preimage.
+                // TODO: do we want to check anything for these bytes as well?
+                // Like length?
                 </span><span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
                 <span class="kw">unsafe </span>{
                     <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u64);
