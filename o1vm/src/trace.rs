@@ -21,11 +21,6 @@ use poly_commitment::{commitment::absorb_commitment, PolyComm, SRS as _};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{collections::BTreeMap, ops::Index};
 
-/// Returns the index of the witness column in the trace.
-pub trait Indexer {
-    fn ix(&self) -> usize;
-}
-
 /// Implement a trace for a single instruction.
 // TODO: we should use the generic traits defined in [kimchi_msm].
 // For now, we want to have this to be able to test the folding library for a
@@ -70,7 +65,7 @@ impl<const N: usize, C: FoldingConfig> Index<C::Selector> for DecomposedTrace<N,
 
 impl<const N: usize, C: FoldingConfig> DecomposedTrace<N, C>
 where
-    C::Selector: Indexer,
+    usize: From<<C as FoldingConfig>::Selector>,
 {
     /// Returns the number of rows that have been instantiated for the given
     /// selector.
@@ -108,7 +103,7 @@ where
         number_of_rows: usize,
     ) {
         (N_REL..N).for_each(|i| {
-            if i == selector.ix() {
+            if i == usize::from(selector) {
                 self.trace.get_mut(&selector).unwrap().witness.cols[i]
                     .extend((0..number_of_rows).map(|_| ScalarField::<C>::one()))
             } else {
@@ -148,7 +143,7 @@ pub trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
 impl<const N: usize, C: FoldingConfig<Column = Column>, Sponge> Foldable<N, C, Sponge>
     for DecomposedTrace<N, C>
 where
-    C::Selector: Indexer,
+    C::Selector: Into<usize>,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
     <C as FoldingConfig>::Challenge: From<ChallengeTerm>,
 {
@@ -282,13 +277,13 @@ pub trait DecomposableTracer<Env> {
 /// Generic implementation of the [Tracer] trait for the [DecomposedTrace] struct.
 /// It requires the [DecomposedTrace] to implement the [DecomposableTracer] trait,
 /// and the [Trace] struct to implement the [Tracer] trait with Selector set to (),
-/// and the `C::Selector` to implement the [Indexer] trait.
+/// and `usize` to implement the [From] trait with `C::Selector`.
 impl<const N: usize, const N_REL: usize, C: FoldingConfig, Env> Tracer<N_REL, C, Env>
     for DecomposedTrace<N, C>
 where
     DecomposedTrace<N, C>: DecomposableTracer<Env>,
     Trace<N, C>: Tracer<N_REL, C, Env, Selector = ()>,
-    <C as FoldingConfig>::Selector: Indexer,
+    usize: From<<C as FoldingConfig>::Selector>,
 {
     type Selector = C::Selector;
 
