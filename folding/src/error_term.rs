@@ -36,6 +36,35 @@ impl Side {
 }
 
 /// Evaluates the expression in the provided side
+pub fn eval_sided_naive<'a, C: FoldingConfig>(
+    exp: &FoldingExp<C>,
+    env: &'a ExtendedEnv<C>,
+    side: Side,
+) -> EvalLeaf<'a, ScalarField<C>> {
+    use FoldingExp::*;
+
+    match exp {
+        Atom(col) => env.col(col, side),
+        Double(e) => {
+            let col = eval_sided(e, env, side);
+            col.map(Field::double, |f| {
+                Field::double_in_place(f);
+            })
+        }
+        Square(e) => {
+            let col = eval_sided(e, env, side);
+            col.map(Field::square, |f| {
+                Field::square_in_place(f);
+            })
+        }
+        Add(e1, e2) => eval_sided(e1, env, side) + eval_sided(e2, env, side),
+        Sub(e1, e2) => eval_sided(e1, env, side) - eval_sided(e2, env, side),
+        Mul(e1, e2) => eval_sided(e1, env, side) * eval_sided(e2, env, side),
+        Pow(_e, _i) => panic!("We're not supposed to use this"),
+    }
+}
+
+/// Evaluates the expression in the provided side
 pub fn eval_sided<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,

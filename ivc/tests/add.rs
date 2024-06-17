@@ -970,7 +970,7 @@ pub fn test_simple_add() {
         for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             use folding::{
-                error_term::{eval_sided, ExtendedEnv, Side},
+                error_term::{eval_sided_naive, ExtendedEnv, Side},
                 eval_leaf::EvalLeaf,
                 expressions::FoldingExp,
                 instance_witness::RelaxablePair,
@@ -1002,7 +1002,9 @@ pub fn test_simple_add() {
                 None,
             );
 
-            let eval_leaf = eval_sided(&expr, &eval_env, Side::Left);
+            println!("Evaluating leaf");
+            let eval_leaf = eval_sided_naive(&expr, &eval_env, Side::Left);
+            println!("Evaluated leaf");
 
             match eval_leaf {
                 EvalLeaf::Result(evaluations_d4) => {
