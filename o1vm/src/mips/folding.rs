@@ -4,7 +4,6 @@ use crate::{
         column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
     },
-    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -47,7 +46,7 @@ impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: MIPSColumn) -> &Self::Output {
-        &self.witness.cols[index.ix()]
+        &self.witness.cols[usize::from(index)]
     }
 }
 
@@ -57,7 +56,7 @@ impl Index<Instruction> for MIPSFoldingWitness {
 
     /// Map a selector column to the corresponding witness column.
     fn index(&self, index: Instruction) -> &Self::Output {
-        &self.witness.cols[index.ix()]
+        &self.witness.cols[usize::from(index)]
     }
 }
 

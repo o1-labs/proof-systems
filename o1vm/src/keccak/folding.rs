@@ -4,7 +4,6 @@ use crate::{
         column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         KeccakColumn, Steps,
     },
-    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -32,7 +31,7 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
-        &self.witness.cols[index.ix()]
+        &self.witness.cols[usize::from(index)]
     }
 }
 
@@ -42,7 +41,7 @@ impl Index<Steps> for KeccakFoldingWitness {
 
     /// Map a selector column to the corresponding witness column.
     fn index(&self, index: Steps) -> &Self::Output {
-        &self.witness.cols[index.ix()]
+        &self.witness.cols[usize::from(index)]
     }
 }
 
