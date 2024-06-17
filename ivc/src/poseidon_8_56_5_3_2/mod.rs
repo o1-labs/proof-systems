@@ -3,12 +3,18 @@
 pub mod columns;
 pub mod interpreter;
 
+pub mod bn254;
+
 #[cfg(test)]
 mod tests {
-    use crate::{
-        poseidon_8_56_5_3_2::{columns::PoseidonColumn, interpreter, interpreter::PoseidonParams},
-        poseidon_params_8_56_5_3,
-        poseidon_params_8_56_5_3::PlonkSpongeConstantsIVC,
+    use crate::poseidon_8_56_5_3_2::{
+        bn254::{
+            static_params, Column, PlonkSpongeConstantsIVC, PoseidonBN254Parameters, NB_FULL_ROUND,
+            NB_PARTIAL_ROUND, NB_TOTAL_ROUND, STATE_SIZE,
+        },
+        columns::PoseidonColumn,
+        interpreter,
+        interpreter::PoseidonParams,
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
@@ -19,35 +25,15 @@ mod tests {
     };
     use mina_poseidon::permutation::poseidon_block_cipher;
 
-    pub struct PoseidonBN254Parameters;
-
-    pub const STATE_SIZE: usize = 3;
-    pub const NB_FULL_ROUND: usize = 8;
-    pub const NB_PARTIAL_ROUND: usize = 56;
-    pub const NB_TOTAL_ROUND: usize = NB_FULL_ROUND + NB_PARTIAL_ROUND;
-
-    type TestPoseidonColumn = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>;
-    pub const N_COL: usize = TestPoseidonColumn::N_COL;
+    pub const N_COL: usize = Column::N_COL;
     pub const N_DSEL: usize = 0;
     pub const N_FSEL: usize = NB_TOTAL_ROUND * STATE_SIZE;
 
-    impl PoseidonParams<Fp, STATE_SIZE, NB_TOTAL_ROUND> for PoseidonBN254Parameters {
-        fn constants(&self) -> [[Fp; STATE_SIZE]; NB_TOTAL_ROUND] {
-            let rc = &poseidon_params_8_56_5_3::static_params().round_constants;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
-        }
-
-        fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let mds = &poseidon_params_8_56_5_3::static_params().mds;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
-        }
-    }
-
     type PoseidonWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
-        TestPoseidonColumn,
-        { <TestPoseidonColumn as ColumnIndexer>::N_COL },
-        { <TestPoseidonColumn as ColumnIndexer>::N_COL },
+        Column,
+        { <Column as ColumnIndexer>::N_COL },
+        { <Column as ColumnIndexer>::N_COL },
         N_DSEL,
         N_FSEL,
         DummyLookupTable,
@@ -92,7 +78,7 @@ mod tests {
                 let exp_output: Vec<Fp> = {
                     let mut state: Vec<Fp> = vec![x, y, z];
                     poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
-                        poseidon_params_8_56_5_3::static_params(),
+                        static_params(),
                         &mut state,
                     );
                     state

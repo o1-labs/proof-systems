@@ -11,9 +11,6 @@ pub mod poseidon_8_56_5_3_2;
 /// Poseidon parameters for 55 full rounds, 0 partial rounds, sbox 7, a state of
 /// 3 elements
 pub mod poseidon_params_55_0_7_3;
-/// Poseidon parameters for 8 full rounds, 56 partial rounds, sbox 5 and a state
-/// of 3 elements
-pub mod poseidon_params_8_56_5_3;
 
 /*
 IVC circuit
