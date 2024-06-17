@@ -96,15 +96,20 @@ pub fn test_simple_add() {
         }
     }
 
+    // Number of columns in the circuit.
+    // For now, we do suppose there is only the inner circuit computation
+    // We add IVC later.
+    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT;
+
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness {
-        pub witness: GenericWitness<3, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+    pub struct PlonkishWitness<const N_COL: usize> {
+        pub witness: GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     }
 
     // Trait required for folding
 
-    impl Foldable<Fp> for PlonkishWitness {
+    impl<const N_COL: usize> Foldable<Fp> for PlonkishWitness<N_COL> {
         fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
             for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
                 for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -115,9 +120,9 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Witness<Curve> for PlonkishWitness {}
+    impl<const N_COL: usize> Witness<Curve> for PlonkishWitness<N_COL> {}
 
-    impl Index<AdditionColumn> for PlonkishWitness {
+    impl<const N_COL: usize> Index<AdditionColumn> for PlonkishWitness<N_COL> {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
@@ -129,7 +134,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Index<Column> for PlonkishWitness {
+    impl<const N_COL: usize> Index<Column> for PlonkishWitness<N_COL> {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
         /// Map a column alias to the corresponding witness column.
@@ -162,14 +167,14 @@ pub fn test_simple_add() {
     }
 
     #[derive(Clone, Debug)]
-    pub struct PlonkishInstance {
-        commitments: [Curve; AdditionColumn::COUNT],
-        challenges: [Fp; Challenge::COUNT],
+    pub struct PlonkishInstance<const N_COL: usize> {
+        commitments: [Curve; N_COL],
+        challenges: [Fp; 3],
         alphas: Alphas<Fp>,
         blinder: Fp,
     }
 
-    impl Foldable<Fp> for PlonkishInstance {
+    impl<const N_COL: usize> Foldable<Fp> for PlonkishInstance<N_COL> {
         fn combine(a: Self, b: Self, challenge: Fp) -> Self {
             Self {
                 commitments: array::from_fn(|i| {
@@ -182,7 +187,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Instance<Curve> for PlonkishInstance {
+    impl<const N_COL: usize> Instance<Curve> for PlonkishInstance<N_COL> {
         fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
             // FIXME: check!!!!
             let mut scalars = Vec::new();
@@ -202,14 +207,14 @@ pub fn test_simple_add() {
         }
     }
 
-    impl PlonkishInstance {
+    impl<const N_COL: usize> PlonkishInstance<N_COL> {
         pub fn from_witness(
-            w: &GenericWitness<3, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+            w: &GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
             fq_sponge: &mut BaseSponge,
             srs: &SRS<Curve>,
             domain: Radix2EvaluationDomain<Fp>,
         ) -> Self {
-            let commitments: GenericWitness<3, PolyComm<Curve>> = w
+            let commitments: GenericWitness<N_COL, PolyComm<Curve>> = w
                 .into_par_iter()
                 .map(|w| srs.commit_evaluations_non_hiding(domain, w))
                 .collect();
@@ -219,7 +224,7 @@ pub fn test_simple_add() {
                 .into_iter()
                 .for_each(|c| absorb_commitment(fq_sponge, c));
 
-            let commitments: [Curve; 3] = commitments
+            let commitments: [Curve; N_COL] = commitments
                 .into_iter()
                 .map(|c| c.elems[0])
                 .collect_vec()
@@ -248,25 +253,33 @@ pub fn test_simple_add() {
         /// Structure of the folded circuit
         pub structure: (),
         /// Commitments to the witness columns, for both sides
-        pub instances: [PlonkishInstance; 2],
+        pub instances: [PlonkishInstance<N_COL_TOTAL>; 2],
         /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness; 2],
+        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
         /// Corresponds to the zeta*omega evaluations, for both sides
         /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness; 2],
+        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
     }
 
-    impl FoldingEnv<Fp, PlonkishInstance, PlonkishWitness, Column, Challenge, ()>
-        for PlonkishEnvironment
+    impl
+        FoldingEnv<
+            Fp,
+            PlonkishInstance<N_COL_TOTAL>,
+            PlonkishWitness<N_COL_TOTAL>,
+            Column,
+            Challenge,
+            (),
+        > for PlonkishEnvironment
     where
-        PlonkishWitness: Index<Column, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        PlonkishWitness<N_COL_TOTAL>:
+            Index<Column, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     {
         type Structure = ();
 
         fn new(
             structure: &(),
-            instances: [&PlonkishInstance; 2],
-            witnesses: [&PlonkishWitness; 2],
+            instances: [&PlonkishInstance<N_COL_TOTAL>; 2],
+            witnesses: [&PlonkishWitness<N_COL_TOTAL>; 2],
         ) -> Self {
             let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
             let mut next_witnesses = curr_witnesses.clone();
@@ -312,8 +325,8 @@ pub fn test_simple_add() {
         type Challenge = Challenge;
         type Curve = Curve;
         type Srs = SRS<Curve>;
-        type Instance = PlonkishInstance;
-        type Witness = PlonkishWitness;
+        type Instance = PlonkishInstance<N_COL_TOTAL>;
+        type Witness = PlonkishWitness<N_COL_TOTAL>;
         type Structure = ();
         type Env = PlonkishEnvironment;
     }
