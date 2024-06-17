@@ -142,6 +142,15 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{<span class="self">self</span>, IType, JType, RType},
@@ -155,14 +164,23 @@
 
 <span class="kw">use super</span>::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HASH_COUNTER_OFFSET: usize = <span class="number">80</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_IS_SYSCALL_OFFSET: usize = <span class="number">81</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_READING_PREIMAGE_OFFSET: usize = <span class="number">82</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_BYTES_READ_OFFSET: usize = <span class="number">83</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_LEFT_OFFSET: usize = <span class="number">84</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_BYTES_OFFSET: usize = <span class="number">85</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFFSET: usize = <span class="number">89</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LENGTH: usize = <span class="number">4</span>;
+<span class="doccomment">/// The number of hashes performed so far in the block
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HASH_COUNTER_OFF: usize = <span class="number">80</span>;
+<span class="doccomment">/// The number of bytes of the preimage that have been read so far in this hash
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_BYTE_COUNTER_OFF: usize = <span class="number">81</span>;
+<span class="doccomment">/// A flag indicating whether the preimage has been read fully or not
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_END_OF_PREIMAGE_OFF: usize = <span class="number">82</span>;
+<span class="doccomment">/// The number of preimage bytes processed in this step
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_NUM_BYTES_READ_OFF: usize = <span class="number">83</span>;
+<span class="doccomment">/// The at most 4-byte chunk of the preimage that has been read in this step.
+/// Contains a field element of at most 4 bytes.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_CHUNK_OFF: usize = <span class="number">84</span>;
+<span class="doccomment">/// The at most 4-bytes of the preimage that are currently being processed
+/// Consists of 4 field elements of at most 1 byte each.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_BYTES_OFF: usize = <span class="number">85</span>;
+<span class="doccomment">/// Flags indicating whether at least N bytes have been processed in this step.
+/// Contains 4 field elements of boolean type each.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = <span class="number">89</span>;
 
 <span class="doccomment">/// The number of columns used for relation witness in the MIPS circuit
 </span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + <span class="number">2</span>;
@@ -174,8 +192,8 @@
 <span class="doccomment">/// All the witness columns used in MIPS
 </span><span class="kw">pub const </span>N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
-<span class="doccomment">/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
-/// describe our constraints.
+<span class="doccomment">/// Abstract columns (or variables of our multi-variate polynomials) that will
+/// be used to describe our constraints.
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub enum </span>ColumnAlias {
     <span class="comment">// Can be seen as the abstract indexed variable X_{i}
@@ -183,10 +201,10 @@
     InstructionCounter,
 }
 
-<span class="doccomment">/// The columns used by the MIPS circuit.
-/// The MIPS circuit is split into three main opcodes: RType, JType, IType.
-/// The columns are shared between different instruction types.
-/// (the total number of columns refers to the maximum of columns used by each mode)
+<span class="doccomment">/// The columns used by the MIPS circuit. The MIPS circuit is split into three
+/// main opcodes: RType, JType, IType. The columns are shared between different
+/// instruction types. (the total number of columns refers to the maximum of
+/// columns used by each mode)
 </span><span class="kw">impl </span>From&lt;ColumnAlias&gt; <span class="kw">for </span>usize {
     <span class="kw">fn </span>from(alias: ColumnAlias) -&gt; usize {
         <span class="comment">// Note that SCRATCH_SIZE + 1 is for the error
@@ -211,12 +229,11 @@
     }
 }
 
-<span class="doccomment">/// Represents one line of the execution trace of the virtual machine
-/// It does contain
-/// [N_MIPS_SEL_COLS] columns for the instruction selectors
+<span class="doccomment">/// Represents one line of the execution trace of the virtual machine It does
+/// contain [N_MIPS_SEL_COLS] columns for the instruction selectors
 /// + [SCRATCH_SIZE] columns
-/// + 2 additional columns to keep track of the instruction index and one for the system error code.
-/// The columns are, in order,
+/// + 2 additional columns to keep track of the instruction index and one for
+/// the system error code. The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -233,7 +250,8 @@
 /// - the flag to indicate if the current instruction is reading a preimage
 /// - the number of bytes read so far for the current preimage
 /// - how many bytes are left to be read for the current preimage
-/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - the (at most) 4 bytes of the preimage key that are currently being
+///   processed
 /// - 4 helpers to check if at least n bytes were read in the current row
 </span><span class="kw">pub type </span>MIPSWitness&lt;T&gt; = Witness&lt;N_MIPS_COLS, T&gt;;
 

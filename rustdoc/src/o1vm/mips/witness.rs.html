@@ -1264,6 +1264,28 @@
 <a href="#1264" id="1264">1264</a>
 <a href="#1265" id="1265">1265</a>
 <a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1273,12 +1295,13 @@
     lookups::Lookup,
     mips::{
         column::{
-            ColumnAlias <span class="kw">as </span>Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET,
-            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            ColumnAlias <span class="kw">as </span>Column, MIPS_BYTE_COUNTER_OFF, MIPS_END_OF_PREIMAGE_OFF,
+            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
+            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
-            <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+            <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction,
+            RTypeInstruction, MIPS_CHUNK_BYTES_LEN,
         },
         registers::Registers,
     },
@@ -1309,7 +1332,7 @@
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 <span class="comment">// TODO: Delete and use a vector instead
-</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">93</span>; <span class="comment">// MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
+</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">93</span>; <span class="comment">// MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
 
 </span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
@@ -1375,13 +1398,14 @@
         <span class="kw">let </span>value = total <span class="kw">as </span>f64 / d <span class="kw">as </span>f64;
 
         <span class="kw">let </span>prefix =
-        <span class="comment">////////////////////////////////////////////////////////////////////////////
-        // Famous last words: 1023 exabytes ought to be enough for anybody        //
-        //                                                                        //
-        // Corollary: unwrap() below shouldn&#39;t fail                               //
-        //                                                                        //
-        // The maximum representation for usize corresponds to 16 exabytes anyway //
-        ////////////////////////////////////////////////////////////////////////////
+        <span class="comment">////////////////////////////////////////////////////////////////////////
+        // Famous last words: 1023 exabytes ought to be enough for anybody    //
+        //                                                                    //
+        // Corollary:                                                         //
+        // unwrap() below shouldn&#39;t fail                                      //
+        // The maximum representation for usize corresponds to 16 exabytes    //
+        // anyway                                                             //
+        ////////////////////////////////////////////////////////////////////////
             </span>PREFIXES.chars().nth(idx).unwrap();
 
         <span class="macro">format!</span>(<span class="string">&quot;{:.1} {}iB&quot;</span>, value, prefix)
@@ -1399,7 +1423,8 @@
 
     <span class="kw">type </span>Variable = u64;
 
-    <span class="comment">// TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    <span class="comment">// TODO: update variable() function once scratch_state is [u64;
+    // SCRATCH_SIZE]
     </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, _column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         <span class="macro">todo!</span>();
         <span class="comment">/*
@@ -1894,9 +1919,6 @@
         len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="comment">// This is a syscall row, otherwise is zero
-        </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), <span class="number">1</span>);
-
         <span class="kw">if </span><span class="self">self</span>.registers.preimage_offset == <span class="number">0 </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u8</span>; <span class="number">32</span>];
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
@@ -1908,12 +1930,6 @@
             <span class="kw">let </span>preimage = <span class="self">self</span>.preimage_oracle.get_preimage(preimage_key).get();
             <span class="self">self</span>.preimage = <span class="prelude-val">Some</span>(preimage.clone());
             <span class="self">self</span>.preimage_key = <span class="prelude-val">Some</span>(preimage_key);
-
-            <span class="comment">// Initialize bytes left to read from preimage length
-            </span><span class="self">self</span>.write_column(
-                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-                preimage.len() <span class="kw">as </span>u64,
-            );
         }
 
         <span class="kw">const </span>LENGTH_SIZE: usize = <span class="number">8</span>;
@@ -1933,57 +1949,85 @@
         <span class="comment">// This variable will contain the amount of bytes read which belong to
         // the actual preimage
         </span><span class="kw">let </span><span class="kw-2">mut </span>preimage_read_len = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>chunk = <span class="number">0</span>;
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..actual_read_len {
             <span class="kw">let </span>idx = (preimage_offset + i) <span class="kw">as </span>usize;
             <span class="comment">// The first 8 bytes of the read preimage are the preimage length,
             // followed by the body of the preimage
             </span><span class="kw">if </span>idx &lt; LENGTH_SIZE {
-                <span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">0</span>);
-                <span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
+                <span class="comment">// Do nothing for the count of bytes of the preimage. TODO: do
+                // we want to check anything for these bytes as well? Like
+                // length?
+                </span><span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
                 <span class="kw">unsafe </span>{
                     <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u64);
                     <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.next_instruction_counter());
                 }
             } <span class="kw">else </span>{
-                preimage_read_len += <span class="number">1</span>; <span class="comment">// At most, it will be actual_read_len
-                </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">1</span>);
+                <span class="comment">// Compute the byte index in the chunk of at most 4 bytes read
+                // from the preimage
+                </span><span class="kw">let </span>byte_i = (idx - LENGTH_SIZE) % MIPS_CHUNK_BYTES_LEN;
+
                 <span class="comment">// This should really be handled by the keccak oracle.
                 </span><span class="kw">let </span>preimage_byte = <span class="self">self</span>.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
-                <span class="comment">// Write the individual byte to the witness
+
+                <span class="comment">// Write the individual byte of the preimage to the witness
                 </span><span class="self">self</span>.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i <span class="kw">as </span>usize),
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFF + byte_i),
                     preimage_byte <span class="kw">as </span>u64,
                 );
-                <span class="kw">unsafe </span>{
+
+                <span class="comment">// Update the chunk of at most 4 bytes read from the preimage
+                </span>chunk = chunk &lt;&lt; <span class="number">8 </span>| preimage_byte <span class="kw">as </span>u64;
+
+                <span class="comment">// At most, it will be actual_read_len when the length is not
+                // read in this call
+                </span>preimage_read_len += <span class="number">1</span>;
+
+                <span class="comment">// TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
+                // is redundant with lines below
+                </span><span class="kw">unsafe </span>{
                     <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), preimage_byte <span class="kw">as </span>u64);
                     <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.next_instruction_counter());
                 }
             }
         }
-        <span class="self">self</span>.write_column(pos, actual_read_len);
+        <span class="comment">// Update the chunk of at most 4 bytes read from the preimage
+        // FIXME: this is not linked to the registers content in any way.
+        //        Is there anywhere else where the bytes are stored in the
+        //        scratch state?
+        </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_PREIMAGE_CHUNK_OFF), chunk);
+
+        <span class="comment">// Update the number of bytes read from the oracle in this step (can
+        // include bytelength and preimage bytes)
+        </span><span class="self">self</span>.write_column(pos, actual_read_len);
+
+        <span class="comment">// Number of preimage bytes processed in this instruction
+        </span><span class="self">self</span>.write_column(
+            Column::ScratchState(MIPS_NUM_BYTES_READ_OFF),
+            preimage_read_len,
+        );
 
         <span class="comment">// Update the flags to count how many bytes are contained at least
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LENGTH {
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LEN {
             <span class="kw">if </span>preimage_read_len &gt; i <span class="kw">as </span>u64 {
-                <span class="self">self</span>.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), <span class="number">1</span>);
+                <span class="comment">// This amount is only nonzero when it has read some preimage
+                // bytes.
+                </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFF + i), <span class="number">1</span>);
             }
         }
 
         <span class="comment">// Update the total number of preimage bytes read so far
         </span><span class="self">self</span>.preimage_bytes_read += preimage_read_len;
         <span class="self">self</span>.write_column(
-            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            Column::ScratchState(MIPS_BYTE_COUNTER_OFF),
             <span class="self">self</span>.preimage_bytes_read,
-        );
-
-        <span class="comment">// Update how many bytes are left to be read
-        </span><span class="self">self</span>.write_column(
-            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-            (preimage_len <span class="kw">as </span>u64) - <span class="self">self</span>.preimage_bytes_read,
         );
 
         <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
         </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read == preimage_len <span class="kw">as </span>u64 {
+            <span class="self">self</span>.write_column(Column::ScratchState(MIPS_END_OF_PREIMAGE_OFF), <span class="number">1</span>);
+
             <span class="macro">debug!</span>(<span class="string">&quot;Preimage has been read entirely, triggering Keccak process&quot;</span>);
             <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(KeccakEnv::&lt;Fp&gt;::new(
                 <span class="self">self</span>.hash_counter,
@@ -1994,7 +2038,7 @@
 
             // Update hash counter column
             </span><span class="self">self</span>.write_column(
-                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                Column::ScratchState(MIPS_HASH_COUNTER_OFF),
                 <span class="self">self</span>.hash_counter,
             );
             <span class="comment">// Number of preimage bytes left to be read should be zero at this
