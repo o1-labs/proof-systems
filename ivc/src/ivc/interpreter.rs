@@ -830,10 +830,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
         };
 
         env.write_column(IVCColumn::Block4Coeff, &Env::constant(coeff));
-        write_column_array_const(env, &xp_limbs, IVCColumn::Block4Input1);
-        write_column_array_const(env, &yp_limbs, |i| IVCColumn::Block4Input1(i + 4));
-        write_column_array_const(env, &xq_limbs, IVCColumn::Block4Input2);
-        write_column_array_const(env, &yq_limbs, |i| IVCColumn::Block4Input2(i + 4));
 
         // TODO These two should be used when RAMLookups are enabled.
         env.write_column(IVCColumn::Block4Input2AccessTime, &Env::constant(F::zero()));
