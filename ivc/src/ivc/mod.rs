@@ -13,7 +13,7 @@ mod tests {
         },
         poseidon::{interpreter::PoseidonParams, params::static_params},
     };
-    use ark_ff::{UniformRand, Zero};
+    use ark_ff::{Field, UniformRand, Zero};
     use kimchi_msm::{
         circuit_design::{
             composition::{IdMPrism, MPrism},
@@ -94,6 +94,9 @@ mod tests {
             build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
         witness_env.set_fixed_selectors(fixed_selectors);
 
+        let alpha = <Fp as UniformRand>::rand(rng);
+        let alphas: Vec<_> = (0..TEST_N_CHALS).map(|i| alpha.pow([i as u64])).collect();
+
         println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
@@ -101,14 +104,16 @@ mod tests {
             comms_left,
             comms_right,
             comms_output,
-            [(Ff1::zero(), Ff1::zero()); 3],
-            [(Ff1::zero(), Ff1::zero()); 2],
-            Fp::zero(),
-            Box::new(
-                (*vec![Fp::zero(); TEST_N_CHALS].into_boxed_slice())
-                    .try_into()
-                    .unwrap(),
-            ),
+            [(
+                <Ff1 as UniformRand>::rand(rng),
+                <Ff1 as UniformRand>::rand(rng),
+            ); 3],
+            [(
+                <Ff1 as UniformRand>::rand(rng),
+                <Ff1 as UniformRand>::rand(rng),
+            ); 2],
+            <Fp as UniformRand>::rand(rng),
+            Box::new((*alphas.into_boxed_slice()).try_into().unwrap()),
             1,
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
