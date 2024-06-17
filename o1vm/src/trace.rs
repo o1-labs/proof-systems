@@ -280,7 +280,7 @@ pub trait DecomposableTracer<Env> {
 /// Generic implementation of the [Tracer] trait for the [DecomposedTrace] struct.
 /// It requires the [DecomposedTrace] to implement the [DecomposableTracer] trait,
 /// and the [Trace] struct to implement the [Tracer] trait with Selector set to (),
-/// and the `C::Selector` to implement the [Indexer] trait.
+/// and `usize` to implement the [From] trait with `C::Selector`.
 impl<const N: usize, const N_REL: usize, C: FoldingConfig, Env> Tracer<N_REL, C, Env>
     for DecomposedTrace<N, C>
 where
