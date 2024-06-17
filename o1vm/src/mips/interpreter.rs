@@ -1107,6 +1107,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let length = env.read_register(&Env::constant(6));
             let preimage_offset =
                 env.read_register(&Env::constant(REGISTER_PREIMAGE_OFFSET as u32));
+
             let read_length = {
                 let pos = env.alloc_scratch();
                 env.request_preimage_write(&addr, &length, pos)

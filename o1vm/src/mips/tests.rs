@@ -119,12 +119,9 @@ mod unit {
     use crate::{
         cannon::{Hint, Preimage, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         mips::{
-            interpreter::{
-                debugging::InstructionParts, interpret_itype, interpret_rtype, InterpreterEnv,
-            },
+            interpreter::{debugging::InstructionParts, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
-            ITypeInstruction, RTypeInstruction,
         },
         preimage_oracle::PreImageOracleT,
     };
@@ -143,8 +140,10 @@ mod unit {
             let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             d.push(full_path);
             let contents = fs::read_to_string(d).expect("Should have been able to read the file");
-
-            Preimage::create(contents.into())
+            // Decode String (ASCII) as Vec<u8> (hexadecimal bytes)
+            let bytes = hex::decode(contents)
+                .expect("Should have been able to decode the file as hexadecimal bytes");
+            Preimage::create(bytes)
         }
 
         fn hint(&mut self, _hint: Hint) {}
@@ -273,11 +272,94 @@ mod unit {
             0x05, 0x67, 0xbd, 0xa4, 0x08, 0x77, 0xa7, 0xe8, 0x5d, 0xce, 0xb6, 0xff, 0x1f, 0x37,
             0x48, 0x0f, 0xef, 0x3d,
         ];
-        let _preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
+        let preimage = dummy_env.preimage_oracle.get_preimage(preimage_key_u8);
+        let bytes = preimage.get();
+        // Number of bytes inside the corresponding file (preimage)
+        assert_eq!(bytes.len(), 358);
     }
     mod rtype {
 
         use super::*;
+        use crate::mips::{interpreter::interpret_rtype, RTypeInstruction};
+
+        #[test]
+        fn test_unit_syscall_read_preimage() {
+            let mut rng = o1_utils::tests::make_test_rng(None);
+            let mut dummy_env = dummy_env(&mut rng);
+            // Instruction:  syscall (Read 5)
+            // Set preimage key
+            let preimage_key = [
+                0x02, 0x21, 0x07, 0x30, 0x78, 0x79, 0x25, 0x85, 0x77, 0x23, 0x0c, 0x5a, 0xa2, 0xf9,
+                0x05, 0x67, 0xbd, 0xa4, 0x08, 0x77, 0xa7, 0xe8, 0x5d, 0xce, 0xb6, 0xff, 0x1f, 0x37,
+                0x48, 0x0f, 0xef, 0x3d,
+            ];
+            let chunks = preimage_key
+                .chunks(4)
+                .map(|chunk| {
+                    ((chunk[0] as u32) << 24)
+                        + ((chunk[1] as u32) << 16)
+                        + ((chunk[2] as u32) << 8)
+                        + (chunk[3] as u32)
+                })
+                .collect::<Vec<_>>();
+            dummy_env.registers.preimage_key = std::array::from_fn(|i| chunks[i]);
+
+            // The whole preimage
+            let preimage = dummy_env.preimage_oracle.get_preimage(preimage_key).get();
+
+            // Total number of bytes that need to be processed (includes length)
+            let total_length = 8 + preimage.len() as u32;
+
+            // At first, offset is 0
+
+            // Set a random address for register 5 that might not be aligned
+            let addr = rng.gen_range(100..200);
+            dummy_env.registers[5] = addr;
+
+            // Read oracle until the totality of the preimage is reached
+            // NOTE: the termination condition is not
+            //       `while dummy_env.preimage_bytes_read < preimage.len()`
+            //       because the interpreter sets it back to 0 when the preimage
+            //       is read fully and the Keccak process is triggered (meaning
+            //       that condition would generate an infinite loop instead)
+            while dummy_env.registers.preimage_offset < total_length {
+                dummy_env.reset_scratch_state();
+
+                // Set maximum number of bytes to read in this call
+                dummy_env.registers[6] = rng.gen_range(1..=4);
+
+                interpret_rtype(&mut dummy_env, RTypeInstruction::SyscallReadPreimage);
+
+                // Update the address to store the next bytes with the offset
+                dummy_env.registers[5] = addr + dummy_env.registers.preimage_offset;
+            }
+
+            // Number of bytes inside the corresponding file (preimage)
+            // This should be the length read from the oracle in the first 8 bytes
+            assert_eq!(dummy_env.registers.preimage_offset, total_length);
+
+            // Check the content of memory addresses corresponds to the oracle
+
+            // The first 8 bytes are the length of the preimage
+            let length_byte = u64::to_be_bytes(preimage.len() as u64);
+            for (i, b) in length_byte.iter().enumerate() {
+                assert_eq!(
+                    dummy_env.memory[0].1[i + addr as usize],
+                    *b,
+                    "{}-th length byte does not match",
+                    i
+                );
+            }
+            // Check that the preimage bytes are stored afterwards in the memory
+            for (i, b) in preimage.iter().enumerate() {
+                assert_eq!(
+                    dummy_env.memory[0].1[i + addr as usize + 8],
+                    *b,
+                    "{}-th preimage byte does not match",
+                    i
+                );
+            }
+        }
 
         #[test]
         fn test_unit_sub_instruction() {
@@ -311,6 +393,7 @@ mod unit {
 
     mod itype {
         use super::*;
+        use crate::mips::{interpreter::interpret_itype, ITypeInstruction};
 
         #[test]
         fn test_unit_addi_instruction() {
@@ -486,7 +569,7 @@ mod folding {
     use rand::{CryptoRng, Rng, RngCore};
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
-    pub fn make_random_witness_for_addiu<RNG>(
+    fn make_random_witness_for_addiu<RNG>(
         domain_size: usize,
         rng: &mut RNG,
     ) -> Witness<N_MIPS_REL_COLS, Vec<Fp>>

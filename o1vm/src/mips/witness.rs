@@ -631,6 +631,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
+        // The beginning of the syscall
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
             for i in 0..8 {
@@ -656,8 +657,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let max_read_len =
             std::cmp::min(preimage_offset + len, (preimage_len + LENGTH_SIZE) as u64)
                 - preimage_offset;
+
         // We read at most 4 bytes, ensuring that we respect word alignment.
+        // Here, if the address is not aligned, the first call will read < 4
+        // but the next calls will be 4 bytes (because the actual address would
+        // be updated with the offset) until reaching the end of the preimage
+        // (where the last call could be less than 4 bytes).
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
+
         // This variable will contain the amount of bytes read which belong to
         // the actual preimage
         let mut preimage_read_len = 0;
@@ -667,9 +674,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             // The first 8 bytes of the read preimage are the preimage length,
             // followed by the body of the preimage
             if idx < LENGTH_SIZE {
-                // Do nothing for the count of bytes of the preimage. TODO: do
-                // we want to check anything for these bytes as well? Like
-                // length?
+                // Do nothing for the count of bytes of the preimage.
+                // TODO: do we want to check anything for these bytes as well?
+                // Like length?
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
