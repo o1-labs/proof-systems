@@ -14,7 +14,7 @@ use ark_ff::{One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig};
 use itertools::Itertools;
-use kimchi::circuits::expr::ChallengeTerm;
+use kimchi::circuits::expr::{ChallengeTerm, ExprInner::*, Operations::*};
 use kimchi_msm::{columns::Column, witness::Witness};
 use mina_poseidon::sponge::FqSponge;
 use poly_commitment::{commitment::absorb_commitment, PolyComm, SRS as _};
@@ -36,6 +36,43 @@ pub struct Trace<const N: usize, C: FoldingConfig> {
     /// Generic columns involved in the lookups for this step used in delayed argument
     // NOTE: could be precomputed as they are known per step ahead of time
     pub delayed_columns: BTreeMap<Column, bool>,
+}
+
+impl<const N: usize, C: FoldingConfig> Trace<N, C> {
+    pub(crate) fn set_delayed_columns(&mut self) {
+        let mut delayed_columns: BTreeMap<Column, bool> = BTreeMap::new();
+        self.lookups.iter().for_each(|lookup| {
+            lookup.value.iter().for_each(|op| {
+                let columns = Self::columns_in_expr(op);
+                columns.iter().for_each(|column| {
+                    delayed_columns.insert(*column, true);
+                });
+            });
+        });
+    }
+
+    fn columns_in_expr(op: &E<ScalarField<C>>) -> Vec<Column> {
+        // E<F> = Expr<ConstantExpr<F>, Column>;
+        // Expr<C, Column> = Operations<ExprInner<C, Column>>;
+
+        // Expr<ConstantExpr<ScalarField<C>>, Column>;
+        // Operations<ExprInner<ScalarField<C>, Column>>;
+
+        match op {
+            Atom(x) => match x {
+                Cell(x) => vec![x.col],
+                _ => vec![],
+            },
+            Pow(x, _) => Self::columns_in_expr(&x),
+            Add(x, y) | Mul(x, y) | Sub(x, y) => {
+                let mut columns = Self::columns_in_expr(&x);
+                columns.extend(Self::columns_in_expr(&y));
+                columns
+            }
+            Double(x) | Square(x) => Self::columns_in_expr(&x),
+            Cache(_, _) | IfFeature(_, _, _) => vec![],
+        }
+    }
 }
 
 /// Struct representing a circuit execution trace which is decomposable in

@@ -55,7 +55,7 @@ impl
     ) -> Self {
         interpret_instruction(env, instr);
 
-        let trace = Self {
+        let mut trace = Self {
             domain_size,
             witness: Witness {
                 cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
@@ -64,6 +64,8 @@ impl
             lookups: env.lookups.clone(),
             delayed_columns: BTreeMap::new(),
         };
+        trace.set_delayed_columns();
+
         env.scratch_state_idx = 0; // Reset the scratch state index for the next instruction
         env.constraints = vec![]; // Clear the constraints for the next instruction
         env.lookups = vec![]; // Clear the lookups for the next instruction

@@ -17,7 +17,7 @@ pub struct RAMLookup<T, ID: LookupTableID> {
     pub(crate) mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
     pub(crate) magnitude: T,
-    /// The columns containing the content of this lookup
+    /// The variables containing the content of this lookup
     pub(crate) value: Vec<T>,
 }
 

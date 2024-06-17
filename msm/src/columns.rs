@@ -4,7 +4,7 @@ use folding::expressions::FoldingColumnTrait;
 use kimchi::circuits::expr::{CacheId, FormattedOutput};
 
 /// Describe a generic indexed variable X_{i}.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, Ord, PartialOrd)]
 pub enum Column {
     /// Columns related to the relation encoded in the circuit
     Relation(usize),

@@ -56,7 +56,7 @@ impl Tracer<N_ZKVM_KECCAK_REL_COLS, KeccakConfig, KeccakEnv<ScalarField<KeccakCo
     ) -> Self {
         // Make sure we are using the same round number to refer to round steps
         let step = standardize(selector);
-        Self {
+        let mut trace = Self {
             domain_size,
             witness: Witness {
                 cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
@@ -64,7 +64,9 @@ impl Tracer<N_ZKVM_KECCAK_REL_COLS, KeccakConfig, KeccakEnv<ScalarField<KeccakCo
             constraints: KeccakEnv::constraints_of(step),
             lookups: KeccakEnv::lookups_of(step),
             delayed_columns: BTreeMap::new(),
-        }
+        };
+        trace.set_delayed_columns();
+        trace
     }
 
     fn push_row(
