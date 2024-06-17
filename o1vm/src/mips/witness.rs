@@ -7,12 +7,13 @@ use crate::{
     lookups::Lookup,
     mips::{
         column::{
-            ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
-            MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
-            MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            ColumnAlias as Column, MIPS_BYTE_COUNTER_OFF, MIPS_END_OF_PREIMAGE_OFF,
+            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
+            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
         },
         interpreter::{
-            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction,
+            RTypeInstruction, MIPS_CHUNK_BYTES_LEN,
         },
         registers::Registers,
     },
