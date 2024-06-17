@@ -24,13 +24,14 @@ use ivc::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{ChallengeTerm, Variable},
+        expr::{l0_1, ChallengeTerm, Challenges, Constants, Variable},
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
+    column_env::ColumnEnvironment,
     columns::{Column, ColumnIndexer},
     expr::E,
     lookups::DummyLookupTable,
@@ -1032,74 +1033,126 @@ pub fn test_simple_add() {
     //            folded_2
 
     ////////////////////////////////////////////////////////////////////////////
+    // Testing via mapping back
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
     // Testing via folding exprs
     ////////////////////////////////////////////////////////////////////////////
 
     {
         println!("Testing expressions validity; creating evaluations");
 
-        let simple_eval_env = {
-            let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+        let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
 
-            //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
-            //    (proof_inputs_three.evaluations.cols.clone())
-            //        .into_iter()
-            //        .map(|w| interpolate(Evaluations::from_vec_and_domain(w, domain.d1)))
-            //        .collect()
-            //};
+        //let folding_witness_three_polys: Vec<DensePolynomial<Fp>> = {
+        //    (proof_inputs_three.evaluations.cols.clone())
+        //        .into_iter()
+        //        .map(|w| interpolate(Evaluations::from_vec_and_domain(w, domain.d1)))
+        //        .collect()
+        //};
 
-            let input: Vec<_> = ivc_proof_inputs_1
-                .evaluations
-                .into_par_iter()
-                .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-                .collect();
-            //let input = folding_witness_three_evals;
+        let input: Vec<_> = ivc_proof_inputs_1
+            .evaluations
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect();
+        //let input = folding_witness_three_evals;
 
-            let witness_polys: Vec<DensePolynomial<Fp>> = input
+        let witness_polys: Vec<DensePolynomial<Fp>> = input
+            .clone()
+            .into_par_iter()
+            .map(interpolate)
+            .collect::<Vec<DensePolynomial<Fp>>>();
+        let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
+            .into_par_iter()
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+            .collect();
+
+        let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
+            ivc_fixed_selectors_evals
                 .clone()
                 .into_par_iter()
                 .map(interpolate)
-                .collect::<Vec<DensePolynomial<Fp>>>();
-            let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect()
+        };
+        let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
+            .into_par_iter()
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+            .collect();
+
+        let witness_d8: PlonkishWitness<N_WIT_IVC> = PlonkishWitness {
+            witness: witness_evals_d8.clone().try_into().unwrap(),
+            fixed_selectors: fixed_selectors_evals_d8.clone(),
+        };
+
+        let alpha = fq_sponge.challenge();
+        let alphas = Alphas::new(alpha, N_ALPHAS_INIT);
+        assert!(
+            alphas.clone().powers().len() == N_ALPHAS_INIT,
+            "Expected N_ALPHAS_INIT = {N_ALPHAS_INIT:?}, got {}",
+            alphas.clone().powers().len()
+        );
+
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
+        let joint_combiner = fq_sponge.challenge();
+        let challenges = [beta, gamma, joint_combiner];
+
+        {
+            let (_, endo_r) = BN254G1Affine::endos();
+            let column_env: ColumnEnvironment<'_, N_WIT_IVC, N_WIT_IVC, 0, N_BLOCKS, _, LT> = {
+                let challenges = Challenges {
+                    alpha,
+                    // NB: as there is no permutation argument, we do use the beta
+                    // field instead of a new one for the evaluation point.
+                    beta: Fp::zero(),
+                    gamma: Fp::zero(),
+                    joint_combiner: Some(Fp::zero()),
+                };
+                ColumnEnvironment {
+                    constants: Constants {
+                        endo_coefficient: *endo_r,
+                        mds: &BN254G1Affine::sponge_params().mds,
+                        zk_rows: 0,
+                    },
+                    challenges,
+                    witness: &witness_evals_d8.clone().try_into().unwrap(),
+                    fixed_selectors: &fixed_selectors_evals_d8.clone().try_into().unwrap(),
+                    l0_1: l0_1(domain.d1),
+                    lookup: None,
+                    domain,
+                }
+            };
+
+            let ivc_constraints_mapped_back: Vec<E<Fp>> = ivc_constraints
+                .clone()
+                .into_iter()
+                .map(|x| E::<Fp>::try_from(x).unwrap())
                 .collect();
 
-            let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
-                ivc_fixed_selectors_evals
-                    .clone()
-                    .into_par_iter()
-                    .map(interpolate)
-                    .collect()
-            };
-            let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
+            // Only for debugging purposes
+            for (expr_i, expr) in ivc_constraints_mapped_back.iter().enumerate() {
+                println!("Expression #{expr_i}: {}", expr);
 
-            let witness_d8: PlonkishWitness<N_WIT_IVC> = PlonkishWitness {
-                witness: witness_evals_d8.try_into().unwrap(),
-                fixed_selectors: fixed_selectors_evals_d8,
-            };
-
-            let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new(alpha, N_ALPHAS_INIT);
-            assert!(
-                alphas.clone().powers().len() == N_ALPHAS_INIT,
-                "Expected N_ALPHAS_INIT = {N_ALPHAS_INIT:?}, got {}",
-                alphas.clone().powers().len()
-            );
-
-            let beta = fq_sponge.challenge();
-            let gamma = fq_sponge.challenge();
-            let joint_combiner = fq_sponge.challenge();
-            let challenges = [beta, gamma, joint_combiner];
-
-            SimpleEvalEnv {
-                witness: witness_d8,
-                alphas,
-                challenges,
+                let interpolated = expr.evaluations(&column_env).interpolate();
+                if !interpolated.is_zero() {
+                    let (_, remainder) = interpolated
+                        .divide_by_vanishing_poly(domain.d1)
+                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    if !remainder.is_zero() {
+                        panic!("Error! Remainder for expression #{expr_i} is non-zero: {expr}");
+                    }
+                } else {
+                    println!("Interpolated polynomial #{expr_i} is zero")
+                }
             }
+        }
+
+        let simple_eval_env = SimpleEvalEnv {
+            witness: witness_d8,
+            alphas,
+            challenges,
         };
 
         for (expr_i, expr) in ivc_compat_constraints.iter().enumerate() {
