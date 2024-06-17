@@ -388,7 +388,7 @@ pub fn test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv {
         //    inner: CF::Env,
-        witness: PlonkishWitness<N_WIT_IVC>,
+        witness: PlonkishWitness<N_COL_TOTAL>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
     }
@@ -1052,12 +1052,12 @@ pub fn test_simple_add() {
         //        .collect()
         //};
 
-        let input: Vec<_> = ivc_proof_inputs_1
-            .evaluations
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-            .collect();
-        //let input = folding_witness_three_evals;
+        //let input: Vec<_> = ivc_proof_inputs_1
+        //    .evaluations
+        //    .into_par_iter()
+        //    .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+        //    .collect();
+        let input = folding_witness_three_evals;
 
         let witness_polys: Vec<DensePolynomial<Fp>> = input
             .clone()
@@ -1081,7 +1081,7 @@ pub fn test_simple_add() {
             .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
             .collect();
 
-        let witness_d8: PlonkishWitness<N_WIT_IVC> = PlonkishWitness {
+        let witness_d8: PlonkishWitness<N_COL_TOTAL> = PlonkishWitness {
             witness: witness_evals_d8.clone().try_into().unwrap(),
             fixed_selectors: fixed_selectors_evals_d8.clone(),
         };
@@ -1101,7 +1101,7 @@ pub fn test_simple_add() {
 
         {
             let (_, endo_r) = BN254G1Affine::endos();
-            let column_env: ColumnEnvironment<'_, N_WIT_IVC, N_WIT_IVC, 0, N_BLOCKS, _, LT> = {
+            let column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
                 let challenges = Challenges {
                     alpha,
                     // NB: as there is no permutation argument, we do use the beta
@@ -1125,14 +1125,14 @@ pub fn test_simple_add() {
                 }
             };
 
-            let ivc_constraints_mapped_back: Vec<E<Fp>> = ivc_constraints
+            let folding_compat_constraints_mapped_back: Vec<E<Fp>> = folding_compat_constraints
                 .clone()
                 .into_iter()
                 .map(|x| E::<Fp>::try_from(x).unwrap())
                 .collect();
 
             // Only for debugging purposes
-            for (expr_i, expr) in ivc_constraints_mapped_back.iter().enumerate() {
+            for (expr_i, expr) in folding_compat_constraints_mapped_back.iter().enumerate() {
                 println!("Expression #{expr_i}: {}", expr);
 
                 let interpolated = expr.evaluations(&column_env).interpolate();
@@ -1155,7 +1155,7 @@ pub fn test_simple_add() {
             challenges,
         };
 
-        for (expr_i, expr) in ivc_compat_constraints.iter().enumerate() {
+        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
             use folding::{eval_leaf::EvalLeaf, expressions::FoldingExp};
 
