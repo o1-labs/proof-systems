@@ -12,7 +12,7 @@ use folding::{
 };
 use ivc::ivc::{
     columns::{IVCColumn, N_BLOCKS},
-    interpreter::constrain_ivc,
+    constraints::constrain_ivc,
     lookups::IVCLookupTable,
 };
 use kimchi::circuits::expr::{ChallengeTerm, Variable};
