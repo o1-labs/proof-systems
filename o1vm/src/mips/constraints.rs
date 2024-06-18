@@ -419,7 +419,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // The actual number of bytes read in this instruction, will be 0 <= x <= len <= 4
         let actual_read_bytes = self.variable(pos);
 
-        // EXTRA 21 CONSTRAINTS
+        // EXTRA 13 CONSTRAINTS
 
         // 5 Booleanity constraints
         {
@@ -429,16 +429,36 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.assert_boolean(end_of_preimage.clone());
         }
 
-        // + 12 constraints
+        // + 4 constraints
         {
-            // Expressions that are 1 when the exact corresponding number
+            // Expressions that are nonzero when the exact corresponding number
             // of preimage bytes are read (case 0 bytes used when bytelength is read)
             // TODO: embed any more complex logic to know how many bytes are read
             //       depending on the address and length as in the witness?
-            let preimage_1 = self.equal(&num_preimage_bytes_read, &Expr::from(1));
-            let preimage_2 = self.equal(&num_preimage_bytes_read, &Expr::from(2));
-            let preimage_3 = self.equal(&num_preimage_bytes_read, &Expr::from(3));
-            let preimage_4 = self.equal(&num_preimage_bytes_read, &Expr::from(4));
+            // FIXME: use the lines below when the issue with `equal` is solved
+            //        that will bring the number of constraints from 22 to 30
+            //        (meaning the unit test needs to be manually adapted)
+            // let preimage_1 = self.equal(&num_preimage_bytes_read, &Expr::from(1));
+            // let preimage_2 = self.equal(&num_preimage_bytes_read, &Expr::from(2));
+            // let preimage_3 = self.equal(&num_preimage_bytes_read, &Expr::from(3));
+            // let preimage_4 = self.equal(&num_preimage_bytes_read, &Expr::from(4));
+
+            let preimage_1 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(3))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_2 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(3))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_3 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_4 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(3));
 
             // Constrain the byte decomposition of the preimage chunk
             // NOTE: these constraints also hold when 0 preimage bytes are read
