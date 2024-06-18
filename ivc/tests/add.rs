@@ -76,7 +76,7 @@ use ark_ff::PrimeField;
 use ivc::ivc::lookups::IVCLookupTable;
 use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
 
-/// Simply compute A + B - C
+/// Simply compute A * B - C
 pub fn interpreter_simple_add<
     F: PrimeField,
     Env: ColAccessCap<F, AdditionColumn> + HybridCopyCap<F, AdditionColumn>,
@@ -85,9 +85,8 @@ pub fn interpreter_simple_add<
 ) {
     let a = env.read_column(AdditionColumn::A);
     let b = env.read_column(AdditionColumn::B);
-    env.hcopy(&(a.clone() + b.clone()), AdditionColumn::C);
     let c = env.read_column(AdditionColumn::C);
-    let eq = a.clone() + b.clone() - c;
+    let eq = a.clone() * a.clone() * b.clone() - c;
     env.assert_zero(eq);
 }
 
@@ -128,7 +127,7 @@ pub fn test_simple_add() {
     const N_COL_TOTAL: usize = 3 + N_WIT_IVC;
 
     // const N_COL_QUAD: usize = 31; // tmp
-    const N_COL_QUAD: usize = 109;
+    const N_COL_QUAD: usize = 110;
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
@@ -409,6 +408,7 @@ pub fn test_simple_add() {
             }
         }
 
+        #[allow(dead_code)]
         pub fn process_extended_folding_column(
             &self,
             col: &ExtendedFoldingColumn<Config<N_COL>>,
@@ -437,8 +437,9 @@ pub fn test_simple_add() {
         }
         }
 
+        #[allow(dead_code)]
         /// Evaluates the expression in the provided side
-        fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config<N_COL>>) -> EvalLeaf<'a, Fp> {
+        pub fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config<N_COL>>) -> EvalLeaf<'a, Fp> {
             use FoldingExp::*;
 
             match exp {
@@ -609,7 +610,7 @@ pub fn test_simple_add() {
     // We have as many alphas as constraints
     assert!(
         folding_compat_constraints.len() == N_ALPHAS_INIT,
-        "expected {N_ALPHAS:?} got {}",
+        "expected {N_ALPHAS_INIT:?} got {}",
         folding_compat_constraints.len()
     );
 
@@ -624,15 +625,6 @@ pub fn test_simple_add() {
             domain.d1,
             &(),
         );
-
-    let app_compat_constraints_3col: Vec<FoldingCompatibleExpr<Config<3>>> = app_constraints
-        .into_iter()
-        .map(|x| FoldingCompatibleExpr::from(x.clone()))
-        .collect();
-
-    // real_folding_compat_constraint is actual constraint
-    let (folding_scheme_no_ivc, real_folding_compat_constraint_no_ivc) =
-        FoldingScheme::<Config<3>>::new(app_compat_constraints_3col.clone(), &srs, domain.d1, &());
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 1
@@ -654,6 +646,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_one.write_column(AdditionColumn::A, &a);
         app_witness_one.write_column(AdditionColumn::B, &b);
+        app_witness_one.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_one);
         app_witness_one.next_row();
     }
@@ -722,6 +715,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_two.write_column(AdditionColumn::A, &a);
         app_witness_two.write_column(AdditionColumn::B, &b);
+        app_witness_two.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_two);
         app_witness_two.next_row();
     }
@@ -958,7 +952,7 @@ pub fn test_simple_add() {
     // - ?
     // TODO
     //const N_ALPHAS_INIT: usize = 17; // tmp
-    const N_ALPHAS_INIT: usize = 58; // number of constraints we have before quad
+    const N_ALPHAS_INIT: usize = 57; // number of constraints we have before quad
     const N_ALPHAS: usize = N_ALPHAS_INIT + N_COL_QUAD; // number of constrainst w/ quad
     const N_CHALS: usize = N_ALPHAS; // alphas + 3 ({beta gamma joint_combiner})
 
@@ -1005,6 +999,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_three.write_column(AdditionColumn::A, &a);
         app_witness_three.write_column(AdditionColumn::B, &b);
+        app_witness_three.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_three);
         app_witness_three.next_row();
     }
@@ -1160,6 +1155,8 @@ pub fn test_simple_add() {
                     }
                 }
             }
+
+            println!("All folding_compat_constraints for APP+(nontrivial) IVC satisfy FoldingExps");
         }
     }
 
@@ -1169,6 +1166,27 @@ pub fn test_simple_add() {
 
     {
         println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
+
+        let app_compat_constraints_3col: Vec<FoldingCompatibleExpr<Config<3>>> = app_constraints
+            .into_iter()
+            .map(|x| FoldingCompatibleExpr::from(x.clone()))
+            .collect();
+
+        {
+            println!("app_compat_constraints_3col");
+            for e in app_compat_constraints_3col.iter() {
+                println!("   {}", e.to_string());
+            }
+        }
+
+        // real_folding_compat_constraint is actual constraint
+        let (folding_scheme_no_ivc, real_folding_compat_constraint_no_ivc) =
+            FoldingScheme::<Config<3>>::new(
+                app_compat_constraints_3col.clone(),
+                &srs,
+                domain.d1,
+                &(),
+            );
 
         let simple_eval_env: SimpleEvalEnv<3> = {
             let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
@@ -1270,43 +1288,54 @@ pub fn test_simple_add() {
                 extended: extended_evals_d8,
             };
 
+            println!(
+                "error_vec len {:?}, domain_size: {:?}",
+                folded_witness.error_vec.evals.len(),
+                folded_witness.error_vec.domain().size
+            );
+
             let error_vec_d8: Evaluations<Fp, R2D<Fp>> =
                 interpolate(folded_witness.error_vec).evaluate_over_domain_by_ref(domain.d8);
 
             SimpleEvalEnv {
                 ext_witness: ext_witness_d8,
-                alphas: folded_instance.extended_instance.instance.alphas,
-                challenges: folded_instance.extended_instance.instance.challenges,
+                alphas: folding_output
+                    .folded_instance
+                    .extended_instance
+                    .instance
+                    .alphas,
+                challenges: folding_output
+                    .folded_instance
+                    .extended_instance
+                    .instance
+                    .challenges,
                 error_vec: error_vec_d8,
-                u: folded_instance.u,
+                u: folding_output.folded_instance.u,
             }
         };
 
         {
-            let target_expressions: Vec<FoldingCompatibleExpr<Config<3>>> =
-                vec![real_folding_compat_constraint_no_ivc.clone()];
+            let expr: FoldingCompatibleExpr<Config<3>> =
+                real_folding_compat_constraint_no_ivc.clone();
 
-            for (expr_i, expr) in target_expressions.iter().enumerate() {
-                let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
+            let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
 
-                let evaluations_d8 = match eval_leaf {
-                    EvalLeaf::Result(evaluations_d8) => evaluations_d8,
-                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
-                    _ => panic!("eval_leaf is not Result"),
-                };
+            println!("Processing joint expression: {}", expr.to_string());
 
-                let interpolated =
-                    Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
-                if !interpolated.is_zero() {
-                    let (_, remainder) = interpolated
-                        .divide_by_vanishing_poly(domain.d1)
-                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
-                    if !remainder.is_zero() {
-                        println!(
-                            "Remainder is not zero for expression #{expr_i}: {}",
-                            expr.to_string()
-                        );
-                    }
+            let evaluations_d8 = match eval_leaf {
+                EvalLeaf::Result(evaluations_d8) => evaluations_d8,
+                EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
+                _ => panic!("eval_leaf is not Result"),
+            };
+
+            let interpolated =
+                Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
+            if !interpolated.is_zero() {
+                let (_, remainder) = interpolated
+                    .divide_by_vanishing_poly(domain.d8)
+                    .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                if !remainder.is_zero() {
+                    println!("Remainder is not zero for expression: {}", expr.to_string());
                 }
             }
         }
