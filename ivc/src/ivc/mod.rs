@@ -20,7 +20,10 @@ mod tests {
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::{
-            bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
+            bn254::{
+                PoseidonBN254Parameters, NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS,
+                STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+            },
             interpreter::PoseidonParams,
         },
     };
@@ -39,8 +42,13 @@ mod tests {
 
     // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
-    // Absolutely no idea.
-    pub const TEST_N_CHALS: usize = 200;
+
+    // Number of challenges in the IVC circuit.
+    // It is the maximum number of constraints per row.
+    // We do suppose it is Poseidon which has the highest number of constraints
+    // for now.
+    pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
 
     type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
