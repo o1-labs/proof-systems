@@ -471,6 +471,17 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     ivc::interpreter::N_LIMBS_XLARGE,
     poseidon_8_56_5_3_2::{
@@ -723,6 +734,11 @@
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>IVCColumn {
+    <span class="doccomment">/// A single column containing the folding iteration number,
+    /// starting with 0 for the base case, and non-zero positive for
+    /// inductive case.
+    </span>FoldIteration,
+
     <span class="doccomment">/// Selector for blocks. Inner usize is ∈ [0,#blocks).
     </span>BlockSel(usize),
 
@@ -809,6 +825,7 @@
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
+            IVCColumn::FoldIteration =&gt; Column::Relation(<span class="number">0</span>),
             IVCColumn::BlockSel(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_BLOCKS);
                 Column::FixedSelector(i)
@@ -816,73 +833,78 @@
 
             IVCColumn::Block1Input(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block1InputRepacked75(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
-                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + i).add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block1InputRepacked150(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_XLARGE);
-                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2 </span>* N_LIMBS_LARGE + i)
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2 </span>* N_LIMBS_LARGE + i).add_rel_offset(<span class="number">1</span>)
             }
 
             IVCColumn::Block2Hash(poseidon_col) =&gt; poseidon_col.to_column(),
 
-            IVCColumn::Block3ConstPhi =&gt; Column::Relation(<span class="number">0</span>),
-            IVCColumn::Block3ConstR =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block3PhiPow =&gt; Column::Relation(<span class="number">2</span>),
-            IVCColumn::Block3PhiPowR =&gt; Column::Relation(<span class="number">3</span>),
-            IVCColumn::Block3PhiPowR2 =&gt; Column::Relation(<span class="number">4</span>),
-            IVCColumn::Block3PhiPowR3 =&gt; Column::Relation(<span class="number">5</span>),
+            IVCColumn::Block3ConstPhi =&gt; Column::Relation(<span class="number">0</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block3ConstR =&gt; Column::Relation(<span class="number">1</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block3PhiPow =&gt; Column::Relation(<span class="number">2</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block3PhiPowR =&gt; Column::Relation(<span class="number">3</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block3PhiPowR2 =&gt; Column::Relation(<span class="number">4</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block3PhiPowR3 =&gt; Column::Relation(<span class="number">5</span>).add_rel_offset(<span class="number">1</span>),
             IVCColumn::Block3PhiPowLimbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::Relation(<span class="number">6 </span>+ i)
+                Column::Relation(<span class="number">6 </span>+ i).add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block3PhiPowRLimbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::Relation(<span class="number">6 </span>+ N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">6 </span>+ N_LIMBS_SMALL + i).add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block3PhiPowR2Limbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::Relation(<span class="number">6 </span>+ <span class="number">2 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">6 </span>+ <span class="number">2 </span>* N_LIMBS_SMALL + i).add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block3PhiPowR3Limbs(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::Relation(<span class="number">6 </span>+ <span class="number">3 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">6 </span>+ <span class="number">3 </span>* N_LIMBS_SMALL + i).add_rel_offset(<span class="number">1</span>)
             }
 
             IVCColumn::Block4Input1(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(<span class="number">1</span>)
             }
-            IVCColumn::Block4Coeff =&gt; Column::Relation(<span class="number">8</span>),
-            IVCColumn::Block4Input2AccessTime =&gt; Column::Relation(<span class="number">9</span>),
+            IVCColumn::Block4Coeff =&gt; Column::Relation(<span class="number">8</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block4Input2AccessTime =&gt; Column::Relation(<span class="number">9</span>).add_rel_offset(<span class="number">1</span>),
             IVCColumn::Block4Input2(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
-                Column::Relation(<span class="number">10 </span>+ i)
+                Column::Relation(<span class="number">10 </span>+ i).add_rel_offset(<span class="number">1</span>)
             }
-            IVCColumn::Block4ECAddInter(fec_inter) =&gt; fec_inter.to_column().add_rel_offset(<span class="number">18</span>),
+            IVCColumn::Block4ECAddInter(fec_inter) =&gt; {
+                fec_inter.to_column().add_rel_offset(<span class="number">18</span>).add_rel_offset(<span class="number">1</span>)
+            }
             IVCColumn::Block4OutputRaw(fec_output) =&gt; fec_output
                 .to_column()
-                .add_rel_offset(<span class="number">18 </span>+ FECColumnInter::N_COL),
+                .add_rel_offset(<span class="number">18 </span>+ FECColumnInter::N_COL)
+                .add_rel_offset(<span class="number">1</span>),
             IVCColumn::Block4OutputAccessTime =&gt; {
                 Column::Relation(<span class="number">18 </span>+ FECColumnInter::N_COL + FECColumnOutput::N_COL)
+                    .add_rel_offset(<span class="number">1</span>)
             }
             IVCColumn::Block4OutputRepacked(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
                 Column::Relation(<span class="number">18 </span>+ FECColumnInter::N_COL + FECColumnOutput::N_COL + <span class="number">1 </span>+ i)
+                    .add_rel_offset(<span class="number">1</span>)
             }
 
-            IVCColumn::Block5ConstHr =&gt; Column::Relation(<span class="number">0</span>),
-            IVCColumn::Block5ConstR =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block5ChalLeft =&gt; Column::Relation(<span class="number">2</span>),
-            IVCColumn::Block5ChalRight =&gt; Column::Relation(<span class="number">3</span>),
-            IVCColumn::Block5ChalOutput =&gt; Column::Relation(<span class="number">4</span>),
+            IVCColumn::Block5ConstHr =&gt; Column::Relation(<span class="number">0</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block5ConstR =&gt; Column::Relation(<span class="number">1</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block5ChalLeft =&gt; Column::Relation(<span class="number">2</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block5ChalRight =&gt; Column::Relation(<span class="number">3</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block5ChalOutput =&gt; Column::Relation(<span class="number">4</span>).add_rel_offset(<span class="number">1</span>),
 
-            IVCColumn::Block6ConstR =&gt; Column::Relation(<span class="number">0</span>),
-            IVCColumn::Block6ULeft =&gt; Column::Relation(<span class="number">1</span>),
-            IVCColumn::Block6UOutput =&gt; Column::Relation(<span class="number">2</span>),
+            IVCColumn::Block6ConstR =&gt; Column::Relation(<span class="number">0</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block6ULeft =&gt; Column::Relation(<span class="number">1</span>).add_rel_offset(<span class="number">1</span>),
+            IVCColumn::Block6UOutput =&gt; Column::Relation(<span class="number">2</span>).add_rel_offset(<span class="number">1</span>),
         }
     }
 }
