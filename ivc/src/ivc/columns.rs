@@ -250,6 +250,11 @@ pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize =
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
+    /// A single column containing the folding iteration number,
+    /// starting with 0 for the base case, and non-zero positive for
+    /// inductive case.
+    FoldIteration,
+
     /// Selector for blocks. Inner usize is ∈ [0,#blocks).
     BlockSel(usize),
 
@@ -336,6 +341,7 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
+            IVCColumn::FoldIteration => Column::Relation(0),
             IVCColumn::BlockSel(i) => {
                 assert!(i < N_BLOCKS);
                 Column::FixedSelector(i)
@@ -343,73 +349,78 @@ impl ColumnIndexer for IVCColumn {
 
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(1)
             }
             IVCColumn::Block1InputRepacked75(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + i)
+                Column::Relation(2 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block1InputRepacked150(i) => {
                 assert!(i < 2 * N_LIMBS_XLARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
+                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i).add_rel_offset(1)
             }
 
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
 
-            IVCColumn::Block3ConstPhi => Column::Relation(0),
-            IVCColumn::Block3ConstR => Column::Relation(1),
-            IVCColumn::Block3PhiPow => Column::Relation(2),
-            IVCColumn::Block3PhiPowR => Column::Relation(3),
-            IVCColumn::Block3PhiPowR2 => Column::Relation(4),
-            IVCColumn::Block3PhiPowR3 => Column::Relation(5),
+            IVCColumn::Block3ConstPhi => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block3ConstR => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block3PhiPow => Column::Relation(2).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR => Column::Relation(3).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR2 => Column::Relation(4).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR3 => Column::Relation(5).add_rel_offset(1),
             IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + i)
+                Column::Relation(6 + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + N_LIMBS_SMALL + i)
+                Column::Relation(6 + N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowR2Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 2 * N_LIMBS_SMALL + i)
+                Column::Relation(6 + 2 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowR3Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 3 * N_LIMBS_SMALL + i)
+                Column::Relation(6 + 3 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
 
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(1)
             }
-            IVCColumn::Block4Coeff => Column::Relation(8),
-            IVCColumn::Block4Input2AccessTime => Column::Relation(9),
+            IVCColumn::Block4Coeff => Column::Relation(8).add_rel_offset(1),
+            IVCColumn::Block4Input2AccessTime => Column::Relation(9).add_rel_offset(1),
             IVCColumn::Block4Input2(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(10 + i)
+                Column::Relation(10 + i).add_rel_offset(1)
             }
-            IVCColumn::Block4ECAddInter(fec_inter) => fec_inter.to_column().add_rel_offset(18),
+            IVCColumn::Block4ECAddInter(fec_inter) => {
+                fec_inter.to_column().add_rel_offset(18).add_rel_offset(1)
+            }
             IVCColumn::Block4OutputRaw(fec_output) => fec_output
                 .to_column()
-                .add_rel_offset(18 + FECColumnInter::N_COL),
+                .add_rel_offset(18 + FECColumnInter::N_COL)
+                .add_rel_offset(1),
             IVCColumn::Block4OutputAccessTime => {
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL)
+                    .add_rel_offset(1)
             }
             IVCColumn::Block4OutputRepacked(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
+                    .add_rel_offset(1)
             }
 
-            IVCColumn::Block5ConstHr => Column::Relation(0),
-            IVCColumn::Block5ConstR => Column::Relation(1),
-            IVCColumn::Block5ChalLeft => Column::Relation(2),
-            IVCColumn::Block5ChalRight => Column::Relation(3),
-            IVCColumn::Block5ChalOutput => Column::Relation(4),
+            IVCColumn::Block5ConstHr => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block5ConstR => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block5ChalLeft => Column::Relation(2).add_rel_offset(1),
+            IVCColumn::Block5ChalRight => Column::Relation(3).add_rel_offset(1),
+            IVCColumn::Block5ChalOutput => Column::Relation(4).add_rel_offset(1),
 
-            IVCColumn::Block6ConstR => Column::Relation(0),
-            IVCColumn::Block6ULeft => Column::Relation(1),
-            IVCColumn::Block6UOutput => Column::Relation(2),
+            IVCColumn::Block6ConstR => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block6ULeft => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block6UOutput => Column::Relation(2).add_rel_offset(1),
         }
     }
 }
