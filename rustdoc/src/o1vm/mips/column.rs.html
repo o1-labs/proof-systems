@@ -151,6 +151,9 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{<span class="self">self</span>, IType, JType, RType},
@@ -222,18 +225,22 @@
 </span><span class="kw">impl </span>From&lt;Instruction&gt; <span class="kw">for </span>usize {
     <span class="kw">fn </span>from(instr: Instruction) -&gt; usize {
         <span class="kw">match </span>instr {
-            RType(rtype) =&gt; rtype <span class="kw">as </span>usize,
-            JType(jtype) =&gt; RTypeInstruction::COUNT + jtype <span class="kw">as </span>usize,
-            IType(itype) =&gt; RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype <span class="kw">as </span>usize,
+            RType(rtype) =&gt; N_MIPS_REL_COLS + rtype <span class="kw">as </span>usize,
+            JType(jtype) =&gt; N_MIPS_REL_COLS + RTypeInstruction::COUNT + jtype <span class="kw">as </span>usize,
+            IType(itype) =&gt; {
+                N_MIPS_REL_COLS + RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype <span class="kw">as </span>usize
+            }
         }
     }
 }
 
-<span class="doccomment">/// Represents one line of the execution trace of the virtual machine It does
-/// contain [N_MIPS_SEL_COLS] columns for the instruction selectors
+<span class="doccomment">/// Represents one line of the execution trace of the virtual machine
+/// It contain
 /// + [SCRATCH_SIZE] columns
-/// + 2 additional columns to keep track of the instruction index and one for
-/// the system error code. The columns are, in order,
+/// + 1 column to keep track of the instruction index
+/// + 1 column for the system error code
+/// + [N_MIPS_SEL_COLS]  columns for the instruction selectors.
+/// The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -298,10 +305,9 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Instruction {
-    <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
+    <span class="kw">const </span>N_COL: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
-        <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
-        </span>Column::DynamicSelector(usize::from(<span class="self">self</span>))
+        Column::DynamicSelector(usize::from(<span class="self">self</span>) - N_MIPS_REL_COLS)
     }
 }
 </code></pre></div></section></main></body></html>

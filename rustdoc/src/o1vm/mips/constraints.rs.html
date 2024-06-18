@@ -999,7 +999,7 @@
         });
 
         <span class="comment">// Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
-        // It will be zero when the syscall reads the bytelength prefix.
+        // It will be all zero when the syscall reads the bytelength prefix.
         </span><span class="kw">let </span>has_n_bytes: [<span class="kw">_</span>; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
             <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
@@ -1102,7 +1102,7 @@
             </span>{
                 <span class="comment">// When at least has_1_byte, then any number of bytes can be
                 // read &lt;=&gt; Check that you can only read 1, 2, 3 or 4 bytes
-                </span><span class="self">self</span>.constraints.push(
+                </span><span class="self">self</span>.add_constraint(
                     has_n_bytes[<span class="number">0</span>].clone()
                         * (num_read_bytes.clone() - Expr::from(<span class="number">1</span>))
                         * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
