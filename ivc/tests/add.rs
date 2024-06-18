@@ -30,7 +30,7 @@ use kimchi::circuits::expr::{ChallengeTerm, Variable};
 use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use rayon::iter::IntoParallelIterator as _;
-use std::{array, ops::Index};
+use std::{array, ops::Index, collections::BTreeMap};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
@@ -406,36 +406,6 @@ pub fn test_simple_add() {
 
     // End of folding configuration for IVC + APP
 
-    // Starting building witnesses. We start with the application witnesses. It
-    // will be used after that to build the witness for the IVC
-    let mut _app_witness_one: AppWitnessBuildEnv = {
-        let mut env = WitnessBuilderEnv::create();
-
-        for _i in 0..domain_size {
-            let a: Fp = Fp::rand(&mut rng);
-            let b: Fp = Fp::rand(&mut rng);
-            env.write_column(AdditionColumn::A, &a);
-            env.write_column(AdditionColumn::B, &b);
-            interpreter_simple_add(&mut env);
-            env.next_row();
-        }
-        env
-    };
-
-    let mut _app_witness_two: AppWitnessBuildEnv = {
-        let mut env = WitnessBuilderEnv::create();
-
-        for _i in 0..domain_size {
-            let a: Fp = Fp::rand(&mut rng);
-            let b: Fp = Fp::rand(&mut rng);
-            env.write_column(AdditionColumn::A, &a);
-            env.write_column(AdditionColumn::B, &b);
-            interpreter_simple_add(&mut env);
-            env.next_row();
-        }
-        env
-    };
-
     // ---- Start build the witness environment for the IVC
     // Start building the constants of the circuit.
     // For the IVC, we have all the "block selectors" - which depends on the
@@ -469,4 +439,38 @@ pub fn test_simple_add() {
             .into_par_iter()
             .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
             .collect();
+
+    // Starting building witnesses. We start with the application witnesses. It
+    // will be used after that to build the witness for the IVC
+    let app_witness_one: AppWitnessBuildEnv = {
+        let mut env = WitnessBuilderEnv::create();
+
+        for _i in 0..domain_size {
+            let a: Fp = Fp::rand(&mut rng);
+            let b: Fp = Fp::rand(&mut rng);
+            env.write_column(AdditionColumn::A, &a);
+            env.write_column(AdditionColumn::B, &b);
+            interpreter_simple_add(&mut env);
+            env.next_row();
+        }
+        env
+    };
+
+    let app_proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, BTreeMap::new());
+
+    let app_witness_two: AppWitnessBuildEnv = {
+        let mut env = WitnessBuilderEnv::create();
+
+        for _i in 0..domain_size {
+            let a: Fp = Fp::rand(&mut rng);
+            let b: Fp = Fp::rand(&mut rng);
+            env.write_column(AdditionColumn::A, &a);
+            env.write_column(AdditionColumn::B, &b);
+            interpreter_simple_add(&mut env);
+            env.next_row();
+        }
+        env
+    };
+
+    let app_proof_inputs_two = app_witness_two.get_proof_inputs(domain_size, BTreeMap::new());
 }
