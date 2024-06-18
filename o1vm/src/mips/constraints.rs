@@ -410,7 +410,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         });
 
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
-        // It will be zero when the syscall reads the bytelength prefix.
+        // It will be all zero when the syscall reads the bytelength prefix.
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
@@ -513,7 +513,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             {
                 // When at least has_1_byte, then any number of bytes can be
                 // read <=> Check that you can only read 1, 2, 3 or 4 bytes
-                self.constraints.push(
+                self.add_constraint(
                     has_n_bytes[0].clone()
                         * (num_read_bytes.clone() - Expr::from(1))
                         * (num_read_bytes.clone() - Expr::from(2))

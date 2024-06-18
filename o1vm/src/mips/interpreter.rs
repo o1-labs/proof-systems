@@ -653,7 +653,7 @@ pub trait InterpreterEnv {
             let pos = self.alloc_scratch();
             unsafe { self.inverse_or_zero(x, pos) }
         };
-        // If x = 0, then res = 1 and x_inv_or_zero = _
+        // If x = 0, then res = 1 and x_inv_or_zero = 0
         // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
         self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
         self.add_constraint(x.clone() * res.clone());
