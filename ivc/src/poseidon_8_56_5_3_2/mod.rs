@@ -9,8 +9,8 @@ pub mod bn254;
 mod tests {
     use crate::poseidon_8_56_5_3_2::{
         bn254::{
-            static_params, Column, PlonkSpongeConstantsIVC, PoseidonBN254Parameters, NB_FULL_ROUND,
-            NB_PARTIAL_ROUND, NB_TOTAL_ROUND, STATE_SIZE,
+            static_params, Column, PlonkSpongeConstantsIVC, PoseidonBN254Parameters, MAX_DEGREE,
+            NB_CONSTRAINTS, NB_FULL_ROUND, NB_PARTIAL_ROUND, NB_TOTAL_ROUND, STATE_SIZE,
         },
         columns::PoseidonColumn,
         interpreter,
@@ -163,8 +163,13 @@ mod tests {
                 constraints.len(),
                 4 * STATE_SIZE * NB_FULL_ROUND + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND
             );
+            assert_eq!(constraints.len(), NB_CONSTRAINTS);
+
             // Maximum degree of the constraints is 2
-            assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 2);
+            assert_eq!(
+                constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(),
+                MAX_DEGREE
+            );
 
             constraints
         };
