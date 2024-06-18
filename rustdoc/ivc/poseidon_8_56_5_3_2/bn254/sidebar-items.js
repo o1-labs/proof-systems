@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["NB_FULL_ROUND","NB_PARTIAL_ROUND","NB_TOTAL_ROUND","STATE_SIZE"],"fn":["static_params"],"struct":["PlonkSpongeConstantsIVC","PoseidonBN254Parameters"],"type":["Column"]};

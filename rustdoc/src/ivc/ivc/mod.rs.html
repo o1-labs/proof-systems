@@ -189,23 +189,19 @@
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-
     <span class="kw">use crate</span>::{
         ivc::{
             columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_8_56_5_3_2::interpreter::PoseidonParams,
-        poseidon_params_8_56_5_3::static_params,
+        poseidon_8_56_5_3_2::{bn254::static_params, interpreter::PoseidonParams},
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>kimchi_msm::{
