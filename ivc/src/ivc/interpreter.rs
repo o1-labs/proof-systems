@@ -779,11 +779,9 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     process_u::<_, _, N_COL_TOTAL>(env, fold_iteration, u_l, r);
 }
 
-
 /// Base case IVC circuit, completely turned off.
-pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
-    env: &mut Env,
-) where
+pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(env: &mut Env)
+where
     F: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
