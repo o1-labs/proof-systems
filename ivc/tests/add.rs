@@ -86,7 +86,7 @@ pub fn interpreter_simple_add<
     let a = env.read_column(AdditionColumn::A);
     let b = env.read_column(AdditionColumn::B);
     let c = env.read_column(AdditionColumn::C);
-    let eq = a.clone() * a.clone() * b.clone() - c;
+    let eq = a.clone() * a.clone() * a * b - c;
     env.assert_zero(eq);
 }
 
@@ -127,7 +127,7 @@ pub fn test_simple_add() {
     const N_COL_TOTAL: usize = 3 + N_WIT_IVC;
 
     // const N_COL_QUAD: usize = 31; // tmp
-    const N_COL_QUAD: usize = 110;
+    const N_COL_QUAD: usize = 111;
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
@@ -646,7 +646,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_one.write_column(AdditionColumn::A, &a);
         app_witness_one.write_column(AdditionColumn::B, &b);
-        app_witness_one.write_column(AdditionColumn::C, &(a * a * b));
+        app_witness_one.write_column(AdditionColumn::C, &(a * a * a * b));
         interpreter_simple_add(&mut app_witness_one);
         app_witness_one.next_row();
     }
@@ -715,7 +715,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_two.write_column(AdditionColumn::A, &a);
         app_witness_two.write_column(AdditionColumn::B, &b);
-        app_witness_two.write_column(AdditionColumn::C, &(a * a * b));
+        app_witness_two.write_column(AdditionColumn::C, &(a * a * a * b));
         interpreter_simple_add(&mut app_witness_two);
         app_witness_two.next_row();
     }
@@ -999,7 +999,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_three.write_column(AdditionColumn::A, &a);
         app_witness_three.write_column(AdditionColumn::B, &b);
-        app_witness_three.write_column(AdditionColumn::C, &(a * a * b));
+        app_witness_three.write_column(AdditionColumn::C, &(a * a * a * b));
         interpreter_simple_add(&mut app_witness_three);
         app_witness_three.next_row();
     }
@@ -1167,6 +1167,8 @@ pub fn test_simple_add() {
     {
         println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
 
+        let evaluation_domain = domain.d8;
+
         let app_compat_constraints_3col: Vec<FoldingCompatibleExpr<Config<3>>> = app_constraints
             .into_iter()
             .map(|x| FoldingCompatibleExpr::from(x.clone()))
@@ -1189,7 +1191,14 @@ pub fn test_simple_add() {
             );
 
         let simple_eval_env: SimpleEvalEnv<3> = {
-            let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+            //let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+
+            let extend_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+                assert!(evaluations.domain() == domain.d1);
+                evaluations
+                    .interpolate()
+                    .evaluate_over_domain_by_ref(evaluation_domain)
+            };
 
             let folding_witness_one_no_ivc: PlonkishWitness<3> = PlonkishWitness {
                 witness: proof_inputs_one
@@ -1229,88 +1238,44 @@ pub fn test_simple_add() {
 
             let one = (folding_instance_one_no_ivc, folding_witness_one_no_ivc);
             let two = (folding_instance_two_no_ivc, folding_witness_two_no_ivc);
-            let folding_output =
-                folding_scheme_no_ivc.fold_instance_witness_pair(one, two, &mut fq_sponge);
 
-            // The witness we're evaluating
-            let witness_input = folding_output
-                .folded_witness
-                .extended_witness
-                .witness
-                .witness
-                .cols;
+            let FoldingOutput {
+                folded_instance,
+                // Should not be required for the IVC circuit as it is encoding the
+                // verifier.
+                folded_witness,
+                t_0: _,
+                t_1: _,
+                relaxed_extended_left_instance: _,
+                relaxed_extended_right_instance: _,
+                to_absorb: _,
+            } = folding_scheme_no_ivc.fold_instance_witness_pair(one, two, &mut fq_sponge);
 
-            let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = witness_input
-                .into_par_iter()
-                .map(|evals| interpolate(evals).evaluate_over_domain_by_ref(domain.d8))
-                .collect();
-
-            let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
-                ivc_fixed_selectors_evals
-                    .clone()
-                    .into_par_iter()
-                    .map(interpolate)
-                    .collect()
+            let ext_witness = ExtendedWitness {
+                witness: PlonkishWitness {
+                    witness: folded_witness
+                        .extended_witness
+                        .witness
+                        .witness
+                        .into_par_iter()
+                        .map(extend_domain)
+                        .collect(),
+                    fixed_selectors: vec![],
+                },
+                extended: folded_witness
+                    .extended_witness
+                    .extended
+                    .into_iter()
+                    .map(|(ix, evals)| (ix, extend_domain(evals)))
+                    .collect(),
             };
-            let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
-
-            for eval in fixed_selectors_evals_d8
-                .iter()
-                .chain(witness_evals_d8.iter())
-            {
-                assert!(eval.domain() == domain.d8);
-            }
-
-            let witness_d8: PlonkishWitness<3> = PlonkishWitness {
-                witness: witness_evals_d8.clone().try_into().unwrap(),
-                fixed_selectors: fixed_selectors_evals_d8.clone(),
-            };
-
-            let extended: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> =
-                folded_witness.extended_witness.extended.clone();
-            let extended_vec: Vec<(usize, Evaluations<Fp, R2D<Fp>>)> =
-                extended.into_iter().collect();
-            let extended_evals_d8: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> = extended_vec
-                .into_par_iter()
-                .map(|(ix, evals)| {
-                    (
-                        ix,
-                        interpolate(evals).evaluate_over_domain_by_ref(domain.d8),
-                    )
-                })
-                .collect();
-
-            let ext_witness_d8 = ExtendedWitness {
-                witness: witness_d8,
-                extended: extended_evals_d8,
-            };
-
-            println!(
-                "error_vec len {:?}, domain_size: {:?}",
-                folded_witness.error_vec.evals.len(),
-                folded_witness.error_vec.domain().size
-            );
-
-            let error_vec_d8: Evaluations<Fp, R2D<Fp>> =
-                interpolate(folded_witness.error_vec).evaluate_over_domain_by_ref(domain.d8);
 
             SimpleEvalEnv {
-                ext_witness: ext_witness_d8,
-                alphas: folding_output
-                    .folded_instance
-                    .extended_instance
-                    .instance
-                    .alphas,
-                challenges: folding_output
-                    .folded_instance
-                    .extended_instance
-                    .instance
-                    .challenges,
-                error_vec: error_vec_d8,
-                u: folding_output.folded_instance.u,
+                ext_witness,
+                alphas: folded_instance.extended_instance.instance.alphas,
+                challenges: folded_instance.extended_instance.instance.challenges,
+                error_vec: extend_domain(folded_witness.error_vec),
+                u: folded_instance.u,
             }
         };
 
@@ -1322,21 +1287,28 @@ pub fn test_simple_add() {
 
             println!("Processing joint expression: {}", expr.to_string());
 
-            let evaluations_d8 = match eval_leaf {
-                EvalLeaf::Result(evaluations_d8) => evaluations_d8,
-                EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
+            let evaluations_big = match eval_leaf {
+                EvalLeaf::Result(evaluations) => evaluations,
+                EvalLeaf::Col(evaluations) => evaluations.clone(),
                 _ => panic!("eval_leaf is not Result"),
             };
 
             let interpolated =
-                Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
+                Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
             if !interpolated.is_zero() {
                 let (_, remainder) = interpolated
-                    .divide_by_vanishing_poly(domain.d8)
-                    .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    .divide_by_vanishing_poly(domain.d1)
+                    .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
                 if !remainder.is_zero() {
-                    println!("Remainder is not zero for expression: {}", expr.to_string());
+                    println!(
+                        "ERROR: Remainder is not zero for expression: {}",
+                        expr.to_string()
+                    );
+                } else {
+                    println!("Interpolated expression is divisible by vanishing poly d1");
                 }
+            } else {
+                println!("Interpolated expression is zero");
             }
         }
     }
