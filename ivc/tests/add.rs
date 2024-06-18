@@ -4,13 +4,12 @@
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     columns::ExtendedFoldingColumn,
     eval_leaf::EvalLeaf,
     expressions::{
-        ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp,
-        FromFoldingConversionError,
+        ExpExtension, FoldingCompatibleExprInner, FoldingExp, FromFoldingConversionError,
     },
     instance_witness::{ExtendedWitness, Foldable},
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme,
@@ -76,7 +75,9 @@ use ark_ff::PrimeField;
 use ivc::ivc::lookups::IVCLookupTable;
 use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
 
-/// Simply compute A * B - C
+// {a * a * a - b; a * a * a * a - c} works
+// {a * a * b - c; a * a * b - c} works too
+/// Simply compute {A - B; A - C}
 pub fn interpreter_simple_add<
     F: PrimeField,
     Env: ColAccessCap<F, AdditionColumn> + HybridCopyCap<F, AdditionColumn>,
@@ -86,7 +87,7 @@ pub fn interpreter_simple_add<
     let a = env.read_column(AdditionColumn::A);
     let b = env.read_column(AdditionColumn::B);
     let c = env.read_column(AdditionColumn::C);
-    let eq = a.clone() * a.clone() * a * b - c;
+    let eq = a.clone() * a.clone() * b.clone() - c;
     env.assert_zero(eq);
 }
 
@@ -114,20 +115,14 @@ pub fn test_simple_add() {
     #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
     pub struct Config<const N_COL: usize>;
 
-    impl FoldingColumnTrait for AdditionColumn {
-        fn is_witness(&self) -> bool {
-            true
-        }
-    }
-
     // Total number of witness columns in IVC (400 - 6) where 6 is block number.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
 
     // The total number of columns in our circuit.
     const N_COL_TOTAL: usize = 3 + N_WIT_IVC;
 
-    // const N_COL_QUAD: usize = 31; // tmp
-    const N_COL_QUAD: usize = 111;
+    //const N_COL_QUAD: usize = 111;
+    const N_COL_QUAD: usize = 105;
     const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
@@ -598,6 +593,10 @@ pub fn test_simple_add() {
             .map(|e| e.map_variable(ivc_mapper))
             .collect();
 
+    // Debugging: only leaving some part of IVC constraints.
+    //let ivc_compat_constraints_mapped: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> =
+    //    ivc_compat_constraints_mapped.into_iter().take(1).collect();
+
     // Don't contain any U or alphas
     // can be mapped back to E<Fp>
     let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> =
@@ -618,7 +617,7 @@ pub fn test_simple_add() {
     // it cannot be mapped back to Fp
     // has some u and {alpha^i}
     // this one needs to be used in prover(..).
-    let (folding_scheme, _real_folding_compat_constraint) =
+    let (folding_scheme, real_folding_compat_constraint) =
         FoldingScheme::<Config<N_COL_TOTAL>>::new(
             folding_compat_constraints.clone(),
             &srs,
@@ -646,7 +645,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_one.write_column(AdditionColumn::A, &a);
         app_witness_one.write_column(AdditionColumn::B, &b);
-        app_witness_one.write_column(AdditionColumn::C, &(a * a * a * b));
+        app_witness_one.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_one);
         app_witness_one.next_row();
     }
@@ -715,7 +714,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_two.write_column(AdditionColumn::A, &a);
         app_witness_two.write_column(AdditionColumn::B, &b);
-        app_witness_two.write_column(AdditionColumn::C, &(a * a * a * b));
+        app_witness_two.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_two);
         app_witness_two.next_row();
     }
@@ -951,7 +950,7 @@ pub fn test_simple_add() {
     // - there is no alpha, so ok
     // - ?
     // TODO
-    //const N_ALPHAS_INIT: usize = 17; // tmp
+    //const N_ALPHAS_INIT: usize = 57; // 57 is full number
     const N_ALPHAS_INIT: usize = 57; // number of constraints we have before quad
     const N_ALPHAS: usize = N_ALPHAS_INIT + N_COL_QUAD; // number of constrainst w/ quad
     const N_CHALS: usize = N_ALPHAS; // alphas + 3 ({beta gamma joint_combiner})
@@ -999,7 +998,7 @@ pub fn test_simple_add() {
         let b: Fp = Fp::rand(&mut rng);
         app_witness_three.write_column(AdditionColumn::A, &a);
         app_witness_three.write_column(AdditionColumn::B, &b);
-        app_witness_three.write_column(AdditionColumn::C, &(a * a * a * b));
+        app_witness_three.write_column(AdditionColumn::C, &(a * a * b));
         interpreter_simple_add(&mut app_witness_three);
         app_witness_three.next_row();
     }
@@ -1059,47 +1058,19 @@ pub fn test_simple_add() {
     // Testing folding exprs validity for last  fold
     ////////////////////////////////////////////////////////////////////////////
 
+    let enlarge_to_domain_generic = |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
+        assert!(evaluations.domain() == domain.d1);
+        evaluations
+            .interpolate()
+            .evaluate_over_domain_by_ref(new_domain)
+    };
+
     {
         println!("Testing individual expressions validity; creating evaluations");
 
         let simple_eval_env = {
-            let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
-
-            // The witness we're evaluating
-            let witness_input = folding_witness_three_evals;
-
-            let witness_polys: Vec<DensePolynomial<Fp>> = witness_input
-                .clone()
-                .into_par_iter()
-                .map(interpolate)
-                .collect::<Vec<DensePolynomial<Fp>>>();
-            let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (witness_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
-
-            let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
-                ivc_fixed_selectors_evals
-                    .clone()
-                    .into_par_iter()
-                    .map(interpolate)
-                    .collect()
-            };
-            let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-                .collect();
-
-            for eval in fixed_selectors_evals_d8
-                .iter()
-                .chain(witness_evals_d8.iter())
-            {
-                assert!(eval.domain() == domain.d8);
-            }
-
-            let witness_d8: PlonkishWitness<N_COL_TOTAL> = PlonkishWitness {
-                witness: witness_evals_d8.clone().try_into().unwrap(),
-                fixed_selectors: fixed_selectors_evals_d8.clone(),
+            let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+                enlarge_to_domain_generic(evaluations, domain.d8)
             };
 
             let alpha = fq_sponge.challenge();
@@ -1117,8 +1088,18 @@ pub fn test_simple_add() {
 
             SimpleEvalEnv {
                 ext_witness: ExtendedWitness {
-                    witness: witness_d8,
-                    extended: BTreeMap::new(),
+                    witness: PlonkishWitness {
+                        witness: folding_witness_three_evals
+                            .into_par_iter()
+                            .map(enlarge_to_domain)
+                            .collect(),
+                        fixed_selectors: ivc_fixed_selectors_evals
+                            .clone()
+                            .into_par_iter()
+                            .map(enlarge_to_domain)
+                            .collect(),
+                    },
+                    extended: BTreeMap::new(), // No extended columns at this point
                 },
                 alphas,
                 challenges,
@@ -1167,90 +1148,22 @@ pub fn test_simple_add() {
     {
         println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
 
-        let evaluation_domain = domain.d8;
+        // We can evaluate on d1, and then if the interpolated
+        // polynomial is 0, the expression holds. This is fast to do,
+        // and it effectively checks if the expressions hold.
+        //
+        // However this is not enough for computing quotient, since
+        // folding expressions are degree ... 2 or 3? So when this
+        // variable is set to domain.d8, all the evaluations will
+        // happen over d8, and quotient_polyonmial computation becomes
+        // possible. But this is 8 times slower.
+        let evaluation_domain = domain.d1;
 
-        let app_compat_constraints_3col: Vec<FoldingCompatibleExpr<Config<3>>> = app_constraints
-            .into_iter()
-            .map(|x| FoldingCompatibleExpr::from(x.clone()))
-            .collect();
+        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+            enlarge_to_domain_generic(evaluations, evaluation_domain)
+        };
 
-        {
-            println!("app_compat_constraints_3col");
-            for e in app_compat_constraints_3col.iter() {
-                println!("   {}", e.to_string());
-            }
-        }
-
-        // real_folding_compat_constraint is actual constraint
-        let (folding_scheme_no_ivc, real_folding_compat_constraint_no_ivc) =
-            FoldingScheme::<Config<3>>::new(
-                app_compat_constraints_3col.clone(),
-                &srs,
-                domain.d1,
-                &(),
-            );
-
-        let simple_eval_env: SimpleEvalEnv<3> = {
-            //let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
-
-            let extend_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
-                assert!(evaluations.domain() == domain.d1);
-                evaluations
-                    .interpolate()
-                    .evaluate_over_domain_by_ref(evaluation_domain)
-            };
-
-            let folding_witness_one_no_ivc: PlonkishWitness<3> = PlonkishWitness {
-                witness: proof_inputs_one
-                    .evaluations
-                    .into_iter()
-                    .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap(),
-                fixed_selectors: vec![],
-            };
-
-            let folding_instance_one_no_ivc = PlonkishInstance::<3>::from_witness(
-                &folding_witness_one_no_ivc.witness,
-                &mut fq_sponge,
-                &srs,
-                domain.d1,
-            );
-
-            let folding_witness_two_no_ivc = PlonkishWitness {
-                witness: proof_inputs_two
-                    .evaluations
-                    .into_iter()
-                    .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap(),
-                fixed_selectors: vec![],
-            };
-
-            let folding_instance_two_no_ivc = PlonkishInstance::from_witness(
-                &folding_witness_two_no_ivc.witness,
-                &mut fq_sponge,
-                &srs,
-                domain.d1,
-            );
-
-            let one = (folding_instance_one_no_ivc, folding_witness_one_no_ivc);
-            let two = (folding_instance_two_no_ivc, folding_witness_two_no_ivc);
-
-            let FoldingOutput {
-                folded_instance,
-                // Should not be required for the IVC circuit as it is encoding the
-                // verifier.
-                folded_witness,
-                t_0: _,
-                t_1: _,
-                relaxed_extended_left_instance: _,
-                relaxed_extended_right_instance: _,
-                to_absorb: _,
-            } = folding_scheme_no_ivc.fold_instance_witness_pair(one, two, &mut fq_sponge);
-
+        let simple_eval_env: SimpleEvalEnv<N_COL_TOTAL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
                     witness: folded_witness
@@ -1258,15 +1171,18 @@ pub fn test_simple_add() {
                         .witness
                         .witness
                         .into_par_iter()
-                        .map(extend_domain)
+                        .map(enlarge_to_domain)
                         .collect(),
-                    fixed_selectors: vec![],
+                    fixed_selectors: ivc_fixed_selectors_evals
+                        .into_par_iter()
+                        .map(enlarge_to_domain)
+                        .collect(),
                 },
                 extended: folded_witness
                     .extended_witness
                     .extended
                     .into_iter()
-                    .map(|(ix, evals)| (ix, extend_domain(evals)))
+                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
                     .collect(),
             };
 
@@ -1274,18 +1190,16 @@ pub fn test_simple_add() {
                 ext_witness,
                 alphas: folded_instance.extended_instance.instance.alphas,
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: extend_domain(folded_witness.error_vec),
+                error_vec: enlarge_to_domain(folded_witness.error_vec),
                 u: folded_instance.u,
             }
         };
 
         {
-            let expr: FoldingCompatibleExpr<Config<3>> =
-                real_folding_compat_constraint_no_ivc.clone();
+            let expr: FoldingCompatibleExpr<Config<N_COL_TOTAL>> =
+                real_folding_compat_constraint.clone();
 
             let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
-
-            println!("Processing joint expression: {}", expr.to_string());
 
             let evaluations_big = match eval_leaf {
                 EvalLeaf::Result(evaluations) => evaluations,
@@ -1300,8 +1214,8 @@ pub fn test_simple_add() {
                     .divide_by_vanishing_poly(domain.d1)
                     .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
                 if !remainder.is_zero() {
-                    println!(
-                        "ERROR: Remainder is not zero for expression: {}",
+                    panic!(
+                        "ERROR: Remainder is not zero for joint expression: {}",
                         expr.to_string()
                     );
                 } else {
