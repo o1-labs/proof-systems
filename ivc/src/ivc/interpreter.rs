@@ -3,6 +3,10 @@
 use crate::{
     ivc::{
         columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
+        constraints::{
+            constrain_challenges, constrain_ecadds, constrain_inputs, constrain_scalars,
+            constrain_u,
+        },
         lookups::{IVCFECLookupLens, IVCLookupTable},
     },
     poseidon_8_56_5_3_2::{
@@ -15,177 +19,22 @@ use crate::{
 use ark_ff::PrimeField;
 use kimchi_msm::{
     circuit_design::{
-        capabilities::{read_column_array, write_column_array_const},
+        capabilities::write_column_array_const,
         composition::{SubEnvColumn, SubEnvLookup},
-        ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+        ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
     },
-    columns::ColumnIndexer,
-    fec::{
-        columns::FECColumnOutput,
-        interpreter::{constrain_ec_addition, ec_add_circuit},
-    },
-    serialization::{
-        interpreter::{
-            combine_limbs_m_to_n, combine_small_to_large, limb_decompose_ff, LIMB_BITSIZE_LARGE,
-            LIMB_BITSIZE_SMALL, N_LIMBS_LARGE, N_LIMBS_SMALL,
-        },
-        lookups as serlookup,
+    fec::interpreter::ec_add_circuit,
+    serialization::interpreter::{
+        limb_decompose_ff, LIMB_BITSIZE_LARGE, LIMB_BITSIZE_SMALL, N_LIMBS_LARGE, N_LIMBS_SMALL,
     },
 };
 use num_bigint::BigUint;
 use std::marker::PhantomData;
 
-use super::columns::IVC_NB_TOTAL_FIXED_SELECTORS;
-
-/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
-pub const LIMB_BITSIZE_XLARGE: usize = 150;
-/// The biggest packing format, 2 limbs.
-pub const N_LIMBS_XLARGE: usize = 2;
-
-fn range_check_scalar_limbs<F, Ff, Env>(
-    env: &mut Env,
-    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
-) where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    for (i, x) in input_limbs_small.iter().enumerate() {
-        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } else {
-            // TODO Add this lookup.
-            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
-        }
-    }
-}
-
-fn range_check_small_limbs<F, Ff, Env>(
-    env: &mut Env,
-    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
-) where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    for (i, x) in input_limbs_small.iter().enumerate() {
-        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } else {
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
-                x,
-            );
-        }
-    }
-}
-
-// TODO double-check it works
-/// Helper. Combines large limbs into one element. Computation is over the field.
-pub fn combine_large_to_full_field<Ff: PrimeField>(x: [Ff; N_LIMBS_LARGE]) -> Ff {
-    let [res] =
-        combine_limbs_m_to_n::<N_LIMBS_LARGE, 1, LIMB_BITSIZE_LARGE, 300, Ff, Ff, _>(|f| f, x);
-    res
-}
-
-/// Helper. Combines small limbs into big limbs.
-pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
-    x: [Env::Variable; N_LIMBS_LARGE],
-) -> [Env::Variable; N_LIMBS_XLARGE] {
-    combine_limbs_m_to_n::<
-        N_LIMBS_LARGE,
-        N_LIMBS_XLARGE,
-        LIMB_BITSIZE_LARGE,
-        LIMB_BITSIZE_XLARGE,
-        F,
-        Env::Variable,
-        _,
-    >(|f| Env::constant(f), x)
-}
-
-/// Helper. Combines 17x15bit limbs into 1 native field element.
-pub fn combine_small_to_full<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
-    x: [Env::Variable; N_LIMBS_SMALL],
-) -> Env::Variable {
-    let [res] =
-        combine_limbs_m_to_n::<N_LIMBS_SMALL, 1, LIMB_BITSIZE_SMALL, 255, F, Env::Variable, _>(
-            |f| Env::constant(f),
-            x,
-        );
-    res
-}
-
-/// Constraints for the inputs block.
-pub fn constrain_inputs<F, Ff, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    let input_limbs_small_x: [_; N_LIMBS_SMALL] = read_column_array(env, IVCColumn::Block1Input);
-    let input_limbs_small_y: [_; N_LIMBS_SMALL] =
-        read_column_array(env, |x| IVCColumn::Block1Input(N_LIMBS_SMALL + x));
-    // Range checks on 15 bits
-    {
-        range_check_small_limbs::<F, Ff, Env>(env, &input_limbs_small_x);
-        range_check_small_limbs::<F, Ff, Env>(env, &input_limbs_small_y);
-    }
-
-    let input_limbs_large_x: [_; N_LIMBS_LARGE] =
-        read_column_array(env, IVCColumn::Block1InputRepacked75);
-    let input_limbs_large_y: [_; N_LIMBS_LARGE] =
-        read_column_array(env, |x| IVCColumn::Block1InputRepacked75(N_LIMBS_LARGE + x));
-
-    // Repacking to 75 bits
-    {
-        let input_limbs_large_x_expected =
-            combine_small_to_large::<_, _, Env>(input_limbs_small_x.clone());
-        let input_limbs_large_y_expected =
-            combine_small_to_large::<_, _, Env>(input_limbs_small_y.clone());
-        input_limbs_large_x_expected
-            .into_iter()
-            .zip(input_limbs_large_x.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
-        input_limbs_large_y_expected
-            .into_iter()
-            .zip(input_limbs_large_y.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
-    }
-
-    let input_limbs_xlarge_x: [_; N_LIMBS_XLARGE] =
-        read_column_array(env, IVCColumn::Block1InputRepacked150);
-    let input_limbs_xlarge_y: [_; N_LIMBS_XLARGE] = read_column_array(env, |x| {
-        IVCColumn::Block1InputRepacked150(N_LIMBS_XLARGE + x)
-    });
-
-    // Repacking to 150 bits
-    {
-        let input_limbs_xlarge_x_expected =
-            combine_large_to_xlarge::<_, _, Env>(input_limbs_large_x.clone());
-        let input_limbs_xlarge_y_expected =
-            combine_large_to_xlarge::<_, _, Env>(input_limbs_large_y.clone());
-        input_limbs_xlarge_x_expected
-            .into_iter()
-            .zip(input_limbs_xlarge_x.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
-        input_limbs_xlarge_y_expected
-            .into_iter()
-            .zip(input_limbs_xlarge_y.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
-    }
-}
+use super::{
+    columns::IVC_NB_TOTAL_FIXED_SELECTORS, helpers::combine_large_to_full_field,
+    LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
+};
 
 pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
@@ -416,35 +265,6 @@ where
     (hash_r, r, phi)
 }
 
-pub fn constrain_scalars<F, Ff, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    let _phi = env.read_column(IVCColumn::Block3ConstPhi);
-    let r = env.read_column(IVCColumn::Block3ConstR);
-    let phi_i = env.read_column(IVCColumn::Block3PhiPow);
-    let phi_i_r = env.read_column(IVCColumn::Block3PhiPowR);
-    let phi_pow_limbs: [_; N_LIMBS_SMALL] = read_column_array(env, IVCColumn::Block3PhiPowLimbs);
-    let phi_pow_r_limbs: [_; N_LIMBS_SMALL] = read_column_array(env, IVCColumn::Block3PhiPowRLimbs);
-
-    let phi_pow_expected = combine_small_to_full::<_, _, Env>(phi_pow_limbs.clone());
-    let phi_pow_r_expected = combine_small_to_full::<_, _, Env>(phi_pow_r_limbs.clone());
-
-    {
-        range_check_scalar_limbs::<F, Ff, Env>(env, &phi_pow_limbs);
-        range_check_scalar_limbs::<F, Ff, Env>(env, &phi_pow_r_limbs);
-    }
-
-    // TODO Add expression asserting data with the next row. E.g.
-    // let phi_i_next = env.read_column_(IVCColumn::Block3ConstR)
-    // env.assert_zero(phi_i_next - phi_i * phi)
-    env.assert_zero(phi_i_r.clone() - phi_i.clone() * r.clone());
-    env.assert_zero(phi_pow_expected - phi_i);
-    env.assert_zero(phi_pow_r_expected - phi_i_r);
-}
-
 pub fn write_scalars_row<F, Env>(
     env: &mut Env,
     r_f: F,
@@ -585,45 +405,6 @@ where
         phi_r_limbs,
         phi_np1_r2_limbs,
         phi_np1_r3_limbs,
-    }
-}
-
-pub fn constrain_ecadds<F, Ff, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    constrain_ec_addition::<F, Ff, _>(&mut SubEnvLookup::new(
-        &mut SubEnvColumn::new(env, IVCFECLens {}),
-        IVCFECLookupLens(PhantomData),
-    ));
-
-    // Repacking to 75 bits
-
-    let output_limbs_small_x: [_; N_LIMBS_SMALL] =
-        read_column_array(env, |i| IVCColumn::Block4OutputRaw(FECColumnOutput::XR(i)));
-    let output_limbs_small_y: [_; N_LIMBS_SMALL] =
-        read_column_array(env, |i| IVCColumn::Block4OutputRaw(FECColumnOutput::YR(i)));
-
-    let output_limbs_large_x: [_; N_LIMBS_LARGE] =
-        read_column_array(env, IVCColumn::Block4OutputRepacked);
-    let output_limbs_large_y: [_; N_LIMBS_LARGE] =
-        read_column_array(env, |i| IVCColumn::Block4OutputRepacked(N_LIMBS_LARGE + i));
-
-    {
-        let output_limbs_large_x_expected =
-            combine_small_to_large::<_, _, Env>(output_limbs_small_x);
-        let output_limbs_large_y_expected =
-            combine_small_to_large::<_, _, Env>(output_limbs_small_y);
-        output_limbs_large_x_expected
-            .into_iter()
-            .zip(output_limbs_large_x.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
-        output_limbs_large_y_expected
-            .into_iter()
-            .zip(output_limbs_large_y.clone())
-            .for_each(|(e1, e2)| env.assert_zero(e1 - e2));
     }
 }
 
@@ -834,24 +615,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     }
 }
 
-pub fn constrain_challenges<F, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Env: ColAccessCap<F, IVCColumn>,
-{
-    let _h_r = env.read_column(IVCColumn::Block5ConstHr);
-
-    let r = env.read_column(IVCColumn::Block5ConstR);
-    let alpha_l = env.read_column(IVCColumn::Block5ChalLeft);
-    let alpha_r = env.read_column(IVCColumn::Block5ChalRight);
-    let alpha_o = env.read_column(IVCColumn::Block5ChalOutput);
-    env.assert_zero(alpha_o - alpha_l - r * alpha_r);
-
-    // TODO constrain that α_l are public inputs
-    // TODO constrain that α_{r,i} = α_{r,i-1} * h_R
-    // TODO constrain that α_{r,1} = h_R (from hash table)
-}
-
 #[allow(clippy::needless_range_loop)]
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
@@ -889,20 +652,6 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
 
         env.next_row()
     }
-}
-
-pub fn constrain_u<F, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Env: ColAccessCap<F, IVCColumn>,
-{
-    // TODO constrain that r is read from the "hashes" block.
-    // TODO constrain that the inputs are corresponding to public input (?).
-
-    let r = env.read_column(IVCColumn::Block6ConstR);
-    let u_l = env.read_column(IVCColumn::Block6ULeft);
-    let u_o = env.read_column(IVCColumn::Block6UOutput);
-    env.assert_zero(u_o - u_l - r);
 }
 
 #[allow(clippy::needless_range_loop)]
@@ -956,63 +705,6 @@ where
     }
 
     selectors
-}
-
-// We might not need to constrain selectors to be 0 or 1 if selectors
-// are public values, and can be verified directly by the verifier.
-// However we might need these constraints in folding, where public
-// input needs to be checked.
-/// This function generates constraints for the whole IVC circuit.
-pub fn constrain_selectors<F, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Env: ColAccessCap<F, IVCColumn>,
-{
-    for i in 0..N_BLOCKS {
-        // Each selector must have value either 0 or 1.
-        let sel = env.read_column(IVCColumn::BlockSel(i));
-        env.assert_zero(sel.clone() * (sel.clone() - Env::constant(F::one())));
-    }
-}
-
-/// This function generates constraints for the whole IVC circuit.
-pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
-where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    constrain_selectors(env);
-
-    // The code below calls constraint method, and internally records
-    // constraints for the corresponding blocks. Before the each call
-    // we prefix the constraint with `selector(block_num)*` so that
-    // the constraints that are created in the block block_num will have
-    // the form selector(block_num)*C(X) and not just C(X).
-
-    let s0 = env.read_column(IVCColumn::BlockSel(0));
-    env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
-    constrain_inputs(env);
-
-    // TODO FIXME add constraints for hashes
-
-    let s2 = env.read_column(IVCColumn::BlockSel(2));
-    env.set_assert_mapper(Box::new(move |x| s2.clone() * x));
-    constrain_scalars(env);
-
-    let s3 = env.read_column(IVCColumn::BlockSel(3));
-    env.set_assert_mapper(Box::new(move |x| s3.clone() * x));
-    constrain_ecadds(env);
-
-    let s4 = env.read_column(IVCColumn::BlockSel(4));
-    env.set_assert_mapper(Box::new(move |x| s4.clone() * x));
-    constrain_challenges(env);
-
-    let s5 = env.read_column(IVCColumn::BlockSel(5));
-    env.set_assert_mapper(Box::new(move |x| s5.clone() * x));
-    constrain_u(env);
-
-    env.set_assert_mapper(Box::new(move |x| x));
 }
 
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
