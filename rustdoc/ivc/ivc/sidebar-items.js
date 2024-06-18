@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["columns","interpreter","lookups"]};
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_XLARGE","N_LIMBS_XLARGE"],"mod":["columns","constraints","helpers","interpreter","lookups"]};

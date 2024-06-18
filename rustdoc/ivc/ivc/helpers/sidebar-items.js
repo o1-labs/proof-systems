@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["combine_large_to_full_field","combine_large_to_xlarge","combine_small_to_full"]};

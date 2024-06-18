@@ -174,16 +174,34 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
+<span class="kw">pub mod </span>constraints;
+<span class="kw">pub mod </span>helpers;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
+
+<span class="doccomment">/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
+</span><span class="kw">pub const </span>LIMB_BITSIZE_XLARGE: usize = <span class="number">150</span>;
+
+<span class="doccomment">/// The biggest packing format, 2 limbs.
+</span><span class="kw">pub const </span>N_LIMBS_XLARGE: usize = <span class="number">2</span>;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
         ivc::{
             columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
-            interpreter::{build_selectors, constrain_ivc, ivc_circuit},
+            constraints::constrain_ivc,
+            interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::{
