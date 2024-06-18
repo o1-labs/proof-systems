@@ -252,7 +252,7 @@
             }
             (Col(a), <span class="prelude-ty">Result</span>(<span class="kw-2">mut </span>b)) =&gt; {
                 <span class="kw">for </span>(a, b) <span class="kw">in </span>a.iter().zip(b.iter_mut()) {
-                    <span class="kw-2">*</span>b = f(b.clone(), a.clone())
+                    <span class="kw-2">*</span>b = f(a.clone(), b.clone())
                 }
                 <span class="prelude-ty">Result</span>(b)
             }
