@@ -398,7 +398,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // How many preimage bytes are being processed in this instruction
         // FIXME: need to connect this to REGISTER_PREIMAGE_OFFSET or pos?
-        let num_read_bytes = self.variable(Self::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
+        let num_preimage_bytes_read =
+            self.variable(Self::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
 
         // The chunk of at most 4 bytes that is being processed from the
         // preimage in this instruction
@@ -415,11 +416,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
 
-        // TODO: any constraints we should we add for pos?
+        // The actual number of bytes read in this instruction, will be 0 <= x <= len <= 4
+        let actual_read_bytes = self.variable(pos);
 
         // EXTRA 13 CONSTRAINTS
 
-        // Booleanity constraints
+        // 5 Booleanity constraints
         {
             for var in has_n_bytes.iter() {
                 self.assert_boolean(var.clone());
@@ -427,53 +429,62 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.assert_boolean(end_of_preimage.clone());
         }
 
+        // + 4 constraints
         {
             // Expressions that are nonzero when the exact corresponding number
-            // of bytes are read (case 0 bytes used when bytelength is read)
-            // TODO: use equal?
-            let read_1 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(2))
-                * (num_read_bytes.clone() - Expr::from(3))
-                * (num_read_bytes.clone() - Expr::from(4));
-            let read_2 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(1))
-                * (num_read_bytes.clone() - Expr::from(3))
-                * (num_read_bytes.clone() - Expr::from(4));
-            let read_3 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(1))
-                * (num_read_bytes.clone() - Expr::from(2))
-                * (num_read_bytes.clone() - Expr::from(4));
-            let read_4 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(1))
-                * (num_read_bytes.clone() - Expr::from(2))
-                * (num_read_bytes.clone() - Expr::from(3));
+            // of preimage bytes are read (case 0 bytes used when bytelength is read)
+            // TODO: embed any more complex logic to know how many bytes are read
+            //       depending on the address and length as in the witness?
+            // FIXME: use the lines below when the issue with `equal` is solved
+            //        that will bring the number of constraints from 23 to 31
+            //        (meaning the unit test needs to be manually adapted)
+            // let preimage_1 = self.equal(&num_preimage_bytes_read, &Expr::from(1));
+            // let preimage_2 = self.equal(&num_preimage_bytes_read, &Expr::from(2));
+            // let preimage_3 = self.equal(&num_preimage_bytes_read, &Expr::from(3));
+            // let preimage_4 = self.equal(&num_preimage_bytes_read, &Expr::from(4));
 
-            // Note these constraints also hold when 0 preimage bytes are read
+            let preimage_1 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(3))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_2 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(3))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_3 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(4));
+            let preimage_4 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(1))
+                * (num_preimage_bytes_read.clone() - Expr::from(2))
+                * (num_preimage_bytes_read.clone() - Expr::from(3));
+
+            // Constrain the byte decomposition of the preimage chunk
+            // NOTE: these constraints also hold when 0 preimage bytes are read
             {
-                // Constrain the byte decomposition of the preimage chunk When
-                // only 1 byte is read, the chunk is equal to the byte[0]
-                self.constraints
-                    .push(read_1.clone() * (this_chunk.clone() - bytes[0].clone()));
-                // When 2 bytes are read, the chunk is equal to the byte[0] *
-                // 2^8 + byte[1]
-                self.constraints.push(
-                    read_2.clone()
+                // When only 1 preimage byte is read, the chunk equals byte[0]
+                self.add_constraint(preimage_1 * (this_chunk.clone() - bytes[0].clone()));
+                // When 2 bytes are read, the chunk is equal to the
+                // byte[0] * 2^8 + byte[1]
+                self.add_constraint(
+                    preimage_2
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(8)) + bytes[1].clone())),
                 );
-                // When 3 bytes are read, the chunk is equal to the byte[0] *
-                // 2^16 + byte[1] * 2^8 + byte[2]
-                self.constraints.push(
-                    read_3.clone()
+                // When 3 bytes are read, the chunk is equal to
+                // byte[0] * 2^16 + byte[1] * 2^8 + byte[2]
+                self.add_constraint(
+                    preimage_3
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(16))
                                 + bytes[1].clone() * Expr::from(2u64.pow(8))
                                 + bytes[2].clone())),
                 );
-                // When all 4 bytes are read, the chunk is equal to the byte[0]
-                // * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
-                self.constraints.push(
-                    read_4.clone()
+                // When all 4 bytes are read, the chunk is equal to
+                // byte[0] * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
+                self.add_constraint(
+                    preimage_4
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(24))
                                 + bytes[1].clone() * Expr::from(2u64.pow(16))
@@ -482,66 +493,65 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
             }
 
-            // Constrain that at most you read `len` bytes
-            // TODO: use equal?
-            // TODO: embed any more complex logic to know how many bytes are read
-            //       depending on the address and length as in the witness?
-            {
-                // These variables are nonzero when at most have read n bytes
-                // If len = 1 then read_2 = 0, read_3 = 0, read_4 = 0
-                // If len = 2 then read_3 = 0, read_4 = 0
-                // If len = 3 then read_4 = 0
-                let len_is_1 = (len.clone() - Expr::from(2))
-                    * (len.clone() - Expr::from(3))
-                    * (len.clone() - Expr::from(4));
-                let len_is_2 = (len.clone() - Expr::from(1))
-                    * (len.clone() - Expr::from(3))
-                    * (len.clone() - Expr::from(4));
-                let len_is_3 = (len.clone() - Expr::from(1))
-                    * (len.clone() - Expr::from(2))
-                    * (len.clone() - Expr::from(4));
-                self.constraints.push(len_is_1.clone() * read_2);
-                self.constraints.push(len_is_1.clone() * read_3.clone());
-                self.constraints.push(len_is_1 * read_4.clone());
-                self.constraints.push(len_is_2.clone() * read_3);
-                self.constraints.push(len_is_2 * read_4.clone());
-                self.constraints.push(len_is_3 * read_4);
-            }
-
-            // Constrain the bytes flags depending on the number of bytes read
-            // in this row
+            // +4 constraints
+            // Constrain the bytes flags depending on the number of preimage
+            // bytes read in this row
             {
                 // When at least has_1_byte, then any number of bytes can be
                 // read <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.add_constraint(
                     has_n_bytes[0].clone()
-                        * (num_read_bytes.clone() - Expr::from(1))
-                        * (num_read_bytes.clone() - Expr::from(2))
-                        * (num_read_bytes.clone() - Expr::from(3))
-                        * (num_read_bytes.clone() - Expr::from(4)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(1))
+                        * (num_preimage_bytes_read.clone() - Expr::from(2))
+                        * (num_preimage_bytes_read.clone() - Expr::from(3))
+                        * (num_preimage_bytes_read.clone() - Expr::from(4)),
                 );
 
                 // When at least has_2_byte, then any number of bytes can be
-                // read except 1
-                self.constraints.push(
+                // read from the preimage except 1
+                self.add_constraint(
                     has_n_bytes[1].clone()
-                        * (num_read_bytes.clone() - Expr::from(2))
-                        * (num_read_bytes.clone() - Expr::from(3))
-                        * (num_read_bytes.clone() - Expr::from(4)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(2))
+                        * (num_preimage_bytes_read.clone() - Expr::from(3))
+                        * (num_preimage_bytes_read.clone() - Expr::from(4)),
                 );
                 // When at least has_3_byte, then any number of bytes can be
-                // read except 1 nor 2
-                self.constraints.push(
+                // read from the preimage except 1 nor 2
+                self.add_constraint(
                     has_n_bytes[2].clone()
-                        * (num_read_bytes.clone() - Expr::from(3))
-                        * (num_read_bytes.clone() - Expr::from(4)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(3))
+                        * (num_preimage_bytes_read.clone() - Expr::from(4)),
                 );
 
-                // When has_4_byte, then only can read 4
-                self.constraints
-                    .push(has_n_bytes[3].clone() * (num_read_bytes.clone() - Expr::from(4)));
+                // When has_4_byte, then only can read 4 preimage bytes
+                self.add_constraint(
+                    has_n_bytes[3].clone() * (num_preimage_bytes_read.clone() - Expr::from(4)),
+                );
             }
         }
+
+        // FIXED LOOKUPS
+        // Check that 0 <= preimage read <= actual read <= len <= 4
+        self.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![len.clone()],
+        ));
+        self.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![actual_read_bytes.clone()],
+        ));
+        self.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![num_preimage_bytes_read.clone()],
+        ));
+        self.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![len.clone() - actual_read_bytes.clone()],
+        ));
+        self.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![actual_read_bytes.clone() - num_preimage_bytes_read.clone()],
+        ));
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LEN {
@@ -580,7 +590,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // TODO: do we want to check byte-ness of the bytelength bytes as well?
 
         // Return actual length read as variable, stored in `pos`
-        self.variable(pos)
+        actual_read_bytes
     }
 
     fn request_hint_write(&mut self, _addr: &Self::Variable, _len: &Self::Variable) {

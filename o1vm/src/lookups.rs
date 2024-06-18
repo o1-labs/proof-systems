@@ -32,23 +32,25 @@ pub enum LookupTableIDs {
     PadLookup = 0,
     /// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
     RoundConstantsLookup = 1,
+    /// Values from 0 to 4 to check the number of bytes read from syscalls
+    AtMost4Lookup = 2,
     /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup = 2,
+    ByteLookup = 3,
     // Read tables come first to allow indexing with the table ID for the multiplicities
     /// Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup = 3,
+    RangeCheck16Lookup = 4,
     /// Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup = 4,
+    SparseLookup = 5,
     /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup = 5,
+    ResetLookup = 6,
 
     // RAM Tables
-    MemoryLookup = 6,
-    RegisterLookup = 7,
+    MemoryLookup = 7,
+    RegisterLookup = 8,
     /// Syscalls communication channel
-    SyscallLookup = 8,
+    SyscallLookup = 9,
     /// Input/Output of Keccak steps
-    KeccakStepLookup = 9,
+    KeccakStepLookup = 10,
 }
 
 impl LookupTableID for LookupTableIDs {
@@ -76,6 +78,7 @@ impl LookupTableID for LookupTableIDs {
         match self {
             PadLookup => RATE_IN_BYTES,
             RoundConstantsLookup => ROUNDS,
+            AtMost4Lookup => 5,
             ByteLookup => 1 << 8,
             RangeCheck16Lookup | SparseLookup | ResetLookup => 1 << 16,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => {
@@ -86,8 +89,8 @@ impl LookupTableID for LookupTableIDs {
 
     fn is_fixed(&self) -> bool {
         match self {
-            PadLookup | RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | SparseLookup
-            | ResetLookup => true,
+            PadLookup | RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
+            | SparseLookup | ResetLookup => true,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => false,
         }
     }
@@ -100,6 +103,7 @@ impl LookupTableID for LookupTableIDs {
         vec![
             Self::PadLookup,
             Self::RoundConstantsLookup,
+            Self::AtMost4Lookup,
             Self::ByteLookup,
             Self::RangeCheck16Lookup,
             Self::SparseLookup,
@@ -120,6 +124,8 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_pad() -> LookupTable<F>;
     /// Returns the round constants table
     fn table_round_constants() -> LookupTable<F>;
+    /// Returns the at most 4 table
+    fn table_at_most_4() -> LookupTable<F>;
     /// Returns the byte table
     fn table_byte() -> LookupTable<F>;
     /// Returns the range check 16 table
@@ -141,7 +147,8 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
             .fold(0u64, |acc, &x| acc * 256 + x as u64) as usize;
 
         match id {
-            RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | ResetLookup => {
+            RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
+            | ResetLookup => {
                 if idx < id.length() && table.entries[idx] == value {
                     Some(idx)
                 } else {
@@ -206,6 +213,15 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
                         F::from(Keccak::sparse(RC[i])[0]),
                     ]
                 })
+                .collect(),
+        }
+    }
+
+    fn table_at_most_4() -> LookupTable<F> {
+        Self {
+            table_id: AtMost4Lookup,
+            entries: (0..AtMost4Lookup.length())
+                .map(|i| vec![F::from(i as u32)])
                 .collect(),
         }
     }
