@@ -1099,6 +1099,12 @@ pub fn test_simple_add() {
         let joint_combiner = fq_sponge.challenge();
         let challenges = [beta, gamma, joint_combiner];
 
+        let simple_eval_env = SimpleEvalEnv {
+            witness: witness_d8,
+            alphas,
+            challenges,
+        };
+
         {
             let (_, endo_r) = BN254G1Affine::endos();
             let column_env: ColumnEnvironment<'_, N_COL_TOTAL, N_COL_TOTAL, 0, N_BLOCKS, _, LT> = {
@@ -1132,67 +1138,63 @@ pub fn test_simple_add() {
                 .collect();
 
             // Only for debugging purposes
-            for (expr_i, expr) in folding_compat_constraints_mapped_back.iter().enumerate() {
-                println!("Expression #{expr_i}: {}", expr);
+            for (expr_i, (expr, expr_compat)) in folding_compat_constraints
+                .iter()
+                .zip(folding_compat_constraints_mapped_back.iter())
+                .enumerate()
+            {
+                println!("Expression #{expr_i}: {}", expr_compat);
 
-                let interpolated = expr.evaluations(&column_env).interpolate();
-                if !interpolated.is_zero() {
-                    let (_, remainder) = interpolated
+                let compat_eval: Evaluations<_, _> = expr_compat.evaluations(&column_env);
+                let interpolated_compat = compat_eval.interpolate_by_ref();
+                if !interpolated_compat.is_zero() {
+                    let (_, remainder) = interpolated_compat
                         .divide_by_vanishing_poly(domain.d1)
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
-                        panic!("Error! Remainder for expression #{expr_i} is non-zero: {expr}");
+                        panic!(
+                            "Error! Remainder for expression #{expr_i} is non-zero: {expr_compat}"
+                        );
                     }
                 } else {
-                    println!("Interpolated polynomial #{expr_i} is zero")
+                    println!("Interpolated (compat) polynomial #{expr_i} is zero")
                 }
-            }
-        }
 
-        let simple_eval_env = SimpleEvalEnv {
-            witness: witness_d8,
-            alphas,
-            challenges,
-        };
+                let expr: FoldingExp<Config> = expr.clone().simplify();
+                let eval_leaf = eval_naive(&expr, &simple_eval_env);
+                println!("Evaluated leaf");
 
-        for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
-            //for (expr_i, expr) in folding_compat_constraints.iter().enumerate() {
-            use folding::{eval_leaf::EvalLeaf, expressions::FoldingExp};
-
-            println!("Expression #{expr_i}: {}", expr.to_string());
-
-            let expr: FoldingExp<Config> = expr.clone().simplify();
-            println!("Simplified");
-
-            //println!("Expression (foldingExp): {}", expr.to_string());
-
-            //  (i1,w1)       (i2,w2)         (+ trivial IVC)
-            //         (i3,w3)                (+ nontrivial IVC)
-            //
-            //
-            // APP + IVC
-
-            println!("Evaluating leaf");
-            let eval_leaf = eval_naive(&expr, &simple_eval_env);
-            println!("Evaluated leaf");
-
-            match eval_leaf {
-                EvalLeaf::Result(evaluations_d8) => {
-                    let interpolated =
-                        Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
-                    if !interpolated.is_zero() {
-                        let (_, remainder) = interpolated
-                            .divide_by_vanishing_poly(domain.d1)
-                            .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
-                        if !remainder.is_zero() {
-                            println!("ERROR!!!!!!!!!!! REMAINDER IS NOT ZERO");
-                            //panic!("Remainder is not zero")
+                match eval_leaf {
+                    EvalLeaf::Result(evaluations_d8) => {
+                        // some kimchi evaluations are (wisely) over a
+                        // smaller domain. We expand them to compare
+                        // to our naive evaluation over d8.
+                        let compat_eval_d8 = compat_eval
+                            .interpolate_by_ref()
+                            .evaluate_over_domain_by_ref(domain.d8);
+                        println!(
+                            "eval_leaf (len {}) == compat_eval_d8 (len {})? {}",
+                            compat_eval_d8.evals.len(),
+                            evaluations_d8.len(),
+                            compat_eval_d8.evals == evaluations_d8
+                        );
+                        let interpolated =
+                            Evaluations::from_vec_and_domain(evaluations_d8, domain.d8)
+                                .interpolate();
+                        if !interpolated.is_zero() {
+                            let (_, remainder) = interpolated
+                                .divide_by_vanishing_poly(domain.d1)
+                                .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                            if !remainder.is_zero() {
+                                println!("ERROR!!!!!!!!!!! REMAINDER IS NOT ZERO");
+                                //panic!("Remainder is not zero")
+                            }
+                        } else {
+                            println!("Interpolated polynomial is zero")
                         }
-                    } else {
-                        println!("Interpolated polynomial is zero")
                     }
+                    _ => panic!("eval_leaf is not Result"),
                 }
-                _ => panic!("eval_leaf is not Result"),
             }
         }
     }
