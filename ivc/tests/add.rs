@@ -10,10 +10,20 @@ use folding::{
     standard_config::{EmptyStructure, StandardConfig},
     Alphas, FoldingCompatibleExpr, FoldingScheme, Instance, Witness,
 };
-use ivc::ivc::{
-    columns::{IVCColumn, N_BLOCKS},
-    constraints::constrain_ivc,
-    lookups::IVCLookupTable,
+use ivc::{
+    ivc::{
+        columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
+        constraints::constrain_ivc,
+        interpreter::build_selectors,
+        lookups::IVCLookupTable,
+    },
+    poseidon_8_56_5_3_2::{
+        bn254::{
+            PoseidonBN254Parameters, NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS,
+            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+        },
+        interpreter::PoseidonParams,
+    },
 };
 use kimchi::circuits::expr::{ChallengeTerm, Variable};
 use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
@@ -101,16 +111,6 @@ pub fn test_simple_add() {
             true
         }
     }
-
-    // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
-    // FIXME: add Poseidon constants
-    const N_FSEL_TOTAL: usize = N_BLOCKS;
-
-    // Number of witness columns in the circuit.
-    // It consists of the columns of the inner circuit and the columns for the
-    // IVC circuit.
-    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
 
     type AppWitnessBuildEnv = WitnessBuilderEnv<
         Fp,
@@ -299,6 +299,23 @@ pub fn test_simple_add() {
         }
     }
 
+    // Total number of witness columns in IVC. The blocks are public selectors.
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
+    // Total number of fixed selectors in the circuit for APP + IVC.
+    // There is no fixed selector in the APP circuit.
+    const N_FSEL_TOTAL: usize = IVC_NB_TOTAL_FIXED_SELECTORS;
+    // Total number of challenges required by the circuit
+    // It contains the challenges required by the interactive protocol, and also
+    // the alphas used to combine the constraints. The number of alphas is equal
+    // to the maximum of constraints per row. It is supposed that Poseidon has
+    // the maximum the number of constraints for now.
+    const N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS + Challenge::COUNT;
+
+    // Number of witness columns in the circuit.
+    // It consists of the columns of the inner circuit and the columns for the
+    // IVC circuit.
+    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
+
     type Config = StandardConfig<
         Curve,
         Column,
@@ -417,4 +434,37 @@ pub fn test_simple_add() {
         }
         env
     };
+
+    // ---- Start build the witness environment for the IVC
+    // Start building the constants of the circuit.
+    // For the IVC, we have all the "block selectors" - which depends on the
+    // number of columns of the circuit - and the poseidon round constants.
+    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
+    // reduce the IVC constraints to degree 2.
+    let mut ivc_fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+
+    // FIXME: we should have a function in the poseidon crate to fill a vector
+    // of selectors
+    {
+        let rc = PoseidonBN254Parameters.constants();
+        rc.iter().enumerate().for_each(|(round, rcs)| {
+            rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                ivc_fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] =
+                    vec![*rc; domain_size];
+            });
+        });
+    }
+
+    // Sanity check on the domain size, can be removed later
+    assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
+    ivc_fixed_selectors.iter().for_each(|s| {
+        assert_eq!(s.len(), domain_size);
+    });
+
+    let _ivc_fixed_selectors_evals_d1: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>> =
+        ivc_fixed_selectors
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
+            .collect();
 }
