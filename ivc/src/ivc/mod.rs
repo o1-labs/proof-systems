@@ -4,15 +4,13 @@ pub mod lookups;
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         ivc::{
             columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_8_56_5_3_2::interpreter::PoseidonParams,
-        poseidon_params_8_56_5_3::static_params,
+        poseidon_8_56_5_3_2::{bn254::static_params, interpreter::PoseidonParams},
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
