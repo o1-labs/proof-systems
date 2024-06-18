@@ -1030,6 +1030,58 @@
 <a href="#1030" id="1030">1030</a>
 <a href="#1031" id="1031">1031</a>
 <a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -1282,6 +1334,7 @@
 </span><span class="attr">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>process_inputs&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     comms: [Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;; <span class="number">3</span>],
 ) -&gt; (
     Box&lt;[[[F; <span class="number">2 </span>* N_LIMBS_SMALL]; N_COL_TOTAL]; <span class="number">3</span>]&gt;,
@@ -1299,6 +1352,11 @@
 
     <span class="kw">for </span>_block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">0</span>) {
         <span class="kw">let </span>row_num = env.curr_row();
+
+        env.write_column(
+            IVCColumn::FoldIteration,
+            <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+        );
 
         <span class="kw">let </span>(target_comms, row_num_local, comtype) = <span class="kw">if </span>row_num &lt; N_COL_TOTAL {
             (<span class="kw-2">&amp;</span>comms[<span class="number">0</span>], row_num, <span class="number">0</span>)
@@ -1335,6 +1393,7 @@
 </span><span class="doccomment">/// Instantiates the IVC circuit for folding. N is the total number of columns
 </span><span class="kw">pub fn </span>process_hashes&lt;F, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     poseidon_params: <span class="kw-2">&amp;</span>PParams,
     comms_xlarge: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_XLARGE]; N_COL_TOTAL]; <span class="number">3</span>],
 ) -&gt; (Env::Variable, Env::Variable, Env::Variable)
@@ -1361,6 +1420,11 @@
 
     <span class="comment">// Relative position in the hashing block
     </span><span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">1</span>) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+        );
+
         <span class="comment">// Computing h_l, h_r, h_o independently
         </span><span class="kw">if </span>block_row_i &lt; <span class="number">6 </span>* n {
             <span class="comment">// Left, right, or output
@@ -1554,6 +1618,7 @@
 <span class="doccomment">/// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
 </span><span class="kw">pub fn </span>process_scalars&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     r: F,
     phi: F,
 ) -&gt; ScalarLimbs&lt;F&gt;
@@ -1571,6 +1636,11 @@
     <span class="kw">let </span><span class="kw-2">mut </span>phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
 
     <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">2</span>) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+        );
+
         <span class="kw">let </span>(
             phi_prev_power_f_new,
             phi_curr_power_f_limbs,
@@ -1643,6 +1713,7 @@
 
 <span class="kw">pub fn </span>process_ecadds&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     scalar_limbs: ScalarLimbs&lt;F&gt;,
     comms_large: <span class="kw-2">&amp;</span>[[[F; <span class="number">2 </span>* N_LIMBS_LARGE]; N_COL_TOTAL]; <span class="number">3</span>],
     error_terms: [(Ff, Ff); <span class="number">3</span>], <span class="comment">// E_L, E_R, E_O
@@ -1684,6 +1755,11 @@
     </span><span class="kw">let </span>error_term_rprime_large: [F; <span class="number">2 </span>* N_LIMBS_LARGE] = error_terms_large[<span class="number">0</span>];
 
     <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">3</span>) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+        );
+
         <span class="comment">// Number of the commitment we&#39;re processing, ∈ [N]
         </span><span class="kw">let </span>com_i = block_row_i % N_COL_TOTAL;
         <span class="comment">// Coefficient limb we&#39;re processing for C_L/C_R/C_O, ∈ [k = 17]
@@ -1863,6 +1939,7 @@
 <span class="attr">#[allow(clippy::needless_range_loop)]
 </span><span class="kw">pub fn </span>process_challenges&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     h_r: F,
     chal_l: <span class="kw-2">&amp;</span>[F; N_CHALS],
     r: F,
@@ -1873,6 +1950,11 @@
     <span class="kw">let </span><span class="kw-2">mut </span>curr_alpha_r_pow: F = F::one();
 
     <span class="kw">for </span>block_row_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(<span class="number">4</span>) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+        );
+
         curr_alpha_r_pow <span class="kw-2">*</span>= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, <span class="kw-2">&amp;</span>Env::constant(h_r));
@@ -1908,11 +1990,20 @@
 }
 
 <span class="attr">#[allow(clippy::needless_range_loop)]
-</span><span class="kw">pub fn </span>process_u&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env, u_l: F, r: F)
-<span class="kw">where
+</span><span class="kw">pub fn </span>process_u&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
+    u_l: F,
+    r: F,
+) <span class="kw">where
     </span>F: PrimeField,
     Env: MultiRowReadCap&lt;F, IVCColumn&gt;,
 {
+    env.write_column(
+        IVCColumn::FoldIteration,
+        <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+    );
+
     env.write_column(IVCColumn::Block6ConstR, <span class="kw-2">&amp;</span>Env::constant(r));
     env.write_column(IVCColumn::Block6ULeft, <span class="kw-2">&amp;</span>Env::constant(u_l));
     env.write_column(IVCColumn::Block6UOutput, <span class="kw-2">&amp;</span>Env::constant(u_l + r));
@@ -2019,10 +2110,14 @@
 </span><span class="comment">// FIXME: we must accept the scaled right commitments and the right instance
 // commitments
 // FIXME: Env should be implementing like a IVCCapability trait, which contains
-// the sponge for instance, and the buckets for the MSM
+// the sponge for instance, and the buckets for the MSM. All the data points
+// used here should be saved inside it, and this function should only take as an
+// argument the environment.
+// FIXME: the fold_iteration variable should be inside the environment
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
+    fold_iteration: usize,
     comms_left: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
     comms_right: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
     comms_out: Box&lt;[(Ff, Ff); N_COL_TOTAL]&gt;,
@@ -2044,22 +2139,31 @@
     </span><span class="macro">assert!</span>(<span class="number">45 </span>* N_COL_TOTAL + <span class="number">2 </span>&lt; domain_size);
     <span class="macro">assert!</span>(chal_l.len() == N_CHALS);
 
-    <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) =
-        process_inputs::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, [comms_left, comms_right, comms_out]);
-    <span class="kw">let </span>(hash_r_var, r_var, phi_var) =
-        process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, poseidon_params, <span class="kw-2">&amp;</span>comms_xlarge);
+    <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) = process_inputs::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(
+        env,
+        fold_iteration,
+        [comms_left, comms_right, comms_out],
+    );
+    <span class="kw">let </span>(hash_r_var, r_var, phi_var) = process_hashes::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(
+        env,
+        fold_iteration,
+        poseidon_params,
+        <span class="kw-2">&amp;</span>comms_xlarge,
+    );
     <span class="kw">let </span>r: F = Env::variable_to_field(r_var);
     <span class="kw">let </span>phi: F = Env::variable_to_field(phi_var);
     <span class="kw">let </span>hash_r: F = Env::variable_to_field(hash_r_var);
-    <span class="kw">let </span>scalar_limbs = process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, r, phi);
+    <span class="kw">let </span>scalar_limbs =
+        process_scalars::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, fold_iteration, r, phi);
     process_ecadds::&lt;<span class="kw">_</span>, Ff, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(
         env,
+        fold_iteration,
         scalar_limbs,
         <span class="kw-2">&amp;</span>comms_large,
         error_terms,
         t_terms,
     );
-    process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, hash_r, <span class="kw-2">&amp;</span>chal_l, r);
-    process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, u_l, r);
+    process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, fold_iteration, hash_r, <span class="kw-2">&amp;</span>chal_l, r);
+    process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, fold_iteration, u_l, r);
 }
 </code></pre></div></section></main></body></html>
