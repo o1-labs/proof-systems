@@ -501,21 +501,42 @@ pub trait InterpreterEnv {
         };
     }
 
-    /// Range checks with 2 lookups to the RangeCheck16Lookup table that a value
-    /// is at most 2^`bits`-1  (bits <= 16).
-    fn range_check_bits(&mut self, value: &Self::Variable, bits: u32) {
-        assert!(bits <= 16);
-        // 0 <= value < 2^bits
-        // First, check lowerbound: 0 <= value < 2^16
+    /// Adds a lookup to the RangeCheck16Lookup table
+    fn lookup_16bits(&mut self, value: &Self::Variable) {
         self.add_lookup(Lookup::read_one(
             LookupTableIDs::RangeCheck16Lookup,
             vec![value.clone()],
         ));
+    }
+
+    /// Range checks with 2 lookups to the RangeCheck16Lookup table that a value
+    /// is at most 2^`bits`-1  (bits <= 16).
+    fn range_check16(&mut self, value: &Self::Variable, bits: u32) {
+        assert!(bits <= 16);
+        // 0 <= value < 2^bits
+        // First, check lowerbound: 0 <= value < 2^16
+        self.lookup_16bits(value);
         // Second, check upperbound: value + 2^16 - 2^bits < 2^16
+        self.lookup_16bits(&(value.clone() + Self::constant(1 << 16) - Self::constant(1 << bits)));
+    }
+
+    /// Adds a lookup to the ByteLookup table
+    fn lookup_8bits(&mut self, value: &Self::Variable) {
         self.add_lookup(Lookup::read_one(
-            LookupTableIDs::RangeCheck16Lookup,
-            vec![value.clone() + Self::constant(1 << 16) - Self::constant(1 << bits)],
+            LookupTableIDs::ByteLookup,
+            vec![value.clone()],
         ));
+    }
+
+    /// Range checks with 2 lookups to the ByteLookup table that a value
+    /// is at most 2^`bits`-1  (bits <= 8).
+    fn range_check8(&mut self, value: &Self::Variable, bits: u32) {
+        assert!(bits <= 8);
+        // 0 <= value < 2^bits
+        // First, check lowerbound: 0 <= value < 2^8
+        self.lookup_8bits(value);
+        // Second, check upperbound: value + 2^8 - 2^bits < 2^8
+        self.lookup_8bits(&(value.clone() + Self::constant(1 << 8) - Self::constant(1 << bits)));
     }
 
     fn range_check64(&mut self, _value: &Self::Variable) {
@@ -970,37 +991,37 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 6);
+    env.range_check8(&opcode, 6);
 
     let rs = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
-    env.range_check_bits(&rs, 5);
+    env.range_check8(&rs, 5);
 
     let rt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
-    env.range_check_bits(&rt, 5);
+    env.range_check8(&rt, 5);
 
     let rd = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 11, pos) }
     };
-    env.range_check_bits(&rd, 5);
+    env.range_check8(&rd, 5);
 
     let shamt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 11, 6, pos) }
     };
-    env.range_check_bits(&shamt, 5);
+    env.range_check8(&shamt, 5);
 
     let funct = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 6, 0, pos) }
     };
-    env.range_check_bits(&funct, 6);
+    env.range_check8(&funct, 6);
 
     // Check correctness of decomposition of instruction into parts
     env.add_constraint(
@@ -1202,7 +1223,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&write_length, 2, 0, pos) }
             };
-            env.range_check_bits(&bytes_to_preserve_in_register, 2);
+            env.range_check8(&bytes_to_preserve_in_register, 2);
             let register_idx = {
                 let registers_left_to_write_after_this = {
                     let pos = env.alloc_scratch();
@@ -1210,7 +1231,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     // register has an incorrect value, it will be unprovable and we'll fault.
                     unsafe { env.bitmask(&write_length, 6, 2, pos) }
                 };
-                env.range_check_bits(&registers_left_to_write_after_this, 4);
+                env.range_check8(&registers_left_to_write_after_this, 4);
                 Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
             };
 
@@ -1247,10 +1268,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 8);
-            env.range_check_bits(&r1, 8);
-            env.range_check_bits(&r2, 8);
-            env.range_check_bits(&r3, 8);
+            env.lookup_8bits(&r0);
+            env.lookup_8bits(&r1);
+            env.lookup_8bits(&r2);
+            env.lookup_8bits(&r3);
 
             // We choose our read address so that the bytes we read come aligned with the target
             // bytes in the register, to avoid an expensive bitshift.
@@ -1271,7 +1292,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&addr, 2, 0, pos) }
                     };
-                    env.range_check_bits(&byte_subaddr, 2);
+                    env.range_check8(&byte_subaddr, 2);
                     addr.clone() + Env::constant(4) - byte_subaddr
                 };
                 let overwrite_0 = {
@@ -1697,7 +1718,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 6);
+    env.range_check8(&opcode, 6);
 
     let addr = {
         // FIXME: Requires a range check (cannot use range_check_bits here because 26 > 16)
@@ -1708,7 +1729,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&next_instruction_pointer, 32, 28, pos) }
     };
-    env.range_check_bits(&instruction_pointer_high_bits, 4);
+    env.range_check8(&instruction_pointer_high_bits, 4);
 
     // Check correctness of decomposition of instruction into parts
     env.add_constraint(instruction - (opcode * Env::constant(1 << 26) + addr.clone()));
@@ -1742,25 +1763,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 6);
+    env.range_check8(&opcode, 6);
 
     let rs = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
-    env.range_check_bits(&rs, 5);
+    env.range_check8(&rs, 5);
 
     let rt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
-    env.range_check_bits(&rt, 5);
+    env.range_check8(&rt, 5);
 
     let immediate = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 0, pos) }
     };
-    env.range_check_bits(&immediate, 16);
+    env.lookup_16bits(&immediate);
 
     // Check correctness of decomposition of instruction into parts
     env.add_constraint(
@@ -2174,10 +2195,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 8);
-            env.range_check_bits(&r1, 8);
-            env.range_check_bits(&r2, 8);
-            env.range_check_bits(&r3, 8);
+            env.lookup_8bits(&r0);
+            env.lookup_8bits(&r1);
+            env.lookup_8bits(&r2);
+            env.lookup_8bits(&r3);
 
             let value = {
                 let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
@@ -2210,7 +2231,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check_bits(&byte_subaddr, 2);
+            env.range_check8(&byte_subaddr, 2);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
@@ -2246,10 +2267,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 8);
-            env.range_check_bits(&r1, 8);
-            env.range_check_bits(&r2, 8);
-            env.range_check_bits(&r3, 8);
+            env.lookup_8bits(&r0);
+            env.lookup_8bits(&r1);
+            env.lookup_8bits(&r2);
+            env.lookup_8bits(&r3);
 
             let value = {
                 let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
@@ -2282,7 +2303,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&value, 8, 0, pos) }
             };
-            env.range_check_bits(&v0, 8);
+            env.lookup_8bits(&v0);
 
             env.write_memory(&addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -2312,8 +2333,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 8);
-            env.range_check_bits(&v1, 8);
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
 
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
@@ -2352,10 +2373,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 8);
-            env.range_check_bits(&v1, 8);
-            env.range_check_bits(&v2, 8);
-            env.range_check_bits(&v3, 8);
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+            env.lookup_8bits(&v2);
+            env.lookup_8bits(&v3);
 
             // Checking that v is the correct decomposition.
             {
@@ -2405,10 +2426,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 8);
-            env.range_check_bits(&v1, 8);
-            env.range_check_bits(&v2, 8);
-            env.range_check_bits(&v3, 8);
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+            env.lookup_8bits(&v2);
+            env.lookup_8bits(&v3);
 
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
@@ -2436,7 +2457,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check_bits(&byte_subaddr, 2);
+            env.range_check8(&byte_subaddr, 2);
 
             let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
             let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
@@ -2469,10 +2490,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 8);
-            env.range_check_bits(&r1, 8);
-            env.range_check_bits(&r2, 8);
-            env.range_check_bits(&r3, 8);
+            env.lookup_8bits(&r0);
+            env.lookup_8bits(&r1);
+            env.lookup_8bits(&r2);
+            env.lookup_8bits(&r3);
 
             let v0 = {
                 let pos = env.alloc_scratch();
@@ -2526,7 +2547,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check_bits(&byte_subaddr, 2);
+            env.range_check8(&byte_subaddr, 2);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
@@ -2562,10 +2583,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 8);
-            env.range_check_bits(&r1, 8);
-            env.range_check_bits(&r2, 8);
-            env.range_check_bits(&r3, 8);
+            env.lookup_8bits(&r0);
+            env.lookup_8bits(&r1);
+            env.lookup_8bits(&r2);
+            env.lookup_8bits(&r3);
 
             let v0 = {
                 let pos = env.alloc_scratch();
