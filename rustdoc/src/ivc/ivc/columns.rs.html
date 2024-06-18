@@ -462,6 +462,16 @@
 <a href="#462" id="462">462</a>
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_8_56_5_3_2::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
@@ -512,6 +522,11 @@
 ///
 ///```text
 ///
+///         Inputs:
+///      Each point is 2 base field coordinates in 17 15-bit limbs
+///       recomposed as 8 75-bit limbs
+///       recomposed as 4 150-bit limbs.
+///
 ///              34            8      4
 ///            Input1         R75   R150
 ///  1   |-----------------|-------|----|
@@ -531,7 +546,7 @@
 ///      0       ...     34*2    76    80
 ///
 ///
-///                      Hashes
+///                      Hashes (temporarily DISABLED)
 ///     (one hash at a row, passing data to the next one)
 ///     (for i∈N, the input row #i containing 4 150-bit elements
 ///      is processed by hash rows 2*i and 2*i+1)
@@ -550,6 +565,10 @@
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
 /// 6N+2 |------------------------------------------|
 ///
+///       TODO: we also need to squeeze challenges for
+///       the right (strict) instance: β, γ, j (joint_combiner)
+///
+///       TODO: we can hash (x0,x1+b*2^150) instead of (x0,x1,y0,y1).
 ///
 /// Scalars block.
 ///
@@ -638,6 +657,7 @@
 /// 4*17+ |--------------------------------------------------------------------------------------------------|
 /// 1
 ///
+/// TODO: add different challenges: β, γ, joint_combiner
 ///
 /// Challenges block.
 ///
@@ -645,18 +665,18 @@
 ///                       strict
 ///                    (relaxed in-place)
 ///        r   α_{L,i}    α_{R}^i     α_{O,i}
-///  1    |--|--------|-----------|-------------------|
-///       |  |        | α_R = h_R |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        | α_R^i     | α_{L,i} + r·α_R^i |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-/// #chal |--|--------|-----------|-------------------|
+///  1    |--|--------|-----------|-----------------------|
+///       |  |        | α_R = h_R |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        | α_R^i     | α_{L,i} + r·α_{R,i}^i |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+/// #chal |--|--------|-----------|-----------------------|
 ///
 /// #chal is the number of constraints. Our optimistic expectation is
 /// that it is around const*N for const &lt; 3.
