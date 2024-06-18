@@ -1,4 +1,100 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `ivc` crate."><title>ivc - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ivc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../ivc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../ivc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate ivc</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">ivc</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/ivc/lib.rs.html#1-13">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="ivc/index.html" title="mod ivc::ivc">ivc</a></div></li><li><div class="item-name"><a class="mod" href="poseidon_8_56_5_3_2/index.html" title="mod ivc::poseidon_8_56_5_3_2">poseidon_8_56_5_3_2</a></div><div class="desc docblock-short">Poseidon hash function with 8 full rounds, 56 partial rounds, sbox 5, a
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This crate provides a circuit to achieve Incremental Verifiable Computation (IVC) based on a variant of the folding scheme described in the paper Nova. For the rest of the document, we do suppose that the curve is BN254."><title>ivc - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ivc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../ivc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../ivc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate ivc</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">ivc</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/ivc/lib.rs.html#1-126">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This crate provides a circuit to achieve Incremental Verifiable
+Computation (IVC) based on a variant of the folding scheme described in the
+paper <a href="https://eprint.iacr.org/2021/370.pdf">Nova</a>. For the rest of the
+document, we do suppose that the curve is BN254.</p>
+<p>The circuit is implemented using the generic interpreter provided by the
+crate [kimchi_msm].
+The particularity of the implementation is that it doesn’t use a cycle of
+curves, aims to be as generic as possible, defer the scalar
+multiplications to compute them in bulk and rely on the Poseidon hash.
+Our argument will be mostly based on the state of the hash after we
+executed the whole computation.</p>
+<p>The IVC circuit is divided into different sections/sets of constraints
+described by multivariate polynomials, each
+activated by (public) selectors that are defined at setup time.
+The number of columns of the original computation defines the shape of the
+circuit as it will define the values of the selectors.</p>
+<p>First, the folding scheme we use is described in the crate
+<a href="folding::expressions">folding</a> and is based on degree-3 polynomials.
+We do suppose that each constraint are reduced to degree 2, and the third
+degree is used to encode the aggregation of constraints.</p>
+<p>In the <a href="https://eprint.iacr.org/2021/370.pdf">Nova paper</a>, to provide
+incremental verifiable computation, the authors propose a folding scheme
+where the verifier has to compute the followings:</p>
+<div class="example-wrap"><pre class="language-text"><code>// Accumulation of the homogeneous value `u`:
+u&#39;&#39; = u + r u&#39;
+// Accumulation of all the PIOP challenges:
+for each challenge c_i:
+   c_i&#39;&#39; = c_i + r c_i&#39;
+for each alpha_i (aggregation of constraints):
+   alpha_i&#39;&#39; = alpha_i + r alpha_i&#39;
+// Accumulation of the blinders for the commitment:
+blinder&#39;&#39; = blinder + r + r^2 + r^3 blinder&#39;
+// Accumulation of the error terms (scalar multiplication)
+E = E1 + r T0 + r^2 T1 + r^3 E2
+// Randomized accumulation of the instance commitments (scalar multiplication)
+for i in 0..N_COLUMNS
+   (C_i)_O = (C_i)_L + r (C_i)_R
+</code></pre></div>
+<p>The accumulation of the challenges, the homogeneous value and the blinders
+are done trivially as they are scalar field values.
+After that, the verifier has to perform foreign field ellictic curve
+additions and scalar multiplications <code>(r T0)</code>, <code>(r^2 T1)</code>, <code>(r^3 E2)</code> and
+<code>(r (C_i)_R)</code> for each column.</p>
+<p>First, we decide to defer the computations of
+the scalar multiplications, and we reduce the verifier work to compute only
+the foreign field elliptic curve additions. Therefore, the verifier has
+access already to the
+result of <code>r T0</code>, <code>r^2 T1</code>, <code>r^3 E2</code> and <code>r (C_i)_R</code>, and must only perform the
+addition. We call the commitments <code>r T0</code> the “scaled” commitment to <code>T0</code>, and
+the same for the others. The commitments <code>(C_i)_L</code>, <code>(C_i)_R</code> and <code>(C_i)_O</code> are
+called the “instance commitments”.</p>
+<p>To perform foreign field elliptic curve addition, we split the commitments
+into 17 chunks of 15 bits and use additive lookups as described in
+[kimchi_msm::logup]. These 17 chunks will be used later to compute the
+scalar multiplications using a variant of the scheme described in <a href="https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md">the MSM
+RFC</a></p>
+<p>The first component of our circuit is a hash function.
+We decided to use the Poseidon hash function, and implemented a generic one
+using the generic interpreter in <a href="poseidon_8_56_5_3_2/index.html" title="mod ivc::poseidon_8_56_5_3_2">crate::poseidon_8_56_5_3_2</a>. The Poseidon
+instance we decided to go with is the traditional full/partial rounds. For a
+security of 128 bits, a substitution box of 5 and a state of 3 elements, we
+need 8 full rounds and 56 partial rounds for the scalar field BN254.
+Therefore, we can “absorb” 2 field elements per row (the third element is
+kept as a buffer in the Sponge construction).</p>
+<p>The cost of a single Poseidon hash in terms of constraints is 432
+constraints, and requires 435 columns, in addition to 192 round constants
+considered as constants “selectors” in our constraints.
+Note that having 432 constraints per Poseidon hash means that we must also
+have 432 constraints to accumulate the challenges used to combine the
+constraints. It is worth noting that these alphas are the same for all
+poseidon hashes.
+Combining constraints is done by using another selector, on a single row,
+see below (TODO).
+Note that the columns used by the poseidon hash must also be aggregated
+while running the IVC.</p>
+<p>The Poseidon hash is used to absorb all the instance commitments, the
+challenges and the scaled commitments.
+In our circuit, we first start by absorbing all the elliptic curve points. A
+particularity is that we will use different Poseidon instances for each
+“side” of the addition. For each point, we do assume (<em>at the moment</em>) that
+each point is encoded as 2 field elements in the field of the circuit
+(FIXME: there is negligeable probability that it wraps over, as the
+coordinates are in the base field).
+For a given set of coordinates <code>(x, y)</code>, and by supposing an initial state of
+our permutation <code>(s0, s1, s2)</code>, we will compute on a single row the absorbtion
+of <code>(x, y)</code>, which consists of updating the state <code>(s0, s1, s2)</code> to
+<code>(s0 + x, s1 + y, s2)</code>.
+For each side, we will initialize a new Poseidon state, and we will keep
+absorbing each column of the circuit.</p>
+<p>We end up with the following shape:</p>
+<div class="example-wrap"><pre class="language-text"><code>| q_poseidon | s0 | s1 | s2 | s0 + x | s1 + y | ... | s0&#39; | s1&#39; | s2&#39; | side |
+</code></pre></div>
+<p>where <code>(s0', s1', s2')</code> is the final state of the Poseidon permutation after
+the execution of all the rounds, and <code>q_poseidon</code> will be a (public
+selector) that will be set to <code>1</code> on the row that Poseidon will need to be
+executed, <code>0</code> otherwise.</p>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="ivc/index.html" title="mod ivc::ivc">ivc</a></div></li><li><div class="item-name"><a class="mod" href="poseidon_8_56_5_3_2/index.html" title="mod ivc::poseidon_8_56_5_3_2">poseidon_8_56_5_3_2</a></div><div class="desc docblock-short">Poseidon hash function with 8 full rounds, 56 partial rounds, sbox 5, a
 state of 3 elements and constraints of degree 2
 Specialised circuit for Poseidon where we have maximum degree 2 constraints.</div></li><li><div class="item-name"><a class="mod" href="poseidon_55_0_7_3_2/index.html" title="mod ivc::poseidon_55_0_7_3_2">poseidon_55_0_7_3_2</a></div><div class="desc docblock-short">Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
 state of 3 elements and constraints of degree 2
