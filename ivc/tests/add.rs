@@ -16,6 +16,7 @@ use ivc::{
         constraints::constrain_ivc,
         interpreter::build_selectors,
         lookups::IVCLookupTable,
+        N_ADDITIONAL_WIT_COL_QUAD,
     },
     poseidon_8_56_5_3_2::{
         bn254::{
@@ -312,8 +313,8 @@ pub fn test_simple_add() {
     const N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS + Challenge::COUNT;
 
     // Number of witness columns in the circuit.
-    // It consists of the columns of the inner circuit and the columns for the
-    // IVC circuit.
+    // It consists of the columns of the app circuit and the columns for the IVC
+    // circuit.
     pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
 
     type Config = StandardConfig<
@@ -439,10 +440,11 @@ pub fn test_simple_add() {
     // Start building the constants of the circuit.
     // For the IVC, we have all the "block selectors" - which depends on the
     // number of columns of the circuit - and the poseidon round constants.
-    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
-    // reduce the IVC constraints to degree 2.
+    // We must also add the witness columns that the reduction to degree 2 will
+    // require
     let mut ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+        build_selectors::<_, { N_COL_TOTAL + N_ADDITIONAL_WIT_COL_QUAD }, N_CHALS>(domain_size)
+            .to_vec();
 
     // FIXME: we should have a function in the poseidon crate to fill a vector
     // of selectors
