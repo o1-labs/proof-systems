@@ -110,6 +110,86 @@
 //! the execution of all the rounds, and `q_poseidon` will be a (public
 //! selector) that will be set to `1` on the row that Poseidon will need to be
 //! executed, `0` otherwise.
+//!
+//! ## Parallel folding/bifolding
+//!
+//! The library also lets the user fold in parallel.
+//! Imagine you have two polynomial P_1(X1, ..., Xn) and P_2(Y1, ..., Yn) that
+//! you define two different relations R_1 and R_2.
+//! As usual, you can create a unique relation R that contains two additional
+//! columns q_1 and q_2 consisting of "selecting" the actual relation to use on one row.
+//! In addition to the columns, you will add constraints that will ensure that
+//! only one of the two relations is used, as follow:
+//! ```text
+//! q_1 * (1 - q_1) = 0
+//! q_2 * (1 - q_2) = 0
+//! q_1 + q_2 = 1
+//! ```
+//!
+//! The IVC paradigm defined in Nova lets you fold incrementally sequential
+//! computation, by
+//! that we mean that if you have a function f, you can incrementally, and
+//! sequentially verify `f(f(f(...(f(x)))))` by encoding in a
+//! single circuit the verifier of the previous step. In the case of Nova, it is
+//! supposed that the goal is to prove the composition of f with itself, i.e.
+//! the input of the step (i + 1) depends on the output of the step i.
+//!
+//! Imagine the case of a function that doesn't depend on the previous output, and
+//! therefore you don't want to prove a new execution of f on the input `f(x)`,
+//! but simply that at each step, you correctly executed the function f of
+//! another previous step. For instance, it is the case of a zero-knowledge
+//! proof virtual machine like `o1vm` because the "time" is encoded as a column,
+//! and proved by a (folded) lookup argument.
+//!
+//! The issue we have with Nova is that the input of the function `F'` is a
+//! relaxed instance (which is the circuit computing f at the previous + the
+//! input of the previous step) and you have also the current step.
+//! The Nova circuit will output a new relaxed instance, and does not allow to
+//! "merge" two independent computations.
+//! The Nova paper doesn't allow to "reduce" the number of instances that you
+//! will input into the circuit. You can never go from 4 inputs to 2 inputs for
+//! instance.
+//!
+//! We propose a solution to compress the number of input instances in a single
+//! instance.
+//!
+//! (dw)
+//! The main idea behind the parallel folding is to keep the accumulation of the
+//! application circuit and the IVC circuit separately.
+//! In the Nova paper, the accumulator is noted with the capital letter `U`, and
+//! the current value to be folded into `U_i` is noted with a lowercase `u_i`.
+//! In other words, `U_i` defines the accumulated instance of the function `F'` (i.e.
+//! the function performing the IVC + the original application F).
+//!
+//! For the sake of simplicity, and to avoid confusion in the notation, we will
+//! start using `acc_i` for the accumulator up to step `i`, and `u_i` for the
+//! current instance.
+//!
+//! In Nova, the function `F'` is the concatenation of the application circuit
+//! and the IVC circuit. In our design, we will keep the application circuit and
+//! the IVC circuit separated.
+//! Therefore, we will call:
+//! ```text
+//! U^{APP} = the accumulator of the application circuit.
+//! U^{IVC} = the accumulator of the IVC circuit.
+//! u_app = the current instance of the application circuit.
+//! u_ivc = the current instance of the IVC circuit.
+//! ```
+//! As an input, our circuit will take 4 different values, of 2 different types:
+//! ```text
+//! - u_a^{APP} = a first instance of the application circuit
+//! - u_b^{APP} = a second instance of the application circuit
+//! - u_a^{IVC} = a first instance of the IVC circuit
+//! - u_b^{IVC} = a second instance of the IVC circuit
+//! ```
+//!
+//! Regarding notation, in this library (and in the [folding] library), we use
+//! the following correspondances:
+//! ```text
+//! acc_i (or U_i) = the (folded) left instance
+//! u_i = the right instance
+//! acc_(i + 1) = the (folded) output instance
+//! ```
 
 pub mod ivc;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
