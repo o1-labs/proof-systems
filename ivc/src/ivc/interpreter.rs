@@ -978,7 +978,16 @@ where
 
 /// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
-/// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
+/// this step. `N_COL_TOTAL` is the total number of columns for IVC + APP.
+/// `N_CHALS` is the number of challenges, which contains also the alphas used
+/// to combine constraints, see [top level documentation in
+/// folding](folding::expressions).
+/// The number of commitments is the total number, and it is expecting the
+/// commitments to also the previous IVC columns
+// FIXME: we must accept the scaled right commitments and the right instance
+// commitments
+// FIXME: Env should be implementing like a IVCCapability trait, which contains
+// the sponge for instance, and the buckets for the MSM
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
