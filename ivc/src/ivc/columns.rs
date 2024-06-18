@@ -35,7 +35,7 @@
 //!      0       ...     34*2    76    80
 //!
 //!
-//!                      Hashes (temporarily DISABLED)
+//!                      Hashes
 //!     (one hash at a row, passing data to the next one)
 //!     (for i∈N, the input row #i containing 4 150-bit elements
 //!      is processed by hash rows 2*i and 2*i+1)

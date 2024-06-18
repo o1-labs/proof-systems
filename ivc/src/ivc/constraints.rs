@@ -1,22 +1,26 @@
 use super::{
-    columns::{IVCColumn, N_BLOCKS},
+    columns::{IVCColumn, IVCHashLens, N_BLOCKS},
     helpers::{combine_large_to_xlarge, combine_small_to_full},
     lookups::{IVCFECLookupLens, IVCLookupTable},
     N_LIMBS_XLARGE,
 };
-use crate::ivc::columns::IVCFECLens;
+
+use crate::poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters;
+
+use crate::{ivc::columns::IVCFECLens, poseidon_8_56_5_3_2};
 use ark_ff::PrimeField;
 use kimchi_msm::{
     circuit_design::{
         capabilities::read_column_array,
         composition::{SubEnvColumn, SubEnvLookup},
-        ColAccessCap, LookupCap,
+        ColAccessCap, HybridCopyCap, LookupCap,
     },
     fec::{columns::FECColumnOutput, interpreter::constrain_ec_addition},
     serialization::{
         interpreter::{combine_small_to_large, N_LIMBS_LARGE, N_LIMBS_SMALL},
         lookups as serlookup,
     },
+    Fp,
 };
 use std::marker::PhantomData;
 
@@ -248,11 +252,12 @@ where
 }
 
 /// This function generates constraints for the whole IVC circuit.
-pub fn constrain_ivc<F, Ff, Env>(env: &mut Env)
+pub fn constrain_ivc<Ff, Env>(env: &mut Env)
 where
-    F: PrimeField,
     Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+    Env: ColAccessCap<Fp, IVCColumn>
+        + LookupCap<Fp, IVCColumn, IVCLookupTable<Ff>>
+        + HybridCopyCap<Fp, IVCColumn>,
 {
     constrain_selectors(env);
 
@@ -266,7 +271,12 @@ where
     env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
     constrain_inputs(env);
 
-    // TODO FIXME add constraints for hashes
+    let s1 = env.read_column(IVCColumn::BlockSel(1));
+    env.set_assert_mapper(Box::new(move |x| s1.clone() * x));
+    {
+        let mut env = SubEnvColumn::new(env, IVCHashLens {});
+        poseidon_8_56_5_3_2::interpreter::apply_permutation(&mut env, &PoseidonBN254Parameters);
+    }
 
     let s2 = env.read_column(IVCColumn::BlockSel(2));
     env.set_assert_mapper(Box::new(move |x| s2.clone() * x));

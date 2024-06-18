@@ -336,7 +336,7 @@ pub fn test_simple_add() {
 
     let ivc_constraints: Vec<E<Fp>> = {
         let mut ivc_constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
-        constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
+        constrain_ivc::<Fq, _>(&mut ivc_constraint_env);
         ivc_constraint_env.get_relation_constraints()
     };
 

@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_regression_ivc_constraints() {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
-        constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
         let mut constraints_degrees = HashMap::new();
@@ -188,7 +188,7 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
-        constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
         let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
