@@ -6,10 +6,26 @@ use ark_bn254::Fr;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 use once_cell::sync::Lazy;
 
+/// The number of field elements in the state
 pub const STATE_SIZE: usize = 3;
+
+/// Number of full rounds
 pub const NB_FULL_ROUND: usize = 8;
+
+/// Number of partial rounds
 pub const NB_PARTIAL_ROUND: usize = 56;
+
+/// Total number of rounds, including partial and full.
 pub const NB_TOTAL_ROUND: usize = NB_FULL_ROUND + NB_PARTIAL_ROUND;
+
+/// Number of round constants
+pub const NB_ROUND_CONSTANTS: usize = NB_TOTAL_ROUND * STATE_SIZE;
+
+/// The number of constraints required by this gadget
+pub const NB_CONSTRAINTS: usize = 432;
+
+/// The maximum degree of a constraint
+pub const MAX_DEGREE: u64 = 2;
 
 pub type Column = PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>;
 
