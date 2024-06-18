@@ -110,6 +110,13 @@
 //! the execution of all the rounds, and `q_poseidon` will be a (public
 //! selector) that will be set to `1` on the row that Poseidon will need to be
 //! executed, `0` otherwise.
+//!
+//! ## Two-way merge
+//!
+//! The library also lets the user merge different type of circuits. In other
+//! words, the IVC library supports non-uniform circuits.
+//! It works as follow:
+//! ...
 
 pub mod ivc;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
