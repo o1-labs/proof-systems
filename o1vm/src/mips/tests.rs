@@ -74,8 +74,7 @@ fn test_mips_number_constraints() {
                 SyscallOther => assert_num_constraints(&instr, 10),
                 SyscallMmap => assert_num_constraints(&instr, 11),
                 SyscallFcntl => assert_num_constraints(&instr, 22),
-                SyscallReadPreimage => assert_num_constraints(&instr, 28),
-                SyscallWritePreimage => assert_num_constraints(&instr, 30),
+                SyscallReadPreimage | SyscallWritePreimage => assert_num_constraints(&instr, 30),
             },
             JType(jtype) => match jtype {
                 Jump => assert_num_constraints(&instr, 0),
