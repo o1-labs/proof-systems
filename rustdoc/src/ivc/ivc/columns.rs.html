@@ -471,8 +471,17 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_8_56_5_3_2::columns::PoseidonColumn};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    ivc::interpreter::N_LIMBS_XLARGE,
+    poseidon_8_56_5_3_2::{
+        bn254::{
+            Column <span class="kw">as </span>IVCPoseidonColumn, NB_FULL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_FULL_ROUND,
+            NB_PARTIAL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_PARTIAL_ROUND,
+            STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
+        },
+        columns::PoseidonColumn,
+    },
+};
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
@@ -496,20 +505,9 @@
     }
 }
 
-<span class="kw">pub const </span>IVC_POSEIDON_STATE_SIZE: usize = <span class="number">3</span>;
-<span class="kw">pub const </span>IVC_POSEIDON_NB_FULL_ROUND: usize = <span class="number">8</span>;
-<span class="kw">pub const </span>IVC_POSEIDON_NB_PARTIAL_ROUND: usize = <span class="number">56</span>;
-<span class="kw">pub const </span>IVC_POSEIDON_NB_TOTAL_ROUND: usize = <span class="number">64</span>;
-
 <span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize =
     (IVC_POSEIDON_NB_FULL_ROUND + IVC_POSEIDON_NB_PARTIAL_ROUND) * IVC_POSEIDON_STATE_SIZE
         + N_BLOCKS;
-
-<span class="kw">pub type </span>IVCPoseidonColumn = PoseidonColumn&lt;
-    IVC_POSEIDON_STATE_SIZE,
-    IVC_POSEIDON_NB_FULL_ROUND,
-    IVC_POSEIDON_NB_PARTIAL_ROUND,
-&gt;;
 
 <span class="doccomment">/// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don&#39;t, we wrap around and continue.
