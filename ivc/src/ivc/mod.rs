@@ -160,17 +160,20 @@ mod tests {
 
         // Regression testing for the number of constraints and their degree
         {
-            // Hashes are not included for now.
-            assert_eq!(constraints.len(), 55);
+            // 55 + 432 (Poseidon)
+            assert_eq!(constraints.len(), 487);
             constraints.iter().for_each(|c| {
                 let degree = c.degree(1, 0);
                 *constraints_degrees.entry(degree).or_insert(0) += 1;
             });
 
             assert_eq!(constraints_degrees.get(&1), None);
-            assert_eq!(constraints_degrees.get(&2), Some(&29));
-            assert_eq!(constraints_degrees.get(&3), Some(&5));
+            assert_eq!(constraints_degrees.get(&2), Some(&221));
+            assert_eq!(constraints_degrees.get(&3), Some(&245));
             assert_eq!(constraints_degrees.get(&4), Some(&21));
+
+            // Maximum degree is 4
+            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 4));
         }
     }
 
