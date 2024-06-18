@@ -81,7 +81,22 @@ pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
 // Implementation to be compatible with folding if we use generic column constraints
 impl FoldingColumnTrait for Column {
     fn is_witness(&self) -> bool {
-        // TODO: check if we want to treat lookups differently
-        true
+        match self {
+            Column::Relation(_) => true,
+            Column::DynamicSelector(_) => true,
+            Column::FixedSelector(_) => false,
+            Column::LookupPartialSum(_) => {
+                unimplemented!("We don't know how to fold these columns yet")
+            }
+            Column::LookupMultiplicity(_) => {
+                unimplemented!("We don't know how to fold these columns yet")
+            }
+            Column::LookupFixedTable(_) => {
+                unimplemented!("We don't know how to fold these columns yet")
+            }
+            Column::LookupAggregation => {
+                unimplemented!("We don't know how to fold these columns yet")
+            }
+        }
     }
 }
