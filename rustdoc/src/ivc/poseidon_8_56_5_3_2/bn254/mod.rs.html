@@ -1041,6 +1041,22 @@
 <a href="#1041" id="1041">1041</a>
 <a href="#1042" id="1042">1042</a>
 <a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Poseidon parameters that can be used by [crate::poseidon_8_56_5_3_2] over
 //! the scalar field of BN254, for a security level of 128 bits.
 
@@ -1049,10 +1065,26 @@
 <span class="kw">use </span>mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 <span class="kw">use </span>once_cell::sync::Lazy;
 
-<span class="kw">pub const </span>STATE_SIZE: usize = <span class="number">3</span>;
-<span class="kw">pub const </span>NB_FULL_ROUND: usize = <span class="number">8</span>;
-<span class="kw">pub const </span>NB_PARTIAL_ROUND: usize = <span class="number">56</span>;
-<span class="kw">pub const </span>NB_TOTAL_ROUND: usize = NB_FULL_ROUND + NB_PARTIAL_ROUND;
+<span class="doccomment">/// The number of field elements in the state
+</span><span class="kw">pub const </span>STATE_SIZE: usize = <span class="number">3</span>;
+
+<span class="doccomment">/// Number of full rounds
+</span><span class="kw">pub const </span>NB_FULL_ROUND: usize = <span class="number">8</span>;
+
+<span class="doccomment">/// Number of partial rounds
+</span><span class="kw">pub const </span>NB_PARTIAL_ROUND: usize = <span class="number">56</span>;
+
+<span class="doccomment">/// Total number of rounds, including partial and full.
+</span><span class="kw">pub const </span>NB_TOTAL_ROUND: usize = NB_FULL_ROUND + NB_PARTIAL_ROUND;
+
+<span class="doccomment">/// Number of round constants
+</span><span class="kw">pub const </span>NB_ROUND_CONSTANTS: usize = NB_TOTAL_ROUND * STATE_SIZE;
+
+<span class="doccomment">/// The number of constraints required by this gadget
+</span><span class="kw">pub const </span>NB_CONSTRAINTS: usize = <span class="number">432</span>;
+
+<span class="doccomment">/// The maximum degree of a constraint
+</span><span class="kw">pub const </span>MAX_DEGREE: u64 = <span class="number">2</span>;
 
 <span class="kw">pub type </span>Column = PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND&gt;;
 
