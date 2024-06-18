@@ -1207,11 +1207,14 @@ pub fn test_simple_add() {
                 extended: extended_evals_d8,
             };
 
+            let error_vec_d8: Evaluations<Fp, R2D<Fp>> =
+                interpolate(folded_witness.error_vec).evaluate_over_domain_by_ref(domain.d8);
+
             SimpleEvalEnv {
                 ext_witness: ext_witness_d8,
                 alphas: folded_instance.extended_instance.instance.alphas,
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: folded_witness.error_vec,
+                error_vec: error_vec_d8,
                 u: folded_instance.u,
             }
         };
