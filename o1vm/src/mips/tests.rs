@@ -73,8 +73,9 @@ fn test_mips_number_constraints() {
                 | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 6),
                 SyscallOther => assert_num_constraints(&instr, 10),
                 SyscallMmap => assert_num_constraints(&instr, 11),
-                SyscallFcntl => assert_num_constraints(&instr, 22),
-                SyscallReadPreimage | SyscallWritePreimage => assert_num_constraints(&instr, 30),
+                SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 22),
+                // TODO: update SyscallReadPreimage to 30 when using self.equal()
+                SyscallWritePreimage => assert_num_constraints(&instr, 30),
             },
             JType(jtype) => match jtype {
                 Jump => assert_num_constraints(&instr, 0),
