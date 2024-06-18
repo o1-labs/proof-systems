@@ -501,6 +501,23 @@ pub trait InterpreterEnv {
         };
     }
 
+    /// Range checks with 2 lookups to the RangeCheck16Lookup table that a value
+    /// is at most 2^`bits`-1  (bits <= 16).
+    fn range_check_bits(&mut self, value: &Self::Variable, bits: u32) {
+        assert!(bits <= 16);
+        // 0 <= value < 2^bits
+        // First, check lowerbound: 0 <= value < 2^16
+        self.add_lookup(Lookup::read_one(
+            LookupTableIDs::RangeCheck16Lookup,
+            vec![value.clone()],
+        ));
+        // Second, check upperbound: value + 2^16 - 2^bits < 2^16
+        self.add_lookup(Lookup::read_one(
+            LookupTableIDs::RangeCheck16Lookup,
+            vec![value.clone() + Self::constant(1 << 16) - Self::constant(1 << bits)],
+        ));
+    }
+
     fn range_check64(&mut self, _value: &Self::Variable) {
         // TODO
     }
@@ -948,36 +965,53 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             + (v2 * Env::constant(1 << 8))
             + v3
     };
-    let _opcode = {
-        // FIXME: Requires a range check
+    let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
+    env.range_check_bits(&opcode, 32 - 26);
+
     let rs = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
+    env.range_check_bits(&rs, 26 - 21);
+
     let rt = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
+    env.range_check_bits(&rt, 21 - 16);
+
     let rd = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 11, pos) }
     };
+    env.range_check_bits(&rd, 16 - 11);
+
     let shamt = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 11, 6, pos) }
     };
-    let _funct = {
-        // FIXME: Requires a range check
+    env.range_check_bits(&shamt, 11 - 6);
+
+    let funct = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 6, 0, pos) }
     };
+    env.range_check_bits(&funct, 6);
+
+    // Check correctness of decomposition of instruction into parts
+    env.add_constraint(
+        instruction
+            - (opcode * Env::constant(1 << 26)
+                + rs.clone() * Env::constant(1 << 21)
+                + rt.clone() * Env::constant(1 << 16)
+                + rd.clone() * Env::constant(1 << 11)
+                + shamt.clone() * Env::constant(1 << 6)
+                + funct),
+    );
+
     match instr {
         RTypeInstruction::ShiftLeftLogical => {
             let rt = env.read_register(&rt);
@@ -1657,21 +1691,26 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             + (v2 * Env::constant(1 << 8))
             + v3
     };
-    let _opcode = {
-        // FIXME: Requires a range check
+    let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
+    env.range_check_bits(&opcode, 32 - 26);
+
     let addr = {
-        // FIXME: Requires a range check
+        // FIXME: Requires a range check (cannot use range_check_bits here because 26 > 16)
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 0, pos) }
     };
     let instruction_pointer_high_bits = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&next_instruction_pointer, 32, 28, pos) }
     };
+    env.range_check_bits(&instruction_pointer_high_bits, 32 - 28);
+
+    // Check correctness of decomposition of instruction into parts
+    env.add_constraint(instruction - (opcode * Env::constant(1 << 26) + addr.clone()));
+
     let target_addr =
         (instruction_pointer_high_bits * Env::constant(1 << 28)) + (addr * Env::constant(1 << 2));
     match instr {
@@ -1697,26 +1736,39 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             + (v2 * Env::constant(1 << 8))
             + v3
     };
-    let _opcode = {
-        // FIXME: Requires a range check
+    let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
+    env.range_check_bits(&opcode, 32 - 26);
+
     let rs = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
+    env.range_check_bits(&rs, 26 - 21);
+
     let rt = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
+    env.range_check_bits(&rt, 21 - 16);
+
     let immediate = {
-        // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 0, pos) }
     };
+    env.range_check_bits(&immediate, 16);
+
+    // Check correctness of decomposition of instruction into parts
+    env.add_constraint(
+        instruction
+            - (opcode * Env::constant(1 << 26)
+                + rs.clone() * Env::constant(1 << 21)
+                + rt.clone() * Env::constant(1 << 16)
+                + immediate.clone()),
+    );
+
     match instr {
         ITypeInstruction::BranchEq => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
