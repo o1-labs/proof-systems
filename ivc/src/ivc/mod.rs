@@ -6,11 +6,14 @@ pub mod lookups;
 mod tests {
     use crate::{
         ivc::{
-            columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, IVC_POSEIDON_STATE_SIZE, N_BLOCKS},
+            columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
             interpreter::{build_selectors, constrain_ivc, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_8_56_5_3_2::{bn254::static_params, interpreter::PoseidonParams},
+        poseidon_8_56_5_3_2::{
+            bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
+            interpreter::PoseidonParams,
+        },
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
@@ -25,16 +28,11 @@ mod tests {
     use o1_utils::box_array;
     use rand::{CryptoRng, RngCore};
 
-    use super::columns::IVC_POSEIDON_NB_TOTAL_ROUND;
-
     // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
     // Absolutely no idea.
     pub const TEST_N_CHALS: usize = 200;
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
-
-    #[derive(Clone)]
-    pub struct PoseidonBN254Parameters;
 
     type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
         Fp,
@@ -45,20 +43,6 @@ mod tests {
         IVC_NB_TOTAL_FIXED_SELECTORS,
         LT,
     >;
-
-    impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>
-        for PoseidonBN254Parameters
-    {
-        fn constants(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_TOTAL_ROUND] {
-            let rc = &static_params().round_constants;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
-        }
-
-        fn mds(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_STATE_SIZE] {
-            let mds = &static_params().mds;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
-        }
-    }
 
     fn build_ivc_circuit<
         RNG: RngCore + CryptoRng,

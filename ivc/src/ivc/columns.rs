@@ -1,4 +1,14 @@
-use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_8_56_5_3_2::columns::PoseidonColumn};
+use crate::{
+    ivc::interpreter::N_LIMBS_XLARGE,
+    poseidon_8_56_5_3_2::{
+        bn254::{
+            Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
+            NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND,
+            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+        },
+        columns::PoseidonColumn,
+    },
+};
 use kimchi_msm::{
     circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
@@ -22,20 +32,9 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
     }
 }
 
-pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
-pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 8;
-pub const IVC_POSEIDON_NB_PARTIAL_ROUND: usize = 56;
-pub const IVC_POSEIDON_NB_TOTAL_ROUND: usize = 64;
-
 pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize =
     (IVC_POSEIDON_NB_FULL_ROUND + IVC_POSEIDON_NB_PARTIAL_ROUND) * IVC_POSEIDON_STATE_SIZE
         + N_BLOCKS;
-
-pub type IVCPoseidonColumn = PoseidonColumn<
-    IVC_POSEIDON_STATE_SIZE,
-    IVC_POSEIDON_NB_FULL_ROUND,
-    IVC_POSEIDON_NB_PARTIAL_ROUND,
->;
 
 /// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don't, we wrap around and continue.
