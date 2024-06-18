@@ -5,18 +5,17 @@
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_poly::Evaluations;
 use folding::{
-    expressions::FoldingColumnTrait, instance_witness::Foldable, Alphas, FoldingCompatibleExpr,
-    FoldingConfig, FoldingEnv, FoldingScheme, Instance, Side, Witness,
+    expressions::FoldingColumnTrait,
+    instance_witness::Foldable,
+    standard_config::{EmptyStructure, StandardConfig},
+    Alphas, FoldingCompatibleExpr, FoldingScheme, Instance, Witness,
 };
 use ivc::ivc::{
     columns::{IVCColumn, N_BLOCKS},
     interpreter::constrain_ivc,
     lookups::IVCLookupTable,
 };
-use kimchi::circuits::{
-    expr::{ChallengeTerm, Variable},
-    gate::CurrOrNext,
-};
+use kimchi::circuits::expr::{ChallengeTerm, Variable};
 use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use rayon::iter::IntoParallelIterator as _;
@@ -97,9 +96,6 @@ pub fn test_simple_add() {
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
-    #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
-    pub struct Config;
-
     impl FoldingColumnTrait for AdditionColumn {
         fn is_witness(&self) -> bool {
             true
@@ -151,27 +147,36 @@ pub fn test_simple_add() {
     impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
         for PlonkishWitness<N_COL, N_FSEL>
     {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+        type Output = Vec<Fp>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
             match index {
-                AdditionColumn::A => &self.witness.cols[0],
-                AdditionColumn::B => &self.witness.cols[1],
-                AdditionColumn::C => &self.witness.cols[2],
+                AdditionColumn::A => &self.witness.cols[0].evals,
+                AdditionColumn::B => &self.witness.cols[1].evals,
+                AdditionColumn::C => &self.witness.cols[2].evals,
             }
         }
     }
 
     impl<const N_COL: usize, const N_FSEL: usize> Index<Column> for PlonkishWitness<N_COL, N_FSEL> {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+        type Output = Vec<Fp>;
 
         /// Map a column alias to the corresponding witness column.
         fn index(&self, index: Column) -> &Self::Output {
             match index {
-                Column::Relation(i) => &self.witness.cols[i],
-                Column::FixedSelector(i) => &self.fixed_selectors[i],
+                Column::Relation(i) => &self.witness.cols[i].evals,
+                Column::FixedSelector(i) => &self.fixed_selectors[i].evals,
                 other => panic!("Invalid column index: {other:?}"),
             }
+        }
+    }
+
+    // for selectors, () in this case as we have none
+    impl<const N_COL: usize, const N_FSEL: usize> Index<()> for PlonkishWitness<N_COL, N_FSEL> {
+        type Output = Vec<Fp>;
+
+        fn index(&self, _index: ()) -> &Self::Output {
+            unreachable!()
         }
     }
 
@@ -210,6 +215,18 @@ pub fn test_simple_add() {
                 challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
                 alphas: Alphas::combine(a.alphas, b.alphas, challenge),
                 blinder: a.blinder + challenge * b.blinder,
+            }
+        }
+    }
+
+    impl<const N_COL: usize> Index<Challenge> for PlonkishInstance<N_COL> {
+        type Output = Fp;
+
+        fn index(&self, index: Challenge) -> &Self::Output {
+            match index {
+                Challenge::Beta => &self.challenges[0],
+                Challenge::Gamma => &self.challenges[1],
+                Challenge::JointCombiner => &self.challenges[2],
             }
         }
     }
@@ -277,87 +294,15 @@ pub fn test_simple_add() {
             }
         }
     }
-    pub struct PlonkishEnvironment {
-        /// Structure of the folded circuit
-        pub structure: (),
-        /// Commitments to the witness columns, for both sides
-        pub instances: [PlonkishInstance<N_COL_TOTAL>; 2],
-        /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
-        /// Corresponds to the zeta*omega evaluations, for both sides
-        /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
-    }
 
-    impl
-        FoldingEnv<
-            Fp,
-            PlonkishInstance<N_COL_TOTAL>,
-            PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
-            Column,
-            Challenge,
-            (),
-        > for PlonkishEnvironment
-    where
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>:
-            Index<Column, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
-    {
-        type Structure = ();
+    type Config = StandardConfig<
+        Curve,
+        Column,
+        Challenge,
+        PlonkishInstance<N_COL_TOTAL>,
+        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
+    >;
 
-        fn new(
-            structure: &(),
-            instances: [&PlonkishInstance<N_COL_TOTAL>; 2],
-            witnesses: [&PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
-        ) -> Self {
-            let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
-            let mut next_witnesses = curr_witnesses.clone();
-            for side in next_witnesses.iter_mut() {
-                for col in side.witness.cols.iter_mut() {
-                    col.evals.rotate_left(1);
-                }
-            }
-            PlonkishEnvironment {
-                structure: *structure,
-                instances: [instances[0].clone(), instances[1].clone()],
-                curr_witnesses,
-                next_witnesses,
-            }
-        }
-
-        fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
-            let wit = match curr_or_next {
-                CurrOrNext::Curr => &self.curr_witnesses[side as usize],
-                CurrOrNext::Next => &self.next_witnesses[side as usize],
-            };
-            // The following is possible because Index is implemented for our
-            // circuit witnesses
-            &wit[col].evals
-        }
-
-        fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
-            match challenge {
-                Challenge::Beta => self.instances[side as usize].challenges[0],
-                Challenge::Gamma => self.instances[side as usize].challenges[1],
-                Challenge::JointCombiner => self.instances[side as usize].challenges[2],
-            }
-        }
-
-        fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
-            unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations.")
-        }
-    }
-
-    impl FoldingConfig for Config {
-        type Column = Column;
-        type Selector = ();
-        type Challenge = Challenge;
-        type Curve = Curve;
-        type Srs = SRS<Curve>;
-        type Instance = PlonkishInstance<N_COL_TOTAL>;
-        type Witness = PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>;
-        type Structure = ();
-        type Env = PlonkishEnvironment;
-    }
     // ---- End of folding configuration ----
 
     // ---- Start folding configuration with IVC ----
@@ -432,8 +377,10 @@ pub fn test_simple_add() {
         .chain(ivc_compat_constraints)
         .collect();
 
+    let structure = EmptyStructure::default();
+
     let (_folding_scheme, _real_folding_compat_constraints) =
-        FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &());
+        FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &structure);
 
     // End of folding configuration for IVC + APP
 
