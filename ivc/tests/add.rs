@@ -8,14 +8,19 @@ use folding::{
     expressions::FoldingColumnTrait, instance_witness::Foldable, Alphas, FoldingCompatibleExpr,
     FoldingConfig, FoldingEnv, FoldingScheme, Instance, Side, Witness,
 };
-use kimchi::{
-    circuits::{expr::ChallengeTerm, gate::CurrOrNext},
-    curve::KimchiCurve,
+use ivc::ivc::{
+    columns::{IVCColumn, N_BLOCKS},
+    interpreter::constrain_ivc,
+    lookups::IVCLookupTable,
+};
+use kimchi::circuits::{
+    expr::{ChallengeTerm, Variable},
+    gate::CurrOrNext,
 };
 use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use rayon::iter::IntoParallelIterator as _;
-use std::{array, collections::BTreeMap, ops::Index};
+use std::{array, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
@@ -25,6 +30,7 @@ use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
     columns::Column,
+    expr::E,
     lookups::DummyLookupTable,
 };
 use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
@@ -32,7 +38,12 @@ use rayon::iter::ParallelIterator as _;
 
 use itertools::Itertools;
 
+/// The scalar field of the curve
 pub type Fp = ark_bn254::Fr;
+/// The base field of the curve
+/// Used to encode the polynomial commitments
+pub type Fq = ark_bn254::Fq;
+/// The curve we commit into
 pub type Curve = ark_bn254::G1Affine;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
@@ -81,7 +92,6 @@ pub fn test_simple_add() {
     let domain_size: usize = 1 << 5;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-    let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
     let mut srs = SRS::<Curve>::create(domain_size);
     srs.add_lagrange_basis(domain.d1);
 
@@ -96,20 +106,36 @@ pub fn test_simple_add() {
         }
     }
 
-    // Number of columns in the circuit.
-    // For now, we do suppose there is only the inner circuit computation
-    // We add IVC later.
-    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT;
+    // Total number of witness columns in IVC. The blocks are public selectors.
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
+    // FIXME: add Poseidon constants
+    const N_FSEL_TOTAL: usize = N_BLOCKS;
+
+    // Number of witness columns in the circuit.
+    // It consists of the columns of the inner circuit and the columns for the
+    // IVC circuit.
+    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
+
+    type AppWitnessBuildEnv = WitnessBuilderEnv<
+        Fp,
+        AdditionColumn,
+        { AdditionColumn::COUNT },
+        { AdditionColumn::COUNT },
+        0,
+        0,
+        DummyLookupTable,
+    >;
 
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness<const N_COL: usize> {
+    pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize> {
         pub witness: GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     }
 
     // Trait required for folding
 
-    impl<const N_COL: usize> Foldable<Fp> for PlonkishWitness<N_COL> {
+    impl<const N_COL: usize, const N_FSEL: usize> Foldable<Fp> for PlonkishWitness<N_COL, N_FSEL> {
         fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
             for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
                 for (a, b) in a.evals.iter_mut().zip(b.evals) {
@@ -120,9 +146,11 @@ pub fn test_simple_add() {
         }
     }
 
-    impl<const N_COL: usize> Witness<Curve> for PlonkishWitness<N_COL> {}
+    impl<const N_COL: usize, const N_FSEL: usize> Witness<Curve> for PlonkishWitness<N_COL, N_FSEL> {}
 
-    impl<const N_COL: usize> Index<AdditionColumn> for PlonkishWitness<N_COL> {
+    impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
+        for PlonkishWitness<N_COL, N_FSEL>
+    {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
@@ -134,16 +162,15 @@ pub fn test_simple_add() {
         }
     }
 
-    impl<const N_COL: usize> Index<Column> for PlonkishWitness<N_COL> {
+    impl<const N_COL: usize, const N_FSEL: usize> Index<Column> for PlonkishWitness<N_COL, N_FSEL> {
         type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
         /// Map a column alias to the corresponding witness column.
         fn index(&self, index: Column) -> &Self::Output {
             match index {
-                Column::Relation(0) => &self.witness.cols[0],
-                Column::Relation(1) => &self.witness.cols[1],
-                Column::Relation(2) => &self.witness.cols[2],
-                _ => panic!("Invalid column index"),
+                Column::Relation(i) => &self.witness.cols[i],
+                Column::FixedSelector(i) => &self.fixed_selectors[i],
+                other => panic!("Invalid column index: {other:?}"),
             }
         }
     }
@@ -208,6 +235,7 @@ pub fn test_simple_add() {
     }
 
     impl<const N_COL: usize> PlonkishInstance<N_COL> {
+        #[allow(dead_code)]
         pub fn from_witness(
             w: &GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
             fq_sponge: &mut BaseSponge,
@@ -255,23 +283,23 @@ pub fn test_simple_add() {
         /// Commitments to the witness columns, for both sides
         pub instances: [PlonkishInstance<N_COL_TOTAL>; 2],
         /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
+        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
         /// Corresponds to the zeta*omega evaluations, for both sides
         /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
+        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
     }
 
     impl
         FoldingEnv<
             Fp,
             PlonkishInstance<N_COL_TOTAL>,
-            PlonkishWitness<N_COL_TOTAL>,
+            PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
             Column,
             Challenge,
             (),
         > for PlonkishEnvironment
     where
-        PlonkishWitness<N_COL_TOTAL>:
+        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>:
             Index<Column, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     {
         type Structure = ();
@@ -279,7 +307,7 @@ pub fn test_simple_add() {
         fn new(
             structure: &(),
             instances: [&PlonkishInstance<N_COL_TOTAL>; 2],
-            witnesses: [&PlonkishWitness<N_COL_TOTAL>; 2],
+            witnesses: [&PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>; 2],
         ) -> Self {
             let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
             let mut next_witnesses = curr_witnesses.clone();
@@ -326,87 +354,116 @@ pub fn test_simple_add() {
         type Curve = Curve;
         type Srs = SRS<Curve>;
         type Instance = PlonkishInstance<N_COL_TOTAL>;
-        type Witness = PlonkishWitness<N_COL_TOTAL>;
+        type Witness = PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>;
         type Structure = ();
         type Env = PlonkishEnvironment;
     }
     // ---- End of folding configuration ----
 
-    let constraints = {
+    // ---- Start folding configuration with IVC ----
+    let app_constraints: Vec<E<Fp>> = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         constraint_env.get_relation_constraints()
     };
 
-    let mut witness_one: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
-        WitnessBuilderEnv::create();
-
-    let mut witness_two: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
-        WitnessBuilderEnv::create();
-
-    let empty_lookups = BTreeMap::new();
-
-    // Witness one
-    for _i in 0..domain_size {
-        let a: Fp = Fp::rand(&mut rng);
-        let b: Fp = Fp::rand(&mut rng);
-        witness_one.write_column(AdditionColumn::A, &a);
-        witness_one.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_one);
-        witness_two.next_row();
-    }
-
-    // Witness two
-    for _i in 0..domain_size {
-        let a: Fp = Fp::rand(&mut rng);
-        let b: Fp = Fp::rand(&mut rng);
-        witness_two.write_column(AdditionColumn::A, &a);
-        witness_two.write_column(AdditionColumn::B, &b);
-        interpreter_simple_add(&mut witness_two);
-        witness_two.next_row();
-    }
-
-    let proof_inputs_one = witness_one.get_proof_inputs(domain_size, empty_lookups.clone());
-    let proof_inputs_two = witness_two.get_proof_inputs(domain_size, empty_lookups.clone());
-
-    let folding_witness_one = PlonkishWitness {
-        witness: (proof_inputs_one.evaluations)
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-            .collect(),
+    let ivc_constraints: Vec<E<Fp>> = {
+        let mut ivc_constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Fq>>::create();
+        constrain_ivc::<Fp, Fq, _>(&mut ivc_constraint_env);
+        ivc_constraint_env.get_relation_constraints()
     };
 
-    let folding_instance_one = PlonkishInstance::from_witness(
-        &folding_witness_one.witness,
-        &mut fq_sponge,
-        &srs,
-        domain.d1,
-    );
-
-    let folding_witness_two = PlonkishWitness {
-        witness: (proof_inputs_two.evaluations)
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
-            .collect(),
-    };
-
-    let folding_instance_two = PlonkishInstance::from_witness(
-        &folding_witness_two.witness,
-        &mut fq_sponge,
-        &srs,
-        domain.d1,
-    );
-
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = constraints
+    // Sanity check: we want to verify that we only have maximum degree 4
+    // constraints.
+    // FIXME: we only want degree 2 (+1 for the selector in IVC).
+    app_constraints
         .iter()
+        .chain(ivc_constraints.iter())
+        .enumerate()
+        .for_each(|(i, c)| {
+            assert!(
+                c.degree(1, 0) <= 4,
+                "Constraint {} has degree > 4: {:}",
+                i,
+                c
+            );
+        });
+
+    // Make the constraints folding compatible
+    let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
+        .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
 
-    let (folding_scheme, _) =
+    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = {
+        let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_constraints
+            .into_iter()
+            .map(|x| FoldingCompatibleExpr::from(x.clone()))
+            .collect();
+
+        // IVC column expression should be shifted to the right to accomodate
+        // app witness.
+        let ivc_mapper = &(|Variable { col, row }| {
+            let rel_offset: usize = AdditionColumn::COUNT;
+            let fsel_offset: usize = 0;
+            let dsel_offset: usize = 0;
+            use kimchi_msm::columns::Column::*;
+            let new_col = match col {
+                Relation(i) => Relation(i + rel_offset),
+                FixedSelector(i) => FixedSelector(i + fsel_offset),
+                DynamicSelector(i) => DynamicSelector(i + dsel_offset),
+                c @ LookupPartialSum(_) => c,
+                c @ LookupMultiplicity(_) => c,
+                c @ LookupFixedTable(_) => c,
+                c @ LookupAggregation => c,
+            };
+            Variable { col: new_col, row }
+        });
+
+        ivc_compat_constraints
+            .into_iter()
+            .map(|e| e.map_variable(ivc_mapper))
+            .collect()
+    };
+
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
+        .into_iter()
+        .chain(ivc_compat_constraints)
+        .collect();
+
+    let (_folding_scheme, _real_folding_compat_constraints) =
         FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &());
 
-    let one = (folding_instance_one, folding_witness_one);
-    let two = (folding_instance_two, folding_witness_two);
-    let _folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    // End of folding configuration for IVC + APP
+
+    // Starting building witnesses. We start with the application witnesses. It
+    // will be used after that to build the witness for the IVC
+    let mut _app_witness_one: AppWitnessBuildEnv = {
+        let mut env = WitnessBuilderEnv::create();
+
+        for _i in 0..domain_size {
+            let a: Fp = Fp::rand(&mut rng);
+            let b: Fp = Fp::rand(&mut rng);
+            env.write_column(AdditionColumn::A, &a);
+            env.write_column(AdditionColumn::B, &b);
+            interpreter_simple_add(&mut env);
+            env.next_row();
+        }
+        env
+    };
+
+    let mut _app_witness_two: AppWitnessBuildEnv = {
+        let mut env = WitnessBuilderEnv::create();
+
+        for _i in 0..domain_size {
+            let a: Fp = Fp::rand(&mut rng);
+            let b: Fp = Fp::rand(&mut rng);
+            env.write_column(AdditionColumn::A, &a);
+            env.write_column(AdditionColumn::B, &b);
+            interpreter_simple_add(&mut env);
+            env.next_row();
+        }
+        env
+    };
 }
