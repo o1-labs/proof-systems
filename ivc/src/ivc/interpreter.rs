@@ -250,6 +250,7 @@ where
 #[allow(clippy::type_complexity)]
 pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     comms: [Box<[(Ff, Ff); N_COL_TOTAL]>; 3],
 ) -> (
     Box<[[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3]>,
@@ -267,6 +268,11 @@ where
 
     for _block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(0) {
         let row_num = env.curr_row();
+
+        env.write_column(
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
+        );
 
         let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
             (&comms[0], row_num, 0)
@@ -303,6 +309,7 @@ where
 /// Instantiates the IVC circuit for folding. N is the total number of columns
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     poseidon_params: &PParams,
     comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
 ) -> (Env::Variable, Env::Variable, Env::Variable)
@@ -329,6 +336,11 @@ where
 
     // Relative position in the hashing block
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(1) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
+        );
+
         // Computing h_l, h_r, h_o independently
         if block_row_i < 6 * n {
             // Left, right, or output
@@ -522,6 +534,7 @@ pub struct ScalarLimbs<F> {
 /// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
 pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     r: F,
     phi: F,
 ) -> ScalarLimbs<F>
@@ -539,6 +552,11 @@ where
     let mut phi_np1_r3_limbs = [F::zero(); N_LIMBS_SMALL];
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(2) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
+        );
+
         let (
             phi_prev_power_f_new,
             phi_curr_power_f_limbs,
@@ -611,6 +629,7 @@ where
 
 pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     scalar_limbs: ScalarLimbs<F>,
     comms_large: &[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
     error_terms: [(Ff, Ff); 3], // E_L, E_R, E_O
@@ -652,6 +671,11 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     let error_term_rprime_large: [F; 2 * N_LIMBS_LARGE] = error_terms_large[0];
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(3) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
+        );
+
         // Number of the commitment we're processing, ∈ [N]
         let com_i = block_row_i % N_COL_TOTAL;
         // Coefficient limb we're processing for C_L/C_R/C_O, ∈ [k = 17]
@@ -831,6 +855,7 @@ where
 #[allow(clippy::needless_range_loop)]
 pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     h_r: F,
     chal_l: &[F; N_CHALS],
     r: F,
@@ -841,6 +866,11 @@ pub fn process_challenges<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     let mut curr_alpha_r_pow: F = F::one();
 
     for block_row_i in 0..block_height::<N_COL_TOTAL, N_CHALS>(4) {
+        env.write_column(
+            IVCColumn::FoldIteration,
+            &Env::constant(F::from(fold_iteration as u64)),
+        );
+
         curr_alpha_r_pow *= h_r;
 
         env.write_column(IVCColumn::Block5ConstHr, &Env::constant(h_r));
@@ -876,11 +906,20 @@ where
 }
 
 #[allow(clippy::needless_range_loop)]
-pub fn process_u<F, Env, const N_COL_TOTAL: usize>(env: &mut Env, u_l: F, r: F)
-where
+pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
+    env: &mut Env,
+    fold_iteration: usize,
+    u_l: F,
+    r: F,
+) where
     F: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn>,
 {
+    env.write_column(
+        IVCColumn::FoldIteration,
+        &Env::constant(F::from(fold_iteration as u64)),
+    );
+
     env.write_column(IVCColumn::Block6ConstR, &Env::constant(r));
     env.write_column(IVCColumn::Block6ULeft, &Env::constant(u_l));
     env.write_column(IVCColumn::Block6UOutput, &Env::constant(u_l + r));
@@ -987,10 +1026,14 @@ where
 // FIXME: we must accept the scaled right commitments and the right instance
 // commitments
 // FIXME: Env should be implementing like a IVCCapability trait, which contains
-// the sponge for instance, and the buckets for the MSM
+// the sponge for instance, and the buckets for the MSM. All the data points
+// used here should be saved inside it, and this function should only take as an
+// argument the environment.
+// FIXME: the fold_iteration variable should be inside the environment
 #[allow(clippy::too_many_arguments)]
 pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
+    fold_iteration: usize,
     comms_left: Box<[(Ff, Ff); N_COL_TOTAL]>,
     comms_right: Box<[(Ff, Ff); N_COL_TOTAL]>,
     comms_out: Box<[(Ff, Ff); N_COL_TOTAL]>,
@@ -1012,21 +1055,30 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
     assert!(chal_l.len() == N_CHALS);
 
-    let (_comms_small, comms_large, comms_xlarge) =
-        process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(env, [comms_left, comms_right, comms_out]);
-    let (hash_r_var, r_var, phi_var) =
-        process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(env, poseidon_params, &comms_xlarge);
+    let (_comms_small, comms_large, comms_xlarge) = process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(
+        env,
+        fold_iteration,
+        [comms_left, comms_right, comms_out],
+    );
+    let (hash_r_var, r_var, phi_var) = process_hashes::<_, _, _, N_COL_TOTAL, N_CHALS>(
+        env,
+        fold_iteration,
+        poseidon_params,
+        &comms_xlarge,
+    );
     let r: F = Env::variable_to_field(r_var);
     let phi: F = Env::variable_to_field(phi_var);
     let hash_r: F = Env::variable_to_field(hash_r_var);
-    let scalar_limbs = process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, r, phi);
+    let scalar_limbs =
+        process_scalars::<_, Ff, _, N_COL_TOTAL, N_CHALS>(env, fold_iteration, r, phi);
     process_ecadds::<_, Ff, _, N_COL_TOTAL, N_CHALS>(
         env,
+        fold_iteration,
         scalar_limbs,
         &comms_large,
         error_terms,
         t_terms,
     );
-    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, hash_r, &chal_l, r);
-    process_u::<_, _, N_COL_TOTAL>(env, u_l, r);
+    process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, fold_iteration, hash_r, &chal_l, r);
+    process_u::<_, _, N_COL_TOTAL>(env, fold_iteration, u_l, r);
 }

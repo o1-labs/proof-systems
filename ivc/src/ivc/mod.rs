@@ -95,6 +95,7 @@ mod tests {
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
+            0,
             comms_left,
             comms_right,
             comms_output,
