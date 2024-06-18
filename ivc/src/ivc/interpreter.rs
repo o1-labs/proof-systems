@@ -998,7 +998,6 @@ where
             selectors[block_i][curr_row] = F::one();
             curr_row += 1;
         }
-        println!("Built selectors for block {block_i:?} from {beginning:?} to {curr_row:?}");
     }
 
     selectors

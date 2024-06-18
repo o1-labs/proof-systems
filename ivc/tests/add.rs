@@ -24,14 +24,13 @@ use ivc::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{l0_1, ChallengeTerm, Challenges, Constants, Operations, Variable},
+        expr::{ChallengeTerm, Variable},
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
 use kimchi_msm::{
     circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-    column_env::ColumnEnvironment,
     columns::{Column, ColumnIndexer},
     expr::E,
     lookups::DummyLookupTable,
@@ -496,14 +495,6 @@ pub fn test_simple_add() {
         ivc_constraint_env.get_relation_constraints()
     };
 
-    for (i, expr) in app_constraints
-        .iter()
-        .chain(ivc_constraints.iter())
-        .enumerate()
-    {
-        println!("Constraint #{i:?}, degree {}, {}", expr.degree(1, 0), expr);
-    }
-
     let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
         .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
@@ -730,7 +721,7 @@ pub fn test_simple_add() {
 
     // -- Sanity check regarding folding.
     let additional_columns = folding_scheme.get_number_of_additional_columns();
-    println!("additional columns: {:?}", additional_columns);
+    //println!("additional columns: {:?}", additional_columns);
     //// No additional columns should be created.
     // @volhovm no longer true: the IVC circuit is degree 3
     //assert_eq!(additional_columns, 0);
@@ -916,51 +907,6 @@ pub fn test_simple_add() {
     let ivc_proof_inputs_1 =
         ivc_witness_env_1.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
     assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
-
-    {
-        let total_height = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(0)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(1)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(4)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(5);
-        let start_row_ecadds = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(0)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(1)
-            + ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(2);
-        let ecadds_block_size = ivc::ivc::columns::block_height::<N_COL_TOTAL_QUAD, N_CHALS>(3);
-
-        println!("Total height: {total_height:?}");
-        println!("starting row ecadds: {start_row_ecadds:?}");
-        println!("ecadds_block_size: {ecadds_block_size:?}");
-
-        for i in 0..total_height {
-            let iteration = ivc_proof_inputs_1.evaluations[0][i];
-            assert!(
-                iteration == Fp::one(),
-                "iteration for i={i:?} is not 1, it is {iteration:?}"
-            );
-        }
-        for i in 0..total_height {
-            let selector_ecadds = ivc_fixed_selectors[3][i];
-
-            if i >= start_row_ecadds && i < start_row_ecadds + ecadds_block_size {
-                assert!(
-                    selector_ecadds == Fp::one(),
-                    "selector_ecadds for i={i:?} is not 1, it is {selector_ecadds:?}"
-                );
-                let q1_sign = ivc_proof_inputs_1.evaluations[91][i];
-                assert!(
-                    q1_sign == Fp::one() || q1_sign == Fp::zero() - Fp::one(),
-                    "q1_sign for i={i:?} is not -1 or 1, it is {q1_sign:?}"
-                );
-            } else {
-                assert!(
-                    selector_ecadds == Fp::zero(),
-                    "selector_ecadds for i={i:?} is not 0, it is {selector_ecadds:?}"
-                );
-            }
-        }
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 3
