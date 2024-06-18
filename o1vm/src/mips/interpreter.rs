@@ -591,6 +591,7 @@ pub trait InterpreterEnv {
     /// bits.
     ///
     /// Do not call this function with highest_bit - lowest_bit >= 32.
+    // TODO: embed the range check in the function when highest_bit - lowest_bit <= 16?
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,
@@ -1198,18 +1199,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             // with the rest until there is a success). This also simplifies the implementation
             // here, so we will follow suit.
             let bytes_to_preserve_in_register = {
-                // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&write_length, 2, 0, pos) }
             };
+            env.range_check_bits(&bytes_to_preserve_in_register, 2);
             let register_idx = {
                 let registers_left_to_write_after_this = {
-                    // FIXME: Requires a range check
                     let pos = env.alloc_scratch();
                     // The virtual register is 32 bits wide, so we can just read 6 bytes. If the
                     // register has an incorrect value, it will be unprovable and we'll fault.
                     unsafe { env.bitmask(&write_length, 6, 2, pos) }
                 };
+                env.range_check_bits(&registers_left_to_write_after_this, 6 - 2);
                 Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
             };
 
@@ -1229,27 +1230,27 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 };
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&register_value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&register_value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&register_value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&register_value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&r0, 32 - 24);
+            env.range_check_bits(&r1, 24 - 16);
+            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r3, 8);
 
             // We choose our read address so that the bytes we read come aligned with the target
             // bytes in the register, to avoid an expensive bitshift.
@@ -1270,6 +1271,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&addr, 2, 0, pos) }
                     };
+                    env.range_check_bits(&byte_subaddr, 2);
                     addr.clone() + Env::constant(4) - byte_subaddr
                 };
                 let overwrite_0 = {
@@ -2155,27 +2157,28 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&r0, 32 - 24);
+            env.range_check_bits(&r1, 24 - 16);
+            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r3, 8);
+
             let value = {
                 let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
                     * Env::constant(1 << 24))
@@ -2204,10 +2207,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
 
             let byte_subaddr = {
-                // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
+            env.range_check_bits(&byte_subaddr, 2);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
@@ -2226,27 +2229,27 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&r0, 32 - 24);
+            env.range_check_bits(&r1, 24 - 16);
+            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r3, 8);
 
             let value = {
                 let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
@@ -2276,10 +2279,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             let value = env.read_register(&rt);
             let v0 = {
-                // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&value, 8, 0, pos) }
             };
+            env.range_check_bits(&v0, 8);
+
             env.write_memory(&addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -2299,17 +2303,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let [v0, v1] = {
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&v0, 16 - 8);
+            env.range_check_bits(&v1, 8);
+
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -2330,27 +2335,28 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let [v0, v1, v2, v3] = {
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&v0, 32 - 24);
+            env.range_check_bits(&v1, 24 - 16);
+            env.range_check_bits(&v2, 16 - 8);
+            env.range_check_bits(&v3, 8);
+
             // Checking that v is the correct decomposition.
             {
                 let res = value
@@ -2382,27 +2388,28 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let [v0, v1, v2, v3] = {
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&v0, 32 - 24);
+            env.range_check_bits(&v1, 24 - 16);
+            env.range_check_bits(&v2, 16 - 8);
+            env.range_check_bits(&v3, 8);
+
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.write_memory(&(addr.clone() + Env::constant(2)), v2);
@@ -2429,6 +2436,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
+            env.range_check_bits(&byte_subaddr, 2);
 
             let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
             let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
@@ -2444,27 +2452,27 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&r0, 32 - 24);
+            env.range_check_bits(&r1, 24 - 16);
+            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r3, 8);
 
             let v0 = {
                 let pos = env.alloc_scratch();
@@ -2515,10 +2523,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
 
             let byte_subaddr = {
-                // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
+            env.range_check_bits(&byte_subaddr, 2);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
@@ -2537,27 +2545,27 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let initial_register_value = env.read_register(&rt);
                 [
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
                     },
                     {
-                        // FIXME: Requires a range check
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
                     },
                 ]
             };
+            env.range_check_bits(&r0, 32 - 24);
+            env.range_check_bits(&r1, 24 - 16);
+            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r3, 8);
 
             let v0 = {
                 let pos = env.alloc_scratch();
