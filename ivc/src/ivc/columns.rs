@@ -1,4 +1,11 @@
-use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon_8_56_5_3_2::columns::PoseidonColumn};
+use super::N_LIMBS_XLARGE;
+use crate::poseidon_8_56_5_3_2::{
+    bn254::{
+        Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
+        NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+    },
+    columns::PoseidonColumn,
+};
 use kimchi_msm::{
     circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
@@ -22,20 +29,9 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
     }
 }
 
-pub const IVC_POSEIDON_STATE_SIZE: usize = 3;
-pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 8;
-pub const IVC_POSEIDON_NB_PARTIAL_ROUND: usize = 56;
-pub const IVC_POSEIDON_NB_TOTAL_ROUND: usize = 64;
-
 pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize =
     (IVC_POSEIDON_NB_FULL_ROUND + IVC_POSEIDON_NB_PARTIAL_ROUND) * IVC_POSEIDON_STATE_SIZE
         + N_BLOCKS;
-
-pub type IVCPoseidonColumn = PoseidonColumn<
-    IVC_POSEIDON_STATE_SIZE,
-    IVC_POSEIDON_NB_FULL_ROUND,
-    IVC_POSEIDON_NB_PARTIAL_ROUND,
->;
 
 /// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don't, we wrap around and continue.
@@ -47,6 +43,11 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 /// Vertically stacked blocks are as follows:
 ///
 ///```text
+///
+///         Inputs:
+///      Each point is 2 base field coordinates in 17 15-bit limbs
+///       recomposed as 8 75-bit limbs
+///       recomposed as 4 150-bit limbs.
 ///
 ///              34            8      4
 ///            Input1         R75   R150
@@ -67,7 +68,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 ///      0       ...     34*2    76    80
 ///
 ///
-///                      Hashes
+///                      Hashes (temporarily DISABLED)
 ///     (one hash at a row, passing data to the next one)
 ///     (for i∈N, the input row #i containing 4 150-bit elements
 ///      is processed by hash rows 2*i and 2*i+1)
@@ -86,6 +87,10 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
 /// 6N+2 |------------------------------------------|
 ///
+///       TODO: we also need to squeeze challenges for
+///       the right (strict) instance: β, γ, j (joint_combiner)
+///
+///       TODO: we can hash (x0,x1+b*2^150) instead of (x0,x1,y0,y1).
 ///
 /// Scalars block.
 ///
@@ -174,6 +179,7 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 /// 4*17+ |--------------------------------------------------------------------------------------------------|
 /// 1
 ///
+/// TODO: add different challenges: β, γ, joint_combiner
 ///
 /// Challenges block.
 ///
@@ -181,18 +187,18 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 ///                       strict
 ///                    (relaxed in-place)
 ///        r   α_{L,i}    α_{R}^i     α_{O,i}
-///  1    |--|--------|-----------|-------------------|
-///       |  |        | α_R = h_R |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        | α_R^i     | α_{L,i} + r·α_R^i |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-///       |  |        |           |                   |
-/// #chal |--|--------|-----------|-------------------|
+///  1    |--|--------|-----------|-----------------------|
+///       |  |        | α_R = h_R |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        | α_R^i     | α_{L,i} + r·α_{R,i}^i |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+///       |  |        |           |                       |
+/// #chal |--|--------|-----------|-----------------------|
 ///
 /// #chal is the number of constraints. Our optimistic expectation is
 /// that it is around const*N for const < 3.
@@ -241,6 +247,11 @@ pub type IVCPoseidonColumn = PoseidonColumn<
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
+    /// A single column containing the folding iteration number,
+    /// starting with 0 for the base case, and non-zero positive for
+    /// inductive case.
+    FoldIteration,
+
     /// Selector for blocks. Inner usize is ∈ [0,#blocks).
     BlockSel(usize),
 
@@ -327,6 +338,7 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
+            IVCColumn::FoldIteration => Column::Relation(0),
             IVCColumn::BlockSel(i) => {
                 assert!(i < N_BLOCKS);
                 Column::FixedSelector(i)
@@ -334,73 +346,78 @@ impl ColumnIndexer for IVCColumn {
 
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(1)
             }
             IVCColumn::Block1InputRepacked75(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + i)
+                Column::Relation(2 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block1InputRepacked150(i) => {
                 assert!(i < 2 * N_LIMBS_XLARGE);
-                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
+                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i).add_rel_offset(1)
             }
 
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
 
-            IVCColumn::Block3ConstPhi => Column::Relation(0),
-            IVCColumn::Block3ConstR => Column::Relation(1),
-            IVCColumn::Block3PhiPow => Column::Relation(2),
-            IVCColumn::Block3PhiPowR => Column::Relation(3),
-            IVCColumn::Block3PhiPowR2 => Column::Relation(4),
-            IVCColumn::Block3PhiPowR3 => Column::Relation(5),
+            IVCColumn::Block3ConstPhi => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block3ConstR => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block3PhiPow => Column::Relation(2).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR => Column::Relation(3).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR2 => Column::Relation(4).add_rel_offset(1),
+            IVCColumn::Block3PhiPowR3 => Column::Relation(5).add_rel_offset(1),
             IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + i)
+                Column::Relation(6 + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + N_LIMBS_SMALL + i)
+                Column::Relation(6 + N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowR2Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 2 * N_LIMBS_SMALL + i)
+                Column::Relation(6 + 2 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
             IVCColumn::Block3PhiPowR3Limbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(6 + 3 * N_LIMBS_SMALL + i)
+                Column::Relation(6 + 3 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
 
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(i)
+                Column::Relation(i).add_rel_offset(1)
             }
-            IVCColumn::Block4Coeff => Column::Relation(8),
-            IVCColumn::Block4Input2AccessTime => Column::Relation(9),
+            IVCColumn::Block4Coeff => Column::Relation(8).add_rel_offset(1),
+            IVCColumn::Block4Input2AccessTime => Column::Relation(9).add_rel_offset(1),
             IVCColumn::Block4Input2(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::Relation(10 + i)
+                Column::Relation(10 + i).add_rel_offset(1)
             }
-            IVCColumn::Block4ECAddInter(fec_inter) => fec_inter.to_column().add_rel_offset(18),
+            IVCColumn::Block4ECAddInter(fec_inter) => {
+                fec_inter.to_column().add_rel_offset(18).add_rel_offset(1)
+            }
             IVCColumn::Block4OutputRaw(fec_output) => fec_output
                 .to_column()
-                .add_rel_offset(18 + FECColumnInter::N_COL),
+                .add_rel_offset(18 + FECColumnInter::N_COL)
+                .add_rel_offset(1),
             IVCColumn::Block4OutputAccessTime => {
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL)
+                    .add_rel_offset(1)
             }
             IVCColumn::Block4OutputRepacked(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
+                    .add_rel_offset(1)
             }
 
-            IVCColumn::Block5ConstHr => Column::Relation(0),
-            IVCColumn::Block5ConstR => Column::Relation(1),
-            IVCColumn::Block5ChalLeft => Column::Relation(2),
-            IVCColumn::Block5ChalRight => Column::Relation(3),
-            IVCColumn::Block5ChalOutput => Column::Relation(4),
+            IVCColumn::Block5ConstHr => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block5ConstR => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block5ChalLeft => Column::Relation(2).add_rel_offset(1),
+            IVCColumn::Block5ChalRight => Column::Relation(3).add_rel_offset(1),
+            IVCColumn::Block5ChalOutput => Column::Relation(4).add_rel_offset(1),
 
-            IVCColumn::Block6ConstR => Column::Relation(0),
-            IVCColumn::Block6ULeft => Column::Relation(1),
-            IVCColumn::Block6UOutput => Column::Relation(2),
+            IVCColumn::Block6ConstR => Column::Relation(0).add_rel_offset(1),
+            IVCColumn::Block6ULeft => Column::Relation(1).add_rel_offset(1),
+            IVCColumn::Block6UOutput => Column::Relation(2).add_rel_offset(1),
         }
     }
 }
