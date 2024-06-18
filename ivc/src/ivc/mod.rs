@@ -10,8 +10,16 @@ pub const LIMB_BITSIZE_XLARGE: usize = 150;
 /// The biggest packing format, 2 limbs.
 pub const N_LIMBS_XLARGE: usize = 2;
 
+/// Number of additional columns that a reduction to degree 2 will
+/// require.
+// This value has been generated using a fake folding config like in
+// [folding::tests::test_quadraticization]
+pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 48;
+
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{
         ivc::{
             columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
@@ -140,6 +148,30 @@ mod tests {
             1 << 15,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
+    }
+
+    #[test]
+    fn test_regression_ivc_constraints() {
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
+        constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut constraints_degrees = HashMap::new();
+
+        // Regression testing for the number of constraints and their degree
+        {
+            // Hashes are not included for now.
+            assert_eq!(constraints.len(), 55);
+            constraints.iter().for_each(|c| {
+                let degree = c.degree(1, 0);
+                *constraints_degrees.entry(degree).or_insert(0) += 1;
+            });
+
+            assert_eq!(constraints_degrees.get(&1), None);
+            assert_eq!(constraints_degrees.get(&2), Some(&29));
+            assert_eq!(constraints_degrees.get(&3), Some(&5));
+            assert_eq!(constraints_degrees.get(&4), Some(&21));
+        }
     }
 
     #[test]
