@@ -993,7 +993,6 @@ where
     let mut selectors: [Vec<F>; N_BLOCKS] = core::array::from_fn(|_| vec![F::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
-        let beginning = curr_row;
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
             selectors[block_i][curr_row] = F::one();
             curr_row += 1;

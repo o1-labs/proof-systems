@@ -8,8 +8,11 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 use folding::{
     columns::ExtendedFoldingColumn,
     eval_leaf::EvalLeaf,
-    expressions::{FoldingColumnTrait, FoldingExp, FromFoldingConversionError},
-    instance_witness::Foldable,
+    expressions::{
+        ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp,
+        FromFoldingConversionError,
+    },
+    instance_witness::{ExtendedWitness, Foldable},
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, FoldingOutput, FoldingScheme,
     Instance, Side, Witness,
 };
@@ -310,6 +313,7 @@ pub fn test_simple_add() {
             }
         }
     }
+
     pub struct PlonkishEnvironment {
         /// Structure of the folded circuit
         pub structure: (),
@@ -387,9 +391,12 @@ pub fn test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv {
         //    inner: CF::Env,
-        witness: PlonkishWitness<N_COL_TOTAL>,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL_TOTAL>>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
+        error_vec: Evaluations<Fp, R2D<Fp>>,
+        /// The scalar `u` that is used to homogenize the polynomials
+        u: Fp,
     }
 
     impl SimpleEvalEnv {
@@ -401,54 +408,112 @@ pub fn test_simple_add() {
             }
         }
 
-        pub fn col(&self, col: &ExtendedFoldingColumn<Config>) -> EvalLeaf<Fp> {
+        pub fn process_extended_folding_column(
+            &self,
+            col: &ExtendedFoldingColumn<Config>,
+        ) -> EvalLeaf<Fp> {
             use EvalLeaf::Col;
             use ExtendedFoldingColumn::*;
             match col {
                 Inner(Variable { col, row }) => {
                     let wit = match row {
-                        CurrOrNext::Curr => &self.witness,
+                        CurrOrNext::Curr => &self.ext_witness.witness,
                         CurrOrNext::Next => panic!("not implemented"),
                     };
                     // The following is possible because Index is implemented for our
                     // circuit witnesses
                     Col(&wit[*col].evals)
                 },
-            WitnessExtended(_i) => panic!("not expected to happen"),
-            Error => panic!("shouldn't happen"),
-            Constant(c) => EvalLeaf::Const(*c),
-            Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
-            Alpha(i) => {
-                let alpha = self.alphas.get(*i).expect("alpha not present");
-                EvalLeaf::Const(alpha)
-            }
-            Selector(_s) => unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations."),
+                WitnessExtended(i) => Col(&self.ext_witness.extended.get(i).unwrap().evals),
+                Error => panic!("shouldn't happen"),
+                Constant(c) => EvalLeaf::Const(*c),
+                Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
+                Alpha(i) => {
+                    let alpha = self.alphas.get(*i).expect("alpha not present");
+                    EvalLeaf::Const(alpha)
+                }
+                Selector(_s) => unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations."),
         }
         }
-    }
 
-    /// Evaluates the expression in the provided side
-    fn eval_naive<'a>(exp: &FoldingExp<Config>, env: &'a SimpleEvalEnv) -> EvalLeaf<'a, Fp> {
-        use FoldingExp::*;
+        /// Evaluates the expression in the provided side
+        fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config>) -> EvalLeaf<'a, Fp> {
+            use FoldingExp::*;
 
-        match exp {
-            Atom(column) => env.col(column),
-            Double(e) => {
-                let col = eval_naive(e, env);
-                col.map(Field::double, |f| {
-                    Field::double_in_place(f);
-                })
+            match exp {
+                Atom(column) => self.process_extended_folding_column(column),
+                Double(e) => {
+                    let col = self.eval_naive_fexpr(e);
+                    col.map(Field::double, |f| {
+                        Field::double_in_place(f);
+                    })
+                }
+                Square(e) => {
+                    let col = self.eval_naive_fexpr(e);
+                    col.map(Field::square, |f| {
+                        Field::square_in_place(f);
+                    })
+                }
+                Add(e1, e2) => self.eval_naive_fexpr(e1) + self.eval_naive_fexpr(e2),
+                Sub(e1, e2) => self.eval_naive_fexpr(e1) - self.eval_naive_fexpr(e2),
+                Mul(e1, e2) => self.eval_naive_fexpr(e1) * self.eval_naive_fexpr(e2),
+                Pow(_e, _i) => panic!("We're not supposed to use this"),
             }
-            Square(e) => {
-                let col = eval_naive(e, env);
-                col.map(Field::square, |f| {
-                    Field::square_in_place(f);
-                })
+        }
+
+        /// For FoldingCompatibleExp
+        fn eval_naive_fcompat<'a>(
+            &'a self,
+            exp: &FoldingCompatibleExpr<Config>,
+        ) -> EvalLeaf<'a, Fp> {
+            use FoldingCompatibleExpr::*;
+
+            match exp {
+                Atom(column) => {
+                    use FoldingCompatibleExprInner::*;
+                    match column {
+                        Cell(Variable { col, row }) => {
+                            let wit = match row {
+                                CurrOrNext::Curr => &self.ext_witness.witness,
+                                CurrOrNext::Next => panic!("not implemented"),
+                            };
+                            // The following is possible because Index is implemented for our
+                            // circuit witnesses
+                            EvalLeaf::Col(&wit[*col].evals)
+                        }
+                        Challenge(chal) => EvalLeaf::Const(self.challenge(*chal)),
+                        Constant(c) => EvalLeaf::Const(*c),
+                        Extensions(ext) => {
+                            use ExpExtension::*;
+                            match ext {
+                                U => EvalLeaf::Const(self.u),
+                                Error => EvalLeaf::Col(&self.error_vec.evals),
+                                ExtendedWitness(i) => {
+                                    EvalLeaf::Col(&self.ext_witness.extended.get(i).unwrap().evals)
+                                }
+                                Alpha(i) => EvalLeaf::Const(self.alphas.get(*i).unwrap()),
+                                Selector(_sel) => panic!("No selectors supported yet"),
+                            }
+                        }
+                    }
+                }
+                Double(e) => {
+                    let col = self.eval_naive_fcompat(e);
+                    col.map(Field::double, |f| {
+                        Field::double_in_place(f);
+                    })
+                }
+                Square(e) => {
+                    let col = self.eval_naive_fcompat(e);
+                    col.map(Field::square, |f| {
+                        Field::square_in_place(f);
+                    })
+                }
+                Add(e1, e2) => self.eval_naive_fcompat(e1) + self.eval_naive_fcompat(e2),
+                Sub(e1, e2) => self.eval_naive_fcompat(e1) - self.eval_naive_fcompat(e2),
+                Mul(e1, e2) => self.eval_naive_fcompat(e1) * self.eval_naive_fcompat(e2),
+                Pow(_e, _i) => panic!("We're not supposed to use this"),
             }
-            Add(e1, e2) => eval_naive(e1, env) + eval_naive(e2, env),
-            Sub(e1, e2) => eval_naive(e1, env) - eval_naive(e2, env),
-            Mul(e1, e2) => eval_naive(e1, env) * eval_naive(e2, env),
-            Pow(_e, _i) => panic!("We're not supposed to use this"),
         }
     }
 
@@ -544,15 +609,15 @@ pub fn test_simple_add() {
         folding_compat_constraints.len()
     );
 
-    // real_folding_compat_constraints is actual constraint
-    let (folding_scheme, real_folding_compat_constraints) =
+    // real_folding_compat_constraint is actual constraint
+    let (folding_scheme, real_folding_compat_constraint) =
         FoldingScheme::<Config>::new(folding_compat_constraints.clone(), &srs, domain.d1, &());
 
     // this cannot be mapped back to Fp
     // has some u and {alpha^i}
     // this one needs to be used in prover(..).
-    let _real_folding_compat_constraints: FoldingCompatibleExpr<Config> =
-        real_folding_compat_constraints;
+    let real_folding_compat_constraint: FoldingCompatibleExpr<Config> =
+        real_folding_compat_constraint;
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 1
@@ -964,7 +1029,7 @@ pub fn test_simple_add() {
     println!("Folding two");
 
     let _folding_output_two = folding_scheme.fold_instance_witness_pair(
-        (folded_instance, folded_witness),
+        (folded_instance.clone(), folded_witness.clone()),
         (
             folding_instance_three.clone(),
             folding_witness_three.clone(),
@@ -979,11 +1044,11 @@ pub fn test_simple_add() {
     //            folded_2
 
     ////////////////////////////////////////////////////////////////////////////
-    // Testing via folding exprs
+    // Testing folding exprs validity for last  fold
     ////////////////////////////////////////////////////////////////////////////
 
     {
-        println!("Testing expressions validity; creating evaluations");
+        println!("Testing individual expressions validity; creating evaluations");
 
         let simple_eval_env = {
             let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
@@ -1039,9 +1104,14 @@ pub fn test_simple_add() {
             let challenges = [beta, gamma, joint_combiner];
 
             SimpleEvalEnv {
-                witness: witness_d8,
+                ext_witness: ExtendedWitness {
+                    witness: witness_d8,
+                    extended: BTreeMap::new(),
+                },
                 alphas,
                 challenges,
+                error_vec: Evaluations::from_vec_and_domain(vec![], domain.d1),
+                u: Fp::zero(),
             }
         };
 
@@ -1050,8 +1120,8 @@ pub fn test_simple_add() {
                 folding_compat_constraints.clone();
 
             for (expr_i, expr) in target_expressions.iter().enumerate() {
-                let expr_s: FoldingExp<Config> = expr.clone().simplify();
-                let eval_leaf = eval_naive(&expr_s, &simple_eval_env);
+                //let expr_s: FoldingExp<Config> = expr.clone().simplify();
+                let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
 
                 let evaluations_d8 = match eval_leaf {
                     EvalLeaf::Result(evaluations_d8) => evaluations_d8,
@@ -1067,6 +1137,106 @@ pub fn test_simple_add() {
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
                         panic!(
+                            "Remainder is not zero for expression #{expr_i}: {}",
+                            expr.to_string()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Testing folding exprs validity with quadraticization
+    ////////////////////////////////////////////////////////////////////////////
+
+    {
+        println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
+
+        let simple_eval_env = {
+            let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
+
+            // The witness we're evaluating
+            let witness_input = folded_witness.extended_witness.witness.witness.cols;
+
+            let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = witness_input
+                .into_par_iter()
+                .map(|evals| interpolate(evals).evaluate_over_domain_by_ref(domain.d8))
+                .collect();
+
+            let fixed_selectors_polys: Vec<DensePolynomial<Fp>> = {
+                ivc_fixed_selectors_evals
+                    .clone()
+                    .into_par_iter()
+                    .map(interpolate)
+                    .collect()
+            };
+            let fixed_selectors_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = (fixed_selectors_polys)
+                .into_par_iter()
+                .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+                .collect();
+
+            for eval in fixed_selectors_evals_d8
+                .iter()
+                .chain(witness_evals_d8.iter())
+            {
+                assert!(eval.domain() == domain.d8);
+            }
+
+            let witness_d8: PlonkishWitness<N_COL_TOTAL> = PlonkishWitness {
+                witness: witness_evals_d8.clone().try_into().unwrap(),
+                fixed_selectors: fixed_selectors_evals_d8.clone(),
+            };
+
+            let extended: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> =
+                folded_witness.extended_witness.extended.clone();
+            let extended_vec: Vec<(usize, Evaluations<Fp, R2D<Fp>>)> =
+                extended.into_iter().collect();
+            let extended_evals_d8: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> = extended_vec
+                .into_par_iter()
+                .map(|(ix, evals)| {
+                    (
+                        ix,
+                        interpolate(evals).evaluate_over_domain_by_ref(domain.d8),
+                    )
+                })
+                .collect();
+
+            let ext_witness_d8 = ExtendedWitness {
+                witness: witness_d8,
+                extended: extended_evals_d8,
+            };
+
+            SimpleEvalEnv {
+                ext_witness: ext_witness_d8,
+                alphas: folded_instance.extended_instance.instance.alphas,
+                challenges: folded_instance.extended_instance.instance.challenges,
+                error_vec: folded_witness.error_vec,
+                u: folded_instance.u,
+            }
+        };
+
+        {
+            let target_expressions: Vec<FoldingCompatibleExpr<Config>> =
+                vec![real_folding_compat_constraint.clone()];
+
+            for (expr_i, expr) in target_expressions.iter().enumerate() {
+                let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
+
+                let evaluations_d8 = match eval_leaf {
+                    EvalLeaf::Result(evaluations_d8) => evaluations_d8,
+                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
+                    _ => panic!("eval_leaf is not Result"),
+                };
+
+                let interpolated =
+                    Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
+                if !interpolated.is_zero() {
+                    let (_, remainder) = interpolated
+                        .divide_by_vanishing_poly(domain.d1)
+                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    if !remainder.is_zero() {
+                        println!(
                             "Remainder is not zero for expression #{expr_i}: {}",
                             expr.to_string()
                         );
