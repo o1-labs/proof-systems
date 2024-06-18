@@ -1021,6 +1021,15 @@
 <a href="#1021" id="1021">1021</a>
 <a href="#1022" id="1022">1022</a>
 <a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 </span><span class="kw">use crate</span>::{
@@ -2001,7 +2010,16 @@
 
 <span class="doccomment">/// Instantiates the IVC circuit for folding. L is relaxed (folded)
 /// instance, and R is strict (new) instance that is being relaxed at
-/// this step. `N_COL_TOTAL` is the total number of columnsfor IVC + APP.
+/// this step. `N_COL_TOTAL` is the total number of columns for IVC + APP.
+/// `N_CHALS` is the number of challenges, which contains also the alphas used
+/// to combine constraints, see [top level documentation in
+/// folding](folding::expressions).
+/// The number of commitments is the total number, and it is expecting the
+/// commitments to also the previous IVC columns
+</span><span class="comment">// FIXME: we must accept the scaled right commitments and the right instance
+// commitments
+// FIXME: Env should be implementing like a IVCCapability trait, which contains
+// the sponge for instance, and the buckets for the MSM
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>ivc_circuit&lt;F, Ff, Env, PParams, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
