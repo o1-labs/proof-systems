@@ -444,18 +444,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // NOTE: these constraints also hold when 0 preimage bytes are read
             {
                 // When only 1 preimage byte is read, the chunk equals byte[0]
-                self.constraints
-                    .push(preimage_1 * (this_chunk.clone() - bytes[0].clone()));
+                self.add_constraint(preimage_1 * (this_chunk.clone() - bytes[0].clone()));
                 // When 2 bytes are read, the chunk is equal to the
                 // byte[0] * 2^8 + byte[1]
-                self.constraints.push(
+                self.add_constraint(
                     preimage_2
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(8)) + bytes[1].clone())),
                 );
                 // When 3 bytes are read, the chunk is equal to
                 // byte[0] * 2^16 + byte[1] * 2^8 + byte[2]
-                self.constraints.push(
+                self.add_constraint(
                     preimage_3
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(16))
@@ -464,7 +463,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
                 // When all 4 bytes are read, the chunk is equal to
                 // byte[0] * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
-                self.constraints.push(
+                self.add_constraint(
                     preimage_4
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(24))
@@ -490,7 +489,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // When at least has_2_byte, then any number of bytes can be
                 // read from the preimage except 1
-                self.constraints.push(
+                self.add_constraint(
                     has_n_bytes[1].clone()
                         * (num_preimage_bytes_read.clone() - Expr::from(2))
                         * (num_preimage_bytes_read.clone() - Expr::from(3))
@@ -498,14 +497,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
                 // When at least has_3_byte, then any number of bytes can be
                 // read from the preimage except 1 nor 2
-                self.constraints.push(
+                self.add_constraint(
                     has_n_bytes[2].clone()
                         * (num_preimage_bytes_read.clone() - Expr::from(3))
                         * (num_preimage_bytes_read.clone() - Expr::from(4)),
                 );
 
                 // When has_4_byte, then only can read 4 preimage bytes
-                self.constraints.push(
+                self.add_constraint(
                     has_n_bytes[3].clone() * (num_preimage_bytes_read.clone() - Expr::from(4)),
                 );
             }
