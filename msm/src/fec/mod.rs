@@ -16,6 +16,7 @@ mod tests {
         logup::LookupTableID,
         Ff1, Fp,
     };
+    use ark_ec::AffineCurve;
     use ark_ff::UniformRand;
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
@@ -34,18 +35,37 @@ mod tests {
         rng: &mut RNG,
         domain_size: usize,
     ) -> FECWitnessBuilderEnv {
+        use mina_curves::pasta::{Fp, Pallas};
+
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        for row_i in 0..domain_size {
-            let xp: Ff1 = <Ff1 as UniformRand>::rand(rng);
-            let yp: Ff1 = <Ff1 as UniformRand>::rand(rng);
-            let xq: Ff1 = <Ff1 as UniformRand>::rand(rng);
-            let yq: Ff1 = <Ff1 as UniformRand>::rand(rng);
+        let gen = Pallas::prime_subgroup_generator();
+        let kp: Fp = UniformRand::rand(rng);
+        let p: Pallas = gen.mul(kp).into();
+        let px: Ff1 = p.x;
+        let py: Ff1 = p.y;
 
-            ec_add_circuit(&mut witness_env, xp, yp, xq, yq);
+        for row_i in 0..domain_size {
+            let kq: Fp = UniformRand::rand(rng);
+            let q: Pallas = gen.mul(kq).into();
+
+            let qx: Ff1 = q.x;
+            let qy: Ff1 = q.y;
+
+            let (rx, ry) = ec_add_circuit(&mut witness_env, px, py, qx, qy);
+
+            let r: Pallas =
+                ark_ec::models::short_weierstrass_jacobian::GroupAffine::new(rx, ry, false);
+
+            assert!(
+                r == p + q,
+                "fec addition circuit does not compute actual p + q, expected {} got {r:?}",
+                p + q
+            );
+
             if row_i < domain_size - 1 {
                 witness_env.next_row();
             }
