@@ -113,7 +113,7 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
             }
             (Col(a), Result(mut b)) => {
                 for (a, b) in a.iter().zip(b.iter_mut()) {
-                    *b = f(b.clone(), a.clone())
+                    *b = f(a.clone(), b.clone())
                 }
                 Result(b)
             }
