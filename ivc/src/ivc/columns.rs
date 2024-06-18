@@ -2,7 +2,9 @@ use super::N_LIMBS_XLARGE;
 use crate::poseidon_8_56_5_3_2::{
     bn254::{
         Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
-        NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+        NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND,
+        NB_ROUND_CONSTANTS as IVC_POSEIDON_NB_ROUND_CONSTANTS,
+        STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
     },
     columns::PoseidonColumn,
 };
@@ -29,9 +31,7 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
     }
 }
 
-pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize =
-    (IVC_POSEIDON_NB_FULL_ROUND + IVC_POSEIDON_NB_PARTIAL_ROUND) * IVC_POSEIDON_STATE_SIZE
-        + N_BLOCKS;
+pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 /// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don't, we wrap around and continue.
