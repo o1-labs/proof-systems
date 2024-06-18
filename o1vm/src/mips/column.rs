@@ -69,18 +69,22 @@ impl From<ColumnAlias> for usize {
 impl From<Instruction> for usize {
     fn from(instr: Instruction) -> usize {
         match instr {
-            RType(rtype) => rtype as usize,
-            JType(jtype) => RTypeInstruction::COUNT + jtype as usize,
-            IType(itype) => RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize,
+            RType(rtype) => N_MIPS_REL_COLS + rtype as usize,
+            JType(jtype) => N_MIPS_REL_COLS + RTypeInstruction::COUNT + jtype as usize,
+            IType(itype) => {
+                N_MIPS_REL_COLS + RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize
+            }
         }
     }
 }
 
-/// Represents one line of the execution trace of the virtual machine It does
-/// contain [N_MIPS_SEL_COLS] columns for the instruction selectors
+/// Represents one line of the execution trace of the virtual machine
+/// It contain
 /// + [SCRATCH_SIZE] columns
-/// + 2 additional columns to keep track of the instruction index and one for
-/// the system error code. The columns are, in order,
+/// + 1 column to keep track of the instruction index
+/// + 1 column for the system error code
+/// + [N_MIPS_SEL_COLS]  columns for the instruction selectors.
+/// The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -145,9 +149,8 @@ impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for Instruction {
-    const N_COL: usize = N_MIPS_COLS;
+    const N_COL: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
     fn to_column(self) -> Column {
-        // TODO: what happens with error? It does not have a corresponding alias
-        Column::DynamicSelector(usize::from(self))
+        Column::DynamicSelector(usize::from(self) - N_MIPS_REL_COLS)
     }
 }

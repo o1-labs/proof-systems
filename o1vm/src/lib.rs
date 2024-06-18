@@ -49,7 +49,7 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// trace.
 /// As a reminder, a constraint can be formally defined as a multi-variate
 /// polynomial over a finite field. The variables of the polynomial are defined
-/// as `kimchi_msm::columns::Column``.
+/// as `kimchi_msm::columns::Column`.
 /// The `expression` framework defined in `kimchi::circuits::expr` is used to
 /// describe the multi-variate polynomials.
 /// For instance, a vanilla 3-wires PlonK constraint can be defined using the
