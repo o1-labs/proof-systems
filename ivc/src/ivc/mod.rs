@@ -1,13 +1,22 @@
 pub mod columns;
+pub mod constraints;
+pub mod helpers;
 pub mod interpreter;
 pub mod lookups;
+
+/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
+pub const LIMB_BITSIZE_XLARGE: usize = 150;
+
+/// The biggest packing format, 2 limbs.
+pub const N_LIMBS_XLARGE: usize = 2;
 
 #[cfg(test)]
 mod tests {
     use crate::{
         ivc::{
             columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
-            interpreter::{build_selectors, constrain_ivc, ivc_circuit},
+            constraints::constrain_ivc,
+            interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::{
@@ -95,6 +104,7 @@ mod tests {
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
+            0,
             comms_left,
             comms_right,
             comms_output,

@@ -1,13 +1,10 @@
-use crate::{
-    ivc::interpreter::N_LIMBS_XLARGE,
-    poseidon_8_56_5_3_2::{
-        bn254::{
-            Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
-            NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND,
-            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
-        },
-        columns::PoseidonColumn,
+use super::N_LIMBS_XLARGE;
+use crate::poseidon_8_56_5_3_2::{
+    bn254::{
+        Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
+        NB_PARTIAL_ROUND as IVC_POSEIDON_NB_PARTIAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
     },
+    columns::PoseidonColumn,
 };
 use kimchi_msm::{
     circuit_design::composition::MPrism,

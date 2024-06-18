@@ -12,7 +12,7 @@ use folding::{
 };
 use ivc::ivc::{
     columns::{IVCColumn, N_BLOCKS},
-    interpreter::constrain_ivc,
+    constraints::constrain_ivc,
     lookups::IVCLookupTable,
 };
 use kimchi::circuits::expr::{ChallengeTerm, Variable};
@@ -201,7 +201,7 @@ pub fn test_simple_add() {
     #[derive(Clone, Debug)]
     pub struct PlonkishInstance<const N_COL: usize> {
         commitments: [Curve; N_COL],
-        challenges: [Fp; 3],
+        challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
         blinder: Fp,
     }
@@ -259,9 +259,15 @@ pub fn test_simple_add() {
             srs: &SRS<Curve>,
             domain: Radix2EvaluationDomain<Fp>,
         ) -> Self {
+            let blinder = Fp::one();
+
             let commitments: GenericWitness<N_COL, PolyComm<Curve>> = w
                 .into_par_iter()
-                .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+                .map(|w| {
+                    let blinder = PolyComm::new(vec![blinder; 1]);
+                    let unblinded = srs.commit_evaluations_non_hiding(domain, w);
+                    srs.mask_custom(unblinded, &blinder).unwrap().commitment
+                })
                 .collect();
 
             // Absorbing commitments
@@ -283,8 +289,6 @@ pub fn test_simple_add() {
 
             let alpha = fq_sponge.challenge();
             let alphas = Alphas::new(alpha);
-
-            let blinder = Fp::one();
 
             Self {
                 commitments,
