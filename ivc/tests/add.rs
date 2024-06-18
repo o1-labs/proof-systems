@@ -201,7 +201,7 @@ pub fn test_simple_add() {
     #[derive(Clone, Debug)]
     pub struct PlonkishInstance<const N_COL: usize> {
         commitments: [Curve; N_COL],
-        challenges: [Fp; 3],
+        challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
         blinder: Fp,
     }
