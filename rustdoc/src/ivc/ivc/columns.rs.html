@@ -483,7 +483,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::poseidon_8_56_5_3_2::{
     bn254::{
         Column <span class="kw">as </span>IVCPoseidonColumn, NB_FULL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_FULL_ROUND,
-        NB_PARTIAL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_PARTIAL_ROUND, STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
+        NB_PARTIAL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_PARTIAL_ROUND,
+        NB_ROUND_CONSTANTS <span class="kw">as </span>IVC_POSEIDON_NB_ROUND_CONSTANTS,
+        STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
     },
     columns::PoseidonColumn,
 };
@@ -510,9 +512,7 @@
     }
 }
 
-<span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize =
-    (IVC_POSEIDON_NB_FULL_ROUND + IVC_POSEIDON_NB_PARTIAL_ROUND) * IVC_POSEIDON_STATE_SIZE
-        + N_BLOCKS;
+<span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 <span class="doccomment">/// The IVC circuit is tiled vertically. We assume we have as many
 /// rows as we need: if we don&#39;t, we wrap around and continue.
