@@ -113,7 +113,7 @@ pub fn test_simple_add() {
     // ---- Defining the folding configuration ----
     // FoldingConfig
     #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
-    pub struct Config;
+    pub struct Config<const N_COL: usize>;
 
     impl FoldingColumnTrait for AdditionColumn {
         fn is_witness(&self) -> bool {
@@ -217,14 +217,14 @@ pub fn test_simple_add() {
     }
 
     #[derive(Clone, Debug)]
-    pub struct PlonkishInstance {
-        commitments: [BN254G1Affine; N_COL_TOTAL],
+    pub struct PlonkishInstance<const N_COL: usize> {
+        commitments: [BN254G1Affine; N_COL],
         challenges: [Fp; Challenge::COUNT],
         alphas: Alphas<Fp>,
         blinder: Fp,
     }
 
-    impl Foldable<Fp> for PlonkishInstance {
+    impl<const N_COL: usize> Foldable<Fp> for PlonkishInstance<N_COL> {
         fn combine(a: Self, b: Self, challenge: Fp) -> Self {
             Self {
                 commitments: array::from_fn(|i| {
@@ -237,7 +237,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl Instance<BN254G1Affine> for PlonkishInstance {
+    impl<const N_COL: usize> Instance<BN254G1Affine> for PlonkishInstance<N_COL> {
         fn to_absorb(&self) -> (Vec<Fp>, Vec<BN254G1Affine>) {
             // FIXME: check!!!!
             let mut scalars = Vec::new();
@@ -257,14 +257,14 @@ pub fn test_simple_add() {
         }
     }
 
-    impl PlonkishInstance {
+    impl<const N_COL: usize> PlonkishInstance<N_COL> {
         pub fn from_witness(
-            w: &GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>>,
+            w: &GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
             fq_sponge: &mut BaseSponge,
             srs: &SRS<BN254G1Affine>,
             domain: R2D<Fp>,
         ) -> Self {
-            let commitments: GenericWitness<N_COL_TOTAL, PolyComm<BN254G1Affine>> = w
+            let commitments: GenericWitness<N_COL, PolyComm<BN254G1Affine>> = w
                 .into_iter() // into_par_iter
                 .map(|w| {
                     let unblinded = srs.commit_evaluations_non_hiding(domain, w);
@@ -283,7 +283,7 @@ pub fn test_simple_add() {
                 .into_iter()
                 .for_each(|c| absorb_commitment(fq_sponge, c));
 
-            let commitments: [BN254G1Affine; N_COL_TOTAL] = commitments
+            let commitments: [BN254G1Affine; N_COL] = commitments
                 .into_iter()
                 .map(|c| c.elems[0])
                 .collect_vec()
@@ -314,29 +314,30 @@ pub fn test_simple_add() {
         }
     }
 
-    pub struct PlonkishEnvironment {
+    pub struct PlonkishEnvironment<const N_COL: usize> {
         /// Structure of the folded circuit
         pub structure: (),
         /// Commitments to the witness columns, for both sides
-        pub instances: [PlonkishInstance; 2],
+        pub instances: [PlonkishInstance<N_COL>; 2],
         /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
+        pub curr_witnesses: [PlonkishWitness<N_COL>; 2],
         /// Corresponds to the zeta*omega evaluations, for both sides
         /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness<N_COL_TOTAL>; 2],
+        pub next_witnesses: [PlonkishWitness<N_COL>; 2],
     }
 
-    impl FoldingEnv<Fp, PlonkishInstance, PlonkishWitness<N_COL_TOTAL>, Column, Challenge, ()>
-        for PlonkishEnvironment
+    impl<const N_COL: usize>
+        FoldingEnv<Fp, PlonkishInstance<N_COL>, PlonkishWitness<N_COL>, Column, Challenge, ()>
+        for PlonkishEnvironment<N_COL>
     where
-        PlonkishWitness<N_COL_TOTAL>: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
+        PlonkishWitness<N_COL>: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
     {
         type Structure = ();
 
         fn new(
             structure: &(),
-            instances: [&PlonkishInstance; 2],
-            witnesses: [&PlonkishWitness<N_COL_TOTAL>; 2],
+            instances: [&PlonkishInstance<N_COL>; 2],
+            witnesses: [&PlonkishWitness<N_COL>; 2],
         ) -> Self {
             let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
             let mut next_witnesses = curr_witnesses.clone();
@@ -376,22 +377,22 @@ pub fn test_simple_add() {
         }
     }
 
-    impl FoldingConfig for Config {
+    impl<const N_COL: usize> FoldingConfig for Config<N_COL> {
         type Column = Column;
         type Selector = ();
         type Challenge = Challenge;
         type Curve = BN254G1Affine;
         type Srs = SRS<BN254G1Affine>;
-        type Instance = PlonkishInstance;
-        type Witness = PlonkishWitness<N_COL_TOTAL>;
+        type Instance = PlonkishInstance<N_COL>;
+        type Witness = PlonkishWitness<N_COL>;
         type Structure = ();
-        type Env = PlonkishEnvironment;
+        type Env = PlonkishEnvironment<N_COL>;
     }
 
     /// Minimal environment needed for evaluating constraints.
-    struct SimpleEvalEnv {
+    struct SimpleEvalEnv<const N_COL: usize> {
         //    inner: CF::Env,
-        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL_TOTAL>>,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL>>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
         error_vec: Evaluations<Fp, R2D<Fp>>,
@@ -399,7 +400,7 @@ pub fn test_simple_add() {
         u: Fp,
     }
 
-    impl SimpleEvalEnv {
+    impl<const N_COL: usize> SimpleEvalEnv<N_COL> {
         pub fn challenge(&self, challenge: Challenge) -> Fp {
             match challenge {
                 Challenge::Beta => self.challenges[0],
@@ -410,7 +411,7 @@ pub fn test_simple_add() {
 
         pub fn process_extended_folding_column(
             &self,
-            col: &ExtendedFoldingColumn<Config>,
+            col: &ExtendedFoldingColumn<Config<N_COL>>,
         ) -> EvalLeaf<Fp> {
             use EvalLeaf::Col;
             use ExtendedFoldingColumn::*;
@@ -437,7 +438,7 @@ pub fn test_simple_add() {
         }
 
         /// Evaluates the expression in the provided side
-        fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config>) -> EvalLeaf<'a, Fp> {
+        fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config<N_COL>>) -> EvalLeaf<'a, Fp> {
             use FoldingExp::*;
 
             match exp {
@@ -464,7 +465,7 @@ pub fn test_simple_add() {
         /// For FoldingCompatibleExp
         fn eval_naive_fcompat<'a>(
             &'a self,
-            exp: &FoldingCompatibleExpr<Config>,
+            exp: &FoldingCompatibleExpr<Config<N_COL>>,
         ) -> EvalLeaf<'a, Fp> {
             use FoldingCompatibleExpr::*;
 
@@ -560,11 +561,12 @@ pub fn test_simple_add() {
         ivc_constraint_env.get_relation_constraints()
     };
 
-    let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
+    let app_compat_constraints: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> = app_constraints
+        .clone()
         .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
-    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_constraints
+    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> = ivc_constraints
         .clone()
         .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
@@ -588,19 +590,21 @@ pub fn test_simple_add() {
         };
         Variable { col: new_col, row }
     });
-    let ivc_compat_constraints_mapped: Vec<FoldingCompatibleExpr<Config>> = ivc_compat_constraints
-        .clone()
-        .into_iter()
-        .map(|e| e.map_variable(ivc_mapper))
-        .collect();
+    let ivc_compat_constraints_mapped: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> =
+        ivc_compat_constraints
+            .clone()
+            .into_iter()
+            .map(|e| e.map_variable(ivc_mapper))
+            .collect();
 
     // Don't contain any U or alphas
     // can be mapped back to E<Fp>
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
-        .clone()
-        .into_iter()
-        .chain(ivc_compat_constraints_mapped.clone())
-        .collect();
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> =
+        app_compat_constraints
+            .clone()
+            .into_iter()
+            .chain(ivc_compat_constraints_mapped.clone())
+            .collect();
 
     // We have as many alphas as constraints
     assert!(
@@ -610,14 +614,25 @@ pub fn test_simple_add() {
     );
 
     // real_folding_compat_constraint is actual constraint
-    let (folding_scheme, real_folding_compat_constraint) =
-        FoldingScheme::<Config>::new(folding_compat_constraints.clone(), &srs, domain.d1, &());
-
-    // this cannot be mapped back to Fp
+    // it cannot be mapped back to Fp
     // has some u and {alpha^i}
     // this one needs to be used in prover(..).
-    let real_folding_compat_constraint: FoldingCompatibleExpr<Config> =
-        real_folding_compat_constraint;
+    let (folding_scheme, _real_folding_compat_constraint) =
+        FoldingScheme::<Config<N_COL_TOTAL>>::new(
+            folding_compat_constraints.clone(),
+            &srs,
+            domain.d1,
+            &(),
+        );
+
+    let app_compat_constraints_3col: Vec<FoldingCompatibleExpr<Config<3>>> = app_constraints
+        .into_iter()
+        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .collect();
+
+    // real_folding_compat_constraint is actual constraint
+    let (folding_scheme_no_ivc, real_folding_compat_constraint_no_ivc) =
+        FoldingScheme::<Config<3>>::new(app_compat_constraints_3col.clone(), &srs, domain.d1, &());
 
     ////////////////////////////////////////////////////////////////////////////
     // Witness step 1
@@ -663,6 +678,7 @@ pub fn test_simple_add() {
     // Relation || dynamic.
     let joint_witness_one: Vec<_> = proof_inputs_one
         .evaluations
+        .clone()
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations.clone())
         .collect();
@@ -716,6 +732,7 @@ pub fn test_simple_add() {
     // since they're both height 0.
     let joint_witness_two: Vec<_> = proof_inputs_two
         .evaluations
+        .clone()
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations)
         .collect();
@@ -1116,7 +1133,7 @@ pub fn test_simple_add() {
         };
 
         {
-            let target_expressions: Vec<FoldingCompatibleExpr<Config>> =
+            let target_expressions: Vec<FoldingCompatibleExpr<Config<N_COL_TOTAL>>> =
                 folding_compat_constraints.clone();
 
             for (expr_i, expr) in target_expressions.iter().enumerate() {
@@ -1153,11 +1170,57 @@ pub fn test_simple_add() {
     {
         println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
 
-        let simple_eval_env = {
+        let simple_eval_env: SimpleEvalEnv<3> = {
             let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
 
+            let folding_witness_one_no_ivc: PlonkishWitness<3> = PlonkishWitness {
+                witness: proof_inputs_one
+                    .evaluations
+                    .into_iter()
+                    .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+                fixed_selectors: vec![],
+            };
+
+            let folding_instance_one_no_ivc = PlonkishInstance::<3>::from_witness(
+                &folding_witness_one_no_ivc.witness,
+                &mut fq_sponge,
+                &srs,
+                domain.d1,
+            );
+
+            let folding_witness_two_no_ivc = PlonkishWitness {
+                witness: proof_inputs_two
+                    .evaluations
+                    .into_iter()
+                    .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+                fixed_selectors: vec![],
+            };
+
+            let folding_instance_two_no_ivc = PlonkishInstance::from_witness(
+                &folding_witness_two_no_ivc.witness,
+                &mut fq_sponge,
+                &srs,
+                domain.d1,
+            );
+
+            let one = (folding_instance_one_no_ivc, folding_witness_one_no_ivc);
+            let two = (folding_instance_two_no_ivc, folding_witness_two_no_ivc);
+            let folding_output =
+                folding_scheme_no_ivc.fold_instance_witness_pair(one, two, &mut fq_sponge);
+
             // The witness we're evaluating
-            let witness_input = folded_witness.extended_witness.witness.witness.cols;
+            let witness_input = folding_output
+                .folded_witness
+                .extended_witness
+                .witness
+                .witness
+                .cols;
 
             let witness_evals_d8: Vec<Evaluations<Fp, R2D<Fp>>> = witness_input
                 .into_par_iter()
@@ -1183,7 +1246,7 @@ pub fn test_simple_add() {
                 assert!(eval.domain() == domain.d8);
             }
 
-            let witness_d8: PlonkishWitness<N_COL_TOTAL> = PlonkishWitness {
+            let witness_d8: PlonkishWitness<3> = PlonkishWitness {
                 witness: witness_evals_d8.clone().try_into().unwrap(),
                 fixed_selectors: fixed_selectors_evals_d8.clone(),
             };
@@ -1220,8 +1283,8 @@ pub fn test_simple_add() {
         };
 
         {
-            let target_expressions: Vec<FoldingCompatibleExpr<Config>> =
-                vec![real_folding_compat_constraint.clone()];
+            let target_expressions: Vec<FoldingCompatibleExpr<Config<3>>> =
+                vec![real_folding_compat_constraint_no_ivc.clone()];
 
             for (expr_i, expr) in target_expressions.iter().enumerate() {
                 let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
