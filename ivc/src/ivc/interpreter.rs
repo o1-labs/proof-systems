@@ -778,3 +778,24 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
     process_challenges::<_, _, N_COL_TOTAL, N_CHALS>(env, fold_iteration, hash_r, &chal_l, r);
     process_u::<_, _, N_COL_TOTAL>(env, fold_iteration, u_l, r);
 }
+
+
+/// Base case IVC circuit, completely turned off.
+pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+    env: &mut Env,
+) where
+    F: PrimeField,
+    Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
+{
+    // Assuming tables are initialized to zero we don't even have to do this.
+    let fold_iteration = 0;
+    for block_i in 0..N_BLOCKS {
+        for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
+            env.write_column(
+                IVCColumn::FoldIteration,
+                &Env::constant(F::from(fold_iteration as u64)),
+            );
+            env.next_row();
+        }
+    }
+}
