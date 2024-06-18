@@ -2237,7 +2237,7 @@
             }
             std::cmp::Ordering::Equal =&gt; commit_evaluations(<span class="kw-2">&amp;</span>plnm.evals, basis),
             std::cmp::Ordering::Greater =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;desired commitment domain size greater than evaluations&#39; domain size&quot;</span>)
+                <span class="macro">panic!</span>(<span class="string">&quot;desired commitment domain size ({}) greater than evaluations&#39; domain size ({}):&quot;</span>, domain.size, plnm.domain().size)
             }
         }
     }
