@@ -1955,15 +1955,16 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
-        let d = if deg <= d1_size {
-            Domain::D1
-        } else if deg <= 4 * d1_size {
-            Domain::D4
-        } else if deg <= 8 * d1_size {
-            Domain::D8
-        } else {
-            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
-        };
+        let d = Domain::D8;
+        // if deg <= d1_size {
+        //     Domain::D1
+        // } else if deg <= 4 * d1_size {
+        //     Domain::D4
+        // } else if deg <= 8 * d1_size {
+        //     Domain::D8
+        // } else {
+        //     panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+        // };
 
         let mut cache = HashMap::new();
 

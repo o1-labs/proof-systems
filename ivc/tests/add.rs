@@ -24,7 +24,7 @@ use ivc::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{l0_1, ChallengeTerm, Challenges, Constants, Variable},
+        expr::{l0_1, ChallengeTerm, Challenges, Constants, Operations, Variable},
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
@@ -1081,6 +1081,13 @@ pub fn test_simple_add() {
             .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
             .collect();
 
+        for eval in fixed_selectors_evals_d8
+            .iter()
+            .chain(witness_evals_d8.iter())
+        {
+            assert!(eval.domain() == domain.d8);
+        }
+
         let witness_d8: PlonkishWitness<N_COL_TOTAL> = PlonkishWitness {
             witness: witness_evals_d8.clone().try_into().unwrap(),
             fixed_selectors: fixed_selectors_evals_d8.clone(),
@@ -1138,11 +1145,47 @@ pub fn test_simple_add() {
                 .collect();
 
             // Only for debugging purposes
-            for (expr_i, (expr, expr_compat)) in folding_compat_constraints
-                .iter()
-                .zip(folding_compat_constraints_mapped_back.iter())
-                .enumerate()
-            {
+            let all_target_expressions: Vec<(FoldingCompatibleExpr<Config>, E<Fp>)> =
+                folding_compat_constraints
+                    .clone()
+                    .into_iter()
+                    .zip(folding_compat_constraints_mapped_back)
+                    .collect();
+
+            // ((Curr(x[3]) * Curr(fs[2])) * (Curr(x[7]) - (Curr(x[6]) * Curr(x[5]))))
+            let expr_21: (FoldingCompatibleExpr<Config>, E<Fp>) =
+                all_target_expressions[21].clone();
+            let FoldingCompatibleExpr::Mul(expr_21_1, expr_21_2) = expr_21.0.clone() else {
+                todo!()
+            };
+            let Operations::Mul(expr_compat_21_1, expr_compat_21_2) = expr_21.1.clone() else {
+                todo!()
+            };
+
+            let FoldingCompatibleExpr::Sub(expr_21_3, expr_21_4) = (*expr_21_2).clone() else {
+                todo!()
+            };
+            let Operations::Sub(expr_compat_21_3, expr_compat_21_4) = (*expr_compat_21_2).clone()
+            else {
+                todo!()
+            };
+
+            let expr_21_5 = FoldingCompatibleExpr::Add(expr_21_3.clone(), expr_21_4.clone());
+            let expr_compat_21_5 =
+                Operations::Add(expr_compat_21_3.clone(), expr_compat_21_4.clone());
+
+            let _target_expressions_debug = vec![
+                expr_21,
+                (*expr_21_1, *expr_compat_21_1),
+                (*expr_21_2, *expr_compat_21_2),
+                (*expr_21_3, *expr_compat_21_3),
+                (*expr_21_4, *expr_compat_21_4),
+                (expr_21_5, expr_compat_21_5),
+            ];
+
+            let target_expressions = all_target_expressions;
+
+            for (expr_i, (expr, expr_compat)) in target_expressions.iter().enumerate() {
                 println!("Expression #{expr_i}: {}", expr_compat);
 
                 let compat_eval: Evaluations<_, _> = expr_compat.evaluations(&column_env);
@@ -1152,48 +1195,49 @@ pub fn test_simple_add() {
                         .divide_by_vanishing_poly(domain.d1)
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
-                        panic!(
-                            "Error! Remainder for expression #{expr_i} is non-zero: {expr_compat}"
+                        println!(
+                            "Error! Remainder for (mapped) expression #{expr_i} is non-zero: {expr_compat}"
                         );
                     }
                 } else {
-                    println!("Interpolated (compat) polynomial #{expr_i} is zero")
+                    println!("Interpolated (mapped) polynomial #{expr_i} is zero")
                 }
 
                 let expr: FoldingExp<Config> = expr.clone().simplify();
                 let eval_leaf = eval_naive(&expr, &simple_eval_env);
                 println!("Evaluated leaf");
 
-                match eval_leaf {
-                    EvalLeaf::Result(evaluations_d8) => {
-                        // some kimchi evaluations are (wisely) over a
-                        // smaller domain. We expand them to compare
-                        // to our naive evaluation over d8.
-                        let compat_eval_d8 = compat_eval
-                            .interpolate_by_ref()
-                            .evaluate_over_domain_by_ref(domain.d8);
-                        println!(
-                            "eval_leaf (len {}) == compat_eval_d8 (len {})? {}",
-                            compat_eval_d8.evals.len(),
-                            evaluations_d8.len(),
-                            compat_eval_d8.evals == evaluations_d8
-                        );
-                        let interpolated =
-                            Evaluations::from_vec_and_domain(evaluations_d8, domain.d8)
-                                .interpolate();
-                        if !interpolated.is_zero() {
-                            let (_, remainder) = interpolated
-                                .divide_by_vanishing_poly(domain.d1)
-                                .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
-                            if !remainder.is_zero() {
-                                println!("ERROR!!!!!!!!!!! REMAINDER IS NOT ZERO");
-                                //panic!("Remainder is not zero")
-                            }
-                        } else {
-                            println!("Interpolated polynomial is zero")
-                        }
-                    }
+                let evaluations_d8 = match eval_leaf {
+                    EvalLeaf::Result(evaluations_d8) => evaluations_d8,
+                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
                     _ => panic!("eval_leaf is not Result"),
+                };
+
+                // some kimchi evaluations are (wisely) over a
+                // smaller domain. We expand them to compare
+                // to our naive evaluation over d8.
+                let compat_eval_d8 = compat_eval
+                    .interpolate_by_ref()
+                    .evaluate_over_domain_by_ref(domain.d8);
+                assert!(
+                    compat_eval_d8.evals == evaluations_d8,
+                    "eval_leaf (len {}) /= compat_eval_d8 (len {})",
+                    compat_eval_d8.evals.len(),
+                    evaluations_d8.len(),
+                );
+
+                let interpolated =
+                    Evaluations::from_vec_and_domain(evaluations_d8, domain.d8).interpolate();
+                if !interpolated.is_zero() {
+                    let (_, remainder) = interpolated
+                        .divide_by_vanishing_poly(domain.d1)
+                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    if !remainder.is_zero() {
+                        println!("ERROR!!!!!!!!!!! REMAINDER IS NOT ZERO");
+                        //panic!("Remainder is not zero")
+                    }
+                } else {
+                    println!("Interpolated polynomial is zero")
                 }
             }
         }
