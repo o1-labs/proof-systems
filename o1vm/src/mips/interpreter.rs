@@ -970,31 +970,31 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 32 - 26);
+    env.range_check_bits(&opcode, 6);
 
     let rs = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
-    env.range_check_bits(&rs, 26 - 21);
+    env.range_check_bits(&rs, 5);
 
     let rt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
-    env.range_check_bits(&rt, 21 - 16);
+    env.range_check_bits(&rt, 5);
 
     let rd = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 11, pos) }
     };
-    env.range_check_bits(&rd, 16 - 11);
+    env.range_check_bits(&rd, 5);
 
     let shamt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 11, 6, pos) }
     };
-    env.range_check_bits(&shamt, 11 - 6);
+    env.range_check_bits(&shamt, 5);
 
     let funct = {
         let pos = env.alloc_scratch();
@@ -1210,7 +1210,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     // register has an incorrect value, it will be unprovable and we'll fault.
                     unsafe { env.bitmask(&write_length, 6, 2, pos) }
                 };
-                env.range_check_bits(&registers_left_to_write_after_this, 6 - 2);
+                env.range_check_bits(&registers_left_to_write_after_this, 4);
                 Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
             };
 
@@ -1247,9 +1247,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 32 - 24);
-            env.range_check_bits(&r1, 24 - 16);
-            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r0, 8);
+            env.range_check_bits(&r1, 8);
+            env.range_check_bits(&r2, 8);
             env.range_check_bits(&r3, 8);
 
             // We choose our read address so that the bytes we read come aligned with the target
@@ -1697,7 +1697,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 32 - 26);
+    env.range_check_bits(&opcode, 6);
 
     let addr = {
         // FIXME: Requires a range check (cannot use range_check_bits here because 26 > 16)
@@ -1708,7 +1708,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&next_instruction_pointer, 32, 28, pos) }
     };
-    env.range_check_bits(&instruction_pointer_high_bits, 32 - 28);
+    env.range_check_bits(&instruction_pointer_high_bits, 4);
 
     // Check correctness of decomposition of instruction into parts
     env.add_constraint(instruction - (opcode * Env::constant(1 << 26) + addr.clone()));
@@ -1742,19 +1742,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    env.range_check_bits(&opcode, 32 - 26);
+    env.range_check_bits(&opcode, 6);
 
     let rs = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
-    env.range_check_bits(&rs, 26 - 21);
+    env.range_check_bits(&rs, 5);
 
     let rt = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
-    env.range_check_bits(&rt, 21 - 16);
+    env.range_check_bits(&rt, 5);
 
     let immediate = {
         let pos = env.alloc_scratch();
@@ -2174,9 +2174,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 32 - 24);
-            env.range_check_bits(&r1, 24 - 16);
-            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r0, 8);
+            env.range_check_bits(&r1, 8);
+            env.range_check_bits(&r2, 8);
             env.range_check_bits(&r3, 8);
 
             let value = {
@@ -2246,9 +2246,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 32 - 24);
-            env.range_check_bits(&r1, 24 - 16);
-            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r0, 8);
+            env.range_check_bits(&r1, 8);
+            env.range_check_bits(&r2, 8);
             env.range_check_bits(&r3, 8);
 
             let value = {
@@ -2312,7 +2312,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 16 - 8);
+            env.range_check_bits(&v0, 8);
             env.range_check_bits(&v1, 8);
 
             env.write_memory(&addr, v0);
@@ -2352,9 +2352,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 32 - 24);
-            env.range_check_bits(&v1, 24 - 16);
-            env.range_check_bits(&v2, 16 - 8);
+            env.range_check_bits(&v0, 8);
+            env.range_check_bits(&v1, 8);
+            env.range_check_bits(&v2, 8);
             env.range_check_bits(&v3, 8);
 
             // Checking that v is the correct decomposition.
@@ -2405,9 +2405,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&v0, 32 - 24);
-            env.range_check_bits(&v1, 24 - 16);
-            env.range_check_bits(&v2, 16 - 8);
+            env.range_check_bits(&v0, 8);
+            env.range_check_bits(&v1, 8);
+            env.range_check_bits(&v2, 8);
             env.range_check_bits(&v3, 8);
 
             env.write_memory(&addr, v0);
@@ -2469,9 +2469,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 32 - 24);
-            env.range_check_bits(&r1, 24 - 16);
-            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r0, 8);
+            env.range_check_bits(&r1, 8);
+            env.range_check_bits(&r2, 8);
             env.range_check_bits(&r3, 8);
 
             let v0 = {
@@ -2562,9 +2562,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
-            env.range_check_bits(&r0, 32 - 24);
-            env.range_check_bits(&r1, 24 - 16);
-            env.range_check_bits(&r2, 16 - 8);
+            env.range_check_bits(&r0, 8);
+            env.range_check_bits(&r1, 8);
+            env.range_check_bits(&r2, 8);
             env.range_check_bits(&r3, 8);
 
             let v0 = {
