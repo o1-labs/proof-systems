@@ -282,6 +282,9 @@ pub enum IVCColumn {
     FoldIteration,
 
     /// Selector for blocks. Inner usize is ∈ [0,#blocks).
+    /// The selectors are fixed values for each instance of the relation.
+    /// The different blocks are described below or at the top-level of this
+    /// file.
     BlockSel(usize),
 
     /// 2*17 15-bit limbs (two base field points)
