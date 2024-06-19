@@ -27,7 +27,9 @@ pub enum Column {
 impl Column {
     /// Adds offset if the column is `Relation`. Fails otherwise.
     pub fn add_rel_offset(self, offset: usize) -> Column {
-        let Column::Relation(i) = self else { todo!() };
+        let Column::Relation(i) = self else {
+            todo!("add_rel_offset is only implemented for the relation columns")
+        };
         Column::Relation(offset + i)
     }
 }
