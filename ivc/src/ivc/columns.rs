@@ -292,6 +292,16 @@ pub enum IVCColumn {
     Block1InputRepacked150(usize),
 
     /// 1 hash per row
+    // FIXME/TODO: we might want to have 2 additional columns for the actual
+    // input we would like to hash, and must constrain the input state of the
+    // hash to be the sum of the previous state.
+    // i.e. for each hash, we have 2 + 3 + 2 columns
+    // - x, y the inputs we want to absorb
+    // - s0, s1, s2 the initial state of the hash
+    // - s0 + x, s1 + y the final state of the hash, with s2 being unused.
+    // - s0 + x, s1 + y and s2 are considered as the column
+    // PoseidonColumn::Input of the Poseidon gadget, and a constrain must be
+    // added between s0 and s0 + x (resp. s1 and s1 + y).
     Block2Hash(
         PoseidonColumn<
             IVC_POSEIDON_STATE_SIZE,
