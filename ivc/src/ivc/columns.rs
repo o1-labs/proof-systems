@@ -467,12 +467,18 @@ impl ColumnIndexer for IVCColumn {
     }
 }
 
+/// Lens used to convert between IVC columns and Poseidon columns.
+/// We use one row for each hash, whatever the type of inputs the hash has.
 pub struct IVCHashLens {}
 
 impl MPrism for IVCHashLens {
     type Source = IVCColumn;
     type Target = IVCPoseidonColumn;
 
+    // [traverse] must map the columns IVCColumn to the corresponding columns of
+    // the Poseidon circuit.
+    // We do suppose that the columns are ordered in the same way in the IVC and
+    // the Poseidon circuit, and that a whole row is used by the Poseidon gadget
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
             IVCColumn::Block2Hash(col) => Some(col),
@@ -480,6 +486,13 @@ impl MPrism for IVCHashLens {
         }
     }
 
+    // [re_get] must map back the columns of the Poseidon gadget to the columns
+    // of the IVC circuit.
+    // As said for [traverse], a whole row, Block2Hash, is used by the Poseidon
+    // gadget.
+    // We map the Poseidon columns in the same order than described in
+    // [crate::poseidon_8_56_5_3_2::columns::PoseidonColumn], i.e. Input,
+    // Partialround and FullRound.
     fn re_get(&self, target: Self::Target) -> Self::Source {
         IVCColumn::Block2Hash(target)
     }
