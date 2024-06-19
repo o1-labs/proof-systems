@@ -194,7 +194,8 @@ where
         if block_row_i < 6 * n {
             // Left, right, or output
             let comm_type = block_row_i / (2 * n);
-            // The commitment we target. Commitment i is processed in hash rows 2*i and 2*i+1.
+            // The commitment we target. Commitment i is processed in hash rows
+            // 2*i and 2*i+1.
             let comm_i = (block_row_i % (2 * N_COL_TOTAL)) / 2;
             let (input1, input2) = if block_row_i % 2 == 0 {
                 (
