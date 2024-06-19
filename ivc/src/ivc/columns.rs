@@ -394,9 +394,21 @@ impl ColumnIndexer for IVCColumn {
                 Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i).add_rel_offset(1)
             }
 
-            IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
             // The second block of columns will be used for hashing the
             // different values, like the commitments and the challenges.
+            IVCColumn::Block2Hash(poseidon_col) => match poseidon_col {
+                // We map the round constants into the appropriate fixed
+                // selector.
+                // We suppose that the round constants are added after the
+                // public values describing the block selection.
+                PoseidonColumn::RoundConstant(round, state_size) => {
+                    let idx = round * IVC_POSEIDON_STATE_SIZE + state_size;
+                    Column::FixedSelector(idx + N_BLOCKS)
+                }
+                // We add a padding for the fold iteration.
+                // Even though, we might not need it.
+                other => other.to_column().add_rel_offset(1),
+            },
 
             // The third block is used to compute the randomisation of the MSM
             IVCColumn::Block3ConstPhi => Column::Relation(0).add_rel_offset(1),
