@@ -36,6 +36,37 @@ use super::{
     LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
 };
 
+pub enum HashSide {
+    Left,
+    Right,
+    RightScaled,
+    Challenges,
+}
+
+/// A trait that defines methods an environment must have to be able to
+/// incrementally verifying the computation.
+pub trait IVCEnv<F: PrimeField, Ff: PrimeField>:
+    MultiRowReadCap<F, IVCColumn>
+    + ColWriteCap<F, IVCColumn>
+    + HybridCopyCap<F, IVCColumn>
+    + DirectWitnessCap<F, IVCColumn>
+    + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>
+{
+    /// Get the current iteration of the computation
+    fn iteration(self) -> Self::Variable;
+
+    /// Increment the iteration counter
+    fn increment_iteration(&mut self);
+
+    fn get_poseidon_state(&self, side: HashSide) -> [Self::Variable; IVC_POSEIDON_STATE_SIZE];
+
+    fn update_poseidon_state(
+        &mut self,
+        side: HashSide,
+        new_state: [Self::Variable; IVC_POSEIDON_STATE_SIZE],
+    );
+}
+
 pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
     target_comms: &[(Ff, Ff); N_COL_TOTAL],
