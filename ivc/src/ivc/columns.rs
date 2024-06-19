@@ -372,6 +372,9 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
+            // We keep a column that will be used for the folding iteration.
+            // Question: do we need it for all the rows or does it appear only
+            // for one hash?
             IVCColumn::FoldIteration => Column::Relation(0),
             IVCColumn::BlockSel(i) => {
                 assert!(i < N_BLOCKS);
@@ -392,7 +395,10 @@ impl ColumnIndexer for IVCColumn {
             }
 
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
+            // The second block of columns will be used for hashing the
+            // different values, like the commitments and the challenges.
 
+            // The third block is used to compute the randomisation of the MSM
             IVCColumn::Block3ConstPhi => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block3ConstR => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block3PhiPow => Column::Relation(2).add_rel_offset(1),
@@ -416,6 +422,7 @@ impl ColumnIndexer for IVCColumn {
                 Column::Relation(6 + 3 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
 
+            // The fourth block is used for the foreign field ECC addition
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(i).add_rel_offset(1)
@@ -443,12 +450,16 @@ impl ColumnIndexer for IVCColumn {
                     .add_rel_offset(1)
             }
 
+            // The fifth block is used for the challenges. Note that the
+            // challenges contains all the alphas (used to bundle the
+            // constraints) and also the challenges used by the PIOP.
             IVCColumn::Block5ConstHr => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block5ConstR => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block5ChalLeft => Column::Relation(2).add_rel_offset(1),
             IVCColumn::Block5ChalRight => Column::Relation(3).add_rel_offset(1),
             IVCColumn::Block5ChalOutput => Column::Relation(4).add_rel_offset(1),
 
+            // The sixth block is used for the homogeneised value `u`.
             IVCColumn::Block6ConstR => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block6ULeft => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block6UOutput => Column::Relation(2).add_rel_offset(1),
