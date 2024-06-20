@@ -164,6 +164,60 @@ where
 /// Instantiates the IVC circuit for folding.
 /// `N_COL_TOTAL` is the total number of columns required by the IVC circuit +
 /// the application.
+///
+/// The input `comms_xlarge` contains the commitments to the left, right and
+/// output instances (hence the outer size of 3). Each nested `N_COL_TOTAL`
+/// contains the 4 limbs of 150 bits encoding the two coordinates of a
+/// commitment.
+///
+/// For instance, if there are 2 columns, the parameter `comms_xlarge` will be 6
+/// elliptic curve points `C_L_1, C_R_1, C_O_1, C_L_2, C_R_2, C_O_2`.
+/// Each elliptic curve point is represented in affine coordinates by two values
+/// `(x, y)` in the base field of the curve. We split each coordinate into 2
+/// chunks of 150 bits.
+///
+/// We have therefore 12 scalar field elements, as follow:
+/// ```text
+///          C_L_1                          C_L_2
+/// (x_l_1_0_150, x_l_1_150_255) | (x_l_2_0_150, x_l_2_150_255) |
+/// (y_l_1_0_150, y_l_1_150_255) | (y_l_2_0_150, y_l_2_150_255) |
+///          C_R_1                          C_R_2
+/// (x_r_1_0_150, x_r_1_150_255) | (x_r_1_0_150, x_r_2_150_255) |
+/// (y_r_1_0_150, y_r_1_150_255) | (y_r_1_0_150, y_r_2_150_255) |
+///          C_O_1                          C_O_2
+/// (x_o_1_0_150, x_o_1_150_255) | (x_o_2_0_150, x_o_2_150_255) |
+/// (y_o_1_0_150, y_o_1_150_255) | (y_o_2_0_150, y_o_2_150_255) |
+/// ```
+///
+/// We will absorb in the following order:
+/// ```text
+///    ---- Left commitments  ---
+/// - `(x_l_1_0_150, x_l_1_150_255)`
+/// - `(y_l_1_0_150, y_l_1_150_255)`
+/// - `(x_l_2_0_150, x_l_2_150_255)`
+/// - `(y_l_2_0_150, y_l_2_150_255)`
+///    ---- Right commitments  ---
+/// - `(x_r_1_0_150, x_r_1_150_255)`
+/// - `(y_r_1_0_150, y_r_1_150_255)`
+/// - `(x_r_2_0_150, x_r_2_150_255)`
+/// - `(y_r_2_0_150, y_r_2_150_255)`
+///    ---- Output commitments  ---
+/// - `(x_o_1_0_150, x_o_1_150_255)`
+/// - `(y_o_1_0_150, y_o_1_150_255)`
+/// - `(x_o_2_0_150, x_o_2_150_255)`
+/// - `(y_o_2_0_150, y_o_2_150_255)`
+/// ```
+/// For this:
+/// 1. we get the previous state of the sponge `(s0, s1, s2)`. We copy it
+/// in the three first columns of the row.
+/// 2. we constrain the two next columns to be equal to
+/// (`s0 + i1, s1 + i2`). We have then the columns 3, 4 and 5 equal to
+/// `(s2, s0 + i1, s1 + i2)`. These will be considered as the input of the
+/// Poseidon gadget.
+/// This function therefore requires 2 + [IVC_POSEIDON_NB_COLUMNS] columns,
+/// without counting the block selector.
+/// It also introduces [IVC_POSEIDON_NB_CONSTRAINTS] + 2 constraints, and
+/// therefore requires [IVC_POSEIDON_NB_CONSTRAINTS] + 2 alphas.
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     fold_iteration: usize,
@@ -196,24 +250,43 @@ where
             &Env::constant(F::from(fold_iteration as u64)),
         );
 
+        // On the first 6 * N_COL_TOTAL, we process the commitments
         // Computing h_l, h_r, h_o independently
         if block_row_i < 6 * N_COL_TOTAL {
             // Left, right, or output
+            // we process first all left, after that all right, and after that
+            // all output. Can be 0 (left), 1 (right) or 2 (output).
             let comm_type = block_row_i / (2 * N_COL_TOTAL);
             // The commitment we target. Commitment i is processed in hash rows
             // 2*i and 2*i+1.
+            // With our example above, we have:
+            // block_row_i = 0 or 1   -> 0
+            // block_row_i = 2 or 3   -> 1
+            // block_row_i = 4 or 5   -> 0
+            // block_row_i = 6 or 7   -> 1
+            // block_row_i = 8 or 9   -> 0
+            // block_row_i = 10 or 11 -> 1
             let comm_i = (block_row_i % (2 * N_COL_TOTAL)) / 2;
+
+            // Selecting the coordinate of the elliptic curve point, x or y
             let (input1, input2) = if block_row_i % 2 == 0 {
                 (
+                    // x_[0..150]
                     comms_xlarge[comm_type][comm_i][0],
+                    // x_[150..255]
                     comms_xlarge[comm_type][comm_i][1],
                 )
             } else {
                 (
+                    // y_[0..150]
                     comms_xlarge[comm_type][comm_i][2],
+                    // y_[150..255]
                     comms_xlarge[comm_type][comm_i][3],
                 )
             };
+
+            // FIXME: we want to do s0 + input1, s1 + input2, s3
+            // where s0, s1, s3 is the previous hash state.
             let input3 = if block_row_i == 0 {
                 Env::constant(sponge_l_init)
             } else if block_row_i == 2 * N_COL_TOTAL {
@@ -224,6 +297,8 @@ where
                 prev_hash_output.clone()
             };
 
+            // Run the actual computation. We keep the last output.
+            // FIXME: we want to keep the whole state for the next call.
             let [_, _, output] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
