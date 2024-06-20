@@ -1,5 +1,11 @@
 // Interpreter for IVC circuit (for folding).
 
+// Imports only used for docs
+#[cfg(doc)]
+use crate::poseidon_8_56_5_3_2::bn254::{
+    NB_COLUMNS as IVC_POSEIDON_NB_COLUMNS, NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS,
+};
+
 use crate::{
     ivc::{
         columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
