@@ -45,17 +45,7 @@ mod tests {
         logup::LookupTableID,
         Ff1, Fp,
     };
-    use o1_utils::box_array;
     use rand::{CryptoRng, RngCore};
-
-    // Total number of columns in IVC and Application circuits.
-    pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
-
-    // Number of challenges in the IVC circuit.
-    // It is the maximum number of constraints per row.
-    // We do suppose it is Poseidon which has the highest number of constraints
-    // for now.
-    pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
 
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
 
@@ -73,6 +63,8 @@ mod tests {
         RNG: RngCore + CryptoRng,
         LT: LookupTableID,
         L: MPrism<Source = LT, Target = IVCLookupTable<Ff1>>,
+        const N_COL_TOTAL: usize,
+        const N_CHALS: usize,
     >(
         rng: &mut RNG,
         domain_size: usize,
@@ -80,28 +72,28 @@ mod tests {
     ) -> IVCWitnessBuilderEnvRaw<LT> {
         let mut witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
 
-        let mut comms_left: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
-        let mut comms_right: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
-        let mut comms_output: Box<_> = box_array![(Ff1::zero(),Ff1::zero()); TEST_N_COL_TOTAL];
+        let mut comms_left: Vec<_> = vec![];
+        let mut comms_right: Vec<_> = vec![];
+        let mut comms_output: Vec<_> = vec![];
 
-        for i in 0..TEST_N_COL_TOTAL {
-            comms_left[i] = (
+        for _i in 0..N_COL_TOTAL {
+            comms_left.push((
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            );
-            comms_right[i] = (
+            ));
+            comms_right.push((
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            );
-            comms_output[i] = (
+            ));
+            comms_output.push((
                 <Ff1 as UniformRand>::rand(rng),
                 <Ff1 as UniformRand>::rand(rng),
-            );
+            ));
         }
 
         println!("Building fixed selectors");
         let mut fixed_selectors: Vec<Vec<Fp>> =
-            build_selectors::<Fp, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
+            build_selectors::<Fp, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
 
         // Write constants
         {
@@ -118,17 +110,17 @@ mod tests {
 
         println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
-        ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+        ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
             0,
-            comms_left,
-            comms_right,
-            comms_output,
+            comms_left.try_into().unwrap(),
+            comms_right.try_into().unwrap(),
+            comms_output.try_into().unwrap(),
             [(Ff1::zero(), Ff1::zero()); 3],
             [(Ff1::zero(), Ff1::zero()); 2],
             Fp::zero(),
             Box::new(
-                (*vec![Fp::zero(); TEST_N_CHALS].into_boxed_slice())
+                (*vec![Fp::zero(); N_CHALS].into_boxed_slice())
                     .try_into()
                     .unwrap(),
             ),
@@ -139,15 +131,21 @@ mod tests {
         witness_env
     }
 
-    #[test]
     /// Tests if building the IVC circuit succeeds.
-    pub fn test_ivc_circuit() {
+    pub fn generic_ivc_circuit<const N_COL_TOTAL: usize, const N_CHALS: usize>() {
         let mut rng = o1_utils::tests::make_test_rng(None);
-        build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+        build_ivc_circuit::<_, IVCLookupTable<Ff1>, _, N_COL_TOTAL, N_CHALS>(
             &mut rng,
             TEST_DOMAIN_SIZE,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
+    }
+
+    #[test]
+    pub fn test_generic_ivc_circuit_app_50_cols() {
+        pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+
+        generic_ivc_circuit::<{ IVCColumn::N_COL + 50 }, TEST_N_CHALS>()
     }
 
     #[test]
@@ -174,11 +172,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_completeness_ivc() {
+    fn test_completeness_ivc<const N_COL_TOTAL: usize, const N_CHALS: usize>() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+        let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _, N_COL_TOTAL, N_CHALS>(
             &mut rng,
             TEST_DOMAIN_SIZE,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
@@ -189,11 +186,8 @@ mod tests {
         constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
-            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
-                TEST_DOMAIN_SIZE,
-            ))
-        };
+        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> =
+            { Box::new(build_selectors::<_, N_COL_TOTAL, N_CHALS>(TEST_DOMAIN_SIZE)) };
 
         // Write constants
         {
@@ -219,5 +213,16 @@ mod tests {
             TEST_DOMAIN_SIZE,
             &mut rng,
         );
+    }
+
+    #[test]
+    fn test_completeness_ivc_app_50_cols() {
+        // Number of challenges in the IVC circuit.
+        // It is the maximum number of constraints per row.
+        // We do suppose it is Poseidon which has the highest number of constraints
+        // for now.
+        pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+
+        test_completeness_ivc::<{ IVCColumn::N_COL + 50 }, TEST_N_CHALS>()
     }
 }
