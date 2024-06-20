@@ -106,10 +106,10 @@ mod tests {
         // Write constants
         {
             let rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(_, rcs)| {
-                rcs.iter().enumerate().for_each(|(_, rc)| {
-                    let rc = vec![*rc; domain_size];
-                    fixed_selectors.push(rc);
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; TEST_DOMAIN_SIZE];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
                 });
             });
         }
