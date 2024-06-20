@@ -145,7 +145,7 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
-            1 << 15,
+            TEST_DOMAIN_SIZE,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
     }
@@ -178,14 +178,12 @@ mod tests {
     fn test_completeness_ivc() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let domain_size = 1 << 15;
-
         let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
-            domain_size,
+            TEST_DOMAIN_SIZE,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        let relation_witness = witness_env.get_relation_witness(TEST_DOMAIN_SIZE);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
         constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
@@ -193,7 +191,7 @@ mod tests {
 
         let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
             Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
-                domain_size,
+                TEST_DOMAIN_SIZE,
             ))
         };
 
@@ -202,7 +200,7 @@ mod tests {
             let rc = PoseidonBN254Parameters.constants();
             rc.iter().enumerate().for_each(|(round, rcs)| {
                 rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    let rc = vec![*rc; domain_size];
+                    let rc = vec![*rc; TEST_DOMAIN_SIZE];
                     fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
                 });
             });
@@ -218,7 +216,7 @@ mod tests {
             constraints,
             fixed_selectors,
             relation_witness,
-            domain_size,
+            TEST_DOMAIN_SIZE,
             &mut rng,
         );
     }
