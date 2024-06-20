@@ -26,6 +26,7 @@ mod tests {
             constraints::constrain_ivc,
             interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
+            N_ADDITIONAL_WIT_COL_QUAD,
         },
         poseidon_8_56_5_3_2::{
             bn254::{
@@ -216,13 +217,45 @@ mod tests {
     }
 
     #[test]
+    // Verifying the IVC circuit can be built with 50 columns for the
+    // application
     fn test_completeness_ivc_app_50_cols() {
-        // Number of challenges in the IVC circuit.
-        // It is the maximum number of constraints per row.
-        // We do suppose it is Poseidon which has the highest number of constraints
-        // for now.
-        pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+        // Simulating 3 challenges for PIOP as we do have in general.
+        pub const TEST_N_CHALS: usize =
+            IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS + N_ADDITIONAL_WIT_COL_QUAD + 3;
 
         test_completeness_ivc::<{ IVCColumn::N_COL + 50 }, TEST_N_CHALS>()
+    }
+
+    #[test]
+    // Verifying the IVC circuit can be built with 100 columns for the
+    // application
+    fn test_completeness_ivc_app_100_cols() {
+        pub const TEST_N_CHALS: usize =
+            IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS + N_ADDITIONAL_WIT_COL_QUAD + 3;
+
+        test_completeness_ivc::<{ IVCColumn::N_COL + 100 }, TEST_N_CHALS>()
+    }
+
+    #[test]
+    // Verifying the IVC circuit can be built with 231 columns for the
+    // application
+    fn test_completeness_ivc_app_233_cols() {
+        pub const TEST_N_CHALS: usize =
+            IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS + N_ADDITIONAL_WIT_COL_QUAD + 3;
+
+        test_completeness_ivc::<{ IVCColumn::N_COL + 233 }, TEST_N_CHALS>()
+    }
+
+    #[test]
+    #[should_panic]
+    // Verifying that the maximum number is 234 columns for the application,
+    // without any additional challenge.
+    // It should panic by saying that the domain size is not big enough.
+    fn test_regression_completeness_ivc_app_maximum_234_cols() {
+        pub const TEST_N_CHALS: usize =
+            IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS + N_ADDITIONAL_WIT_COL_QUAD + 3;
+
+        test_completeness_ivc::<{ IVCColumn::N_COL + 234 }, TEST_N_CHALS>()
     }
 }
