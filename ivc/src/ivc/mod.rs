@@ -92,6 +92,10 @@ mod tests {
             ));
         }
 
+        let comms_left: Box<_> = o1_utils::array::vec_to_boxed_array(comms_left);
+        let comms_right: Box<_> = o1_utils::array::vec_to_boxed_array(comms_right);
+        let comms_output: Box<_> = o1_utils::array::vec_to_boxed_array(comms_output);
+
         println!("Building fixed selectors");
         let mut fixed_selectors: Vec<Vec<Fp>> =
             build_selectors::<Fp, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
@@ -114,9 +118,9 @@ mod tests {
         ivc_circuit::<_, _, _, _, N_COL_TOTAL, N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
             0,
-            comms_left.try_into().unwrap(),
-            comms_right.try_into().unwrap(),
-            comms_output.try_into().unwrap(),
+            comms_left,
+            comms_right,
+            comms_output,
             [(Ff1::zero(), Ff1::zero()); 3],
             [(Ff1::zero(), Ff1::zero()); 2],
             Fp::zero(),
