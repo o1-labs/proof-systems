@@ -167,8 +167,6 @@ where
     PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_TOTAL_ROUND>,
     Env: MultiRowReadCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
-    let n = N_COL_TOTAL;
-
     // These should be some proper seeds. Passed from the outside
     let sponge_l_init: F = F::zero();
     let sponge_r_init: F = F::zero();
@@ -191,9 +189,9 @@ where
         );
 
         // Computing h_l, h_r, h_o independently
-        if block_row_i < 6 * n {
+        if block_row_i < 6 * N_COL_TOTAL {
             // Left, right, or output
-            let comm_type = block_row_i / (2 * n);
+            let comm_type = block_row_i / (2 * N_COL_TOTAL);
             // The commitment we target. Commitment i is processed in hash rows
             // 2*i and 2*i+1.
             let comm_i = (block_row_i % (2 * N_COL_TOTAL)) / 2;
@@ -210,9 +208,9 @@ where
             };
             let input3 = if block_row_i == 0 {
                 Env::constant(sponge_l_init)
-            } else if block_row_i == 2 * n {
+            } else if block_row_i == 2 * N_COL_TOTAL {
                 Env::constant(sponge_r_init)
-            } else if block_row_i == 4 * n {
+            } else if block_row_i == 4 * N_COL_TOTAL {
                 Env::constant(sponge_o_init)
             } else {
                 prev_hash_output.clone()
@@ -238,7 +236,7 @@ where
             } else {
                 prev_hash_output = output;
             }
-        } else if block_row_i == 6 * n {
+        } else if block_row_i == 6 * N_COL_TOTAL {
             // Computing r
             let [_, _, r_res] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
@@ -250,7 +248,7 @@ where
                 ],
             );
             r = r_res;
-        } else if block_row_i == 6 * n + 1 {
+        } else if block_row_i == 6 * N_COL_TOTAL + 1 {
             // Computing phi
             let [_, _, phi_res] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
