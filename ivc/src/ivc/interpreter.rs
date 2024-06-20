@@ -161,7 +161,9 @@ where
 // TODO We need to hash T_0 and T_1?
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
 // E.g. it should do a proper sponge, have proper init values, etc etc
-/// Instantiates the IVC circuit for folding. N is the total number of columns
+/// Instantiates the IVC circuit for folding.
+/// `N_COL_TOTAL` is the total number of columns required by the IVC circuit +
+/// the application.
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     fold_iteration: usize,
