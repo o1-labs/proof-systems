@@ -19,13 +19,41 @@ use kimchi_msm::{
 pub const N_BLOCKS: usize = 6;
 
 /// Defines the height of each block in the IVC circuit.
+/// As described in the top-level of this file, the circuit is tiled
+/// vertically, and the height of each block is defined by the actual
+/// application that needs to be run.
 pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: usize) -> usize {
     match block_num {
+        // The first block is used for the decomposition of the inputs.
+        // As we do have 3 inputs (left, right and output), we need 3 times the
+        // total number of columns.
         0 => 3 * N_COL_TOTAL,
+        // The second block is used for hashing the different values.
+        // We do have 2 foreign field elements to hash per commitment.
+        // At the moment, we do split each foreign field element in 150 bits
+        // chunk, therefore we need to hash (2 * 2 * 3) (= 12) scalar field
+        // elements. As our Poseidon state can handle 2 elements per absorb, we
+        // need to compute hashes.
+        // FIXME: why an additional 2?
+        // FIXME: use the encoding of the bit of y instead. It would reduce to 3
+        // hashes instead of 6.
+        //   For a EC point (x, y), we can only rely on x and the bit sign of y.
+        //   We decompose x into `x_{0..149}` and `x_{150..255}` (only 255 as
+        //   the foreign field is 255 bits), and we add into the value
+        //   `x_{150..255}` the bit sign of `y`. From there, we can hash the two
+        //   values, which fits in our state of size 3.
+        // If we change 6 into 12, we change the layout (previously wrong)
         1 => 6 * N_COL_TOTAL + 2,
+        // The third block is used for the randomisation of the MSM.
         2 => N_COL_TOTAL + 1,
+        // The fourth block is used for the foreign field ECC addition.
         3 => 35 * N_COL_TOTAL + 5,
+        // The fifth block is used for the challenges.
+        // The total number of challenges is given as a type parameter.
         4 => N_CHALS,
+        // The sixth block is used for the homogeneised value `u`.
+        // We do only need one row for this one as there is a single value to
+        // randomize
         5 => 1,
         _ => panic!("block_size: no block number {block_num:?}"),
     }
