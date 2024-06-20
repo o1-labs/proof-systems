@@ -254,7 +254,6 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
         //   the foreign field is 255 bits), and we add into the value
         //   `x_{150..255}` the bit sign of `y`. From there, we can hash the two
         //   values, which fits in our state of size 3.
-        // If we change 6 into 12, we change the layout (previously wrong)
         1 => 6 * N_COL_TOTAL + 2,
         // The third block is used for the randomisation of the MSM.
         2 => N_COL_TOTAL + 1,
