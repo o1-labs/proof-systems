@@ -159,8 +159,10 @@ where
 // TODO We need to have alpha
 // TODO We need to hash i (or i+1)?
 // TODO We need to hash T_0 and T_1?
-// FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
-// E.g. it should do a proper sponge, have proper init values, etc etc
+// FIXME: we do not initialize correctly the sponge state
+// FIXME: when starting a new row, we do only use the output of the previous
+// hash state. We might want to use the whole state and compute (s0 + i0, s1 +
+// i1, s2). See comments in [crate::ivc::ivc::columns]
 /// Instantiates the IVC circuit for folding.
 /// `N_COL_TOTAL` is the total number of columns required by the IVC circuit +
 /// the application.
