@@ -970,9 +970,9 @@ pub mod tests {
         let (_, xor_gates_1) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
         let circuit_gates: Vec<CircuitGate<Fp>> = range_check_gates_0
             .into_iter()
-            .chain(range_check_gates_1.into_iter())
-            .chain(xor_gates_0.into_iter())
-            .chain(xor_gates_1.into_iter())
+            .chain(range_check_gates_1)
+            .chain(xor_gates_0)
+            .chain(xor_gates_1)
             .collect(); /* 2 range check gates + 2 xor gates */
 
         // inputs + expected output
