@@ -961,4 +961,51 @@ pub mod tests {
             assert_eq!(res.domain.d1.size, expected_domain_size)
         }
     }
+
+    #[test]
+    fn test_lookup_domain_size_computation() {
+        let (next_start, range_check_gates_0) = CircuitGate::<Fp>::create_range_check(0); /* 1 range_check gate */
+        let (next_start, range_check_gates_1) = CircuitGate::<Fp>::create_range_check(next_start); /* 1 range_check gate */
+        let (next_start, xor_gates_0) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
+        let (_, xor_gates_1) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
+        let circuit_gates: Vec<CircuitGate<Fp>> = range_check_gates_0
+            .into_iter()
+            .chain(range_check_gates_1.into_iter())
+            .chain(xor_gates_0.into_iter())
+            .chain(xor_gates_1.into_iter())
+            .collect(); /* 2 range check gates + 2 xor gates */
+
+        // inputs + expected output
+        let data = [
+            (
+                (10, 10),
+                8192, /* 8192 > 10 * 10 + 1 * 4096 + 1 * 256 + 1 + zk_row */
+            ),
+            (
+                (0, 0),
+                8192, /* 8192 > 0 * 0 + 1 * 4096 + 1 * 256 + 1 + zk_row */
+            ),
+            (
+                (5, 100),
+                8192, /* 8192 > 5 * 100 + 1 * 4096 + 1 * 256 + 1 + zk_row */
+            ),
+        ];
+        for ((number_of_table_ids, size), expected_domain_size) in data.into_iter() {
+            let builder = ConstraintSystem::create(circuit_gates.clone());
+            let table_ids: Vec<i32> = (3..number_of_table_ids + 3).collect();
+            let lookup_tables: Vec<LookupTable<Fp>> = table_ids
+                .into_iter()
+                .map(|id| {
+                    let indexes: Vec<u32> = (0..size).collect();
+                    let data: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                    LookupTable {
+                        id,
+                        data: vec![data],
+                    }
+                })
+                .collect();
+            let res = builder.lookup(lookup_tables).build().unwrap();
+            assert_eq!(res.domain.d1.size, expected_domain_size);
+        }
+    }
 }
