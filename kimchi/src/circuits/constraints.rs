@@ -994,22 +994,23 @@ pub mod tests {
                 8192, /* 8192 > 5 * 100 + 1 * 4096 + 1 * 256 + 1 + zk_row */
             ),
         ];
-        for ((number_of_table_ids, size), expected_domain_size) in data.into_iter() {
-            let builder = ConstraintSystem::create(circuit_gates.clone());
-            let table_ids: Vec<i32> = (3..number_of_table_ids + 3).collect();
-            let lookup_tables: Vec<LookupTable<Fp>> = table_ids
-                .into_iter()
-                .map(|id| {
-                    let indexes: Vec<u32> = (0..size).collect();
-                    let data: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
-                    LookupTable {
-                        id,
-                        data: vec![data],
-                    }
-                })
-                .collect();
-            let res = builder.lookup(lookup_tables).build().unwrap();
-            assert_eq!(res.domain.d1.size, expected_domain_size);
-        }
+        data.into_iter()
+            .for_each(|((number_of_table_ids, size), expected_domain_size)| {
+                let builder = ConstraintSystem::create(circuit_gates.clone());
+                let table_ids: Vec<i32> = (3..number_of_table_ids + 3).collect();
+                let lookup_tables: Vec<LookupTable<Fp>> = table_ids
+                    .into_iter()
+                    .map(|id| {
+                        let indexes: Vec<u32> = (0..size).collect();
+                        let data: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                        LookupTable {
+                            id,
+                            data: vec![data],
+                        }
+                    })
+                    .collect();
+                let res = builder.lookup(lookup_tables).build().unwrap();
+                assert_eq!(res.domain.d1.size, expected_domain_size);
+            });
     }
 }
