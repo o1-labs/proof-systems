@@ -914,7 +914,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use mina_curves::pasta::Fp;
+    use mina_curves::pasta::{Fp, Fq};
+    use o1_utils::FieldHelpers;
 
     impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
@@ -967,13 +968,16 @@ pub mod tests {
         let (next_start, range_check_gates_0) = CircuitGate::<Fp>::create_range_check(0); /* 1 range_check gate */
         let (next_start, range_check_gates_1) = CircuitGate::<Fp>::create_range_check(next_start); /* 1 range_check gate */
         let (next_start, xor_gates_0) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
-        let (_, xor_gates_1) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
+        let (next_start, xor_gates_1) = CircuitGate::<Fp>::create_xor_gadget(next_start, 3); /* 1 xor gate */
+        let (_, ffm_gates) =
+            CircuitGate::<Fp>::create_foreign_field_mul(next_start, &Fq::modulus_biguint()); /* 1 foreign field multiplication gate */
         let circuit_gates: Vec<CircuitGate<Fp>> = range_check_gates_0
             .into_iter()
             .chain(range_check_gates_1)
             .chain(xor_gates_0)
             .chain(xor_gates_1)
-            .collect(); /* 2 range check gates + 2 xor gates */
+            .chain(ffm_gates)
+            .collect(); /* 2 range check gates + 2 xor gates + 1 foreign field multiplication */
 
         // inputs + expected output
         let data = [
