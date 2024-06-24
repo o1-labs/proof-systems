@@ -191,10 +191,7 @@ mod tests {
         }
     }
 
-    #[test]
-    /// Completeness test for the IVC circuit in the general case (i.e.
-    /// fold_iteration != 0).
-    fn test_completeness_ivc_general_case() {
+    fn helper_test_completeness_ivc(fold_iteration: usize) {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let domain_size = 1 << 15;
@@ -202,7 +199,7 @@ mod tests {
         let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
             domain_size,
-            1,
+            fold_iteration,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
         let relation_witness = witness_env.get_relation_witness(domain_size);
@@ -241,5 +238,19 @@ mod tests {
             domain_size,
             &mut rng,
         );
+    }
+
+    #[test]
+    /// Completeness test for the IVC circuit in the general case (i.e.
+    /// fold_iteration != 0).
+    fn test_completeness_ivc_general_case() {
+        helper_test_completeness_ivc(1);
+    }
+
+    #[test]
+    /// Completeness test for the IVC circuit in the base case (i.e.
+    /// fold_iteration = 0).
+    fn test_completeness_ivc_base_case() {
+        helper_test_completeness_ivc(0);
     }
 }
