@@ -1,3 +1,214 @@
+//! IVC circuit layout - Top level documentation outdated
+//!
+//! The IVC circuit is tiled vertically. We assume we have as many
+//! rows as we need: if we don't, we wrap around and continue.
+//!
+//! The biggest blocks are hashes and ECAdds, so other blocks may be wider.
+//!
+//! `N := N_IVC + N_APP` is the total number of columns in the circuit.
+//!
+//! Vertically stacked blocks are as follows:
+//!
+//!```text
+//!
+//!         Inputs:
+//!      Each point is 2 base field coordinates in 17 15-bit limbs
+//!       recomposed as 8 75-bit limbs
+//!       recomposed as 4 150-bit limbs.
+//!
+//!              34            8      4
+//!            Input1         R75   R150
+//!  1   |-----------------|-------|----|
+//!      |      C_L1       |       |    |
+//!      |      C_L2       |       |    |
+//!      |                 |       |    |
+//!      |      ...        |       |    |
+//!   N  |-----------------|       |    |
+//!      |      C_R1       |       |    |
+//!      |                 |       |    |
+//!      |      ...        |       |    |
+//!  2N  |-----------------|       |    |
+//!      |      C_O1       |       |    |
+//!      |                 |       |    |
+//!      |      ...        |       |    |
+//!  3N  |-----------------|-------|----|
+//!      0       ...     34*2    76    80
+//!
+//!
+//!                      Hashes
+//!     (one hash at a row, passing data to the next one)
+//!     (for i∈N, the input row #i containing 4 150-bit elements
+//!      is processed by hash rows 2*i and 2*i+1)
+//!
+//!  1   |------------------------------------------|
+//!      |                                          |
+//!      |                                         .| . here is h_l
+//!  2N  |------------------------------------------|   must be equal to public input!
+//!      |                                          |                    (H_i in nova)
+//!      |                                         .| . here is h_r
+//!  4N  |------------------------------------------|
+//!      |                                          |
+//!      |                                         .| . here is h_o, equal to H_{i+1} in Nova
+//!  6N  |------------------------------------------|
+//!      |                                         .| r = h_lr = h(h_l,h_r)
+//!      |                                         .| ϕ = h_lro = h(r,h_o)
+//! 6N+2 |------------------------------------------|
+//!
+//!       TODO: we also need to squeeze challenges for
+//!       the right (strict) instance: β, γ, j (joint_combiner)
+//!
+//!       TODO: we can hash (x0,x1+b*2^150) instead of (x0,x1,y0,y1).
+//!
+//! Scalars block.
+//!
+//! Most of the r^2 and r^3 cells are /unused/, and this design can be
+//! much more optimal if r^2|r^3 elements come in a separate block.
+//! But the overhead is not big and it's a very easy layout, so
+//! keeping it for now.
+//!
+//!     constϕ
+//!         constr
+//!                ϕ^i             r^3·ϕ^i    ϕ^i        r*ϕ^i        r^2·ϕ^i_k    r^3·ϕ^i_k
+//!                      r*ϕ^i             in 17 limbs  in 17 limbs      ...         ...
+//!                           r^2·ϕ^i         each        each
+//!   1  |---|---|-----|-------|----|----|------------|------------|------------|------------|
+//!      | ϕ   r    ϕ     rϕ    r^2ϕ r^3ϕ|            |            |            |            |
+//!      | ϕ   r   ϕ^2   rϕ^2            |            |            |            |            |
+//!      | ϕ   r   ϕ^3   rϕ^3            |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!  i   |                               |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!      |                               |            |            |            |            |
+//!      |       ϕ^{N+1}                 |            |            |            |            |
+//!  N+1 |-------------------------------|------------|------------|------------|------------|
+//!       1    2   3   4      5      6   ...        6+17          6+2*17                    6+4*17
+//!
+//!
+//! We compute the following equations, where equations in "quotes" are
+//! what we /want/ to prove, and non-quoted is an equavilant version
+//! that we actually prove instead:
+//! - "C_{O,i} = C_{L,i} + r·C_{R,i}":
+//!   - C_{O,i} = C_{L,i} + C_{R',i}
+//!   - "C_{R',i} = r·C_{R,i}"
+//!     - bucket[(ϕ^i)_k] -= C_{R',i}
+//!     - bucket[(r·ϕ^i)_k] += C_{R,i}
+//! - "E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R":
+//!   - E_O = E_L + E_R'
+//!   - "E_R' = r·T_0 + r^2·T_1 + r^3·E_R"
+//!     - bucket[(ϕ^{n+1})_k] += E_R'
+//!     - bucket[(r·ϕ^{n+1})_k] += T_0
+//!     - bucket[(r^2·ϕ^{n+1})_k] += T_1
+//!     - bucket[(r^3·ϕ^{n+1})_k] += E_R
+//!
+//! Runtime access time is represented by ? because it's not known in advance.
+//!
+//! Output and input RAM invocations in the same row use the same coeff/memory index.
+//!
+//! TODO FIXME we need to write into /different/ buckets.
+//!
+//! FEC Additions, one per row, each one is ~230 columns:
+//!
+//!                  .           input #2 (looked up)                  .                  Output
+//!                  .                  Access        input#2          .     FEC ADD      access    output
+//!          input#1 .  Coeff/mem ix     Time         Value            .   computation     time     value
+//!   1   |-------------------------------------------------------------------------------|-----|------------|
+//!       | C_{R',1} | ϕ^1_0           |  ?  | bucket[ϕ^1_0]           |                  |  ?  | newbucket  |
+//!       | C_{R',2} | ϕ^2_0           |  ?  | bucket[ϕ^2_0]           |                  |  ?  | newbucket  |
+//!       |          |      ...        | ... |                         |                  | ... |            |
+//!       | C_{R',N} | ϕ^N_0           |  ?  | bucket[ϕ^N_0]           |                  |  ?  | newbucket  |
+//!       | C_{R',1} | ϕ^1_1           |  ?  | bucket[ϕ^0_1]           |                  |  ?  | newbucket  |
+//!       |          |      ...        | ... |                         |                  | ... |            |
+//!       | C_{R',i} | ϕ^i_k           |  ?  | bucket[ϕ^i_k]           |                  |  ?  | newbucket  |
+//!       |          |                 |     |                         |                  |     |            |
+//!       |          |      ...        | ... |                         |                  | ... |            |
+//!  17*N |--------------------------------------------------------------------------------------------------|
+//!       | C_{R,i}  | r·(ϕ^i_k)       |  ?  | bucket[r·(ϕ^i_k)]       |                  |  ?  | newbucket  |
+//!       |          |                 |     |                         |                  |     |            |
+//!       |          |      ...        | ... |                         |                  | ... |            |
+//!  34*N |--------------------------------------------------------------------------------------------------|
+//!       |-C_{R',i} |      -          |  -  | C_{L,i}                 |                  |  -  | C_{O,i}    |
+//!       |          |     ...         | ... |                         |                  | ... |            |
+//!  35*N |--------------------------------------------------------------------------------------------------|
+//!       | -E_R'    | ϕ^{n+1}_k       |  ?  | bucket[ϕ^{n+1}_k]       |                  |     | newbucket  |
+//!       |          |     ...         | ... |                         |                  | ... |            |
+//!       |  T_0     | r·(ϕ^{n+1})     |  ?  | bucket[r·(ϕ^{n+1})]     |                  |     | newbucket  |
+//!       |          |     ...         | ... |                         |                  | ... |            |
+//!       |  T_1     | r^2·(ϕ^{n+1}_k) |  ?  | bucket[r^2·(ϕ^{n+1}_k)] |                  |     | newbucket  |
+//!       |          |     ...         | ... |                         |                  | ... |            |
+//!       |  E_R     | r^3·(ϕ^{n+1}_k) |  ?  | bucket[r^3·(ϕ^{n+1}_k)] |                  |     | newbucket  |
+//!       |          |     ...         | ... |                         |                  | ... |            |
+//! 35*N+ |  E_L     |      -          |  -  |      E_R'               |                  |  -  |    E_O     |
+//! 4*17+ |--------------------------------------------------------------------------------------------------|
+//! 1
+//!
+//! TODO: add different challenges: β, γ, joint_combiner
+//!
+//! Challenges block.
+//!
+//!            relaxed
+//!                       strict
+//!                    (relaxed in-place)
+//!        r   α_{L,i}    α_{R}^i     α_{O,i}
+//!  1    |--|--------|-----------|-----------------------|
+//!       |  |        | α_R = h_R |                       |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//!       |  |        | α_R^i     | α_{L,i} + r·α_{R,i}^i |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//!       |  |        |           |                       |
+//! #chal |--|--------|-----------|-----------------------|
+//!
+//! #chal is the number of constraints. Our optimistic expectation is
+//! that it is around const*N for const < 3.
+//!
+//!
+//! "u" block. In the general form we want to prove
+//! u_O = u_L + r·u_R, but u_R = 0, so we prove
+//! u_O = u_L + r.
+//!
+//!     r    u_L       u_O = u_L + r
+//!    |--|--------|--------------------|
+//!    |--|--------|--------------------|
+//!
+//!
+//! 2^15 |---- --------------------------------------|
+//!```
+//!
+//!
+//! Assume that IVC circuit takess CELL cells, e.g. CELL = 10000*N.
+//! Then we can calculate N_IVC as dependency of N_APP in this way:
+//! ```text
+//!    N = N_APP + (CELL/2^15)*N
+//!    (1 - CELL/2^15)*N = N_APP
+//!    N = (1/(1 - CELL/2^15)) * N_APP = (2^15 / (2^15 - CELL)) * N_APP
+//!    N_IVC = (1/(1 - CELL/2^15) - 1) * N_APP = (2^15 / (2^15 - CELL) - 1) * N_APP
+//! ```
+//!
+//! --- (slightly) OUTDATED BELOW ---
+//!
+//! Counting cells:
+//! - Inputs:              2 * 17 * 3N = 102N
+//! - Inputs repacked 75:  2 * 4 * 3N = 24N
+//! - Inputs repacked 150: 2 * 2 * 3N = 12N
+//! - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165 constants to every call)
+//! - scalars:             4 N + 17 * 3 * N = 55 N
+//! - ECADDs:              230 * 35 * N = 8050N
+//! Total (CELL):         ~9233*N
+//!
+//!     ...which is less than 32k*N
+//!
+//! In our particular case, CELL = 9233, so
+//!    N_IVC = 0.39 N_APP
+//!
+//! Which means for e.g. 50 columns we'll need extra 20 of IVC.
+
 use super::N_LIMBS_XLARGE;
 use crate::poseidon_8_56_5_3_2::{
     bn254::{
@@ -19,229 +230,47 @@ use kimchi_msm::{
 pub const N_BLOCKS: usize = 6;
 
 /// Defines the height of each block in the IVC circuit.
+/// As described in the top-level of this file, the circuit is tiled
+/// vertically, and the height of each block is defined by the actual
+/// application that needs to be run.
 pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: usize) -> usize {
     match block_num {
+        // The first block is used for the decomposition of the inputs.
+        // As we do have 3 inputs (left, right and output), we need 3 times the
+        // total number of columns.
         0 => 3 * N_COL_TOTAL,
+        // The second block is used for hashing the different values.
+        // We do have 2 foreign field elements to hash per commitment.
+        // At the moment, we do split each foreign field element in 150 bits
+        // chunk, therefore we need to hash (2 * 2 * 3) (= 12) scalar field
+        // elements. As our Poseidon state can handle 2 elements per absorb, we
+        // need to compute hashes.
+        // FIXME: why an additional 2?
+        // FIXME: use the encoding of the bit of y instead. It would reduce to 3
+        // hashes instead of 6.
+        //   For a EC point (x, y), we can only rely on x and the bit sign of y.
+        //   We decompose x into `x_{0..149}` and `x_{150..255}` (only 255 as
+        //   the foreign field is 255 bits), and we add into the value
+        //   `x_{150..255}` the bit sign of `y`. From there, we can hash the two
+        //   values, which fits in our state of size 3.
+        // If we change 6 into 12, we change the layout (previously wrong)
         1 => 6 * N_COL_TOTAL + 2,
+        // The third block is used for the randomisation of the MSM.
         2 => N_COL_TOTAL + 1,
+        // The fourth block is used for the foreign field ECC addition.
         3 => 35 * N_COL_TOTAL + 5,
+        // The fifth block is used for the challenges.
+        // The total number of challenges is given as a type parameter.
         4 => N_CHALS,
+        // The sixth block is used for the homogeneised value `u`.
+        // We do only need one row for this one as there is a single value to
+        // randomize
         5 => 1,
         _ => panic!("block_size: no block number {block_num:?}"),
     }
 }
 
 pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
-
-/// The IVC circuit is tiled vertically. We assume we have as many
-/// rows as we need: if we don't, we wrap around and continue.
-///
-/// The biggest blocks are hashes and ECAdds, so other blocks may be wider.
-///
-/// N := N_IVC + N_APP is the total number of columns in the circuit.
-///
-/// Vertically stacked blocks are as follows:
-///
-///```text
-///
-///         Inputs:
-///      Each point is 2 base field coordinates in 17 15-bit limbs
-///       recomposed as 8 75-bit limbs
-///       recomposed as 4 150-bit limbs.
-///
-///              34            8      4
-///            Input1         R75   R150
-///  1   |-----------------|-------|----|
-///      |      C_L1       |       |    |
-///      |      C_L2       |       |    |
-///      |                 |       |    |
-///      |      ...        |       |    |
-///   N  |-----------------|       |    |
-///      |      C_R1       |       |    |
-///      |                 |       |    |
-///      |      ...        |       |    |
-///  2N  |-----------------|       |    |
-///      |      C_O1       |       |    |
-///      |                 |       |    |
-///      |      ...        |       |    |
-///  3N  |-----------------|-------|----|
-///      0       ...     34*2    76    80
-///
-///
-///                      Hashes (temporarily DISABLED)
-///     (one hash at a row, passing data to the next one)
-///     (for i∈N, the input row #i containing 4 150-bit elements
-///      is processed by hash rows 2*i and 2*i+1)
-///
-///  1   |------------------------------------------|
-///      |                                          |
-///      |                                         .| . here is h_l
-///  2N  |------------------------------------------|   must be equal to public input!
-///      |                                          |                    (H_i in nova)
-///      |                                         .| . here is h_r
-///  4N  |------------------------------------------|
-///      |                                          |
-///      |                                         .| . here is h_o, equal to H_{i+1} in Nova
-///  6N  |------------------------------------------|
-///      |                                         .| r = h_lr = h(h_l,h_r)
-///      |                                         .| ϕ = h_lro = h(r,h_o)
-/// 6N+2 |------------------------------------------|
-///
-///       TODO: we also need to squeeze challenges for
-///       the right (strict) instance: β, γ, j (joint_combiner)
-///
-///       TODO: we can hash (x0,x1+b*2^150) instead of (x0,x1,y0,y1).
-///
-/// Scalars block.
-///
-/// Most of the r^2 and r^3 cells are /unused/, and this design can be
-/// much more optimal if r^2|r^3 elements come in a separate block.
-/// But the overhead is not big and it's a very easy layout, so
-/// keeping it for now.
-///
-///     constϕ
-///         constr
-///                ϕ^i             r^3·ϕ^i    ϕ^i        r*ϕ^i        r^2·ϕ^i_k    r^3·ϕ^i_k
-///                      r*ϕ^i             in 17 limbs  in 17 limbs      ...         ...
-///                           r^2·ϕ^i         each        each
-///   1  |---|---|-----|-------|----|----|------------|------------|------------|------------|
-///      | ϕ   r    ϕ     rϕ    r^2ϕ r^3ϕ|            |            |            |            |
-///      | ϕ   r   ϕ^2   rϕ^2            |            |            |            |            |
-///      | ϕ   r   ϕ^3   rϕ^3            |            |            |            |            |
-///      |                               |            |            |            |            |
-///      |                               |            |            |            |            |
-///      |                               |            |            |            |            |
-///  i   |                               |            |            |            |            |
-///      |                               |            |            |            |            |
-///      |                               |            |            |            |            |
-///      |                               |            |            |            |            |
-///      |       ϕ^{N+1}                 |            |            |            |            |
-///  N+1 |-------------------------------|------------|------------|------------|------------|
-///       1    2   3   4      5      6   ...        6+17          6+2*17                    6+4*17
-///
-///
-
-///
-/// We compute the following equations, where equations in "quotes" are
-/// what we /want/ to prove, and non-quoted is an equavilant version
-/// that we actually prove instead:
-/// - "C_{O,i} = C_{L,i} + r·C_{R,i}":
-///   - C_{O,i} = C_{L,i} + C_{R',i}
-///   - "C_{R',i} = r·C_{R,i}"
-///     - bucket[(ϕ^i)_k] -= C_{R',i}
-///     - bucket[(r·ϕ^i)_k] += C_{R,i}
-/// - "E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R":
-///   - E_O = E_L + E_R'
-///   - "E_R' = r·T_0 + r^2·T_1 + r^3·E_R"
-///     - bucket[(ϕ^{n+1})_k] += E_R'
-///     - bucket[(r·ϕ^{n+1})_k] += T_0
-///     - bucket[(r^2·ϕ^{n+1})_k] += T_1
-///     - bucket[(r^3·ϕ^{n+1})_k] += E_R
-///
-/// Runtime access time is represented by ? because it's not known in advance.
-///
-/// Output and input RAM invocations in the same row use the same coeff/memory index.
-///
-/// TODO FIXME we need to write into /different/ buckets.
-///
-/// FEC Additions, one per row, each one is ~230 columns:
-///
-///                  .           input #2 (looked up)                  .                  Output
-///                  .                  Access        input#2          .     FEC ADD      access    output
-///          input#1 .  Coeff/mem ix     Time         Value            .   computation     time     value
-///   1   |-------------------------------------------------------------------------------|-----|------------|
-///       | C_{R',1} | ϕ^1_0           |  ?  | bucket[ϕ^1_0]           |                  |  ?  | newbucket  |
-///       | C_{R',2} | ϕ^2_0           |  ?  | bucket[ϕ^2_0]           |                  |  ?  | newbucket  |
-///       |          |      ...        | ... |                         |                  | ... |            |
-///       | C_{R',N} | ϕ^N_0           |  ?  | bucket[ϕ^N_0]           |                  |  ?  | newbucket  |
-///       | C_{R',1} | ϕ^1_1           |  ?  | bucket[ϕ^0_1]           |                  |  ?  | newbucket  |
-///       |          |      ...        | ... |                         |                  | ... |            |
-///       | C_{R',i} | ϕ^i_k           |  ?  | bucket[ϕ^i_k]           |                  |  ?  | newbucket  |
-///       |          |                 |     |                         |                  |     |            |
-///       |          |      ...        | ... |                         |                  | ... |            |
-///  17*N |--------------------------------------------------------------------------------------------------|
-///       | C_{R,i}  | r·(ϕ^i_k)       |  ?  | bucket[r·(ϕ^i_k)]       |                  |  ?  | newbucket  |
-///       |          |                 |     |                         |                  |     |            |
-///       |          |      ...        | ... |                         |                  | ... |            |
-///  34*N |--------------------------------------------------------------------------------------------------|
-///       |-C_{R',i} |      -          |  -  | C_{L,i}                 |                  |  -  | C_{O,i}    |
-///       |          |     ...         | ... |                         |                  | ... |            |
-///  35*N |--------------------------------------------------------------------------------------------------|
-///       | -E_R'    | ϕ^{n+1}_k       |  ?  | bucket[ϕ^{n+1}_k]       |                  |     | newbucket  |
-///       |          |     ...         | ... |                         |                  | ... |            |
-///       |  T_0     | r·(ϕ^{n+1})     |  ?  | bucket[r·(ϕ^{n+1})]     |                  |     | newbucket  |
-///       |          |     ...         | ... |                         |                  | ... |            |
-///       |  T_1     | r^2·(ϕ^{n+1}_k) |  ?  | bucket[r^2·(ϕ^{n+1}_k)] |                  |     | newbucket  |
-///       |          |     ...         | ... |                         |                  | ... |            |
-///       |  E_R     | r^3·(ϕ^{n+1}_k) |  ?  | bucket[r^3·(ϕ^{n+1}_k)] |                  |     | newbucket  |
-///       |          |     ...         | ... |                         |                  | ... |            |
-/// 35*N+ |  E_L     |      -          |  -  |      E_R'               |                  |  -  |    E_O     |
-/// 4*17+ |--------------------------------------------------------------------------------------------------|
-/// 1
-///
-/// TODO: add different challenges: β, γ, joint_combiner
-///
-/// Challenges block.
-///
-///            relaxed
-///                       strict
-///                    (relaxed in-place)
-///        r   α_{L,i}    α_{R}^i     α_{O,i}
-///  1    |--|--------|-----------|-----------------------|
-///       |  |        | α_R = h_R |                       |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-///       |  |        | α_R^i     | α_{L,i} + r·α_{R,i}^i |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-///       |  |        |           |                       |
-/// #chal |--|--------|-----------|-----------------------|
-///
-/// #chal is the number of constraints. Our optimistic expectation is
-/// that it is around const*N for const < 3.
-///
-///
-/// "u" block. In the general form we want to prove
-/// u_O = u_L + r·u_R, but u_R = 0, so we prove
-/// u_O = u_L + r.
-///
-///     r    u_L       u_O = u_L + r
-///    |--|--------|--------------------|
-///    |--|--------|--------------------|
-///
-///
-/// 2^15 |---- --------------------------------------|
-///```
-///
-///
-/// Assume that IVC circuit takess CELL cells, e.g. CELL = 10000*N.
-/// Then we can calculate N_IVC as dependency of N_APP in this way:
-///    N = N_APP + (CELL/2^15)*N
-///    (1 - CELL/2^15)*N = N_APP
-///    N = (1/(1 - CELL/2^15)) * N_APP = (2^15 / (2^15 - CELL)) * N_APP
-///    N_IVC = (1/(1 - CELL/2^15) - 1) * N_APP = (2^15 / (2^15 - CELL) - 1) * N_APP
-///
-///
-/// --- (slightly) OUTDATED BELOW ---
-///
-/// Counting cells:
-/// - Inputs:              2 * 17 * 3N = 102N
-/// - Inputs repacked 75:  2 * 4 * 3N = 24N
-/// - Inputs repacked 150: 2 * 2 * 3N = 12N
-/// - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165 constants to every call)
-/// - scalars:             4 N + 17 * 3 * N = 55 N
-/// - ECADDs:              230 * 35 * N = 8050N
-/// Total (CELL):         ~9233*N
-///
-///     ...which is less than 32k*N
-///
-/// In our particular case, CELL = 9233, so
-///    N_IVC = 0.39 N_APP
-///
-/// Which means for e.g. 50 columns we'll need extra 20 of IVC.
 
 // NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
