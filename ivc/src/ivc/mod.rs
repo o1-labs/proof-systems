@@ -4,6 +4,9 @@ pub mod helpers;
 pub mod interpreter;
 pub mod lookups;
 
+use self::columns::N_BLOCKS;
+use crate::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS;
+
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
 
@@ -15,6 +18,14 @@ pub const N_LIMBS_XLARGE: usize = 2;
 // This value has been generated using a fake folding config like in
 // [folding::tests::test_quadraticization]
 pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 48;
+
+/// Number of challenges in the IVC circuit.
+/// It is the maximum number of constraints per row.
+/// We do suppose the Poseidon circuit has the highest number of constraints,
+/// for now.
+/// We also add the number of "blocks" in the IVC circuit as there will be
+/// [N_BLOCKS] alphas required to aggregate all blocks on each row.
+pub const IVC_NB_CHALLENGES: usize = IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS;
 
 #[cfg(test)]
 mod tests {
@@ -28,10 +39,7 @@ mod tests {
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::{
-            bn254::{
-                PoseidonBN254Parameters, NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS,
-                STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
-            },
+            bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
             interpreter::PoseidonParams,
         },
     };
@@ -48,14 +56,13 @@ mod tests {
     use o1_utils::box_array;
     use rand::{CryptoRng, RngCore};
 
+    use super::IVC_NB_CHALLENGES;
+
     // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
 
-    // Number of challenges in the IVC circuit.
-    // It is the maximum number of constraints per row.
-    // We do suppose it is Poseidon which has the highest number of constraints
-    // for now.
-    pub const TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+    // We do not have any additional constraint that the IVC circuit
+    pub const TEST_N_CHALS: usize = IVC_NB_CHALLENGES;
 
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
 

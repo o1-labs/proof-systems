@@ -16,12 +16,10 @@ use ivc::{
         constraints::constrain_ivc,
         interpreter::build_selectors,
         lookups::IVCLookupTable,
+        IVC_NB_CHALLENGES,
     },
     poseidon_8_56_5_3_2::{
-        bn254::{
-            PoseidonBN254Parameters, NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS,
-            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
-        },
+        bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
         interpreter::PoseidonParams,
     },
 };
@@ -304,12 +302,12 @@ pub fn test_simple_add() {
     // Total number of fixed selectors in the circuit for APP + IVC.
     // There is no fixed selector in the APP circuit.
     const N_FSEL_TOTAL: usize = IVC_NB_TOTAL_FIXED_SELECTORS;
-    // Total number of challenges required by the circuit
-    // It contains the challenges required by the interactive protocol, and also
-    // the alphas used to combine the constraints. The number of alphas is equal
-    // to the maximum of constraints per row. It is supposed that Poseidon has
-    // the maximum the number of constraints for now.
-    const N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS + Challenge::COUNT;
+
+    // Total number of challenges required by the circuit APP + IVC.
+    // The number of challenges required by the IVC is defined by the library.
+    // Therefore, we only need to add the challenges required by the specific
+    // application.
+    const N_CHALS: usize = IVC_NB_CHALLENGES + Challenge::COUNT;
 
     // Number of witness columns in the circuit.
     // It consists of the columns of the inner circuit and the columns for the
