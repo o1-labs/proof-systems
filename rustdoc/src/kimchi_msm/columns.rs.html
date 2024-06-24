@@ -96,6 +96,8 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>folding::expressions::FoldingColumnTrait;
@@ -125,7 +127,9 @@
 <span class="kw">impl </span>Column {
     <span class="doccomment">/// Adds offset if the column is `Relation`. Fails otherwise.
     </span><span class="kw">pub fn </span>add_rel_offset(<span class="self">self</span>, offset: usize) -&gt; Column {
-        <span class="kw">let </span>Column::Relation(i) = <span class="self">self </span><span class="kw">else </span>{ <span class="macro">todo!</span>() };
+        <span class="kw">let </span>Column::Relation(i) = <span class="self">self </span><span class="kw">else </span>{
+            <span class="macro">todo!</span>(<span class="string">&quot;add_rel_offset is only implemented for the relation columns&quot;</span>)
+        };
         Column::Relation(offset + i)
     }
 }

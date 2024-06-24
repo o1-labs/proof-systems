@@ -286,25 +286,39 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
-    columns::{IVCColumn, N_BLOCKS},
+    columns::{IVCColumn, IVCHashLens, N_BLOCKS},
     helpers::{combine_large_to_xlarge, combine_small_to_full},
     lookups::{IVCFECLookupLens, IVCLookupTable},
     N_LIMBS_XLARGE,
 };
-<span class="kw">use </span><span class="kw">crate</span>::ivc::columns::IVCFECLens;
+
+<span class="kw">use </span><span class="kw">crate</span>::poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters;
+
+<span class="kw">use crate</span>::{ivc::columns::IVCFECLens, poseidon_8_56_5_3_2};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi_msm::{
     circuit_design::{
         capabilities::read_column_array,
         composition::{SubEnvColumn, SubEnvLookup},
-        ColAccessCap, LookupCap,
+        ColAccessCap, HybridCopyCap, LookupCap,
     },
     fec::{columns::FECColumnOutput, interpreter::constrain_ec_addition},
     serialization::{
         interpreter::{combine_small_to_large, N_LIMBS_LARGE, N_LIMBS_SMALL},
         lookups <span class="kw">as </span>serlookup,
     },
+    Fp,
 };
 <span class="kw">use </span>std::marker::PhantomData;
 
@@ -536,11 +550,12 @@
 }
 
 <span class="doccomment">/// This function generates constraints for the whole IVC circuit.
-</span><span class="kw">pub fn </span>constrain_ivc&lt;F, Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+</span><span class="kw">pub fn </span>constrain_ivc&lt;Ff, Env&gt;(env: <span class="kw-2">&amp;mut </span>Env)
 <span class="kw">where
-    </span>F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap&lt;F, IVCColumn&gt; + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
+    </span>Ff: PrimeField,
+    Env: ColAccessCap&lt;Fp, IVCColumn&gt;
+        + LookupCap&lt;Fp, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;
+        + HybridCopyCap&lt;Fp, IVCColumn&gt;,
 {
     constrain_selectors(env);
 
@@ -554,9 +569,14 @@
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s0.clone() * x));
     constrain_inputs(env);
 
-    <span class="comment">// TODO FIXME add constraints for hashes
+    <span class="kw">let </span>s1 = env.read_column(IVCColumn::BlockSel(<span class="number">1</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s1.clone() * x));
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>env = SubEnvColumn::new(env, IVCHashLens {});
+        poseidon_8_56_5_3_2::interpreter::apply_permutation(<span class="kw-2">&amp;mut </span>env, <span class="kw-2">&amp;</span>PoseidonBN254Parameters);
+    }
 
-    </span><span class="kw">let </span>s2 = env.read_column(IVCColumn::BlockSel(<span class="number">2</span>));
+    <span class="kw">let </span>s2 = env.read_column(IVCColumn::BlockSel(<span class="number">2</span>));
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s2.clone() * x));
     constrain_scalars(env);
 
