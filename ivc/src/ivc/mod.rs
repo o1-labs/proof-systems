@@ -175,12 +175,15 @@ mod tests {
             });
 
             assert_eq!(constraints_degrees.get(&1), None);
-            assert_eq!(constraints_degrees.get(&2), Some(&221));
-            assert_eq!(constraints_degrees.get(&3), Some(&245));
-            assert_eq!(constraints_degrees.get(&4), Some(&21));
+            assert_eq!(constraints_degrees.get(&2), Some(&6));
+            assert_eq!(constraints_degrees.get(&3), Some(&215));
+            assert_eq!(constraints_degrees.get(&4), Some(&245));
+            assert_eq!(constraints_degrees.get(&5), Some(&21));
 
-            // Maximum degree is 4
-            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 4));
+            // Maximum degree is 5
+            // - fold_iteration increases by one
+            // - the public selectors increase by one
+            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 5));
         }
     }
 
