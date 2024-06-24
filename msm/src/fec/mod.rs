@@ -19,7 +19,7 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::UniformRand;
     use rand::{CryptoRng, RngCore};
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashMap};
 
     type FECWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
@@ -81,6 +81,32 @@ mod tests {
     pub fn test_fec_addition_circuit() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_fec_addition_circuit(&mut rng, 1 << 4);
+    }
+
+    #[test]
+    pub fn test_regression_constraints_fec() {
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
+        constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
+        let constraints = constraint_env.get_constraints();
+
+        let mut constraints_degrees = HashMap::new();
+
+        assert_eq!(constraints.len(), 63);
+
+        {
+            constraints.iter().for_each(|c| {
+                let degree = c.degree(1, 0);
+                *constraints_degrees.entry(degree).or_insert(0) += 1;
+            });
+
+            assert_eq!(constraints_degrees.get(&1), Some(&1));
+            assert_eq!(constraints_degrees.get(&2), Some(&5));
+            assert_eq!(constraints_degrees.get(&3), Some(&21));
+            assert_eq!(constraints_degrees.get(&4), None);
+            assert_eq!(constraints_degrees.get(&5), Some(&2));
+            assert_eq!(constraints_degrees.get(&6), None);
+            assert_eq!(constraints_degrees.get(&7), Some(&34));
+        }
     }
 
     #[test]
