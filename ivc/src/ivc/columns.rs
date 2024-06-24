@@ -253,7 +253,6 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
         //   the foreign field is 255 bits), and we add into the value
         //   `x_{150..255}` the bit sign of `y`. From there, we can hash the two
         //   values, which fits in our state of size 3.
-        // If we change 6 into 12, we change the layout (previously wrong)
         1 => 6 * N_COL_TOTAL + 2,
         // The third block is used for the randomisation of the MSM.
         2 => N_COL_TOTAL + 1,
@@ -282,6 +281,9 @@ pub enum IVCColumn {
     FoldIteration,
 
     /// Selector for blocks. Inner usize is ∈ [0,#blocks).
+    /// The selectors are fixed values for each instance of the relation.
+    /// The different blocks are described below or at the top-level of this
+    /// file.
     BlockSel(usize),
 
     /// 2*17 15-bit limbs (two base field points)
@@ -292,6 +294,16 @@ pub enum IVCColumn {
     Block1InputRepacked150(usize),
 
     /// 1 hash per row
+    // FIXME/TODO: we might want to have 2 additional columns for the actual
+    // input we would like to hash, and must constrain the input state of the
+    // hash to be the sum of the previous state.
+    // i.e. for each hash, we have 2 + 3 + 2 columns
+    // - x, y the inputs we want to absorb
+    // - s0, s1, s2 the initial state of the hash
+    // - s0 + x, s1 + y the final state of the hash, with s2 being unused.
+    // - s0 + x, s1 + y and s2 are considered as the column
+    // PoseidonColumn::Input of the Poseidon gadget, and a constrain must be
+    // added between s0 and s0 + x (resp. s1 and s1 + y).
     Block2Hash(
         PoseidonColumn<
             IVC_POSEIDON_STATE_SIZE,
@@ -373,6 +385,9 @@ impl ColumnIndexer for IVCColumn {
 
     fn to_column(self) -> Column {
         match self {
+            // We keep a column that will be used for the folding iteration.
+            // Question: do we need it for all the rows or does it appear only
+            // for one hash?
             IVCColumn::FoldIteration => Column::Relation(0),
             IVCColumn::BlockSel(i) => {
                 assert!(i < N_BLOCKS);
@@ -392,8 +407,23 @@ impl ColumnIndexer for IVCColumn {
                 Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i).add_rel_offset(1)
             }
 
-            IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
+            // The second block of columns will be used for hashing the
+            // different values, like the commitments and the challenges.
+            IVCColumn::Block2Hash(poseidon_col) => match poseidon_col {
+                // We map the round constants into the appropriate fixed
+                // selector.
+                // We suppose that the round constants are added after the
+                // public values describing the block selection.
+                PoseidonColumn::RoundConstant(round, state_size) => {
+                    let idx = round * IVC_POSEIDON_STATE_SIZE + state_size;
+                    Column::FixedSelector(idx + N_BLOCKS)
+                }
+                // We add a padding for the fold iteration.
+                // Even though, we might not need it.
+                other => other.to_column().add_rel_offset(1),
+            },
 
+            // The third block is used to compute the randomisation of the MSM
             IVCColumn::Block3ConstPhi => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block3ConstR => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block3PhiPow => Column::Relation(2).add_rel_offset(1),
@@ -417,6 +447,7 @@ impl ColumnIndexer for IVCColumn {
                 Column::Relation(6 + 3 * N_LIMBS_SMALL + i).add_rel_offset(1)
             }
 
+            // The fourth block is used for the foreign field ECC addition
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(i).add_rel_offset(1)
@@ -444,12 +475,16 @@ impl ColumnIndexer for IVCColumn {
                     .add_rel_offset(1)
             }
 
+            // The fifth block is used for the challenges. Note that the
+            // challenges contains all the alphas (used to bundle the
+            // constraints) and also the challenges used by the PIOP.
             IVCColumn::Block5ConstHr => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block5ConstR => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block5ChalLeft => Column::Relation(2).add_rel_offset(1),
             IVCColumn::Block5ChalRight => Column::Relation(3).add_rel_offset(1),
             IVCColumn::Block5ChalOutput => Column::Relation(4).add_rel_offset(1),
 
+            // The sixth block is used for the homogeneised value `u`.
             IVCColumn::Block6ConstR => Column::Relation(0).add_rel_offset(1),
             IVCColumn::Block6ULeft => Column::Relation(1).add_rel_offset(1),
             IVCColumn::Block6UOutput => Column::Relation(2).add_rel_offset(1),
@@ -457,12 +492,18 @@ impl ColumnIndexer for IVCColumn {
     }
 }
 
+/// Lens used to convert between IVC columns and Poseidon columns.
+/// We use one row for each hash, whatever the type of inputs the hash has.
 pub struct IVCHashLens {}
 
 impl MPrism for IVCHashLens {
     type Source = IVCColumn;
     type Target = IVCPoseidonColumn;
 
+    // [traverse] must map the columns IVCColumn to the corresponding columns of
+    // the Poseidon circuit.
+    // We do suppose that the columns are ordered in the same way in the IVC and
+    // the Poseidon circuit, and that a whole row is used by the Poseidon gadget
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
             IVCColumn::Block2Hash(col) => Some(col),
@@ -470,6 +511,13 @@ impl MPrism for IVCHashLens {
         }
     }
 
+    // [re_get] must map back the columns of the Poseidon gadget to the columns
+    // of the IVC circuit.
+    // As said for [traverse], a whole row, Block2Hash, is used by the Poseidon
+    // gadget.
+    // We map the Poseidon columns in the same order than described in
+    // [crate::poseidon_8_56_5_3_2::columns::PoseidonColumn], i.e. Input,
+    // Partialround and FullRound.
     fn re_get(&self, target: Self::Target) -> Self::Source {
         IVCColumn::Block2Hash(target)
     }

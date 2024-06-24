@@ -113,10 +113,10 @@ mod tests {
         // Write constants
         {
             let rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(_, rcs)| {
-                rcs.iter().enumerate().for_each(|(_, rc)| {
-                    let rc = vec![*rc; domain_size];
-                    fixed_selectors.push(rc);
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; TEST_DOMAIN_SIZE];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
                 });
             });
         }
@@ -160,24 +160,27 @@ mod tests {
     #[test]
     fn test_regression_ivc_constraints() {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
-        constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
         let mut constraints_degrees = HashMap::new();
 
         // Regression testing for the number of constraints and their degree
         {
-            // Hashes are not included for now.
-            assert_eq!(constraints.len(), 55);
+            // 55 + 432 (Poseidon)
+            assert_eq!(constraints.len(), 487);
             constraints.iter().for_each(|c| {
                 let degree = c.degree(1, 0);
                 *constraints_degrees.entry(degree).or_insert(0) += 1;
             });
 
             assert_eq!(constraints_degrees.get(&1), None);
-            assert_eq!(constraints_degrees.get(&2), Some(&29));
-            assert_eq!(constraints_degrees.get(&3), Some(&5));
+            assert_eq!(constraints_degrees.get(&2), Some(&221));
+            assert_eq!(constraints_degrees.get(&3), Some(&245));
             assert_eq!(constraints_degrees.get(&4), Some(&21));
+
+            // Maximum degree is 4
+            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 4));
         }
     }
 
@@ -195,7 +198,7 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
-        constrain_ivc::<Fp, Ff1, _>(&mut constraint_env);
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
         let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
