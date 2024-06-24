@@ -479,6 +479,12 @@
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::N_LIMBS_XLARGE;
 <span class="kw">use </span><span class="kw">crate</span>::poseidon_8_56_5_3_2::{
     bn254::{
@@ -811,11 +817,17 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
-    <span class="comment">// This should be
-    //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
-    // which is runtime-only expression..?
-    // 333 is not enough
-    </span><span class="kw">const </span>N_COL: usize = <span class="number">600</span>;
+    <span class="doccomment">/// Number of columns used by the IVC circuit
+    /// It contains at least the columns used for Poseidon.
+    /// It does not include the additional columns that might be required
+    /// to reduce to degree 2.
+    /// FIXME: This can be improved by changing a bit the layer.
+    /// The reduction to degree 2 should happen in the gadgets to avoid adding
+    /// extra columns and leave sparse rows.
+    </span><span class="comment">// We consider IVCPoseidonColumn::N_COL but it should be the maximum of
+    // the different gadgets/blocks.
+    // We also add 1 for the FoldIteration column.
+    </span><span class="kw">const </span>N_COL: usize = IVCPoseidonColumn::N_COL + <span class="number">1 </span>+ N_BLOCKS;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
