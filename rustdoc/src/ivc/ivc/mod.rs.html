@@ -223,11 +223,21 @@
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>helpers;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
+
+<span class="kw">use </span><span class="self">self</span>::columns::N_BLOCKS;
+<span class="kw">use </span><span class="kw">crate</span>::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS <span class="kw">as </span>IVC_POSEIDON_NB_CONSTRAINTS;
 
 <span class="doccomment">/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 </span><span class="kw">pub const </span>LIMB_BITSIZE_XLARGE: usize = <span class="number">150</span>;
@@ -241,6 +251,14 @@
 // [folding::tests::test_quadraticization]
 </span><span class="kw">pub const </span>N_ADDITIONAL_WIT_COL_QUAD: usize = <span class="number">48</span>;
 
+<span class="doccomment">/// Number of challenges in the IVC circuit.
+/// It is the maximum number of constraints per row.
+/// We do suppose the Poseidon circuit has the highest number of constraints,
+/// for now.
+/// We also add the number of &quot;blocks&quot; in the IVC circuit as there will be
+/// [N_BLOCKS] alphas required to aggregate all blocks on each row.
+</span><span class="kw">pub const </span>IVC_NB_CHALLENGES: usize = IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS;
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::collections::HashMap;
@@ -253,10 +271,7 @@
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::{
-            bn254::{
-                PoseidonBN254Parameters, NB_CONSTRAINTS <span class="kw">as </span>IVC_POSEIDON_NB_CONSTRAINTS,
-                STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
-            },
+            bn254::{PoseidonBN254Parameters, STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE},
             interpreter::PoseidonParams,
         },
     };
@@ -273,14 +288,13 @@
     <span class="kw">use </span>o1_utils::box_array;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
 
+    <span class="kw">use </span><span class="kw">super</span>::IVC_NB_CHALLENGES;
+
     <span class="comment">// Total number of columns in IVC and Application circuits.
     </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + <span class="number">50</span>;
 
-    <span class="comment">// Number of challenges in the IVC circuit.
-    // It is the maximum number of constraints per row.
-    // We do suppose it is Poseidon which has the highest number of constraints
-    // for now.
-    </span><span class="kw">pub const </span>TEST_N_CHALS: usize = IVC_POSEIDON_NB_CONSTRAINTS;
+    <span class="comment">// We do not have any additional constraint that the IVC circuit
+    </span><span class="kw">pub const </span>TEST_N_CHALS: usize = IVC_NB_CHALLENGES;
 
     <span class="kw">pub const </span>TEST_DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
