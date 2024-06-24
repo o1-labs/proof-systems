@@ -398,8 +398,10 @@ pub fn test_simple_add() {
 
     let structure = EmptyStructure::default();
 
-    let (_folding_scheme, _real_folding_compat_constraints) =
+    let (folding_scheme, _real_folding_compat_constraints) =
         FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &structure);
+
+    println!("Additional columns: {:?}", folding_scheme.get_number_of_additional_columns());
 
     // End of folding configuration for IVC + APP
 
