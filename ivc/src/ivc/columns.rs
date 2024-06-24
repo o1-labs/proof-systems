@@ -1,4 +1,4 @@
-use super::{N_ADDITIONAL_WIT_COL_QUAD, N_LIMBS_XLARGE};
+use super::N_LIMBS_XLARGE;
 use crate::poseidon_8_56_5_3_2::{
     bn254::{
         Column as IVCPoseidonColumn, NB_FULL_ROUND as IVC_POSEIDON_NB_FULL_ROUND,
@@ -331,15 +331,16 @@ pub enum IVCColumn {
 
 impl ColumnIndexer for IVCColumn {
     /// Number of columns used by the IVC circuit
-    /// It contains at least the columns used for Poseidon, and the columns used
-    /// to reduce to degree 2 the constraints of the circuit
+    /// It contains at least the columns used for Poseidon.
+    /// It does not include the additional columns that might be required
+    /// to reduce to degree 2.
     /// FIXME: This can be improved by changing a bit the layer.
     /// The reduction to degree 2 should happen in the gadgets to avoid adding
     /// extra columns and leave sparse rows.
     // We consider IVCPoseidonColumn::N_COL but it should be the maximum of
     // the different gadgets/blocks.
     // We also add 1 for the FoldIteration column.
-    const N_COL: usize = IVCPoseidonColumn::N_COL + N_ADDITIONAL_WIT_COL_QUAD + 1;
+    const N_COL: usize = IVCPoseidonColumn::N_COL + 1 + N_BLOCKS;
 
     fn to_column(self) -> Column {
         match self {
