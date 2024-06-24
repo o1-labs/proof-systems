@@ -84,6 +84,30 @@ mod tests {
     }
 
     #[test]
+    pub fn test_regression_relation_constraints_fec() {
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
+        constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut constraints_degrees = HashMap::new();
+
+        assert_eq!(constraints.len(), 24);
+
+        {
+            constraints.iter().for_each(|c| {
+                let degree = c.degree(1, 0);
+                *constraints_degrees.entry(degree).or_insert(0) += 1;
+            });
+
+            assert_eq!(constraints_degrees.get(&1), None);
+            assert_eq!(constraints_degrees.get(&2), Some(&3));
+            assert_eq!(constraints_degrees.get(&3), Some(&21));
+
+            assert!(constraints.iter().map(|c| c.degree(1, 0)).max() <= Some(3));
+        }
+    }
+
+    #[test]
     pub fn test_regression_constraints_fec() {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
