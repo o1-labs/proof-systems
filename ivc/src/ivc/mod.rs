@@ -191,7 +191,12 @@ mod tests {
         }
     }
 
-    fn helper_test_completeness_ivc(fold_iteration: usize) {
+    #[test]
+    /// Completeness test for the IVC circuit in the general case (i.e.
+    /// fold_iteration != 0).
+    fn test_completeness_ivc_general_case() {
+        let fold_iteration = 1;
+
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let domain_size = 1 << 15;
@@ -241,16 +246,56 @@ mod tests {
     }
 
     #[test]
-    /// Completeness test for the IVC circuit in the general case (i.e.
-    /// fold_iteration != 0).
-    fn test_completeness_ivc_general_case() {
-        helper_test_completeness_ivc(1);
-    }
-
-    #[test]
     /// Completeness test for the IVC circuit in the base case (i.e.
     /// fold_iteration = 0).
     fn test_completeness_ivc_base_case() {
-        helper_test_completeness_ivc(0);
+        let fold_iteration = 0;
+
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let domain_size = 1 << 15;
+
+        let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+            &mut rng,
+            domain_size,
+            fold_iteration,
+            IdMPrism::<IVCLookupTable<Ff1>>::default(),
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
+            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+                domain_size,
+            ))
+        };
+
+        // Write constants
+        {
+            let rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; domain_size];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
+                });
+            });
+        }
+
+        kimchi_msm::test::test_completeness_generic_no_lookups::<
+            { IVCColumn::N_COL - N_BLOCKS },
+            { IVCColumn::N_COL - N_BLOCKS },
+            0,
+            IVC_NB_TOTAL_FIXED_SELECTORS,
+            _,
+        >(
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
+            &mut rng,
+        );
     }
 }
