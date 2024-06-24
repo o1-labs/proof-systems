@@ -330,11 +330,17 @@ pub enum IVCColumn {
 }
 
 impl ColumnIndexer for IVCColumn {
-    // This should be
-    //   const N_COL: usize = std::cmp::max(IVCPoseidonColumn::N_COL, FECColumn::N_COL);
-    // which is runtime-only expression..?
-    // 333 is not enough
-    const N_COL: usize = 600;
+    /// Number of columns used by the IVC circuit
+    /// It contains at least the columns used for Poseidon.
+    /// It does not include the additional columns that might be required
+    /// to reduce to degree 2.
+    /// FIXME: This can be improved by changing a bit the layer.
+    /// The reduction to degree 2 should happen in the gadgets to avoid adding
+    /// extra columns and leave sparse rows.
+    // We consider IVCPoseidonColumn::N_COL but it should be the maximum of
+    // the different gadgets/blocks.
+    // We also add 1 for the FoldIteration column.
+    const N_COL: usize = IVCPoseidonColumn::N_COL + 1 + N_BLOCKS;
 
     fn to_column(self) -> Column {
         match self {
