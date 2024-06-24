@@ -923,7 +923,9 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>, usize) {
+    // detect selectors?
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
+    // detect selectors?
     let (
         Quadraticized {
             original_constraints: expressions,
@@ -934,6 +936,11 @@ pub fn folding_expression<C: FoldingConfig>(
     ) = quadraticize(simplified_expressions);
     let mut terms = vec![];
     let mut alpha = 0;
+    // Alpha is always increased, equal to the total number of
+    // expressions. We could optimise it and only assign increasing
+    // alphas in "blocks" that depend on selectors. This would make
+    // #alphas equal to the expressions in the biggest block (+ some
+    // columns common for all blocks of the circuit).
     for exp in expressions.into_iter() {
         terms.extend(extract_terms(exp).map(|term| (term, alpha)));
         alpha += 1;
