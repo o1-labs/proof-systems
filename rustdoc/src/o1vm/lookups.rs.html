@@ -255,6 +255,22 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -289,23 +305,25 @@
     </span>PadLookup = <span class="number">0</span>,
     <span class="doccomment">/// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
     </span>RoundConstantsLookup = <span class="number">1</span>,
+    <span class="doccomment">/// Values from 0 to 4 to check the number of bytes read from syscalls
+    </span>AtMost4Lookup = <span class="number">2</span>,
     <span class="doccomment">/// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    </span>ByteLookup = <span class="number">2</span>,
+    </span>ByteLookup = <span class="number">3</span>,
     <span class="comment">// Read tables come first to allow indexing with the table ID for the multiplicities
     </span><span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
-    </span>RangeCheck16Lookup = <span class="number">3</span>,
+    </span>RangeCheck16Lookup = <span class="number">4</span>,
     <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
-    </span>SparseLookup = <span class="number">4</span>,
+    </span>SparseLookup = <span class="number">5</span>,
     <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    </span>ResetLookup = <span class="number">5</span>,
+    </span>ResetLookup = <span class="number">6</span>,
 
     <span class="comment">// RAM Tables
-    </span>MemoryLookup = <span class="number">6</span>,
-    RegisterLookup = <span class="number">7</span>,
+    </span>MemoryLookup = <span class="number">7</span>,
+    RegisterLookup = <span class="number">8</span>,
     <span class="doccomment">/// Syscalls communication channel
-    </span>SyscallLookup = <span class="number">8</span>,
+    </span>SyscallLookup = <span class="number">9</span>,
     <span class="doccomment">/// Input/Output of Keccak steps
-    </span>KeccakStepLookup = <span class="number">9</span>,
+    </span>KeccakStepLookup = <span class="number">10</span>,
 }
 
 <span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTableIDs {
@@ -333,6 +351,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             PadLookup =&gt; RATE_IN_BYTES,
             RoundConstantsLookup =&gt; ROUNDS,
+            AtMost4Lookup =&gt; <span class="number">5</span>,
             ByteLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">8</span>,
             RangeCheck16Lookup | SparseLookup | ResetLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">16</span>,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; {
@@ -343,8 +362,8 @@
 
     <span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
-            PadLookup | RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | SparseLookup
-            | ResetLookup =&gt; <span class="bool-val">true</span>,
+            PadLookup | RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
+            | SparseLookup | ResetLookup =&gt; <span class="bool-val">true</span>,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; <span class="bool-val">false</span>,
         }
     }
@@ -357,6 +376,7 @@
         <span class="macro">vec!</span>[
             <span class="self">Self</span>::PadLookup,
             <span class="self">Self</span>::RoundConstantsLookup,
+            <span class="self">Self</span>::AtMost4Lookup,
             <span class="self">Self</span>::ByteLookup,
             <span class="self">Self</span>::RangeCheck16Lookup,
             <span class="self">Self</span>::SparseLookup,
@@ -377,6 +397,8 @@
     </span><span class="kw">fn </span>table_pad() -&gt; LookupTable&lt;F&gt;;
     <span class="doccomment">/// Returns the round constants table
     </span><span class="kw">fn </span>table_round_constants() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the at most 4 table
+    </span><span class="kw">fn </span>table_at_most_4() -&gt; LookupTable&lt;F&gt;;
     <span class="doccomment">/// Returns the byte table
     </span><span class="kw">fn </span>table_byte() -&gt; LookupTable&lt;F&gt;;
     <span class="doccomment">/// Returns the range check 16 table
@@ -398,7 +420,8 @@
             .fold(<span class="number">0u64</span>, |acc, <span class="kw-2">&amp;</span>x| acc * <span class="number">256 </span>+ x <span class="kw">as </span>u64) <span class="kw">as </span>usize;
 
         <span class="kw">match </span>id {
-            RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | ResetLookup =&gt; {
+            RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
+            | ResetLookup =&gt; {
                 <span class="kw">if </span>idx &lt; id.length() &amp;&amp; table.entries[idx] == value {
                     <span class="prelude-val">Some</span>(idx)
                 } <span class="kw">else </span>{
@@ -463,6 +486,15 @@
                         F::from(Keccak::sparse(RC[i])[<span class="number">0</span>]),
                     ]
                 })
+                .collect(),
+        }
+    }
+
+    <span class="kw">fn </span>table_at_most_4() -&gt; LookupTable&lt;F&gt; {
+        <span class="self">Self </span>{
+            table_id: AtMost4Lookup,
+            entries: (<span class="number">0</span>..AtMost4Lookup.length())
+                .map(|i| <span class="macro">vec!</span>[F::from(i <span class="kw">as </span>u32)])
                 .collect(),
         }
     }

@@ -587,6 +587,16 @@
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
 <a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
@@ -987,7 +997,8 @@
 
         <span class="comment">// How many preimage bytes are being processed in this instruction
         // FIXME: need to connect this to REGISTER_PREIMAGE_OFFSET or pos?
-        </span><span class="kw">let </span>num_read_bytes = <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
+        </span><span class="kw">let </span>num_preimage_bytes_read =
+            <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_NUM_BYTES_READ_OFF));
 
         <span class="comment">// The chunk of at most 4 bytes that is being processed from the
         // preimage in this instruction
@@ -1004,11 +1015,12 @@
             <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
 
-        <span class="comment">// TODO: any constraints we should we add for pos?
+        <span class="comment">// The actual number of bytes read in this instruction, will be 0 &lt;= x &lt;= len &lt;= 4
+        </span><span class="kw">let </span>actual_read_bytes = <span class="self">self</span>.variable(pos);
 
-        // EXTRA 13 CONSTRAINTS
+        <span class="comment">// EXTRA 13 CONSTRAINTS
 
-        // Booleanity constraints
+        // 5 Booleanity constraints
         </span>{
             <span class="kw">for </span>var <span class="kw">in </span>has_n_bytes.iter() {
                 <span class="self">self</span>.assert_boolean(var.clone());
@@ -1016,53 +1028,62 @@
             <span class="self">self</span>.assert_boolean(end_of_preimage.clone());
         }
 
-        {
+        <span class="comment">// + 4 constraints
+        </span>{
             <span class="comment">// Expressions that are nonzero when the exact corresponding number
-            // of bytes are read (case 0 bytes used when bytelength is read)
-            // TODO: use equal?
-            </span><span class="kw">let </span>read_1 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>));
-            <span class="kw">let </span>read_2 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(<span class="number">1</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>));
-            <span class="kw">let </span>read_3 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(<span class="number">1</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>));
-            <span class="kw">let </span>read_4 = (num_read_bytes.clone())
-                * (num_read_bytes.clone() - Expr::from(<span class="number">1</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
-                * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>));
+            // of preimage bytes are read (case 0 bytes used when bytelength is read)
+            // TODO: embed any more complex logic to know how many bytes are read
+            //       depending on the address and length as in the witness?
+            // FIXME: use the lines below when the issue with `equal` is solved
+            //        that will bring the number of constraints from 22 to 30
+            //        (meaning the unit test needs to be manually adapted)
+            // let preimage_1 = self.equal(&amp;num_preimage_bytes_read, &amp;Expr::from(1));
+            // let preimage_2 = self.equal(&amp;num_preimage_bytes_read, &amp;Expr::from(2));
+            // let preimage_3 = self.equal(&amp;num_preimage_bytes_read, &amp;Expr::from(3));
+            // let preimage_4 = self.equal(&amp;num_preimage_bytes_read, &amp;Expr::from(4));
 
-            <span class="comment">// Note these constraints also hold when 0 preimage bytes are read
+            </span><span class="kw">let </span>preimage_1 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">2</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>));
+            <span class="kw">let </span>preimage_2 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">1</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>));
+            <span class="kw">let </span>preimage_3 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">1</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">2</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>));
+            <span class="kw">let </span>preimage_4 = (num_preimage_bytes_read.clone())
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">1</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">2</span>))
+                * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>));
+
+            <span class="comment">// Constrain the byte decomposition of the preimage chunk
+            // NOTE: these constraints also hold when 0 preimage bytes are read
             </span>{
-                <span class="comment">// Constrain the byte decomposition of the preimage chunk When
-                // only 1 byte is read, the chunk is equal to the byte[0]
-                </span><span class="self">self</span>.constraints
-                    .push(read_1.clone() * (this_chunk.clone() - bytes[<span class="number">0</span>].clone()));
-                <span class="comment">// When 2 bytes are read, the chunk is equal to the byte[0] *
-                // 2^8 + byte[1]
-                </span><span class="self">self</span>.constraints.push(
-                    read_2.clone()
+                <span class="comment">// When only 1 preimage byte is read, the chunk equals byte[0]
+                </span><span class="self">self</span>.add_constraint(preimage_1 * (this_chunk.clone() - bytes[<span class="number">0</span>].clone()));
+                <span class="comment">// When 2 bytes are read, the chunk is equal to the
+                // byte[0] * 2^8 + byte[1]
+                </span><span class="self">self</span>.add_constraint(
+                    preimage_2
                         * (this_chunk.clone()
                             - (bytes[<span class="number">0</span>].clone() * Expr::from(<span class="number">2u64</span>.pow(<span class="number">8</span>)) + bytes[<span class="number">1</span>].clone())),
                 );
-                <span class="comment">// When 3 bytes are read, the chunk is equal to the byte[0] *
-                // 2^16 + byte[1] * 2^8 + byte[2]
-                </span><span class="self">self</span>.constraints.push(
-                    read_3.clone()
+                <span class="comment">// When 3 bytes are read, the chunk is equal to
+                // byte[0] * 2^16 + byte[1] * 2^8 + byte[2]
+                </span><span class="self">self</span>.add_constraint(
+                    preimage_3
                         * (this_chunk.clone()
                             - (bytes[<span class="number">0</span>].clone() * Expr::from(<span class="number">2u64</span>.pow(<span class="number">16</span>))
                                 + bytes[<span class="number">1</span>].clone() * Expr::from(<span class="number">2u64</span>.pow(<span class="number">8</span>))
                                 + bytes[<span class="number">2</span>].clone())),
                 );
-                <span class="comment">// When all 4 bytes are read, the chunk is equal to the byte[0]
-                // * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
-                </span><span class="self">self</span>.constraints.push(
-                    read_4.clone()
+                <span class="comment">// When all 4 bytes are read, the chunk is equal to
+                // byte[0] * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
+                </span><span class="self">self</span>.add_constraint(
+                    preimage_4
                         * (this_chunk.clone()
                             - (bytes[<span class="number">0</span>].clone() * Expr::from(<span class="number">2u64</span>.pow(<span class="number">24</span>))
                                 + bytes[<span class="number">1</span>].clone() * Expr::from(<span class="number">2u64</span>.pow(<span class="number">16</span>))
@@ -1071,66 +1092,65 @@
                 );
             }
 
-            <span class="comment">// Constrain that at most you read `len` bytes
-            // TODO: use equal?
-            // TODO: embed any more complex logic to know how many bytes are read
-            //       depending on the address and length as in the witness?
-            </span>{
-                <span class="comment">// These variables are nonzero when at most have read n bytes
-                // If len = 1 then read_2 = 0, read_3 = 0, read_4 = 0
-                // If len = 2 then read_3 = 0, read_4 = 0
-                // If len = 3 then read_4 = 0
-                </span><span class="kw">let </span>len_is_1 = (len.clone() - Expr::from(<span class="number">2</span>))
-                    * (len.clone() - Expr::from(<span class="number">3</span>))
-                    * (len.clone() - Expr::from(<span class="number">4</span>));
-                <span class="kw">let </span>len_is_2 = (len.clone() - Expr::from(<span class="number">1</span>))
-                    * (len.clone() - Expr::from(<span class="number">3</span>))
-                    * (len.clone() - Expr::from(<span class="number">4</span>));
-                <span class="kw">let </span>len_is_3 = (len.clone() - Expr::from(<span class="number">1</span>))
-                    * (len.clone() - Expr::from(<span class="number">2</span>))
-                    * (len.clone() - Expr::from(<span class="number">4</span>));
-                <span class="self">self</span>.constraints.push(len_is_1.clone() * read_2);
-                <span class="self">self</span>.constraints.push(len_is_1.clone() * read_3.clone());
-                <span class="self">self</span>.constraints.push(len_is_1 * read_4.clone());
-                <span class="self">self</span>.constraints.push(len_is_2.clone() * read_3);
-                <span class="self">self</span>.constraints.push(len_is_2 * read_4.clone());
-                <span class="self">self</span>.constraints.push(len_is_3 * read_4);
-            }
-
-            <span class="comment">// Constrain the bytes flags depending on the number of bytes read
-            // in this row
+            <span class="comment">// +4 constraints
+            // Constrain the bytes flags depending on the number of preimage
+            // bytes read in this row
             </span>{
                 <span class="comment">// When at least has_1_byte, then any number of bytes can be
                 // read &lt;=&gt; Check that you can only read 1, 2, 3 or 4 bytes
                 </span><span class="self">self</span>.add_constraint(
                     has_n_bytes[<span class="number">0</span>].clone()
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">1</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">1</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">2</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>)),
                 );
 
                 <span class="comment">// When at least has_2_byte, then any number of bytes can be
-                // read except 1
-                </span><span class="self">self</span>.constraints.push(
+                // read from the preimage except 1
+                </span><span class="self">self</span>.add_constraint(
                     has_n_bytes[<span class="number">1</span>].clone()
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">2</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">2</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>)),
                 );
                 <span class="comment">// When at least has_3_byte, then any number of bytes can be
-                // read except 1 nor 2
-                </span><span class="self">self</span>.constraints.push(
+                // read from the preimage except 1 nor 2
+                </span><span class="self">self</span>.add_constraint(
                     has_n_bytes[<span class="number">2</span>].clone()
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">3</span>))
-                        * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>)),
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">3</span>))
+                        * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>)),
                 );
 
-                <span class="comment">// When has_4_byte, then only can read 4
-                </span><span class="self">self</span>.constraints
-                    .push(has_n_bytes[<span class="number">3</span>].clone() * (num_read_bytes.clone() - Expr::from(<span class="number">4</span>)));
+                <span class="comment">// When has_4_byte, then only can read 4 preimage bytes
+                </span><span class="self">self</span>.add_constraint(
+                    has_n_bytes[<span class="number">3</span>].clone() * (num_preimage_bytes_read.clone() - Expr::from(<span class="number">4</span>)),
+                );
             }
         }
+
+        <span class="comment">// FIXED LOOKUPS
+        // Check that 0 &lt;= preimage read &lt;= actual read &lt;= len &lt;= 4
+        </span><span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[len.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[actual_read_bytes.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[num_preimage_bytes_read.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[len.clone() - actual_read_bytes.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[actual_read_bytes.clone() - num_preimage_bytes_read.clone()],
+        ));
 
         <span class="comment">// COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LEN {
@@ -1169,7 +1189,7 @@
         // TODO: do we want to check byte-ness of the bytelength bytes as well?
 
         // Return actual length read as variable, stored in `pos`
-        </span><span class="self">self</span>.variable(pos)
+        </span>actual_read_bytes
     }
 
     <span class="kw">fn </span>request_hint_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, _len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {

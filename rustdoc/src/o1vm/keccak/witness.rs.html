@@ -119,6 +119,8 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This file contains the witness for the Keccak hash function for the zkVM project.
 //! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 //!
@@ -167,6 +169,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>t = HashMap::new();
                 t.insert(PadLookup, LookupTable::table_pad());
                 t.insert(RoundConstantsLookup, LookupTable::table_round_constants());
+                t.insert(AtMost4Lookup, LookupTable::table_at_most_4());
                 t.insert(ByteLookup, LookupTable::table_byte());
                 t.insert(RangeCheck16Lookup, LookupTable::table_range_check_16());
                 t.insert(SparseLookup, LookupTable::table_sparse());
@@ -177,6 +180,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>m = HashMap::new();
                 m.insert(PadLookup, <span class="macro">vec!</span>[<span class="number">0</span>; PadLookup.length()]);
                 m.insert(RoundConstantsLookup, <span class="macro">vec!</span>[<span class="number">0</span>; RoundConstantsLookup.length()]);
+                m.insert(AtMost4Lookup, <span class="macro">vec!</span>[<span class="number">0</span>; AtMost4Lookup.length()]);
                 m.insert(ByteLookup, <span class="macro">vec!</span>[<span class="number">0</span>; ByteLookup.length()]);
                 m.insert(RangeCheck16Lookup, <span class="macro">vec!</span>[<span class="number">0</span>; RangeCheck16Lookup.length()]);
                 m.insert(SparseLookup, <span class="macro">vec!</span>[<span class="number">0</span>; SparseLookup.length()]);
