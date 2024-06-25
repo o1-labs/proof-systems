@@ -15,9 +15,9 @@ pub const N_LIMBS_XLARGE: usize = 2;
 
 /// Number of additional columns that a reduction to degree 2 will
 /// require.
-// This value has been generated using a fake folding config like in
-// [folding::tests::test_quadraticization]
-pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 48;
+/// A regression test is available in the tests directory, under the name
+/// `test_regression_additional_columns_reduction_to_degree_2`
+pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 344;
 
 /// Number of challenges in the IVC circuit.
 /// It is the maximum number of constraints per row.
