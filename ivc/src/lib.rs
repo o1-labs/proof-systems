@@ -110,6 +110,21 @@
 //! the execution of all the rounds, and `q_poseidon` will be a (public
 //! selector) that will be set to `1` on the row that Poseidon will need to be
 //! executed, `0` otherwise.
+//!
+//! ## IVC circuit: base case
+//!
+//! The base case of the IVC circuit is supported by multiplying each constraint
+//! by a fold_iteration column. As it is `0` for the base case, the whole
+//! circuit is "turned off".
+//! We do not want to keep this in the final version, and aim to replace it with
+//! a method that does not increase the degree of the constraints by one. The
+//! column value is also under-constrained for now.
+//!
+//! The code for the base case is handled in
+//! [crate::ivc::interpreter::ivc_circuit_base_case] and the corresponding
+//! constraints are in [crate::ivc::constraints::constrain_ivc]. The fold
+//! iteration column is set at each row by each process_* function in the
+//! interpreter.
 
 pub mod ivc;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a

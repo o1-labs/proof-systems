@@ -267,31 +267,38 @@ where
     // the constraints that are created in the block block_num will have
     // the form selector(block_num)*C(X) and not just C(X).
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s0 = env.read_column(IVCColumn::BlockSel(0));
-    env.set_assert_mapper(Box::new(move |x| s0.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s0.clone() * x));
     constrain_inputs(env);
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
+
     let s1 = env.read_column(IVCColumn::BlockSel(1));
-    env.set_assert_mapper(Box::new(move |x| s1.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s1.clone() * x));
     {
         let mut env = SubEnvColumn::new(env, IVCHashLens {});
         poseidon_8_56_5_3_2::interpreter::apply_permutation(&mut env, &PoseidonBN254Parameters);
     }
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s2 = env.read_column(IVCColumn::BlockSel(2));
-    env.set_assert_mapper(Box::new(move |x| s2.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s2.clone() * x));
     constrain_scalars(env);
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s3 = env.read_column(IVCColumn::BlockSel(3));
-    env.set_assert_mapper(Box::new(move |x| s3.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s3.clone() * x));
     constrain_ecadds(env);
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s4 = env.read_column(IVCColumn::BlockSel(4));
-    env.set_assert_mapper(Box::new(move |x| s4.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s4.clone() * x));
     constrain_challenges(env);
 
+    let fold_iteration = env.read_column(IVCColumn::FoldIteration);
     let s5 = env.read_column(IVCColumn::BlockSel(5));
-    env.set_assert_mapper(Box::new(move |x| s5.clone() * x));
+    env.set_assert_mapper(Box::new(move |x| fold_iteration.clone() * s5.clone() * x));
     constrain_u(env);
 
     env.set_assert_mapper(Box::new(move |x| x));

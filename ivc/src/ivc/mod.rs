@@ -76,6 +76,7 @@ mod tests {
         LT,
     >;
 
+    /// Generic IVC circuit builder.
     fn build_ivc_circuit<
         RNG: RngCore + CryptoRng,
         LT: LookupTableID,
@@ -83,6 +84,7 @@ mod tests {
     >(
         rng: &mut RNG,
         domain_size: usize,
+        fold_iteration: usize,
         lt_lens: L,
     ) -> IVCWitnessBuilderEnvRaw<LT> {
         let mut witness_env = IVCWitnessBuilderEnvRaw::<LT>::create();
@@ -127,7 +129,7 @@ mod tests {
         // TODO add nonzero E/T values.
         ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL, TEST_N_CHALS>(
             &mut SubEnvLookup::new(&mut witness_env, lt_lens),
-            0,
+            fold_iteration,
             comms_left,
             comms_right,
             comms_output,
@@ -147,12 +149,14 @@ mod tests {
     }
 
     #[test]
-    /// Tests if building the IVC circuit succeeds.
-    pub fn test_ivc_circuit() {
+    /// Tests if building the IVC circuit succeeds when using the general case
+    /// (i.e. fold_iteration != 0).
+    pub fn test_ivc_circuit_general_case() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
             1 << 15,
+            1,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
     }
@@ -175,17 +179,24 @@ mod tests {
             });
 
             assert_eq!(constraints_degrees.get(&1), None);
-            assert_eq!(constraints_degrees.get(&2), Some(&221));
-            assert_eq!(constraints_degrees.get(&3), Some(&245));
-            assert_eq!(constraints_degrees.get(&4), Some(&21));
+            assert_eq!(constraints_degrees.get(&2), Some(&6));
+            assert_eq!(constraints_degrees.get(&3), Some(&215));
+            assert_eq!(constraints_degrees.get(&4), Some(&245));
+            assert_eq!(constraints_degrees.get(&5), Some(&21));
 
-            // Maximum degree is 4
-            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 4));
+            // Maximum degree is 5
+            // - fold_iteration increases by one
+            // - the public selectors increase by one
+            assert!(constraints.iter().all(|c| c.degree(1, 0) <= 5));
         }
     }
 
     #[test]
-    fn test_completeness_ivc() {
+    /// Completeness test for the IVC circuit in the general case (i.e.
+    /// fold_iteration != 0).
+    fn test_completeness_ivc_general_case() {
+        let fold_iteration = 1;
+
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let domain_size = 1 << 15;
@@ -193,6 +204,61 @@ mod tests {
         let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
             domain_size,
+            fold_iteration,
+            IdMPrism::<IVCLookupTable<Ff1>>::default(),
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, IVCLookupTable<Ff1>>::create();
+        constrain_ivc::<Ff1, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
+            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+                domain_size,
+            ))
+        };
+
+        // Write constants
+        {
+            let rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    let rc = vec![*rc; domain_size];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
+                });
+            });
+        }
+
+        kimchi_msm::test::test_completeness_generic_no_lookups::<
+            { IVCColumn::N_COL - N_BLOCKS },
+            { IVCColumn::N_COL - N_BLOCKS },
+            0,
+            IVC_NB_TOTAL_FIXED_SELECTORS,
+            _,
+        >(
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
+            &mut rng,
+        );
+    }
+
+    #[test]
+    /// Completeness test for the IVC circuit in the base case (i.e.
+    /// fold_iteration = 0).
+    fn test_completeness_ivc_base_case() {
+        let fold_iteration = 0;
+
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let domain_size = 1 << 15;
+
+        let witness_env = build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
+            &mut rng,
+            domain_size,
+            fold_iteration,
             IdMPrism::<IVCLookupTable<Ff1>>::default(),
         );
         let relation_witness = witness_env.get_relation_witness(domain_size);

@@ -338,21 +338,19 @@ pub fn test_simple_add() {
         ivc_constraint_env.get_relation_constraints()
     };
 
-    // Sanity check: we want to verify that we only have maximum degree 4
+    // Sanity check: we want to verify that we only have maximum degree 5
     // constraints.
     // FIXME: we only want degree 2 (+1 for the selector in IVC).
-    app_constraints
-        .iter()
-        .chain(ivc_constraints.iter())
-        .enumerate()
-        .for_each(|(i, c)| {
-            assert!(
-                c.degree(1, 0) <= 4,
-                "Constraint {} has degree > 4: {:}",
-                i,
-                c
-            );
-        });
+    // FIXME: we do have degree 5 as the fold iteration and the public selectors
+    // add one
+    assert_eq!(
+        app_constraints
+            .iter()
+            .chain(ivc_constraints.iter())
+            .map(|c| c.degree(1, 0))
+            .max(),
+        Some(5)
+    );
 
     // Make the constraints folding compatible
     let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
