@@ -351,6 +351,171 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
 }
 
 #[test]
+fn test_delayed_columns() {
+    use crate::keccak::{KeccakColumn::*, DIM, QUARTERS};
+    use kimchi::circuits::polynomials::keccak::constants::{SHIFTS, SHIFTS_LEN, STATE_LEN};
+    use kimchi_msm::columns::ColumnIndexer;
+    use std::collections::HashSet;
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let domain_size = 1 << 6;
+
+    // Full trace with all possible steps of Keccak
+    let keccak_trace = create_trace_all_steps(domain_size, &mut rng);
+
+    let absorb_cols = [
+        vec![HashIndex, BlockIndex],
+        (0..RATE_IN_BYTES).map(SpongeBytes).collect(),
+    ]
+    .concat();
+
+    let squeeze_cols = [vec![HashIndex], (1..32).map(SpongeBytes).collect()].concat();
+
+    let not_root_cols = [
+        vec![HashIndex, StepIndex],
+        (0..STATE_LEN).map(Input).collect(),
+    ]
+    .concat();
+
+    let not_squeeze_cols = [
+        vec![HashIndex, StepIndex],
+        (0..STATE_LEN).map(Output).collect(),
+    ]
+    .concat();
+
+    let pad_cols = [vec![PadLength, TwoToPad], (0..5).map(PadSuffix).collect()].concat();
+
+    let sponge_cols = [
+        (0..200).map(SpongeBytes).collect::<Vec<_>>(),
+        (0..SHIFTS_LEN).map(SpongeShifts).collect(),
+    ]
+    .concat();
+
+    // Theta lookups
+    let mut round_cols = (0..QUARTERS * DIM).map(ThetaRemainderC).collect::<Vec<_>>();
+    round_cols.extend((0..QUARTERS * DIM).map(ThetaDenseRotC));
+    round_cols.extend((0..QUARTERS * DIM).map(ThetaExpandRotC));
+    round_cols.extend((0..QUARTERS * DIM).map(ThetaDenseC));
+    round_cols.extend((0..QUARTERS * DIM * SHIFTS).map(ThetaShiftsC));
+    // PiRho lookups
+    round_cols.extend((0..QUARTERS * DIM * DIM).map(PiRhoRemainderE));
+    round_cols.extend((0..QUARTERS * DIM * DIM).map(PiRhoQuotientE));
+    round_cols.extend((0..QUARTERS * DIM * DIM).map(PiRhoDenseRotE));
+    round_cols.extend((0..QUARTERS * DIM * DIM).map(PiRhoExpandRotE));
+    round_cols.extend((0..QUARTERS * DIM * DIM).map(PiRhoDenseE));
+    round_cols.extend((0..QUARTERS * DIM * DIM * SHIFTS).map(PiRhoShiftsE));
+    // Chi lookups
+    round_cols.extend((0..SHIFTS_LEN).map(ChiShiftsB));
+    round_cols.extend((0..SHIFTS_LEN).map(ChiShiftsSum));
+    // Iota lookups
+    round_cols.push(RoundNumber);
+    round_cols.extend((0..QUARTERS).map(RoundConstants));
+
+    let first: HashSet<KeccakColumn> = HashSet::from_iter(
+        [
+            absorb_cols.clone(),
+            not_squeeze_cols.clone(),
+            sponge_cols.clone(),
+        ]
+        .concat(),
+    );
+
+    let middle: HashSet<KeccakColumn> = HashSet::from_iter(
+        [
+            absorb_cols.clone(),
+            not_root_cols.clone(),
+            not_squeeze_cols.clone(),
+            sponge_cols.clone(),
+        ]
+        .concat(),
+    );
+
+    let last: HashSet<KeccakColumn> = HashSet::from_iter(
+        [
+            absorb_cols.clone(),
+            not_root_cols.clone(),
+            not_squeeze_cols.clone(),
+            pad_cols.clone(),
+            sponge_cols.clone(),
+        ]
+        .concat(),
+    );
+
+    let only: HashSet<KeccakColumn> = HashSet::from_iter(
+        [
+            absorb_cols.clone(),
+            not_squeeze_cols.clone(),
+            pad_cols.clone(),
+            sponge_cols.clone(),
+        ]
+        .concat(),
+    );
+
+    let squeeze: HashSet<KeccakColumn> = HashSet::from_iter(
+        [
+            squeeze_cols.clone(),
+            not_root_cols.clone(),
+            sponge_cols.clone(),
+        ]
+        .concat(),
+    );
+
+    let round: HashSet<KeccakColumn> =
+        HashSet::from_iter([round_cols, not_squeeze_cols, not_root_cols].concat());
+
+    // Check delayed columns of First
+    for col in first.iter() {
+        assert!(keccak_trace[Sponge(Absorb(First))].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(
+        first.len(),
+        keccak_trace[Sponge(Absorb(First))].delayed_columns.len()
+    );
+
+    // Check delayed columns of Middle
+    for col in middle.iter() {
+        assert!(keccak_trace[Sponge(Absorb(Middle))].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(
+        middle.len(),
+        keccak_trace[Sponge(Absorb(Middle))].delayed_columns.len()
+    );
+
+    // Check delayed columns of Last
+    for col in last.iter() {
+        assert!(keccak_trace[Sponge(Absorb(Last))].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(
+        last.len(),
+        keccak_trace[Sponge(Absorb(Last))].delayed_columns.len()
+    );
+
+    // Check delayed columns of Only
+    for col in only.iter() {
+        assert!(keccak_trace[Sponge(Absorb(Only))].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(
+        only.len(),
+        keccak_trace[Sponge(Absorb(Only))].delayed_columns.len()
+    );
+
+    // Check delayed columns of Squeeze
+    for col in squeeze.iter() {
+        assert!(keccak_trace[Sponge(Squeeze)].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(
+        squeeze.len(),
+        keccak_trace[Sponge(Squeeze)].delayed_columns.len()
+    );
+
+    // Check delayed columns of Round
+    for col in round.iter() {
+        assert!(keccak_trace[Round(0)].delayed_columns[&col.to_column()],);
+    }
+    assert_eq!(round.len(), keccak_trace[Round(0)].delayed_columns.len());
+}
+
+#[test]
 fn test_keccak_witness_satisfies_lookups() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
