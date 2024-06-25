@@ -432,32 +432,6 @@ pub fn test_simple_add() {
         }
         }
 
-        #[allow(dead_code)]
-        /// Evaluates the expression in the provided side
-        pub fn eval_naive_fexpr<'a>(&'a self, exp: &FoldingExp<Config<N_COL>>) -> EvalLeaf<'a, Fp> {
-            use FoldingExp::*;
-
-            match exp {
-                Atom(column) => self.process_extended_folding_column(column),
-                Double(e) => {
-                    let col = self.eval_naive_fexpr(e);
-                    col.map(Field::double, |f| {
-                        Field::double_in_place(f);
-                    })
-                }
-                Square(e) => {
-                    let col = self.eval_naive_fexpr(e);
-                    col.map(Field::square, |f| {
-                        Field::square_in_place(f);
-                    })
-                }
-                Add(e1, e2) => self.eval_naive_fexpr(e1) + self.eval_naive_fexpr(e2),
-                Sub(e1, e2) => self.eval_naive_fexpr(e1) - self.eval_naive_fexpr(e2),
-                Mul(e1, e2) => self.eval_naive_fexpr(e1) * self.eval_naive_fexpr(e2),
-                Pow(_e, _i) => panic!("We're not supposed to use this"),
-            }
-        }
-
         /// For FoldingCompatibleExp
         fn eval_naive_fcompat<'a>(
             &'a self,
