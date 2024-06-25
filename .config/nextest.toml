@@ -131,3 +131,9 @@ failure-output = "immediate-final"
 # The number of threads to run tests with. Supported values are either an integer or
 # the string "num-cpus". Can be overridden through the `--test-threads` option.
 test-threads = "num-cpus"
+
+[[profile.ci.overrides]]
+filter = "test(completeness)"
+threads-required = 2
+# The CI is slower. On a consumer laptop, completeness tests take up to 3m.
+slow-timeout = "5m"
