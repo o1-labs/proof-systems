@@ -19,6 +19,7 @@ use itertools::Itertools;
 use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS},
+        folding::PlonkishWitness,
         interpreter::{build_selectors, constrain_ivc, ivc_circuit, ivc_circuit_base_case},
     },
     poseidon::interpreter::PoseidonParams,
@@ -133,30 +134,7 @@ pub fn test_simple_add() {
         .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
         .collect();
 
-    // Folding Witness
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness<const N_COL: usize> {
-        pub witness: GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
-        // This does not have to be part of the witness... can be a static precompiled object.
-        pub fixed_selectors: Vec<Evaluations<Fp, R2D<Fp>>>,
-    }
-
-    // Trait required for folding
-
-    impl<const N_COL: usize> Foldable<Fp> for PlonkishWitness<N_COL> {
-        fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-            for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-                for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                    *a += challenge * b;
-                }
-            }
-            a
-        }
-    }
-
-    impl<const N_COL: usize> Witness<BN254G1Affine> for PlonkishWitness<N_COL> {}
-
-    impl<const N_COL: usize> Index<AdditionColumn> for PlonkishWitness<N_COL> {
+    impl<const N_COL: usize> Index<AdditionColumn> for PlonkishWitness<N_COL, Fp> {
         type Output = Evaluations<Fp, R2D<Fp>>;
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
@@ -168,7 +146,7 @@ pub fn test_simple_add() {
         }
     }
 
-    impl<const N_COL: usize> Index<Column> for PlonkishWitness<N_COL> {
+    impl<const N_COL: usize> Index<Column> for PlonkishWitness<N_COL, Fp> {
         type Output = Evaluations<Fp, R2D<Fp>>;
 
         /// Map a column alias to the corresponding witness column.
@@ -314,24 +292,24 @@ pub fn test_simple_add() {
         /// Commitments to the witness columns, for both sides
         pub instances: [PlonkishInstance<N_COL>; 2],
         /// Corresponds to the omega evaluations, for both sides
-        pub curr_witnesses: [PlonkishWitness<N_COL>; 2],
+        pub curr_witnesses: [PlonkishWitness<N_COL, Fp>; 2],
         /// Corresponds to the zeta*omega evaluations, for both sides
         /// This is curr_witness but left shifted by 1
-        pub next_witnesses: [PlonkishWitness<N_COL>; 2],
+        pub next_witnesses: [PlonkishWitness<N_COL, Fp>; 2],
     }
 
     impl<const N_COL: usize>
-        FoldingEnv<Fp, PlonkishInstance<N_COL>, PlonkishWitness<N_COL>, Column, Challenge, ()>
+        FoldingEnv<Fp, PlonkishInstance<N_COL>, PlonkishWitness<N_COL, Fp>, Column, Challenge, ()>
         for PlonkishEnvironment<N_COL>
     where
-        PlonkishWitness<N_COL>: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
+        PlonkishWitness<N_COL, Fp>: Index<Column, Output = Evaluations<Fp, R2D<Fp>>>,
     {
         type Structure = ();
 
         fn new(
             structure: &(),
             instances: [&PlonkishInstance<N_COL>; 2],
-            witnesses: [&PlonkishWitness<N_COL>; 2],
+            witnesses: [&PlonkishWitness<N_COL, Fp>; 2],
         ) -> Self {
             let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
             let mut next_witnesses = curr_witnesses.clone();
@@ -378,7 +356,7 @@ pub fn test_simple_add() {
         type Curve = BN254G1Affine;
         type Srs = SRS<BN254G1Affine>;
         type Instance = PlonkishInstance<N_COL>;
-        type Witness = PlonkishWitness<N_COL>;
+        type Witness = PlonkishWitness<N_COL, Fp>;
         type Structure = ();
         type Env = PlonkishEnvironment<N_COL>;
     }
@@ -386,7 +364,7 @@ pub fn test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv<const N_COL: usize> {
         //    inner: CF::Env,
-        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL>>,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, Fp>>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
         error_vec: Evaluations<Fp, R2D<Fp>>,
