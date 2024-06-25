@@ -172,7 +172,7 @@ jobs:
       - name: Test with latest nextest release (faster than cargo test)
         run: |
           eval $(opam env)
-          cargo nextest run --all-features --release
+          cargo nextest run --all-features --release --profile ci
 
       - name: Doc tests
         run: |
