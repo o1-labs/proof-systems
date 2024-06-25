@@ -11,13 +11,14 @@ use folding::{
     expressions::{ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{ExtendedWitness, Foldable},
     standard_config::StandardConfig,
-    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme, Instance, Witness,
+    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme, Instance,
 };
 use ivc::{
     self,
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
+        folding::PlonkishWitness,
         interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
@@ -169,30 +170,8 @@ pub fn heavy_test_simple_add() {
         DummyLookupTable,
     >;
 
-    // Folding Witness
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize> {
-        pub witness: GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
-        pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<Fp, R2D<Fp>>>,
-    }
-
-    // Trait required for folding
-
-    impl<const N_COL: usize, const N_FSEL: usize> Foldable<Fp> for PlonkishWitness<N_COL, N_FSEL> {
-        fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-            for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-                for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                    *a += challenge * b;
-                }
-            }
-            a
-        }
-    }
-
-    impl<const N_COL: usize, const N_FSEL: usize> Witness<Curve> for PlonkishWitness<N_COL, N_FSEL> {}
-
     impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
-        for PlonkishWitness<N_COL, N_FSEL>
+        for PlonkishWitness<N_COL, N_FSEL, Fp>
     {
         type Output = Vec<Fp>;
 
@@ -202,28 +181,6 @@ pub fn heavy_test_simple_add() {
                 AdditionColumn::B => &self.witness.cols[1].evals,
                 AdditionColumn::C => &self.witness.cols[2].evals,
             }
-        }
-    }
-
-    impl<const N_COL: usize, const N_FSEL: usize> Index<Column> for PlonkishWitness<N_COL, N_FSEL> {
-        type Output = Vec<Fp>;
-
-        /// Map a column alias to the corresponding witness column.
-        fn index(&self, index: Column) -> &Self::Output {
-            match index {
-                Column::Relation(i) => &self.witness.cols[i].evals,
-                Column::FixedSelector(i) => &self.fixed_selectors[i].evals,
-                other => panic!("Invalid column index: {other:?}"),
-            }
-        }
-    }
-
-    // for selectors, () in this case as we have none
-    impl<const N_COL: usize, const N_FSEL: usize> Index<()> for PlonkishWitness<N_COL, N_FSEL> {
-        type Output = Vec<Fp>;
-
-        fn index(&self, _index: ()) -> &Self::Output {
-            unreachable!()
         }
     }
 
@@ -351,7 +308,7 @@ pub fn heavy_test_simple_add() {
         Column,
         Challenge,
         PlonkishInstance<N_COL_TOTAL>,
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
+        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
         (),
         GenericVecStructure<Curve>,
     >;
@@ -365,7 +322,7 @@ pub fn heavy_test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv<const N_COL: usize, const N_FSEL: usize> {
         //    inner: CF::Env,
-        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL>>,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL, Fp>>,
         alphas: Alphas<Fp>,
         challenges: [Fp; Challenge::COUNT],
         error_vec: Evaluations<Fp, R2D<Fp>>,
