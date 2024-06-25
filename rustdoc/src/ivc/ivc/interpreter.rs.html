@@ -862,6 +862,30 @@
 <a href="#862" id="862">862</a>
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -1725,5 +1749,29 @@
     );
     process_challenges::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(env, fold_iteration, hash_r, <span class="kw-2">&amp;</span>chal_l, r);
     process_u::&lt;<span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL&gt;(env, fold_iteration, u_l, r);
+}
+
+<span class="doccomment">/// Base case IVC circuit, completely turned off.
+/// For the base case, we do set the fold iteration to 0, and we don&#39;t
+/// do any computation.
+/// As each constraint is multiplied by the fold iteration, this will simulate a
+/// &quot;deactivation&quot; of the IVC circuit.
+</span><span class="comment">// FIXME: this is not the final version.
+</span><span class="kw">pub fn </span>ivc_circuit_base_case&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env)
+<span class="kw">where
+    </span>F: PrimeField,
+    Env: DirectWitnessCap&lt;F, IVCColumn&gt; + HybridCopyCap&lt;F, IVCColumn&gt;,
+{
+    <span class="comment">// Assuming tables are initialized to zero we don&#39;t even have to do this.
+    </span><span class="kw">let </span>fold_iteration = <span class="number">0</span>;
+    <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
+        <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(block_i) {
+            env.write_column(
+                IVCColumn::FoldIteration,
+                <span class="kw-2">&amp;</span>Env::constant(F::from(fold_iteration <span class="kw">as </span>u64)),
+            );
+            env.next_row();
+        }
+    }
 }
 </code></pre></div></section></main></body></html>

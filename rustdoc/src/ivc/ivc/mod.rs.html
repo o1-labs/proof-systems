@@ -233,6 +233,72 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>helpers;
@@ -311,13 +377,15 @@
         LT,
     &gt;;
 
-    <span class="kw">fn </span>build_ivc_circuit&lt;
+    <span class="doccomment">/// Generic IVC circuit builder.
+    </span><span class="kw">fn </span>build_ivc_circuit&lt;
         RNG: RngCore + CryptoRng,
         LT: LookupTableID,
         L: MPrism&lt;Source = LT, Target = IVCLookupTable&lt;Ff1&gt;&gt;,
     &gt;(
         rng: <span class="kw-2">&amp;mut </span>RNG,
         domain_size: usize,
+        fold_iteration: usize,
         lt_lens: L,
     ) -&gt; IVCWitnessBuilderEnvRaw&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = IVCWitnessBuilderEnvRaw::&lt;LT&gt;::create();
@@ -362,7 +430,7 @@
         <span class="comment">// TODO add nonzero E/T values.
         </span>ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
             <span class="kw-2">&amp;mut </span>SubEnvLookup::new(<span class="kw-2">&amp;mut </span>witness_env, lt_lens),
-            <span class="number">0</span>,
+            fold_iteration,
             comms_left,
             comms_right,
             comms_output,
@@ -382,12 +450,14 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="doccomment">/// Tests if building the IVC circuit succeeds.
-    </span><span class="kw">pub fn </span>test_ivc_circuit() {
+    </span><span class="doccomment">/// Tests if building the IVC circuit succeeds when using the general case
+    /// (i.e. fold_iteration != 0).
+    </span><span class="kw">pub fn </span>test_ivc_circuit_general_case() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
             <span class="kw-2">&amp;mut </span>rng,
             <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
+            <span class="number">1</span>,
             IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
         );
     }
@@ -410,17 +480,24 @@
             });
 
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">None</span>);
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">221</span>));
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">245</span>));
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">4</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">21</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">6</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">215</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">4</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">245</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">5</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">21</span>));
 
-            <span class="comment">// Maximum degree is 4
-            </span><span class="macro">assert!</span>(constraints.iter().all(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>) &lt;= <span class="number">4</span>));
+            <span class="comment">// Maximum degree is 5
+            // - fold_iteration increases by one
+            // - the public selectors increase by one
+            </span><span class="macro">assert!</span>(constraints.iter().all(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>) &lt;= <span class="number">5</span>));
         }
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_completeness_ivc() {
+    </span><span class="doccomment">/// Completeness test for the IVC circuit in the general case (i.e.
+    /// fold_iteration != 0).
+    </span><span class="kw">fn </span>test_completeness_ivc_general_case() {
+        <span class="kw">let </span>fold_iteration = <span class="number">1</span>;
+
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
 
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -428,6 +505,61 @@
         <span class="kw">let </span>witness_env = build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
             <span class="kw-2">&amp;mut </span>rng,
             domain_size,
+            fold_iteration,
+            IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
+        );
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, IVCLookupTable&lt;Ff1&gt;&gt;::create();
+        constrain_ivc::&lt;Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
+        <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; IVC_NB_TOTAL_FIXED_SELECTORS]&gt; = {
+            Box::new(build_selectors::&lt;<span class="kw">_</span>, TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
+                domain_size,
+            ))
+        };
+
+        <span class="comment">// Write constants
+        </span>{
+            <span class="kw">let </span>rc = PoseidonBN254Parameters.constants();
+            rc.iter().enumerate().for_each(|(round, rcs)| {
+                rcs.iter().enumerate().for_each(|(state_index, rc)| {
+                    <span class="kw">let </span>rc = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
+                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
+                });
+            });
+        }
+
+        kimchi_msm::test::test_completeness_generic_no_lookups::&lt;
+            { IVCColumn::N_COL - N_BLOCKS },
+            { IVCColumn::N_COL - N_BLOCKS },
+            <span class="number">0</span>,
+            IVC_NB_TOTAL_FIXED_SELECTORS,
+            <span class="kw">_</span>,
+        &gt;(
+            constraints,
+            fixed_selectors,
+            relation_witness,
+            domain_size,
+            <span class="kw-2">&amp;mut </span>rng,
+        );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="doccomment">/// Completeness test for the IVC circuit in the base case (i.e.
+    /// fold_iteration = 0).
+    </span><span class="kw">fn </span>test_completeness_ivc_base_case() {
+        <span class="kw">let </span>fold_iteration = <span class="number">0</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+
+        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+
+        <span class="kw">let </span>witness_env = build_ivc_circuit::&lt;<span class="kw">_</span>, IVCLookupTable&lt;Ff1&gt;, <span class="kw">_</span>&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            domain_size,
+            fold_iteration,
             IdMPrism::&lt;IVCLookupTable&lt;Ff1&gt;&gt;::default(),
         );
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);

@@ -296,6 +296,13 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     columns::{IVCColumn, IVCHashLens, N_BLOCKS},
     helpers::{combine_large_to_xlarge, combine_small_to_full},
@@ -565,31 +572,38 @@
     // the constraints that are created in the block block_num will have
     // the form selector(block_num)*C(X) and not just C(X).
 
-    </span><span class="kw">let </span>s0 = env.read_column(IVCColumn::BlockSel(<span class="number">0</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s0.clone() * x));
+    </span><span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
+    <span class="kw">let </span>s0 = env.read_column(IVCColumn::BlockSel(<span class="number">0</span>));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s0.clone() * x));
     constrain_inputs(env);
 
+    <span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
+
     <span class="kw">let </span>s1 = env.read_column(IVCColumn::BlockSel(<span class="number">1</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s1.clone() * x));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s1.clone() * x));
     {
         <span class="kw">let </span><span class="kw-2">mut </span>env = SubEnvColumn::new(env, IVCHashLens {});
         poseidon_8_56_5_3_2::interpreter::apply_permutation(<span class="kw-2">&amp;mut </span>env, <span class="kw-2">&amp;</span>PoseidonBN254Parameters);
     }
 
+    <span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
     <span class="kw">let </span>s2 = env.read_column(IVCColumn::BlockSel(<span class="number">2</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s2.clone() * x));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s2.clone() * x));
     constrain_scalars(env);
 
+    <span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
     <span class="kw">let </span>s3 = env.read_column(IVCColumn::BlockSel(<span class="number">3</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s3.clone() * x));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s3.clone() * x));
     constrain_ecadds(env);
 
+    <span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
     <span class="kw">let </span>s4 = env.read_column(IVCColumn::BlockSel(<span class="number">4</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s4.clone() * x));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s4.clone() * x));
     constrain_challenges(env);
 
+    <span class="kw">let </span>fold_iteration = env.read_column(IVCColumn::FoldIteration);
     <span class="kw">let </span>s5 = env.read_column(IVCColumn::BlockSel(<span class="number">5</span>));
-    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| s5.clone() * x));
+    env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| fold_iteration.clone() * s5.clone() * x));
     constrain_u(env);
 
     env.set_assert_mapper(Box::new(<span class="kw">move </span>|x| x));

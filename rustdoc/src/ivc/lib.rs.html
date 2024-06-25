@@ -124,6 +124,21 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This crate provides a circuit to achieve Incremental Verifiable
 //! Computation (IVC) based on a variant of the folding scheme described in the
 //! paper [Nova](https://eprint.iacr.org/2021/370.pdf). For the rest of the
@@ -236,6 +251,21 @@
 //! the execution of all the rounds, and `q_poseidon` will be a (public
 //! selector) that will be set to `1` on the row that Poseidon will need to be
 //! executed, `0` otherwise.
+//!
+//! ## IVC circuit: base case
+//!
+//! The base case of the IVC circuit is supported by multiplying each constraint
+//! by a fold_iteration column. As it is `0` for the base case, the whole
+//! circuit is &quot;turned off&quot;.
+//! We do not want to keep this in the final version, and aim to replace it with
+//! a method that does not increase the degree of the constraints by one. The
+//! column value is also under-constrained for now.
+//!
+//! The code for the base case is handled in
+//! [crate::ivc::interpreter::ivc_circuit_base_case] and the corresponding
+//! constraints are in [crate::ivc::constraints::constrain_ivc]. The fold
+//! iteration column is set at each row by each process_* function in the
+//! interpreter.
 
 </span><span class="kw">pub mod </span>ivc;
 <span class="doccomment">/// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
