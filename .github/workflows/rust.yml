@@ -175,7 +175,7 @@ jobs:
       - name: Test everything, except tests related to completeness
         run: |
           eval $(opam env)
-          cargo nextest run --all-features --release --profile ci -E "not test(completeness)"
+          cargo nextest run --all-features --release --profile ci
 
       - name: Doc tests
         run: |
