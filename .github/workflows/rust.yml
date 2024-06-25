@@ -163,7 +163,7 @@ jobs:
       #
 
       # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-      - name: Install latest nextest release
+      - name: Install nextest 0.9.67
         run: |
           eval $(opam env)
           # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
