@@ -1,4 +1,5 @@
 pub mod columns;
+pub mod folding;
 pub mod interpreter;
 pub mod lookups;
 
