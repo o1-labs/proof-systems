@@ -289,7 +289,7 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
 
         match step {
             Sponge(Absorb(First)) => {
-                assert_eq!(keccak_env.constraints_env.lookups.len(), 737);
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 537);
                 assert_eq!(keccak_env.constraints_env.constraints.len(), 332);
                 // We have 1 different degrees of constraints in Absorbs::First
                 assert_eq!(constraint_degrees.len(), 1);
@@ -297,7 +297,7 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
                 assert_eq!(constraint_degrees[&1], 332);
             }
             Sponge(Absorb(Middle)) => {
-                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 538);
                 assert_eq!(keccak_env.constraints_env.constraints.len(), 232);
                 // We have 1 different degrees of constraints in Absorbs::Middle
                 assert_eq!(constraint_degrees.len(), 1);
@@ -305,7 +305,7 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
                 assert_eq!(constraint_degrees[&1], 232);
             }
             Sponge(Absorb(Last)) => {
-                assert_eq!(keccak_env.constraints_env.lookups.len(), 739);
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 539);
                 assert_eq!(keccak_env.constraints_env.constraints.len(), 374);
                 // We have 2 different degrees of constraints in Squeeze
                 assert_eq!(constraint_degrees.len(), 2);
@@ -315,7 +315,7 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
                 assert_eq!(constraint_degrees[&2], 141);
             }
             Sponge(Absorb(Only)) => {
-                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 538);
                 assert_eq!(keccak_env.constraints_env.constraints.len(), 474);
                 // We have 2 different degrees of constraints in Squeeze
                 assert_eq!(constraint_degrees.len(), 2);
