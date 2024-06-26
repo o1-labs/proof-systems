@@ -11,16 +11,13 @@ use folding::{
     Alphas, FoldingCompatibleExpr, FoldingScheme, Instance, Witness,
 };
 use ivc::{
+    self,
     ivc::{
         columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
         constraints::constrain_ivc,
         interpreter::build_selectors,
         lookups::IVCLookupTable,
         IVC_NB_CHALLENGES,
-    },
-    poseidon_8_56_5_3_2::{
-        bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
-        interpreter::PoseidonParams,
     },
 };
 use kimchi::circuits::expr::{ChallengeTerm, Variable};
@@ -437,20 +434,8 @@ pub fn test_simple_add() {
     // number of columns of the circuit - and the poseidon round constants.
     // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
     // reduce the IVC constraints to degree 2.
-    let mut ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<_, N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
-
-    // FIXME: we should have a function in the poseidon crate to fill a vector
-    // of selectors
-    {
-        let rc = PoseidonBN254Parameters.constants();
-        rc.iter().enumerate().for_each(|(round, rcs)| {
-            rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                ivc_fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] =
-                    vec![*rc; domain_size];
-            });
-        });
-    }
+    let ivc_fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
 
     // Sanity check on the domain size, can be removed later
     assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);

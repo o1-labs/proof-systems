@@ -110,7 +110,7 @@ mod tests {
 
         println!("Building fixed selectors");
         let mut fixed_selectors: Vec<Vec<Fp>> =
-            build_selectors::<Fp, TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
+            build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
 
         // Write constants
         {
@@ -214,7 +214,7 @@ mod tests {
         let constraints = constraint_env.get_relation_constraints();
 
         let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
-            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+            Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
                 domain_size,
             ))
         };
@@ -268,7 +268,7 @@ mod tests {
         let constraints = constraint_env.get_relation_constraints();
 
         let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
-            Box::new(build_selectors::<_, TEST_N_COL_TOTAL, TEST_N_CHALS>(
+            Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
                 domain_size,
             ))
         };
