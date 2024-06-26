@@ -7,17 +7,18 @@ use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     expressions::FoldingColumnTrait, instance_witness::Foldable, standard_config::StandardConfig,
-    Alphas, FoldingCompatibleExpr, FoldingScheme, Instance, Witness,
+    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme, Instance, Witness,
 };
 use ivc::{
     self,
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
-        interpreter::{build_selectors, ivc_circuit_base_case},
+        interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
+    poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
     circuits::{
@@ -130,6 +131,10 @@ pub fn heavy_test_simple_add() {
     // Therefore, we only need to add the challenges required by the specific
     // application.
     const N_ALPHAS: usize = N_ALPHAS_IVC + N_ALPHAS_APP;
+    // Number of extra quad constraints happens to be the same as
+    // extra quad columns for IVC.
+    const N_ALPHAS_QUAD: usize = N_ALPHAS + N_COL_QUAD_IVC;
+
     // There are two more challenges though.
     const N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
 
@@ -325,7 +330,7 @@ pub fn heavy_test_simple_add() {
             let challenges = [beta, gamma, joint_combiner];
 
             let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new(alpha);
+            let alphas = Alphas::new_sized(alpha, N_ALPHAS);
 
             Self {
                 commitments,
@@ -616,6 +621,270 @@ pub fn heavy_test_simple_add() {
     let one = (folding_instance_one, folding_witness_one);
     let two = (folding_instance_two, folding_witness_two);
     println!("fold_instance_witness_pair");
-    let _folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    let folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
     println!("Folding 1 succeeded");
+
+    let FoldingOutput {
+        folded_instance,
+        // Should not be required for the IVC circuit as it is encoding the
+        // verifier.
+        folded_witness,
+        t_0,
+        t_1,
+        relaxed_extended_left_instance,
+        relaxed_extended_right_instance,
+        to_absorb: _,
+    } = folding_output;
+
+    // The polynomial of the computation is linear, therefore, the error terms
+    // are zero
+    assert_ne!(t_0.elems[0], BN254G1Affine::zero());
+    assert_ne!(t_1.elems[0], BN254G1Affine::zero());
+
+    // Sanity check that the u values are the same. The u value is there to
+    // homogeneoize the polynomial describing the NP relation.
+    assert_eq!(
+        relaxed_extended_left_instance.u,
+        relaxed_extended_right_instance.u
+    );
+
+    // 1. Get all the commitments from the left instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_left: Vec<BN254G1Affine> = Vec::with_capacity(N_COL_TOTAL_QUAD);
+    comms_left.extend(
+        relaxed_extended_left_instance
+            .extended_instance
+            .instance
+            .commitments,
+    );
+
+    // Additional columns of quadri
+    {
+        let extended = relaxed_extended_left_instance.extended_instance.extended;
+        let extended_comms: Vec<_> = extended.iter().map(|x| x.elems[0]).collect();
+        comms_left.extend(extended_comms.clone());
+        extended_comms.iter().enumerate().for_each(|(i, x)| {
+            assert_ne!(
+                x,
+                &BN254G1Affine::zero(),
+                "Left extended commitment number {i:?} is zero"
+            );
+        });
+    }
+    assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
+    // Checking they are all not zero.
+    comms_left.iter().enumerate().for_each(|(i, c)| {
+        assert_ne!(
+            c,
+            &BN254G1Affine::zero(),
+            "Left commitment number {i:?} is zero"
+        );
+    });
+
+    // IVC is expecting the coordinates.
+    let comms_left: [(Fq, Fq); N_COL_TOTAL_QUAD] =
+        std::array::from_fn(|i| (comms_left[i].x, comms_left[i].y));
+
+    // 2. Get all the commitments from the right instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_right = Vec::with_capacity(N_COL_TOTAL_QUAD);
+    comms_right.extend(
+        relaxed_extended_left_instance
+            .extended_instance
+            .instance
+            .commitments,
+    );
+    {
+        let extended = relaxed_extended_right_instance.extended_instance.extended;
+        comms_right.extend(extended.iter().map(|x| x.elems[0]));
+    }
+    assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
+    // Checking they are all not zero.
+    comms_right.iter().enumerate().for_each(|(i, c)| {
+        assert_ne!(
+            c,
+            &BN254G1Affine::zero(),
+            "Right commitment number {i:?} is zero"
+        );
+    });
+
+    // IVC is expecting the coordinates.
+    let comms_right: [(Fq, Fq); N_COL_TOTAL_QUAD] =
+        std::array::from_fn(|i| (comms_right[i].x, comms_right[i].y));
+
+    // 3. Get all the commitments from the folded instance.
+    // We want a way to get also the potential additional columns.
+    let mut comms_out = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
+    comms_out.extend(folded_instance.extended_instance.instance.commitments);
+    {
+        let extended = folded_instance.extended_instance.extended.clone();
+        comms_out.extend(extended.iter().map(|x| x.elems[0]));
+    }
+    // Checking they are all not zero.
+    comms_out.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    // IVC is expecting the coordinates.
+    let comms_out: [(Fq, Fq); N_COL_TOTAL_QUAD] =
+        std::array::from_fn(|i| (comms_out[i].x, comms_out[i].y));
+
+    // FIXME: Should be handled in folding
+    let left_error_term = srs
+        .mask_custom(
+            relaxed_extended_left_instance.error_commitment,
+            &PolyComm::new(vec![Fp::one()]),
+        )
+        .unwrap()
+        .commitment;
+
+    // FIXME: Should be handled in folding
+    let right_error_term = srs
+        .mask_custom(
+            relaxed_extended_right_instance.error_commitment,
+            &PolyComm::new(vec![Fp::one()]),
+        )
+        .unwrap()
+        .commitment;
+
+    let error_terms = [
+        left_error_term.elems[0],
+        right_error_term.elems[0],
+        folded_instance.error_commitment.elems[0],
+    ];
+    error_terms.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+
+    let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
+
+    let t_terms = [t_0.elems[0], t_1.elems[0]];
+    t_terms.iter().for_each(|c| {
+        assert_ne!(c, &BN254G1Affine::zero());
+    });
+    let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
+
+    let u = relaxed_extended_left_instance.u;
+
+    // FIXME: add columns of the previous IVC circuit in the comms_left,
+    // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
+    let all_ivc_comms_left: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_left[0]
+        } else {
+            comms_left[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_right: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_right[0]
+        } else {
+            comms_right[i - IVCColumn::N_COL]
+        }
+    });
+    let all_ivc_comms_out: [(Fq, Fq); N_COL_TOTAL_QUAD] = std::array::from_fn(|i| {
+        if i < IVCColumn::N_COL {
+            comms_out[0]
+        } else {
+            comms_out[i - IVCColumn::N_COL]
+        }
+    });
+
+    let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
+    ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors.clone());
+
+    let alphas: Vec<_> = folded_instance
+        .extended_instance
+        .instance
+        .alphas
+        .clone()
+        .powers();
+    assert!(
+        alphas.len() == N_ALPHAS_QUAD,
+        "Alphas length mismatch: expected {N_ALPHAS_QUAD} got {:?}",
+        alphas.len()
+    );
+
+    ivc_circuit::<Fp, Fq, _, _, N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(
+        &mut ivc_witness_env_1,
+        1,
+        Box::new(all_ivc_comms_left),
+        Box::new(all_ivc_comms_right),
+        Box::new(all_ivc_comms_out),
+        error_terms,
+        t_terms,
+        u,
+        o1_utils::array::vec_to_boxed_array(alphas),
+        &PoseidonBN254Parameters,
+        domain_size,
+    );
+
+    let ivc_proof_inputs_1 =
+        ivc_witness_env_1.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
+    assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Witness step 3
+    ////////////////////////////////////////////////////////////////////////////
+
+    println!("Witness step 3");
+
+    let mut app_witness_three: WitnessBuilderEnv<Fp, AdditionColumn, 3, 3, 0, 0, DummyLookupTable> =
+        WitnessBuilderEnv::create();
+
+    // Witness three
+    for _i in 0..domain_size {
+        let a: Fp = Fp::rand(&mut rng);
+        let b: Fp = Fp::rand(&mut rng);
+        app_witness_three.write_column(AdditionColumn::A, &a);
+        app_witness_three.write_column(AdditionColumn::B, &b);
+        app_witness_three.write_column(AdditionColumn::C, &(a * a * b));
+        interpreter_simple_add(&mut app_witness_three);
+        app_witness_three.next_row();
+    }
+
+    let proof_inputs_three =
+        app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
+
+    // Here we concatenate with ivc_proof_inputs 1, inductive case
+    let joint_witness_three: Vec<_> = proof_inputs_three
+        .evaluations
+        .clone()
+        .into_iter()
+        .chain(ivc_proof_inputs_1.evaluations.clone())
+        .collect();
+
+    assert!(joint_witness_three.len() == N_COL_TOTAL);
+
+    let folding_witness_three_evals: Vec<Evaluations<Fp, R2D<Fp>>> = joint_witness_three
+        .clone()
+        .into_par_iter()
+        .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+        .collect();
+    let folding_witness_three = PlonkishWitness {
+        witness: folding_witness_three_evals.clone().try_into().unwrap(),
+        fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
+    };
+
+    let folding_instance_three = PlonkishInstance::from_witness(
+        &folding_witness_three.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Folding 2
+    ////////////////////////////////////////////////////////////////////////////
+
+    println!("Folding two");
+
+    let _folding_output_two = folding_scheme.fold_instance_witness_pair(
+        (folded_instance.clone(), folded_witness.clone()),
+        (
+            folding_instance_three.clone(),
+            folding_witness_three.clone(),
+        ),
+        &mut fq_sponge,
+    );
 }

@@ -379,6 +379,10 @@ impl<F: Field> Alphas<F> {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
 
+    pub fn new_sized(alpha: F, count: usize) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(count)))
+    }
+
     pub fn get(&self, i: usize) -> Option<F> {
         match self {
             Alphas::Powers(alpha, count) => {
