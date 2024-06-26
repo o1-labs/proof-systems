@@ -3,10 +3,14 @@
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, PrimeField, UniformRand, Zero};
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
-    expressions::FoldingColumnTrait, instance_witness::Foldable, standard_config::StandardConfig,
+    columns::ExtendedFoldingColumn,
+    eval_leaf::EvalLeaf,
+    expressions::{ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp},
+    instance_witness::{ExtendedWitness, Foldable},
+    standard_config::StandardConfig,
     Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme, Instance, Witness,
 };
 use ivc::{
@@ -24,6 +28,7 @@ use kimchi::{
     circuits::{
         domains::EvaluationDomains,
         expr::{ChallengeTerm, Variable},
+        gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
@@ -341,7 +346,7 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    type Config = StandardConfig<
+    type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
         Curve,
         Column,
         Challenge,
@@ -350,6 +355,147 @@ pub fn heavy_test_simple_add() {
         (),
         GenericVecStructure<Curve>,
     >;
+    type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL>;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Evaluations
+    ////////////////////////////////////////////////////////////////////////////
+
+    #[allow(dead_code)]
+    /// Minimal environment needed for evaluating constraints.
+    struct SimpleEvalEnv<const N_COL: usize, const N_FSEL: usize> {
+        //    inner: CF::Env,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL>>,
+        alphas: Alphas<Fp>,
+        challenges: [Fp; Challenge::COUNT],
+        error_vec: Evaluations<Fp, R2D<Fp>>,
+        /// The scalar `u` that is used to homogenize the polynomials
+        u: Fp,
+    }
+
+    impl<const N_COL: usize, const N_FSEL: usize> SimpleEvalEnv<N_COL, N_FSEL> {
+        pub fn challenge(&self, challenge: Challenge) -> Fp {
+            match challenge {
+                Challenge::Beta => self.challenges[0],
+                Challenge::Gamma => self.challenges[1],
+                Challenge::JointCombiner => self.challenges[2],
+            }
+        }
+
+        #[allow(dead_code)]
+        pub fn process_extended_folding_column(
+            &self,
+            col: &ExtendedFoldingColumn<Config<N_COL, N_FSEL>>,
+        ) -> EvalLeaf<Fp> {
+            use EvalLeaf::Col;
+            use ExtendedFoldingColumn::*;
+            match col {
+                Inner(Variable { col, row }) => {
+                    let wit = match row {
+                        CurrOrNext::Curr => &self.ext_witness.witness,
+                        CurrOrNext::Next => panic!("not implemented"),
+                    };
+                    // The following is possible because Index is implemented for our
+                    // circuit witnesses
+                    Col(&wit[*col])
+                },
+                WitnessExtended(i) => Col(&self.ext_witness.extended.get(i).unwrap().evals),
+                Error => panic!("shouldn't happen"),
+                Constant(c) => EvalLeaf::Const(*c),
+                Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
+                Alpha(i) => {
+                    let alpha = self.alphas.get(*i).expect("alpha not present");
+                    EvalLeaf::Const(alpha)
+                }
+                Selector(_s) => unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations."),
+        }
+        }
+
+        #[allow(dead_code)]
+        /// Evaluates the expression in the provided side
+        pub fn eval_naive_fexpr<'a>(
+            &'a self,
+            exp: &FoldingExp<Config<N_COL, N_FSEL>>,
+        ) -> EvalLeaf<'a, Fp> {
+            use FoldingExp::*;
+
+            match exp {
+                Atom(column) => self.process_extended_folding_column(column),
+                Double(e) => {
+                    let col = self.eval_naive_fexpr(e);
+                    col.map(Field::double, |f| {
+                        Field::double_in_place(f);
+                    })
+                }
+                Square(e) => {
+                    let col = self.eval_naive_fexpr(e);
+                    col.map(Field::square, |f| {
+                        Field::square_in_place(f);
+                    })
+                }
+                Add(e1, e2) => self.eval_naive_fexpr(e1) + self.eval_naive_fexpr(e2),
+                Sub(e1, e2) => self.eval_naive_fexpr(e1) - self.eval_naive_fexpr(e2),
+                Mul(e1, e2) => self.eval_naive_fexpr(e1) * self.eval_naive_fexpr(e2),
+                Pow(_e, _i) => panic!("We're not supposed to use this"),
+            }
+        }
+
+        #[allow(dead_code)]
+        /// For FoldingCompatibleExp
+        fn eval_naive_fcompat<'a>(
+            &'a self,
+            exp: &FoldingCompatibleExpr<Config<N_COL, N_FSEL>>,
+        ) -> EvalLeaf<'a, Fp> {
+            use FoldingCompatibleExpr::*;
+
+            match exp {
+                Atom(column) => {
+                    use FoldingCompatibleExprInner::*;
+                    match column {
+                        Cell(Variable { col, row }) => {
+                            let wit = match row {
+                                CurrOrNext::Curr => &self.ext_witness.witness,
+                                CurrOrNext::Next => panic!("not implemented"),
+                            };
+                            // The following is possible because Index is implemented for our
+                            // circuit witnesses
+                            EvalLeaf::Col(&wit[*col])
+                        }
+                        Challenge(chal) => EvalLeaf::Const(self.challenge(*chal)),
+                        Constant(c) => EvalLeaf::Const(*c),
+                        Extensions(ext) => {
+                            use ExpExtension::*;
+                            match ext {
+                                U => EvalLeaf::Const(self.u),
+                                Error => EvalLeaf::Col(&self.error_vec.evals),
+                                ExtendedWitness(i) => {
+                                    EvalLeaf::Col(&self.ext_witness.extended.get(i).unwrap().evals)
+                                }
+                                Alpha(i) => EvalLeaf::Const(self.alphas.get(*i).unwrap()),
+                                Selector(_sel) => panic!("No selectors supported yet"),
+                            }
+                        }
+                    }
+                }
+                Double(e) => {
+                    let col = self.eval_naive_fcompat(e);
+                    col.map(Field::double, |f| {
+                        Field::double_in_place(f);
+                    })
+                }
+                Square(e) => {
+                    let col = self.eval_naive_fcompat(e);
+                    col.map(Field::square, |f| {
+                        Field::square_in_place(f);
+                    })
+                }
+                Add(e1, e2) => self.eval_naive_fcompat(e1) + self.eval_naive_fcompat(e2),
+                Sub(e1, e2) => self.eval_naive_fcompat(e1) - self.eval_naive_fcompat(e2),
+                Mul(e1, e2) => self.eval_naive_fcompat(e1) * self.eval_naive_fcompat(e2),
+                Pow(_e, _i) => panic!("We're not supposed to use this"),
+            }
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
@@ -416,13 +562,13 @@ pub fn heavy_test_simple_add() {
     );
 
     // Make the constraints folding compatible
-    let app_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_constraints
+    let app_compat_constraints: Vec<FoldingCompatibleExpr<MainTestConfig>> = app_constraints
         .into_iter()
         .map(|x| FoldingCompatibleExpr::from(x.clone()))
         .collect();
 
-    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = {
-        let ivc_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = ivc_constraints
+    let ivc_compat_constraints: Vec<FoldingCompatibleExpr<MainTestConfig>> = {
+        let ivc_compat_constraints: Vec<FoldingCompatibleExpr<MainTestConfig>> = ivc_constraints
             .into_iter()
             .map(|x| FoldingCompatibleExpr::from(x.clone()))
             .collect();
@@ -452,10 +598,11 @@ pub fn heavy_test_simple_add() {
             .collect()
     };
 
-    let folding_compat_constraints: Vec<FoldingCompatibleExpr<Config>> = app_compat_constraints
-        .into_iter()
-        .chain(ivc_compat_constraints)
-        .collect();
+    let folding_compat_constraints: Vec<FoldingCompatibleExpr<MainTestConfig>> =
+        app_compat_constraints
+            .into_iter()
+            .chain(ivc_compat_constraints)
+            .collect();
 
     // We have as many alphas as constraints
     assert!(
@@ -464,8 +611,12 @@ pub fn heavy_test_simple_add() {
         folding_compat_constraints.len()
     );
 
-    let (folding_scheme, _real_folding_compat_constraints) =
-        FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &structure);
+    let (folding_scheme, _real_folding_compat_constraints) = FoldingScheme::<MainTestConfig>::new(
+        folding_compat_constraints,
+        &srs,
+        domain.d1,
+        &structure,
+    );
 
     let additional_columns = folding_scheme.get_number_of_additional_columns();
 
