@@ -39,8 +39,7 @@ use num_bigint::BigUint;
 use std::marker::PhantomData;
 
 use super::{
-    columns::IVC_NB_TOTAL_FIXED_SELECTORS, helpers::combine_large_to_full_field,
-    LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
+    columns::N_FSEL_IVC, helpers::combine_large_to_full_field, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
 };
 
 pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
@@ -772,7 +771,7 @@ pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
 #[allow(clippy::needless_range_loop)]
 pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> [Vec<kimchi_msm::Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] {
+) -> [Vec<kimchi_msm::Fp>; N_FSEL_IVC] {
     // Selectors can be only generated for BN254G1 for now, because
     // that's what Poseidon works with.
     use ark_ff::{One, Zero};
@@ -786,7 +785,7 @@ pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
 
     // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    let mut selectors: [Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] =
+    let mut selectors: [Vec<Fp>; N_FSEL_IVC] =
         core::array::from_fn(|_| vec![Fp::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
@@ -800,7 +799,7 @@ pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
         }
     }
 
-    for i in N_BLOCKS..IVC_NB_TOTAL_FIXED_SELECTORS - N_BLOCKS {
+    for i in N_BLOCKS..N_FSEL_IVC - N_BLOCKS {
         PoseidonBN254Parameters
             .constants()
             .iter()
@@ -851,8 +850,12 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
         + HybridCopyCap<F, IVCColumn>
         + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    // Total height of all blocks. Probably higher than this number. WIP
-    assert!(45 * N_COL_TOTAL + 2 < domain_size);
+    assert!(
+        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
+        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
+        total_height::<N_COL_TOTAL, N_CHALS>(),
+    );
+
     assert!(chal_l.len() == N_CHALS);
 
     let (_comms_small, comms_large, comms_xlarge) = process_inputs::<_, _, _, N_COL_TOTAL, N_CHALS>(
