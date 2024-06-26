@@ -886,6 +886,26 @@
 <a href="#886" id="886">886</a>
 <a href="#887" id="887">887</a>
 <a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -896,7 +916,7 @@
 
 <span class="kw">use crate</span>::{
     ivc::{
-        columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
+        columns::{block_height, total_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
         constraints::{
             constrain_challenges, constrain_ecadds, constrain_inputs, constrain_scalars,
             constrain_u,
@@ -905,7 +925,8 @@
     },
     poseidon_8_56_5_3_2::{
         bn254::{
-            NB_TOTAL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_TOTAL_ROUND, STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
+            PoseidonBN254Parameters, NB_TOTAL_ROUND <span class="kw">as </span>IVC_POSEIDON_NB_TOTAL_ROUND,
+            STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE,
         },
         interpreter::{poseidon_circuit, PoseidonParams},
     },
@@ -1656,18 +1677,25 @@
 /// The size of the array is the total number of public values required for the
 /// IVC. Therefore, it includes the potential round constants required by
 /// the hash function.
-</span><span class="comment">// FIXME: rc should be handled here or in the lens
 </span><span class="attr">#[allow(clippy::needless_range_loop)]
-</span><span class="kw">pub fn </span>build_selectors&lt;F, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
+</span><span class="kw">pub fn </span>build_selectors&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
-) -&gt; [Vec&lt;F&gt;; IVC_NB_TOTAL_FIXED_SELECTORS]
-<span class="kw">where
-    </span>F: PrimeField,
-{
+) -&gt; [Vec&lt;kimchi_msm::Fp&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] {
+    <span class="comment">// Selectors can be only generated for BN254G1 for now, because
+    // that&#39;s what Poseidon works with.
+    </span><span class="kw">use </span>ark_ff::{One, Zero};
+    <span class="kw">use </span>kimchi_msm::Fp;
+
+    <span class="macro">assert!</span>(
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;() &lt; domain_size,
+        <span class="string">&quot;IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})&quot;</span>,
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;(),
+    );
+
     <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;F&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] =
-        core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain_size]);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;Fp&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] =
+        core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); domain_size]);
     <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
     <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
         <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..block_height::&lt;N_COL_TOTAL, N_CHALS&gt;(block_i) {
@@ -1675,9 +1703,21 @@
                 curr_row &lt; domain_size,
                 <span class="string">&quot;The domain size is too small to handle the IVC circuit&quot;
             </span>);
-            selectors[block_i][curr_row] = F::one();
+            selectors[block_i][curr_row] = Fp::one();
             curr_row += <span class="number">1</span>;
         }
+    }
+
+    <span class="kw">for </span>i <span class="kw">in </span>N_BLOCKS..IVC_NB_TOTAL_FIXED_SELECTORS - N_BLOCKS {
+        PoseidonBN254Parameters
+            .constants()
+            .iter()
+            .enumerate()
+            .for_each(|(_round, rcs)| {
+                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
+                    selectors[i] = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
+                });
+            });
     }
 
     selectors

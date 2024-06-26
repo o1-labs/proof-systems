@@ -562,6 +562,13 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! IVC circuit layout - Top level documentation outdated
 //!
 //! The IVC circuit is tiled vertically. We assume we have as many
@@ -831,6 +838,13 @@
         </span><span class="number">5 </span>=&gt; <span class="number">1</span>,
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;block_size: no block number {block_num:?}&quot;</span>),
     }
+}
+
+<span class="doccomment">/// Returns total height of the IVC circuit.
+</span><span class="kw">pub fn </span>total_height&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;() -&gt; usize {
+    (<span class="number">0</span>..N_BLOCKS)
+        .map(block_height::&lt;N_COL_TOTAL, N_CHALS&gt;)
+        .sum()
 }
 
 <span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
