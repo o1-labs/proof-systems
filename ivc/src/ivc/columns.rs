@@ -269,6 +269,13 @@ pub fn block_height<const N_COL_TOTAL: usize, const N_CHALS: usize>(block_num: u
     }
 }
 
+/// Returns total height of the IVC circuit.
+pub fn total_height<const N_COL_TOTAL: usize, const N_CHALS: usize>() -> usize {
+    (0..N_BLOCKS)
+        .map(block_height::<N_COL_TOTAL, N_CHALS>)
+        .sum()
+}
+
 pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 // NB: We can reuse hash constants.

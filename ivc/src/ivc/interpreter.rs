@@ -8,7 +8,7 @@ use crate::poseidon_8_56_5_3_2::bn254::{
 
 use crate::{
     ivc::{
-        columns::{block_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
+        columns::{block_height, total_height, IVCColumn, IVCFECLens, IVCHashLens, N_BLOCKS},
         constraints::{
             constrain_challenges, constrain_ecadds, constrain_inputs, constrain_scalars,
             constrain_u,
@@ -17,7 +17,8 @@ use crate::{
     },
     poseidon_8_56_5_3_2::{
         bn254::{
-            NB_TOTAL_ROUND as IVC_POSEIDON_NB_TOTAL_ROUND, STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
+            PoseidonBN254Parameters, NB_TOTAL_ROUND as IVC_POSEIDON_NB_TOTAL_ROUND,
+            STATE_SIZE as IVC_POSEIDON_STATE_SIZE,
         },
         interpreter::{poseidon_circuit, PoseidonParams},
     },
@@ -768,18 +769,25 @@ pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
 /// The size of the array is the total number of public values required for the
 /// IVC. Therefore, it includes the potential round constants required by
 /// the hash function.
-// FIXME: rc should be handled here or in the lens
 #[allow(clippy::needless_range_loop)]
-pub fn build_selectors<F, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
-) -> [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS]
-where
-    F: PrimeField,
-{
+) -> [Vec<kimchi_msm::Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] {
+    // Selectors can be only generated for BN254G1 for now, because
+    // that's what Poseidon works with.
+    use ark_ff::{One, Zero};
+    use kimchi_msm::Fp;
+
+    assert!(
+        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
+        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
+        total_height::<N_COL_TOTAL, N_CHALS>(),
+    );
+
     // 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    let mut selectors: [Vec<F>; IVC_NB_TOTAL_FIXED_SELECTORS] =
-        core::array::from_fn(|_| vec![F::zero(); domain_size]);
+    let mut selectors: [Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS] =
+        core::array::from_fn(|_| vec![Fp::zero(); domain_size]);
     let mut curr_row = 0;
     for block_i in 0..N_BLOCKS {
         for _i in 0..block_height::<N_COL_TOTAL, N_CHALS>(block_i) {
@@ -787,9 +795,21 @@ where
                 curr_row < domain_size,
                 "The domain size is too small to handle the IVC circuit"
             );
-            selectors[block_i][curr_row] = F::one();
+            selectors[block_i][curr_row] = Fp::one();
             curr_row += 1;
         }
+    }
+
+    for i in N_BLOCKS..IVC_NB_TOTAL_FIXED_SELECTORS - N_BLOCKS {
+        PoseidonBN254Parameters
+            .constants()
+            .iter()
+            .enumerate()
+            .for_each(|(_round, rcs)| {
+                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
+                    selectors[i] = vec![*rc; domain_size];
+                });
+            });
     }
 
     selectors
