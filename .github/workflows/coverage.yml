@@ -1,0 +1,35 @@
+name: coverage
+
+on: [push]
+
+env:
+  OCAML_VERSION: "4.14.0"
+
+jobs:
+  test:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.1
+
+      - name: Setup OCaml ${{ env.OCAML_VERSION }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ env.OCAML_VERSION }}
+          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
+          # disable-cache: true
+
+      # Not activating all features because of Caml
+      - name: Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --verbose --release --workspace --timeout 120 --out xml --engine=llvm
+
+      # - name: Upload to codecov.io
+      #   uses: codecov/codecov-action@v2
+      #   with:
+      #     # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
+      #     fail_ci_if_error: true
