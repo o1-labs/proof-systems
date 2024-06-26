@@ -1005,6 +1005,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
+name = "fiat-shamir-typed"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "groupmap",
+ "itertools 0.12.1",
+ "kimchi",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "o1-utils",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with 3.6.0",
+ "thiserror",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
