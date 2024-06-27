@@ -103,9 +103,8 @@ pub fn interpreter_simple_add<
 ) {
     let a = env.read_column(AdditionColumn::A);
     let b = env.read_column(AdditionColumn::B);
-    env.hcopy(&(a.clone() + b.clone()), AdditionColumn::C);
     let c = env.read_column(AdditionColumn::C);
-    let eq = a.clone() + b.clone() - c;
+    let eq = a.clone() * a.clone() * b.clone() - c;
     env.assert_zero(eq);
 }
 
@@ -129,27 +128,28 @@ pub fn heavy_test_simple_add() {
     // There is no fixed selector in the APP circuit.
     const N_FSEL_TOTAL: usize = N_FSEL_IVC;
 
+    // Number of witness columns in the circuit.
+    // It consists of the columns of the inner circuit and the columns for the
+    // IVC circuit.
+    const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
+    // One extra quad column in APP
+    const N_COL_QUAD: usize = N_COL_QUAD_IVC + 1;
+    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
+
     // Our application circuit has two constraints.
-    const N_ALPHAS_APP: usize = 2;
+    const N_ALPHAS_APP: usize = 1;
     // Total number of challenges required by the circuit APP + IVC.
     // The number of challenges required by the IVC is defined by the library.
     // Therefore, we only need to add the challenges required by the specific
     // application.
     const N_ALPHAS: usize = N_ALPHAS_IVC + N_ALPHAS_APP;
     // Number of extra quad constraints happens to be the same as
-    // extra quad columns for IVC.
-    const N_ALPHAS_QUAD: usize = N_ALPHAS + N_COL_QUAD_IVC;
+    // extra quad columns.
+    const N_ALPHAS_QUAD: usize = N_ALPHAS + N_COL_QUAD;
 
     // There are two more challenges though.
-    const N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
-
-    // Number of witness columns in the circuit.
-    // It consists of the columns of the inner circuit and the columns for the
-    // IVC circuit.
-    const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
-    // No quad in APP.
-    const N_COL_QUAD: usize = N_COL_QUAD_IVC;
-    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
+    // Not used at the moment as IVC circuit only handles alphas
+    const _N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -508,7 +508,7 @@ pub fn heavy_test_simple_add() {
     // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
     // reduce the IVC constraints to degree 2.
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<N_COL_TOTAL_QUAD, N_CHALS>(domain_size).to_vec();
+        build_selectors::<N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(domain_size).to_vec();
 
     // Sanity check on the domain size, can be removed later
     assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
@@ -657,7 +657,10 @@ pub fn heavy_test_simple_add() {
     assert!(proof_inputs_one.evaluations.len() == 3);
 
     ivc_witness_env_0.set_fixed_selectors(ivc_fixed_selectors.clone());
-    ivc_circuit_base_case::<Fp, _, N_COL_TOTAL, N_CHALS>(&mut ivc_witness_env_0, domain_size);
+    ivc_circuit_base_case::<Fp, _, N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(
+        &mut ivc_witness_env_0,
+        domain_size,
+    );
     let ivc_proof_inputs_0 =
         ivc_witness_env_0.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
     assert!(ivc_proof_inputs_0.evaluations.len() == N_WIT_IVC);
