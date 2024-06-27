@@ -79,7 +79,7 @@ jobs:
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
 
-    runs-on: ubuntu-latest
+    runs-on: hetzner-1
     name: Run some basic checks and tests
     steps:
       - name: Checkout PR
