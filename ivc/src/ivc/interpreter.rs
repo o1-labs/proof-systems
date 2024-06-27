@@ -504,9 +504,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     Ff: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    // TODO FIXME multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
-    let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
-
     // Compute error and t terms limbs.
     let error_terms_large: Box<[[F; 2 * N_LIMBS_LARGE]; 3]> = o1_utils::array::vec_to_boxed_array2(
         error_terms
@@ -530,6 +527,38 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
             })
             .collect(),
     );
+
+    let stub_bucket = {
+        // FIXME This is a STUB right now it uses randomly generated points (not even on curve)
+        // Must use bucket input which is looked up.
+        let mut rng = rand::thread_rng();
+        let stub_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let stub_x_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_x);
+        let stub_y_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&stub_y);
+        (stub_x_large, stub_y_large)
+    };
+
+    // TODO FIXME STUBBED. multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
+    //let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
+    let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = {
+        let mut rng = rand::thread_rng();
+        let r_hat_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let r_hat_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
+        let r_hat_x_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&r_hat_x);
+        let r_hat_y_large: [F; N_LIMBS_LARGE] =
+            limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&r_hat_y);
+        let decomposition: [F; 2 * N_LIMBS_LARGE] = r_hat_x_large
+            .into_iter()
+            .chain(r_hat_y_large)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        o1_utils::array::vec_to_boxed_array(vec![decomposition; N_COL_TOTAL])
+    };
 
     // E_R' = r·T_0 + r^2·T_1 + r^3·E_R
     // FIXME for now stubbed and just equal to E_L
@@ -614,13 +643,6 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
         } else {
             panic!("Dead case");
         };
-
-        // FIXME This is a STUB right now it uses C_{O,i} commitments.
-        // Must use bucket input which is looked up.
-        let stub_bucket = (
-            comms_large[2][com_i][..N_LIMBS_LARGE].try_into().unwrap(),
-            comms_large[2][com_i][N_LIMBS_LARGE..].try_into().unwrap(),
-        );
 
         // Second FEC input point, Q.
         let (xq_limbs, yq_limbs) = if block_row_i < 34 * N_COL_TOTAL {
