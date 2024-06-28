@@ -266,7 +266,7 @@
     <span class="attr">#[test]
     </span><span class="doccomment">/// Creates or checks the real full-sized SRS. Only overwrites
     /// with the ENV flag.
-    </span><span class="kw">pub fn </span>create_or_check_srs() {
+    </span><span class="kw">pub fn </span>heavy_test_create_or_check_srs() {
         <span class="kw">let </span>domain_size = DOMAIN_SIZE;
         create_and_store_srs_with_path(<span class="bool-val">false</span>, domain_size, get_bn254_srs_path());
     }
