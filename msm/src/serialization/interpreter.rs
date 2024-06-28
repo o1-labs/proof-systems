@@ -383,6 +383,8 @@ pub fn constrain_multiplication<
 >(
     env: &mut Env,
 ) {
+    let _current_row = env.read_column(SerializationColumn::CurrentRow);
+
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
     let coeff_input_limbs_small: [_; N_LIMBS_SMALL] =
@@ -401,6 +403,8 @@ pub fn constrain_multiplication<
     let constant_u128 = |x: u128| -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
         Env::constant(From::from(x))
     };
+
+    //env.lookup();
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
