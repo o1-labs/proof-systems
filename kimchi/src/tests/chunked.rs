@@ -104,7 +104,7 @@ fn test_2_to_18_chunked_generic_gate_pub() {
 }*/
 
 #[test]
-fn test_2_to_17_chunked_generic_gate_pub() {
+fn heavy_test_2_to_17_chunked_generic_gate_pub() {
     test_generic_gate_with_srs_override(17, Some(1 << 16))
 }
 

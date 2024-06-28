@@ -228,7 +228,7 @@ mod tests {
 
     /// This test checks that the two serialized SRS on disk are correct.
     #[test]
-    pub fn test_srs_serialization() {
+    pub fn heavy_test_srs_serialization() {
         create_or_check_srs::<Vesta>(SERIALIZED_SRS_SIZE, StoredSRSType::Prod);
         create_or_check_srs::<Pallas>(SERIALIZED_SRS_SIZE, StoredSRSType::Prod);
         create_or_check_srs::<Vesta>(SERIALIZED_SRS_SIZE, StoredSRSType::Test);
