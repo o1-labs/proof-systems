@@ -260,7 +260,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraints_degrees = HashMap::new();
 
-        <span class="macro">assert_eq!</span>(constraints.len(), <span class="number">24</span>);
+        <span class="macro">assert_eq!</span>(constraints.len(), <span class="number">36</span>);
 
         {
             constraints.iter().for_each(|c| {
@@ -269,8 +269,8 @@
             });
 
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">None</span>);
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">3</span>));
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">21</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">36</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">None</span>);
 
             <span class="macro">assert!</span>(constraints.iter().map(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>)).max() &lt;= <span class="prelude-val">Some</span>(<span class="number">3</span>));
         }
@@ -284,7 +284,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraints_degrees = HashMap::new();
 
-        <span class="macro">assert_eq!</span>(constraints.len(), <span class="number">63</span>);
+        <span class="macro">assert_eq!</span>(constraints.len(), <span class="number">75</span>);
 
         {
             constraints.iter().for_each(|c| {
@@ -293,8 +293,8 @@
             });
 
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">5</span>));
-            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">21</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">38</span>));
+            <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">3</span>), <span class="prelude-val">None</span>);
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">4</span>), <span class="prelude-val">None</span>);
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">5</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>));
             <span class="macro">assert_eq!</span>(constraints_degrees.get(<span class="kw-2">&amp;</span><span class="number">6</span>), <span class="prelude-val">None</span>);

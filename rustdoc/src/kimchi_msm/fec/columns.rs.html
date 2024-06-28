@@ -142,13 +142,30 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
 
 <span class="doccomment">/// Number of columns in the FEC circuits.
-</span><span class="kw">pub const </span>FEC_N_COLUMNS: usize = <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">12 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
+</span><span class="kw">pub const </span>FEC_N_COLUMNS: usize =
+    FECColumnInput::N_COL + FECColumnOutput::N_COL + FECColumnInter::N_COL;
 
 <span class="doccomment">/// FEC ADD inputs: two points = four coordinates, and each in 4
 /// &quot;large format&quot; limbs.
@@ -178,6 +195,9 @@
     </span>Q1Sign,        <span class="comment">// 1
     </span>Q2Sign,        <span class="comment">// 1
     </span>Q3Sign,        <span class="comment">// 1
+    </span>Q1L(usize),    <span class="comment">// 4
+    </span>Q2L(usize),    <span class="comment">// 4
+    </span>Q3L(usize),    <span class="comment">// 4
     </span>Carry1(usize), <span class="comment">// 36
     </span>Carry2(usize), <span class="comment">// 36
     </span>Carry3(usize), <span class="comment">// 36
@@ -232,7 +252,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumnInter {
-    <span class="kw">const </span>N_COL: usize = N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
+    <span class="kw">const </span>N_COL: usize = <span class="number">4 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumnInter::F(i) =&gt; {
@@ -258,17 +278,29 @@
             FECColumnInter::Q1Sign =&gt; Column::Relation(N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL),
             FECColumnInter::Q2Sign =&gt; Column::Relation(N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
             FECColumnInter::Q3Sign =&gt; Column::Relation(N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
+            FECColumnInter::Q1L(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
+                Column::Relation(N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
+            }
+            FECColumnInter::Q2L(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
+            }
+            FECColumnInter::Q3L(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
+                Column::Relation(<span class="number">3 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
+            }
             FECColumnInter::Carry1(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::Relation(N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
+                Column::Relation(<span class="number">4 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
             }
             FECColumnInter::Carry2(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::Relation(N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i)
+                Column::Relation(<span class="number">4 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i)
             }
             FECColumnInter::Carry3(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::Relation(N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i)
+                Column::Relation(<span class="number">4 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i)
             }
         }
     }
