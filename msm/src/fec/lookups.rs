@@ -57,9 +57,9 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
     }
 
     /// Converts a value to its index in the fixed table.
-    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> Option<usize> {
         assert!(self.is_member(value));
-        match self {
+        Some(match self {
             Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
             Self::RangeCheck14Abs => {
                 if value < F::from(1u64 << 14) {
@@ -76,7 +76,7 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                 }
             }
             Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
-        }
+        })
     }
 
     fn all_variants() -> Vec<Self> {
