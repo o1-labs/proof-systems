@@ -76,14 +76,19 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
 impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
     for ConstraintBuilderEnv<F, LT>
 {
-    fn lookup(&mut self, table_id: LT, value: &<Self as ColAccessCap<F, CIx>>::Variable) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Logup {
-            table_id,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        };
-        self.lookups.entry(table_id).or_default().push(lookup);
+    fn lookup_vec(&mut self, table_id: LT, values: &[<Self as ColAccessCap<F, CIx>>::Variable]) {
+        if values.len() == 1 {
+            let value = &values[0];
+            let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+            let lookup = Logup {
+                table_id,
+                numerator: Expr::Atom(ExprInner::Constant(one)),
+                value: vec![value.clone()],
+            };
+            self.lookups.entry(table_id).or_default().push(lookup);
+        } else {
+            // unimplemented, but we just ignore these calls for now
+        }
     }
 }
 
