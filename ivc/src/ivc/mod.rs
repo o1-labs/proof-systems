@@ -17,7 +17,7 @@ pub const N_LIMBS_XLARGE: usize = 2;
 /// require.
 /// A regression test is available in the tests directory, under the name
 /// `test_regression_additional_columns_reduction_to_degree_2`
-pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 344;
+pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 335;
 
 /// Number of challenges in the IVC circuit.
 /// It is the maximum number of constraints per row.
@@ -171,8 +171,8 @@ mod tests {
 
         // Regression testing for the number of constraints and their degree
         {
-            // 55 + 432 (Poseidon)
-            assert_eq!(constraints.len(), 487);
+            // 67 + 432 (Poseidon)
+            assert_eq!(constraints.len(), 499);
             constraints.iter().for_each(|c| {
                 let degree = c.degree(1, 0);
                 *constraints_degrees.entry(degree).or_insert(0) += 1;
@@ -181,8 +181,8 @@ mod tests {
             assert_eq!(constraints_degrees.get(&1), None);
             assert_eq!(constraints_degrees.get(&2), Some(&6));
             assert_eq!(constraints_degrees.get(&3), Some(&215));
-            assert_eq!(constraints_degrees.get(&4), Some(&245));
-            assert_eq!(constraints_degrees.get(&5), Some(&21));
+            assert_eq!(constraints_degrees.get(&4), Some(&278));
+            assert_eq!(constraints_degrees.get(&5), None);
 
             // Maximum degree is 5
             // - fold_iteration increases by one

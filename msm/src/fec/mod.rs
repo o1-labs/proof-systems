@@ -91,7 +91,7 @@ mod tests {
 
         let mut constraints_degrees = HashMap::new();
 
-        assert_eq!(constraints.len(), 24);
+        assert_eq!(constraints.len(), 36);
 
         {
             constraints.iter().for_each(|c| {
@@ -100,8 +100,8 @@ mod tests {
             });
 
             assert_eq!(constraints_degrees.get(&1), None);
-            assert_eq!(constraints_degrees.get(&2), Some(&3));
-            assert_eq!(constraints_degrees.get(&3), Some(&21));
+            assert_eq!(constraints_degrees.get(&2), Some(&36));
+            assert_eq!(constraints_degrees.get(&3), None);
 
             assert!(constraints.iter().map(|c| c.degree(1, 0)).max() <= Some(3));
         }
@@ -115,7 +115,7 @@ mod tests {
 
         let mut constraints_degrees = HashMap::new();
 
-        assert_eq!(constraints.len(), 63);
+        assert_eq!(constraints.len(), 75);
 
         {
             constraints.iter().for_each(|c| {
@@ -124,8 +124,8 @@ mod tests {
             });
 
             assert_eq!(constraints_degrees.get(&1), Some(&1));
-            assert_eq!(constraints_degrees.get(&2), Some(&5));
-            assert_eq!(constraints_degrees.get(&3), Some(&21));
+            assert_eq!(constraints_degrees.get(&2), Some(&38));
+            assert_eq!(constraints_degrees.get(&3), None);
             assert_eq!(constraints_degrees.get(&4), None);
             assert_eq!(constraints_degrees.get(&5), Some(&2));
             assert_eq!(constraints_degrees.get(&6), None);

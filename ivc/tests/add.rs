@@ -346,7 +346,7 @@ pub fn test_simple_add() {
             .chain(ivc_constraints.iter())
             .map(|c| c.degree(1, 0))
             .max(),
-        Some(5)
+        Some(4)
     );
 
     // Make the constraints folding compatible
