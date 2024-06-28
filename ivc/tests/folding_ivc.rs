@@ -133,6 +133,8 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
         FoldingScheme::<TestConfig>::new(folding_compat_expresions, &srs, domain, &());
     assert_eq!(
         scheme.get_number_of_additional_columns(),
-        N_ADDITIONAL_WIT_COL_QUAD
+        N_ADDITIONAL_WIT_COL_QUAD,
+        "Expected {N_ADDITIONAL_WIT_COL_QUAD}, got {}",
+        scheme.get_number_of_additional_columns(),
     );
 }

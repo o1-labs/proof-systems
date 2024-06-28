@@ -227,6 +227,13 @@ pub fn constrain_ec_addition<
         read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q2(i)));
     let q3_limbs_small: [_; N_LIMBS_SMALL] =
         read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q3(i)));
+    let q1_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q1L(i)));
+    let q2_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q2L(i)));
+    let q3_limbs_large: [_; N_LIMBS_LARGE] =
+        read_column_array(env, |i| FECColumn::Inter(FECColumnInter::Q3L(i)));
+
     let q1_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q1Sign));
     let q2_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q2Sign));
     let q3_sign = env.read_column(FECColumn::Inter(FECColumnInter::Q3Sign));
@@ -288,12 +295,37 @@ pub fn constrain_ec_addition<
         }
     }
 
+    // Make sure qi_limbs_large are properly constructed from qi_limbs_small and qi_sign
+    {
+        let q1_limbs_large_abs_expected =
+            combine_small_to_large::<_, _, Env>(q1_limbs_small.clone());
+        for j in 0..N_LIMBS_LARGE {
+            env.assert_zero(
+                q1_limbs_large[j].clone()
+                    - q1_sign.clone() * q1_limbs_large_abs_expected[j].clone(),
+            );
+        }
+        let q2_limbs_large_abs_expected =
+            combine_small_to_large::<_, _, Env>(q2_limbs_small.clone());
+        for j in 0..N_LIMBS_LARGE {
+            env.assert_zero(
+                q2_limbs_large[j].clone()
+                    - q2_sign.clone() * q2_limbs_large_abs_expected[j].clone(),
+            );
+        }
+        let q3_limbs_large_abs_expected =
+            combine_small_to_large::<_, _, Env>(q3_limbs_small.clone());
+        for j in 0..N_LIMBS_LARGE {
+            env.assert_zero(
+                q3_limbs_large[j].clone()
+                    - q3_sign.clone() * q3_limbs_large_abs_expected[j].clone(),
+            );
+        }
+    }
+
     let xr_limbs_large = combine_small_to_large::<_, _, Env>(xr_limbs_small.clone());
     let yr_limbs_large = combine_small_to_large::<_, _, Env>(yr_limbs_small.clone());
     let s_limbs_large = combine_small_to_large::<_, _, Env>(s_limbs_small.clone());
-    let q1_limbs_large = combine_small_to_large::<_, _, Env>(q1_limbs_small.clone());
-    let q2_limbs_large = combine_small_to_large::<_, _, Env>(q2_limbs_small.clone());
-    let q3_limbs_large = combine_small_to_large::<_, _, Env>(q3_limbs_small.clone());
 
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<F, _, Env>(carry1_limbs_small.clone());
@@ -328,10 +360,9 @@ pub fn constrain_ec_addition<
             constraint1 = constraint1 - (yp_limbs_large[i].clone() - yq_limbs_large[i].clone());
         }
         constraint1 = constraint1
-            - q1_sign.clone()
-                * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                    q1_limbs_large[j].clone() * f_limbs_large[k].clone()
-                });
+            - fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+                q1_limbs_large[j].clone() * f_limbs_large[k].clone()
+            });
         constraint1 = constraint1 + add_extra_carries(i, &carry1_limbs_large);
         env.assert_zero(constraint1);
     }
@@ -349,10 +380,9 @@ pub fn constrain_ec_addition<
                 + xq_limbs_large[i].clone();
         }
         constraint2 = constraint2
-            - q2_sign.clone()
-                * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                    q2_limbs_large[j].clone() * f_limbs_large[k].clone()
-                });
+            - fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+                q2_limbs_large[j].clone() * f_limbs_large[k].clone()
+            });
         constraint2 = constraint2 + add_extra_carries(i, &carry2_limbs_large);
         env.assert_zero(constraint2);
     }
@@ -367,10 +397,9 @@ pub fn constrain_ec_addition<
             constraint3 = constraint3 + yr_limbs_large[i].clone() + yp_limbs_large[i].clone();
         }
         constraint3 = constraint3
-            - q3_sign.clone()
-                * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                    q3_limbs_large[j].clone() * f_limbs_large[k].clone()
-                });
+            - fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+                q3_limbs_large[j].clone() * f_limbs_large[k].clone()
+            });
         constraint3 = constraint3 + add_extra_carries(i, &carry3_limbs_large);
         env.assert_zero(constraint3)
     }
@@ -494,15 +523,33 @@ pub fn ec_add_circuit<
         (q3_bi, F::one())
     };
 
+    // TODO can this be better?
     // Used for witness computation
+    // Big limbs /have/ sign in them.
     let q1_limbs_large: [F; N_LIMBS_LARGE] =
-        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q1_bi.to_biguint().unwrap());
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q1_bi.to_biguint().unwrap())
+            .into_iter()
+            .map(|v| v * q1_sign)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
     let q2_limbs_large: [F; N_LIMBS_LARGE] =
-        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q2_bi.to_biguint().unwrap());
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q2_bi.to_biguint().unwrap())
+            .into_iter()
+            .map(|v| v * q2_sign)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
     let q3_limbs_large: [F; N_LIMBS_LARGE] =
-        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q3_bi.to_biguint().unwrap());
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(q3_bi.to_biguint().unwrap())
+            .into_iter()
+            .map(|v| v * q3_sign)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
     // Written into the columns
+    // small limbs are signless 15-bit
     let q1_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(q1_bi.to_biguint().unwrap());
     let q2_limbs_small: [F; N_LIMBS_SMALL] =
@@ -519,9 +566,20 @@ pub fn ec_add_circuit<
     write_column_array_const(env, &q3_limbs_small, |i| {
         FECColumn::Inter(FECColumnInter::Q3(i))
     });
+
     write_column_const(env, FECColumn::Inter(FECColumnInter::Q1Sign), &q1_sign);
     write_column_const(env, FECColumn::Inter(FECColumnInter::Q2Sign), &q2_sign);
     write_column_const(env, FECColumn::Inter(FECColumnInter::Q3Sign), &q3_sign);
+
+    write_column_array_const(env, &q1_limbs_large, |i| {
+        FECColumn::Inter(FECColumnInter::Q1L(i))
+    });
+    write_column_array_const(env, &q2_limbs_large, |i| {
+        FECColumn::Inter(FECColumnInter::Q2L(i))
+    });
+    write_column_array_const(env, &q3_limbs_large, |i| {
+        FECColumn::Inter(FECColumnInter::Q3L(i))
+    });
 
     let mut carry1: F = From::from(0u64);
     let mut carry2: F = From::from(0u64);
@@ -589,10 +647,9 @@ pub fn ec_add_circuit<
         if i < N_LIMBS_LARGE {
             res1 -= yp_limbs_large[i] - yq_limbs_large[i];
         }
-        res1 -= q1_sign
-            * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                q1_limbs_large[j] * f_limbs_large[k]
-            });
+        res1 -= fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            q1_limbs_large[j] * f_limbs_large[k]
+        });
         res1 += carry1;
         let newcarry1 = compute_carry(res1);
         assign_carry(env, &n_half_bi, i, newcarry1, &mut carry1, |i| {
@@ -607,10 +664,9 @@ pub fn ec_add_circuit<
         if i < N_LIMBS_LARGE {
             res2 += xr_limbs_large[i] + xp_limbs_large[i] + xq_limbs_large[i];
         }
-        res2 -= q2_sign
-            * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                q2_limbs_large[j] * f_limbs_large[k]
-            });
+        res2 -= fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            q2_limbs_large[j] * f_limbs_large[k]
+        });
         res2 += carry2;
         let newcarry2 = compute_carry(res2);
         assign_carry(env, &n_half_bi, i, newcarry2, &mut carry2, |i| {
@@ -625,10 +681,9 @@ pub fn ec_add_circuit<
         if i < N_LIMBS_LARGE {
             res3 += yr_limbs_large[i] + yp_limbs_large[i];
         }
-        res3 -= q3_sign
-            * fold_choice2(N_LIMBS_LARGE, i, |j, k| {
-                q3_limbs_large[j] * f_limbs_large[k]
-            });
+        res3 -= fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            q3_limbs_large[j] * f_limbs_large[k]
+        });
         res3 += carry3;
         let newcarry3 = compute_carry(res3);
         assign_carry(env, &n_half_bi, i, newcarry3, &mut carry3, |i| {
