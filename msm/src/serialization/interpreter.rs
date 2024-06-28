@@ -8,7 +8,11 @@ use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
-    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
+    serialization::{
+        column::{SerializationColumn, N_FSEL_SER},
+        lookups::LookupTable,
+        N_INTERMEDIATE_LIMBS,
+    },
     LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::{
@@ -379,7 +383,9 @@ pub fn constrain_multiplication<
 >(
     env: &mut Env,
 ) {
-    let _current_row = env.read_column(SerializationColumn::CurrentRow);
+    let current_row = env.read_column(SerializationColumn::CurrentRow);
+    let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
+    let next_coeff_row = env.read_column(SerializationColumn::NextCoeffRow);
 
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
@@ -400,7 +406,33 @@ pub fn constrain_multiplication<
         Env::constant(From::from(x))
     };
 
-    //env.lookup();
+    // Soundness: How to prevent misreading?
+    //
+    // Assume that RAM content can be adversarially controlled.
+    // Then what prevents an adversary from inserting a malicious input?
+    // Assume INPUT_i' is used on row i, where INPUT_i' != intended INPUT_i = OUTPUT_{prev_i}.
+    // Then instead of OUTPUT_i we get OUTPUT_i', which changes a lot of future cells.
+    // This can be done, still.
+    //
+    // But this attack increases the number of lookup elements by 1,
+    // so now the total number is more than #domain_size. If one can
+    // enforce certain number of rows in the lookup, this attack /
+    // seems/ to be avoided, otherwise not.
+    {
+        // Reading the input:
+        // (prev_i, cur_i, [VEC])
+        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
+        vec_input.insert(0, current_row.clone());
+        vec_input.insert(0, previous_coeff_row);
+        env.lookup_vec(LookupTable::MultiplicationBus, vec_input.as_slice());
+
+        // Writing the output
+        // (cur_i, next_i, [VEC])
+        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        vec_output.insert(0, next_coeff_row);
+        vec_output.insert(0, current_row);
+        env.lookup_vec(LookupTable::MultiplicationBus, vec_output.as_slice());
+    }
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -651,6 +683,18 @@ pub fn multiplication_circuit<
 
     constrain_multiplication::<F, Ff, Env>(env);
     coeff_result
+}
+
+/// Builds fixed selectors for serialization circuit
+pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
+    let sel1 = (0..domain_size).map(|i| F::from(i as u64)).collect();
+    let sel2 = (0..domain_size)
+        .map(|i| F::from((i - (1 << (i.ilog2() - 1))) as u64))
+        .collect();
+    let sel3 = (0..domain_size)
+        .map(|i| F::from((i + (1 << (i.ilog2()))) as u64))
+        .collect();
+    [sel1, sel2, sel3]
 }
 
 #[cfg(test)]

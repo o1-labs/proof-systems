@@ -15,10 +15,10 @@ mod tests {
         columns::ColumnIndexer,
         logup::LookupTableID,
         serialization::{
-            column::{SerializationColumn, SER_N_COLUMNS},
+            column::{SerializationColumn, N_COL_SER, N_FSEL_SER},
             interpreter::{
-                constrain_multiplication, deserialize_field_element, limb_decompose_ff,
-                multiplication_circuit,
+                build_selectors, constrain_multiplication, deserialize_field_element,
+                limb_decompose_ff, multiplication_circuit,
             },
             lookups::LookupTable,
         },
@@ -28,10 +28,10 @@ mod tests {
     type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         SerializationColumn,
-        { <SerializationColumn as ColumnIndexer>::N_COL },
-        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer>::N_COL - N_FSEL_SER },
+        { <SerializationColumn as ColumnIndexer>::N_COL - N_FSEL_SER },
         0,
-        0,
+        N_FSEL_SER,
         LookupTable<Ff1>,
     >;
 
@@ -86,6 +86,8 @@ mod tests {
             }
         }
 
+        let fixed_selectors = build_selectors(domain_size);
+
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let multiplication_bus: Vec<Fp> = vec![];
         let mut lookup_tables_data = BTreeMap::new();
@@ -98,15 +100,15 @@ mod tests {
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
         crate::test::test_completeness_generic::<
-            SER_N_COLUMNS,
-            SER_N_COLUMNS,
+            { N_COL_SER - N_FSEL_SER },
+            { N_COL_SER - N_FSEL_SER },
             0,
-            0,
+            N_FSEL_SER,
             LookupTable<Ff1>,
             _,
         >(
             constraints,
-            Box::new([]),
+            Box::new(fixed_selectors),
             proof_inputs,
             domain_size,
             &mut rng,
