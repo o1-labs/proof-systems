@@ -87,10 +87,14 @@ mod tests {
         }
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        let multiplication_bus: Vec<Fp> = vec![];
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64).unwrap());
+            if table_id.is_fixed() {
+                lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64).unwrap());
+            }
         }
+        lookup_tables_data.insert(LookupTable::MultiplicationBus, multiplication_bus);
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
         crate::test::test_completeness_generic::<
