@@ -8,7 +8,11 @@ use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
-    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
+    serialization::{
+        column::{SerializationColumn, N_FSEL_SER},
+        lookups::LookupTable,
+        N_INTERMEDIATE_LIMBS,
+    },
     LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::{
@@ -379,6 +383,9 @@ pub fn constrain_multiplication<
 >(
     env: &mut Env,
 ) {
+    let current_row = env.read_column(SerializationColumn::CurrentRow);
+    let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
+
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
     let coeff_input_limbs_small: [_; N_LIMBS_SMALL] =
@@ -397,6 +404,21 @@ pub fn constrain_multiplication<
     let constant_u128 = |x: u128| -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
         Env::constant(From::from(x))
     };
+
+    {
+        // Reading the input:
+        // (prev_i, [VEC])
+        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
+        vec_input.insert(0, previous_coeff_row);
+        env.lookup(LookupTable::MultiplicationBus, vec_input);
+
+        // Writing the output
+        // FIXME we should actually /write/ here, not read!
+        // (cur_i, [VEC])
+        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        vec_output.insert(0, current_row);
+        env.lookup(LookupTable::MultiplicationBus, vec_output);
+    }
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -652,6 +674,21 @@ pub fn multiplication_circuit<
     coeff_result
 }
 
+/// Builds fixed selectors for serialization circuit
+pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
+    let sel1 = (0..domain_size).map(|i| F::from(i as u64)).collect();
+    let sel2 = (0..domain_size)
+        .map(|i| {
+            if i < 2 {
+                F::zero()
+            } else {
+                F::from((i - (1 << (i.ilog2()))) as u64)
+            }
+        })
+        .collect();
+    [sel1, sel2]
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -659,7 +696,7 @@ mod tests {
         columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
-            interpreter::{deserialize_field_element, multiplication_circuit},
+            interpreter::{build_selectors, deserialize_field_element, multiplication_circuit},
             lookups::LookupTable,
             N_INTERMEDIATE_LIMBS,
         },
@@ -832,6 +869,9 @@ mod tests {
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
+
+        let fixed_selectors = build_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         for row_i in 0..domain_size {
             let input_chal: Ff1 = <Ff1 as UniformRand>::rand(rng);

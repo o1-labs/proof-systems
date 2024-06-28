@@ -184,18 +184,28 @@ impl<
     > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {
-        let value_ix = table_id.ix_by_value(&value).unwrap();
-        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-        self.lookups
-            .last_mut()
-            .unwrap()
-            .get_mut(&table_id)
-            .unwrap()
-            .push(Logup {
-                table_id,
-                numerator: F::one(),
-                value,
-            })
+        let value_ix = table_id.ix_by_value(&value);
+        if let Some(value_ix) = value_ix {
+            self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+            self.lookups
+                .last_mut()
+                .unwrap()
+                .get_mut(&table_id)
+                .unwrap()
+                .push(Logup {
+                    table_id,
+                    numerator: F::one(),
+                    value,
+                })
+        } else {
+            // runtime table lookups are temporarily disabled since we
+            // don't yet have a mechanism to resolve values to indices
+            // for runtime tables.
+            assert!(
+                !table_id.is_fixed(),
+                "Could not resolve lookup for a fixed table"
+            );
+        }
     }
 }
 
