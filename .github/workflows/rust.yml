@@ -68,7 +68,19 @@ jobs:
         run: |
           cargo fmt -- --check
 
+  # We run only one of the matrix options on the toffee hetzner-1,
+  # and also only in this configuration we enable heavy tests.
+  run-checks-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runners: '{"1.71":"ubuntu-latest", "1.72": "ubuntu-latest", "1.73": "ubuntu-latest", "1.74": "hetzner-1"}'
+    steps:
+      - run: echo no-op
+
+
   run_checks:
+    needs: [run-checks-setup]
+
     strategy:
       matrix:
         # FIXME: use the latest version of cargo nextest when we get rid of 1.71
@@ -79,7 +91,9 @@ jobs:
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
 
-    runs-on: hetzner-1
+    # See run-checks-setup
+    runs-on: ${{ fromJSON(needs.run-checks-setup.outputs.runners)[matrix.rust_toolchain_version] }}
+
     name: Run some basic checks and tests
     steps:
       - name: Checkout PR
@@ -169,10 +183,17 @@ jobs:
           # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
           cargo install cargo-nextest@=0.9.67 --locked
 
-      - name: Test everything
+      - name: Run non-heavy tests
         run: |
           eval $(opam env)
-          cargo nextest run --all-features --release --profile ci
+          cargo nextest run --all-features --release --profile ci -E "not test(heavy)"
+
+      - name: Run heavy tests
+        if: ${{ matrix.rust_toolchain_version == '1.74' }}
+        run: |
+          eval $(opam env)
+          cargo nextest run --all-features --release --profile ci -E "test(heavy)"
+
 
       - name: Doc tests
         run: |
