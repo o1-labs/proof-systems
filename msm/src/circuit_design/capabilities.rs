@@ -51,7 +51,11 @@ pub trait LookupCap<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
 where
     Self: ColAccessCap<F, CIx>,
 {
-    fn lookup(&mut self, lookup_id: LT, value: &Self::Variable);
+    fn lookup_vec(&mut self, lookup_id: LT, values: &[Self::Variable]);
+
+    fn lookup(&mut self, lookup_id: LT, value: &Self::Variable) {
+        self.lookup_vec(lookup_id, std::slice::from_ref(value));
+    }
 }
 
 /// Capability for reading and moving forward in a multirow fashion.

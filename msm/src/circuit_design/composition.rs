@@ -359,8 +359,8 @@ impl<
         L: MPrism<Source = LT1, Target = LT2>,
     > LookupCap<F, CIx, LT2> for SubEnvLookup<'a, F, CIx, Env1, L>
 {
-    fn lookup(&mut self, lookup_id: LT2, value: &Self::Variable) {
-        self.0.env.lookup(self.0.lens.re_get(lookup_id), value)
+    fn lookup_vec(&mut self, lookup_id: LT2, values: &[Self::Variable]) {
+        self.0.env.lookup_vec(self.0.lens.re_get(lookup_id), values)
     }
 }
 
@@ -374,8 +374,8 @@ impl<
         L: MPrism<Source = CIx1, Target = CIx2>,
     > LookupCap<F, CIx2, LT> for SubEnvColumn<'a, F, CIx1, Env1, L>
 {
-    fn lookup(&mut self, lookup_id: LT, value: &Self::Variable) {
-        self.0.env.lookup(lookup_id, value)
+    fn lookup_vec(&mut self, lookup_id: LT, values: &[Self::Variable]) {
+        self.0.env.lookup_vec(lookup_id, values)
     }
 }
 
