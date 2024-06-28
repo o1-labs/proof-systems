@@ -8,7 +8,11 @@ use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
-    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
+    serialization::{
+        column::{SerializationColumn, N_FSEL_SER},
+        lookups::LookupTable,
+        N_INTERMEDIATE_LIMBS,
+    },
     LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::{
@@ -648,6 +652,11 @@ pub fn multiplication_circuit<
 
     constrain_multiplication::<F, Ff, Env>(env);
     coeff_result
+}
+
+/// Builds fixed selectors for serialization circuit
+pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
+    [(0..domain_size).map(|x| F::from(x as u64)).collect()]
 }
 
 #[cfg(test)]
