@@ -5,16 +5,18 @@ use crate::{
 };
 
 /// Total number of columns in the serialization circuit, including fixed selectors.
-pub const N_COL_SER: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 10;
+pub const N_COL_SER: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 9 + N_FSEL_SER;
 
 /// Number of fixed selectors for serialization circuit.
-pub const N_FSEL_SER: usize = 1;
+pub const N_FSEL_SER: usize = 2;
 
 /// Columns used by the serialization subcircuit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SerializationColumn {
     /// A fixed selector column that gives one the current row, starting with 0.
     CurrentRow,
+    /// For current row i, this is i - 2^{ceil(log(i)) - 1}
+    PreviousCoeffRow,
     /// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
     ChalKimchi(usize),
     /// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long. Represent parts of the IPA challenge.
@@ -30,7 +32,7 @@ pub enum SerializationColumn {
     Quotient(usize),
     /// Carry limbs
     Carry(usize),
-    /// The resulting coefficient C_i = (C_i >> 1) * xi_{log(i)}. In small limbs.
+    /// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} * xi_{log(i)}. In small limbs.
     CoeffResult(usize),
 }
 
@@ -39,6 +41,7 @@ impl ColumnIndexer for SerializationColumn {
     fn to_column(self) -> Column {
         match self {
             Self::CurrentRow => Column::FixedSelector(0),
+            Self::PreviousCoeffRow => Column::FixedSelector(1),
             Self::ChalKimchi(j) => {
                 assert!(j < 3);
                 Column::Relation(j)

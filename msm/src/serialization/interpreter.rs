@@ -383,7 +383,8 @@ pub fn constrain_multiplication<
 >(
     env: &mut Env,
 ) {
-    let _current_row = env.read_column(SerializationColumn::CurrentRow);
+    let current_row = env.read_column(SerializationColumn::CurrentRow);
+    let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
 
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
@@ -404,7 +405,15 @@ pub fn constrain_multiplication<
         Env::constant(From::from(x))
     };
 
-    //env.lookup();
+    {
+        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
+        vec_input.insert(0, previous_coeff_row);
+        env.lookup_vec(LookupTable::MultiplicationBus, vec_input.as_slice());
+
+        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        vec_output.insert(0, current_row);
+        env.lookup_vec(LookupTable::MultiplicationBus, vec_output.as_slice());
+    }
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -660,7 +669,11 @@ pub fn multiplication_circuit<
 
 /// Builds fixed selectors for serialization circuit
 pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
-    [(0..domain_size).map(|x| F::from(x as u64)).collect()]
+    let sel1 = (0..domain_size).map(|i| F::from(i as u64)).collect();
+    let sel2 = (0..domain_size)
+        .map(|i| F::from((i - (1 << (i.ilog2() - 1))) as u64))
+        .collect();
+    [sel1, sel2]
 }
 
 #[cfg(test)]
