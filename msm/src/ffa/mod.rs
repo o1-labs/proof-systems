@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_ffa_completeness() {
+    pub fn heavy_test_ffa_completeness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
 
