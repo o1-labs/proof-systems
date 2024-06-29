@@ -611,7 +611,11 @@ pub fn heavy_test_simple_add() {
         folding_compat_constraints.len()
     );
 
-    let (folding_scheme, _real_folding_compat_constraints) = FoldingScheme::<MainTestConfig>::new(
+    // real_folding_compat_constraint is actual constraint
+    // it cannot be mapped back to Fp
+    // has some u and {alpha^i}
+    // this one needs to be used in prover(..).
+    let (folding_scheme, real_folding_compat_constraint) = FoldingScheme::<MainTestConfig>::new(
         folding_compat_constraints.clone(),
         &srs,
         domain.d1,
@@ -1126,6 +1130,92 @@ pub fn heavy_test_simple_add() {
             }
 
             println!("All folding_compat_constraints for APP+(nontrivial) IVC satisfy FoldingExps");
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Testing folding exprs validity with quadraticization
+    ////////////////////////////////////////////////////////////////////////////
+
+    {
+        println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
+
+        // We can evaluate on d1, and then if the interpolated
+        // polynomial is 0, the expression holds. This is fast to do,
+        // and it effectively checks if the expressions hold.
+        //
+        // However this is not enough for computing quotient, since
+        // folding expressions are degree ... 2 or 3? So when this
+        // variable is set to domain.d8, all the evaluations will
+        // happen over d8, and quotient_polyonmial computation becomes
+        // possible. But this is 8 times slower.
+        let evaluation_domain = domain.d1;
+
+        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+            enlarge_to_domain_generic(evaluations, evaluation_domain)
+        };
+
+        let simple_eval_env: SimpleEvalEnv<N_COL_TOTAL, N_FSEL_TOTAL> = {
+            let ext_witness = ExtendedWitness {
+                witness: PlonkishWitness {
+                    witness: folded_witness
+                        .extended_witness
+                        .witness
+                        .witness
+                        .into_par_iter()
+                        .map(enlarge_to_domain)
+                        .collect(),
+                    fixed_selectors: ivc_fixed_selectors_evals_d1
+                        .into_par_iter()
+                        .map(enlarge_to_domain)
+                        .collect(),
+                },
+                extended: folded_witness
+                    .extended_witness
+                    .extended
+                    .into_iter()
+                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+                    .collect(),
+            };
+
+            SimpleEvalEnv {
+                ext_witness,
+                alphas: folded_instance.extended_instance.instance.alphas,
+                challenges: folded_instance.extended_instance.instance.challenges,
+                error_vec: enlarge_to_domain(folded_witness.error_vec),
+                u: folded_instance.u,
+            }
+        };
+
+        {
+            let expr: FoldingCompatibleExpr<MainTestConfig> =
+                real_folding_compat_constraint.clone();
+
+            let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
+
+            let evaluations_big = match eval_leaf {
+                EvalLeaf::Result(evaluations) => evaluations,
+                EvalLeaf::Col(evaluations) => evaluations.clone(),
+                _ => panic!("eval_leaf is not Result"),
+            };
+
+            let interpolated =
+                Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
+            if !interpolated.is_zero() {
+                let (_, remainder) = interpolated
+                    .divide_by_vanishing_poly(domain.d1)
+                    .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+                if !remainder.is_zero() {
+                    panic!(
+                        "ERROR: Remainder is not zero for joint expression: {}",
+                        expr.to_string()
+                    );
+                } else {
+                    println!("Interpolated expression is divisible by vanishing poly d1");
+                }
+            } else {
+                println!("Interpolated expression is zero");
+            }
         }
     }
 }
