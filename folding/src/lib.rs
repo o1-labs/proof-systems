@@ -45,7 +45,7 @@ pub mod decomposable_folding;
 
 mod error_term;
 
-mod eval_leaf;
+pub mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
