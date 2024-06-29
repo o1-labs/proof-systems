@@ -612,7 +612,7 @@ pub fn heavy_test_simple_add() {
     );
 
     let (folding_scheme, _real_folding_compat_constraints) = FoldingScheme::<MainTestConfig>::new(
-        folding_compat_constraints,
+        folding_compat_constraints.clone(),
         &srs,
         domain.d1,
         &structure,
@@ -1041,4 +1041,91 @@ pub fn heavy_test_simple_add() {
         ),
         &mut fq_sponge,
     );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Testing folding exprs validity for last  fold
+    ////////////////////////////////////////////////////////////////////////////
+
+    let enlarge_to_domain_generic = |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
+        assert!(evaluations.domain() == domain.d1);
+        evaluations
+            .interpolate()
+            .evaluate_over_domain_by_ref(new_domain)
+    };
+
+    {
+        println!("Testing individual expressions validity; creating evaluations");
+
+        let simple_eval_env: SimpleEvalEnv<N_COL_TOTAL, N_FSEL_TOTAL> = {
+            let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+                enlarge_to_domain_generic(evaluations, domain.d8)
+            };
+
+            let alpha = fq_sponge.challenge();
+            let alphas = Alphas::new_sized(alpha, N_ALPHAS);
+            assert!(
+                alphas.clone().powers().len() == N_ALPHAS,
+                "Expected N_ALPHAS = {N_ALPHAS:?}, got {}",
+                alphas.clone().powers().len()
+            );
+
+            let beta = fq_sponge.challenge();
+            let gamma = fq_sponge.challenge();
+            let joint_combiner = fq_sponge.challenge();
+            let challenges = [beta, gamma, joint_combiner];
+
+            SimpleEvalEnv {
+                ext_witness: ExtendedWitness {
+                    witness: PlonkishWitness {
+                        witness: folding_witness_three_evals
+                            .into_par_iter()
+                            .map(enlarge_to_domain)
+                            .collect(),
+                        fixed_selectors: ivc_fixed_selectors_evals_d1
+                            .clone()
+                            .into_par_iter()
+                            .map(enlarge_to_domain)
+                            .collect(),
+                    },
+                    extended: BTreeMap::new(), // No extended columns at this point
+                },
+                alphas,
+                challenges,
+                error_vec: Evaluations::from_vec_and_domain(vec![], domain.d1),
+                u: Fp::zero(),
+            }
+        };
+
+        {
+            let target_expressions: Vec<FoldingCompatibleExpr<MainTestConfig>> =
+                folding_compat_constraints.clone();
+
+            for (expr_i, expr) in target_expressions.iter().enumerate() {
+                let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
+
+                let evaluations_d8 = match eval_leaf {
+                    EvalLeaf::Result(evaluations_d8) => evaluations_d8,
+                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
+                    _ => panic!("eval_leaf is not Result"),
+                };
+
+                let interpolated =
+                    Evaluations::from_vec_and_domain(evaluations_d8.clone(), domain.d8)
+                        .interpolate();
+                if !interpolated.is_zero() {
+                    let (_, remainder) = interpolated
+                        .divide_by_vanishing_poly(domain.d1)
+                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    if !remainder.is_zero() {
+                        panic!(
+                            "Remainder is not zero for expression #{expr_i}: {}",
+                            expr.to_string()
+                        );
+                    }
+                }
+            }
+
+            println!("All folding_compat_constraints for APP+(nontrivial) IVC satisfy FoldingExps");
+        }
+    }
 }
