@@ -1870,7 +1870,7 @@ pub struct VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt;
 }
 </code></pre>
 <h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>
-<p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
+<p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/proof-systems/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
 <pre class="mermaid">sequenceDiagram
     participant Prover
@@ -2068,7 +2068,7 @@ pub struct ProverProof&lt;G: AffineCurve, OpeningProof&gt; {
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations&lt;PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;,
 
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
     pub ft_eval1: G::ScalarField,
 
@@ -2283,11 +2283,11 @@ $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$</p>
 </li>
 <li>
 <p>Compute the ft polynomial.
-This is to implement <a href="https://o1-labs.github.io/mina-book/kimchi/maller_15.html">Maller’s optimization</a>.</p>
+This is to implement <a href="https://o1-labs.github.io/proof-systems/kimchi/maller_15.html">Maller’s optimization</a>.</p>
 </li>
 <li>
 <p>construct the blinding part of the ft polynomial commitment
-<a href="https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors">see this section</a></p>
+<a href="https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors">see this section</a></p>
 </li>
 <li>
 <p>Evaluate the ft polynomial at $\zeta\omega$ only.</p>
