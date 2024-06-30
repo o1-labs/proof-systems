@@ -150,7 +150,7 @@ pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
 
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 

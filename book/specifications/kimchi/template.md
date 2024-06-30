@@ -383,7 +383,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 
 ## Proof Construction & Verification
 
-Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
+Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/proof-systems/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
 
 ```mermaid
