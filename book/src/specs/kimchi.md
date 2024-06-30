@@ -1872,7 +1872,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
 ## Proof Construction & Verification
 
-Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
+Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/proof-systems/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
 
 ```mermaid
@@ -2077,7 +2077,7 @@ pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
 
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
@@ -2225,9 +2225,9 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the same polynomials without chunking them
    (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.
-   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
+   This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
 1. construct the blinding part of the ft polynomial commitment
-   [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
+   [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
