@@ -126,6 +126,7 @@
 //! iteration column is set at each row by each process_* function in the
 //! interpreter.
 
+pub mod expr_eval;
 pub mod ivc;
 pub mod plonkish_lang;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
