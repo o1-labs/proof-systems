@@ -1,11 +1,20 @@
 /// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
-use ark_ff::FftField;
+use ark_ec::ProjectiveCurve;
+use ark_ff::{FftField, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
-use folding::{instance_witness::Foldable, Witness};
+use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
+use itertools::Itertools;
+use kimchi::{self, curve::KimchiCurve};
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
-use poly_commitment::commitment::CommitmentCurve;
+use mina_poseidon::FqSponge;
+use poly_commitment::{
+    commitment::{absorb_commitment, CommitmentCurve},
+    srs::SRS,
+    PolyComm, SRS as _,
+};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::ops::Index;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -57,5 +66,107 @@ impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Index<()>
 
     fn index(&self, _index: ()) -> &Self::Output {
         unreachable!()
+    }
+}
+
+#[derive(Clone, Debug)]
+
+pub struct PlonkishInstance<
+    G: KimchiCurve,
+    const N_COL: usize,
+    const N_CHALS: usize,
+    const N_ALPHAS: usize,
+> {
+    pub commitments: [G; N_COL],
+    pub challenges: [G::ScalarField; N_CHALS],
+    pub alphas: Alphas<G::ScalarField>,
+    pub blinder: G::ScalarField,
+}
+
+impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize>
+    Foldable<G::ScalarField> for PlonkishInstance<G, N_COL, N_CHALS, N_ALPHAS>
+{
+    fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
+        Self {
+            commitments: std::array::from_fn(|i| {
+                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+            }),
+            challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
+            alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+            blinder: a.blinder + challenge * b.blinder,
+        }
+    }
+}
+
+impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize> Instance<G>
+    for PlonkishInstance<G, N_COL, N_CHALS, N_ALPHAS>
+{
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
+        // FIXME: check!!!!
+        let mut scalars = Vec::new();
+        let mut points = Vec::new();
+        points.extend(self.commitments);
+        scalars.extend(self.challenges);
+        scalars.extend(self.alphas.clone().powers());
+        (scalars, points)
+    }
+
+    fn get_alphas(&self) -> &Alphas<G::ScalarField> {
+        &self.alphas
+    }
+
+    fn get_blinder(&self) -> G::ScalarField {
+        self.blinder
+    }
+}
+
+// Implementation for 3 challenges; only for now.
+impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
+    PlonkishInstance<G, N_COL, 3, N_ALPHAS>
+{
+    #[allow(dead_code)]
+    pub fn from_witness<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+        w: &GenericWitness<N_COL, Evaluations<G::ScalarField, R2D<G::ScalarField>>>,
+        fq_sponge: &mut EFqSponge,
+        srs: &SRS<G>,
+        domain: R2D<G::ScalarField>,
+    ) -> Self {
+        let blinder = G::ScalarField::one();
+
+        let commitments: GenericWitness<N_COL, PolyComm<G>> = w
+            .into_par_iter()
+            .map(|w| {
+                let blinder = PolyComm::new(vec![blinder; 1]);
+                let unblinded = srs.commit_evaluations_non_hiding(domain, w);
+                srs.mask_custom(unblinded, &blinder).unwrap().commitment
+            })
+            .collect();
+
+        // Absorbing commitments
+        (&commitments)
+            .into_iter()
+            .for_each(|c| absorb_commitment(fq_sponge, c));
+
+        let commitments: [G; N_COL] = commitments
+            .into_iter()
+            .map(|c| c.elems[0])
+            .collect_vec()
+            .try_into()
+            .unwrap();
+
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
+        let joint_combiner = fq_sponge.challenge();
+        let challenges = [beta, gamma, joint_combiner];
+
+        let alpha = fq_sponge.challenge();
+        let alphas = Alphas::new_sized(alpha, N_ALPHAS);
+
+        Self {
+            commitments,
+            challenges,
+            alphas,
+            blinder,
+        }
     }
 }
