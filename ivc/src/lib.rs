@@ -127,6 +127,7 @@
 //! interpreter.
 
 pub mod ivc;
+pub mod plonkish_lang;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
 /// state of 3 elements and constraints of degree 2
 pub mod poseidon_55_0_7_3_2;
