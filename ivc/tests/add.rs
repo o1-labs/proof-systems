@@ -3,7 +3,7 @@
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, PrimeField, UniformRand};
+use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     expressions::FoldingColumnTrait, instance_witness::Foldable, standard_config::StandardConfig,
@@ -14,7 +14,7 @@ use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
-        interpreter::build_selectors,
+        interpreter::{build_selectors, ivc_circuit_base_case},
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
@@ -39,7 +39,7 @@ use kimchi_msm::{
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-use std::{array, ops::Index};
+use std::{array, collections::BTreeMap, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
@@ -112,6 +112,8 @@ pub fn heavy_test_simple_add() {
     let domain_size: usize = 1 << 16;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
+    let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
+
     let mut srs = SRS::<Curve>::create(domain_size);
     srs.add_lagrange_basis(domain.d1);
 
@@ -147,7 +149,7 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    type AppWitnessBuildEnv = WitnessBuilderEnv<
+    type AppWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         AdditionColumn,
         { AdditionColumn::COUNT },
@@ -364,6 +366,7 @@ pub fn heavy_test_simple_add() {
     });
 
     let ivc_fixed_selectors_evals_d1: Vec<Evaluations<Fp, R2D<Fp>>> = ivc_fixed_selectors
+        .clone()
         .into_par_iter()
         .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
         .collect();
@@ -467,36 +470,152 @@ pub fn heavy_test_simple_add() {
     );
 
     ////////////////////////////////////////////////////////////////////////////
-    // Witness step 1 & 2
+    // Witness step 1 (APP + IVC)
     ////////////////////////////////////////////////////////////////////////////
 
-    // Starting building witnesses. We start with the application witnesses. It
-    // will be used after that to build the witness for the IVC
-    let mut _app_witness_one: AppWitnessBuildEnv = {
-        let mut env = WitnessBuilderEnv::create();
+    println!("Building witness step 1");
 
-        for _i in 0..domain_size {
-            let a: Fp = Fp::rand(&mut rng);
-            let b: Fp = Fp::rand(&mut rng);
-            env.write_column(AdditionColumn::A, &a);
-            env.write_column(AdditionColumn::B, &b);
-            interpreter_simple_add(&mut env);
-            env.next_row();
-        }
-        env
+    type IVCWitnessBuilderEnvRaw<LT> =
+        WitnessBuilderEnv<Fp, IVCColumn, N_WIT_IVC, N_WIT_IVC, 0, N_BLOCKS, LT>;
+    type LT = IVCLookupTable<Fq>;
+
+    let mut ivc_witness_env_0 = IVCWitnessBuilderEnvRaw::<LT>::create();
+
+    let mut app_witness_one: AppWitnessBuilderEnv = WitnessBuilderEnv::create();
+
+    let empty_lookups_app = BTreeMap::new();
+    let empty_lookups_ivc = BTreeMap::new();
+
+    // Witness one
+    for _i in 0..domain_size {
+        let a: Fp = Fp::rand(&mut rng);
+        let b: Fp = Fp::rand(&mut rng);
+        app_witness_one.write_column(AdditionColumn::A, &a);
+        app_witness_one.write_column(AdditionColumn::B, &b);
+        app_witness_one.write_column(AdditionColumn::C, &(a * a * b));
+        interpreter_simple_add(&mut app_witness_one);
+        app_witness_one.next_row();
+    }
+
+    let proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, empty_lookups_app.clone());
+    assert!(proof_inputs_one.evaluations.len() == 3);
+
+    ivc_witness_env_0.set_fixed_selectors(ivc_fixed_selectors.clone());
+    ivc_circuit_base_case::<Fp, _, N_COL_TOTAL, N_CHALS>(&mut ivc_witness_env_0, domain_size);
+    let ivc_proof_inputs_0 =
+        ivc_witness_env_0.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
+    assert!(ivc_proof_inputs_0.evaluations.len() == N_WIT_IVC);
+    for i in 0..10 {
+        assert!(
+            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
+            "Iteration column row #{i:?} must be zero"
+        );
+    }
+
+    // FIXME this merely concatenates two witnesses. Most likely, we
+    // want to intersperse them in a smarter way later. Our witness is
+    // Relation || dynamic.
+    let joint_witness_one: Vec<_> = proof_inputs_one
+        .evaluations
+        .clone()
+        .into_iter()
+        .chain(ivc_proof_inputs_0.evaluations.clone())
+        .collect();
+
+    for i in 0..10 {
+        assert!(
+            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
+            "Iteration column row #{i:?} must be zero"
+        );
+    }
+
+    assert!(joint_witness_one.len() == N_COL_TOTAL);
+
+    let folding_witness_one = PlonkishWitness {
+        witness: joint_witness_one
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect(),
+        fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
     };
 
-    let mut _app_witness_two: AppWitnessBuildEnv = {
-        let mut env = WitnessBuilderEnv::create();
+    let folding_instance_one = PlonkishInstance::from_witness(
+        &folding_witness_one.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
 
-        for _i in 0..domain_size {
-            let a: Fp = Fp::rand(&mut rng);
-            let b: Fp = Fp::rand(&mut rng);
-            env.write_column(AdditionColumn::A, &a);
-            env.write_column(AdditionColumn::B, &b);
-            interpreter_simple_add(&mut env);
-            env.next_row();
-        }
-        env
+    ////////////////////////////////////////////////////////////////////////////
+    // Witness step 2
+    ////////////////////////////////////////////////////////////////////////////
+
+    println!("Building witness step 2");
+
+    let mut app_witness_two: AppWitnessBuilderEnv = WitnessBuilderEnv::create();
+
+    // Witness two
+    for _i in 0..domain_size {
+        let a: Fp = Fp::rand(&mut rng);
+        let b: Fp = Fp::rand(&mut rng);
+        app_witness_two.write_column(AdditionColumn::A, &a);
+        app_witness_two.write_column(AdditionColumn::B, &b);
+        app_witness_two.write_column(AdditionColumn::C, &(a * a * b));
+        interpreter_simple_add(&mut app_witness_two);
+        app_witness_two.next_row();
+    }
+
+    let proof_inputs_two = app_witness_two.get_proof_inputs(domain_size, empty_lookups_app.clone());
+
+    // IVC for the second witness is the same as for the first one,
+    // since they're both height 0.
+    let joint_witness_two: Vec<_> = proof_inputs_two
+        .evaluations
+        .clone()
+        .into_iter()
+        .chain(ivc_proof_inputs_0.evaluations)
+        .collect();
+
+    let folding_witness_two_evals: GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>> =
+        joint_witness_two
+            .clone()
+            .into_par_iter()
+            .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
+            .collect();
+    let folding_witness_two = PlonkishWitness {
+        witness: folding_witness_two_evals.clone(),
+        fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
     };
+
+    let folding_instance_two = PlonkishInstance::from_witness(
+        &folding_witness_two.witness,
+        &mut fq_sponge,
+        &srs,
+        domain.d1,
+    );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Folding 1
+    ////////////////////////////////////////////////////////////////////////////
+
+    println!("Folding 1");
+
+    // To start, we only fold two instances.
+    // We must call fold_instance_witness_pair in a nested call `fold`.
+    // Something like:
+    // ```
+    // instances.tail().fold(instances.head(), |acc, two| {
+    //     let folding_output = folding_scheme.fold_instance_witness_pair(acc, two, &mut fq_sponge);
+    //     // Compute IVC
+    //     // ...
+    //     // We return the folding instance, which will be used in the next
+    //     // iteration, which is the folded value `acc` with `two`.
+    //     folding_instance
+    // });
+    // ```
+    let one = (folding_instance_one, folding_witness_one);
+    let two = (folding_instance_two, folding_witness_two);
+    println!("fold_instance_witness_pair");
+    let _folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    println!("Folding 1 succeeded");
 }

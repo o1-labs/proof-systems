@@ -892,11 +892,19 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS:
 /// As each constraint is multiplied by the fold iteration, this will simulate a
 /// "deactivation" of the IVC circuit.
 // FIXME: this is not the final version.
-pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(env: &mut Env)
-where
+pub fn ivc_circuit_base_case<F, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
+    env: &mut Env,
+    domain_size: usize,
+) where
     F: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
 {
+    assert!(
+        total_height::<N_COL_TOTAL, N_CHALS>() < domain_size,
+        "IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})",
+        total_height::<N_COL_TOTAL, N_CHALS>(),
+    );
+
     // Assuming tables are initialized to zero we don't even have to do this.
     let fold_iteration = 0;
     for block_i in 0..N_BLOCKS {
