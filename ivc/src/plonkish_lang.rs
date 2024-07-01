@@ -6,7 +6,7 @@ use ark_ff::{FftField, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
-use kimchi::{self, curve::KimchiCurve};
+use kimchi::{self, circuits::expr::ChallengeTerm, curve::KimchiCurve};
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
@@ -16,6 +16,7 @@ use poly_commitment::{
 };
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::ops::Index;
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize, F: FftField> {
@@ -167,6 +168,38 @@ impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
             challenges,
             alphas,
             blinder,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
+pub enum PlonkishChallenge {
+    Beta,
+    Gamma,
+    JointCombiner,
+}
+
+impl From<ChallengeTerm> for PlonkishChallenge {
+    fn from(chal: ChallengeTerm) -> Self {
+        match chal {
+            ChallengeTerm::Beta => PlonkishChallenge::Beta,
+            ChallengeTerm::Gamma => PlonkishChallenge::Gamma,
+            ChallengeTerm::JointCombiner => PlonkishChallenge::JointCombiner,
+            ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+        }
+    }
+}
+
+impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize> Index<PlonkishChallenge>
+    for PlonkishInstance<G, N_COL, 3, N_ALPHAS>
+{
+    type Output = G::ScalarField;
+
+    fn index(&self, index: PlonkishChallenge) -> &Self::Output {
+        match index {
+            PlonkishChallenge::Beta => &self.challenges[0],
+            PlonkishChallenge::Gamma => &self.challenges[1],
+            PlonkishChallenge::JointCombiner => &self.challenges[2],
         }
     }
 }

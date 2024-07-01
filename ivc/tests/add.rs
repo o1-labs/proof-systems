@@ -21,15 +21,11 @@ use ivc::{
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
-    plonkish_lang::{PlonkishInstance, PlonkishWitness},
+    plonkish_lang::{PlonkishChallenge, PlonkishInstance, PlonkishWitness},
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
-    circuits::{
-        domains::EvaluationDomains,
-        expr::{ChallengeTerm, Variable},
-        gate::CurrOrNext,
-    },
+    circuits::{domains::EvaluationDomains, expr::Variable, gate::CurrOrNext},
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -147,7 +143,7 @@ pub fn heavy_test_simple_add() {
 
     // There are two more challenges though.
     // Not used at the moment as IVC circuit only handles alphas
-    const _N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
+    const _N_CHALS: usize = N_ALPHAS + PlonkishChallenge::COUNT;
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -181,42 +177,10 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-    pub enum Challenge {
-        Beta,
-        Gamma,
-        JointCombiner,
-    }
-
-    impl From<ChallengeTerm> for Challenge {
-        fn from(chal: ChallengeTerm) -> Self {
-            match chal {
-                ChallengeTerm::Beta => Challenge::Beta,
-                ChallengeTerm::Gamma => Challenge::Gamma,
-                ChallengeTerm::JointCombiner => Challenge::JointCombiner,
-                ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
-            }
-        }
-    }
-
-    impl<const N_COL: usize, const N_ALPHAS: usize> Index<Challenge>
-        for PlonkishInstance<Curve, N_COL, 3, N_ALPHAS>
-    {
-        type Output = Fp;
-
-        fn index(&self, index: Challenge) -> &Self::Output {
-            match index {
-                Challenge::Beta => &self.challenges[0],
-                Challenge::Gamma => &self.challenges[1],
-                Challenge::JointCombiner => &self.challenges[2],
-            }
-        }
-    }
-
     type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
         Curve,
         Column,
-        Challenge,
+        PlonkishChallenge,
         PlonkishInstance<Curve, N_COL_TOTAL, 3, N_ALPHAS_QUAD>, // TODO check if it's quad or not
         PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
         (),
@@ -234,18 +198,18 @@ pub fn heavy_test_simple_add() {
         //    inner: CF::Env,
         ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL, Fp>>,
         alphas: Alphas<Fp>,
-        challenges: [Fp; Challenge::COUNT],
+        challenges: [Fp; PlonkishChallenge::COUNT],
         error_vec: Evaluations<Fp, R2D<Fp>>,
         /// The scalar `u` that is used to homogenize the polynomials
         u: Fp,
     }
 
     impl<const N_COL: usize, const N_FSEL: usize> SimpleEvalEnv<N_COL, N_FSEL> {
-        pub fn challenge(&self, challenge: Challenge) -> Fp {
+        pub fn challenge(&self, challenge: PlonkishChallenge) -> Fp {
             match challenge {
-                Challenge::Beta => self.challenges[0],
-                Challenge::Gamma => self.challenges[1],
-                Challenge::JointCombiner => self.challenges[2],
+                PlonkishChallenge::Beta => self.challenges[0],
+                PlonkishChallenge::Gamma => self.challenges[1],
+                PlonkishChallenge::JointCombiner => self.challenges[2],
             }
         }
 
