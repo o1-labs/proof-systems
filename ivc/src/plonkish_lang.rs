@@ -1,3 +1,6 @@
+/// Provides definition of plonkish language related instance,
+/// witness, and tools to work with them. The IVC is specialized for
+/// exactly the plonkish language.
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Witness};
