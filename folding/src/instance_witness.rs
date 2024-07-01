@@ -101,6 +101,7 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 // -- Extended witness
 /// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
+#[derive(Clone, Debug)]
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// This is the original witness, without quadraticization
     pub witness: W,
@@ -338,6 +339,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
 }
 
 // -- Relaxed witnesses
+#[derive(Clone, Debug)]
 pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// The original witness, extended with the columns added by
     /// quadriticization.
