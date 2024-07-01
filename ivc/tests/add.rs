@@ -2,18 +2,15 @@
 //! to fold a simple addition circuit. The addition circuit consists of a single
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
-use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
-    columns::ExtendedFoldingColumn,
-    eval_leaf::EvalLeaf,
-    expressions::{ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp},
-    instance_witness::ExtendedWitness,
-    standard_config::StandardConfig,
-    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
+    eval_leaf::EvalLeaf, expressions::FoldingColumnTrait, instance_witness::ExtendedWitness,
+    standard_config::StandardConfig, Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
 };
 use ivc::{
     self,
+    expr_eval::SimpleEvalEnv,
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
@@ -25,7 +22,7 @@ use ivc::{
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::Variable, gate::CurrOrNext},
+    circuits::{domains::EvaluationDomains, expr::Variable},
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -187,146 +184,6 @@ pub fn heavy_test_simple_add() {
         GenericVecStructure<Curve>,
     >;
     type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL>;
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Evaluations
-    ////////////////////////////////////////////////////////////////////////////
-
-    #[allow(dead_code)]
-    /// Minimal environment needed for evaluating constraints.
-    struct SimpleEvalEnv<const N_COL: usize, const N_FSEL: usize> {
-        //    inner: CF::Env,
-        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL, Fp>>,
-        alphas: Alphas<Fp>,
-        challenges: [Fp; PlonkishChallenge::COUNT],
-        error_vec: Evaluations<Fp, R2D<Fp>>,
-        /// The scalar `u` that is used to homogenize the polynomials
-        u: Fp,
-    }
-
-    impl<const N_COL: usize, const N_FSEL: usize> SimpleEvalEnv<N_COL, N_FSEL> {
-        pub fn challenge(&self, challenge: PlonkishChallenge) -> Fp {
-            match challenge {
-                PlonkishChallenge::Beta => self.challenges[0],
-                PlonkishChallenge::Gamma => self.challenges[1],
-                PlonkishChallenge::JointCombiner => self.challenges[2],
-            }
-        }
-
-        #[allow(dead_code)]
-        pub fn process_extended_folding_column(
-            &self,
-            col: &ExtendedFoldingColumn<Config<N_COL, N_FSEL>>,
-        ) -> EvalLeaf<Fp> {
-            use EvalLeaf::Col;
-            use ExtendedFoldingColumn::*;
-            match col {
-                Inner(Variable { col, row }) => {
-                    let wit = match row {
-                        CurrOrNext::Curr => &self.ext_witness.witness,
-                        CurrOrNext::Next => panic!("not implemented"),
-                    };
-                    // The following is possible because Index is implemented for our
-                    // circuit witnesses
-                    Col(&wit[*col])
-                },
-                WitnessExtended(i) => Col(&self.ext_witness.extended.get(i).unwrap().evals),
-                Error => panic!("shouldn't happen"),
-                Constant(c) => EvalLeaf::Const(*c),
-                Challenge(chall) => EvalLeaf::Const(self.challenge(*chall)),
-                Alpha(i) => {
-                    let alpha = self.alphas.get(*i).expect("alpha not present");
-                    EvalLeaf::Const(alpha)
-                }
-                Selector(_s) => unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when it is Plonkish relations."),
-        }
-        }
-
-        #[allow(dead_code)]
-        /// Evaluates the expression in the provided side
-        pub fn eval_naive_fexpr<'a>(
-            &'a self,
-            exp: &FoldingExp<Config<N_COL, N_FSEL>>,
-        ) -> EvalLeaf<'a, Fp> {
-            use FoldingExp::*;
-
-            match exp {
-                Atom(column) => self.process_extended_folding_column(column),
-                Double(e) => {
-                    let col = self.eval_naive_fexpr(e);
-                    col.map(Field::double, |f| {
-                        Field::double_in_place(f);
-                    })
-                }
-                Square(e) => {
-                    let col = self.eval_naive_fexpr(e);
-                    col.map(Field::square, |f| {
-                        Field::square_in_place(f);
-                    })
-                }
-                Add(e1, e2) => self.eval_naive_fexpr(e1) + self.eval_naive_fexpr(e2),
-                Sub(e1, e2) => self.eval_naive_fexpr(e1) - self.eval_naive_fexpr(e2),
-                Mul(e1, e2) => self.eval_naive_fexpr(e1) * self.eval_naive_fexpr(e2),
-                Pow(_e, _i) => panic!("We're not supposed to use this"),
-            }
-        }
-
-        #[allow(dead_code)]
-        /// For FoldingCompatibleExp
-        fn eval_naive_fcompat<'a>(
-            &'a self,
-            exp: &FoldingCompatibleExpr<Config<N_COL, N_FSEL>>,
-        ) -> EvalLeaf<'a, Fp> {
-            use FoldingCompatibleExpr::*;
-
-            match exp {
-                Atom(column) => {
-                    use FoldingCompatibleExprInner::*;
-                    match column {
-                        Cell(Variable { col, row }) => {
-                            let wit = match row {
-                                CurrOrNext::Curr => &self.ext_witness.witness,
-                                CurrOrNext::Next => panic!("not implemented"),
-                            };
-                            // The following is possible because Index is implemented for our
-                            // circuit witnesses
-                            EvalLeaf::Col(&wit[*col])
-                        }
-                        Challenge(chal) => EvalLeaf::Const(self.challenge(*chal)),
-                        Constant(c) => EvalLeaf::Const(*c),
-                        Extensions(ext) => {
-                            use ExpExtension::*;
-                            match ext {
-                                U => EvalLeaf::Const(self.u),
-                                Error => EvalLeaf::Col(&self.error_vec.evals),
-                                ExtendedWitness(i) => {
-                                    EvalLeaf::Col(&self.ext_witness.extended.get(i).unwrap().evals)
-                                }
-                                Alpha(i) => EvalLeaf::Const(self.alphas.get(*i).unwrap()),
-                                Selector(_sel) => panic!("No selectors supported yet"),
-                            }
-                        }
-                    }
-                }
-                Double(e) => {
-                    let col = self.eval_naive_fcompat(e);
-                    col.map(Field::double, |f| {
-                        Field::double_in_place(f);
-                    })
-                }
-                Square(e) => {
-                    let col = self.eval_naive_fcompat(e);
-                    col.map(Field::square, |f| {
-                        Field::square_in_place(f);
-                    })
-                }
-                Add(e1, e2) => self.eval_naive_fcompat(e1) + self.eval_naive_fcompat(e2),
-                Sub(e1, e2) => self.eval_naive_fcompat(e1) - self.eval_naive_fcompat(e2),
-                Mul(e1, e2) => self.eval_naive_fcompat(e1) * self.eval_naive_fcompat(e2),
-                Pow(_e, _i) => panic!("We're not supposed to use this"),
-            }
-        }
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
@@ -891,7 +748,7 @@ pub fn heavy_test_simple_add() {
     {
         println!("Testing individual expressions validity; creating evaluations");
 
-        let simple_eval_env: SimpleEvalEnv<N_COL_TOTAL, N_FSEL_TOTAL> = {
+        let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
             let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
                 enlarge_to_domain_generic(evaluations, domain.d8)
             };
@@ -986,7 +843,7 @@ pub fn heavy_test_simple_add() {
             enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
 
-        let simple_eval_env: SimpleEvalEnv<N_COL_TOTAL, N_FSEL_TOTAL> = {
+        let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
                     witness: folded_witness
