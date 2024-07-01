@@ -1,9 +1,9 @@
 pub mod columns;
 pub mod constraints;
-pub mod folding;
 pub mod helpers;
 pub mod interpreter;
 pub mod lookups;
+pub mod plonkish_lang;
 
 use self::columns::N_BLOCKS;
 use crate::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS as N_CONSTRAINTS_POSEIDON;

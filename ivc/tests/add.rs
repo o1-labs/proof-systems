@@ -18,9 +18,9 @@ use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
-        folding::PlonkishWitness,
         interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
         lookups::IVCLookupTable,
+        plonkish_lang::PlonkishWitness,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
