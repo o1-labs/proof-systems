@@ -177,6 +177,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
         // No-op, constraints only
+        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
     }
 
     fn instruction_counter(&self) -> Self::Variable {

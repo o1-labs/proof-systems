@@ -42,7 +42,7 @@ fn test_mips_number_constraints() {
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         match instr {
             RType(rtype) => match rtype {
-                JumpRegister | SyscallExitGroup | Sync => assert_num_constraints(&instr, 0),
+                JumpRegister | SyscallExitGroup | Sync => assert_num_constraints(&instr, 1),
                 ShiftLeftLogical
                 | ShiftRightLogical
                 | ShiftRightArithmetic
@@ -67,25 +67,25 @@ fn test_mips_number_constraints() {
                 | SetLessThanUnsigned
                 | MultiplyToRegister
                 | CountLeadingOnes
-                | CountLeadingZeros => assert_num_constraints(&instr, 3),
-                MoveZero | MoveNonZero => assert_num_constraints(&instr, 5),
+                | CountLeadingZeros => assert_num_constraints(&instr, 4),
+                MoveZero | MoveNonZero => assert_num_constraints(&instr, 6),
                 SyscallReadOther | SyscallWriteHint | SyscallWriteOther | Multiply
-                | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 6),
-                SyscallOther => assert_num_constraints(&instr, 10),
-                SyscallMmap => assert_num_constraints(&instr, 11),
-                SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 22),
-                // TODO: update SyscallReadPreimage to 30 when using self.equal()
-                SyscallWritePreimage => assert_num_constraints(&instr, 30),
+                | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 7),
+                SyscallOther => assert_num_constraints(&instr, 11),
+                SyscallMmap => assert_num_constraints(&instr, 12),
+                SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 23),
+                // TODO: update SyscallReadPreimage to 31 when using self.equal()
+                SyscallWritePreimage => assert_num_constraints(&instr, 31),
             },
             JType(jtype) => match jtype {
-                Jump => assert_num_constraints(&instr, 0),
-                JumpAndLink => assert_num_constraints(&instr, 3),
+                Jump => assert_num_constraints(&instr, 1),
+                JumpAndLink => assert_num_constraints(&instr, 4),
             },
             IType(itype) => match itype {
                 BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16 => {
-                    assert_num_constraints(&instr, 0)
+                    assert_num_constraints(&instr, 1)
                 }
-                BranchEq | BranchNeq | Store32 => assert_num_constraints(&instr, 2),
+                BranchEq | BranchNeq | Store32 => assert_num_constraints(&instr, 3),
                 AddImmediate
                 | AddImmediateUnsigned
                 | SetLessThanImmediate
@@ -99,9 +99,9 @@ fn test_mips_number_constraints() {
                 | Load32
                 | Load8Unsigned
                 | Load16Unsigned
-                | Store32Conditional => assert_num_constraints(&instr, 3),
+                | Store32Conditional => assert_num_constraints(&instr, 4),
                 LoadWordLeft | LoadWordRight | StoreWordLeft | StoreWordRight => {
-                    assert_num_constraints(&instr, 12)
+                    assert_num_constraints(&instr, 13)
                 }
             },
         }
