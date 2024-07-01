@@ -909,6 +909,14 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -1803,11 +1811,19 @@
 /// As each constraint is multiplied by the fold iteration, this will simulate a
 /// &quot;deactivation&quot; of the IVC circuit.
 </span><span class="comment">// FIXME: this is not the final version.
-</span><span class="kw">pub fn </span>ivc_circuit_base_case&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(env: <span class="kw-2">&amp;mut </span>Env)
-<span class="kw">where
+</span><span class="kw">pub fn </span>ivc_circuit_base_case&lt;F, Env, <span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    domain_size: usize,
+) <span class="kw">where
     </span>F: PrimeField,
     Env: DirectWitnessCap&lt;F, IVCColumn&gt; + HybridCopyCap&lt;F, IVCColumn&gt;,
 {
+    <span class="macro">assert!</span>(
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;() &lt; domain_size,
+        <span class="string">&quot;IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})&quot;</span>,
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;(),
+    );
+
     <span class="comment">// Assuming tables are initialized to zero we don&#39;t even have to do this.
     </span><span class="kw">let </span>fold_iteration = <span class="number">0</span>;
     <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {

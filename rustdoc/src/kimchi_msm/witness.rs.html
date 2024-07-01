@@ -164,6 +164,18 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::{instance_witness::Foldable, Witness <span class="kw">as </span>FoldingWitnessT};
@@ -189,6 +201,18 @@
         Witness {
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| T::zero())),
         }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N_WIT: usize, T&gt; TryFrom&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>Witness&lt;N_WIT, T&gt; {
+    <span class="kw">type </span>Error = String;
+
+    <span class="kw">fn </span>try_from(value: Vec&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">let </span>len = value.len();
+        <span class="kw">let </span>cols: Box&lt;[T; N_WIT]&gt; = value
+            .try_into()
+            .map_err(|<span class="kw">_</span>| <span class="macro">format!</span>(<span class="string">&quot;Size mismatch: Expected {N_WIT:?} got {len:?}&quot;</span>))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Witness { cols })
     }
 }
 
