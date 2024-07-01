@@ -1,36 +1,40 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
+use crate::{
+    expr_eval::SimpleEvalEnv,
+    plonkish_lang::{PlonkishChallenge, PlonkishInstance, PlonkishWitness},
+};
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
 };
+use folding::{
+    eval_leaf::EvalLeaf,
+    instance_witness::{ExtendedWitness, RelaxedInstance, RelaxedWitness},
+    FoldingCompatibleExpr, FoldingConfig,
+};
 use kimchi::{
-    circuits::{
-        domains::EvaluationDomains,
-        expr::{l0_1, Challenges, Constants, Expr},
-    },
-    curve::KimchiCurve,
-    groupmap::GroupMap,
-    plonk_sponge::FrSponge,
-    proof::PointEvaluations,
+    self, circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    plonk_sponge::FrSponge, proof::PointEvaluations,
 };
 use kimchi_msm::{
-    column_env::ColumnEnvironment,
-    expr::E,
+    columns::Column as GenericColumn,
     logup::LookupTableID,
-    proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
+    proof::{Proof, ProofCommitments, ProofEvaluations},
     witness::Witness,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
-    commitment::{absorb_commitment, PolyComm},
+    commitment::{absorb_commitment, CommitmentCurve, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
+    pairing_proof::{PairingProof, PairingSRS},
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -46,34 +50,47 @@ pub enum ProverError {
     ConstraintDegreeTooHigh(u64, u64, String),
 }
 
+pub type Pairing = kimchi_msm::BN254;
+/// The curve we commit into
+pub type G = kimchi_msm::BN254G1Affine;
+/// Scalar field of the curve.
+pub type Fp = kimchi_msm::Fp;
+/// The base field of the curve
+/// Used to encode the polynomial commitments
+pub type Fq = ark_bn254::Fq;
+
 pub fn prove<
-    G: KimchiCurve,
-    OpeningProof: OpenProof<G>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFqSponge: Clone + FqSponge<Fq, G, Fp>,
+    EFrSponge: FrSponge<Fp>,
+    FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
     RNG,
+    const N_COL: usize,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
+    const N_ALPHAS: usize,
     LT: LookupTableID,
 >(
-    domain: EvaluationDomains<G::ScalarField>,
-    srs: &OpeningProof::SRS,
-    constraints: &Vec<E<G::ScalarField>>,
-    fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
-    inputs: ProofInputs<N_WIT, G::ScalarField, LT>,
+    domain: EvaluationDomains<Fp>,
+    srs: &PairingSRS<Pairing>,
+    combined_expr: &FoldingCompatibleExpr<FC>,
+    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_COL, 3, N_ALPHAS>>,
+    folded_witness: RelaxedWitness<G, PlonkishWitness<N_COL, N_FSEL, Fp>>,
     rng: &mut RNG,
-) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, LT>, ProverError>
+) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>, LT>, ProverError>
 where
-    OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
+    assert!(N_COL == N_WIT + N_FSEL);
+    assert!(N_WIT == N_REL + N_DSEL);
+
     ////////////////////////////////////////////////////////////////////////////
     // Setting up the protocol
     ////////////////////////////////////////////////////////////////////////////
 
-    let group_map = G::Map::setup();
+    let group_map = <G as CommitmentCurve>::Map::setup();
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
@@ -81,7 +98,7 @@ where
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
-    let fixed_selectors_evals_d1: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> =
+    let fixed_selectors_evals_d1: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]> =
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors
                 .into_par_iter()
@@ -89,16 +106,17 @@ where
                 .collect(),
         );
 
-    let fixed_selectors_polys: Box<[DensePolynomial<G::ScalarField>; N_FSEL]> =
+    let fixed_selectors_polys: Box<[DensePolynomial<Fp>; N_FSEL]> =
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors_evals_d1
+                .clone()
                 .into_par_iter()
                 .map(|evals| evals.interpolate())
                 .collect(),
         );
 
     let fixed_selectors_comms: Box<[PolyComm<G>; N_FSEL]> = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        let comm = |poly: &DensePolynomial<Fp>| srs.commit_non_hiding(poly, 1);
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors_polys
                 .as_ref()
@@ -113,32 +131,31 @@ where
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
 
-    // Interpolate all columns on d1, using trait Into.
-    let witness_evals_d1: Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
-        .evaluations
-        .into_par_iter()
-        .map(|evals| {
-            Evaluations::<G::ScalarField, R2D<G::ScalarField>>::from_vec_and_domain(
-                evals, domain.d1,
-            )
-        })
-        .collect::<Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
+    let witness_main: Witness<N_COL, _> = folded_witness.extended_witness.witness.witness;
+    let witness_ext: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> =
+        folded_witness.extended_witness.extended;
 
-    let witness_polys: Witness<N_WIT, DensePolynomial<G::ScalarField>> = {
-        let interpolate =
-            |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
+    // Joint main + ext
+    let witness_evals_d1: Vec<Evaluations<_, _>> = {
+        let mut acc = witness_main.cols.to_vec();
+        acc.extend(witness_ext.values().cloned());
+        acc
+    };
+
+    let witness_polys: Witness<N_WIT, DensePolynomial<Fp>> = {
+        let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
         witness_evals_d1
             .into_par_iter()
             .map(interpolate)
-            .collect::<Witness<N_WIT, DensePolynomial<G::ScalarField>>>()
+            .collect::<Witness<N_WIT, DensePolynomial<Fp>>>()
     };
 
     let witness_comms: Witness<N_WIT, PolyComm<G>> = {
         let blinders = PolyComm {
-            elems: vec![G::ScalarField::one()],
+            elems: vec![Fp::one()],
         };
         let comm = {
-            |poly: &DensePolynomial<G::ScalarField>| {
+            |poly: &DensePolynomial<Fp>| {
                 // In case the column polynomial is all zeroes, we want to mask the commitment
                 let comm = srs.commit_custom(poly, 1, &blinders).unwrap();
                 comm.commitment
@@ -155,32 +172,6 @@ where
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
-    const MAX_SUPPORTED_DEGREE: usize = 2;
-    let max_degree = 2;
-    let domain_eval = if max_degree <= 4 {
-        domain.d4
-    } else if max_degree as usize <= MAX_SUPPORTED_DEGREE {
-        domain.d8
-    } else {
-        panic!("We do support constraints up to {:?}", MAX_SUPPORTED_DEGREE)
-    };
-
-    let witness_evals: Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
-        (&witness_polys)
-            .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
-            .collect::<Witness<N_WIT, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>()
-    };
-
-    let fixed_selectors_evals: Box<[Evaluations<G::ScalarField, R2D<G::ScalarField>>; N_FSEL]> = {
-        o1_utils::array::vec_to_boxed_array(
-            (fixed_selectors_polys.as_ref())
-                .into_par_iter()
-                .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
-                .collect(),
-        )
-    };
-
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -188,94 +179,79 @@ where
     let (_, endo_r) = G::endos();
 
     // Sample α with the Fq-Sponge.
-    let alpha: G::ScalarField = fq_sponge.challenge();
+    // What to do with it?..
+    let _alpha: Fp = fq_sponge.challenge();
 
-    let zk_rows = 0;
-    let column_env: ColumnEnvironment<'_, N_WIT, N_REL, N_DSEL, N_FSEL, _, LT> = {
-        let challenges = Challenges {
-            alpha,
-            // NB: as there is no permutation argument, we do use the beta
-            // field instead of a new one for the evaluation point.
-            beta: G::ScalarField::zero(),
-            gamma: G::ScalarField::zero(),
-            joint_combiner: None,
+    let quotient_poly: DensePolynomial<Fp> = {
+        let evaluation_domain = domain.d4;
+
+        let enlarge_to_domain_generic =
+            |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
+                assert!(evaluations.domain() == domain.d1);
+                evaluations
+                    .interpolate()
+                    .evaluate_over_domain_by_ref(new_domain)
+            };
+
+        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+            enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
-        ColumnEnvironment {
-            constants: Constants {
-                endo_coefficient: *endo_r,
-                mds: &G::sponge_params().mds,
-                zk_rows,
-            },
-            challenges,
-            witness: &witness_evals,
-            fixed_selectors: &fixed_selectors_evals,
-            l0_1: l0_1(domain.d1),
-            lookup: None,
-            domain,
-        }
-    };
 
-    let quotient_poly: DensePolynomial<G::ScalarField> = {
-        // Only for debugging purposes
-        for expr in constraints.iter() {
-            let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
-            // Check this expression are witness satisfied
-            let (_, res) = expr
-                .evaluations(&column_env)
-                .interpolate_by_ref()
-                .divide_by_vanishing_poly(domain.d1)
-                .ok_or(fail_q_division.clone())?;
-            if !res.is_zero() {
-                return Err(fail_q_division);
+        let simple_eval_env: SimpleEvalEnv<G, N_COL, N_FSEL> = {
+            let ext_witness = ExtendedWitness {
+                witness: PlonkishWitness {
+                    witness: witness_main
+                        .into_par_iter()
+                        .map(enlarge_to_domain)
+                        .collect(),
+                    fixed_selectors: fixed_selectors_evals_d1
+                        .to_vec()
+                        .into_par_iter()
+                        .map(enlarge_to_domain)
+                        .collect(),
+                },
+                extended: witness_ext
+                    .into_iter()
+                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+                    .collect(),
+            };
+
+            SimpleEvalEnv {
+                ext_witness,
+                alphas: folded_instance.extended_instance.instance.alphas,
+                challenges: folded_instance.extended_instance.instance.challenges,
+                error_vec: enlarge_to_domain(folded_witness.error_vec),
+                u: folded_instance.u,
             }
-        }
-
-        // Compute ∑ α^i constraint_i as an expression
-        let combined_expr =
-            Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
-
-        // We want to compute the quotient polynomial, i.e.
-        // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
-        // The sum of the expressions is called the "constraint polynomial".
-        // We will use the evaluations points of the individual witness and
-        // lookup columns.
-        // Note that as the constraints might be of higher degree than N, the
-        // size of the set H we want the constraints to be verified on, we must
-        // have more than N evaluations points for each columns. This is handled
-        // in the ColumnEnvironment structure.
-        // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
-        // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
-        // 2N evaluation points to compute P as deg(P(X)) <= 2N.
-        let expr_evaluation: Evaluations<G::ScalarField, R2D<G::ScalarField>> =
-            combined_expr.evaluations(&column_env);
-
-        // And we interpolate using the evaluations
-        let expr_evaluation_interpolated = expr_evaluation.interpolate();
-
-        let fail_final_q_division = || {
-            panic!("Division by vanishing poly must not fail at this point, we checked it before")
         };
-        // We compute the polynomial t(X) by dividing the constraints polynomial
-        // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = expr_evaluation_interpolated
-            .divide_by_vanishing_poly(domain.d1)
-            .unwrap_or_else(fail_final_q_division);
-        // As the constraints must be verified on H, the rest of the division
-        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-        // equal on H.
-        if !res.is_zero() {
-            fail_final_q_division();
+
+        {
+            let eval_leaf = simple_eval_env.eval_naive_fcompat(combined_expr);
+
+            let evaluations_big = match eval_leaf {
+                EvalLeaf::Result(evaluations) => evaluations,
+                EvalLeaf::Col(evaluations) => evaluations.clone(),
+                _ => panic!("eval_leaf is not Result"),
+            };
+
+            let interpolated =
+                Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
+            if interpolated.is_zero() {
+                println!("Interpolated expression is zero");
+            }
+
+            let (quotient, remainder) = interpolated
+                .divide_by_vanishing_poly(domain.d1)
+                .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+            if !remainder.is_zero() {
+                panic!("ERROR: Remainder is not zero for joint folding expression",);
+            }
+            quotient
         }
-
-        quotient
     };
 
-    let num_chunks: usize = if max_degree == 1 {
-        1
-    } else {
-        (max_degree - 1) as usize
-    };
+    // we assume our folding degree is always 2, so number of chunks should be 1
+    let num_chunks: usize = 1;
 
     //~ 1. commit to the quotient polynomial $t$.
     let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
@@ -297,7 +273,7 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at ζ and ζω -- Columns
-    let witness_evals: Witness<N_WIT, PointEvaluations<_>> = {
+    let witness_point_evals: Witness<N_WIT, PointEvaluations<_>> = {
         let eval = |p: &DensePolynomial<_>| PointEvaluations {
             zeta: p.evaluate(&zeta),
             zeta_omega: p.evaluate(&zeta_omega),
@@ -308,7 +284,7 @@ where
             .collect::<Witness<N_WIT, PointEvaluations<_>>>()
     };
 
-    let fixed_selectors_evals: Box<[PointEvaluations<_>; N_FSEL]> = {
+    let fixed_selectors_point_evals: Box<[PointEvaluations<_>; N_FSEL]> = {
         let eval = |p: &DensePolynomial<_>| PointEvaluations {
             zeta: p.evaluate(&zeta),
             zeta_omega: p.evaluate(&zeta_omega),
@@ -331,12 +307,12 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for PointEvaluations { zeta, zeta_omega } in (&witness_evals).into_iter() {
+    for PointEvaluations { zeta, zeta_omega } in (&witness_point_evals).into_iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
 
-    for PointEvaluations { zeta, zeta_omega } in fixed_selectors_evals.as_ref().iter() {
+    for PointEvaluations { zeta, zeta_omega } in fixed_selectors_point_evals.as_ref().iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
@@ -347,16 +323,16 @@ where
     // where \sum_i t_i(X) X^{i n} = t(X), and t(X) is the quotient polynomial.
     // At the end, we get the (partial) evaluation of the constraint polynomial
     // in ζ.
-    let ft: DensePolynomial<G::ScalarField> = {
+    let ft: DensePolynomial<Fp> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         // Compute \sum_i t_i(X) ζ^{i n}
         // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
-        let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
+        let t_chunked: DensePolynomial<Fp> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
         // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        t_chunked.scale(Fp::one() - evaluation_point_to_domain_size)
     };
 
     // We only evaluate at ζω as the verifier can compute the
@@ -377,10 +353,10 @@ where
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     let non_hiding = |d1_size| PolyComm {
-        elems: vec![G::ScalarField::zero(); d1_size],
+        elems: vec![Fp::zero(); d1_size],
     };
     let hiding = |d1_size| PolyComm {
-        elems: vec![G::ScalarField::one(); d1_size],
+        elems: vec![Fp::one(); d1_size],
     };
 
     // Gathering all polynomials to use in the opening proof
@@ -401,7 +377,7 @@ where
 
     polynomials.push((coefficients_form(&ft), non_hiding(1)));
 
-    let opening_proof = OpenProof::open::<_, _, R2D<G::ScalarField>>(
+    let opening_proof = OpenProof::open::<_, _, R2D<Fp>>(
         srs,
         &group_map,
         polynomials.as_slice(),
@@ -412,10 +388,10 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, G::ScalarField, LT> = {
+    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, Fp, LT> = {
         ProofEvaluations {
-            witness_evals,
-            fixed_selectors_evals,
+            witness_evals: witness_point_evals,
+            fixed_selectors_evals: fixed_selectors_point_evals,
             logup_evals: None,
             ft_eval1,
         }
