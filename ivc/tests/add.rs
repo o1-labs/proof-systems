@@ -3,11 +3,10 @@
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_poly::Evaluations;
+use ark_ff::{One, PrimeField, UniformRand};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
-    expressions::FoldingColumnTrait,
-    instance_witness::Foldable,
-    standard_config::{EmptyStructure, StandardConfig},
+    expressions::FoldingColumnTrait, instance_witness::Foldable, standard_config::StandardConfig,
     Alphas, FoldingCompatibleExpr, FoldingScheme, Instance, Witness,
 };
 use ivc::{
@@ -20,35 +19,37 @@ use ivc::{
         IVC_NB_CHALLENGES,
     },
 };
-use kimchi::circuits::expr::{ChallengeTerm, Variable};
-use kimchi_msm::{columns::ColumnIndexer, witness::Witness as GenericWitness};
+use kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ChallengeTerm, Variable},
+    },
+    curve::KimchiCurve,
+};
+use kimchi_msm::{
+    circuit_design::{
+        ColAccessCap, ColWriteCap, ConstraintBuilderEnv, HybridCopyCap, WitnessBuilderEnv,
+    },
+    columns::{Column, ColumnIndexer},
+    expr::E,
+    lookups::DummyLookupTable,
+    witness::Witness as GenericWitness,
+    BN254G1Affine, Fp,
+};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use rayon::iter::IntoParallelIterator as _;
+use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{array, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use ark_ff::{One, UniformRand};
-use ark_poly::Radix2EvaluationDomain;
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::{
-    circuit_design::{ColWriteCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-    columns::Column,
-    expr::E,
-    lookups::DummyLookupTable,
-};
-use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
-use rayon::iter::ParallelIterator as _;
-
 use itertools::Itertools;
 
-/// The scalar field of the curve
-pub type Fp = ark_bn254::Fr;
 /// The base field of the curve
 /// Used to encode the polynomial commitments
 pub type Fq = ark_bn254::Fq;
 /// The curve we commit into
-pub type Curve = ark_bn254::G1Affine;
+pub type Curve = BN254G1Affine;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -72,8 +73,20 @@ impl ColumnIndexer for AdditionColumn {
     }
 }
 
-use ark_ff::PrimeField;
-use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
+#[derive(Clone)]
+/// Generic structure containing column vectors.
+pub struct GenericVecStructure<G: KimchiCurve>(Vec<Vec<G::ScalarField>>);
+
+impl<G: KimchiCurve> Index<Column> for GenericVecStructure<G> {
+    type Output = Vec<G::ScalarField>;
+
+    fn index(&self, index: Column) -> &Self::Output {
+        match index {
+            Column::FixedSelector(i) => &self.0[i],
+            _ => panic!("should not happen"),
+        }
+    }
+}
 
 /// Simply compute A + B - C
 pub fn interpreter_simple_add<
@@ -120,8 +133,8 @@ pub fn heavy_test_simple_add() {
     // Folding Witness
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize> {
-        pub witness: GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
-        pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+        pub witness: GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
+        pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<Fp, R2D<Fp>>>,
     }
 
     // Trait required for folding
@@ -249,10 +262,10 @@ pub fn heavy_test_simple_add() {
     impl<const N_COL: usize> PlonkishInstance<N_COL> {
         #[allow(dead_code)]
         pub fn from_witness(
-            w: &GenericWitness<N_COL, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+            w: &GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
             fq_sponge: &mut BaseSponge,
             srs: &SRS<Curve>,
-            domain: Radix2EvaluationDomain<Fp>,
+            domain: R2D<Fp>,
         ) -> Self {
             let blinder = Fp::one();
 
@@ -294,6 +307,16 @@ pub fn heavy_test_simple_add() {
         }
     }
 
+    type Config = StandardConfig<
+        Curve,
+        Column,
+        Challenge,
+        PlonkishInstance<N_COL_TOTAL>,
+        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
+        (),
+        GenericVecStructure<Curve>,
+    >;
+
     // Total number of witness columns in IVC. The blocks are public selectors.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
     // Total number of fixed selectors in the circuit for APP + IVC.
@@ -311,17 +334,42 @@ pub fn heavy_test_simple_add() {
     // IVC circuit.
     pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
 
-    type Config = StandardConfig<
-        Curve,
-        Column,
-        Challenge,
-        PlonkishInstance<N_COL_TOTAL>,
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
-    >;
+    ////////////////////////////////////////////////////////////////////////////
+    // Fixed Selectors
+    ////////////////////////////////////////////////////////////////////////////
 
-    // ---- End of folding configuration ----
+    // ---- Start build the witness environment for the IVC
+    // Start building the constants of the circuit.
+    // For the IVC, we have all the "block selectors" - which depends on the
+    // number of columns of the circuit - and the poseidon round constants.
+    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
+    // reduce the IVC constraints to degree 2.
+    let ivc_fixed_selectors: Vec<Vec<Fp>> =
+        build_selectors::<N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
 
-    // ---- Start folding configuration with IVC ----
+    // Sanity check on the domain size, can be removed later
+    assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
+    ivc_fixed_selectors.iter().for_each(|s| {
+        assert_eq!(s.len(), domain_size);
+    });
+
+    let ivc_fixed_selectors_evals_d1: Vec<Evaluations<Fp, R2D<Fp>>> = ivc_fixed_selectors
+        .into_par_iter()
+        .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
+        .collect();
+
+    let structure = GenericVecStructure(
+        ivc_fixed_selectors_evals_d1
+            .clone()
+            .iter()
+            .map(|x| x.evals.clone())
+            .collect(),
+    );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Constraints
+    ////////////////////////////////////////////////////////////////////////////
+
     let app_constraints: Vec<E<Fp>> = {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         interpreter_simple_add::<Fp, _>(&mut constraint_env);
@@ -391,8 +439,6 @@ pub fn heavy_test_simple_add() {
         .chain(ivc_compat_constraints)
         .collect();
 
-    let structure = EmptyStructure::default();
-
     let (_folding_scheme, _real_folding_compat_constraints) =
         FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &structure);
 
@@ -427,25 +473,4 @@ pub fn heavy_test_simple_add() {
         }
         env
     };
-
-    // ---- Start build the witness environment for the IVC
-    // Start building the constants of the circuit.
-    // For the IVC, we have all the "block selectors" - which depends on the
-    // number of columns of the circuit - and the poseidon round constants.
-    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
-    // reduce the IVC constraints to degree 2.
-    let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
-
-    // Sanity check on the domain size, can be removed later
-    assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
-    ivc_fixed_selectors.iter().for_each(|s| {
-        assert_eq!(s.len(), domain_size);
-    });
-
-    let _ivc_fixed_selectors_evals_d1: Vec<Evaluations<Fp, Radix2EvaluationDomain<Fp>>> =
-        ivc_fixed_selectors
-            .into_par_iter()
-            .map(|w| Evaluations::from_vec_and_domain(w, domain.d1))
-            .collect();
 }
