@@ -906,6 +906,9 @@
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
 <a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -947,8 +950,7 @@
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use super</span>::{
-    columns::IVC_NB_TOTAL_FIXED_SELECTORS, helpers::combine_large_to_full_field,
-    LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
+    columns::N_FSEL_IVC, helpers::combine_large_to_full_field, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE,
 };
 
 <span class="kw">pub fn </span>write_inputs_row&lt;F, Ff, Env, <span class="kw">const </span>N_COL_TOTAL: usize&gt;(
@@ -1680,7 +1682,7 @@
 </span><span class="attr">#[allow(clippy::needless_range_loop)]
 </span><span class="kw">pub fn </span>build_selectors&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
-) -&gt; [Vec&lt;kimchi_msm::Fp&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] {
+) -&gt; [Vec&lt;kimchi_msm::Fp&gt;; N_FSEL_IVC] {
     <span class="comment">// Selectors can be only generated for BN254G1 for now, because
     // that&#39;s what Poseidon works with.
     </span><span class="kw">use </span>ark_ff::{One, Zero};
@@ -1694,7 +1696,7 @@
 
     <span class="comment">// 3*N + 6*N+2 + N+1 + 35*N + 5 + N_CHALS + 1 =
     // 45N + 9 + N_CHALS
-    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;Fp&gt;; IVC_NB_TOTAL_FIXED_SELECTORS] =
+    </span><span class="kw">let </span><span class="kw-2">mut </span>selectors: [Vec&lt;Fp&gt;; N_FSEL_IVC] =
         core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); domain_size]);
     <span class="kw">let </span><span class="kw-2">mut </span>curr_row = <span class="number">0</span>;
     <span class="kw">for </span>block_i <span class="kw">in </span><span class="number">0</span>..N_BLOCKS {
@@ -1708,7 +1710,7 @@
         }
     }
 
-    <span class="kw">for </span>i <span class="kw">in </span>N_BLOCKS..IVC_NB_TOTAL_FIXED_SELECTORS - N_BLOCKS {
+    <span class="kw">for </span>i <span class="kw">in </span>N_BLOCKS..N_FSEL_IVC - N_BLOCKS {
         PoseidonBN254Parameters
             .constants()
             .iter()
@@ -1759,8 +1761,12 @@
         + HybridCopyCap&lt;F, IVCColumn&gt;
         + LookupCap&lt;F, IVCColumn, IVCLookupTable&lt;Ff&gt;&gt;,
 {
-    <span class="comment">// Total height of all blocks. Probably higher than this number. WIP
-    </span><span class="macro">assert!</span>(<span class="number">45 </span>* N_COL_TOTAL + <span class="number">2 </span>&lt; domain_size);
+    <span class="macro">assert!</span>(
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;() &lt; domain_size,
+        <span class="string">&quot;IVC circuit (height {:?}) cannot be fit into domain size ({domain_size})&quot;</span>,
+        total_height::&lt;N_COL_TOTAL, N_CHALS&gt;(),
+    );
+
     <span class="macro">assert!</span>(chal_l.len() == N_CHALS);
 
     <span class="kw">let </span>(_comms_small, comms_large, comms_xlarge) = process_inputs::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, N_COL_TOTAL, N_CHALS&gt;(

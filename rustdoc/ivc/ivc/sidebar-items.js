@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["IVC_NB_CHALLENGES","LIMB_BITSIZE_XLARGE","N_ADDITIONAL_WIT_COL_QUAD","N_LIMBS_XLARGE"],"mod":["columns","constraints","helpers","interpreter","lookups"]};
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_XLARGE","N_ADDITIONAL_WIT_COL_QUAD","N_ALPHAS","N_CONSTRAINTS","N_LIMBS_XLARGE"],"mod":["columns","constraints","helpers","interpreter","lookups"]};

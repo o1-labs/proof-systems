@@ -569,6 +569,7 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! IVC circuit layout - Top level documentation outdated
 //!
 //! The IVC circuit is tiled vertically. We assume we have as many
@@ -847,7 +848,8 @@
         .sum()
 }
 
-<span class="kw">pub const </span>IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
+<span class="doccomment">/// Number of fixed selectors for the IVC circuit.
+</span><span class="kw">pub const </span>N_FSEL_IVC: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 <span class="comment">// NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
