@@ -5,7 +5,7 @@ pub mod interpreter;
 pub mod lookups;
 
 use self::columns::N_BLOCKS;
-use crate::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS as IVC_POSEIDON_NB_CONSTRAINTS;
+use crate::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS as N_CONSTRAINTS_POSEIDON;
 
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
@@ -19,13 +19,20 @@ pub const N_LIMBS_XLARGE: usize = 2;
 /// `test_regression_additional_columns_reduction_to_degree_2`
 pub const N_ADDITIONAL_WIT_COL_QUAD: usize = 335;
 
-/// Number of challenges in the IVC circuit.
-/// It is the maximum number of constraints per row.
-/// We do suppose the Poseidon circuit has the highest number of constraints,
-/// for now.
-/// We also add the number of "blocks" in the IVC circuit as there will be
-/// [N_BLOCKS] alphas required to aggregate all blocks on each row.
-pub const IVC_NB_CHALLENGES: usize = IVC_POSEIDON_NB_CONSTRAINTS + N_BLOCKS;
+/// Number of constraints used by the IVC circuit.
+pub const N_CONSTRAINTS: usize = N_CONSTRAINTS_POSEIDON + N_BLOCKS + 61;
+
+/// Number of alphas needed for the IVC circuit, equal is the number
+/// of all the constraints per row.
+///
+/// TODO: We can do with less challenges, just N_BLOCKS +
+/// max(constraints_in_block) = N_BLOCKS + N_CONSTRAINTS_POSEIDOn.
+///
+/// Supposing the Poseidon circuit has the highest number of
+/// constraints, for now. We also add the number of "blocks" in the
+/// IVC circuit as there will be [N_BLOCKS] alphas required to
+/// aggregate all blocks on each row.
+pub const N_ALPHAS: usize = N_CONSTRAINTS;
 
 #[cfg(test)]
 mod tests {
@@ -33,7 +40,7 @@ mod tests {
 
     use crate::{
         ivc::{
-            columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
+            columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
             constraints::constrain_ivc,
             interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
@@ -56,13 +63,14 @@ mod tests {
     use o1_utils::box_array;
     use rand::{CryptoRng, RngCore};
 
-    use super::IVC_NB_CHALLENGES;
+    use super::N_ALPHAS;
 
     // Total number of columns in IVC and Application circuits.
     pub const TEST_N_COL_TOTAL: usize = IVCColumn::N_COL + 50;
 
-    // We do not have any additional constraint that the IVC circuit
-    pub const TEST_N_CHALS: usize = IVC_NB_CHALLENGES;
+    // IVC can process more challenges than just alphas, generally.
+    // However we do not have any in this test.
+    pub const TEST_N_CHALS: usize = N_ALPHAS;
 
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
 
@@ -72,7 +80,7 @@ mod tests {
         { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
         { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
         0,
-        IVC_NB_TOTAL_FIXED_SELECTORS,
+        N_FSEL_IVC,
         LT,
     >;
 
@@ -213,7 +221,7 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
+        let mut fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = {
             Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
                 domain_size,
             ))
@@ -234,7 +242,7 @@ mod tests {
             { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
-            IVC_NB_TOTAL_FIXED_SELECTORS,
+            N_FSEL_IVC,
             _,
         >(
             constraints,
@@ -267,7 +275,7 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let mut fixed_selectors: Box<[Vec<Fp>; IVC_NB_TOTAL_FIXED_SELECTORS]> = {
+        let mut fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = {
             Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
                 domain_size,
             ))
@@ -288,7 +296,7 @@ mod tests {
             { IVCColumn::N_COL - N_BLOCKS },
             { IVCColumn::N_COL - N_BLOCKS },
             0,
-            IVC_NB_TOTAL_FIXED_SELECTORS,
+            N_FSEL_IVC,
             _,
         >(
             constraints,

@@ -276,7 +276,8 @@ pub fn total_height<const N_COL_TOTAL: usize, const N_CHALS: usize>() -> usize {
         .sum()
 }
 
-pub const IVC_NB_TOTAL_FIXED_SELECTORS: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
+/// Number of fixed selectors for the IVC circuit.
+pub const N_FSEL_IVC: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 // NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?

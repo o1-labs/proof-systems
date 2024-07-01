@@ -12,11 +12,11 @@ use folding::{
 use ivc::{
     self,
     ivc::{
-        columns::{IVCColumn, IVC_NB_TOTAL_FIXED_SELECTORS, N_BLOCKS},
+        columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
         interpreter::build_selectors,
         lookups::IVCLookupTable,
-        IVC_NB_CHALLENGES,
+        N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
 };
 use kimchi::{
@@ -106,11 +106,38 @@ pub fn interpreter_simple_add<
 #[test]
 pub fn heavy_test_simple_add() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let domain_size: usize = 1 << 15;
+    // FIXME: this has to be 1 << 15. the 16 is temporary, since we
+    // are at 35783 rows right now, but can only allow 32768. Light
+    // future optimisations will get us back to 15.
+    let domain_size: usize = 1 << 16;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
     let mut srs = SRS::<Curve>::create(domain_size);
     srs.add_lagrange_basis(domain.d1);
+
+    // Total number of witness columns in IVC. The blocks are public selectors.
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
+    // Total number of fixed selectors in the circuit for APP + IVC.
+    // There is no fixed selector in the APP circuit.
+    const N_FSEL_TOTAL: usize = N_FSEL_IVC;
+
+    // Our application circuit has two constraints.
+    const N_ALPHAS_APP: usize = 2;
+    // Total number of challenges required by the circuit APP + IVC.
+    // The number of challenges required by the IVC is defined by the library.
+    // Therefore, we only need to add the challenges required by the specific
+    // application.
+    const N_ALPHAS: usize = N_ALPHAS_IVC + N_ALPHAS_APP;
+    // There are two more challenges though.
+    const N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
+
+    // Number of witness columns in the circuit.
+    // It consists of the columns of the inner circuit and the columns for the
+    // IVC circuit.
+    const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
+    // No quad in APP.
+    const N_COL_QUAD: usize = N_COL_QUAD_IVC;
+    const N_COL_TOTAL_QUAD: usize = N_COL_TOTAL + N_COL_QUAD;
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -317,23 +344,6 @@ pub fn heavy_test_simple_add() {
         GenericVecStructure<Curve>,
     >;
 
-    // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
-    // Total number of fixed selectors in the circuit for APP + IVC.
-    // There is no fixed selector in the APP circuit.
-    const N_FSEL_TOTAL: usize = IVC_NB_TOTAL_FIXED_SELECTORS;
-
-    // Total number of challenges required by the circuit APP + IVC.
-    // The number of challenges required by the IVC is defined by the library.
-    // Therefore, we only need to add the challenges required by the specific
-    // application.
-    const N_CHALS: usize = IVC_NB_CHALLENGES + Challenge::COUNT;
-
-    // Number of witness columns in the circuit.
-    // It consists of the columns of the inner circuit and the columns for the
-    // IVC circuit.
-    pub const N_COL_TOTAL: usize = AdditionColumn::COUNT + N_WIT_IVC;
-
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
     ////////////////////////////////////////////////////////////////////////////
@@ -345,7 +355,7 @@ pub fn heavy_test_simple_add() {
     // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
     // reduce the IVC constraints to degree 2.
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<N_COL_TOTAL, N_CHALS>(domain_size).to_vec();
+        build_selectors::<N_COL_TOTAL_QUAD, N_CHALS>(domain_size).to_vec();
 
     // Sanity check on the domain size, can be removed later
     assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
@@ -439,10 +449,26 @@ pub fn heavy_test_simple_add() {
         .chain(ivc_compat_constraints)
         .collect();
 
-    let (_folding_scheme, _real_folding_compat_constraints) =
+    // We have as many alphas as constraints
+    assert!(
+        folding_compat_constraints.len() == N_ALPHAS,
+        "Folding compat constraints: expected {N_ALPHAS:?} got {}",
+        folding_compat_constraints.len()
+    );
+
+    let (folding_scheme, _real_folding_compat_constraints) =
         FoldingScheme::<Config>::new(folding_compat_constraints, &srs, domain.d1, &structure);
 
-    // End of folding configuration for IVC + APP
+    let additional_columns = folding_scheme.get_number_of_additional_columns();
+
+    assert_eq!(
+        additional_columns, N_COL_QUAD,
+        "Expected {N_COL_QUAD} additional quad columns, got {additional_columns}"
+    );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Witness step 1 & 2
+    ////////////////////////////////////////////////////////////////////////////
 
     // Starting building witnesses. We start with the application witnesses. It
     // will be used after that to build the witness for the IVC
