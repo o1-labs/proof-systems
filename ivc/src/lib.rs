@@ -141,3 +141,5 @@ pub mod poseidon_8_56_5_3_2;
 /// Poseidon parameters for 55 full rounds, 0 partial rounds, sbox 7, a state of
 /// 3 elements
 pub mod poseidon_params_55_0_7_3;
+pub mod prover;
+pub mod verifier;
