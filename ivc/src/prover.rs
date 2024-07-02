@@ -209,6 +209,7 @@ where
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
+                    phantom: std::marker::PhantomData,
                 },
                 extended: witness_ext
                     .into_iter()
@@ -230,7 +231,7 @@ where
 
             let evaluations_big = match eval_leaf {
                 EvalLeaf::Result(evaluations) => evaluations,
-                EvalLeaf::Col(evaluations) => evaluations.clone(),
+                EvalLeaf::Col(evaluations) => evaluations.to_vec().clone(),
                 _ => panic!("eval_leaf is not Result"),
             };
 

@@ -942,10 +942,21 @@ pub fn heavy_test_simple_add() {
 
     println!("Verifying a proof");
 
+    // quad columns become regular witness columns
+    let folding_constrainj_noquad: FoldingCompatibleExpr<MainTestConfig> = {
+        let noquad_mapper = &(|quad_index: usize| {
+            let row = kimchi_msm::columns::Column::Relation(N_COL_TOTAL_QUAD + quad_index);
+            Variable { col: new_col, row }
+        });
+
+        real_folding_compat_constraint.map_variable(noquad_mapper)
+    };
+
     let _verifies = ivc::verifier::verify::<
         BaseSponge,
         ScalarSponge,
         MainTestConfig,
+        N_COL_TOTAL,
         { N_COL_TOTAL - N_FSEL_TOTAL },
         { N_COL_TOTAL - N_FSEL_TOTAL },
         0,
@@ -955,7 +966,7 @@ pub fn heavy_test_simple_add() {
     >(
         domain,
         &srs,
-        &real_folding_compat_constraint,
+        &folding_constraint_noquad,
         o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
         &proof,
     );

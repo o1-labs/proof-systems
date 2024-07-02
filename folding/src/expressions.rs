@@ -638,6 +638,44 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             FoldingCompatibleExpr::Pow(e, p) => Pow(Box::new(e.map_variable(mapper)), p),
         }
     }
+
+    /// Map all quad columns into regular witness columns.
+    pub fn flatten_quad_columns(
+        self,
+        mapper: &(dyn Fn(usize) -> Variable<C::Column>),
+    ) -> FoldingCompatibleExpr<C> {
+        use FoldingCompatibleExpr::*;
+        match self {
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Extensions(ExpExtension::ExtendedWitness(i)) => {
+                    Atom(FoldingCompatibleExprInner::Cell((mapper)(i)))
+                }
+                atom => Atom(atom),
+            },
+            FoldingCompatibleExpr::Double(exp) => {
+                Double(Box::new(exp.flatten_quad_columns(mapper)))
+            }
+            FoldingCompatibleExpr::Square(exp) => {
+                Square(Box::new(exp.flatten_quad_columns(mapper)))
+            }
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Mul(e1, e2)
+            }
+            FoldingCompatibleExpr::Pow(e, p) => Pow(Box::new(e.flatten_quad_columns(mapper)), p),
+        }
+    }
 }
 
 impl<C: FoldingConfig> FoldingExp<C> {

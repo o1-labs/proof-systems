@@ -1,7 +1,13 @@
-use crate::plonkish_lang::PlonkishChallenge;
+use crate::{
+    expr_eval::GenericEvalEnv,
+    plonkish_lang::{PlonkishChallenge, PlonkishWitnessGeneric},
+};
 use ark_ff::{Field, One};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
-use folding::{FoldingCompatibleExpr, FoldingConfig};
+use folding::{
+    instance_witness::{ExtendedWitness, RelaxedInstance, RelaxedWitness},
+    FoldingCompatibleExpr, FoldingConfig,
+};
 use kimchi::{
     self, circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
     plonk_sponge::FrSponge, proof::PointEvaluations,
@@ -32,6 +38,7 @@ pub fn verify<
     EFqSponge: Clone + FqSponge<Fq, G, Fp>,
     EFrSponge: FrSponge<Fp>,
     FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
+    const N_COL: usize,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
@@ -45,6 +52,9 @@ pub fn verify<
     fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
     proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>, LT>,
 ) -> bool {
+    assert!(N_COL == N_WIT + N_FSEL);
+    assert!(N_WIT == N_REL + N_DSEL);
+
     let Proof {
         proof_comms,
         proof_evals,
@@ -180,6 +190,45 @@ pub fn verify<
     //};
 
     let ft_eval0 = {
+        let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta, x.zeta_omega];
+        let witness_evals_vecs = proof_evals
+            .witness_evals
+            .cols
+            .clone()
+            .into_iter()
+            .map(point_eval_to_vec)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let fixed_selectors_evals_vecs = proof_evals
+            .fixed_selectors_evals
+            .clone()
+            .into_iter()
+            .map(point_eval_to_vec)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let error_vec = point_eval_to_vec(folded_witness.error_vec);
+
+        let eval_env: GenericEvalEnv<G, N_COL, N_FSEL, Vec<Fp>> = {
+            let ext_witness = ExtendedWitness {
+                witness: PlonkishWitnessGeneric {
+                    witness: witness_evals_vecs,
+                    fixed_selectors: fixed_selectors_evals_vecs,
+                    phantom: std::marker::PhantomData,
+                },
+                extended: Default::default(),
+            };
+
+            GenericEvalEnv {
+                ext_witness,
+                alphas: folded_instance.extended_instance.instance.alphas,
+                challenges: folded_instance.extended_instance.instance.challenges,
+                error_vec: enlarge_to_domain(folded_witness.error_vec),
+                u: folded_instance.u,
+            }
+        };
+
         let _blabla = combined_expr;
         let bla = { todo!() };
 

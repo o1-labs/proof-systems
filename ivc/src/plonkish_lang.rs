@@ -2,7 +2,7 @@
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
 use ark_ec::ProjectiveCurve;
-use ark_ff::{FftField, One};
+use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
@@ -18,42 +18,74 @@ use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::ops::Index;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize, F: FftField> {
-    pub witness: GenericWitness<N_COL, Evaluations<F, R2D<F>>>,
-    // This does not have to be part of the witness... can be a static
-    // precompiled object.
-    pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<F, R2D<F>>>,
+/// Vector field over F. Something like a vector.
+pub trait CombinableEvals<F: Field> {
+    fn e_as_slice(&self) -> &[F];
+    fn e_as_mut_slice(&mut self) -> &mut [F];
 }
 
-impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Foldable<F>
-    for PlonkishWitness<N_COL, N_FSEL, F>
+impl<F: FftField> CombinableEvals<F> for Evaluations<F, R2D<F>> {
+    fn e_as_slice(&self) -> &[F] {
+        self.evals.as_slice()
+    }
+    fn e_as_mut_slice(&mut self) -> &mut [F] {
+        self.evals.as_mut_slice()
+    }
+}
+
+impl<F: FftField> CombinableEvals<F> for Vec<F> {
+    fn e_as_slice(&self) -> &[F] {
+        self.as_slice()
+    }
+    fn e_as_mut_slice(&mut self) -> &mut [F] {
+        self.as_mut_slice()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PlonkishWitnessGeneric<const N_COL: usize, const N_FSEL: usize, F: Field, Evals> {
+    pub witness: GenericWitness<N_COL, Evals>,
+    // This does not have to be part of the witness... can be a static
+    // precompiled object.
+    pub fixed_selectors: GenericWitness<N_FSEL, Evals>,
+    pub phantom: std::marker::PhantomData<F>,
+}
+
+pub type PlonkishWitness<const N_COL: usize, const N_FSEL: usize, F> =
+    PlonkishWitnessGeneric<N_COL, N_FSEL, F, Evaluations<F, R2D<F>>>;
+
+impl<const N_COL: usize, const N_FSEL: usize, F: Field, Evals: CombinableEvals<F>> Foldable<F>
+    for PlonkishWitnessGeneric<N_COL, N_FSEL, F, Evals>
 {
     fn combine(mut a: Self, b: Self, challenge: F) -> Self {
         for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-            for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a += challenge * b;
+            for (a, b) in (a.e_as_mut_slice()).iter_mut().zip(b.e_as_slice()) {
+                *a += *b * challenge;
             }
         }
         a
     }
 }
 
-impl<const N_COL: usize, const N_FSEL: usize, Curve: CommitmentCurve> Witness<Curve>
-    for PlonkishWitness<N_COL, N_FSEL, Curve::ScalarField>
+impl<
+        const N_COL: usize,
+        const N_FSEL: usize,
+        Curve: CommitmentCurve,
+        Evals: CombinableEvals<Curve::ScalarField>,
+    > Witness<Curve> for PlonkishWitnessGeneric<N_COL, N_FSEL, Curve::ScalarField, Evals>
 {
 }
 
-impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Index<Column>
-    for PlonkishWitness<N_COL, N_FSEL, F>
+impl<const N_COL: usize, const N_FSEL: usize, F: FftField, Evals: CombinableEvals<F>> Index<Column>
+    for PlonkishWitnessGeneric<N_COL, N_FSEL, F, Evals>
 {
-    type Output = Vec<F>;
+    type Output = [F];
 
     /// Map a column alias to the corresponding witness column.
     fn index(&self, index: Column) -> &Self::Output {
         match index {
-            Column::Relation(i) => &self.witness.cols[i].evals,
-            Column::FixedSelector(i) => &self.fixed_selectors[i].evals,
+            Column::Relation(i) => self.witness.cols[i].e_as_slice(),
+            Column::FixedSelector(i) => self.fixed_selectors[i].e_as_slice(),
             other => panic!("Invalid column index: {other:?}"),
         }
     }
