@@ -142,3 +142,4 @@ pub mod poseidon_8_56_5_3_2;
 /// 3 elements
 pub mod poseidon_params_55_0_7_3;
 pub mod prover;
+pub mod verifier;

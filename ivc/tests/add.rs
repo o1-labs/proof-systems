@@ -917,7 +917,7 @@ pub fn heavy_test_simple_add() {
 
     println!("Creating a proof");
 
-    let _proof = ivc::prover::prove::<
+    let proof = ivc::prover::prove::<
         BaseSponge,
         ScalarSponge,
         MainTestConfig,
@@ -933,9 +933,32 @@ pub fn heavy_test_simple_add() {
         domain,
         &srs,
         &real_folding_compat_constraint,
-        o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors),
+        o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
         folded_instance,
         folded_witness,
         &mut rng,
+    )
+    .unwrap();
+
+    println!("Verifying a proof");
+
+    let _verifies = ivc::verifier::verify::<
+        BaseSponge,
+        ScalarSponge,
+        MainTestConfig,
+        { N_COL_TOTAL - N_FSEL_TOTAL },
+        { N_COL_TOTAL - N_FSEL_TOTAL },
+        0,
+        N_FSEL_TOTAL,
+        0,
+        LT,
+    >(
+        domain,
+        &srs,
+        &real_folding_compat_constraint,
+        o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
+        &proof,
     );
+
+    println!("Proof verified? {_verifies}");
 }
