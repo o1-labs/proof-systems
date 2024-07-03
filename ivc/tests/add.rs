@@ -22,7 +22,7 @@ use ivc::{
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::Variable},
+    circuits::{domains::EvaluationDomains, expr::Variable, gate::CurrOrNext},
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -80,7 +80,7 @@ impl ColumnIndexer for AdditionColumn {
 pub struct GenericVecStructure<G: KimchiCurve>(Vec<Vec<G::ScalarField>>);
 
 impl<G: KimchiCurve> Index<Column> for GenericVecStructure<G> {
-    type Output = Vec<G::ScalarField>;
+    type Output = [G::ScalarField];
 
     fn index(&self, index: Column) -> &Self::Output {
         match index {
@@ -167,7 +167,7 @@ pub fn heavy_test_simple_add() {
     impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
         for PlonkishWitness<N_COL, N_FSEL, Fp>
     {
-        type Output = Vec<Fp>;
+        type Output = [Fp];
 
         fn index(&self, index: AdditionColumn) -> &Self::Output {
             match index {
@@ -392,6 +392,7 @@ pub fn heavy_test_simple_add() {
             .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
             .collect(),
         fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
+        phantom: std::marker::PhantomData,
     };
 
     let folding_instance_one = PlonkishInstance::from_witness(
@@ -440,6 +441,7 @@ pub fn heavy_test_simple_add() {
     let folding_witness_two = PlonkishWitness {
         witness: folding_witness_two_evals.clone(),
         fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
+        phantom: std::marker::PhantomData,
     };
 
     let folding_instance_two = PlonkishInstance::from_witness(
@@ -716,6 +718,7 @@ pub fn heavy_test_simple_add() {
     let folding_witness_three = PlonkishWitness {
         witness: folding_witness_three_evals.clone().try_into().unwrap(),
         fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
+        phantom: std::marker::PhantomData,
     };
 
     let folding_instance_three = PlonkishInstance::from_witness(
@@ -784,6 +787,7 @@ pub fn heavy_test_simple_add() {
                             .into_par_iter()
                             .map(enlarge_to_domain)
                             .collect(),
+                        phantom: std::marker::PhantomData,
                     },
                     extended: BTreeMap::new(), // No extended columns at this point
                 },
@@ -803,7 +807,7 @@ pub fn heavy_test_simple_add() {
 
                 let evaluations_d8 = match eval_leaf {
                     EvalLeaf::Result(evaluations_d8) => evaluations_d8,
-                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone(),
+                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone().to_vec(),
                     _ => panic!("eval_leaf is not Result"),
                 };
 
@@ -864,6 +868,7 @@ pub fn heavy_test_simple_add() {
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
+                    phantom: std::marker::PhantomData,
                 },
                 extended: folded_witness
                     .extended_witness
@@ -891,7 +896,7 @@ pub fn heavy_test_simple_add() {
 
             let evaluations_big = match eval_leaf {
                 EvalLeaf::Result(evaluations) => evaluations,
-                EvalLeaf::Col(evaluations) => evaluations.clone(),
+                EvalLeaf::Col(evaluations) => evaluations.clone().to_vec(),
                 _ => panic!("eval_leaf is not Result"),
             };
 
@@ -928,7 +933,6 @@ pub fn heavy_test_simple_add() {
         0,
         N_FSEL_TOTAL,
         N_ALPHAS_QUAD,
-        LT,
     >(
         domain,
         &srs,
@@ -943,16 +947,19 @@ pub fn heavy_test_simple_add() {
     println!("Verifying a proof");
 
     // quad columns become regular witness columns
-    let folding_constrainj_noquad: FoldingCompatibleExpr<MainTestConfig> = {
+    let folding_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
         let noquad_mapper = &(|quad_index: usize| {
-            let row = kimchi_msm::columns::Column::Relation(N_COL_TOTAL_QUAD + quad_index);
-            Variable { col: new_col, row }
+            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL_QUAD + quad_index);
+            Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }
         });
 
-        real_folding_compat_constraint.map_variable(noquad_mapper)
+        real_folding_compat_constraint.flatten_quad_columns(noquad_mapper)
     };
 
-    let _verifies = ivc::verifier::verify::<
+    let verifies = ivc::verifier::verify::<
         BaseSponge,
         ScalarSponge,
         MainTestConfig,
@@ -962,7 +969,6 @@ pub fn heavy_test_simple_add() {
         0,
         N_FSEL_TOTAL,
         0,
-        LT,
     >(
         domain,
         &srs,
@@ -971,5 +977,5 @@ pub fn heavy_test_simple_add() {
         &proof,
     );
 
-    println!("Proof verified? {_verifies}");
+    println!("Proof verified? {verifies}");
 }

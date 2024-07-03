@@ -69,11 +69,11 @@ where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
-    W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
+    W: Index<Col, Output = [G::ScalarField]> + Index<Sel, Output = [G::ScalarField]>,
     Col: Hash + Eq + Debug + Clone + FoldingColumnTrait,
     Sel: Ord + Copy + Hash + Debug,
     Chall: Hash + Eq + Debug + Copy,
-    Str: Clone + Index<Col, Output = Vec<G::ScalarField>>,
+    Str: Clone + Index<Col, Output = [G::ScalarField]>,
 {
     type Column = Col;
 
@@ -99,7 +99,7 @@ where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
-    W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
+    W: Index<Col, Output = [G::ScalarField]> + Index<Sel, Output = [G::ScalarField]>,
     Col: Hash + Eq,
 {
     instances: [I; 2],
@@ -117,10 +117,10 @@ where
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
-    W: Index<Col, Output = Vec<G::ScalarField>> + Index<Sel, Output = Vec<G::ScalarField>>,
+    W: Index<Col, Output = [G::ScalarField]> + Index<Sel, Output = [G::ScalarField]>,
     Col: FoldingColumnTrait + Eq + Hash,
     Sel: Copy,
-    Str: Clone + Index<Col, Output = Vec<G::ScalarField>>,
+    Str: Clone + Index<Col, Output = [G::ScalarField]>,
 {
     type Structure = Str;
 
@@ -148,7 +148,7 @@ where
         instance[challenge]
     }
 
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<G::ScalarField> {
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &[G::ScalarField] {
         let witness = match side {
             Side::Left => &self.witnesses[0],
             Side::Right => &self.witnesses[1],
@@ -182,7 +182,7 @@ where
         }
     }
 
-    fn selector(&self, s: &Sel, side: Side) -> &Vec<G::ScalarField> {
+    fn selector(&self, s: &Sel, side: Side) -> &[G::ScalarField] {
         //similar to the witness case of col, as expected
         let witness = match side {
             Side::Left => &self.witnesses[0],
@@ -377,7 +377,7 @@ mod example {
     }
     // for selectors, () in this case as we have none
     impl<G: KimchiCurve> Index<()> for MyWitness<G> {
-        type Output = Vec<G::ScalarField>;
+        type Output = [G::ScalarField];
 
         fn index(&self, _index: ()) -> &Self::Output {
             unreachable!()

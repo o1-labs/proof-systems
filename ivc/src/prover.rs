@@ -15,15 +15,17 @@ use folding::{
     FoldingCompatibleExpr, FoldingConfig,
 };
 use kimchi::{
-    self, circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
-    plonk_sponge::FrSponge, proof::PointEvaluations,
+    self,
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ColumnEvaluations, ExprError},
+    },
+    curve::KimchiCurve,
+    groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+    proof::PointEvaluations,
 };
-use kimchi_msm::{
-    columns::Column as GenericColumn,
-    logup::LookupTableID,
-    proof::{Proof, ProofCommitments, ProofEvaluations},
-    witness::Witness,
-};
+use kimchi_msm::{columns::Column as GenericColumn, witness::Witness};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
@@ -59,6 +61,88 @@ pub type Fp = kimchi_msm::Fp;
 /// Used to encode the polynomial commitments
 pub type Fq = ark_bn254::Fq;
 
+#[derive(Debug, Clone)]
+// TODO Should public input and fixed selectors evaluations be here?
+pub struct ProofEvaluations<
+    const N_WIT: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
+    F,
+> {
+    /// Witness evaluations, including public inputs
+    pub witness_evals: Witness<N_WIT, PointEvaluations<F>>,
+    /// Evaluations of fixed selectors.
+    pub fixed_selectors_evals: Box<[PointEvaluations<F>; N_FSEL]>,
+    pub error_vec: PointEvaluations<F>,
+    /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
+    pub ft_eval1: F,
+}
+
+/// The trait ColumnEvaluations is used by the verifier.
+/// It will return the evaluation of the corresponding column at the
+/// evaluation points coined by the verifier during the protocol.
+impl<
+        const N_WIT: usize,
+        const N_REL: usize,
+        const N_DSEL: usize,
+        const N_FSEL: usize,
+        F: Clone,
+    > ColumnEvaluations<F> for ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, F>
+{
+    type Column = kimchi_msm::columns::Column;
+
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        // TODO: substitute when non-literal generic constants are available
+        assert!(N_WIT == N_REL + N_DSEL);
+        let res = match col {
+            Self::Column::Relation(i) => {
+                assert!(i < N_REL, "Index out of bounds");
+                self.witness_evals[i].clone()
+            }
+            Self::Column::DynamicSelector(i) => {
+                assert!(i < N_DSEL, "Index out of bounds");
+                self.witness_evals[N_REL + i].clone()
+            }
+            Self::Column::FixedSelector(i) => {
+                assert!(i < N_FSEL, "Index out of bounds");
+                self.fixed_selectors_evals[i].clone()
+            }
+            _ => panic!("lookup columns not supported"),
+        };
+        Ok(res)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve> {
+    /// Commitments to the N columns of the circuits, also called the 'witnesses'.
+    /// If some columns are considered as public inputs, it is counted in the witness.
+    pub witness_comms: Witness<N_WIT, PolyComm<G>>,
+    /// Commitments to the quotient polynomial.
+    /// The value contains the chunked polynomials.
+    pub t_comm: PolyComm<G>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Proof<
+    const N_WIT: usize,
+    const N_REL: usize,
+    const N_DSEL: usize,
+    const N_FSEL: usize,
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+> {
+    pub proof_comms: ProofCommitments<N_WIT, G>,
+    pub proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, G::ScalarField>,
+    pub opening_proof: OpeningProof,
+
+    // Unsure whether this is necessary.
+    pub alpha: G::ScalarField,
+    pub challenges: [G::ScalarField; 3],
+    pub u: G::ScalarField,
+}
+
 pub fn prove<
     EFqSponge: Clone + FqSponge<Fq, G, Fp>,
     EFrSponge: FrSponge<Fp>,
@@ -70,7 +154,6 @@ pub fn prove<
     const N_DSEL: usize,
     const N_FSEL: usize,
     const N_ALPHAS: usize,
-    LT: LookupTableID,
 >(
     domain: EvaluationDomains<Fp>,
     srs: &PairingSRS<Pairing>,
@@ -79,7 +162,7 @@ pub fn prove<
     folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_COL, 3, N_ALPHAS>>,
     folded_witness: RelaxedWitness<G, PlonkishWitness<N_COL, N_FSEL, Fp>>,
     rng: &mut RNG,
-) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>, LT>, ProverError>
+) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>, ProverError>
 where
     RNG: RngCore + CryptoRng,
 {
@@ -180,7 +263,7 @@ where
 
     // Sample α with the Fq-Sponge.
     // What to do with it?..
-    let _alpha: Fp = fq_sponge.challenge();
+    //let _alpha: Fp = fq_sponge.challenge();
 
     let quotient_poly: DensePolynomial<Fp> = {
         let evaluation_domain = domain.d4;
@@ -219,9 +302,9 @@ where
 
             SimpleEvalEnv {
                 ext_witness,
-                alphas: folded_instance.extended_instance.instance.alphas,
+                alphas: folded_instance.extended_instance.instance.alphas.clone(),
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec),
+                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
                 u: folded_instance.u,
             }
         };
@@ -273,31 +356,30 @@ where
     // We will also evaluate at ζω as lookups do require to go to the next row.
     let zeta_omega = zeta * omega;
 
+    let eval_at_challenge = |p: &DensePolynomial<_>| PointEvaluations {
+        zeta: p.evaluate(&zeta),
+        zeta_omega: p.evaluate(&zeta_omega),
+    };
+
     // Evaluate the polynomials at ζ and ζω -- Columns
     let witness_point_evals: Witness<N_WIT, PointEvaluations<_>> = {
-        let eval = |p: &DensePolynomial<_>| PointEvaluations {
-            zeta: p.evaluate(&zeta),
-            zeta_omega: p.evaluate(&zeta_omega),
-        };
         (&witness_polys)
             .into_par_iter()
-            .map(eval)
+            .map(eval_at_challenge)
             .collect::<Witness<N_WIT, PointEvaluations<_>>>()
     };
 
     let fixed_selectors_point_evals: Box<[PointEvaluations<_>; N_FSEL]> = {
-        let eval = |p: &DensePolynomial<_>| PointEvaluations {
-            zeta: p.evaluate(&zeta),
-            zeta_omega: p.evaluate(&zeta_omega),
-        };
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors_polys
                 .as_ref()
                 .into_par_iter()
-                .map(eval)
+                .map(eval_at_challenge)
                 .collect::<_>(),
         )
     };
+
+    let error_vec_point_eval = eval_at_challenge(&folded_witness.error_vec.interpolate());
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -389,11 +471,11 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, Fp, LT> = {
+    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, Fp> = {
         ProofEvaluations {
             witness_evals: witness_point_evals,
             fixed_selectors_evals: fixed_selectors_point_evals,
-            logup_evals: None,
+            error_vec: error_vec_point_eval,
             ft_eval1,
         }
     };
@@ -401,10 +483,17 @@ where
     Ok(Proof {
         proof_comms: ProofCommitments {
             witness_comms,
-            logup_comms: None,
             t_comm,
         },
         proof_evals,
         opening_proof,
+        alpha: folded_instance
+            .extended_instance
+            .instance
+            .alphas
+            .get(1)
+            .unwrap(),
+        challenges: folded_instance.extended_instance.instance.challenges,
+        u: folded_instance.u,
     })
 }

@@ -95,7 +95,7 @@ impl<const N_COL: usize, const N_FSEL: usize, F: FftField, Evals: CombinableEval
 impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Index<()>
     for PlonkishWitness<N_COL, N_FSEL, F>
 {
-    type Output = Vec<F>;
+    type Output = [F];
 
     fn index(&self, _index: ()) -> &Self::Output {
         unreachable!()

@@ -1,18 +1,19 @@
 use crate::{
     expr_eval::GenericEvalEnv,
     plonkish_lang::{PlonkishChallenge, PlonkishWitnessGeneric},
+    prover::Proof,
 };
 use ark_ff::{Field, One};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
-    instance_witness::{ExtendedWitness, RelaxedInstance, RelaxedWitness},
-    FoldingCompatibleExpr, FoldingConfig,
+    eval_leaf::EvalLeaf, instance_witness::ExtendedWitness, Alphas, FoldingCompatibleExpr,
+    FoldingConfig,
 };
 use kimchi::{
     self, circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
     plonk_sponge::FrSponge, proof::PointEvaluations,
 };
-use kimchi_msm::{columns::Column as GenericColumn, logup::LookupTableID, proof::Proof};
+use kimchi_msm::columns::Column as GenericColumn;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
@@ -44,13 +45,12 @@ pub fn verify<
     const N_DSEL: usize,
     const N_FSEL: usize,
     const NPUB: usize,
-    LT: LookupTableID,
 >(
     domain: EvaluationDomains<Fp>,
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
     fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
-    proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>, LT>,
+    proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>,
 ) -> bool {
     assert!(N_COL == N_WIT + N_FSEL);
     assert!(N_WIT == N_REL + N_DSEL);
@@ -59,6 +59,7 @@ pub fn verify<
         proof_comms,
         proof_evals,
         opening_proof,
+        ..
     } = proof;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -113,7 +114,7 @@ pub fn verify<
     //let (joint_combiner, beta) = (None, Fp::zero());
 
     // Sample α with the Fq-Sponge.
-    let alpha = fq_sponge.challenge();
+    //let alpha = fq_sponge.challenge();
 
     ////////////////////////////////////////////////////////////////////////////
     // Quotient polynomial
@@ -190,7 +191,9 @@ pub fn verify<
     //};
 
     let ft_eval0 = {
-        let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta, x.zeta_omega];
+        // We evaluate only at zeta
+        let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta];
+
         let witness_evals_vecs = proof_evals
             .witness_evals
             .cols
@@ -208,7 +211,11 @@ pub fn verify<
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        let error_vec = point_eval_to_vec(folded_witness.error_vec);
+        let error_vec = point_eval_to_vec(proof_evals.error_vec);
+
+        let alphas = Alphas::new_sized(proof.alpha, 123);
+        let challenges = proof.challenges;
+        let u = proof.u;
 
         let eval_env: GenericEvalEnv<G, N_COL, N_FSEL, Vec<Fp>> = {
             let ext_witness = ExtendedWitness {
@@ -222,26 +229,20 @@ pub fn verify<
 
             GenericEvalEnv {
                 ext_witness,
-                alphas: folded_instance.extended_instance.instance.alphas,
-                challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec),
-                u: folded_instance.u,
+                alphas,
+                challenges,
+                error_vec,
+                u,
             }
         };
 
-        let _blabla = combined_expr;
-        let bla = { todo!() };
+        let eval_res: Vec<_> = match eval_env.eval_naive_fcompat(combined_expr) {
+            EvalLeaf::Result(x) => x,
+            EvalLeaf::Col(x) => x.clone().to_vec(),
+            _ => panic!("eval_leaf is not Result"),
+        };
 
-        bla
-        //        -PolishToken::evaluate(
-        //        combined_expr.to_polish().as_slice(),
-        //        domain.d1,
-        //        zeta,
-        //        proof_evals,
-        //        &constants,
-        //        &challenges,
-        //    )
-        //    .unwrap()};
+        eval_res[0]
     };
 
     coms_and_evaluations.push(Evaluation {
