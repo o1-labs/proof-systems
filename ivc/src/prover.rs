@@ -148,8 +148,8 @@ pub fn prove<
     EFrSponge: FrSponge<Fp>,
     FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
     RNG,
-    const N_COL: usize,
     const N_WIT: usize,
+    const N_WIT_QUAD: usize, // witness columns + quad columns
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
@@ -159,14 +159,14 @@ pub fn prove<
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
     fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
-    folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_COL, 3, N_ALPHAS>>,
-    folded_witness: RelaxedWitness<G, PlonkishWitness<N_COL, N_FSEL, Fp>>,
+    folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_WIT, 3, N_ALPHAS>>,
+    folded_witness: RelaxedWitness<G, PlonkishWitness<N_WIT, N_FSEL, Fp>>,
     rng: &mut RNG,
-) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>, ProverError>
+) -> Result<Proof<N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, G, PairingProof<Pairing>>, ProverError>
 where
     RNG: RngCore + CryptoRng,
 {
-    assert!(N_COL == N_WIT + N_FSEL);
+    //assert!(N_COL == N_WIT + N_FSEL);
     assert!(N_WIT == N_REL + N_DSEL);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -214,26 +214,28 @@ where
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
 
-    let witness_main: Witness<N_COL, _> = folded_witness.extended_witness.witness.witness;
+    let witness_main: Witness<N_WIT, _> = folded_witness.extended_witness.witness.witness;
     let witness_ext: BTreeMap<usize, Evaluations<Fp, R2D<Fp>>> =
         folded_witness.extended_witness.extended;
 
     // Joint main + ext
-    let witness_evals_d1: Vec<Evaluations<_, _>> = {
+    let witness_evals_d1: Witness<N_WIT_QUAD, Evaluations<_, _>> = {
         let mut acc = witness_main.cols.to_vec();
         acc.extend(witness_ext.values().cloned());
-        acc
+        acc.try_into().unwrap()
     };
 
-    let witness_polys: Witness<N_WIT, DensePolynomial<Fp>> = {
+    let witness_polys: Witness<N_WIT_QUAD, DensePolynomial<Fp>> = {
         let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
         witness_evals_d1
             .into_par_iter()
             .map(interpolate)
-            .collect::<Witness<N_WIT, DensePolynomial<Fp>>>()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     };
 
-    let witness_comms: Witness<N_WIT, PolyComm<G>> = {
+    let witness_comms: Witness<N_WIT_QUAD, PolyComm<G>> = {
         let blinders = PolyComm {
             elems: vec![Fp::one()],
         };
@@ -247,7 +249,7 @@ where
         (&witness_polys)
             .into_par_iter()
             .map(comm)
-            .collect::<Witness<N_WIT, PolyComm<G>>>()
+            .collect::<Witness<N_WIT_QUAD, PolyComm<G>>>()
     };
 
     // Do not use parallelism
@@ -280,7 +282,7 @@ where
             enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
 
-        let simple_eval_env: SimpleEvalEnv<G, N_COL, N_FSEL> = {
+        let simple_eval_env: SimpleEvalEnv<G, N_WIT, N_FSEL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
                     witness: witness_main
@@ -362,11 +364,11 @@ where
     };
 
     // Evaluate the polynomials at ζ and ζω -- Columns
-    let witness_point_evals: Witness<N_WIT, PointEvaluations<_>> = {
+    let witness_point_evals: Witness<N_WIT_QUAD, PointEvaluations<_>> = {
         (&witness_polys)
             .into_par_iter()
             .map(eval_at_challenge)
-            .collect::<Witness<N_WIT, PointEvaluations<_>>>()
+            .collect::<Witness<N_WIT_QUAD, PointEvaluations<_>>>()
     };
 
     let fixed_selectors_point_evals: Box<[PointEvaluations<_>; N_FSEL]> = {
@@ -471,7 +473,7 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, Fp> = {
+    let proof_evals: ProofEvaluations<N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, Fp> = {
         ProofEvaluations {
             witness_evals: witness_point_evals,
             fixed_selectors_evals: fixed_selectors_point_evals,

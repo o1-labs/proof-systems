@@ -51,7 +51,8 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND
         // input
         STATE_SIZE
             + 4 * NB_FULL_ROUND * STATE_SIZE // full round
-            + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND; // partial round
+            + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND // partial round
+            + STATE_SIZE * (NB_PARTIAL_ROUND + NB_FULL_ROUND); // fixed selectors
 
     fn to_column(self) -> Column {
         // number of reductions for

@@ -39,7 +39,6 @@ pub fn verify<
     EFqSponge: Clone + FqSponge<Fq, G, Fp>,
     EFrSponge: FrSponge<Fp>,
     FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
-    const N_COL: usize,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
@@ -49,10 +48,9 @@ pub fn verify<
     domain: EvaluationDomains<Fp>,
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
-    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    fixed_selectors: &[Vec<Fp>; N_FSEL],
     proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>,
 ) -> bool {
-    assert!(N_COL == N_WIT + N_FSEL);
     assert!(N_WIT == N_REL + N_DSEL);
 
     let Proof {
@@ -70,7 +68,7 @@ pub fn verify<
         o1_utils::array::vec_to_boxed_array(
             fixed_selectors
                 .into_par_iter()
-                .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
+                .map(|evals| Evaluations::from_vec_and_domain(evals.clone(), domain.d1))
                 .collect(),
         )
     };
@@ -217,7 +215,7 @@ pub fn verify<
         let challenges = proof.challenges;
         let u = proof.u;
 
-        let eval_env: GenericEvalEnv<G, N_COL, N_FSEL, Vec<Fp>> = {
+        let eval_env: GenericEvalEnv<G, N_WIT, N_FSEL, Vec<Fp>> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitnessGeneric {
                     witness: witness_evals_vecs,

@@ -117,11 +117,12 @@ pub fn heavy_test_simple_add() {
 
     let srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
 
-    // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
     // Total number of fixed selectors in the circuit for APP + IVC.
     // There is no fixed selector in the APP circuit.
     const N_FSEL_TOTAL: usize = N_FSEL_IVC;
+
+    // Total number of witness columns in IVC. The blocks are public selectors.
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_FSEL_IVC;
 
     // Number of witness columns in the circuit.
     // It consists of the columns of the inner circuit and the columns for the
@@ -145,6 +146,12 @@ pub fn heavy_test_simple_add() {
     // There are two more challenges though.
     // Not used at the moment as IVC circuit only handles alphas
     const _N_CHALS: usize = N_ALPHAS + PlonkishChallenge::COUNT;
+
+    println!("N_FSEL_TOTAL: {N_FSEL_TOTAL}");
+    println!("N_COL_TOTAL: {N_COL_TOTAL}");
+    println!("N_COL_TOTAL_QUAD: {N_COL_TOTAL_QUAD}");
+    println!("N_ALPHAS: {N_ALPHAS}");
+    println!("N_ALPHAS_QUAD: {N_ALPHAS_QUAD}");
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -928,8 +935,8 @@ pub fn heavy_test_simple_add() {
         MainTestConfig,
         _,
         N_COL_TOTAL,
-        { N_COL_TOTAL - N_FSEL_TOTAL },
-        { N_COL_TOTAL - N_FSEL_TOTAL },
+        N_COL_TOTAL_QUAD,
+        N_COL_TOTAL,
         0,
         N_FSEL_TOTAL,
         N_ALPHAS_QUAD,
@@ -963,9 +970,8 @@ pub fn heavy_test_simple_add() {
         BaseSponge,
         ScalarSponge,
         MainTestConfig,
-        N_COL_TOTAL,
-        { N_COL_TOTAL - N_FSEL_TOTAL },
-        { N_COL_TOTAL - N_FSEL_TOTAL },
+        N_COL_TOTAL_QUAD,
+        N_COL_TOTAL_QUAD,
         0,
         N_FSEL_TOTAL,
         0,
@@ -973,7 +979,7 @@ pub fn heavy_test_simple_add() {
         domain,
         &srs,
         &folding_constraint_noquad,
-        o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
+        &o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
         &proof,
     );
 
