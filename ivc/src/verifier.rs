@@ -123,6 +123,7 @@ pub fn verify<
 
     // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    println!("verifier: zeta_chal {zeta_chal:?}");
     let (_, endo_r) = G::endos();
     let zeta: Fp = zeta_chal.to_field(endo_r);
     let omega = domain.d1.group_gen;
@@ -244,10 +245,12 @@ pub fn verify<
         eval_res[0]
     };
 
-    coms_and_evaluations.push(Evaluation {
-        commitment: ft_comm,
-        evaluations: vec![vec![ft_eval0], vec![proof_evals.ft_eval1]],
-    });
+    println!("Verifier: ft_eval0 {ft_eval0:?}");
+
+    //coms_and_evaluations.push(Evaluation {
+    //    commitment: ft_comm,
+    //    evaluations: vec![vec![ft_eval0], vec![proof_evals.ft_eval1]],
+    //});
 
     fr_sponge.absorb(&proof_evals.ft_eval1);
     // -- End absorb all coms_and_evaluations
@@ -256,6 +259,8 @@ pub fn verify<
     let v = v_chal.to_field(endo_r);
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
+
+    println!("verifier: u, v {u:?} {v:?}");
 
     let combined_inner_product = {
         let es: Vec<_> = coms_and_evaluations

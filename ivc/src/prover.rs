@@ -352,6 +352,8 @@ where
     //~ 1. Sample ζ with the Fq-Sponge.
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
+    println!("prover: zeta_chal {zeta_chal:?}");
+
     let zeta = zeta_chal.to_field(endo_r);
 
     let omega = domain.d1.group_gen;
@@ -420,6 +422,12 @@ where
         t_chunked.scale(Fp::one() - evaluation_point_to_domain_size)
     };
 
+    // Debugging
+    {
+        let ft_eval0 = ft.evaluate(&zeta);
+        println!("Prover: ft_eval0 {ft_eval0:?}");
+    }
+
     // We only evaluate at ζω as the verifier can compute the
     // evaluation at ζ from the independent evaluations at ζ of the
     // witness columns because ft(X) is the constraint polynomial, built from
@@ -436,6 +444,8 @@ where
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
+    println!("prover: u, v {u:?} {v:?}");
+
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     let non_hiding = |d1_size| PolyComm {
         elems: vec![Fp::zero(); d1_size],
@@ -444,15 +454,19 @@ where
         elems: vec![Fp::one(); d1_size],
     };
 
-    // Gathering all polynomials to use in the opening proof
-    let mut polynomials: Vec<_> = (&witness_polys)
-        .into_par_iter()
-        .map(|poly| (coefficients_form(poly), hiding(1)))
-        .collect();
+    // Gathering all polynomials_to_open to use in the opening proof
+    let mut polynomials_to_open: Vec<_> = vec![];
+
+    polynomials_to_open.extend(
+        (&witness_polys)
+            .into_par_iter()
+            .map(|poly| (coefficients_form(poly), hiding(1)))
+            .collect::<Vec<_>>(),
+    );
 
     // @volhovm: I'm not sure we need to prove opening of fixed
     // selectors in the commitment.
-    polynomials.extend(
+    polynomials_to_open.extend(
         fixed_selectors_polys
             .as_ref()
             .into_par_iter()
@@ -460,12 +474,12 @@ where
             .collect::<Vec<_>>(),
     );
 
-    polynomials.push((coefficients_form(&ft), non_hiding(1)));
+    //polynomials_to_open.push((coefficients_form(&ft), non_hiding(1)));
 
     let opening_proof = OpenProof::open::<_, _, R2D<Fp>>(
         srs,
         &group_map,
-        polynomials.as_slice(),
+        polynomials_to_open.as_slice(),
         &[zeta, zeta_omega],
         v,
         u,
