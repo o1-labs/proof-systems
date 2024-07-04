@@ -761,173 +761,294 @@ pub fn heavy_test_simple_add() {
             .evaluate_over_domain_by_ref(new_domain)
     };
 
-    {
-        println!("Testing individual expressions validity; creating evaluations");
+    //{
+    //    println!("Testing individual expressions validity; creating evaluations");
 
-        let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
-            let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
-                enlarge_to_domain_generic(evaluations, domain.d8)
-            };
+    //    let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
+    //        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+    //            enlarge_to_domain_generic(evaluations, domain.d8)
+    //        };
 
-            let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new_sized(alpha, N_ALPHAS);
-            assert!(
-                alphas.clone().powers().len() == N_ALPHAS,
-                "Expected N_ALPHAS = {N_ALPHAS:?}, got {}",
-                alphas.clone().powers().len()
+    //        let alpha = fq_sponge.challenge();
+    //        let alphas = Alphas::new_sized(alpha, N_ALPHAS);
+    //        assert!(
+    //            alphas.clone().powers().len() == N_ALPHAS,
+    //            "Expected N_ALPHAS = {N_ALPHAS:?}, got {}",
+    //            alphas.clone().powers().len()
+    //        );
+
+    //        let beta = fq_sponge.challenge();
+    //        let gamma = fq_sponge.challenge();
+    //        let joint_combiner = fq_sponge.challenge();
+    //        let challenges = [beta, gamma, joint_combiner];
+
+    //        SimpleEvalEnv {
+    //            ext_witness: ExtendedWitness {
+    //                witness: PlonkishWitness {
+    //                    witness: folding_witness_three_evals
+    //                        .into_par_iter()
+    //                        .map(enlarge_to_domain)
+    //                        .collect(),
+    //                    fixed_selectors: ivc_fixed_selectors_evals_d1
+    //                        .clone()
+    //                        .into_par_iter()
+    //                        .map(enlarge_to_domain)
+    //                        .collect(),
+    //                    phantom: std::marker::PhantomData,
+    //                },
+    //                extended: BTreeMap::new(), // No extended columns at this point
+    //            },
+    //            alphas,
+    //            challenges,
+    //            error_vec: Evaluations::from_vec_and_domain(vec![], domain.d1),
+    //            u: Fp::zero(),
+    //        }
+    //    };
+
+    //    {
+    //        let target_expressions: Vec<FoldingCompatibleExpr<MainTestConfig>> =
+    //            folding_compat_constraints.clone();
+
+    //        for (expr_i, expr) in target_expressions.iter().enumerate() {
+    //            let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
+
+    //            let evaluations_d8 = match eval_leaf {
+    //                EvalLeaf::Result(evaluations_d8) => evaluations_d8,
+    //                EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone().to_vec(),
+    //                _ => panic!("eval_leaf is not Result"),
+    //            };
+
+    //            let interpolated =
+    //                Evaluations::from_vec_and_domain(evaluations_d8.clone(), domain.d8)
+    //                    .interpolate();
+    //            if !interpolated.is_zero() {
+    //                let (_, remainder) = interpolated
+    //                    .divide_by_vanishing_poly(domain.d1)
+    //                    .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+    //                if !remainder.is_zero() {
+    //                    panic!(
+    //                        "Remainder is not zero for expression #{expr_i}: {}",
+    //                        expr.to_string()
+    //                    );
+    //                }
+    //            }
+    //        }
+
+    //        println!("All folding_compat_constraints for APP+(nontrivial) IVC satisfy FoldingExps");
+    //    }
+    //}
+
+    //////////////////////////////////////////////////////////////////////////////
+    //// Testing folding exprs validity with quadraticization
+    //////////////////////////////////////////////////////////////////////////////
+
+    //{
+    //    println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
+
+    //    // We can evaluate on d1, and then if the interpolated
+    //    // polynomial is 0, the expression holds. This is fast to do,
+    //    // and it effectively checks if the expressions hold.
+    //    //
+    //    // However this is not enough for computing quotient, since
+    //    // folding expressions are degree ... 2 or 3? So when this
+    //    // variable is set to domain.d8, all the evaluations will
+    //    // happen over d8, and quotient_polyonmial computation becomes
+    //    // possible. But this is 8 times slower.
+    //    let evaluation_domain = domain.d1;
+
+    //    let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+    //        enlarge_to_domain_generic(evaluations, evaluation_domain)
+    //    };
+
+    //    let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
+    //        let ext_witness = ExtendedWitness {
+    //            witness: PlonkishWitness {
+    //                witness: folded_witness
+    //                    .extended_witness
+    //                    .witness
+    //                    .witness
+    //                    .clone()
+    //                    .into_par_iter()
+    //                    .map(enlarge_to_domain)
+    //                    .collect(),
+    //                fixed_selectors: ivc_fixed_selectors_evals_d1
+    //                    .clone()
+    //                    .into_par_iter()
+    //                    .map(enlarge_to_domain)
+    //                    .collect(),
+    //                phantom: std::marker::PhantomData,
+    //            },
+    //            extended: folded_witness
+    //                .extended_witness
+    //                .extended
+    //                .clone()
+    //                .into_iter()
+    //                .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+    //                .collect(),
+    //        };
+
+    //        SimpleEvalEnv {
+    //            ext_witness,
+    //            alphas: folded_instance.extended_instance.instance.alphas.clone(),
+    //            challenges: folded_instance.extended_instance.instance.challenges,
+    //            error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
+    //            u: folded_instance.u,
+    //        }
+    //    };
+
+    //    {
+    //        let expr: FoldingCompatibleExpr<MainTestConfig> =
+    //            real_folding_compat_constraint.clone();
+
+    //        let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
+
+    //        let evaluations_big = match eval_leaf {
+    //            EvalLeaf::Result(evaluations) => evaluations,
+    //            EvalLeaf::Col(evaluations) => evaluations.clone().to_vec(),
+    //            _ => panic!("eval_leaf is not Result"),
+    //        };
+
+    //        let interpolated =
+    //            Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
+    //        if !interpolated.is_zero() {
+    //            let (_, remainder) = interpolated
+    //                .divide_by_vanishing_poly(domain.d1)
+    //                .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+    //            if !remainder.is_zero() {
+    //                panic!(
+    //                    "ERROR: Remainder is not zero for joint expression: {}",
+    //                    expr.to_string()
+    //                );
+    //            } else {
+    //                println!("Interpolated expression is divisible by vanishing poly d1");
+    //            }
+    //        } else {
+    //            println!("Interpolated expression is zero");
+    //        }
+    //    }
+    //}
+
+    // quad columns become regular witness columns
+    let real_folding_compat_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
+        let noquad_mapper = &(|quad_index: usize| {
+            println!(
+                "Mapping quad column number {quad_index} to {:?}",
+                N_COL_TOTAL + quad_index
             );
-
-            let beta = fq_sponge.challenge();
-            let gamma = fq_sponge.challenge();
-            let joint_combiner = fq_sponge.challenge();
-            let challenges = [beta, gamma, joint_combiner];
-
-            SimpleEvalEnv {
-                ext_witness: ExtendedWitness {
-                    witness: PlonkishWitness {
-                        witness: folding_witness_three_evals
-                            .into_par_iter()
-                            .map(enlarge_to_domain)
-                            .collect(),
-                        fixed_selectors: ivc_fixed_selectors_evals_d1
-                            .clone()
-                            .into_par_iter()
-                            .map(enlarge_to_domain)
-                            .collect(),
-                        phantom: std::marker::PhantomData,
-                    },
-                    extended: BTreeMap::new(), // No extended columns at this point
-                },
-                alphas,
-                challenges,
-                error_vec: Evaluations::from_vec_and_domain(vec![], domain.d1),
-                u: Fp::zero(),
+            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL + quad_index);
+            Variable {
+                col,
+                row: CurrOrNext::Curr,
             }
-        };
+        });
 
-        {
-            let target_expressions: Vec<FoldingCompatibleExpr<MainTestConfig>> =
-                folding_compat_constraints.clone();
+        real_folding_compat_constraint
+            .clone()
+            .flatten_quad_columns(noquad_mapper)
+    };
 
-            for (expr_i, expr) in target_expressions.iter().enumerate() {
-                let eval_leaf = simple_eval_env.eval_naive_fcompat(expr);
+    //{
+    //    println!("Now when merging all quad columns into witness columns");
 
-                let evaluations_d8 = match eval_leaf {
-                    EvalLeaf::Result(evaluations_d8) => evaluations_d8,
-                    EvalLeaf::Col(evaluations_d8) => evaluations_d8.clone().to_vec(),
-                    _ => panic!("eval_leaf is not Result"),
-                };
+    //    // We can evaluate on d1, and then if the interpolated
+    //    // polynomial is 0, the expression holds. This is fast to do,
+    //    // and it effectively checks if the expressions hold.
+    //    //
+    //    // However this is not enough for computing quotient, since
+    //    // folding expressions are degree ... 2 or 3? So when this
+    //    // variable is set to domain.d8, all the evaluations will
+    //    // happen over d8, and quotient_polyonmial computation becomes
+    //    // possible. But this is 8 times slower.
+    //    let evaluation_domain = domain.d1;
 
-                let interpolated =
-                    Evaluations::from_vec_and_domain(evaluations_d8.clone(), domain.d8)
-                        .interpolate();
-                if !interpolated.is_zero() {
-                    let (_, remainder) = interpolated
-                        .divide_by_vanishing_poly(domain.d1)
-                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
-                    if !remainder.is_zero() {
-                        panic!(
-                            "Remainder is not zero for expression #{expr_i}: {}",
-                            expr.to_string()
-                        );
-                    }
-                }
-            }
+    //    let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+    //        enlarge_to_domain_generic(evaluations, evaluation_domain)
+    //    };
 
-            println!("All folding_compat_constraints for APP+(nontrivial) IVC satisfy FoldingExps");
-        }
-    }
+    //    let witness_plus_ext: GenericWitness<N_COL_TOTAL_QUAD, Evaluations<_, _>> = {
+    //        let mut acc = folded_witness
+    //            .extended_witness
+    //            .witness
+    //            .witness
+    //            .cols
+    //            .clone()
+    //            .to_vec();
+    //        acc.extend(
+    //            folded_witness
+    //                .extended_witness
+    //                .extended
+    //                .clone()
+    //                .values()
+    //                .cloned(),
+    //        );
+    //        acc.try_into().unwrap()
+    //    };
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Testing folding exprs validity with quadraticization
-    ////////////////////////////////////////////////////////////////////////////
+    //    let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL_QUAD, N_FSEL_TOTAL> = {
+    //        let ext_witness = ExtendedWitness {
+    //            witness: PlonkishWitness {
+    //                witness: witness_plus_ext
+    //                    .into_par_iter()
+    //                    .map(enlarge_to_domain)
+    //                    .collect(),
+    //                fixed_selectors: ivc_fixed_selectors_evals_d1
+    //                    .into_par_iter()
+    //                    .map(enlarge_to_domain)
+    //                    .collect(),
+    //                phantom: std::marker::PhantomData,
+    //            },
+    //            extended: Default::default(),
+    //        };
 
-    {
-        println!("Testing joint folding expression validity /with quadraticization/; creating evaluations");
+    //        SimpleEvalEnv {
+    //            ext_witness,
+    //            alphas: folded_instance.extended_instance.instance.alphas.clone(),
+    //            challenges: folded_instance.extended_instance.instance.challenges,
+    //            error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
+    //            u: folded_instance.u,
+    //        }
+    //    };
 
-        // We can evaluate on d1, and then if the interpolated
-        // polynomial is 0, the expression holds. This is fast to do,
-        // and it effectively checks if the expressions hold.
-        //
-        // However this is not enough for computing quotient, since
-        // folding expressions are degree ... 2 or 3? So when this
-        // variable is set to domain.d8, all the evaluations will
-        // happen over d8, and quotient_polyonmial computation becomes
-        // possible. But this is 8 times slower.
-        let evaluation_domain = domain.d1;
+    //    {
+    //        let expr: FoldingCompatibleExpr<MainTestConfig> =
+    //            real_folding_compat_constraint_noquad.clone();
 
-        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
-            enlarge_to_domain_generic(evaluations, evaluation_domain)
-        };
+    //        let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
 
-        let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
-            let ext_witness = ExtendedWitness {
-                witness: PlonkishWitness {
-                    witness: folded_witness
-                        .extended_witness
-                        .witness
-                        .witness
-                        .clone()
-                        .into_par_iter()
-                        .map(enlarge_to_domain)
-                        .collect(),
-                    fixed_selectors: ivc_fixed_selectors_evals_d1
-                        .into_par_iter()
-                        .map(enlarge_to_domain)
-                        .collect(),
-                    phantom: std::marker::PhantomData,
-                },
-                extended: folded_witness
-                    .extended_witness
-                    .extended
-                    .clone()
-                    .into_iter()
-                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
-                    .collect(),
-            };
+    //        let evaluations_big = match eval_leaf {
+    //            EvalLeaf::Result(evaluations) => evaluations,
+    //            EvalLeaf::Col(evaluations) => evaluations.clone().to_vec(),
+    //            _ => panic!("eval_leaf is not Result"),
+    //        };
 
-            SimpleEvalEnv {
-                ext_witness,
-                alphas: folded_instance.extended_instance.instance.alphas.clone(),
-                challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
-                u: folded_instance.u,
-            }
-        };
-
-        {
-            let expr: FoldingCompatibleExpr<MainTestConfig> =
-                real_folding_compat_constraint.clone();
-
-            let eval_leaf = simple_eval_env.eval_naive_fcompat(&expr);
-
-            let evaluations_big = match eval_leaf {
-                EvalLeaf::Result(evaluations) => evaluations,
-                EvalLeaf::Col(evaluations) => evaluations.clone().to_vec(),
-                _ => panic!("eval_leaf is not Result"),
-            };
-
-            let interpolated =
-                Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
-            if !interpolated.is_zero() {
-                let (_, remainder) = interpolated
-                    .divide_by_vanishing_poly(domain.d1)
-                    .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
-                if !remainder.is_zero() {
-                    panic!(
-                        "ERROR: Remainder is not zero for joint expression: {}",
-                        expr.to_string()
-                    );
-                } else {
-                    println!("Interpolated expression is divisible by vanishing poly d1");
-                }
-            } else {
-                println!("Interpolated expression is zero");
-            }
-        }
-    }
+    //        let interpolated =
+    //            Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
+    //        if !interpolated.is_zero() {
+    //            let (_, remainder) = interpolated
+    //                .divide_by_vanishing_poly(domain.d1)
+    //                .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+    //            if !remainder.is_zero() {
+    //                panic!(
+    //                    "ERROR: Remainder is not zero for joint expression: {}",
+    //                    expr.to_string()
+    //                );
+    //            } else {
+    //                println!("Interpolated expression is divisible by vanishing poly d1");
+    //            }
+    //        } else {
+    //            println!("Interpolated expression is zero");
+    //        }
+    //    }
+    //}
 
     println!("Creating a proof");
+
+    let fixed_selectors_verifier = folded_witness
+        .extended_witness
+        .witness
+        .fixed_selectors
+        .cols
+        .clone();
 
     let proof = ivc::prover::prove::<
         BaseSponge,
@@ -944,7 +1065,7 @@ pub fn heavy_test_simple_add() {
         domain,
         &srs,
         &real_folding_compat_constraint,
-        o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
+        &real_folding_compat_constraint_noquad,
         folded_instance,
         folded_witness,
         &mut rng,
@@ -952,19 +1073,6 @@ pub fn heavy_test_simple_add() {
     .unwrap();
 
     println!("Verifying a proof");
-
-    // quad columns become regular witness columns
-    let folding_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
-        let noquad_mapper = &(|quad_index: usize| {
-            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL + quad_index);
-            Variable {
-                col,
-                row: CurrOrNext::Curr,
-            }
-        });
-
-        real_folding_compat_constraint.flatten_quad_columns(noquad_mapper)
-    };
 
     let verifies = ivc::verifier::verify::<
         BaseSponge,
@@ -979,8 +1087,8 @@ pub fn heavy_test_simple_add() {
     >(
         domain,
         &srs,
-        &folding_constraint_noquad,
-        &o1_utils::array::vec_to_boxed_array(ivc_fixed_selectors.clone()),
+        &real_folding_compat_constraint_noquad,
+        fixed_selectors_verifier,
         &proof,
     );
 

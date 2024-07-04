@@ -2,8 +2,8 @@
 #![allow(clippy::boxed_local)]
 
 use crate::{
-    expr_eval::SimpleEvalEnv,
-    plonkish_lang::{PlonkishChallenge, PlonkishInstance, PlonkishWitness},
+    expr_eval::{GenericEvalEnv, SimpleEvalEnv},
+    plonkish_lang::{PlonkishChallenge, PlonkishInstance, PlonkishWitness, PlonkishWitnessGeneric},
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
@@ -12,7 +12,7 @@ use ark_poly::{
 use folding::{
     eval_leaf::EvalLeaf,
     instance_witness::{ExtendedWitness, RelaxedInstance, RelaxedWitness},
-    FoldingCompatibleExpr, FoldingConfig,
+    Alphas, FoldingCompatibleExpr, FoldingConfig,
 };
 use kimchi::{
     self,
@@ -138,7 +138,7 @@ pub struct Proof<
     pub opening_proof: OpeningProof,
 
     // Unsure whether this is necessary.
-    pub alpha: G::ScalarField,
+    pub alphas: Alphas<G::ScalarField>,
     pub challenges: [G::ScalarField; 3],
     pub u: G::ScalarField,
 }
@@ -158,7 +158,7 @@ pub fn prove<
     domain: EvaluationDomains<Fp>,
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
-    fixed_selectors: Box<[Vec<Fp>; N_FSEL]>,
+    combined_expr_noquad: &FoldingCompatibleExpr<FC>,
     folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_WIT, 3, N_ALPHAS>>,
     folded_witness: RelaxedWitness<G, PlonkishWitness<N_WIT, N_FSEL, Fp>>,
     rng: &mut RNG,
@@ -182,12 +182,7 @@ where
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     let fixed_selectors_evals_d1: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]> =
-        o1_utils::array::vec_to_boxed_array(
-            fixed_selectors
-                .into_par_iter()
-                .map(|evals| Evaluations::from_vec_and_domain(evals, domain.d1))
-                .collect(),
-        );
+        folded_witness.extended_witness.witness.fixed_selectors.cols;
 
     let fixed_selectors_polys: Box<[DensePolynomial<Fp>; N_FSEL]> =
         o1_utils::array::vec_to_boxed_array(
@@ -424,8 +419,58 @@ where
 
     // Debugging
     {
-        let ft_eval0 = ft.evaluate(&zeta);
-        println!("Prover: ft_eval0 {ft_eval0:?}");
+        let ft_eval0 = {
+            // We evaluate only at zeta
+            let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta];
+
+            let witness_evals_vecs = witness_point_evals
+                .cols
+                .clone()
+                .into_iter()
+                .map(point_eval_to_vec)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            let fixed_selectors_evals_vecs = fixed_selectors_point_evals
+                .clone()
+                .into_iter()
+                .map(point_eval_to_vec)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            let error_vec = point_eval_to_vec(error_vec_point_eval);
+
+            let eval_env: GenericEvalEnv<G, N_WIT_QUAD, N_FSEL, Vec<Fp>> = {
+                let ext_witness = ExtendedWitness {
+                    witness: PlonkishWitnessGeneric {
+                        witness: witness_evals_vecs,
+                        fixed_selectors: fixed_selectors_evals_vecs,
+                        phantom: std::marker::PhantomData,
+                    },
+                    extended: Default::default(),
+                };
+
+                GenericEvalEnv {
+                    ext_witness,
+                    error_vec,
+                    alphas: folded_instance.extended_instance.instance.alphas.clone(),
+                    challenges: folded_instance.extended_instance.instance.challenges,
+                    u: folded_instance.u,
+                }
+            };
+
+            let eval_res: Vec<_> = match eval_env.eval_naive_fcompat(combined_expr_noquad) {
+                EvalLeaf::Result(x) => x,
+                EvalLeaf::Col(x) => x.clone().to_vec(),
+                _ => panic!("eval_leaf is not Result"),
+            };
+
+            eval_res[0]
+        };
+
+        let ft_eval0_expected = ft.evaluate(&zeta);
+        println!("Prover: ft_eval0 {ft_eval0:?} vs expected {ft_eval0_expected:?}");
+        assert!(ft_eval0_expected == ft_eval0, "ft_eval0 not equal");
     }
 
     // We only evaluate at ζω as the verifier can compute the
@@ -503,12 +548,7 @@ where
         },
         proof_evals,
         opening_proof,
-        alpha: folded_instance
-            .extended_instance
-            .instance
-            .alphas
-            .get(1)
-            .unwrap(),
+        alphas: folded_instance.extended_instance.instance.alphas,
         challenges: folded_instance.extended_instance.instance.challenges,
         u: folded_instance.u,
     })

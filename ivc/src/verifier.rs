@@ -49,7 +49,7 @@ pub fn verify<
     domain: EvaluationDomains<Fp>,
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
-    fixed_selectors: &[Vec<Fp>; N_FSEL],
+    fixed_selectors: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]>,
     proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>,
 ) -> bool {
     assert!(N_WIT == N_REL + N_DSEL);
@@ -65,14 +65,7 @@ pub fn verify<
     // Re-evaluating public inputs
     ////////////////////////////////////////////////////////////////////////////
 
-    let fixed_selectors_evals_d1: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]> = {
-        o1_utils::array::vec_to_boxed_array(
-            fixed_selectors
-                .into_par_iter()
-                .map(|evals| Evaluations::from_vec_and_domain(evals.clone(), domain.d1))
-                .collect(),
-        )
-    };
+    let fixed_selectors_evals_d1: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]> = fixed_selectors;
 
     let fixed_selectors_polys: Box<[DensePolynomial<Fp>; N_FSEL]> = {
         o1_utils::array::vec_to_boxed_array(
@@ -213,7 +206,7 @@ pub fn verify<
             .unwrap();
         let error_vec = point_eval_to_vec(proof_evals.error_vec);
 
-        let alphas = Alphas::new_sized(proof.alpha, N_ALPHAS_QUAD);
+        let alphas = proof.alphas.clone();
         let challenges = proof.challenges;
         let u = proof.u;
 
