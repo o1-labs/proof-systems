@@ -43,6 +43,7 @@ pub fn verify<
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
+    const N_ALPHAS_QUAD: usize,
     const NPUB: usize,
 >(
     domain: EvaluationDomains<Fp>,
@@ -211,7 +212,7 @@ pub fn verify<
             .unwrap();
         let error_vec = point_eval_to_vec(proof_evals.error_vec);
 
-        let alphas = Alphas::new_sized(proof.alpha, 123);
+        let alphas = Alphas::new_sized(proof.alpha, N_ALPHAS_QUAD);
         let challenges = proof.challenges;
         let u = proof.u;
 

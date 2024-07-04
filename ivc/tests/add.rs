@@ -956,7 +956,7 @@ pub fn heavy_test_simple_add() {
     // quad columns become regular witness columns
     let folding_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
         let noquad_mapper = &(|quad_index: usize| {
-            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL_QUAD + quad_index);
+            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL + quad_index);
             Variable {
                 col,
                 row: CurrOrNext::Curr,
@@ -974,6 +974,7 @@ pub fn heavy_test_simple_add() {
         N_COL_TOTAL_QUAD,
         0,
         N_FSEL_TOTAL,
+        N_ALPHAS_QUAD,
         0,
     >(
         domain,
