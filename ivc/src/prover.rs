@@ -7,7 +7,8 @@ use crate::{
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
+    univariate::{DensePolynomial, SparsePolynomial},
+    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
 };
 use folding::{
     eval_leaf::EvalLeaf,
@@ -221,10 +222,9 @@ where
     };
 
     let witness_polys: Witness<N_WIT_QUAD, DensePolynomial<Fp>> = {
-        let interpolate = |evals: Evaluations<Fp, R2D<Fp>>| evals.interpolate();
         witness_evals_d1
             .into_par_iter()
-            .map(interpolate)
+            .map(|e| e.interpolate())
             .collect::<Vec<_>>()
             .try_into()
             .unwrap()
@@ -262,8 +262,8 @@ where
     // What to do with it?..
     //let _alpha: Fp = fq_sponge.challenge();
 
-    let quotient_poly: DensePolynomial<Fp> = {
-        let evaluation_domain = domain.d4;
+    let (quotient_poly, interpolated): (DensePolynomial<Fp>, DensePolynomial<Fp>) = {
+        let evaluation_domain = domain.d2;
 
         let enlarge_to_domain_generic =
             |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
@@ -327,7 +327,8 @@ where
             if !remainder.is_zero() {
                 panic!("ERROR: Remainder is not zero for joint folding expression",);
             }
-            quotient
+
+            (quotient, interpolated)
         }
     };
 
@@ -399,12 +400,40 @@ where
         fr_sponge.absorb(zeta_omega);
     }
 
+    //// Debug
+    //{
+    //    assert!(
+    //        quotient_poly
+    //            .mul_by_vanishing_poly(domain.d1)
+    //            .evaluate(&zeta)
+    //            == interpolated.evaluate(&zeta)
+    //    );
+
+    //    let vanishing_poly: SparsePolynomial<_> = domain.d1.vanishing_polynomial();
+    //    assert!(vanishing_poly.evaluate(&zeta) == -Fp::one() + zeta.pow([domain.d1.size]));
+
+    //    let vanishing_coeffs = vec![(0, -Fp::one()), (domain.d1.size(), Fp::one())];
+    //    let vanishing_poly_2 = SparsePolynomial::from_coefficients_vec(vanishing_coeffs);
+    //    assert!(vanishing_poly_2.evaluate(&zeta) == -Fp::one() + zeta.pow([domain.d1.size]));
+
+    //    assert!(
+    //        quotient_poly
+    //            .scale(Fp::one() - zeta.pow([domain.d1.size]))
+    //            .evaluate(&zeta)
+    //            == interpolated.evaluate(&zeta)
+    //    );
+    //}
+
     // Compute ft(X) = \
-    //   (1 - ζ^n) \
+    //   (ζ^n - 1) \
     //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
     // where \sum_i t_i(X) X^{i n} = t(X), and t(X) is the quotient polynomial.
     // At the end, we get the (partial) evaluation of the constraint polynomial
     // in ζ.
+    //
+    // Note: both (ζ^n - 1) and (1 - ζ^n) (and C * (1 - ζ^n)) are
+    // vanishing polynomial, but we have to be consistent with respect
+    // to just one everywhere.
     let ft: DensePolynomial<Fp> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         // Compute \sum_i t_i(X) ζ^{i n}
@@ -412,9 +441,13 @@ where
         let t_chunked: DensePolynomial<Fp> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
+
+        let vanishing_poly: SparsePolynomial<_> = domain.d1.vanishing_polynomial();
+        let vanishing_poly_at_zeta: Fp = vanishing_poly.evaluate(&zeta);
+
         // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        t_chunked.scale(Fp::one() - evaluation_point_to_domain_size)
+        t_chunked.scale(vanishing_poly_at_zeta)
     };
 
     // Debugging
@@ -469,7 +502,8 @@ where
         };
 
         let ft_eval0_expected = ft.evaluate(&zeta);
-        println!("Prover: ft_eval0 {ft_eval0:?} vs expected {ft_eval0_expected:?}");
+        let ft_eval0_interpolated_expected = interpolated.evaluate(&zeta);
+        println!("Prover: ft_eval0 {ft_eval0:?} vs expected {ft_eval0_expected:?} vs interpolated {ft_eval0_interpolated_expected:?}");
         assert!(ft_eval0_expected == ft_eval0, "ft_eval0 not equal");
     }
 
@@ -519,7 +553,7 @@ where
             .collect::<Vec<_>>(),
     );
 
-    //polynomials_to_open.push((coefficients_form(&ft), non_hiding(1)));
+    polynomials_to_open.push((coefficients_form(&ft), non_hiding(1)));
 
     let opening_proof = OpenProof::open::<_, _, R2D<Fp>>(
         srs,

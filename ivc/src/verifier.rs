@@ -160,15 +160,17 @@ pub fn verify<
     }
 
     // Compute [ft(X)] = \
-    //   (1 - ζ^n) \
+    //   (ζ^n - 1) \
     //    ([t_0(X)] + ζ^n [t_1(X)] + ... + ζ^{kn} [t_{k}(X)])
     let ft_comm = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         let chunked_t_comm = proof_comms
             .t_comm
             .chunk_commitment(evaluation_point_to_domain_size);
-        chunked_t_comm.scale(Fp::one() - evaluation_point_to_domain_size)
+        chunked_t_comm.scale(evaluation_point_to_domain_size - Fp::one())
     };
+
+    println!("ft_comm: {ft_comm:?}");
 
     //let challenges = Challenges {
     //    alpha,
@@ -240,10 +242,10 @@ pub fn verify<
 
     println!("Verifier: ft_eval0 {ft_eval0:?}");
 
-    //coms_and_evaluations.push(Evaluation {
-    //    commitment: ft_comm,
-    //    evaluations: vec![vec![ft_eval0], vec![proof_evals.ft_eval1]],
-    //});
+    coms_and_evaluations.push(Evaluation {
+        commitment: ft_comm,
+        evaluations: vec![vec![ft_eval0], vec![proof_evals.ft_eval1]],
+    });
 
     fr_sponge.absorb(&proof_evals.ft_eval1);
     // -- End absorb all coms_and_evaluations

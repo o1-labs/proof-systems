@@ -258,7 +258,10 @@ where
         }
     };
 
-    let quotient_poly: DensePolynomial<G::ScalarField> = {
+    let (quotient_poly, interpolated): (
+        DensePolynomial<G::ScalarField>,
+        DensePolynomial<G::ScalarField>,
+    ) = {
         // Only for debugging purposes
         for expr in constraints.iter() {
             let fail_q_division =
@@ -311,7 +314,7 @@ where
             fail_final_q_division();
         }
 
-        quotient
+        (quotient, expr_evaluation_interpolated)
     };
 
     let num_chunks: usize = if max_degree == 1 {
@@ -334,6 +337,23 @@ where
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
     let zeta = zeta_chal.to_field(endo_r);
+
+    // FIXME: why is this working? I think it's not supposed to,
+    // since the vanishing polynomial is ζ^n - 1 and not 1 - ζ^n.
+    {
+        assert!(
+            quotient_poly
+                .scale(G::ScalarField::one() - zeta.pow([domain.d1.size]))
+                .evaluate(&zeta)
+                == interpolated.evaluate(&zeta)
+        );
+        assert!(
+            quotient_poly
+                .scale(-G::ScalarField::one() + zeta.pow([domain.d1.size]))
+                .evaluate(&zeta)
+                == interpolated.evaluate(&zeta)
+        );
+    }
 
     let omega = domain.d1.group_gen;
     // We will also evaluate at ζω as lookups do require to go to the next row.
