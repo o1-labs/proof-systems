@@ -22,7 +22,7 @@ use ivc::{
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::Variable},
+    circuits::{domains::EvaluationDomains, expr::Variable, gate::CurrOrNext},
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -35,8 +35,12 @@ use kimchi_msm::{
     witness::Witness as GenericWitness,
     BN254G1Affine, Fp,
 };
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::{srs::SRS, PolyComm, SRS as _};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
+};
+use poly_commitment::{PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{collections::BTreeMap, ops::Index};
 use strum::EnumCount;
@@ -49,6 +53,7 @@ pub type Fq = ark_bn254::Fq;
 pub type Curve = BN254G1Affine;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, EnumIter, EnumCountMacro, Hash)]
@@ -110,14 +115,14 @@ pub fn heavy_test_simple_add() {
 
     let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
 
-    let mut srs = SRS::<Curve>::create(domain_size);
-    srs.add_lagrange_basis(domain.d1);
+    let srs = kimchi_msm::precomputed_srs::get_bn254_srs(domain);
 
-    // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;
     // Total number of fixed selectors in the circuit for APP + IVC.
     // There is no fixed selector in the APP circuit.
     const N_FSEL_TOTAL: usize = N_FSEL_IVC;
+
+    // Total number of witness columns in IVC. The blocks are public selectors.
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_FSEL_IVC;
 
     // Number of witness columns in the circuit.
     // It consists of the columns of the inner circuit and the columns for the
@@ -141,6 +146,12 @@ pub fn heavy_test_simple_add() {
     // There are two more challenges though.
     // Not used at the moment as IVC circuit only handles alphas
     const _N_CHALS: usize = N_ALPHAS + PlonkishChallenge::COUNT;
+
+    println!("N_FSEL_TOTAL: {N_FSEL_TOTAL}");
+    println!("N_COL_TOTAL: {N_COL_TOTAL}");
+    println!("N_COL_TOTAL_QUAD: {N_COL_TOTAL_QUAD}");
+    println!("N_ALPHAS: {N_ALPHAS}");
+    println!("N_ALPHAS_QUAD: {N_ALPHAS_QUAD}");
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -305,7 +316,7 @@ pub fn heavy_test_simple_add() {
     // this one needs to be used in prover(..).
     let (folding_scheme, real_folding_compat_constraint) = FoldingScheme::<MainTestConfig>::new(
         folding_compat_constraints.clone(),
-        &srs,
+        &srs.full_srs,
         domain.d1,
         &structure,
     );
@@ -394,7 +405,7 @@ pub fn heavy_test_simple_add() {
     let folding_instance_one = PlonkishInstance::from_witness(
         &folding_witness_one.witness,
         &mut fq_sponge,
-        &srs,
+        &srs.full_srs,
         domain.d1,
     );
 
@@ -443,7 +454,7 @@ pub fn heavy_test_simple_add() {
     let folding_instance_two = PlonkishInstance::from_witness(
         &folding_witness_two.witness,
         &mut fq_sponge,
-        &srs,
+        &srs.full_srs,
         domain.d1,
     );
 
@@ -579,6 +590,7 @@ pub fn heavy_test_simple_add() {
 
     // FIXME: Should be handled in folding
     let left_error_term = srs
+        .full_srs
         .mask_custom(
             relaxed_extended_left_instance.error_commitment,
             &PolyComm::new(vec![Fp::one()]),
@@ -588,6 +600,7 @@ pub fn heavy_test_simple_add() {
 
     // FIXME: Should be handled in folding
     let right_error_term = srs
+        .full_srs
         .mask_custom(
             relaxed_extended_right_instance.error_commitment,
             &PolyComm::new(vec![Fp::one()]),
@@ -718,7 +731,7 @@ pub fn heavy_test_simple_add() {
     let folding_instance_three = PlonkishInstance::from_witness(
         &folding_witness_three.witness,
         &mut fq_sponge,
-        &srs,
+        &srs.full_srs,
         domain.d1,
     );
 
@@ -854,10 +867,12 @@ pub fn heavy_test_simple_add() {
                         .extended_witness
                         .witness
                         .witness
+                        .clone()
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
                     fixed_selectors: ivc_fixed_selectors_evals_d1
+                        .clone()
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
@@ -866,6 +881,7 @@ pub fn heavy_test_simple_add() {
                 extended: folded_witness
                     .extended_witness
                     .extended
+                    .clone()
                     .into_iter()
                     .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
                     .collect(),
@@ -873,9 +889,9 @@ pub fn heavy_test_simple_add() {
 
             SimpleEvalEnv {
                 ext_witness,
-                alphas: folded_instance.extended_instance.instance.alphas,
+                alphas: folded_instance.extended_instance.instance.alphas.clone(),
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec),
+                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
                 u: folded_instance.u,
             }
         };
@@ -911,4 +927,70 @@ pub fn heavy_test_simple_add() {
             }
         }
     }
+
+    // quad columns become regular witness columns
+    let real_folding_compat_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
+        let noquad_mapper = &(|quad_index: usize| {
+            let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL + quad_index);
+            Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }
+        });
+
+        real_folding_compat_constraint
+            .clone()
+            .flatten_quad_columns(noquad_mapper)
+    };
+
+    println!("Creating a proof");
+
+    let fixed_selectors_verifier = folded_witness
+        .extended_witness
+        .witness
+        .fixed_selectors
+        .cols
+        .clone();
+
+    let proof = ivc::prover::prove::<
+        BaseSponge,
+        ScalarSponge,
+        MainTestConfig,
+        _,
+        N_COL_TOTAL,
+        N_COL_TOTAL_QUAD,
+        N_COL_TOTAL,
+        0,
+        N_FSEL_TOTAL,
+        N_ALPHAS_QUAD,
+    >(
+        domain,
+        &srs,
+        &real_folding_compat_constraint,
+        folded_instance,
+        folded_witness,
+        &mut rng,
+    )
+    .unwrap();
+
+    println!("Verifying a proof");
+
+    let verifies = ivc::verifier::verify::<
+        BaseSponge,
+        ScalarSponge,
+        MainTestConfig,
+        N_COL_TOTAL_QUAD,
+        N_COL_TOTAL_QUAD,
+        0,
+        N_FSEL_TOTAL,
+        0,
+    >(
+        domain,
+        &srs,
+        &real_folding_compat_constraint_noquad,
+        fixed_selectors_verifier,
+        &proof,
+    );
+
+    assert!(verifies, "The proof does not verify");
 }
