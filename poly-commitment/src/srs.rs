@@ -10,7 +10,8 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, cmp::min, collections::HashMap};
+use std::{array, cmp::min, collections::{hash_map::DefaultHasher, HashMap}, hash::Hasher};
+use std::hash::Hash;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -103,6 +104,18 @@ impl<G: CommitmentCurve> SRS<G> {
         if self.lagrange_bases.contains_key(&n) {
             return;
         }
+
+        let mut g_hasher = DefaultHasher::new();
+        self.g.hash(&mut g_hasher);
+        
+
+        let mut h_hasher = DefaultHasher::new();
+        self.h.hash(&mut h_hasher);
+        
+
+        println!("g: {:?}, h: {:?}, domain: {:?}", g_hasher.finish(), h_hasher.finish(), n);
+
+
 
         // Let V be a vector space over the field F.
         //
