@@ -400,30 +400,6 @@ where
         fr_sponge.absorb(zeta_omega);
     }
 
-    //// Debug
-    //{
-    //    assert!(
-    //        quotient_poly
-    //            .mul_by_vanishing_poly(domain.d1)
-    //            .evaluate(&zeta)
-    //            == interpolated.evaluate(&zeta)
-    //    );
-
-    //    let vanishing_poly: SparsePolynomial<_> = domain.d1.vanishing_polynomial();
-    //    assert!(vanishing_poly.evaluate(&zeta) == -Fp::one() + zeta.pow([domain.d1.size]));
-
-    //    let vanishing_coeffs = vec![(0, -Fp::one()), (domain.d1.size(), Fp::one())];
-    //    let vanishing_poly_2 = SparsePolynomial::from_coefficients_vec(vanishing_coeffs);
-    //    assert!(vanishing_poly_2.evaluate(&zeta) == -Fp::one() + zeta.pow([domain.d1.size]));
-
-    //    assert!(
-    //        quotient_poly
-    //            .scale(Fp::one() - zeta.pow([domain.d1.size]))
-    //            .evaluate(&zeta)
-    //            == interpolated.evaluate(&zeta)
-    //    );
-    //}
-
     // Compute ft(X) = \
     //   (ζ^n - 1) \
     //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
