@@ -38,3 +38,7 @@ ark-serialize.workspace = true
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", ]
+
+[[bench]]
+name = "poseidon"
+harness = false
