@@ -122,11 +122,11 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &[F];
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
-    fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
+    fn selector(&self, s: &Selector, side: Side) -> &[F];
 }
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;

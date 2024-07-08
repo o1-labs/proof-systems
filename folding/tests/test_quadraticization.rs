@@ -99,7 +99,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<Fp> {
+    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &[Fp] {
         todo!()
     }
 
@@ -107,7 +107,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Col, (), ()> for Env {
         todo!()
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+    fn selector(&self, _s: &(), _side: Side) -> &[Fp] {
         todo!()
     }
 }

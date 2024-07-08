@@ -102,7 +102,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
             todo!()
         }
 
-        fn col(&self, _col: Column, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<Fp> {
+        fn col(&self, _col: Column, _curr_or_next: CurrOrNext, _side: Side) -> &[Fp] {
             todo!()
         }
 
@@ -110,7 +110,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
             todo!()
         }
 
-        fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+        fn selector(&self, _s: &(), _side: Side) -> &[Fp] {
             todo!()
         }
     }
