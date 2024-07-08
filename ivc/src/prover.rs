@@ -262,8 +262,8 @@ where
     // What to do with it?..
     //let _alpha: Fp = fq_sponge.challenge();
 
-    let (quotient_poly, interpolated): (DensePolynomial<Fp>, DensePolynomial<Fp>) = {
-        let evaluation_domain = domain.d2;
+    let quotient_poly: DensePolynomial<Fp> = {
+        let evaluation_domain = domain.d4;
 
         let enlarge_to_domain_generic =
             |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
@@ -328,12 +328,12 @@ where
                 panic!("ERROR: Remainder is not zero for joint folding expression",);
             }
 
-            (quotient, interpolated)
+            quotient
         }
     };
 
     // we assume our folding degree is always 2, so number of chunks should be 1
-    let num_chunks: usize = 1;
+    let num_chunks: usize = 3;
 
     //~ 1. commit to the quotient polynomial $t$.
     let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
@@ -449,63 +449,6 @@ where
         // (the evaluation in ζ of the vanishing polynomial)
         t_chunked.scale(vanishing_poly_at_zeta)
     };
-
-    // Debugging
-    {
-        let ft_eval0 = {
-            // We evaluate only at zeta
-            let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta];
-
-            let witness_evals_vecs = witness_point_evals
-                .cols
-                .clone()
-                .into_iter()
-                .map(point_eval_to_vec)
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap();
-            let fixed_selectors_evals_vecs = fixed_selectors_point_evals
-                .clone()
-                .into_iter()
-                .map(point_eval_to_vec)
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap();
-            let error_vec = point_eval_to_vec(error_vec_point_eval);
-
-            let eval_env: GenericEvalEnv<G, N_WIT_QUAD, N_FSEL, Vec<Fp>> = {
-                let ext_witness = ExtendedWitness {
-                    witness: PlonkishWitnessGeneric {
-                        witness: witness_evals_vecs,
-                        fixed_selectors: fixed_selectors_evals_vecs,
-                        phantom: std::marker::PhantomData,
-                    },
-                    extended: Default::default(),
-                };
-
-                GenericEvalEnv {
-                    ext_witness,
-                    error_vec,
-                    alphas: folded_instance.extended_instance.instance.alphas.clone(),
-                    challenges: folded_instance.extended_instance.instance.challenges,
-                    u: folded_instance.u,
-                }
-            };
-
-            let eval_res: Vec<_> = match eval_env.eval_naive_fcompat(combined_expr_noquad) {
-                EvalLeaf::Result(x) => x,
-                EvalLeaf::Col(x) => x.clone().to_vec(),
-                _ => panic!("eval_leaf is not Result"),
-            };
-
-            eval_res[0]
-        };
-
-        let ft_eval0_expected = ft.evaluate(&zeta);
-        let ft_eval0_interpolated_expected = interpolated.evaluate(&zeta);
-        println!("Prover: ft_eval0 {ft_eval0:?} vs expected {ft_eval0_expected:?} vs interpolated {ft_eval0_interpolated_expected:?}");
-        assert!(ft_eval0_expected == ft_eval0, "ft_eval0 not equal");
-    }
 
     // We only evaluate at ζω as the verifier can compute the
     // evaluation at ζ from the independent evaluations at ζ of the
