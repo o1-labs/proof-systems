@@ -638,8 +638,8 @@ pub fn heavy_test_simple_add() {
 
     // The polynomial of the computation is linear, therefore, the error terms
     // are zero
-    assert_ne!(t_0.elems[0], BN254G1Affine::zero());
-    assert_ne!(t_1.elems[0], BN254G1Affine::zero());
+    assert_ne!(t_0.elems[0], Curve::zero());
+    assert_ne!(t_1.elems[0], Curve::zero());
 
     // Sanity check that the u values are the same. The u value is there to
     // homogeneoize the polynomial describing the NP relation.
@@ -650,7 +650,7 @@ pub fn heavy_test_simple_add() {
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
-    let mut comms_left: Vec<BN254G1Affine> = Vec::with_capacity(N_COL_TOTAL_QUAD);
+    let mut comms_left: Vec<Curve> = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_left.extend(
         relaxed_extended_left_instance
             .extended_instance
@@ -666,7 +666,7 @@ pub fn heavy_test_simple_add() {
         extended_comms.iter().enumerate().for_each(|(i, x)| {
             assert_ne!(
                 x,
-                &BN254G1Affine::zero(),
+                &Curve::zero(),
                 "Left extended commitment number {i:?} is zero"
             );
         });
@@ -674,11 +674,7 @@ pub fn heavy_test_simple_add() {
     assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_left.iter().enumerate().for_each(|(i, c)| {
-        assert_ne!(
-            c,
-            &BN254G1Affine::zero(),
-            "Left commitment number {i:?} is zero"
-        );
+        assert_ne!(c, &Curve::zero(), "Left commitment number {i:?} is zero");
     });
 
     // IVC is expecting the coordinates.
@@ -701,11 +697,7 @@ pub fn heavy_test_simple_add() {
     assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_right.iter().enumerate().for_each(|(i, c)| {
-        assert_ne!(
-            c,
-            &BN254G1Affine::zero(),
-            "Right commitment number {i:?} is zero"
-        );
+        assert_ne!(c, &Curve::zero(), "Right commitment number {i:?} is zero");
     });
 
     // IVC is expecting the coordinates.
@@ -722,7 +714,7 @@ pub fn heavy_test_simple_add() {
     }
     // Checking they are all not zero.
     comms_out.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
 
     // IVC is expecting the coordinates.
@@ -753,14 +745,14 @@ pub fn heavy_test_simple_add() {
         folded_instance.error_commitment.elems[0],
     ];
     error_terms.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
 
     let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
 
     let t_terms = [t_0.elems[0], t_1.elems[0]];
     t_terms.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
     let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
 
