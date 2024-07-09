@@ -157,7 +157,6 @@ impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: u
 impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
     PlonkishInstance<G, N_COL, 3, N_ALPHAS>
 {
-    #[allow(dead_code)]
     pub fn from_witness<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         w: &GenericWitness<N_COL, Evaluations<G::ScalarField, R2D<G::ScalarField>>>,
         fq_sponge: &mut EFqSponge,

@@ -480,7 +480,6 @@ pub fn constrain_multiplication<
 /// Multiplication sub-circuit of the serialization/bootstrap
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
-#[allow(dead_code)]
 pub fn multiplication_circuit<
     F: PrimeField,
     Ff: PrimeField,
