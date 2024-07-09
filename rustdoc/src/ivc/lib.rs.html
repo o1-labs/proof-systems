@@ -140,6 +140,7 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This crate provides a circuit to achieve Incremental Verifiable
 //! Computation (IVC) based on a variant of the folding scheme described in the
 //! paper [Nova](https://eprint.iacr.org/2021/370.pdf). For the rest of the
@@ -268,7 +269,8 @@
 //! iteration column is set at each row by each process_* function in the
 //! interpreter.
 
-</span><span class="kw">pub mod </span>ivc;
+</span><span class="kw">pub mod </span>expr_eval;
+<span class="kw">pub mod </span>ivc;
 <span class="kw">pub mod </span>plonkish_lang;
 <span class="doccomment">/// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
 /// state of 3 elements and constraints of degree 2
