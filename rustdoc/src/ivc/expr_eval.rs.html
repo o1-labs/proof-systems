@@ -156,7 +156,26 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::plonkish_lang::{PlonkishChallenge, PlonkishWitness};
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
+<span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>folding::{
@@ -175,17 +194,34 @@
 <span class="kw">use </span>strum::EnumCount;
 
 <span class="doccomment">/// Minimal environment needed for evaluating constraints.
-</span><span class="kw">pub struct </span>SimpleEvalEnv&lt;Curve: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize&gt; {
-    <span class="kw">pub </span>ext_witness: ExtendedWitness&lt;Curve, PlonkishWitness&lt;N_COL, N_FSEL, Curve::ScalarField&gt;&gt;,
+</span><span class="kw">pub struct </span>GenericEvalEnv&lt;
+    Curve: KimchiCurve,
+    <span class="kw">const </span>N_COL: usize,
+    <span class="kw">const </span>N_FSEL: usize,
+    Eval: CombinableEvals&lt;Curve::ScalarField&gt;,
+&gt; {
+    <span class="kw">pub </span>ext_witness:
+        ExtendedWitness&lt;Curve, PlonkishWitnessGeneric&lt;N_COL, N_FSEL, Curve::ScalarField, Eval&gt;&gt;,
     <span class="kw">pub </span>alphas: Alphas&lt;Curve::ScalarField&gt;,
     <span class="kw">pub </span>challenges: [Curve::ScalarField; PlonkishChallenge::COUNT],
-    <span class="kw">pub </span>error_vec: Evaluations&lt;Curve::ScalarField, R2D&lt;Curve::ScalarField&gt;&gt;,
+    <span class="kw">pub </span>error_vec: Eval,
     <span class="doccomment">/// The scalar `u` that is used to homogenize the polynomials
     </span><span class="kw">pub </span>u: Curve::ScalarField,
 }
 
-<span class="kw">impl</span>&lt;Curve: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize&gt;
-    SimpleEvalEnv&lt;Curve, N_COL, N_FSEL&gt;
+<span class="kw">pub type </span>SimpleEvalEnv&lt;Curve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize&gt; = GenericEvalEnv&lt;
+    Curve,
+    N_COL,
+    N_FSEL,
+    Evaluations&lt;&lt;Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField, R2D&lt;&lt;Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;&gt;,
+&gt;;
+
+<span class="kw">impl</span>&lt;
+        Curve: KimchiCurve,
+        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_FSEL: usize,
+        Evals: CombinableEvals&lt;Curve::ScalarField&gt;,
+    &gt; GenericEvalEnv&lt;Curve, N_COL, N_FSEL, Evals&gt;
 {
     <span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: PlonkishChallenge) -&gt; Curve::ScalarField {
         <span class="kw">match </span>challenge {
@@ -285,7 +321,7 @@
                         <span class="kw">use </span>ExpExtension::<span class="kw-2">*</span>;
                         <span class="kw">match </span>ext {
                             U =&gt; EvalLeaf::Const(<span class="self">self</span>.u),
-                            Error =&gt; EvalLeaf::Col(<span class="kw-2">&amp;</span><span class="self">self</span>.error_vec.evals),
+                            Error =&gt; EvalLeaf::Col(<span class="self">self</span>.error_vec.e_as_slice()),
                             ExtendedWitness(i) =&gt; {
                                 EvalLeaf::Col(<span class="kw-2">&amp;</span><span class="self">self</span>.ext_witness.extended.get(i).unwrap().evals)
                             }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SimpleEvalEnv"]};
+window.SIDEBAR_ITEMS = {"struct":["GenericEvalEnv"],"type":["SimpleEvalEnv"]};

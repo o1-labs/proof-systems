@@ -1,4 +1,4 @@
 (function() {var implementors = {
-"ivc":[["impl SpongeConstants for <a class=\"struct\" href=\"ivc/poseidon_params_55_0_7_3/struct.PlonkSpongeConstantsIVC.html\" title=\"struct ivc::poseidon_params_55_0_7_3::PlonkSpongeConstantsIVC\">PlonkSpongeConstantsIVC</a>"],["impl SpongeConstants for <a class=\"struct\" href=\"ivc/poseidon_8_56_5_3_2/bn254/struct.PlonkSpongeConstantsIVC.html\" title=\"struct ivc::poseidon_8_56_5_3_2::bn254::PlonkSpongeConstantsIVC\">PlonkSpongeConstantsIVC</a>"]],
+"ivc":[["impl SpongeConstants for <a class=\"struct\" href=\"ivc/poseidon_8_56_5_3_2/bn254/struct.PlonkSpongeConstantsIVC.html\" title=\"struct ivc::poseidon_8_56_5_3_2::bn254::PlonkSpongeConstantsIVC\">PlonkSpongeConstantsIVC</a>"],["impl SpongeConstants for <a class=\"struct\" href=\"ivc/poseidon_params_55_0_7_3/struct.PlonkSpongeConstantsIVC.html\" title=\"struct ivc::poseidon_params_55_0_7_3::PlonkSpongeConstantsIVC\">PlonkSpongeConstantsIVC</a>"]],
 "mina_poseidon":[]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

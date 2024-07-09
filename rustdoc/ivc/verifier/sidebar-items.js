@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["verify"],"type":["Fp","Fq","G","Pairing"]};
