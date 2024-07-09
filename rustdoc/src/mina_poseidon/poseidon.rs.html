@@ -129,6 +129,17 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive
 
 </span><span class="kw">use crate</span>::{
@@ -155,8 +166,19 @@
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
-<span class="kw">pub fn </span>sbox&lt;F: Field, SC: SpongeConstants&gt;(x: F) -&gt; F {
-    x.pow([SC::PERM_SBOX <span class="kw">as </span>u64])
+<span class="kw">pub fn </span>sbox&lt;F: Field, SC: SpongeConstants&gt;(<span class="kw-2">mut </span>x: F) -&gt; F {
+    <span class="kw">if </span>SC::PERM_SBOX == <span class="number">7 </span>{
+        <span class="comment">// This is much faster than using the generic `pow`. Hard-code to get the ~50% speed-up
+        // that it gives to hashing.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>square = x;
+        square.square_in_place();
+        x <span class="kw-2">*</span>= square;
+        square.square_in_place();
+        x <span class="kw-2">*</span>= square;
+        x
+    } <span class="kw">else </span>{
+        x.pow([SC::PERM_SBOX <span class="kw">as </span>u64])
+    }
 }
 
 <span class="attr">#[derive(Clone, Debug)]
