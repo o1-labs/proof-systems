@@ -127,6 +127,7 @@
 //! interpreter.
 
 pub mod expr_eval;
+pub mod folding_config;
 pub mod ivc;
 pub mod plonkish_lang;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a

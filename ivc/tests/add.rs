@@ -6,11 +6,12 @@ use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     eval_leaf::EvalLeaf, expressions::FoldingColumnTrait, instance_witness::ExtendedWitness,
-    standard_config::StandardConfig, Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
+    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
 };
 use ivc::{
     self,
     expr_eval::SimpleEvalEnv,
+    folding_config::{Config, GenericVecStructure},
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
@@ -71,21 +72,6 @@ impl ColumnIndexer for AdditionColumn {
             AdditionColumn::A => Column::Relation(0),
             AdditionColumn::B => Column::Relation(1),
             AdditionColumn::C => Column::Relation(2),
-        }
-    }
-}
-
-#[derive(Clone)]
-/// Generic structure containing column vectors.
-pub struct GenericVecStructure<G: KimchiCurve>(Vec<Vec<G::ScalarField>>);
-
-impl<G: KimchiCurve> Index<Column> for GenericVecStructure<G> {
-    type Output = [G::ScalarField];
-
-    fn index(&self, index: Column) -> &Self::Output {
-        match index {
-            Column::FixedSelector(i) => &self.0[i],
-            _ => panic!("should not happen"),
         }
     }
 }
@@ -185,16 +171,7 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
-        Curve,
-        Column,
-        PlonkishChallenge,
-        PlonkishInstance<Curve, N_COL_TOTAL, 3, N_ALPHAS_QUAD>, // TODO check if it's quad or not
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
-        (),
-        GenericVecStructure<Curve>,
-    >;
-    type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL>;
+    type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL, 3, N_ALPHAS_QUAD, Curve>;
 
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
