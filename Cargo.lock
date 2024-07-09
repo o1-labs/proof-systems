@@ -1446,6 +1446,7 @@ dependencies = [
  "rayon",
  "strum",
  "strum_macros",
+ "thiserror",
 ]
 
 [[package]]

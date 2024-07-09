@@ -1,4 +1,5 @@
-use crate::plonkish_lang::{PlonkishChallenge, PlonkishWitness};
+use crate::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
+use ark_ec::AffineCurve;
 use ark_ff::Field;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
@@ -17,17 +18,34 @@ use kimchi_msm::columns::Column as GenericColumn;
 use strum::EnumCount;
 
 /// Minimal environment needed for evaluating constraints.
-pub struct SimpleEvalEnv<Curve: KimchiCurve, const N_COL: usize, const N_FSEL: usize> {
-    pub ext_witness: ExtendedWitness<Curve, PlonkishWitness<N_COL, N_FSEL, Curve::ScalarField>>,
+pub struct GenericEvalEnv<
+    Curve: KimchiCurve,
+    const N_COL: usize,
+    const N_FSEL: usize,
+    Eval: CombinableEvals<Curve::ScalarField>,
+> {
+    pub ext_witness:
+        ExtendedWitness<Curve, PlonkishWitnessGeneric<N_COL, N_FSEL, Curve::ScalarField, Eval>>,
     pub alphas: Alphas<Curve::ScalarField>,
     pub challenges: [Curve::ScalarField; PlonkishChallenge::COUNT],
-    pub error_vec: Evaluations<Curve::ScalarField, R2D<Curve::ScalarField>>,
+    pub error_vec: Eval,
     /// The scalar `u` that is used to homogenize the polynomials
     pub u: Curve::ScalarField,
 }
 
-impl<Curve: KimchiCurve, const N_COL: usize, const N_FSEL: usize>
-    SimpleEvalEnv<Curve, N_COL, N_FSEL>
+pub type SimpleEvalEnv<Curve, const N_COL: usize, const N_FSEL: usize> = GenericEvalEnv<
+    Curve,
+    N_COL,
+    N_FSEL,
+    Evaluations<<Curve as AffineCurve>::ScalarField, R2D<<Curve as AffineCurve>::ScalarField>>,
+>;
+
+impl<
+        Curve: KimchiCurve,
+        const N_COL: usize,
+        const N_FSEL: usize,
+        Evals: CombinableEvals<Curve::ScalarField>,
+    > GenericEvalEnv<Curve, N_COL, N_FSEL, Evals>
 {
     fn challenge(&self, challenge: PlonkishChallenge) -> Curve::ScalarField {
         match challenge {
@@ -127,7 +145,7 @@ impl<Curve: KimchiCurve, const N_COL: usize, const N_FSEL: usize>
                         use ExpExtension::*;
                         match ext {
                             U => EvalLeaf::Const(self.u),
-                            Error => EvalLeaf::Col(&self.error_vec.evals),
+                            Error => EvalLeaf::Col(self.error_vec.e_as_slice()),
                             ExtendedWitness(i) => {
                                 EvalLeaf::Col(&self.ext_witness.extended.get(i).unwrap().evals)
                             }
