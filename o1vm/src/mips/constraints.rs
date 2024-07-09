@@ -436,7 +436,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // TODO: embed any more complex logic to know how many bytes are read
             //       depending on the address and length as in the witness?
             // FIXME: use the lines below when the issue with `equal` is solved
-            //        that will bring the number of constraints from 22 to 30
+            //        that will bring the number of constraints from 23 to 31
             //        (meaning the unit test needs to be manually adapted)
             // let preimage_1 = self.equal(&num_preimage_bytes_read, &Expr::from(1));
             // let preimage_2 = self.equal(&num_preimage_bytes_read, &Expr::from(2));
