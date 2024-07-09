@@ -377,7 +377,6 @@ pub fn heavy_test_simple_add() {
     // Relation || dynamic.
     let joint_witness_one: Vec<_> = proof_inputs_one
         .evaluations
-        .clone()
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations.clone())
         .collect();
@@ -432,14 +431,12 @@ pub fn heavy_test_simple_add() {
     // since they're both height 0.
     let joint_witness_two: Vec<_> = proof_inputs_two
         .evaluations
-        .clone()
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations)
         .collect();
 
     let folding_witness_two_evals: GenericWitness<N_COL_TOTAL, Evaluations<Fp, R2D<Fp>>> =
         joint_witness_two
-            .clone()
             .into_par_iter()
             .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
             .collect();
