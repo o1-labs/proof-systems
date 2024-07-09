@@ -1,5 +1,6 @@
 #[derive(Clone, Debug)]
-pub(crate) enum EvalLeaf<'a, F> {
+/// Result of a folding expression evaluation.
+pub enum EvalLeaf<'a, F> {
     Const(F),
     Col(&'a Vec<F>),
     Result(Vec<F>),
