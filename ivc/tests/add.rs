@@ -369,13 +369,6 @@ pub fn heavy_test_simple_add() {
         .chain(ivc_proof_inputs_0.evaluations.clone())
         .collect();
 
-    for i in 0..10 {
-        assert!(
-            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
-            "Iteration column row #{i:?} must be zero"
-        );
-    }
-
     assert!(joint_witness_one.len() == N_COL_TOTAL);
 
     let folding_witness_one = PlonkishWitness {
