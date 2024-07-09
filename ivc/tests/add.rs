@@ -2,16 +2,15 @@
 //! to fold a simple addition circuit. The addition circuit consists of a single
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
-use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
     columns::ExtendedFoldingColumn,
     eval_leaf::EvalLeaf,
     expressions::{ExpExtension, FoldingColumnTrait, FoldingCompatibleExprInner, FoldingExp},
-    instance_witness::{ExtendedWitness, Foldable},
+    instance_witness::ExtendedWitness,
     standard_config::StandardConfig,
-    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme, Instance, Witness,
+    Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
 };
 use ivc::{
     self,
@@ -22,14 +21,11 @@ use ivc::{
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
+    plonkish_lang::{PlonkishChallenge, PlonkishInstance, PlonkishWitness},
     poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
 };
 use kimchi::{
-    circuits::{
-        domains::EvaluationDomains,
-        expr::{ChallengeTerm, Variable},
-        gate::CurrOrNext,
-    },
+    circuits::{domains::EvaluationDomains, expr::Variable, gate::CurrOrNext},
     curve::KimchiCurve,
 };
 use kimchi_msm::{
@@ -43,13 +39,11 @@ use kimchi_msm::{
     BN254G1Affine, Fp,
 };
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+use poly_commitment::{srs::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-use std::{array, collections::BTreeMap, ops::Index};
+use std::{collections::BTreeMap, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
-
-use itertools::Itertools;
 
 /// The base field of the curve
 /// Used to encode the polynomial commitments
@@ -149,7 +143,7 @@ pub fn heavy_test_simple_add() {
 
     // There are two more challenges though.
     // Not used at the moment as IVC circuit only handles alphas
-    const _N_CHALS: usize = N_ALPHAS + Challenge::COUNT;
+    const _N_CHALS: usize = N_ALPHAS + PlonkishChallenge::COUNT;
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
@@ -169,30 +163,8 @@ pub fn heavy_test_simple_add() {
         DummyLookupTable,
     >;
 
-    // Folding Witness
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct PlonkishWitness<const N_COL: usize, const N_FSEL: usize> {
-        pub witness: GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
-        pub fixed_selectors: GenericWitness<N_FSEL, Evaluations<Fp, R2D<Fp>>>,
-    }
-
-    // Trait required for folding
-
-    impl<const N_COL: usize, const N_FSEL: usize> Foldable<Fp> for PlonkishWitness<N_COL, N_FSEL> {
-        fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-            for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
-                for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                    *a += challenge * b;
-                }
-            }
-            a
-        }
-    }
-
-    impl<const N_COL: usize, const N_FSEL: usize> Witness<Curve> for PlonkishWitness<N_COL, N_FSEL> {}
-
     impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
-        for PlonkishWitness<N_COL, N_FSEL>
+        for PlonkishWitness<N_COL, N_FSEL, Fp>
     {
         type Output = Vec<Fp>;
 
@@ -205,153 +177,12 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    impl<const N_COL: usize, const N_FSEL: usize> Index<Column> for PlonkishWitness<N_COL, N_FSEL> {
-        type Output = Vec<Fp>;
-
-        /// Map a column alias to the corresponding witness column.
-        fn index(&self, index: Column) -> &Self::Output {
-            match index {
-                Column::Relation(i) => &self.witness.cols[i].evals,
-                Column::FixedSelector(i) => &self.fixed_selectors[i].evals,
-                other => panic!("Invalid column index: {other:?}"),
-            }
-        }
-    }
-
-    // for selectors, () in this case as we have none
-    impl<const N_COL: usize, const N_FSEL: usize> Index<()> for PlonkishWitness<N_COL, N_FSEL> {
-        type Output = Vec<Fp>;
-
-        fn index(&self, _index: ()) -> &Self::Output {
-            unreachable!()
-        }
-    }
-
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-    pub enum Challenge {
-        Beta,
-        Gamma,
-        JointCombiner,
-    }
-
-    impl From<ChallengeTerm> for Challenge {
-        fn from(chal: ChallengeTerm) -> Self {
-            match chal {
-                ChallengeTerm::Beta => Challenge::Beta,
-                ChallengeTerm::Gamma => Challenge::Gamma,
-                ChallengeTerm::JointCombiner => Challenge::JointCombiner,
-                ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
-            }
-        }
-    }
-
-    #[derive(Clone, Debug)]
-    pub struct PlonkishInstance<const N_COL: usize> {
-        commitments: [Curve; N_COL],
-        challenges: [Fp; Challenge::COUNT],
-        alphas: Alphas<Fp>,
-        blinder: Fp,
-    }
-
-    impl<const N_COL: usize> Foldable<Fp> for PlonkishInstance<N_COL> {
-        fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-            Self {
-                commitments: array::from_fn(|i| {
-                    a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
-                }),
-                challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
-                alphas: Alphas::combine(a.alphas, b.alphas, challenge),
-                blinder: a.blinder + challenge * b.blinder,
-            }
-        }
-    }
-
-    impl<const N_COL: usize> Index<Challenge> for PlonkishInstance<N_COL> {
-        type Output = Fp;
-
-        fn index(&self, index: Challenge) -> &Self::Output {
-            match index {
-                Challenge::Beta => &self.challenges[0],
-                Challenge::Gamma => &self.challenges[1],
-                Challenge::JointCombiner => &self.challenges[2],
-            }
-        }
-    }
-
-    impl<const N_COL: usize> Instance<Curve> for PlonkishInstance<N_COL> {
-        fn to_absorb(&self) -> (Vec<Fp>, Vec<Curve>) {
-            // FIXME: check!!!!
-            let mut scalars = Vec::new();
-            let mut points = Vec::new();
-            points.extend(self.commitments);
-            scalars.extend(self.challenges);
-            scalars.extend(self.alphas.clone().powers());
-            (scalars, points)
-        }
-
-        fn get_alphas(&self) -> &Alphas<Fp> {
-            &self.alphas
-        }
-
-        fn get_blinder(&self) -> Fp {
-            self.blinder
-        }
-    }
-
-    impl<const N_COL: usize> PlonkishInstance<N_COL> {
-        #[allow(dead_code)]
-        pub fn from_witness(
-            w: &GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
-            fq_sponge: &mut BaseSponge,
-            srs: &SRS<Curve>,
-            domain: R2D<Fp>,
-        ) -> Self {
-            let blinder = Fp::one();
-
-            let commitments: GenericWitness<N_COL, PolyComm<Curve>> = w
-                .into_par_iter()
-                .map(|w| {
-                    let blinder = PolyComm::new(vec![blinder; 1]);
-                    let unblinded = srs.commit_evaluations_non_hiding(domain, w);
-                    srs.mask_custom(unblinded, &blinder).unwrap().commitment
-                })
-                .collect();
-
-            // Absorbing commitments
-            (&commitments)
-                .into_iter()
-                .for_each(|c| absorb_commitment(fq_sponge, c));
-
-            let commitments: [Curve; N_COL] = commitments
-                .into_iter()
-                .map(|c| c.elems[0])
-                .collect_vec()
-                .try_into()
-                .unwrap();
-
-            let beta = fq_sponge.challenge();
-            let gamma = fq_sponge.challenge();
-            let joint_combiner = fq_sponge.challenge();
-            let challenges = [beta, gamma, joint_combiner];
-
-            let alpha = fq_sponge.challenge();
-            let alphas = Alphas::new_sized(alpha, N_ALPHAS);
-
-            Self {
-                commitments,
-                challenges,
-                alphas,
-                blinder,
-            }
-        }
-    }
-
     type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
         Curve,
         Column,
-        Challenge,
-        PlonkishInstance<N_COL_TOTAL>,
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL>,
+        PlonkishChallenge,
+        PlonkishInstance<Curve, N_COL_TOTAL, 3, N_ALPHAS_QUAD>, // TODO check if it's quad or not
+        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
         (),
         GenericVecStructure<Curve>,
     >;
@@ -365,20 +196,20 @@ pub fn heavy_test_simple_add() {
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv<const N_COL: usize, const N_FSEL: usize> {
         //    inner: CF::Env,
-        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL>>,
+        ext_witness: ExtendedWitness<BN254G1Affine, PlonkishWitness<N_COL, N_FSEL, Fp>>,
         alphas: Alphas<Fp>,
-        challenges: [Fp; Challenge::COUNT],
+        challenges: [Fp; PlonkishChallenge::COUNT],
         error_vec: Evaluations<Fp, R2D<Fp>>,
         /// The scalar `u` that is used to homogenize the polynomials
         u: Fp,
     }
 
     impl<const N_COL: usize, const N_FSEL: usize> SimpleEvalEnv<N_COL, N_FSEL> {
-        pub fn challenge(&self, challenge: Challenge) -> Fp {
+        pub fn challenge(&self, challenge: PlonkishChallenge) -> Fp {
             match challenge {
-                Challenge::Beta => self.challenges[0],
-                Challenge::Gamma => self.challenges[1],
-                Challenge::JointCombiner => self.challenges[2],
+                PlonkishChallenge::Beta => self.challenges[0],
+                PlonkishChallenge::Gamma => self.challenges[1],
+                PlonkishChallenge::JointCombiner => self.challenges[2],
             }
         }
 
