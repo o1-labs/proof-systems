@@ -30,9 +30,6 @@ pub struct SRS<G> {
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
-
-    #[serde(skip)]
-    pub lagrange_bases_cache: Option<Source<G>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -107,21 +104,6 @@ impl<G: CommitmentCurve> SRS<G> {
         if self.lagrange_bases.contains_key(&n) {
             return;
         }
-
-        self.lagrange_bases_cache.as_ref().map(|cache| {
-            if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
-                self.lagrange_bases.insert(domain.size(), basis);
-                return;
-            }
-        });
-
-        //let mut g_hasher = DefaultHasher::new();
-        //self.g.hash(&mut g_hasher);
-
-        //let mut h_hasher = DefaultHasher::new();
-        //self.h.hash(&mut h_hasher);
-
-        //println!("g: {:?}, h: {:?}, domain: {:?}", g_hasher.finish(), h_hasher.finish(), n);
 
         // Let V be a vector space over the field F.
         //
@@ -223,10 +205,6 @@ impl<G: CommitmentCurve> SRS<G> {
                 elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
-        self.lagrange_bases_cache
-            .as_ref()
-            .map(|cache| cache.cache_lagrange_basis(&self.g, &domain, &chunked_commitments));
-        self.lagrange_bases.insert(n, chunked_commitments);
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with
@@ -255,7 +233,6 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }
@@ -286,7 +263,6 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }
@@ -322,7 +298,6 @@ where
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }
