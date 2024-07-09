@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PlonkishChallenge"],"struct":["PlonkishChallengeIter","PlonkishInstance","PlonkishWitness"]};
