@@ -203,11 +203,43 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
 </span><span class="kw">use </span>ark_ec::ProjectiveCurve;
-<span class="kw">use </span>ark_ff::{FftField, One};
+<span class="kw">use </span>ark_ff::{FftField, Field, One};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 <span class="kw">use </span>itertools::Itertools;
@@ -223,42 +255,74 @@
 <span class="kw">use </span>std::ops::Index;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
-<span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub struct </span>PlonkishWitness&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; {
-    <span class="kw">pub </span>witness: GenericWitness&lt;N_COL, Evaluations&lt;F, R2D&lt;F&gt;&gt;&gt;,
-    <span class="comment">// This does not have to be part of the witness... can be a static
-    // precompiled object.
-    </span><span class="kw">pub </span>fixed_selectors: GenericWitness&lt;N_FSEL, Evaluations&lt;F, R2D&lt;F&gt;&gt;&gt;,
+<span class="doccomment">/// Vector field over F. Something like a vector.
+</span><span class="kw">pub trait </span>CombinableEvals&lt;F: Field&gt; {
+    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F];
+    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F];
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; Foldable&lt;F&gt;
-    <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, F&gt;
+<span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Evaluations&lt;F, R2D&lt;F&gt;&gt; {
+    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
+        <span class="self">self</span>.evals.as_slice()
+    }
+    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
+        <span class="self">self</span>.evals.as_mut_slice()
+    }
+}
+
+<span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Vec&lt;F&gt; {
+    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
+        <span class="self">self</span>.as_slice()
+    }
+    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
+        <span class="self">self</span>.as_mut_slice()
+    }
+}
+
+<span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+</span><span class="kw">pub struct </span>PlonkishWitnessGeneric&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals&gt; {
+    <span class="kw">pub </span>witness: GenericWitness&lt;N_COL, Evals&gt;,
+    <span class="comment">// This does not have to be part of the witness... can be a static
+    // precompiled object.
+    </span><span class="kw">pub </span>fixed_selectors: GenericWitness&lt;N_FSEL, Evals&gt;,
+    <span class="kw">pub </span>phantom: std::marker::PhantomData&lt;F&gt;,
+}
+
+<span class="kw">pub type </span>PlonkishWitness&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F&gt; =
+    PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evaluations&lt;F, R2D&lt;F&gt;&gt;&gt;;
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals: CombinableEvals&lt;F&gt;&gt; Foldable&lt;F&gt;
+    <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
 {
     <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
         <span class="kw">for </span>(a, b) <span class="kw">in </span>(<span class="kw-2">*</span>a.witness.cols).iter_mut().zip(<span class="kw-2">*</span>(b.witness.cols)) {
-            <span class="kw">for </span>(a, b) <span class="kw">in </span>a.evals.iter_mut().zip(b.evals) {
-                <span class="kw-2">*</span>a += challenge * b;
+            <span class="kw">for </span>(a, b) <span class="kw">in </span>(a.e_as_mut_slice()).iter_mut().zip(b.e_as_slice()) {
+                <span class="kw-2">*</span>a += <span class="kw-2">*</span>b * challenge;
             }
         }
         a
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, Curve: CommitmentCurve&gt; Witness&lt;Curve&gt;
-    <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, Curve::ScalarField&gt;
+<span class="kw">impl</span>&lt;
+        <span class="kw">const </span>N_COL: usize,
+        <span class="kw">const </span>N_FSEL: usize,
+        Curve: CommitmentCurve,
+        Evals: CombinableEvals&lt;Curve::ScalarField&gt;,
+    &gt; Witness&lt;Curve&gt; <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, Curve::ScalarField, Evals&gt;
 {
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; Index&lt;Column&gt;
-    <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, F&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField, Evals: CombinableEvals&lt;F&gt;&gt; Index&lt;Column&gt;
+    <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
 {
-    <span class="kw">type </span>Output = Vec&lt;F&gt;;
+    <span class="kw">type </span>Output = [F];
 
     <span class="doccomment">/// Map a column alias to the corresponding witness column.
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Column) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
-            Column::Relation(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.witness.cols[i].evals,
-            Column::FixedSelector(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.fixed_selectors[i].evals,
+            Column::Relation(i) =&gt; <span class="self">self</span>.witness.cols[i].e_as_slice(),
+            Column::FixedSelector(i) =&gt; <span class="self">self</span>.fixed_selectors[i].e_as_slice(),
             other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid column index: {other:?}&quot;</span>),
         }
     }
@@ -268,7 +332,7 @@
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; Index&lt;()&gt;
     <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, F&gt;
 {
-    <span class="kw">type </span>Output = Vec&lt;F&gt;;
+    <span class="kw">type </span>Output = [F];
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, _index: ()) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="macro">unreachable!</span>()

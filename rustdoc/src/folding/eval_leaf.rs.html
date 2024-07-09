@@ -142,22 +142,22 @@
 </span><span class="doccomment">/// Result of a folding expression evaluation.
 </span><span class="kw">pub enum </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     Const(F),
-    Col(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Vec&lt;F&gt;),
-    <span class="prelude-ty">Result</span>(Vec&lt;F&gt;),
+    Col(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[F]), <span class="comment">// slice will suffice
+    </span><span class="prelude-ty">Result</span>(Vec&lt;F&gt;),
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::fmt::Display&gt; std::fmt::Display <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span>vec = <span class="kw">match </span><span class="self">self </span>{
+        <span class="kw">let </span>slice = <span class="kw">match </span><span class="self">self </span>{
             EvalLeaf::Const(c) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;Const: {}&quot;</span>, c)<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
             EvalLeaf::Col(a) =&gt; a,
-            EvalLeaf::Result(a) =&gt; a,
+            EvalLeaf::Result(a) =&gt; a.as_slice(),
         };
         <span class="macro">writeln!</span>(f, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>e <span class="kw">in </span>vec.iter() {
+        <span class="kw">for </span>e <span class="kw">in </span>slice.iter() {
             <span class="macro">writeln!</span>(f, <span class="string">&quot;{e}&quot;</span>)<span class="question-mark">?</span>;
         }
         <span class="macro">write!</span>(f, <span class="string">&quot;]&quot;</span>)<span class="question-mark">?</span>;

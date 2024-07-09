@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PlonkishChallenge"],"struct":["PlonkishChallengeIter","PlonkishInstance","PlonkishWitness"]};
+window.SIDEBAR_ITEMS = {"enum":["PlonkishChallenge"],"struct":["PlonkishChallengeIter","PlonkishInstance","PlonkishWitnessGeneric"],"trait":["CombinableEvals"],"type":["PlonkishWitness"]};
