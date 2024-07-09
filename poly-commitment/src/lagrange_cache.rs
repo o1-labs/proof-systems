@@ -103,7 +103,6 @@ impl<G: CommitmentCurve> LagrangeBasisCache<G> for FileCache<G> {
 
     fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey {
         let mut hasher = DefaultHasher::new();
-        g.hash(&mut hasher);
         domain.size.hash(&mut hasher);
         self.cache_dir
             .clone()
