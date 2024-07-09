@@ -511,6 +511,8 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -614,6 +616,7 @@
 <span class="comment">// -- Extended witness
 </span><span class="doccomment">/// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>ExtendedWitness&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; {
     <span class="doccomment">/// This is the original witness, without quadraticization
     </span><span class="kw">pub </span>witness: W,
@@ -851,6 +854,7 @@
 }
 
 <span class="comment">// -- Relaxed witnesses
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>RelaxedWitness&lt;G: CommitmentCurve, W: Witness&lt;G&gt;&gt; {
     <span class="doccomment">/// The original witness, extended with the columns added by
     /// quadriticization.

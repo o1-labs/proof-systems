@@ -401,6 +401,10 @@
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
 <a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -780,6 +784,10 @@
 <span class="kw">impl</span>&lt;F: Field&gt; Alphas&lt;F&gt; {
     <span class="kw">pub fn </span>new(alpha: F) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Powers(alpha, Rc::new(AtomicUsize::from(<span class="number">0</span>)))
+    }
+
+    <span class="kw">pub fn </span>new_sized(alpha: F, count: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Powers(alpha, Rc::new(AtomicUsize::from(count)))
     }
 
     <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="prelude-ty">Option</span>&lt;F&gt; {
