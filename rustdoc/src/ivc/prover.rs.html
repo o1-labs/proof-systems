@@ -500,7 +500,6 @@
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -768,34 +767,33 @@
         <span class="kw">let </span>evaluation_domain = domain.d2;
 
         <span class="kw">let </span>enlarge_to_domain_generic =
-            |evaluations: Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;, new_domain: R2D&lt;Fp&gt;| {
+            |evaluations: <span class="kw-2">&amp;</span>Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;, new_domain: R2D&lt;Fp&gt;| {
                 <span class="macro">assert!</span>(evaluations.domain() == domain.d1);
                 evaluations
-                    .interpolate()
+                    .interpolate_by_ref()
                     .evaluate_over_domain_by_ref(new_domain)
             };
 
-        <span class="kw">let </span>enlarge_to_domain = |evaluations: Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;| {
+        <span class="kw">let </span>enlarge_to_domain = |evaluations: <span class="kw-2">&amp;</span>Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;| {
             enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
 
         <span class="kw">let </span>simple_eval_env: SimpleEvalEnv&lt;G, N_WIT, N_FSEL&gt; = {
             <span class="kw">let </span>ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
-                    witness: witness_main
+                    witness: (<span class="kw-2">&amp;</span>witness_main)
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
-                    fixed_selectors: fixed_selectors_evals_d1
-                        .to_vec()
+                    fixed_selectors: (<span class="kw-2">&amp;</span>fixed_selectors_evals_d1.to_vec())
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
                     phantom: std::marker::PhantomData,
                 },
-                extended: witness_ext
-                    .into_iter()
-                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+                extended: (<span class="kw-2">&amp;</span>witness_ext)
+                    .into_par_iter()
+                    .map(|(ix, evals)| (<span class="kw-2">*</span>ix, enlarge_to_domain(evals)))
                     .collect(),
             };
 
@@ -803,7 +801,7 @@
                 ext_witness,
                 alphas: folded_instance.extended_instance.instance.alphas.clone(),
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
+                error_vec: enlarge_to_domain(<span class="kw-2">&amp;</span>folded_witness.error_vec),
                 u: folded_instance.u,
             }
         };
