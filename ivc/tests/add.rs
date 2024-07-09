@@ -209,8 +209,6 @@ pub fn heavy_test_simple_add() {
     // Start building the constants of the circuit.
     // For the IVC, we have all the "block selectors" - which depends on the
     // number of columns of the circuit - and the poseidon round constants.
-    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
-    // reduce the IVC constraints to degree 2.
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
         build_selectors::<N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(domain_size).to_vec();
 
