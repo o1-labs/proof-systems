@@ -935,10 +935,6 @@
 <a href="#935" id="935">935</a>
 <a href="#936" id="936">936</a>
 <a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -1607,10 +1603,6 @@
         };
 
         env.write_column(IVCColumn::Block4Coeff, <span class="kw-2">&amp;</span>Env::constant(coeff));
-        write_column_array_const(env, <span class="kw-2">&amp;</span>xp_limbs, IVCColumn::Block4Input1);
-        write_column_array_const(env, <span class="kw-2">&amp;</span>yp_limbs, |i| IVCColumn::Block4Input1(i + <span class="number">4</span>));
-        write_column_array_const(env, <span class="kw-2">&amp;</span>xq_limbs, IVCColumn::Block4Input2);
-        write_column_array_const(env, <span class="kw-2">&amp;</span>yq_limbs, |i| IVCColumn::Block4Input2(i + <span class="number">4</span>));
 
         <span class="comment">// TODO These two should be used when RAMLookups are enabled.
         </span>env.write_column(IVCColumn::Block4Input2AccessTime, <span class="kw-2">&amp;</span>Env::constant(F::zero()));
