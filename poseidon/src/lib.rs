@@ -6,6 +6,3 @@ pub mod poseidon;
 pub mod sponge;
 
 pub use sponge::FqSponge; // Commonly used so reexported for convenience
-
-#[cfg(test)]
-mod tests;
