@@ -386,7 +386,7 @@ mod tests {
     use super::{PairingProof, PairingSRS};
     use crate::{
         commitment::Evaluation, evaluation_proof::DensePolynomialOrEvaluations,
-        lagrange_cache::test_caches, srs::SRS, SRS as _
+        lagrange_cache::test_caches, srs::SRS, SRS as _,
     };
     use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
     use ark_ec::bn::Bn;

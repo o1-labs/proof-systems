@@ -11,9 +11,7 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::hash_map::DefaultHasher;
 use std::{array, cmp::min, collections::HashMap};
-use std::hash::{Hash};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -31,8 +29,7 @@ pub struct SRS<G> {
     // TODO: the following field should be separated, as they are optimization values
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
-    pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>
-
+    pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -99,25 +96,26 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
-    pub fn add_lagrange_basis_with_cache<C: LagrangeCache<G>>(&mut self, domain: D<G::ScalarField>, cache: &C) {
-
+    pub fn add_lagrange_basis_with_cache<C: LagrangeCache<G>>(
+        &mut self,
+        domain: D<G::ScalarField>,
+        cache: &C,
+    ) {
         let n = domain.size();
         if self.lagrange_bases.contains_key(&n) {
             return;
         }
-        if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
+        if let Some(basis) = cache.load_lagrange_basis_from_cache(self.g.len(), &domain) {
             self.lagrange_bases.insert(domain.size(), basis);
             return;
         } else {
-          self.add_lagrange_basis(domain);
-          let basis = self.lagrange_bases.get(&domain.size()).unwrap();
-          cache.cache_lagrange_basis(&self.g,&domain, basis);
+            self.add_lagrange_basis(domain);
+            let basis = self.lagrange_bases.get(&domain.size()).unwrap();
+            cache.cache_lagrange_basis(self.g.len(), &domain, basis);
         }
 
-//        println!("Adding lagrange basis to cache with basis size {} and domain size {}", basis.len(), domain.size());
-//        println!("Lagrange basis: {:?}", basis);
-
-
+        //        println!("Adding lagrange basis to cache with basis size {} and domain size {}", basis.len(), domain.size());
+        //        println!("Lagrange basis: {:?}", basis);
     }
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
@@ -202,8 +200,8 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // By computing each of these, and recollecting the terms as a vector of polynomial
         // commitments, we obtain a chunked commitment to the L_i polynomials.
-        let srs_size = self.g.len();
-        let num_elems = (n + srs_size - 1) / srs_size;
+        let srs_size = self.g.len(); // 64 vs 16
+        let num_elems = (n + srs_size - 1) / srs_size; // (64 + 63 / 64)=1 vs (64 + 15 / 16)=4
         let mut elems = Vec::with_capacity(num_elems);
 
         // For each chunk
@@ -224,14 +222,12 @@ impl<G: CommitmentCurve> SRS<G> {
             elems.push(lg)
         }
 
-        let chunked_commitments: Vec<_> = (0..n)
+        let chunked_commitments: Vec<PolyComm<G>> = (0..n)
             .map(|i| PolyComm {
                 elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
-
-
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with

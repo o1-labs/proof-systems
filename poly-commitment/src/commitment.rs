@@ -1149,6 +1149,7 @@ mod tests {
             .collect();
 
         let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
@@ -1170,7 +1171,7 @@ mod tests {
         let num_chunks = domain.size() / srs.g.len();
         assert!(num_chunks == divisor);
 
-        let expected_lagrange_commitments: Vec<_> = (0..n)
+        let expected_lagrange_commitments: Vec<PolyComm<VestaG>> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
