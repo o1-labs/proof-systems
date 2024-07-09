@@ -497,8 +497,8 @@ pub fn heavy_test_simple_add() {
 
     // The polynomial of the computation is linear, therefore, the error terms
     // are zero
-    assert_ne!(t_0.elems[0], BN254G1Affine::zero());
-    assert_ne!(t_1.elems[0], BN254G1Affine::zero());
+    assert_ne!(t_0.elems[0], Curve::zero());
+    assert_ne!(t_1.elems[0], Curve::zero());
 
     // Sanity check that the u values are the same. The u value is there to
     // homogeneoize the polynomial describing the NP relation.
@@ -509,7 +509,7 @@ pub fn heavy_test_simple_add() {
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
-    let mut comms_left: Vec<BN254G1Affine> = Vec::with_capacity(N_COL_TOTAL_QUAD);
+    let mut comms_left: Vec<Curve> = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_left.extend(
         relaxed_extended_left_instance
             .extended_instance
@@ -525,7 +525,7 @@ pub fn heavy_test_simple_add() {
         extended_comms.iter().enumerate().for_each(|(i, x)| {
             assert_ne!(
                 x,
-                &BN254G1Affine::zero(),
+                &Curve::zero(),
                 "Left extended commitment number {i:?} is zero"
             );
         });
@@ -533,11 +533,7 @@ pub fn heavy_test_simple_add() {
     assert_eq!(comms_left.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_left.iter().enumerate().for_each(|(i, c)| {
-        assert_ne!(
-            c,
-            &BN254G1Affine::zero(),
-            "Left commitment number {i:?} is zero"
-        );
+        assert_ne!(c, &Curve::zero(), "Left commitment number {i:?} is zero");
     });
 
     // IVC is expecting the coordinates.
@@ -560,11 +556,7 @@ pub fn heavy_test_simple_add() {
     assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
     comms_right.iter().enumerate().for_each(|(i, c)| {
-        assert_ne!(
-            c,
-            &BN254G1Affine::zero(),
-            "Right commitment number {i:?} is zero"
-        );
+        assert_ne!(c, &Curve::zero(), "Right commitment number {i:?} is zero");
     });
 
     // IVC is expecting the coordinates.
@@ -581,7 +573,7 @@ pub fn heavy_test_simple_add() {
     }
     // Checking they are all not zero.
     comms_out.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
 
     // IVC is expecting the coordinates.
@@ -614,14 +606,14 @@ pub fn heavy_test_simple_add() {
         folded_instance.error_commitment.elems[0],
     ];
     error_terms.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
 
     let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
 
     let t_terms = [t_0.elems[0], t_1.elems[0]];
     t_terms.iter().for_each(|c| {
-        assert_ne!(c, &BN254G1Affine::zero());
+        assert_ne!(c, &Curve::zero());
     });
     let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
 
@@ -708,17 +700,14 @@ pub fn heavy_test_simple_add() {
         app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
 
     // Here we concatenate with ivc_proof_inputs 1, inductive case
-    let joint_witness_three: Vec<_> = proof_inputs_three
-        .evaluations
-        .clone()
+    let joint_witness_three: Vec<_> = (proof_inputs_three.evaluations)
         .into_iter()
-        .chain(ivc_proof_inputs_1.evaluations.clone())
+        .chain(ivc_proof_inputs_1.evaluations)
         .collect();
 
     assert!(joint_witness_three.len() == N_COL_TOTAL);
 
-    let folding_witness_three_evals: Vec<Evaluations<Fp, R2D<Fp>>> = joint_witness_three
-        .clone()
+    let folding_witness_three_evals: Vec<Evaluations<Fp, R2D<Fp>>> = (&joint_witness_three)
         .into_par_iter()
         .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
         .collect();
@@ -754,18 +743,19 @@ pub fn heavy_test_simple_add() {
     // Testing folding exprs validity for last  fold
     ////////////////////////////////////////////////////////////////////////////
 
-    let enlarge_to_domain_generic = |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
+    let enlarge_to_domain_generic = |evaluations: &Evaluations<Fp, R2D<Fp>>,
+                                     new_domain: R2D<Fp>| {
         assert!(evaluations.domain() == domain.d1);
         evaluations
-            .interpolate()
-            .evaluate_over_domain_by_ref(new_domain)
+            .interpolate_by_ref()
+            .evaluate_over_domain(new_domain)
     };
 
     {
         println!("Testing individual expressions validity; creating evaluations");
 
         let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
-            let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+            let enlarge_to_domain = |evaluations: &Evaluations<Fp, R2D<Fp>>| {
                 enlarge_to_domain_generic(evaluations, domain.d8)
             };
 
@@ -785,12 +775,11 @@ pub fn heavy_test_simple_add() {
             SimpleEvalEnv {
                 ext_witness: ExtendedWitness {
                     witness: PlonkishWitness {
-                        witness: folding_witness_three_evals
+                        witness: (&folding_witness_three_evals)
                             .into_par_iter()
                             .map(enlarge_to_domain)
                             .collect(),
-                        fixed_selectors: ivc_fixed_selectors_evals_d1
-                            .clone()
+                        fixed_selectors: (&ivc_fixed_selectors_evals_d1)
                             .into_par_iter()
                             .map(enlarge_to_domain)
                             .collect(),
@@ -856,23 +845,18 @@ pub fn heavy_test_simple_add() {
         // possible. But this is 8 times slower.
         let evaluation_domain = domain.d1;
 
-        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+        let enlarge_to_domain = |evaluations: &Evaluations<Fp, R2D<Fp>>| {
             enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
 
         let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
-                    witness: folded_witness
-                        .extended_witness
-                        .witness
-                        .witness
-                        .clone()
+                    witness: (&folded_witness.extended_witness.witness.witness)
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
-                    fixed_selectors: ivc_fixed_selectors_evals_d1
-                        .clone()
+                    fixed_selectors: (&ivc_fixed_selectors_evals_d1)
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
@@ -881,9 +865,8 @@ pub fn heavy_test_simple_add() {
                 extended: folded_witness
                     .extended_witness
                     .extended
-                    .clone()
-                    .into_iter()
-                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+                    .iter()
+                    .map(|(ix, evals)| (*ix, enlarge_to_domain(evals)))
                     .collect(),
             };
 
@@ -891,7 +874,7 @@ pub fn heavy_test_simple_add() {
                 ext_witness,
                 alphas: folded_instance.extended_instance.instance.alphas.clone(),
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
+                error_vec: enlarge_to_domain(&folded_witness.error_vec),
                 u: folded_instance.u,
             }
         };
