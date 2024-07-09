@@ -136,7 +136,7 @@ pub fn verify<
             .into_iter()
             .zip(proof_evals.fixed_selectors_evals.iter())
             .map(|(commitment, point_eval)| Evaluation {
-                commitment: commitment.clone(),
+                commitment,
                 evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
             }),
     );
@@ -168,27 +168,20 @@ pub fn verify<
     };
 
     let ft_eval0 = {
-        // We evaluate only at zeta
-        let point_eval_to_vec = |x: PointEvaluations<_>| vec![x.zeta];
-
-        let witness_evals_vecs = proof_evals
-            .witness_evals
-            .cols
-            .clone()
+        let witness_evals_vecs = (&proof_evals.witness_evals)
             .into_iter()
-            .map(point_eval_to_vec)
+            .map(|x| vec![x.zeta])
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
         let fixed_selectors_evals_vecs = proof_evals
             .fixed_selectors_evals
-            .clone()
             .into_iter()
-            .map(point_eval_to_vec)
+            .map(|x| vec![x.zeta])
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        let error_vec = point_eval_to_vec(proof_evals.error_vec);
+        let error_vec = vec![proof_evals.error_vec.zeta];
 
         let alphas = proof.alphas.clone();
         let challenges = proof.challenges;
