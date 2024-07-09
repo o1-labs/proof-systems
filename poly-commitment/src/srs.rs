@@ -11,7 +11,9 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::hash_map::DefaultHasher;
 use std::{array, cmp::min, collections::HashMap};
+use std::hash::{Hash};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -103,12 +105,18 @@ impl<G: CommitmentCurve> SRS<G> {
         if self.lagrange_bases.contains_key(&n) {
             return;
         }
-        if let Some(basis) = cache.load_lagrange_basis_from_cache(&domain) {
+        if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
             self.lagrange_bases.insert(domain.size(), basis);
             return;
+        } else {
+          self.add_lagrange_basis(domain);
+          let basis = self.lagrange_bases.get(&domain.size()).unwrap();
+          cache.cache_lagrange_basis(&self.g,&domain, basis);
         }
-        self.add_lagrange_basis(domain);
-        cache.cache_lagrange_basis(&domain, self.lagrange_bases.get(&domain.size()).unwrap());
+
+//        println!("Adding lagrange basis to cache with basis size {} and domain size {}", basis.len(), domain.size());
+//        println!("Lagrange basis: {:?}", basis);
+
 
     }
 

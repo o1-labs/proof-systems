@@ -1,8 +1,8 @@
 use std::{
-    fs::{self, File},
-    marker::PhantomData,
-    path::{Path, PathBuf},
+    collections::hash_map::DefaultHasher, fs::{self, File}, hash::Hasher, marker::PhantomData, path::{Path, PathBuf}
 };
+
+use std::hash::{Hash};
 
 use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -10,15 +10,17 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 pub trait LagrangeCache<G: CommitmentCurve> {
     type CacheKey;
 
-    fn lagrange_basis_cache_key(&self, domain: &D<G::ScalarField>) -> Self::CacheKey;
+    fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey;
 
     fn load_lagrange_basis_from_cache(
         &self,
+        g: &Vec<G>, 
         domain: &D<G::ScalarField>,
     ) -> Option<Vec<PolyComm<G>>>;
 
     fn cache_lagrange_basis(
         &self,
+        g: &Vec<G>, 
         domain: &D<G::ScalarField>,
         basis: &Vec<PolyComm<G>>,
     );
@@ -50,7 +52,12 @@ i.e every file corresponds to a Lagrange basis for a given G-basis and domain si
 impl<G: CommitmentCurve> LagrangeCache<G> for FileCache<G> {
     type CacheKey = PathBuf;
 
-    fn lagrange_basis_cache_key(&self, domain: &D<G::ScalarField>) -> Self::CacheKey {
+    fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey {
+
+        let mut hasher = DefaultHasher::new();
+        g.hash(&mut hasher);
+        domain.size.hash(&mut hasher);
+
         self.cache_dir
             .clone()
             .join(format!("lagrange_basis_{:}", domain.size().to_string()))
@@ -58,19 +65,22 @@ impl<G: CommitmentCurve> LagrangeCache<G> for FileCache<G> {
 
     fn load_lagrange_basis_from_cache(
         &self,
+        g: &Vec<G>,
         domain: &D<G::ScalarField>,
     ) -> Option<Vec<PolyComm<G>>> {
-        let cache_key = self.lagrange_basis_cache_key(domain);
+        let cache_key = self.lagrange_basis_cache_key(g,domain);
         if Path::exists(&cache_key) {
             let f = File::open(cache_key.clone()).expect(&format!(
                 "Missing lagrange basis cache file {:?}",
                 cache_key
             ));
-            let basis = rmp_serde::decode::from_read(f).expect(&format!(
+            let basis: Vec<PolyComm<G>> = rmp_serde::decode::from_read(f).expect(&format!(
                 "Error decoding lagrange cache file {:?}",
                 cache_key
             ));
             println!("Loaded lagrange basis from cache {:?}", cache_key);
+            println!("Basis size {:?}", basis.len());
+//            println!("Lagrange basis: {:?}", basis);
             Some(basis)
         } else {
             println!("Missing lagrange basis cache file {:?}", cache_key);
@@ -80,10 +90,11 @@ impl<G: CommitmentCurve> LagrangeCache<G> for FileCache<G> {
 
     fn cache_lagrange_basis(
         &self,
+        g: &Vec<G>,
         domain: &D<G::ScalarField>,
         basis: &Vec<PolyComm<G>>,
     ) {
-        let cache_key = self.lagrange_basis_cache_key(domain);
+        let cache_key = self.lagrange_basis_cache_key(g, domain);
         if Path::exists(&cache_key) {
             println!("Lagrange basis cache file {:?} already exists", cache_key);
             return;
@@ -113,28 +124,28 @@ impl<G> GoogleCloudCache<G> {
     }
 }
 
-impl<G: CommitmentCurve> LagrangeCache<G> for GoogleCloudCache<G> {
-    type CacheKey = ();
-
-    fn lagrange_basis_cache_key(&self, domain: &D<G::ScalarField>) -> Self::CacheKey {
-        todo!("GoogleCloudCache trait imp")
-    }
-
-    fn load_lagrange_basis_from_cache(
-        &self,
-        domain: &D<G::ScalarField>,
-    ) -> Option<Vec<PolyComm<G>>> {
-        todo!("GoogleCloudCache trait impl")
-    }
-
-    fn cache_lagrange_basis(
-        &self,
-        domain: &D<G::ScalarField>,
-        basis: &Vec<PolyComm<G>>,
-    ) {
-        todo!("GoogleCloudCache trait impl")
-    }
-}
+//impl<G: CommitmentCurve> LagrangeCache<G> for GoogleCloudCache<G> {
+//    type CacheKey = ();
+//
+//    fn lagrange_basis_cache_key(&self, domain: &D<G::ScalarField>) -> Self::CacheKey {
+//        todo!("GoogleCloudCache trait imp")
+//    }
+//
+//    fn load_lagrange_basis_from_cache(
+//        &self,
+//        domain: &D<G::ScalarField>,
+//    ) -> Option<Vec<PolyComm<G>>> {
+//        todo!("GoogleCloudCache trait impl")
+//    }
+//
+//    fn cache_lagrange_basis(
+//        &self,
+//        domain: &D<G::ScalarField>,
+//        basis: &Vec<PolyComm<G>>,
+//    ) {
+//        todo!("GoogleCloudCache trait impl")
+//    }
+//}
 
 
 #[cfg(test)]
