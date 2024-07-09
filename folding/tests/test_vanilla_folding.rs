@@ -135,7 +135,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
+    fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &[Fp] {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -160,7 +160,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+    fn selector(&self, _s: &(), _side: Side) -> &[Fp] {
         unreachable!()
     }
 }
