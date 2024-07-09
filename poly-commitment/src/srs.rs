@@ -32,7 +32,7 @@ pub struct SRS<G> {
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 
     #[serde(skip)]
-    lagrange_bases_cache: Option<LagrangeCache<G>>,
+    pub lagrange_bases_cache: Option<LagrangeCache<G>>,
 }
 
 impl<G> PartialEq for SRS<G>

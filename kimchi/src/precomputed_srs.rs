@@ -58,6 +58,7 @@ impl<G> From<TestSRS<G>> for SRS<G> {
             g: value.g,
             h: value.h,
             lagrange_bases: value.lagrange_bases,
+            lagrange_bases_cache: None,
         }
     }
 }
