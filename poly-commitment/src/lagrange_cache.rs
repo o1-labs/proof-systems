@@ -157,13 +157,14 @@ pub mod test_caches {
     use super::FileCache;
     use mina_curves::pasta::Vesta;
     use once_cell::sync::Lazy;
-    use std::{path::PathBuf, str::FromStr};
+    use std::{env, path::PathBuf, str::FromStr};
 
     static VESTA_FILE_CACHE: Lazy<FileCache<Vesta>> = Lazy::new(|| {
-        FileCache::new(
-            PathBuf::from_str("/tmp/lagrange_basis/vesta")
-                .expect("Failed to create vesta lagrange cache"),
-        )
+        let base_dir = env::var("LAGRANGE_CACHE_DIR").unwrap_or("/tmp/lagrange_basis".to_string());
+        let cache_dir = PathBuf::from_str(&base_dir)
+            .expect("Failed to create lagrange cache dir")
+            .join("vesta");
+        FileCache::new(cache_dir)
     });
 
     pub fn get_vesta_file_cache() -> &'static FileCache<Vesta> {
@@ -171,10 +172,11 @@ pub mod test_caches {
     }
 
     static BN254_FILE_CACHE: Lazy<FileCache<ark_bn254::G1Affine>> = Lazy::new(|| {
-        FileCache::new(
-            PathBuf::from_str("/tmp/lagrange_basis/bn254")
-                .expect("Failed to create bn254 lagrange cache"),
-        )
+        let base_dir = env::var("LAGRANGE_CACHE_DIR").unwrap_or("/tmp/lagrange_basis".to_string());
+        let cache_dir = PathBuf::from_str(&base_dir)
+            .expect("Failed to create lagrange cache dir")
+            .join("bn254");
+        FileCache::new(cache_dir)
     });
 
     pub fn get_bn254_file_cache() -> &'static FileCache<ark_bn254::G1Affine> {
