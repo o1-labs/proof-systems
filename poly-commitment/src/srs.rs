@@ -1,5 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
+use crate::lagrange_cache::{LagrangeCache, LagrangeCacheTrait};
 use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
@@ -10,17 +11,7 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::hash::{Hash, Hasher};
-use std::io::Error;
-use std::result::Result;
-use std::{
-    array,
-    cmp::min,
-    collections::{hash_map::DefaultHasher, HashMap},
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{array, cmp::min, collections::HashMap};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -41,7 +32,7 @@ pub struct SRS<G> {
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 
     #[serde(skip)]
-    lagrange_bases_cache_dir: Option<PathBuf>,
+    lagrange_bases_cache: Option<LagrangeCache<G>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -108,59 +99,6 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
-    pub fn cache_file_name(&self, domain: D<G::ScalarField>) -> Option<PathBuf> {
-        let mut hasher = DefaultHasher::new();
-        self.g.hash(&mut hasher);
-        self.h.hash(&mut hasher);
-        domain.size.hash(&mut hasher);
-
-        self.lagrange_bases_cache_dir
-            .clone()
-            .map(|x| x.join(format!("lagrange_basis_{:}", hasher.finish())))
-    }
-
-    pub fn load_lagrange_basis_from_cache(
-        &mut self,
-        domain: D<G::ScalarField>,
-    ) -> Result<(), rmp_serde::decode::Error> {
-        match self.cache_file_name(domain) {
-            None => panic!(
-                "You are trying read from cache forsomething without speficifying the cache dir!"
-            ),
-            Some(path) => {
-                println!("Loading {:?} from cache", path);
-                let f = File::open(path).unwrap();
-                let basis = rmp_serde::decode::from_read(f)?;
-                self.lagrange_bases.insert(domain.size(), basis);
-                Ok(())
-            }
-        }
-    }
-
-    pub fn cache_lagrange_basis(
-        &self,
-        domain: D<G::ScalarField>,
-    ) -> Result<(), rmp_serde::encode::Error> {
-        match self.cache_file_name(domain) {
-            None => panic!("You are trying cache something without speficifying the cache dir!"),
-            Some(path) => {
-                if Path::exists(&path) {
-                    println!("Cache already contains {:?}", path);
-                    Ok(())
-                } else {
-                    match self.lagrange_bases.get(&domain.size()) {
-                        None => panic!("You are missing the basis elements for {:}", domain.size),
-                        Some(basis) => {
-                            print!("Writing lagrange basis to cache {:?}", path);
-                            let mut f = File::create(path).unwrap();
-                            rmp_serde::encode::write(&mut f, basis)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /// Compute commitments to the lagrange basis corresponding to the given domain and
     /// cache them in the SRS
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
@@ -170,15 +108,12 @@ impl<G: CommitmentCurve> SRS<G> {
             return;
         }
 
-        match self.cache_file_name(domain) {
-            None => (),
-            Some(path) => {
-                if Path::exists(&path) {
-                    self.load_lagrange_basis_from_cache(domain);
-                    return;
-                }
+        self.lagrange_bases_cache.as_ref().map(|cache| {
+            if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
+                self.lagrange_bases.insert(domain.size(), basis);
+                return;
             }
-        }
+        });
 
         //let mut g_hasher = DefaultHasher::new();
         //self.g.hash(&mut g_hasher);
@@ -288,8 +223,10 @@ impl<G: CommitmentCurve> SRS<G> {
                 elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
+        self.lagrange_bases_cache
+            .as_ref()
+            .map(|cache| cache.cache_lagrange_basis(&self.g, &domain, &chunked_commitments));
         self.lagrange_bases.insert(n, chunked_commitments);
-        self.cache_lagrange_basis(domain);
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with
@@ -318,7 +255,7 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache_dir: Some(PathBuf::from_str("/tmp").unwrap()),
+            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }
@@ -349,7 +286,7 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache_dir: Some(PathBuf::from_str("/tmp").unwrap()),
+            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }
@@ -385,7 +322,7 @@ where
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache_dir: None,
+            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }
