@@ -839,22 +839,19 @@ pub fn heavy_test_simple_add() {
         app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
 
     // Here we concatenate with ivc_proof_inputs 1, inductive case
-    let joint_witness_three: Vec<_> = proof_inputs_three
-        .evaluations
-        .clone()
+    let joint_witness_three: Vec<_> = (proof_inputs_three.evaluations)
         .into_iter()
-        .chain(ivc_proof_inputs_1.evaluations.clone())
+        .chain(ivc_proof_inputs_1.evaluations)
         .collect();
 
     assert!(joint_witness_three.len() == N_COL_TOTAL);
 
     let folding_witness_three_evals: Vec<Evaluations<Fp, R2D<Fp>>> = joint_witness_three
-        .clone()
         .into_par_iter()
         .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain.d1))
         .collect();
     let folding_witness_three = PlonkishWitness {
-        witness: folding_witness_three_evals.clone().try_into().unwrap(),
+        witness: folding_witness_three_evals.try_into().unwrap(),
         fixed_selectors: ivc_fixed_selectors_evals_d1.clone().try_into().unwrap(),
     };
 
