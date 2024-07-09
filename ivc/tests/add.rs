@@ -10,7 +10,7 @@ use folding::{
 };
 use ivc::{
     self,
-    expr_eval::SimpleEvalEnv,
+    expr_eval::{GenericVecStructure, SimpleEvalEnv},
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
@@ -71,21 +71,6 @@ impl ColumnIndexer for AdditionColumn {
             AdditionColumn::A => Column::Relation(0),
             AdditionColumn::B => Column::Relation(1),
             AdditionColumn::C => Column::Relation(2),
-        }
-    }
-}
-
-#[derive(Clone)]
-/// Generic structure containing column vectors.
-pub struct GenericVecStructure<G: KimchiCurve>(Vec<Vec<G::ScalarField>>);
-
-impl<G: KimchiCurve> Index<Column> for GenericVecStructure<G> {
-    type Output = [G::ScalarField];
-
-    fn index(&self, index: Column) -> &Self::Output {
-        match index {
-            Column::FixedSelector(i) => &self.0[i],
-            _ => panic!("should not happen"),
         }
     }
 }
