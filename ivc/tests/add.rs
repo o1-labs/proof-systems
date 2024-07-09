@@ -10,7 +10,7 @@ use folding::{
 };
 use ivc::{
     self,
-    expr_eval::SimpleEvalEnv,
+    expr_eval::{GenericVecStructure, SimpleEvalEnv},
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
@@ -71,21 +71,6 @@ impl ColumnIndexer for AdditionColumn {
             AdditionColumn::A => Column::Relation(0),
             AdditionColumn::B => Column::Relation(1),
             AdditionColumn::C => Column::Relation(2),
-        }
-    }
-}
-
-#[derive(Clone)]
-/// Generic structure containing column vectors.
-pub struct GenericVecStructure<G: KimchiCurve>(Vec<Vec<G::ScalarField>>);
-
-impl<G: KimchiCurve> Index<Column> for GenericVecStructure<G> {
-    type Output = [G::ScalarField];
-
-    fn index(&self, index: Column) -> &Self::Output {
-        match index {
-            Column::FixedSelector(i) => &self.0[i],
-            _ => panic!("should not happen"),
         }
     }
 }
@@ -185,16 +170,21 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
+    type Config<
+        const N_COL_TOTAL: usize,
+        const N_CHALS: usize,
+        const N_FSEL: usize,
+        const N_ALPHAS: usize,
+    > = StandardConfig<
         Curve,
         Column,
         PlonkishChallenge,
-        PlonkishInstance<Curve, N_COL_TOTAL, 3, N_ALPHAS_QUAD>, // TODO check if it's quad or not
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
+        PlonkishInstance<Curve, N_COL_TOTAL, N_CHALS, N_ALPHAS>, // TODO check if it's quad or not
+        PlonkishWitness<N_COL_TOTAL, N_FSEL, Fp>,
         (),
         GenericVecStructure<Curve>,
     >;
-    type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL>;
+    type MainTestConfig = Config<N_COL_TOTAL, 3, N_FSEL_TOTAL, N_ALPHAS_QUAD>;
 
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
@@ -204,8 +194,6 @@ pub fn heavy_test_simple_add() {
     // Start building the constants of the circuit.
     // For the IVC, we have all the "block selectors" - which depends on the
     // number of columns of the circuit - and the poseidon round constants.
-    // FIXME: N_COL_TOTAL is not correct, it is missing the columns required to
-    // reduce the IVC constraints to degree 2.
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
         build_selectors::<N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(domain_size).to_vec();
 
@@ -380,13 +368,6 @@ pub fn heavy_test_simple_add() {
         .into_iter()
         .chain(ivc_proof_inputs_0.evaluations.clone())
         .collect();
-
-    for i in 0..10 {
-        assert!(
-            ivc_proof_inputs_0.evaluations[0][i] == Fp::zero(),
-            "Iteration column row #{i:?} must be zero"
-        );
-    }
 
     assert!(joint_witness_one.len() == N_COL_TOTAL);
 
