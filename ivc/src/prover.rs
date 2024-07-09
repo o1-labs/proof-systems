@@ -265,34 +265,33 @@ where
         let evaluation_domain = domain.d2;
 
         let enlarge_to_domain_generic =
-            |evaluations: Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
+            |evaluations: &Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
                 assert!(evaluations.domain() == domain.d1);
                 evaluations
-                    .interpolate()
+                    .interpolate_by_ref()
                     .evaluate_over_domain_by_ref(new_domain)
             };
 
-        let enlarge_to_domain = |evaluations: Evaluations<Fp, R2D<Fp>>| {
+        let enlarge_to_domain = |evaluations: &Evaluations<Fp, R2D<Fp>>| {
             enlarge_to_domain_generic(evaluations, evaluation_domain)
         };
 
         let simple_eval_env: SimpleEvalEnv<G, N_WIT, N_FSEL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
-                    witness: witness_main
+                    witness: (&witness_main)
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
-                    fixed_selectors: fixed_selectors_evals_d1
-                        .to_vec()
+                    fixed_selectors: (&fixed_selectors_evals_d1.to_vec())
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
                     phantom: std::marker::PhantomData,
                 },
-                extended: witness_ext
-                    .into_iter()
-                    .map(|(ix, evals)| (ix, enlarge_to_domain(evals)))
+                extended: (&witness_ext)
+                    .into_par_iter()
+                    .map(|(ix, evals)| (*ix, enlarge_to_domain(evals)))
                     .collect(),
             };
 
@@ -300,7 +299,7 @@ where
                 ext_witness,
                 alphas: folded_instance.extended_instance.instance.alphas.clone(),
                 challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(folded_witness.error_vec.clone()),
+                error_vec: enlarge_to_domain(&folded_witness.error_vec),
                 u: folded_instance.u,
             }
         };
