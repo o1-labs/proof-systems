@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use crate::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
 use ark_ec::AffineCurve;
 use ark_ff::Field;
@@ -16,6 +18,21 @@ use kimchi::{
 };
 use kimchi_msm::columns::Column as GenericColumn;
 use strum::EnumCount;
+
+#[derive(Clone)]
+/// Generic structure containing column vectors.
+pub struct GenericVecStructure<G: KimchiCurve>(pub Vec<Vec<G::ScalarField>>);
+
+impl<G: KimchiCurve> Index<GenericColumn> for GenericVecStructure<G> {
+    type Output = [G::ScalarField];
+
+    fn index(&self, index: GenericColumn) -> &Self::Output {
+        match index {
+            GenericColumn::FixedSelector(i) => &self.0[i],
+            _ => panic!("should not happen"),
+        }
+    }
+}
 
 /// Minimal environment needed for evaluating constraints.
 pub struct GenericEvalEnv<
