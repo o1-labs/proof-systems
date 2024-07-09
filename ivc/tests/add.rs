@@ -185,16 +185,21 @@ pub fn heavy_test_simple_add() {
         }
     }
 
-    type Config<const N_COL: usize, const N_FSEL: usize> = StandardConfig<
+    type Config<
+        const N_COL_TOTAL: usize,
+        const N_CHALS: usize,
+        const N_FSEL: usize,
+        const N_ALPHAS: usize,
+    > = StandardConfig<
         Curve,
         Column,
         PlonkishChallenge,
-        PlonkishInstance<Curve, N_COL_TOTAL, 3, N_ALPHAS_QUAD>, // TODO check if it's quad or not
-        PlonkishWitness<N_COL_TOTAL, N_FSEL_TOTAL, Fp>,
+        PlonkishInstance<Curve, N_COL_TOTAL, N_CHALS, N_ALPHAS>, // TODO check if it's quad or not
+        PlonkishWitness<N_COL_TOTAL, N_FSEL, Fp>,
         (),
         GenericVecStructure<Curve>,
     >;
-    type MainTestConfig = Config<N_COL_TOTAL, N_FSEL_TOTAL>;
+    type MainTestConfig = Config<N_COL_TOTAL, 3, N_FSEL_TOTAL, N_ALPHAS_QUAD>;
 
     ////////////////////////////////////////////////////////////////////////////
     // Fixed Selectors
