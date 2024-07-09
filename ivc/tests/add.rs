@@ -869,7 +869,7 @@ pub fn heavy_test_simple_add() {
     println!("Folding two");
 
     let _folding_output_two = folding_scheme.fold_instance_witness_pair(
-        (folded_instance.clone(), folded_witness.clone()),
+        (folded_instance, folded_witness),
         (
             folding_instance_three.clone(),
             folding_witness_three.clone(),
