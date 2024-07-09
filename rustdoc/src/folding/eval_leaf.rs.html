@@ -137,8 +137,10 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
 </pre></div><pre class="rust"><code><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+</span><span class="doccomment">/// Result of a folding expression evaluation.
+</span><span class="kw">pub enum </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     Const(F),
     Col(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Vec&lt;F&gt;),
     <span class="prelude-ty">Result</span>(Vec&lt;F&gt;),
