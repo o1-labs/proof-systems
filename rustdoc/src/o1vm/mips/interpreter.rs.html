@@ -2586,6 +2586,87 @@
 <a href="#2586" id="2586">2586</a>
 <a href="#2587" id="2587">2587</a>
 <a href="#2588" id="2588">2588</a>
+<a href="#2589" id="2589">2589</a>
+<a href="#2590" id="2590">2590</a>
+<a href="#2591" id="2591">2591</a>
+<a href="#2592" id="2592">2592</a>
+<a href="#2593" id="2593">2593</a>
+<a href="#2594" id="2594">2594</a>
+<a href="#2595" id="2595">2595</a>
+<a href="#2596" id="2596">2596</a>
+<a href="#2597" id="2597">2597</a>
+<a href="#2598" id="2598">2598</a>
+<a href="#2599" id="2599">2599</a>
+<a href="#2600" id="2600">2600</a>
+<a href="#2601" id="2601">2601</a>
+<a href="#2602" id="2602">2602</a>
+<a href="#2603" id="2603">2603</a>
+<a href="#2604" id="2604">2604</a>
+<a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
+<a href="#2609" id="2609">2609</a>
+<a href="#2610" id="2610">2610</a>
+<a href="#2611" id="2611">2611</a>
+<a href="#2612" id="2612">2612</a>
+<a href="#2613" id="2613">2613</a>
+<a href="#2614" id="2614">2614</a>
+<a href="#2615" id="2615">2615</a>
+<a href="#2616" id="2616">2616</a>
+<a href="#2617" id="2617">2617</a>
+<a href="#2618" id="2618">2618</a>
+<a href="#2619" id="2619">2619</a>
+<a href="#2620" id="2620">2620</a>
+<a href="#2621" id="2621">2621</a>
+<a href="#2622" id="2622">2622</a>
+<a href="#2623" id="2623">2623</a>
+<a href="#2624" id="2624">2624</a>
+<a href="#2625" id="2625">2625</a>
+<a href="#2626" id="2626">2626</a>
+<a href="#2627" id="2627">2627</a>
+<a href="#2628" id="2628">2628</a>
+<a href="#2629" id="2629">2629</a>
+<a href="#2630" id="2630">2630</a>
+<a href="#2631" id="2631">2631</a>
+<a href="#2632" id="2632">2632</a>
+<a href="#2633" id="2633">2633</a>
+<a href="#2634" id="2634">2634</a>
+<a href="#2635" id="2635">2635</a>
+<a href="#2636" id="2636">2636</a>
+<a href="#2637" id="2637">2637</a>
+<a href="#2638" id="2638">2638</a>
+<a href="#2639" id="2639">2639</a>
+<a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
+<a href="#2642" id="2642">2642</a>
+<a href="#2643" id="2643">2643</a>
+<a href="#2644" id="2644">2644</a>
+<a href="#2645" id="2645">2645</a>
+<a href="#2646" id="2646">2646</a>
+<a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
+<a href="#2649" id="2649">2649</a>
+<a href="#2650" id="2650">2650</a>
+<a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
+<a href="#2653" id="2653">2653</a>
+<a href="#2654" id="2654">2654</a>
+<a href="#2655" id="2655">2655</a>
+<a href="#2656" id="2656">2656</a>
+<a href="#2657" id="2657">2657</a>
+<a href="#2658" id="2658">2658</a>
+<a href="#2659" id="2659">2659</a>
+<a href="#2660" id="2660">2660</a>
+<a href="#2661" id="2661">2661</a>
+<a href="#2662" id="2662">2662</a>
+<a href="#2663" id="2663">2663</a>
+<a href="#2664" id="2664">2664</a>
+<a href="#2665" id="2665">2665</a>
+<a href="#2666" id="2666">2666</a>
+<a href="#2667" id="2667">2667</a>
+<a href="#2668" id="2668">2668</a>
+<a href="#2669" id="2669">2669</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3089,6 +3170,44 @@
         };
     }
 
+    <span class="doccomment">/// Adds a lookup to the RangeCheck16Lookup table
+    </span><span class="kw">fn </span>lookup_16bits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTableIDs::RangeCheck16Lookup,
+            <span class="macro">vec!</span>[value.clone()],
+        ));
+    }
+
+    <span class="doccomment">/// Range checks with 2 lookups to the RangeCheck16Lookup table that a value
+    /// is at most 2^`bits`-1  (bits &lt;= 16).
+    </span><span class="kw">fn </span>range_check16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bits: u32) {
+        <span class="macro">assert!</span>(bits &lt;= <span class="number">16</span>);
+        <span class="comment">// 0 &lt;= value &lt; 2^bits
+        // First, check lowerbound: 0 &lt;= value &lt; 2^16
+        </span><span class="self">self</span>.lookup_16bits(value);
+        <span class="comment">// Second, check upperbound: value + 2^16 - 2^bits &lt; 2^16
+        </span><span class="self">self</span>.lookup_16bits(<span class="kw-2">&amp;</span>(value.clone() + <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>) - <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; bits)));
+    }
+
+    <span class="doccomment">/// Adds a lookup to the ByteLookup table
+    </span><span class="kw">fn </span>lookup_8bits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTableIDs::ByteLookup,
+            <span class="macro">vec!</span>[value.clone()],
+        ));
+    }
+
+    <span class="doccomment">/// Range checks with 2 lookups to the ByteLookup table that a value
+    /// is at most 2^`bits`-1  (bits &lt;= 8).
+    </span><span class="kw">fn </span>range_check8(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bits: u32) {
+        <span class="macro">assert!</span>(bits &lt;= <span class="number">8</span>);
+        <span class="comment">// 0 &lt;= value &lt; 2^bits
+        // First, check lowerbound: 0 &lt;= value &lt; 2^8
+        </span><span class="self">self</span>.lookup_8bits(value);
+        <span class="comment">// Second, check upperbound: value + 2^8 - 2^bits &lt; 2^8
+        </span><span class="self">self</span>.lookup_8bits(<span class="kw-2">&amp;</span>(value.clone() + <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>) - <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; bits)));
+    }
+
     <span class="kw">fn </span>range_check64(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="comment">// TODO
     </span>}
@@ -3162,6 +3281,7 @@
     /// bits.
     ///
     /// Do not call this function with highest_bit - lowest_bit &gt;= 32.
+    </span><span class="comment">// TODO: embed the range check in the function when highest_bit - lowest_bit &lt;= 16?
     </span><span class="kw">unsafe fn </span>bitmask(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
@@ -3536,36 +3656,53 @@
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
             + v3
     };
-    <span class="kw">let </span>_opcode = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+    <span class="kw">let </span>opcode = {
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">6</span>);
+
     <span class="kw">let </span>rs = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">21</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>rs, <span class="number">5</span>);
+
     <span class="kw">let </span>rt = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">21</span>, <span class="number">16</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>rt, <span class="number">5</span>);
+
     <span class="kw">let </span>rd = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">16</span>, <span class="number">11</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>rd, <span class="number">5</span>);
+
     <span class="kw">let </span>shamt = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">11</span>, <span class="number">6</span>, pos) }
     };
-    <span class="kw">let </span>_funct = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+    env.range_check8(<span class="kw-2">&amp;</span>shamt, <span class="number">5</span>);
+
+    <span class="kw">let </span>funct = {
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">6</span>, <span class="number">0</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>funct, <span class="number">6</span>);
+
+    <span class="comment">// Check correctness of decomposition of instruction into parts
+    </span>env.add_constraint(
+        instruction
+            - (opcode * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">26</span>)
+                + rs.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>)
+                + rt.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)
+                + rd.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>)
+                + shamt.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>)
+                + funct),
+    );
+
     <span class="kw">match </span>instr {
         RTypeInstruction::ShiftLeftLogical =&gt; {
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
@@ -3752,18 +3889,18 @@
             // with the rest until there is a success). This also simplifies the implementation
             // here, so we will follow suit.
             </span><span class="kw">let </span>bytes_to_preserve_in_register = {
-                <span class="comment">// FIXME: Requires a range check
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>write_length, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
+            env.range_check8(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="number">2</span>);
             <span class="kw">let </span>register_idx = {
                 <span class="kw">let </span>registers_left_to_write_after_this = {
-                    <span class="comment">// FIXME: Requires a range check
-                    </span><span class="kw">let </span>pos = env.alloc_scratch();
+                    <span class="kw">let </span>pos = env.alloc_scratch();
                     <span class="comment">// The virtual register is 32 bits wide, so we can just read 6 bytes. If the
                     // register has an incorrect value, it will be unprovable and we&#39;ll fault.
                     </span><span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>write_length, <span class="number">6</span>, <span class="number">2</span>, pos) }
                 };
+                env.range_check8(<span class="kw-2">&amp;</span>registers_left_to_write_after_this, <span class="number">4</span>);
                 Env::constant(REGISTER_PREIMAGE_KEY_END <span class="kw">as </span>u32) - registers_left_to_write_after_this
             };
 
@@ -3783,27 +3920,27 @@
                 };
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>register_value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>register_value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>register_value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>register_value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r3);
 
             <span class="comment">// We choose our read address so that the bytes we read come aligned with the target
             // bytes in the register, to avoid an expensive bitshift.
@@ -3824,6 +3961,7 @@
                         </span><span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
                     };
+                    env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
                     addr.clone() + Env::constant(<span class="number">4</span>) - byte_subaddr
                 };
                 <span class="kw">let </span>overwrite_0 = {
@@ -4245,21 +4383,26 @@
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
             + v3
     };
-    <span class="kw">let </span>_opcode = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+    <span class="kw">let </span>opcode = {
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">6</span>);
+
     <span class="kw">let </span>addr = {
-        <span class="comment">// FIXME: Requires a range check
+        <span class="comment">// FIXME: Requires a range check (cannot use range_check_bits here because 26 &gt; 16)
         </span><span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">0</span>, pos) }
     };
     <span class="kw">let </span>instruction_pointer_high_bits = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>next_instruction_pointer, <span class="number">32</span>, <span class="number">28</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>instruction_pointer_high_bits, <span class="number">4</span>);
+
+    <span class="comment">// Check correctness of decomposition of instruction into parts
+    </span>env.add_constraint(instruction - (opcode * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">26</span>) + addr.clone()));
+
     <span class="kw">let </span>target_addr =
         (instruction_pointer_high_bits * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">28</span>)) + (addr * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>));
     <span class="kw">match </span>instr {
@@ -4285,26 +4428,39 @@
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
             + v3
     };
-    <span class="kw">let </span>_opcode = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+    <span class="kw">let </span>opcode = {
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">6</span>);
+
     <span class="kw">let </span>rs = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">21</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>rs, <span class="number">5</span>);
+
     <span class="kw">let </span>rt = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">21</span>, <span class="number">16</span>, pos) }
     };
+    env.range_check8(<span class="kw-2">&amp;</span>rt, <span class="number">5</span>);
+
     <span class="kw">let </span>immediate = {
-        <span class="comment">// FIXME: Requires a range check
-        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">16</span>, <span class="number">0</span>, pos) }
     };
+    env.lookup_16bits(<span class="kw-2">&amp;</span>immediate);
+
+    <span class="comment">// Check correctness of decomposition of instruction into parts
+    </span>env.add_constraint(
+        instruction
+            - (opcode * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">26</span>)
+                + rs.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>)
+                + rt.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)
+                + immediate.clone()),
+    );
+
     <span class="kw">match </span>instr {
         ITypeInstruction::BranchEq =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4691,27 +4847,28 @@
                 <span class="kw">let </span>initial_register_value = env.read_register(<span class="kw-2">&amp;</span>rt);
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r3);
+
             <span class="kw">let </span>value = {
                 <span class="kw">let </span>value = ((overwrite_0.clone() * m0 + (Env::constant(<span class="number">1</span>) - overwrite_0) * r0)
                     * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
@@ -4740,10 +4897,10 @@
             };
 
             <span class="kw">let </span>byte_subaddr = {
-                <span class="comment">// FIXME: Requires a range check
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
+            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
 
             <span class="kw">let </span>overwrite_0 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
             <span class="kw">let </span>overwrite_1 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>)) + overwrite_0.clone();
@@ -4762,27 +4919,27 @@
                 <span class="kw">let </span>initial_register_value = env.read_register(<span class="kw-2">&amp;</span>rt);
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r3);
 
             <span class="kw">let </span>value = {
                 <span class="kw">let </span>value = ((overwrite_0.clone() * m0 + (Env::constant(<span class="number">1</span>) - overwrite_0) * r0)
@@ -4812,10 +4969,11 @@
             };
             <span class="kw">let </span>value = env.read_register(<span class="kw-2">&amp;</span>rt);
             <span class="kw">let </span>v0 = {
-                <span class="comment">// FIXME: Requires a range check
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+
             env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -4835,17 +4993,18 @@
             <span class="kw">let </span>[v0, v1] = {
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+
             env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -4866,27 +5025,28 @@
             <span class="kw">let </span>[v0, v1, v2, v3] = {
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v3);
+
             <span class="comment">// Checking that v is the correct decomposition.
             </span>{
                 <span class="kw">let </span>res = value
@@ -4918,27 +5078,28 @@
             <span class="kw">let </span>[v0, v1, v2, v3] = {
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v3);
+
             env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)), v1);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">2</span>)), v2);
@@ -4965,6 +5126,7 @@
                 </span><span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
+            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
 
             <span class="kw">let </span>overwrite_3 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">0</span>));
             <span class="kw">let </span>overwrite_2 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">1</span>)) + overwrite_3.clone();
@@ -4980,27 +5142,27 @@
                 <span class="kw">let </span>initial_register_value = env.read_register(<span class="kw-2">&amp;</span>rt);
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r3);
 
             <span class="kw">let </span>v0 = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
@@ -5051,10 +5213,10 @@
             };
 
             <span class="kw">let </span>byte_subaddr = {
-                <span class="comment">// FIXME: Requires a range check
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
+            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
 
             <span class="kw">let </span>overwrite_0 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
             <span class="kw">let </span>overwrite_1 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>)) + overwrite_0.clone();
@@ -5073,27 +5235,27 @@
                 <span class="kw">let </span>initial_register_value = env.read_register(<span class="kw-2">&amp;</span>rt);
                 [
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">32</span>, <span class="number">24</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">24</span>, <span class="number">16</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">16</span>, <span class="number">8</span>, pos) }
                     },
                     {
-                        <span class="comment">// FIXME: Requires a range check
-                        </span><span class="kw">let </span>pos = env.alloc_scratch();
+                        <span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>initial_register_value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
             };
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>r3);
 
             <span class="kw">let </span>v0 = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
