@@ -1,7 +1,10 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::lagrange_cache::{LagrangeBasisCache, Source};
-use crate::{commitment::CommitmentCurve, PolyComm};
+use crate::{
+    commitment::CommitmentCurve,
+    lagrange_cache::{LagrangeBasisCache, Source},
+    PolyComm,
+};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
