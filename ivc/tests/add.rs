@@ -299,7 +299,6 @@ pub fn heavy_test_simple_add() {
     }
 
     impl<const N_COL: usize> PlonkishInstance<N_COL> {
-        #[allow(dead_code)]
         pub fn from_witness(
             w: &GenericWitness<N_COL, Evaluations<Fp, R2D<Fp>>>,
             fq_sponge: &mut BaseSponge,
@@ -361,7 +360,6 @@ pub fn heavy_test_simple_add() {
     // Evaluations
     ////////////////////////////////////////////////////////////////////////////
 
-    #[allow(dead_code)]
     /// Minimal environment needed for evaluating constraints.
     struct SimpleEvalEnv<const N_COL: usize, const N_FSEL: usize> {
         //    inner: CF::Env,
@@ -440,7 +438,6 @@ pub fn heavy_test_simple_add() {
             }
         }
 
-        #[allow(dead_code)]
         /// For FoldingCompatibleExp
         fn eval_naive_fcompat<'a>(
             &'a self,
