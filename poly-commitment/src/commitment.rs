@@ -1003,7 +1003,7 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 mod tests {
     use super::*;
 
-    use crate::srs::SRS;
+    use crate::{lagrange_cache::FileCache, srs::SRS};
     use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
@@ -1135,7 +1135,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, FileCache::default());
 
         let num_chunks = domain.size() / srs.g.len();
 
@@ -1165,7 +1165,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / divisor);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, FileCache::default());
 
         let num_chunks = domain.size() / srs.g.len();
         assert!(num_chunks == divisor);
@@ -1198,7 +1198,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, FileCache::default());
 
         // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();

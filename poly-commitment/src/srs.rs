@@ -1,6 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::lagrange_cache::{LagrangeCache, LagrangeCacheTrait};
+use crate::lagrange_cache::LagrangeCache;
 use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
@@ -30,9 +30,6 @@ pub struct SRS<G> {
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
-
-    #[serde(skip)]
-    lagrange_bases_cache: Option<LagrangeCache<G>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -99,6 +96,27 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
+    pub fn add_lagrange_basis_with_cache<C: LagrangeCache<G>>(
+        &mut self,
+        domain: D<G::ScalarField>,
+        cache: C,
+    ) {
+        let n = domain.size();
+        if self.lagrange_bases.contains_key(&n) {
+            return;
+        }
+        if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
+            self.lagrange_bases.insert(domain.size(), basis);
+            return;
+        }
+        self.add_lagrange_basis(domain);
+        cache.cache_lagrange_basis(
+            &self.g,
+            &domain,
+            self.lagrange_bases.get(&domain.size()).unwrap(),
+        );
+    }
+
     /// Compute commitments to the lagrange basis corresponding to the given domain and
     /// cache them in the SRS
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
@@ -107,21 +125,6 @@ impl<G: CommitmentCurve> SRS<G> {
         if self.lagrange_bases.contains_key(&n) {
             return;
         }
-
-        self.lagrange_bases_cache.as_ref().map(|cache| {
-            if let Some(basis) = cache.load_lagrange_basis_from_cache(&self.g, &domain) {
-                self.lagrange_bases.insert(domain.size(), basis);
-                return;
-            }
-        });
-
-        //let mut g_hasher = DefaultHasher::new();
-        //self.g.hash(&mut g_hasher);
-
-        //let mut h_hasher = DefaultHasher::new();
-        //self.h.hash(&mut h_hasher);
-
-        //println!("g: {:?}, h: {:?}, domain: {:?}", g_hasher.finish(), h_hasher.finish(), n);
 
         // Let V be a vector space over the field F.
         //
@@ -223,9 +226,6 @@ impl<G: CommitmentCurve> SRS<G> {
                 elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
-        self.lagrange_bases_cache
-            .as_ref()
-            .map(|cache| cache.cache_lagrange_basis(&self.g, &domain, &chunked_commitments));
         self.lagrange_bases.insert(n, chunked_commitments);
     }
 
@@ -255,7 +255,6 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }
@@ -286,7 +285,6 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }
@@ -322,7 +320,6 @@ where
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
         }
     }
 }

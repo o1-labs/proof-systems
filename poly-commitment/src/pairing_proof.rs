@@ -385,7 +385,8 @@ impl<
 mod tests {
     use super::{PairingProof, PairingSRS};
     use crate::{
-        commitment::Evaluation, evaluation_proof::DensePolynomialOrEvaluations, srs::SRS, SRS as _,
+        commitment::Evaluation, evaluation_proof::DensePolynomialOrEvaluations,
+        lagrange_cache::FileCache, srs::SRS, SRS as _,
     };
     use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
     use ark_ec::bn::Bn;
@@ -409,7 +410,7 @@ mod tests {
 
         let mut srs = SRS::<G1>::create_trusted_setup(x, n);
         let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, FileCache::default());
 
         let srs = PairingSRS {
             full_srs: srs,
