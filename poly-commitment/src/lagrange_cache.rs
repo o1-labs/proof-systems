@@ -10,34 +10,30 @@ use ark_poly::Radix2EvaluationDomain as D;
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LagrangeCache<G> {
+pub enum Source<G> {
     Local(FileCache<G>),
     Remote(GoogleCloudCache<G>),
 }
 
-impl<G> Default for LagrangeCache<G> {
+impl<G> Default for Source<G> {
     fn default() -> Self {
-        LagrangeCache::Local(FileCache::new(PathBuf::from("/tmp/lagrange_cache")))
+        Source::Local(FileCache::new(PathBuf::from("/tmp/lagrange_cache")))
     }
 }
 
 // Keep this enum private for type safety
-pub enum LagrangeCacheKey {
+pub enum SourceKey {
     Local(PathBuf),
     Remote(()),
 }
 
-impl<G: CommitmentCurve> LagrangeCacheTrait<G> for LagrangeCache<G> {
-    type CacheKey = LagrangeCacheKey;
+impl<G: CommitmentCurve> LagrangeBasisCache<G> for Source<G> {
+    type CacheKey = SourceKey;
 
     fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey {
         match self {
-            LagrangeCache::Local(cache) => {
-                LagrangeCacheKey::Local(cache.lagrange_basis_cache_key(g, domain))
-            }
-            LagrangeCache::Remote(cache) => {
-                LagrangeCacheKey::Remote(cache.lagrange_basis_cache_key(g, domain))
-            }
+            Source::Local(cache) => SourceKey::Local(cache.lagrange_basis_cache_key(g, domain)),
+            Source::Remote(cache) => SourceKey::Remote(cache.lagrange_basis_cache_key(g, domain)),
         }
     }
 
@@ -47,8 +43,8 @@ impl<G: CommitmentCurve> LagrangeCacheTrait<G> for LagrangeCache<G> {
         domain: &D<G::ScalarField>,
     ) -> Option<Vec<PolyComm<G>>> {
         match self {
-            LagrangeCache::Local(cache) => cache.load_lagrange_basis_from_cache(g, domain),
-            LagrangeCache::Remote(cache) => cache.load_lagrange_basis_from_cache(g, domain),
+            Source::Local(cache) => cache.load_lagrange_basis_from_cache(g, domain),
+            Source::Remote(cache) => cache.load_lagrange_basis_from_cache(g, domain),
         }
     }
 
@@ -59,13 +55,13 @@ impl<G: CommitmentCurve> LagrangeCacheTrait<G> for LagrangeCache<G> {
         basis: &Vec<PolyComm<G>>,
     ) {
         match self {
-            LagrangeCache::Local(cache) => cache.cache_lagrange_basis(g, domain, basis),
-            LagrangeCache::Remote(cache) => cache.cache_lagrange_basis(g, domain, basis),
+            Source::Local(cache) => cache.cache_lagrange_basis(g, domain, basis),
+            Source::Remote(cache) => cache.cache_lagrange_basis(g, domain, basis),
         }
     }
 }
 
-pub trait LagrangeCacheTrait<G: CommitmentCurve> {
+pub trait LagrangeBasisCache<G: CommitmentCurve> {
     type CacheKey;
 
     fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey;
@@ -102,7 +98,7 @@ impl<G> FileCache<G> {
     }
 }
 
-impl<G: CommitmentCurve> LagrangeCacheTrait<G> for FileCache<G> {
+impl<G: CommitmentCurve> LagrangeBasisCache<G> for FileCache<G> {
     type CacheKey = PathBuf;
 
     fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey {
@@ -175,7 +171,7 @@ impl<G> GoogleCloudCache<G> {
     }
 }
 
-impl<G: CommitmentCurve> LagrangeCacheTrait<G> for GoogleCloudCache<G> {
+impl<G: CommitmentCurve> LagrangeBasisCache<G> for GoogleCloudCache<G> {
     type CacheKey = ();
 
     fn lagrange_basis_cache_key(&self, g: &Vec<G>, domain: &D<G::ScalarField>) -> Self::CacheKey {

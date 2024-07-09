@@ -1,6 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::lagrange_cache::{LagrangeCache, LagrangeCacheTrait};
+use crate::lagrange_cache::{LagrangeBasisCache, Source};
 use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
@@ -32,7 +32,7 @@ pub struct SRS<G> {
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 
     #[serde(skip)]
-    pub lagrange_bases_cache: Option<LagrangeCache<G>>,
+    pub lagrange_bases_cache: Option<Source<G>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -255,7 +255,7 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
+            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }
@@ -286,7 +286,7 @@ impl<G: CommitmentCurve> SRS<G> {
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
+            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }
@@ -322,7 +322,7 @@ where
             g,
             h,
             lagrange_bases: HashMap::new(),
-            lagrange_bases_cache: Some(LagrangeCache::default()),
+            lagrange_bases_cache: Some(Source::default()),
         }
     }
 }

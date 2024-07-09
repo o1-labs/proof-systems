@@ -10,7 +10,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use poly_commitment::{srs::SRS, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
+use std::{collections::HashMap, fs::File, io::BufReader, option::Option, path::PathBuf};
 
 /// We store several different types of SRS objects. This enum parameterizes them.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -136,6 +136,7 @@ mod tests {
             g,
             h,
             lagrange_bases,
+            lagrange_bases_cache: None,
         };
         let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
         let output = hex::encode(srs_bytes.clone());
