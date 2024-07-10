@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs::File,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -38,10 +38,6 @@ pub struct FileCache<G> {
 
 impl<G> FileCache<G> {
     pub fn new(cache_dir: PathBuf) -> Self {
-        if !cache_dir.exists() {
-            println!("Creating cache directory: {:?}", cache_dir);
-            fs::create_dir_all(&cache_dir).unwrap();
-        }
         FileCache {
             cache_dir,
             point_type: PhantomData,
@@ -157,13 +153,16 @@ pub mod test_caches {
     use super::FileCache;
     use mina_curves::pasta::Vesta;
     use once_cell::sync::Lazy;
-    use std::{path::PathBuf, str::FromStr};
+    use std::{fs, path::PathBuf, str::FromStr};
 
     static VESTA_FILE_CACHE: Lazy<FileCache<Vesta>> = Lazy::new(|| {
-        FileCache::new(
-            PathBuf::from_str("/tmp/lagrange_basis/vesta")
-                .expect("Failed to create vesta lagrange cache"),
-        )
+        let cache_dir = PathBuf::from_str("/tmp/lagrange_basis/vesta")
+            .expect("Failed to create bn254 lagrange cache");
+        if !cache_dir.exists() {
+            println!("Creating cache directory: {:?}", cache_dir);
+            fs::create_dir_all(&cache_dir).unwrap();
+        }
+        FileCache::new(cache_dir)
     });
 
     pub fn get_vesta_file_cache() -> &'static FileCache<Vesta> {
@@ -171,10 +170,13 @@ pub mod test_caches {
     }
 
     static BN254_FILE_CACHE: Lazy<FileCache<ark_bn254::G1Affine>> = Lazy::new(|| {
-        FileCache::new(
-            PathBuf::from_str("/tmp/lagrange_basis/bn254")
-                .expect("Failed to create bn254 lagrange cache"),
-        )
+        let cache_dir = PathBuf::from_str("/tmp/lagrange_basis/bn254")
+            .expect("Failed to create bn254 lagrange cache");
+        if !cache_dir.exists() {
+            println!("Creating cache directory: {:?}", cache_dir);
+            fs::create_dir_all(&cache_dir).unwrap();
+        }
+        FileCache::new(cache_dir)
     });
 
     pub fn get_bn254_file_cache() -> &'static FileCache<ark_bn254::G1Affine> {
