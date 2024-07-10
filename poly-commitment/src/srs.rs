@@ -1,7 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::lagrange_cache::LagrangeCache;
-use crate::{commitment::CommitmentCurve, PolyComm};
+use crate::{commitment::CommitmentCurve, lagrange_cache::LagrangeCache, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -113,7 +112,6 @@ impl<G: CommitmentCurve> SRS<G> {
             let basis = self.lagrange_bases.get(&domain.size()).unwrap();
             cache.cache_lagrange_basis(self.g.len(), &domain, basis);
         }
-
     }
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
