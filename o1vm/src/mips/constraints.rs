@@ -152,6 +152,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn constant(x: u32) -> Self::Variable {
+        Self::constant64(x as u64)
+    }
+
+    fn constant64(x: u64) -> Self::Variable {
         Self::Variable::constant(Operations::from(Literal(Fp::from(x))))
     }
 
