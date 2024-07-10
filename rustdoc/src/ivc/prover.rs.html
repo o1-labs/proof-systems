@@ -496,10 +496,6 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -759,11 +755,7 @@
 
     </span><span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
 
-    <span class="comment">// Sample α with the Fq-Sponge.
-    // What to do with it?..
-    //let _alpha: Fp = fq_sponge.challenge();
-
-    </span><span class="kw">let </span>quotient_poly = {
+    <span class="kw">let </span>quotient_poly = {
         <span class="kw">let </span>evaluation_domain = domain.d2;
 
         <span class="kw">let </span>enlarge_to_domain_generic =

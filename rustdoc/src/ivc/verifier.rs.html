@@ -241,15 +241,6 @@
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     expr_eval::GenericEvalEnv,
     plonkish_lang::{PlonkishChallenge, PlonkishWitnessGeneric},
@@ -350,15 +341,6 @@
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
-    // Sampling scalars
-    ////////////////////////////////////////////////////////////////////////////
-
-    //let (joint_combiner, beta) = (None, Fp::zero());
-
-    // Sample α with the Fq-Sponge.
-    //let alpha = fq_sponge.challenge();
-
-    ////////////////////////////////////////////////////////////////////////////
     // Quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
 

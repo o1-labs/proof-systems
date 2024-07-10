@@ -694,7 +694,6 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},
@@ -893,7 +892,6 @@
 /// enforce these more precise ranges as compared to enforcing just 4
 /// bit more for the highest limb. Even checking that highest limb is
 /// 15 bits could be quite sound.
-</span><span class="attr">#[allow(dead_code)]
 </span><span class="kw">pub fn </span>constrain_ec_addition&lt;
     F: PrimeField,
     Ff: PrimeField,

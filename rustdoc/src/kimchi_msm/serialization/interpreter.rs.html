@@ -852,7 +852,6 @@
 <a href="#852" id="852">852</a>
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -1335,7 +1334,6 @@
 <span class="doccomment">/// Multiplication sub-circuit of the serialization/bootstrap
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
-</span><span class="attr">#[allow(dead_code)]
 </span><span class="kw">pub fn </span>multiplication_circuit&lt;
     F: PrimeField,
     Ff: PrimeField,
