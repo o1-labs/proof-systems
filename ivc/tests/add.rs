@@ -37,9 +37,7 @@ use kimchi_msm::{
     BN254G1Affine, Fp,
 };
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::{
-    commitment::absorb_commitment, lagrange_cache, srs::SRS, PolyComm, SRS as _,
-};
+use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{array, collections::BTreeMap, ops::Index};
 use strum::EnumCount;
@@ -117,7 +115,7 @@ pub fn heavy_test_simple_add() {
     let mut fq_sponge: BaseSponge = FqSponge::new(Curve::other_curve_sponge_params());
 
     let mut srs = SRS::<Curve>::create(domain_size);
-    srs.add_lagrange_basis_with_cache(domain.d1, &lagrange_cache::test_caches::get_file_cache());
+    srs.add_lagrange_basis(domain.d1);
 
     // Total number of witness columns in IVC. The blocks are public selectors.
     const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS;

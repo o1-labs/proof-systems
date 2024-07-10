@@ -565,9 +565,7 @@ mod folding {
     use kimchi::{curve::KimchiCurve, o1_utils};
     use kimchi_msm::{columns::Column, witness::Witness};
     use mina_poseidon::FqSponge;
-    use poly_commitment::{
-        commitment::absorb_commitment, lagrange_cache, srs::SRS, PolyComm, SRS as _,
-    };
+    use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
     use rand::{CryptoRng, Rng, RngCore};
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
@@ -670,7 +668,7 @@ mod folding {
         let domain: D<Fp> = D::<Fp>::new(domain_size).unwrap();
 
         let mut srs = SRS::<Curve>::create(domain_size);
-        srs.add_lagrange_basis_with_cache(domain, &lagrange_cache::test_caches::get_file_cache());
+        srs.add_lagrange_basis(domain);
 
         // Generating constraints
         let constraints = {

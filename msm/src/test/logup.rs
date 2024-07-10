@@ -10,7 +10,7 @@ mod tests {
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::{lagrange_cache, pairing_proof::PairingSRS};
+    use poly_commitment::pairing_proof::PairingSRS;
 
     // Number of columns
     const LOOKUP_TEST_N_COL: usize = 10;
@@ -28,10 +28,7 @@ mod tests {
         let x = Fp::rand(&mut rng);
 
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
-        srs.full_srs.add_lagrange_basis_with_cache(
-            domain.d1,
-            &lagrange_cache::test_caches::get_file_cache(),
-        );
+        srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut inputs = ProofInputs::random(domain);
         let constraints = vec![];
