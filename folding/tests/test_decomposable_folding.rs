@@ -228,7 +228,6 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestFoldingConfig;
 
-#[allow(dead_code)]
 // Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {

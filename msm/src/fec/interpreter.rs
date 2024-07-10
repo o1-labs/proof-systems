@@ -196,7 +196,6 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 /// enforce these more precise ranges as compared to enforcing just 4
 /// bit more for the highest limb. Even checking that highest limb is
 /// 15 bits could be quite sound.
-#[allow(dead_code)]
 pub fn constrain_ec_addition<
     F: PrimeField,
     Ff: PrimeField,

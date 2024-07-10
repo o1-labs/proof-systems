@@ -228,7 +228,6 @@ pub struct TestFoldingConfig;
 
 // Flag used as the challenges are never built.
 // FIXME: should we use unit?
-#[allow(dead_code)]
 // Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {

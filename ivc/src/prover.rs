@@ -257,10 +257,6 @@ where
 
     let (_, endo_r) = G::endos();
 
-    // Sample α with the Fq-Sponge.
-    // What to do with it?..
-    //let _alpha: Fp = fq_sponge.challenge();
-
     let quotient_poly = {
         let evaluation_domain = domain.d2;
 
