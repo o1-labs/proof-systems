@@ -1003,7 +1003,7 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 mod tests {
     use super::*;
 
-    use crate::srs::SRS;
+    use crate::{lagrange_cache::test_caches, srs::SRS};
     use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
@@ -1135,7 +1135,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
 
         let num_chunks = domain.size() / srs.g.len();
 
@@ -1149,6 +1149,7 @@ mod tests {
             .collect();
 
         let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
@@ -1165,12 +1166,12 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / divisor);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
 
         let num_chunks = domain.size() / srs.g.len();
         assert!(num_chunks == divisor);
 
-        let expected_lagrange_commitments: Vec<_> = (0..n)
+        let expected_lagrange_commitments: Vec<PolyComm<VestaG>> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
@@ -1198,7 +1199,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
 
         // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();

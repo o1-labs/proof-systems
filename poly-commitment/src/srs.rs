@@ -96,7 +96,7 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
-    pub fn add_lagrange_basis_with_cache<C: LagrangeCache>(
+    pub fn add_lagrange_basis_with_cache<C: LagrangeCache<G>>(
         &mut self,
         domain: D<G::ScalarField>,
         cache: &C,
@@ -114,8 +114,6 @@ impl<G: CommitmentCurve> SRS<G> {
             cache.cache_lagrange_basis(self.g.len(), &domain, basis);
         }
 
-        //        println!("Adding lagrange basis to cache with basis size {} and domain size {}", basis.len(), domain.size());
-        //        println!("Lagrange basis: {:?}", basis);
     }
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
