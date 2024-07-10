@@ -511,7 +511,7 @@
     <span class="attr">#[test]
     </span><span class="doccomment">/// Completeness test for the IVC circuit in the general case (i.e.
     /// fold_iteration != 0).
-    </span><span class="kw">fn </span>test_completeness_ivc_general_case() {
+    </span><span class="kw">fn </span>heavy_test_completeness_ivc_general_case() {
         <span class="kw">let </span>fold_iteration = <span class="number">1</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
@@ -565,7 +565,7 @@
     <span class="attr">#[test]
     </span><span class="doccomment">/// Completeness test for the IVC circuit in the base case (i.e.
     /// fold_iteration = 0).
-    </span><span class="kw">fn </span>test_completeness_ivc_base_case() {
+    </span><span class="kw">fn </span>heavy_test_completeness_ivc_base_case() {
         <span class="kw">let </span>fold_iteration = <span class="number">0</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
