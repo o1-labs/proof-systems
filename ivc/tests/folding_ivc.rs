@@ -6,7 +6,7 @@ use folding::{
 use ivc::ivc::{constraints::constrain_ivc, lookups::IVCLookupTable, N_ADDITIONAL_WIT_COL_QUAD};
 use kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::{circuit_design::ConstraintBuilderEnv, columns::Column, Ff1};
-use poly_commitment::srs::SRS;
+use poly_commitment::{lagrange_cache, srs::SRS};
 
 #[test]
 fn test_regression_additional_columns_reduction_to_degree_2() {
@@ -123,7 +123,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
 
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
     let mut srs = SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    srs.add_lagrange_basis_with_cache(domain, &lagrange_cache::test_caches::get_file_cache());
 
     let folding_compat_expresions: Vec<FoldingCompatibleExpr<TestConfig>> = constraints
         .into_iter()

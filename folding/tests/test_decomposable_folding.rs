@@ -9,7 +9,7 @@ use folding::{
 };
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::{srs::SRS, SRS as _};
+use poly_commitment::{lagrange_cache, srs::SRS, SRS as _};
 use rand::thread_rng;
 use std::{collections::BTreeMap, ops::Index};
 
@@ -346,7 +346,8 @@ fn test_decomposable_folding() {
     let constraints = constraints();
     let domain = D::<Fp>::new(2).unwrap();
     let mut srs = SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    #[cfg(test)]
+    srs.add_lagrange_basis_with_cache(domain, &lagrange_cache::test_caches::get_file_cache());
 
     let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 

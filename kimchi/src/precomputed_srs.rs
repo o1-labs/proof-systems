@@ -123,6 +123,7 @@ mod tests {
     use ark_serialize::Write;
     use hex;
     use mina_curves::pasta::{Pallas, Vesta};
+    use poly_commitment::lagrange_cache;
     use std::collections::HashMap;
 
     use crate::circuits::domains::EvaluationDomains;
@@ -170,7 +171,10 @@ mod tests {
         if srs_type == StoredSRSType::Test {
             for sub_domain_size in 1..=domain_size {
                 let domain = EvaluationDomains::<G::ScalarField>::create(sub_domain_size).unwrap();
-                srs.add_lagrange_basis(domain.d1);
+                srs.add_lagrange_basis_with_cache(
+                    domain.d1,
+                    &lagrange_cache::test_caches::get_file_cache(),
+                );
             }
         }
 

@@ -30,6 +30,7 @@ use num_traits::FromPrimitive;
 use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use poly_commitment::{
     evaluation_proof::OpeningProof,
+    lagrange_cache,
     srs::{endos, SRS},
 };
 use rand::{rngs::StdRng, Rng};
@@ -321,7 +322,7 @@ fn create_test_constraint_system_ffadd(
 
     let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-    srs.add_lagrange_basis(cs.domain.d1);
+    srs.add_lagrange_basis_with_cache(cs.domain.d1, &lagrange_cache::test_caches::get_file_cache());
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
@@ -1508,7 +1509,10 @@ fn test_ffadd_finalization() {
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.add_lagrange_basis(cs.domain.d1);
+        srs.add_lagrange_basis_with_cache(
+            cs.domain.d1,
+            &lagrange_cache::test_caches::get_file_cache(),
+        );
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();

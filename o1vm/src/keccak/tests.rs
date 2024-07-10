@@ -31,6 +31,7 @@ use kimchi::{
 };
 use kimchi_msm::test::test_completeness_generic_no_lookups;
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use poly_commitment::lagrange_cache;
 use rand::{rngs::StdRng, Rng};
 use sha3::{Digest, Keccak256};
 use std::{
@@ -667,7 +668,7 @@ fn heavy_test_keccak_folding() {
 
         let domain = D::<Fp>::new(domain_size).unwrap();
         let mut srs = SRS::<Curve>::create(domain_size);
-        srs.add_lagrange_basis(domain);
+        srs.add_lagrange_basis_with_cache(domain, &lagrange_cache::test_caches::get_file_cache());
 
         // Create sponge
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());

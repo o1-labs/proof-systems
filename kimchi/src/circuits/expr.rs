@@ -3421,6 +3421,7 @@ pub mod test {
     use mina_curves::pasta::{Fp, Pallas, Vesta};
     use poly_commitment::{
         evaluation_proof::OpeningProof,
+        lagrange_cache,
         srs::{endos, SRS},
     };
     use rand::{prelude::StdRng, SeedableRng};
@@ -3467,7 +3468,10 @@ pub mod test {
         let index = {
             let constraint_system = ConstraintSystem::fp_for_testing(gates);
             let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
-            srs.add_lagrange_basis(constraint_system.domain.d1);
+            srs.add_lagrange_basis_with_cache(
+                constraint_system.domain.d1,
+                &lagrange_cache::test_caches::get_file_cache(),
+            );
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();

@@ -410,7 +410,7 @@ mod tests {
 
         let mut srs = SRS::<G1>::create_trusted_setup(x, n);
         let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
-        srs.add_lagrange_basis_with_cache(domain, test_caches::get_bn254_file_cache());
+        srs.add_lagrange_basis_with_cache(domain, &test_caches::get_file_cache());
 
         let srs = PairingSRS {
             full_srs: srs,

@@ -25,6 +25,7 @@ use o1vm::{
     trace::{DecomposableTracer, Foldable, Tracer},
     BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
+use poly_commitment::lagrange_cache;
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
 
@@ -71,7 +72,10 @@ pub fn main() -> ExitCode {
         let x = Fp::rand(&mut rand::rngs::OsRng);
 
         let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        srs.full_srs.add_lagrange_basis_with_cache(
+            domain.d1,
+            &lagrange_cache::test_caches::get_file_cache(),
+        );
         srs
     };
 

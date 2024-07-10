@@ -1135,7 +1135,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n);
-        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
+        srs.add_lagrange_basis_with_cache(domain, &test_caches::get_file_cache());
 
         let num_chunks = domain.size() / srs.g.len();
 
@@ -1166,7 +1166,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / divisor);
-        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
+        srs.add_lagrange_basis_with_cache(domain, &test_caches::get_file_cache());
 
         let num_chunks = domain.size() / srs.g.len();
         assert!(num_chunks == divisor);
@@ -1199,7 +1199,7 @@ mod tests {
         let domain = D::<Fp>::new(n).unwrap();
 
         let mut srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.add_lagrange_basis_with_cache(domain, test_caches::get_vesta_file_cache());
+        srs.add_lagrange_basis_with_cache(domain, &test_caches::get_file_cache());
 
         // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();

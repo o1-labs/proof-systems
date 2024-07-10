@@ -1,28 +1,30 @@
+use crate::{commitment::CommitmentCurve, PolyComm};
+use ark_ff::Field;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use std::hash::{Hash, Hasher};
 use std::{
-    fs::{self, File},
+    collections::hash_map::DefaultHasher,
+    fs::File,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
 
-use crate::{commitment::CommitmentCurve, PolyComm};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-
-pub trait LagrangeCache<G: CommitmentCurve> {
+pub trait LagrangeCache {
     type CacheKey;
 
-    fn lagrange_basis_cache_key(
+    fn lagrange_basis_cache_key<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
     ) -> Self::CacheKey;
 
-    fn load_lagrange_basis_from_cache(
+    fn load_lagrange_basis_from_cache<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
     ) -> Option<Vec<PolyComm<G>>>;
 
-    fn cache_lagrange_basis(
+    fn cache_lagrange_basis<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
@@ -31,21 +33,13 @@ pub trait LagrangeCache<G: CommitmentCurve> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FileCache<G> {
+pub struct FileCache {
     cache_dir: PathBuf,
-    point_type: PhantomData<G>,
 }
 
-impl<G> FileCache<G> {
+impl FileCache {
     pub fn new(cache_dir: PathBuf) -> Self {
-        if !cache_dir.exists() {
-            println!("Creating cache directory: {:?}", cache_dir);
-            fs::create_dir_all(&cache_dir).unwrap();
-        }
-        FileCache {
-            cache_dir,
-            point_type: PhantomData,
-        }
+        FileCache { cache_dir }
     }
 }
 
@@ -53,27 +47,31 @@ impl<G> FileCache<G> {
 The FileCache implementation uses a directory as a cache for the Lagrange basis hash map --
 i.e every file corresponds to a Lagrange basis for a given G-basis and domain size.
 */
-impl<G: CommitmentCurve> LagrangeCache<G> for FileCache<G> {
+impl LagrangeCache for FileCache {
     type CacheKey = PathBuf;
 
-    fn lagrange_basis_cache_key(
+    fn lagrange_basis_cache_key<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
     ) -> Self::CacheKey {
+        let char = G::ScalarField::characteristic();
+        let mut hasher = DefaultHasher::new();
+        char.hash(&mut hasher);
         self.cache_dir.clone().join(format!(
-            "lagrange_basis_{:}-{:}",
+            "lagrange_basis-{:}-{:}-{:}",
+            hasher.finish(),
             srs_length,
             domain.size().to_string()
         ))
     }
 
-    fn load_lagrange_basis_from_cache(
+    fn load_lagrange_basis_from_cache<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
     ) -> Option<Vec<PolyComm<G>>> {
-        let cache_key = self.lagrange_basis_cache_key(srs_length, domain);
+        let cache_key = self.lagrange_basis_cache_key::<G>(srs_length, domain);
         if Path::exists(&cache_key) {
             let f = File::open(cache_key.clone()).expect(&format!(
                 "Missing lagrange basis cache file {:?}",
@@ -91,13 +89,13 @@ impl<G: CommitmentCurve> LagrangeCache<G> for FileCache<G> {
         }
     }
 
-    fn cache_lagrange_basis(
+    fn cache_lagrange_basis<G: CommitmentCurve>(
         &self,
         srs_length: usize,
         domain: &D<G::ScalarField>,
         basis: &Vec<PolyComm<G>>,
     ) {
-        let cache_key = self.lagrange_basis_cache_key(srs_length, domain);
+        let cache_key = self.lagrange_basis_cache_key::<G>(srs_length, domain);
         if Path::exists(&cache_key) {
             println!("Lagrange basis cache file {:?} already exists", cache_key);
             return;
@@ -152,34 +150,24 @@ impl<G: CommitmentCurve> LagrangeCache<G> for GoogleCloudCache<G> {
 }
 */
 
-#[cfg(test)]
 pub mod test_caches {
-    use super::FileCache;
-    use mina_curves::pasta::Vesta;
+
     use once_cell::sync::Lazy;
-    use std::{env, path::PathBuf, str::FromStr};
+    use std::{env, fs, path::PathBuf, str::FromStr};
 
-    static VESTA_FILE_CACHE: Lazy<FileCache<Vesta>> = Lazy::new(|| {
+    use super::FileCache;
+
+    static LAGRANGE_CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
         let base_dir = env::var("LAGRANGE_CACHE_DIR").unwrap_or("/tmp/lagrange_basis".to_string());
-        let cache_dir = PathBuf::from_str(&base_dir)
-            .expect("Failed to create lagrange cache dir")
-            .join("vesta");
-        FileCache::new(cache_dir)
+        let path = PathBuf::from_str(&base_dir).expect("Failed to create lagrange cache dir");
+        if !path.exists() {
+            println!("Creating base cache directory: {:?}", path);
+            fs::create_dir_all(&path).unwrap();
+        };
+        path
     });
 
-    pub fn get_vesta_file_cache() -> &'static FileCache<Vesta> {
-        &*VESTA_FILE_CACHE
-    }
-
-    static BN254_FILE_CACHE: Lazy<FileCache<ark_bn254::G1Affine>> = Lazy::new(|| {
-        let base_dir = env::var("LAGRANGE_CACHE_DIR").unwrap_or("/tmp/lagrange_basis".to_string());
-        let cache_dir = PathBuf::from_str(&base_dir)
-            .expect("Failed to create lagrange cache dir")
-            .join("bn254");
-        FileCache::new(cache_dir)
-    });
-
-    pub fn get_bn254_file_cache() -> &'static FileCache<ark_bn254::G1Affine> {
-        &*BN254_FILE_CACHE
+    pub fn get_file_cache() -> FileCache {
+        super::FileCache::new(LAGRANGE_CACHE_DIR.clone())
     }
 }

@@ -8,7 +8,7 @@ use folding::{
     Witness,
 };
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::srs::SRS;
+use poly_commitment::{lagrange_cache, srs::SRS};
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -147,7 +147,7 @@ fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) ->
 
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    srs.add_lagrange_basis_with_cache(domain, &lagrange_cache::test_caches::get_file_cache());
 
     let (scheme, _) = FoldingScheme::<TestConfig>::new(constraints, &srs, domain, &());
     // println!("exp:\n {}", exp.to_string());

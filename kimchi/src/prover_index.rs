@@ -143,7 +143,7 @@ pub mod testing {
     };
     use ark_ff::{PrimeField, SquareRootField};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
+    use poly_commitment::{evaluation_proof::OpeningProof, lagrange_cache, srs::SRS, OpenProof};
 
     #[allow(clippy::too_many_arguments)]
     pub fn new_index_for_test_with_lookups_and_custom_srs<
@@ -219,7 +219,10 @@ pub mod testing {
                     SRS::<G>::create(size)
                 };
 
-                srs.add_lagrange_basis(d1);
+                srs.add_lagrange_basis_with_cache(
+                    d1,
+                    &lagrange_cache::test_caches::get_file_cache(),
+                );
                 srs
             },
         )
