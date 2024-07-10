@@ -202,7 +202,7 @@ mod tests {
     #[test]
     /// Completeness test for the IVC circuit in the general case (i.e.
     /// fold_iteration != 0).
-    fn test_completeness_ivc_general_case() {
+    fn heavy_test_completeness_ivc_general_case() {
         let fold_iteration = 1;
 
         let mut rng = o1_utils::tests::make_test_rng(None);
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     /// Completeness test for the IVC circuit in the base case (i.e.
     /// fold_iteration = 0).
-    fn test_completeness_ivc_base_case() {
+    fn heavy_test_completeness_ivc_base_case() {
         let fold_iteration = 0;
 
         let mut rng = o1_utils::tests::make_test_rng(None);
