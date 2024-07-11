@@ -3,6 +3,79 @@
 //! paper [Nova](https://eprint.iacr.org/2021/370.pdf). For the rest of the
 //! document, we do suppose that the curve is BN254.
 //!
+//! Note that in the rest of this document, we will mix the terms
+//! "relaxation/relaxed" with "homogeneisation/homogeneous" polynomials. The
+//! reason is explained in the [folding] library. The term "running relaxed
+//! instance" can be rephrased as "an accumulator of evaluations of the
+//! homogeneised polynomials describing the computation and commitments to them".
+//!
+//! ## A recap of the Nova IVC scheme
+//!
+//! The [Nova paper](https://eprint.iacr.org/2021/370.pdf) describes a IVC
+//! scheme to be used by the folding scheme described in the same paper.
+//!
+//! The IVC scheme uses different notations for different concepts:
+//! - `F` is the function to be computed. In our codebase, we call it the
+//! "application circuit".
+//! - `F'` is the augmented function with the verifier computation. In our
+//! codebase, we call it the "IVC circuit + APP circuit", or also the "joint
+//! circuit".
+//! - `U_i` is the accumulator of the function `F'` up to step `i`. For clarity,
+//! we will sometimes use the notation `acc_i` to denote the accumulator. The
+//! accumulator in the [folding] library is called the "left instance". It is a
+//! "running relaxed instance".
+//! - `u_i` is the current instance of the function `F'` to be folded into the
+//! accumulator. In the [folding] library, it is called the "right instance".
+//! - `U_(i + 1)` is the accumulator of the function `F'` up to step `i + 1`,
+//! i.e. the accumulation of `U_i` and `u_i`. In the [folding] library, it is
+//! called the "output instance" or the "folded output". The "folded output" and
+//! the "left instance" should be seen as both accumulators, and the right
+//! instance should be seen as the difference between both.
+//!
+//! The IVC scheme described in Fig 4 works as follow, for a given step `i`:
+//! - In the circuit (or also called "the augmented function `F'`"), the prover
+//! will compute a hash of the left instance `acc_i`. It is a way to "compress"
+//! the information of the previous computation. It is described by the notation
+//! `u_i.x ?= Hash(i, z0, zi, U_i)` in the Fig 4 on the left.
+//! The value `u_i.x` is provided as a public input to the circuit. In the code,
+//! we could summarize with the following pseudo code:
+//! ```text
+//! left_commitments.into_iter().for_each(|comm| {
+//! env.process_hash(comm, LeftCommitment)
+//! })
+//! env.assert_eq(env.output_left, env.hash_state[LeftCommitment])
+//! ```
+//! - The prover will also compute the expected hash for the next iteration, by
+//! computing the hash of the output instance `U_(i + 1)`. It is described by
+//! the notation `u_(i + 1).x ?= Hash(i + 1, z0, zi, U_(i + 1))` in the Fig 4 on
+//! the right. Note that `U_(i + 1)` will be, at step `i + 1`, the new left
+//! input. The value of the hash computed at step `i` will be compared at step
+//! `i + 1`. In the code, we could summarize with the following pseudo-code:
+//! ```text
+//! output_commitments.into_iter().for_each(|comm| {
+//! env.process_hash(comm, OutputCommitment)
+//! })
+//! env.assert_eq(env.output_left, env.hash_state[OutputCommitment])
+//! ```
+//!
+//! The order of the execution is encoded in the fact the the hash contains the
+//! step `i` when we check the left input and `i + 1` when we compress the
+//! folded output. The fact that the prover encodes the computation on the same
+//! initial input is encoded by adding the initial value `z0` into the hash for
+//! both hash computation.
+//! Therefore, the Nova IVC scheme encodes a **sequential** and **incremental**
+//! computation, which can be verified later using a SNARK on the accumulated
+//! instance.
+//!
+//! The job regarding the correct accumulation of the commitments and the
+//! scalars are done in the middle square, i.e. `acc_(i + 1) = NIFS.V(acc_i,
+//! u_i)`. It performs foreign field elliptic curve additions and scalars
+//! additions.
+//!
+// The documentation below is outdated. Please, update it after bifolding is
+// implemented.
+//! ## Our design
+//!
 //! The circuit is implemented using the generic interpreter provided by the
 //! crate [kimchi_msm].
 //! The particularity of the implementation is that it doesn't use a cycle of
