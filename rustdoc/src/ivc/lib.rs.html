@@ -143,10 +143,156 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This crate provides a circuit to achieve Incremental Verifiable
 //! Computation (IVC) based on a variant of the folding scheme described in the
 //! paper [Nova](https://eprint.iacr.org/2021/370.pdf). For the rest of the
 //! document, we do suppose that the curve is BN254.
+//!
+//! Note that in the rest of this document, we will mix the terms
+//! &quot;relaxation/relaxed&quot; with &quot;homogeneisation/homogeneous&quot; polynomials. The
+//! reason is explained in the [folding] library. The term &quot;running relaxed
+//! instance&quot; can be rephrased as &quot;an accumulator of evaluations of the
+//! homogeneised polynomials describing the computation and commitments to them&quot;.
+//!
+//! ## A recap of the Nova IVC scheme
+//!
+//! The [Nova paper](https://eprint.iacr.org/2021/370.pdf) describes a IVC
+//! scheme to be used by the folding scheme described in the same paper.
+//!
+//! The IVC scheme uses different notations for different concepts:
+//! - `F` is the function to be computed. In our codebase, we call it the
+//! &quot;application circuit&quot;.
+//! - `F&#39;` is the augmented function with the verifier computation. In our
+//! codebase, we call it the &quot;IVC circuit + APP circuit&quot;, or also the &quot;joint
+//! circuit&quot;.
+//! - `U_i` is the accumulator of the function `F&#39;` up to step `i`. For clarity,
+//! we will sometimes use the notation `acc_i` to denote the accumulator. The
+//! accumulator in the [folding] library is called the &quot;left instance&quot;. It is a
+//! &quot;running relaxed instance&quot;.
+//! - `u_i` is the current instance of the function `F&#39;` to be folded into the
+//! accumulator. In the [folding] library, it is called the &quot;right instance&quot;.
+//! - `U_(i + 1)` is the accumulator of the function `F&#39;` up to step `i + 1`,
+//! i.e. the accumulation of `U_i` and `u_i`. In the [folding] library, it is
+//! called the &quot;output instance&quot; or the &quot;folded output&quot;. The &quot;folded output&quot; and
+//! the &quot;left instance&quot; should be seen as both accumulators, and the right
+//! instance should be seen as the difference between both.
+//!
+//! The IVC scheme described in Fig 4 works as follow, for a given step `i`:
+//! - In the circuit (or also called &quot;the augmented function `F&#39;`&quot;), the prover
+//! will compute a hash of the left instance `acc_i`. It is a way to &quot;compress&quot;
+//! the information of the previous computation. It is described by the notation
+//! `u_i.x ?= Hash(i, z0, zi, U_i)` in the Fig 4 on the left.
+//! The value `u_i.x` is provided as a public input to the circuit. In the code,
+//! we could summarize with the following pseudo code:
+//! ```text
+//! left_commitments.into_iter().for_each(|comm| {
+//! env.process_hash(comm, LeftCommitment)
+//! })
+//! env.assert_eq(env.output_left, env.hash_state[LeftCommitment])
+//! ```
+//! - The prover will also compute the expected hash for the next iteration, by
+//! computing the hash of the output instance `U_(i + 1)`. It is described by
+//! the notation `u_(i + 1).x ?= Hash(i + 1, z0, zi, U_(i + 1))` in the Fig 4 on
+//! the right. Note that `U_(i + 1)` will be, at step `i + 1`, the new left
+//! input. The value of the hash computed at step `i` will be compared at step
+//! `i + 1`. In the code, we could summarize with the following pseudo-code:
+//! ```text
+//! output_commitments.into_iter().for_each(|comm| {
+//! env.process_hash(comm, OutputCommitment)
+//! })
+//! env.assert_eq(env.output_left, env.hash_state[OutputCommitment])
+//! ```
+//!
+//! The order of the execution is encoded in the fact the the hash contains the
+//! step `i` when we check the left input and `i + 1` when we compress the
+//! folded output. The fact that the prover encodes the computation on the same
+//! initial input is encoded by adding the initial value `z0` into the hash for
+//! both hash computation.
+//! Therefore, the Nova IVC scheme encodes a **sequential** and **incremental**
+//! computation, which can be verified later using a SNARK on the accumulated
+//! instance.
+//!
+//! The job regarding the correct accumulation of the commitments and the
+//! scalars are done in the middle square, i.e. `acc_(i + 1) = NIFS.V(acc_i,
+//! u_i)`. It performs foreign field elliptic curve additions and scalars
+//! additions.
+//!
+</span><span class="comment">// The documentation below is outdated. Please, update it after bifolding is
+// implemented.
+</span><span class="doccomment">//! ## Our design
 //!
 //! The circuit is implemented using the generic interpreter provided by the
 //! crate [kimchi_msm].
