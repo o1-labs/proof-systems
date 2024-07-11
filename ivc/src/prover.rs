@@ -166,7 +166,10 @@ pub fn prove<
 where
     RNG: RngCore + CryptoRng,
 {
-    //assert!(N_COL == N_WIT + N_FSEL);
+    assert_eq!(
+        folded_witness.extended_witness.extended.values().len(),
+        N_WIT_QUAD - N_WIT
+    );
     assert!(N_WIT == N_REL + N_DSEL);
 
     ////////////////////////////////////////////////////////////////////////////
