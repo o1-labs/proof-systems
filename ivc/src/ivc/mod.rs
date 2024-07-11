@@ -45,10 +45,7 @@ mod tests {
             interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_8_56_5_3_2::{
-            bn254::{PoseidonBN254Parameters, STATE_SIZE as IVC_POSEIDON_STATE_SIZE},
-            interpreter::PoseidonParams,
-        },
+        poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
     };
     use ark_ff::{UniformRand, Zero};
     use kimchi_msm::{
@@ -117,21 +114,11 @@ mod tests {
         }
 
         println!("Building fixed selectors");
-        let mut fixed_selectors: Vec<Vec<Fp>> =
-            build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size).to_vec();
 
-        // Write constants
-        {
-            let rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    let rc = vec![*rc; TEST_DOMAIN_SIZE];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        let fixed_selectors: [Vec<Fp>; N_FSEL_IVC] =
+            build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
 
-        witness_env.set_fixed_selectors(fixed_selectors);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         println!("Calling the IVC circuit");
         // TODO add nonzero E/T values.
@@ -221,22 +208,10 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let mut fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = {
-            Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
-                domain_size,
-            ))
-        };
-
-        // Write constants
-        {
-            let rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    let rc = vec![*rc; domain_size];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
+            TEST_N_COL_TOTAL,
+            TEST_N_CHALS,
+        >(domain_size));
 
         kimchi_msm::test::test_completeness_generic_no_lookups::<
             { IVCColumn::N_COL - N_BLOCKS },
@@ -275,22 +250,10 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let mut fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = {
-            Box::new(build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(
-                domain_size,
-            ))
-        };
-
-        // Write constants
-        {
-            let rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    let rc = vec![*rc; domain_size];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
+            TEST_N_COL_TOTAL,
+            TEST_N_CHALS,
+        >(domain_size));
 
         kimchi_msm::test::test_completeness_generic_no_lookups::<
             { IVCColumn::N_COL - N_BLOCKS },
