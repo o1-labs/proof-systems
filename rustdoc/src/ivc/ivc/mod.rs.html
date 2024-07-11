@@ -270,43 +270,6 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>helpers;
@@ -354,10 +317,7 @@
             interpreter::{build_selectors, ivc_circuit},
             lookups::IVCLookupTable,
         },
-        poseidon_8_56_5_3_2::{
-            bn254::{PoseidonBN254Parameters, STATE_SIZE <span class="kw">as </span>IVC_POSEIDON_STATE_SIZE},
-            interpreter::PoseidonParams,
-        },
+        poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>kimchi_msm::{
@@ -426,21 +386,11 @@
         }
 
         <span class="macro">println!</span>(<span class="string">&quot;Building fixed selectors&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>fixed_selectors: Vec&lt;Vec&lt;Fp&gt;&gt; =
-            build_selectors::&lt;TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size).to_vec();
 
-        <span class="comment">// Write constants
-        </span>{
-            <span class="kw">let </span>rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    <span class="kw">let </span>rc = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; TEST_DOMAIN_SIZE];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        <span class="kw">let </span>fixed_selectors: [Vec&lt;Fp&gt;; N_FSEL_IVC] =
+            build_selectors::&lt;TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(domain_size);
 
-        witness_env.set_fixed_selectors(fixed_selectors);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         <span class="macro">println!</span>(<span class="string">&quot;Calling the IVC circuit&quot;</span>);
         <span class="comment">// TODO add nonzero E/T values.
@@ -530,22 +480,10 @@
         constrain_ivc::&lt;Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; N_FSEL_IVC]&gt; = {
-            Box::new(build_selectors::&lt;TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
-                domain_size,
-            ))
-        };
-
-        <span class="comment">// Write constants
-        </span>{
-            <span class="kw">let </span>rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    <span class="kw">let </span>rc = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; N_FSEL_IVC]&gt; = Box::new(build_selectors::&lt;
+            TEST_N_COL_TOTAL,
+            TEST_N_CHALS,
+        &gt;(domain_size));
 
         kimchi_msm::test::test_completeness_generic_no_lookups::&lt;
             { IVCColumn::N_COL - N_BLOCKS },
@@ -584,22 +522,10 @@
         constrain_ivc::&lt;Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; N_FSEL_IVC]&gt; = {
-            Box::new(build_selectors::&lt;TEST_N_COL_TOTAL, TEST_N_CHALS&gt;(
-                domain_size,
-            ))
-        };
-
-        <span class="comment">// Write constants
-        </span>{
-            <span class="kw">let </span>rc = PoseidonBN254Parameters.constants();
-            rc.iter().enumerate().for_each(|(round, rcs)| {
-                rcs.iter().enumerate().for_each(|(state_index, rc)| {
-                    <span class="kw">let </span>rc = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
-                    fixed_selectors[N_BLOCKS + round * IVC_POSEIDON_STATE_SIZE + state_index] = rc;
-                });
-            });
-        }
+        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; N_FSEL_IVC]&gt; = Box::new(build_selectors::&lt;
+            TEST_N_COL_TOTAL,
+            TEST_N_CHALS,
+        &gt;(domain_size));
 
         kimchi_msm::test::test_completeness_generic_no_lookups::&lt;
             { IVCColumn::N_COL - N_BLOCKS },
