@@ -402,7 +402,10 @@ pub fn constrain_multiplication<
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), vec![x.clone()]);
+            env.lookup(
+                LookupTable::RangeCheckFfHighest(PhantomData),
+                vec![x.clone()],
+            );
         } else {
             env.lookup(LookupTable::RangeCheck15, vec![x.clone()]);
         }
