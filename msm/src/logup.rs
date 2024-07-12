@@ -208,7 +208,9 @@ pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + Part
     fn length(&self) -> usize;
 
     /// Given a value, returns an index of this value in the table.
-    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize;
+    /// Returns None if the table is runtime (and thus mapping value
+    /// -> ix is not known at compile time.
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> Option<usize>;
 
     fn all_variants() -> Vec<Self>;
 }

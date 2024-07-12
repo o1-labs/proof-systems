@@ -42,8 +42,8 @@ impl LookupTableID for LookupTable {
     }
 
     /// Converts a value to its index in the fixed table.
-    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
-        match self {
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> Option<usize> {
+        Some(match self {
             Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
             Self::RangeCheck1BitSigned => {
                 if value == F::zero() {
@@ -56,7 +56,7 @@ impl LookupTableID for LookupTable {
                     panic!("Invalid value for rangecheck1abs")
                 }
             }
-        }
+        })
     }
 
     fn all_variants() -> Vec<Self> {

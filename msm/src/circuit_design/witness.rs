@@ -186,8 +186,15 @@ impl<
     fn lookup_vec(&mut self, table_id: LT, values: &[<Self as ColAccessCap<F, CIx>>::Variable]) {
         if values.len() == 1 {
             let value = &values[0];
-            let value_ix = table_id.ix_by_value(*value);
-            self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+            if table_id.is_fixed() {
+                let value_ix = table_id.ix_by_value(*value).unwrap();
+                self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+            } else {
+                // Either:
+                // * Find the row in existing lookup table
+                // * Ask user to supply an index, and check against it
+                todo!()
+            }
             self.lookups
                 .last_mut()
                 .unwrap()
