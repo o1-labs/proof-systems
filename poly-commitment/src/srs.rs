@@ -100,14 +100,17 @@ impl<G: CommitmentCurve> SRS<G> {
         domain: D<G::ScalarField>,
         cache: &C,
     ) {
+        println!("AAAAAAAAAAAAZQAAAAAA calling add_lagrange_basis_with_cache");
         let n = domain.size();
         if self.lagrange_bases.contains_key(&n) {
+            println!("AAAAAAAAAAAAZQAAAAAA memory is cached");
             return;
         }
         if let Some(basis) = cache.load_lagrange_basis_from_cache(self.g.len(), &domain) {
             self.lagrange_bases.insert(domain.size(), basis);
             return;
         } else {
+            println!("AAAAAAAAAAAAZQAAAAAA missing cache entry for lagrange basis");
             self.add_lagrange_basis(domain);
             let basis = self.lagrange_bases.get(&domain.size()).unwrap();
             cache.cache_lagrange_basis(self.g.len(), &domain, basis);
@@ -118,8 +121,10 @@ impl<G: CommitmentCurve> SRS<G> {
     /// cache them in the SRS
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
         let n = domain.size();
+        println!("BBBBBBBBBBBBBBB calling add_lagrange_basis");
 
         if self.lagrange_bases.contains_key(&n) {
+            println!("BBBBBBBBBBBBBBB memory is cached");
             return;
         }
 
