@@ -12,7 +12,8 @@ use crate::{
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as R2D,
 };
 use kimchi::{
     circuits::{
@@ -446,9 +447,11 @@ where
         let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
-        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
+        // -Z_H = (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by -Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        t_chunked.scale(minus_vanishing_poly_at_zeta)
     };
 
     // We only evaluate at ζω as the verifier can compute the
