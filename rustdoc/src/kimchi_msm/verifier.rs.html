@@ -319,12 +319,21 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
 </span><span class="kw">use </span><span class="kw">crate</span>::logup::LookupTableID;
-<span class="kw">use </span>ark_ff::{Field, One, Zero};
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
+<span class="kw">use </span>ark_ff::{Field, Zero};
+<span class="kw">use </span>ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain <span class="kw">as </span>R2D,
+};
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -577,7 +586,9 @@
         <span class="kw">let </span>chunked_t_comm = proof_comms
             .t_comm
             .chunk_commitment(evaluation_point_to_domain_size);
-        chunked_t_comm.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        <span class="comment">// (1 - ζ^n)
+        </span><span class="kw">let </span>minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(<span class="kw-2">&amp;</span>zeta);
+        chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
     <span class="kw">let </span>challenges = Challenges {
@@ -595,7 +606,8 @@
 
     <span class="kw">let </span>combined_expr =
         Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
-    <span class="kw">let </span>ft_eval0 = -PolishToken::evaluate(
+    <span class="comment">// Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
+    </span><span class="kw">let </span>ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,
         zeta,

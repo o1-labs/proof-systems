@@ -558,6 +558,9 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -572,7 +575,8 @@
 };
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>R2D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain <span class="kw">as </span>R2D,
 };
 <span class="kw">use </span>kimchi::{
     circuits::{
@@ -1006,9 +1010,11 @@
         </span><span class="kw">let </span>t_chunked: DensePolynomial&lt;G::ScalarField&gt; = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size <span class="kw">as </span>usize)
             .linearize(evaluation_point_to_domain_size);
-        <span class="comment">// Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
+        <span class="comment">// -Z_H = (1 - ζ^n)
+        </span><span class="kw">let </span>minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(<span class="kw-2">&amp;</span>zeta);
+        <span class="comment">// Multiply the polynomial \sum_i t_i(X) ζ^{i n} by -Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        </span>t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        </span>t_chunked.scale(minus_vanishing_poly_at_zeta)
     };
 
     <span class="comment">// We only evaluate at ζω as the verifier can compute the

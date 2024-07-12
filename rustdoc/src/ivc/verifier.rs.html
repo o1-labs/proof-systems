@@ -241,13 +241,23 @@
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     expr_eval::GenericEvalEnv,
     plonkish_lang::{PlonkishChallenge, PlonkishWitnessGeneric},
     prover::Proof,
 };
-<span class="kw">use </span>ark_ff::{Field, One};
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
+<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain <span class="kw">as </span>R2D,
+};
 <span class="kw">use </span>folding::{
     eval_leaf::EvalLeaf, instance_witness::ExtendedWitness, FoldingCompatibleExpr, FoldingConfig,
 };
@@ -391,14 +401,17 @@
     }
 
     <span class="comment">// Compute [ft(X)] = \
-    //   (ζ^n - 1) \
+    //   (1 - ζ^n) \
     //    ([t_0(X)] + ζ^n [t_1(X)] + ... + ζ^{kn} [t_{k}(X)])
     </span><span class="kw">let </span>ft_comm = {
         <span class="kw">let </span>evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         <span class="kw">let </span>chunked_t_comm = proof_comms
             .t_comm
             .chunk_commitment(evaluation_point_to_domain_size);
-        chunked_t_comm.scale(evaluation_point_to_domain_size - Fp::one())
+
+        <span class="comment">// (1 - ζ^n)
+        </span><span class="kw">let </span>minus_vanishing_poly_at_zeta: Fp = -domain.d1.vanishing_polynomial().evaluate(<span class="kw-2">&amp;</span>zeta);
+        chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
     <span class="kw">let </span>ft_eval0 = {
@@ -446,7 +459,8 @@
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;eval_leaf is not Result&quot;</span>),
         };
 
-        eval_res[<span class="number">0</span>]
+        <span class="comment">// Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
+        </span>-eval_res[<span class="number">0</span>]
     };
 
     coms_and_evaluations.push(Evaluation {
