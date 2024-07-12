@@ -253,13 +253,13 @@ fn biguint_to_limbs(x: &BigUint, limb_bits: usize) -> Vec<BigUint> {
 mod tests {
     use super::*;
 
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
     use num_bigint::RandBigInt;
 
     /// Base field element type
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
     fn secp256k1_modulus() -> BigUint {
         BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE)

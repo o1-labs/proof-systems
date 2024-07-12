@@ -2,11 +2,11 @@ use crate::{
     commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
     PolynomialsToCombine, SRS as SRSTrait,
 };
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
+use ark_ec::{VariableBaseMSM, AffineRepr, pairing::Pairing};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, DenseUVPolynomial,
 };
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
@@ -18,23 +18,23 @@ use serde_with::serde_as;
 #[serde(
     bound = "Pair::G1Affine: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"
 )]
-pub struct PairingProof<Pair: PairingEngine> {
+pub struct PairingProof<Pair: Pairing> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub quotient: Pair::G1Affine,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub blinding: <Pair::G1Affine as AffineCurve>::ScalarField,
+    pub blinding: <Pair::G1Affine as AffineRepr>::ScalarField,
 }
 
-impl<Pair: PairingEngine> Default for PairingProof<Pair> {
+impl<Pair: Pairing> Default for PairingProof<Pair> {
     fn default() -> Self {
         Self {
-            quotient: Pair::G1Affine::prime_subgroup_generator(),
-            blinding: <Pair::G1Affine as AffineCurve>::ScalarField::zero(),
+            quotient: Pair::G1Affine::generator(),
+            blinding: <Pair::G1Affine as AffineRepr>::ScalarField::zero(),
         }
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
+impl<Pair: Pairing> Clone for PairingProof<Pair> {
     fn clone(&self) -> Self {
         Self {
             quotient: self.quotient,
@@ -44,7 +44,7 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PairingSRS<Pair: PairingEngine> {
+pub struct PairingSRS<Pair: Pairing> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
     /// key"/"secret key"
     pub full_srs: SRS<Pair::G1Affine>,
@@ -53,7 +53,7 @@ pub struct PairingSRS<Pair: PairingEngine> {
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
-impl<Pair: PairingEngine> Default for PairingSRS<Pair> {
+impl<Pair: Pairing> Default for PairingSRS<Pair> {
     fn default() -> Self {
         Self {
             full_srs: SRS::default(),
@@ -62,7 +62,7 @@ impl<Pair: PairingEngine> Default for PairingSRS<Pair> {
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingSRS<Pair> {
+impl<Pair: Pairing> Clone for PairingSRS<Pair> {
     fn clone(&self) -> Self {
         Self {
             full_srs: self.full_srs.clone(),
@@ -75,7 +75,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingSRS<Pair>
 {
     pub fn create(x: F, n: usize) -> Self {
@@ -88,9 +88,9 @@ impl<
 
 impl<
         F: PrimeField,
-        G: CommitmentCurve<ScalarField = F>,
+        G: CommitmentCurve<ScalarField = F, Group = G2>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2, G1Prepared = <G2 as AffineRepr>::Group>,
     > crate::OpenProof<G> for PairingProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
@@ -107,15 +107,15 @@ impl<
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
         plnms: PolynomialsToCombine<G, D>,
-        elm: &[<G as AffineCurve>::ScalarField],
-        polyscale: <G as AffineCurve>::ScalarField,
-        _evalscale: <G as AffineCurve>::ScalarField,
+        elm: &[<G as AffineRepr>::ScalarField],
+        polyscale: <G as AffineRepr>::ScalarField,
+        _evalscale: <G as AffineRepr>::ScalarField,
         _sponge: EFqSponge,
         _rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge: Clone + FqSponge<<G as AffineCurve>::BaseField, G, F>,
-        RNG: RngCore + CryptoRng,
+        EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F>,
+        RNG: RngCore + CryptoRng
     {
         PairingProof::create(srs, plnms, elm, polyscale).unwrap()
     }
@@ -128,7 +128,7 @@ impl<
     ) -> bool
     where
         EFqSponge: FqSponge<G::BaseField, G, F>,
-        RNG: RngCore + CryptoRng,
+        RNG: RngCore + CryptoRng
     {
         for BatchEvaluationProof {
             sponge: _,
@@ -152,7 +152,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > SRSTrait<G> for PairingSRS<Pair>
 {
     fn max_poly_size(&self) -> usize {
@@ -292,7 +292,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
 {
     /// Create a pairing proof.
@@ -339,7 +339,7 @@ impl<
         evaluations: &Vec<Evaluation<G>>, // commitments to the polynomials
         polyscale: F,                     // scaling factor for polynoms
         elm: &[F],                        // vector of evaluation points
-    ) -> bool {
+    ) -> bool where <Pair as Pairing>::G1Prepared: From<<G as AffineRepr>::Group> {
         let poly_commitment = {
             let mut scalars: Vec<F> = Vec::new();
             let mut points = Vec::new();
@@ -350,9 +350,8 @@ impl<
                 polyscale,
                 F::one(), /* TODO: This is inefficient */
             );
-            let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
 
-            VariableBaseMSM::multi_scalar_mul(&points, &scalars)
+            G::Group::msm(&points, &scalars).expect("Unable to perform MSM")
         };
 
         // IMPROVEME: we could have a single flat array for all evaluations, see
@@ -367,14 +366,14 @@ impl<
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
             .elems[0]
-            .into_projective();
+            .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 
         // IMRPROVEME: we could simply do one pairing, and split in two miller
         // loop + pow
         let numerator = Pair::pairing(
             numerator_commitment,
-            Pair::G2Affine::prime_subgroup_generator(),
+            Pair::G2Affine::generator(),
         );
         let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
         numerator == scaled_quotient
@@ -392,7 +391,7 @@ mod tests {
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{
         univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
-        UVPolynomial,
+        DenseUVPolynomial,
     };
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -475,7 +474,9 @@ mod tests {
     #[test]
     fn check_srs_g2_valid_and_serializes() {
         type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
-        type BN254G2BaseField = <BN254 as ark_ec::PairingEngine>::Fqe;
+        // @todo: Fix Fqe missing
+        // type BN254G2BaseField = <BN254 as ark_ec::pairing::Pairing>::Fqe;
+        type BN254G2BaseField = <BN254 as ark_ec::pairing::Pairing>::BaseField;
         type Fp = ark_bn254::Fr;
 
         let x = Fp::rand(&mut rand::rngs::OsRng);

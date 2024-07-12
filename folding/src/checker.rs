@@ -6,7 +6,7 @@ use crate::{
     instance_witness::Instance,
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
@@ -85,8 +85,8 @@ pub trait Provide<C: FoldingConfig> {
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
-        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
-    ) -> Vec<<C::Curve as AffineCurve>::ScalarField>;
+        domain: Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
+    ) -> Vec<<C::Curve as AffineRepr>::ScalarField>;
 }
 
 impl<C: FoldingConfig> Provide<C> for Provider<C>
@@ -94,24 +94,24 @@ where
     C::Witness: Index<
         C::Column,
         Output = Evaluations<
-            <C::Curve as AffineCurve>::ScalarField,
-            Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+            <C::Curve as AffineRepr>::ScalarField,
+            Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
         >,
     >,
     C::Witness: Index<
         C::Selector,
         Output = Evaluations<
-            <C::Curve as AffineCurve>::ScalarField,
-            Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+            <C::Curve as AffineRepr>::ScalarField,
+            Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
         >,
     >,
-    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineRepr>::ScalarField>,
 {
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
-        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
-    ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
+        domain: Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
+    ) -> Vec<<C::Curve as AffineRepr>::ScalarField> {
         let domain_size = domain.size as usize;
         match inner {
             FoldingCompatibleExprInner::Constant(c) => {
@@ -145,24 +145,24 @@ where
     C::Witness: Index<
         C::Column,
         Output = Evaluations<
-            <C::Curve as AffineCurve>::ScalarField,
-            Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+            <C::Curve as AffineRepr>::ScalarField,
+            Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
         >,
     >,
     C::Witness: Index<
         C::Selector,
         Output = Evaluations<
-            <C::Curve as AffineCurve>::ScalarField,
-            Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+            <C::Curve as AffineRepr>::ScalarField,
+            Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
         >,
     >,
-    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineRepr>::ScalarField>,
 {
     fn resolve(
         &self,
         inner: FoldingCompatibleExprInner<C>,
-        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
-    ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
+        domain: Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
+    ) -> Vec<<C::Curve as AffineRepr>::ScalarField> {
         match inner {
             FoldingCompatibleExprInner::Extensions(ext) => match ext {
                 ExpExtension::U => {
@@ -204,8 +204,8 @@ pub trait Checker<C: FoldingConfig>: Provide<C> {
     fn check_rec(
         &self,
         exp: FoldingCompatibleExpr<C>,
-        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
-    ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
+        domain: Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
+    ) -> Vec<<C::Curve as AffineRepr>::ScalarField> {
         let e2 = exp.clone();
         let res = match exp {
             FoldingCompatibleExpr::Atom(inner) => self.resolve(inner, domain),
@@ -249,7 +249,7 @@ pub trait Checker<C: FoldingConfig>: Provide<C> {
     fn check(
         &self,
         exp: &FoldingCompatibleExpr<C>,
-        domain: Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
+        domain: Radix2EvaluationDomain<<C::Curve as AffineRepr>::ScalarField>,
     ) {
         let res = self.check_rec(exp.clone(), domain);
         for (i, row) in res.iter().enumerate() {

@@ -2,7 +2,7 @@
 //!
 //! Definition of public key structure and helpers
 
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
 use core::fmt;
@@ -86,12 +86,13 @@ impl PubKey {
             .map_err(|_| PubKeyError::XCoordinateBytes)?;
         let y = BaseField::from_bytes(&bytes[BaseField::size_in_bytes()..])
             .map_err(|_| PubKeyError::YCoordinateBytes)?;
-        let pt = CurvePoint::get_point_from_x(x, y.0.is_odd()).ok_or(PubKeyError::XCoordinate)?;
+        let pt = CurvePoint::get_point_from_x_unchecked(x, y.0.is_odd())
+            .ok_or(PubKeyError::XCoordinate)?;
         if pt.y != y {
             return Err(PubKeyError::NonCurvePoint);
         }
 
-        let public = CurvePoint::new(x, y, pt.infinity);
+        let public = CurvePoint::new(x, y);
         if !public.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
         }
@@ -115,8 +116,8 @@ impl PubKey {
         if secret_key.clone().into_scalar() == ScalarField::zero() {
             return Err(PubKeyError::SecKey);
         }
-        let pt = CurvePoint::prime_subgroup_generator()
-            .mul(secret_key.into_scalar())
+        let pt = CurvePoint::generator()
+            .mul_bigint(secret_key.into_scalar().into_bigint())
             .into_affine();
         if !pt.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
@@ -158,9 +159,10 @@ impl PubKey {
         }
 
         let x = BaseField::from_bytes(x_bytes).map_err(|_| PubKeyError::XCoordinateBytes)?;
-        let mut pt = CurvePoint::get_point_from_x(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
+        let mut pt =
+            CurvePoint::get_point_from_x_unchecked(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
 
-        if pt.y.into_repr().is_even() == y_parity {
+        if pt.y.0.is_even() == y_parity {
             pt.y = pt.y.neg();
         }
 
@@ -187,14 +189,14 @@ impl PubKey {
         let point = self.0;
         CompressedPubKey {
             x: point.x,
-            is_odd: point.y.into_repr().is_odd(),
+            is_odd: point.y.into_bigint().is_odd(),
         }
     }
 
     /// Serialize public key into corresponding Mina address
     pub fn into_address(&self) -> String {
         let point = self.point();
-        into_address(&point.x, point.y.into_repr().is_odd())
+        into_address(&point.x, point.y.0.is_odd())
     }
 
     /// Deserialize public key into bytes
@@ -271,7 +273,8 @@ impl CompressedPubKey {
         } else {
             return Err(PubKeyError::YCoordinateParity);
         };
-        let public = CurvePoint::get_point_from_x(x, is_odd).ok_or(PubKeyError::XCoordinate)?;
+        let public =
+            CurvePoint::get_point_from_x_unchecked(x, is_odd).ok_or(PubKeyError::XCoordinate)?;
         if !public.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
         }
@@ -294,8 +297,8 @@ impl CompressedPubKey {
     pub fn from_secret_key(sec_key: SecKey) -> Self {
         // We do not need to check point is on the curve, since it's derived directly from the generator point
         let public = PubKey::from_point_unsafe(
-            CurvePoint::prime_subgroup_generator()
-                .mul(sec_key.into_scalar())
+            CurvePoint::generator()
+                .mul_bigint(sec_key.into_scalar().into_bigint())
                 .into_affine(),
         );
         public.into_compressed()

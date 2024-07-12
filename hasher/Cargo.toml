@@ -13,11 +13,11 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-mina-poseidon.workspace = true
-mina-curves.workspace = true
-o1-utils.workspace = true
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+o1-utils = { path = "../utils", version = "0.1.0" }
 
-ark-ff.workspace = true
+ark-ff = { version = "0.4.2", features = [ "parallel", "asm" ] }
 
 bitvec.workspace = true
 serde.workspace = true

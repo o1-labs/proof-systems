@@ -1,7 +1,7 @@
 //! This module implements the Marlin structured reference string primitive
-
-use crate::{commitment::CommitmentCurve, PolyComm};
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use crate::commitment::CommitmentCurve;
+use crate::PolyComm;
+use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -47,10 +47,10 @@ where
     let endo_q: G::BaseField = mina_poseidon::sponge::endo_coefficient();
     let endo_r = {
         let potential_endo_r: G::ScalarField = mina_poseidon::sponge::endo_coefficient();
-        let t = G::prime_subgroup_generator();
+        let t = G::generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = G::of_coordinates(x * endo_q, y);
-        if t.mul(potential_endo_r) == phi_t.into_projective() {
+        if t.mul(potential_endo_r) == phi_t.into_group() {
             potential_endo_r
         } else {
             potential_endo_r * potential_endo_r
@@ -80,7 +80,7 @@ where
 
         let n =
             <<G::BaseField as Field>::BasePrimeField as PrimeField>::BigInt::from_bits_be(&bits);
-        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_repr(n)
+        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_bigint(n)
             .expect("packing code has a bug");
         base_fields.push(t)
     }
@@ -90,7 +90,8 @@ where
     G::of_coordinates(x, y).mul_by_cofactor()
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> where 
+<G as AffineRepr>::Group: Group {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
@@ -184,25 +185,24 @@ impl<G: CommitmentCurve> SRS<G> {
         // For each chunk
         for i in 0..num_elems {
             // Initialize the vector with zero curve points
-            let mut lg: Vec<<G as AffineCurve>::Projective> =
-                vec![<G as AffineCurve>::Projective::zero(); n];
+            let mut lg: Vec<<G as AffineRepr>::Group> = vec![<G as AffineRepr>::Group::zero(); n];
             // Overwrite the terms corresponding to that chunk with the SRS curve points
             let start_offset = i * srs_size;
             let num_terms = min((i + 1) * srs_size, n) - start_offset;
             for j in 0..num_terms {
-                lg[start_offset + j] = self.g[j].into_projective()
+                lg[start_offset + j] = self.g[j].into_group();
             }
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
-            <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
+			// @todo: Check normalize_batch() does it an in-place method?
+            let lg = <G as AffineRepr>::Group::normalize_batch(&lg);
             // Append the 'partial Langrange polynomials' to the vector of elems chunks
             elems.push(lg)
         }
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                elems: elems.iter().map(|v| v[i].into_affine()).collect(),
-            })
+                elems: elems.iter().map(|v| v[i]).collect(),})
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
     }
@@ -215,7 +215,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut x_pow = G::ScalarField::one();
         let g: Vec<_> = (0..depth)
             .map(|_| {
-                let res = G::prime_subgroup_generator().mul(x_pow);
+                let res = G::generator().mul(x_pow);
                 x_pow *= x;
                 res.into_affine()
             })
@@ -243,11 +243,11 @@ impl<G: CommitmentCurve> SRS<G> {
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
-        let g: Vec<_> = (0..depth)
+        let g: Vec<G> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b512::new();
                 h.update((i as u32).to_be_bytes());
-                point_of_random_bytes(&m, &h.finalize())
+                point_of_random_bytes::<G>(&m, &h.finalize())
             })
             .collect();
 
@@ -256,7 +256,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
             h.update((i as u32).to_be_bytes());
-            point_of_random_bytes(&m, &h.finalize())
+            point_of_random_bytes::<G>(&m, &h.finalize())
         });
 
         SRS {

@@ -17,7 +17,7 @@
 //! [expressions].
 // TODO: the documentation above might need more descriptions.
 
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
@@ -59,8 +59,8 @@ pub mod checker;
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
-type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
+type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::ScalarField;
+type BaseField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::BaseField;
 
 // 'static seems to be used for expressions. Can we get rid of it?
 pub trait FoldingConfig: Debug + 'static {
@@ -91,7 +91,7 @@ pub trait FoldingConfig: Debug + 'static {
     type Structure: Clone;
 
     type Env: FoldingEnv<
-        <Self::Curve as AffineCurve>::ScalarField,
+        <Self::Curve as AffineRepr>::ScalarField,
         Self::Instance,
         Self::Witness,
         Self::Column,

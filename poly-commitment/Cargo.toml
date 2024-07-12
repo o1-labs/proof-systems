@@ -31,8 +31,8 @@ mina-curves.workspace = true
 o1-utils.workspace = true
 mina-poseidon.workspace = true
 
-ocaml = { workspace = true, optional = true }
-ocaml-gen = { workspace = true, optional = true }
+ocaml = { version = "0.22.2", optional = true }
+ocaml-gen = { version = "0.1.5", optional = true }
 
 [dev-dependencies]
 colored.workspace = true

@@ -5,7 +5,7 @@ use crate::{
     loc,
     snarky::{api::SnarkyCircuit, cvar::FieldVar, runner::RunState},
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{BigInteger, One, PrimeField};
 use mina_curves::pasta::Fp;
 use poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
@@ -68,7 +68,7 @@ fn apply<F: PrimeField, const N: usize>(
     todo!()
 }
 
-type F<C> = <C as AffineCurve>::ScalarField;
+type F<C> = <C as AffineRepr>::ScalarField;
 
 fn challenge_linear_combination<F: PrimeField>(
     _full: FullChallenge<FieldVar<F>>,
@@ -107,11 +107,11 @@ fn trim<F: PrimeField>(
 ) -> SnarkyResult<FieldVar<F>> {
     let (high, low): (FieldVar<F>, FieldVar<F>) = sys.compute(loc!(), |wit| {
         let val = wit.read_var(v);
-        let mut high = val.into_repr();
+        let mut high = val.into_bigint();
         high.divn(CHALLENGE_BITS as u32);
-        let mut low = val.into_repr();
-        low.sub_noborrow(&high);
-        (F::from_repr(high).unwrap(), F::from_repr(low).unwrap())
+        let mut low = val.into_bigint();
+        low.sub_with_borrow(&high);
+        (F::from_bigint(high).unwrap(), F::from_bigint(low).unwrap())
     })?;
     let composition = high.mul(base, None, loc!(), sys)? + &low;
     // TODO: constraint low to 127 bits

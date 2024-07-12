@@ -2,7 +2,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -42,7 +42,7 @@ fn ec_test() {
     let ps = {
         let p = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
+            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = p;
@@ -56,7 +56,7 @@ fn ec_test() {
     let qs = {
         let q = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
+            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = q;

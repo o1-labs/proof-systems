@@ -1,4 +1,4 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{

@@ -34,7 +34,7 @@ struct RangeCheckLimbs1<F: PrimeField> {
 impl<F: PrimeField> RangeCheckLimbs1<F> {
     ///extracts the limbs needed for range check from the bits of f
     fn parse(f: F) -> Self {
-        let mut bits = f.into_repr().to_bits_le().into_iter();
+        let mut bits = f.into_bigint().to_bits_le().into_iter();
         let crumbs = parse_limbs::<F, 2, 8>(bits.by_ref());
         let limbs = parse_limbs::<F, 12, 6>(bits);
         Self { crumbs, limbs }
@@ -58,7 +58,7 @@ struct RangeCheckLimbs2<F: PrimeField> {
 impl<F: PrimeField> RangeCheckLimbs2<F> {
     ///extracts the limbs needed for range check from the bits of f
     fn parse(f: F) -> Self {
-        let mut bits = f.into_repr().to_bits_le().into_iter();
+        let mut bits = f.into_bigint().to_bits_le().into_iter();
         let crumbs_low = parse_limbs::<F, 2, 19>(bits.by_ref());
         let limbs = parse_limbs::<F, 12, 4>(bits.by_ref());
         let crumbs_high = parse_limbs::<F, 2, 1>(bits);

@@ -15,16 +15,18 @@
 //! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
 //! such a scratch array within each algorithm.
 
+use std::ops::AddAssign;
+
 use ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
-    SWModelParameters,
+    models::short_weierstrass::{Affine, SWCurveConfig},
+    AffineRepr, CurveConfig, CurveGroup, Group,
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use mina_poseidon::sponge::ScalarChallenge;
 use rayon::prelude::*;
 
-fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
+fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<Affine<P>>) {
     let len = if pairs.len() % 2 == 0 {
         pairs.len()
     } else {
@@ -56,7 +58,7 @@ fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
         } else if pairs[i + 1].x == pairs[i].x
             && (pairs[i + 1].y != pairs[i].y || pairs[i + 1].y.is_zero())
         {
-            pairs[j] = SWJAffine::<P>::zero();
+            pairs[j] = Affine::<P>::zero();
         } else if pairs[i + 1].x == pairs[i].x && pairs[i + 1].y == pairs[i].y {
             let sq = pairs[i].x.square();
             let s = (sq.double() + sq + P::COEFF_A) * d;
@@ -86,10 +88,10 @@ fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
 /// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
 /// addition formula and don't have to handle the edge cases of doubling and
 /// hitting the point at infinity.
-fn batch_add_assign_no_branch<P: SWModelParameters>(
+fn batch_add_assign_no_branch<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
-    v0: &mut [SWJAffine<P>],
-    v1: &[SWJAffine<P>],
+    v0: &mut [Affine<P>],
+    v1: &[Affine<P>],
 ) {
     denominators
         .par_iter_mut()
@@ -117,10 +119,10 @@ fn batch_add_assign_no_branch<P: SWModelParameters>(
 }
 
 /// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
-pub fn batch_add_assign<P: SWModelParameters>(
+pub fn batch_add_assign<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
-    v0: &mut [SWJAffine<P>],
-    v1: &[SWJAffine<P>],
+    v0: &mut [Affine<P>],
+    v1: &[Affine<P>],
 ) {
     denominators
         .par_iter_mut()
@@ -150,7 +152,7 @@ pub fn batch_add_assign<P: SWModelParameters>(
             } else if p0.is_zero() {
                 *p0 = *p1;
             } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
-                *p0 = SWJAffine::<P>::zero();
+                *p0 = Affine::<P>::zero();
             } else if p1.x == p0.x && p1.y == p0.y {
                 let sq = p0.x.square();
                 let s = (sq.double() + sq + P::COEFF_A) * d;
@@ -168,12 +170,12 @@ pub fn batch_add_assign<P: SWModelParameters>(
         });
 }
 
-fn affine_window_combine_base<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+fn affine_window_combine_base<P: SWCurveConfig>(
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     x1: P::ScalarField,
     x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
+) -> Vec<Affine<P>> {
     let g1g2 = {
         let mut v: Vec<_> = (0..2 * g1.len())
             .map(|i| {
@@ -190,10 +192,13 @@ fn affine_window_combine_base<P: SWModelParameters>(
     };
     assert!(g1g2.len() == g1.len());
 
-    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    let windows1: itertools::Tuples<
+        BitIteratorBE<<<P as CurveConfig>::ScalarField as PrimeField>::BigInt>,
+        _,
+    > = BitIteratorBE::new(x1.into_bigint()).tuples();
+    let windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
-    let mut points = vec![SWJAffine::<P>::zero(); g1.len()];
+    let mut points = vec![Affine::<P>::zero(); g1.len()];
 
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
 
@@ -275,11 +280,11 @@ fn affine_window_combine_base<P: SWModelParameters>(
     points
 }
 
-fn batch_endo_in_place<P: SWModelParameters>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
+fn batch_endo_in_place<P: SWCurveConfig>(endo_coeff: P::BaseField, ps: &mut [Affine<P>]) {
     ps.par_iter_mut().for_each(|p| p.x *= endo_coeff);
 }
 
-fn batch_negate_in_place<P: SWModelParameters>(ps: &mut [SWJAffine<P>]) {
+fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [Affine<P>]) {
     ps.par_iter_mut().for_each(|p| {
         p.y = -p.y;
     });
@@ -287,12 +292,12 @@ fn batch_negate_in_place<P: SWModelParameters>(ps: &mut [SWJAffine<P>]) {
 
 /// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to
 /// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
-fn affine_window_combine_one_endo_base<P: SWModelParameters>(
+fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     chal: ScalarChallenge<P::ScalarField>,
-) -> Vec<SWJAffine<P>> {
+) -> Vec<Affine<P>> {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
         dst[..n].clone_from_slice(&src[..n]);
@@ -304,7 +309,7 @@ fn affine_window_combine_one_endo_base<P: SWModelParameters>(
         (limbs_lsb[limb as usize] >> j) & 1
     }
 
-    let rep = chal.0.into_repr();
+    let rep = chal.0.into_bigint();
     let r = rep.as_ref();
 
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
@@ -340,9 +345,9 @@ fn affine_window_combine_one_endo_base<P: SWModelParameters>(
 }
 
 /// Double an array of curve points in-place.
-fn batch_double_in_place<P: SWModelParameters>(
+fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut Vec<P::BaseField>,
-    points: &mut [SWJAffine<P>],
+    points: &mut [Affine<P>],
 ) {
     denominators
         .par_iter_mut()
@@ -366,14 +371,14 @@ fn batch_double_in_place<P: SWModelParameters>(
         });
 }
 
-fn affine_window_combine_one_base<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+fn affine_window_combine_one_base<P: SWCurveConfig>(
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+) -> Vec<Affine<P>> {
+    let windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
-    let mut points = vec![SWJAffine::<P>::zero(); g1.len()];
+    let mut points = vec![Affine::<P>::zero(); g1.len()];
 
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
 
@@ -412,12 +417,12 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
     points
 }
 
-pub fn affine_window_combine<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+pub fn affine_window_combine<P: SWCurveConfig>(
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     x1: P::ScalarField,
     x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
+) -> Vec<Affine<P>> {
     const CHUNK_SIZE: usize = 10_000;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
@@ -431,12 +436,12 @@ pub fn affine_window_combine<P: SWModelParameters>(
 /// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
 ///
 /// Internally, it uses the curve endomorphism to speed up this operation.
-pub fn affine_window_combine_one_endo<P: SWModelParameters>(
+pub fn affine_window_combine_one_endo<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     chal: ScalarChallenge<P::ScalarField>,
-) -> Vec<SWJAffine<P>> {
+) -> Vec<Affine<P>> {
     const CHUNK_SIZE: usize = 4096;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
@@ -445,11 +450,11 @@ pub fn affine_window_combine_one_endo<P: SWModelParameters>(
         .collect();
     v.concat()
 }
-pub fn affine_window_combine_one<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
+pub fn affine_window_combine_one<P: SWCurveConfig>(
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
     x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
+) -> Vec<Affine<P>> {
     const CHUNK_SIZE: usize = 10_000;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
@@ -459,28 +464,31 @@ pub fn affine_window_combine_one<P: SWModelParameters>(
     v.concat()
 }
 
-pub fn window_combine<G: AffineCurve>(
+pub fn window_combine<G: AffineRepr>(
     g_lo: &[G],
     g_hi: &[G],
     x_lo: G::ScalarField,
     x_hi: G::ScalarField,
 ) -> Vec<G> {
-    let mut g_proj: Vec<G::Projective> = {
+    let mut g_proj: Vec<G::Group> = {
         let pairs: Vec<_> = g_lo.iter().zip(g_hi).collect();
         pairs
             .into_par_iter()
             .map(|(lo, hi)| window_shamir::<G>(x_lo, *lo, x_hi, *hi))
             .collect()
     };
-    G::Projective::batch_normalization(g_proj.as_mut_slice());
-    g_proj.par_iter().map(|g| g.into_affine()).collect()
+    let g_proj = G::Group::normalize_batch(g_proj.as_mut_slice());
+    g_proj
+        .par_iter()
+        .map(|g| g.into_group().into_affine())
+        .collect()
 }
 
-pub fn affine_shamir_window_table<P: SWModelParameters>(
+pub fn affine_shamir_window_table<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
-) -> [Vec<SWJAffine<P>>; 15] {
+    g1: &[Affine<P>],
+    g2: &[Affine<P>],
+) -> [Vec<Affine<P>>; 15] {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
         dst[..n].clone_from_slice(&src[..n]);
@@ -489,21 +497,21 @@ pub fn affine_shamir_window_table<P: SWModelParameters>(
     let n = g1.len();
 
     let mut res: [Vec<_>; 15] = [
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
     ];
 
     let [g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
@@ -555,10 +563,10 @@ pub fn affine_shamir_window_table<P: SWModelParameters>(
     res
 }
 
-pub fn affine_shamir_window_table_one<P: SWModelParameters>(
+pub fn affine_shamir_window_table_one<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
-    g1: &[SWJAffine<P>],
-) -> [Vec<SWJAffine<P>>; 3] {
+    g1: &[Affine<P>],
+) -> [Vec<Affine<P>>; 3] {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
         dst[..n].clone_from_slice(&src[..n]);
@@ -567,9 +575,9 @@ pub fn affine_shamir_window_table_one<P: SWModelParameters>(
     let n = g1.len();
 
     let mut res: [Vec<_>; 3] = [
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
-        vec![SWJAffine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
+        vec![Affine::<P>::zero(); n],
     ];
 
     let [g01, g10, g11] = &mut res;
@@ -585,118 +593,116 @@ pub fn affine_shamir_window_table_one<P: SWModelParameters>(
     res
 }
 
-fn window_shamir<G: AffineCurve>(
-    x1: G::ScalarField,
-    g1: G,
-    x2: G::ScalarField,
-    g2: G,
-) -> G::Projective {
+fn window_shamir<G: AffineRepr>(x1: G::ScalarField, g1: G, x2: G::ScalarField, g2: G) -> G::Group {
     let [_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
         shamir_window_table(g1, g2);
 
-    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    let windows1: itertools::Tuples<
+        BitIteratorBE<<<<G as AffineRepr>::Group as Group>::ScalarField as PrimeField>::BigInt>,
+        _,
+    > = BitIteratorBE::new(x1.into_bigint()).tuples();
+    let windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
-    let mut res = G::Projective::zero();
+    let mut res = G::Group::zero();
 
     for ((hi_1, lo_1), (hi_2, lo_2)) in windows1.zip(windows2) {
         res.double_in_place();
         res.double_in_place();
         match ((hi_1, lo_1), (hi_2, lo_2)) {
             ((false, false), (false, false)) => (),
-            ((false, true), (false, false)) => res.add_assign_mixed(&g01_00),
-            ((true, false), (false, false)) => res.add_assign_mixed(&g10_00),
-            ((true, true), (false, false)) => res.add_assign_mixed(&g11_00),
+            ((false, true), (false, false)) => res.add_assign(&g01_00),
+            ((true, false), (false, false)) => res.add_assign(&g10_00),
+            ((true, true), (false, false)) => res.add_assign(&g11_00),
 
-            ((false, false), (false, true)) => res.add_assign_mixed(&g00_01),
-            ((false, true), (false, true)) => res.add_assign_mixed(&g01_01),
-            ((true, false), (false, true)) => res.add_assign_mixed(&g10_01),
-            ((true, true), (false, true)) => res.add_assign_mixed(&g11_01),
+            ((false, false), (false, true)) => res.add_assign(&g00_01),
+            ((false, true), (false, true)) => res.add_assign(&g01_01),
+            ((true, false), (false, true)) => res.add_assign(&g10_01),
+            ((true, true), (false, true)) => res.add_assign(&g11_01),
 
-            ((false, false), (true, false)) => res.add_assign_mixed(&g00_10),
-            ((false, true), (true, false)) => res.add_assign_mixed(&g01_10),
-            ((true, false), (true, false)) => res.add_assign_mixed(&g10_10),
-            ((true, true), (true, false)) => res.add_assign_mixed(&g11_10),
+            ((false, false), (true, false)) => res.add_assign(&g00_10),
+            ((false, true), (true, false)) => res.add_assign(&g01_10),
+            ((true, false), (true, false)) => res.add_assign(&g10_10),
+            ((true, true), (true, false)) => res.add_assign(&g11_10),
 
-            ((false, false), (true, true)) => res.add_assign_mixed(&g00_11),
-            ((false, true), (true, true)) => res.add_assign_mixed(&g01_11),
-            ((true, false), (true, true)) => res.add_assign_mixed(&g10_11),
-            ((true, true), (true, true)) => res.add_assign_mixed(&g11_11),
+            ((false, false), (true, true)) => res.add_assign(&g00_11),
+            ((false, true), (true, true)) => res.add_assign(&g01_11),
+            ((true, false), (true, true)) => res.add_assign(&g10_11),
+            ((true, true), (true, true)) => res.add_assign(&g11_11),
         }
     }
 
     res
 }
 
-pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
-    let g00_00 = G::prime_subgroup_generator().into_projective();
-    let g01_00 = g1.into_projective();
+pub fn shamir_window_table<G: AffineRepr>(g1: G, g2: G) -> [G; 16] {
+    let g00_00 = G::generator().into_group();
+    let g01_00 = g1.into_group();
     let g10_00 = {
         let mut g = g01_00;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g11_00 = {
         let mut g = g10_00;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
 
-    let g00_01 = g2.into_projective();
+    let g00_01: <G as AffineRepr>::Group = g2.into_group();
     let g01_01 = {
         let mut g = g00_01;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g10_01 = {
         let mut g = g01_01;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g11_01 = {
         let mut g = g10_01;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
 
     let g00_10 = {
         let mut g = g00_01;
-        g.add_assign_mixed(&g2);
+        g.add_assign(&g2);
         g
     };
     let g01_10 = {
         let mut g = g00_10;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g10_10 = {
         let mut g = g01_10;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g11_10 = {
         let mut g = g10_10;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g00_11 = {
         let mut g = g00_10;
-        g.add_assign_mixed(&g2);
+        g.add_assign(&g2);
         g
     };
     let g01_11 = {
         let mut g = g00_11;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g10_11 = {
         let mut g = g01_11;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
     let g11_11 = {
         let mut g = g10_11;
-        g.add_assign_mixed(&g1);
+        g.add_assign(&g1);
         g
     };
 
@@ -704,8 +710,8 @@ pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
         g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
         g11_10, g00_11, g01_11, g10_11, g11_11,
     ];
-    G::Projective::batch_normalization(v.as_mut_slice());
-    let v: Vec<_> = v.iter().map(|x| x.into_affine()).collect();
+    let v = G::Group::normalize_batch(v.as_mut_slice());
+    let v: Vec<_> = v.iter().map(|x| x.into_group().into_affine()).collect();
     [
         v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
         v[14], v[15],

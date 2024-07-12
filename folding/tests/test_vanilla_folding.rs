@@ -6,7 +6,7 @@
 /// ```text
 /// cargo nextest run test_folding_instance --release --all-features
 /// ```
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use checker::{ExtendedProvider, Provider};

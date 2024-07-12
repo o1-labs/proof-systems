@@ -26,6 +26,7 @@ sha2.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_core.workspace = true
+mina-curves.workspace = true
 
 [dev-dependencies]
 ark-ec.workspace = true
