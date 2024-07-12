@@ -168,7 +168,7 @@ pub fn deserialize_field_element<
     // Range check on each limb
     limb2_vars
         .iter()
-        .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
+        .for_each(|v| env.lookup(LookupTable::RangeCheck4, vec![v.clone()]));
 
     let mut fifteen_bits_vars = vec![];
 
@@ -198,7 +198,7 @@ pub fn deserialize_field_element<
     // Range check on each limb
     fifteen_bits_vars
         .iter()
-        .for_each(|v| env.lookup(LookupTable::RangeCheck15, v));
+        .for_each(|v| env.lookup(LookupTable::RangeCheck15, vec![v.clone()]));
 
     let shl_88_var = Env::constant(F::from(1u128 << 88u128));
     let shl_15_var = Env::constant(F::from(1u128 << 15u128));
@@ -402,15 +402,15 @@ pub fn constrain_multiplication<
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
+            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), vec![x.clone()]);
         } else {
-            env.lookup(LookupTable::RangeCheck15, x);
+            env.lookup(LookupTable::RangeCheck15, vec![x.clone()]);
         }
     }
 
     // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
     for x in quotient_limbs_small.iter() {
-        env.lookup(LookupTable::RangeCheck15, x);
+        env.lookup(LookupTable::RangeCheck15, vec![x.clone()]);
     }
 
     // Carry limbs need to be in particular ranges.
@@ -418,10 +418,10 @@ pub fn constrain_multiplication<
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck9Abs, x); // 4 + 5 ?
+            env.lookup(LookupTable::RangeCheck9Abs, vec![x.clone()]); // 4 + 5 ?
         } else {
             // TODO add actual lookup
-            env.lookup(LookupTable::RangeCheck14Abs, x);
+            env.lookup(LookupTable::RangeCheck14Abs, vec![x.clone()]);
             //env.range_check_abs15(x);
             // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
         }

@@ -38,7 +38,7 @@ impl<Ff: PrimeField> LookupTableID for IVCLookupTable<Ff> {
     }
 
     /// Converts a value to its index in the fixed table.
-    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
+    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> usize {
         match self {
             Self::SerLookupTable(lt) => lt.ix_by_value(value),
         }
