@@ -184,7 +184,7 @@ impl<
     > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {
-        let value_ix = table_id.ix_by_value(&value);
+        let value_ix = table_id.ix_by_value(&value).unwrap();
         self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
         self.lookups
             .last_mut()
