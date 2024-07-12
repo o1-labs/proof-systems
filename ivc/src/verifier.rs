@@ -3,8 +3,11 @@ use crate::{
     plonkish_lang::{PlonkishChallenge, PlonkishWitnessGeneric},
     prover::Proof,
 };
-use ark_ff::{Field, One};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
+use ark_ff::Field;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as R2D,
+};
 use folding::{
     eval_leaf::EvalLeaf, instance_witness::ExtendedWitness, FoldingCompatibleExpr, FoldingConfig,
 };
@@ -148,14 +151,17 @@ pub fn verify<
     }
 
     // Compute [ft(X)] = \
-    //   (ζ^n - 1) \
+    //   (1 - ζ^n) \
     //    ([t_0(X)] + ζ^n [t_1(X)] + ... + ζ^{kn} [t_{k}(X)])
     let ft_comm = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         let chunked_t_comm = proof_comms
             .t_comm
             .chunk_commitment(evaluation_point_to_domain_size);
-        chunked_t_comm.scale(evaluation_point_to_domain_size - Fp::one())
+
+        // (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta: Fp = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
     let ft_eval0 = {
@@ -203,7 +209,8 @@ pub fn verify<
             _ => panic!("eval_leaf is not Result"),
         };
 
-        eval_res[0]
+        // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
+        -eval_res[0]
     };
 
     coms_and_evaluations.push(Evaluation {

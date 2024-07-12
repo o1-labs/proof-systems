@@ -7,8 +7,8 @@ use crate::{
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
-    univariate::{DensePolynomial, SparsePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as R2D,
 };
 use folding::{
     eval_leaf::EvalLeaf,
@@ -396,7 +396,7 @@ where
     }
 
     // Compute ft(X) = \
-    //   (ζ^n - 1) \
+    //   (1 - ζ^n) \
     //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
     // where \sum_i t_i(X) X^{i n} = t(X), and t(X) is the quotient polynomial.
     // At the end, we get the (partial) evaluation of the constraint polynomial
@@ -413,12 +413,11 @@ where
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
 
-        let vanishing_poly: SparsePolynomial<_> = domain.d1.vanishing_polynomial();
-        let vanishing_poly_at_zeta: Fp = vanishing_poly.evaluate(&zeta);
-
-        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
+        // -Z_H = (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta: Fp = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by -Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        t_chunked.scale(vanishing_poly_at_zeta)
+        t_chunked.scale(minus_vanishing_poly_at_zeta)
     };
 
     // We only evaluate at ζω as the verifier can compute the
