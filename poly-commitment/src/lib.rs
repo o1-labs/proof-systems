@@ -13,7 +13,7 @@ use crate::{
     error::CommitmentError,
     evaluation_proof::DensePolynomialOrEvaluations,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::UniformRand;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -164,19 +164,19 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// - `sponge`: Sponge used to coin and absorb values
     /// - `rng`: The RNG to use to generate random elements in the open
     #[allow(clippy::too_many_arguments)]
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
         plnms: PolynomialsToCombine<G, D>,
-        elm: &[<G as AffineCurve>::ScalarField],
-        polyscale: <G as AffineCurve>::ScalarField,
-        evalscale: <G as AffineCurve>::ScalarField,
+        elm: &[<G as AffineRepr>::ScalarField],
+        polyscale: <G as AffineRepr>::ScalarField,
+        evalscale: <G as AffineRepr>::ScalarField,
         sponge: EFqSponge, // sponge
         rng: &mut RNG,
     ) -> Self
     where
         EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng;
 
     fn verify<EFqSponge, RNG>(

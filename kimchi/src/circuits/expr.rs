@@ -2746,7 +2746,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
+            Literal(x) => format!("field(\"0x{}\")", x.into_bigint()),
         }
     }
 
@@ -2755,7 +2755,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
         match self {
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.into_bigint().into()),
         }
     }
 

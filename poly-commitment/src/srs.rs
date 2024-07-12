@@ -1,8 +1,8 @@
 //! This module implements the Marlin structured reference string primitive
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
-use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{BigInteger, PrimeField, Zero};
+use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
@@ -80,17 +80,18 @@ where
 
         let n =
             <<G::BaseField as Field>::BasePrimeField as PrimeField>::BigInt::from_bits_be(&bits);
-        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_repr(n)
+        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_bigint(n)
             .expect("packing code has a bug");
         base_fields.push(t)
     }
 
-    let t = G::BaseField::from_bigint(n).expect("packing code has a bug");
+    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y).mul_by_cofactor()
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> where 
+<G as AffineRepr>::Group: Group {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
@@ -194,14 +195,14 @@ impl<G: CommitmentCurve> SRS<G> {
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
 			// @todo: Check normalize_batch() does it an in-place method?
-            lg = <G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice());
+            let lg = <G as AffineRepr>::Group::normalize_batch(&lg);
             // Append the 'partial Langrange polynomials' to the vector of elems chunks
             elems.push(lg)
         }
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                elems: elems.iter().map(|v| v[i].into_affine()).collect(),})
+                elems: elems.iter().map(|v| v[i]).collect(),})
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
     }
@@ -214,7 +215,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut x_pow = G::ScalarField::one();
         let g: Vec<_> = (0..depth)
             .map(|_| {
-                let res = G::prime_subgroup_generator().mul(x_pow);
+                let res = G::generator().mul(x_pow);
                 x_pow *= x;
                 res.into_affine()
             })

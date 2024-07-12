@@ -6,7 +6,7 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -61,7 +61,7 @@ fn endomul_test() {
         let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
             .take(num_bits)
             .collect();
-        let x = <Other as AffineCurve>::ScalarField::from_repr(
+        let x = <Other as AffineRepr>::ScalarField::from_repr(
             <F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..]),
         )
         .unwrap();

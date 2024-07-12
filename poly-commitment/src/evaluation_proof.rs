@@ -253,10 +253,7 @@ where
             let l = G::Group::msm(
                 &[g_lo, &[self.h, u]].concat(),
                 &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_bigint())
-                    .collect::<Vec<_>>(),
+                    .concat(),
             )
             .expect("Unable to perform MSM")
             .into_affine();
@@ -264,10 +261,7 @@ where
             let r = G::Group::msm(
                 &[g_hi, &[self.h, u]].concat(),
                 &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_repr())
-                    .collect::<Vec<_>>(),
+                    .concat(),
             )
             .expect("Unable to perform MSM")
             .into_affine();
@@ -419,24 +413,24 @@ pub struct OpeningProof<G: AffineRepr> {
 
 impl<
         BaseField: PrimeField,
-        G: AffineCurve<BaseField = BaseField> + CommitmentCurve + EndoCurve,
+        G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,
     > crate::OpenProof<G> for OpeningProof<G>
 {
     type SRS = SRS<G>;
 
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
         plnms: PolynomialsToCombine<G, D>,
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
+        elm: &[<G as AffineRepr>::ScalarField], // vector of evaluation points
+        polyscale: <G as AffineRepr>::ScalarField, // scaling factor for polynoms
+        evalscale: <G as AffineRepr>::ScalarField, // scaling factor for evaluation point powers
         sponge: EFqSponge,                       // sponge
         rng: &mut RNG,
     ) -> Self
     where
         EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng,
     {
         srs.open(group_map, plnms, elm, polyscale, evalscale, sponge, rng)

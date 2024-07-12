@@ -16,7 +16,7 @@ mod tests {
         logup::LookupTableID,
         Ff1, Fp,
     };
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::UniformRand;
     use rand::{CryptoRng, RngCore};
     use std::collections::{BTreeMap, HashMap};

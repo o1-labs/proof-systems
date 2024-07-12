@@ -6,7 +6,7 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
@@ -56,7 +56,7 @@ fn varbase_mul_test() {
     for i in 0..num_scalars {
         let x = F::rand(rng);
         let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
-        let x_ = <Other as AffineCurve>::ScalarField::from_repr(
+        let x_ = <Other as AffineRepr>::ScalarField::from_repr(
             <F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..]),
         )
         .unwrap();
@@ -76,9 +76,9 @@ fn varbase_mul_test() {
             acc,
         );
 
-        let shift = <Other as AffineCurve>::ScalarField::from(2).pow([(bits_msb.len()) as u64]);
+        let shift = <Other as AffineRepr>::ScalarField::from(2).pow([(bits_msb.len()) as u64]);
         let expected = g
-            .mul((<Other as AffineCurve>::ScalarField::one() + shift + x_.double()).into_repr())
+            .mul((<Other as AffineRepr>::ScalarField::one() + shift + x_.double()).into_repr())
             .into_affine();
 
         assert_eq!(x_.into_repr(), res.n.into_repr());

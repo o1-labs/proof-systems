@@ -10,7 +10,7 @@ use crate::{
     plonk_sponge::FrSponge,
 };
 
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -23,8 +23,8 @@ use o1_utils::{BitwiseOps, FieldHelpers, RandomField};
 
 use super::framework::TestFramework;
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
-type VestaField = <Vesta as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
+type VestaField = <Vesta as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;

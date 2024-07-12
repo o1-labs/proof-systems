@@ -3,7 +3,7 @@
 //! scheme as they describe the basic expressiveness of the system.
 
 use crate::FoldingConfig;
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use derivative::Derivative;
 use kimchi::circuits::expr::Variable;
 
@@ -28,7 +28,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     /// The error term introduced in the "relaxed" instance.
     Error,
     /// A constant value in our expression
-    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Constant(<C::Curve as AffineRepr>::ScalarField),
     /// A challenge used by the PIOP or the folding scheme.
     Challenge(C::Challenge),
     /// A list of randomizer to combine expressions

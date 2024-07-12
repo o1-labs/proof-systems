@@ -39,7 +39,7 @@ use super::evaluation_proof::*;
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
-pub struct PolyComm<C> {
+pub struct PolyComm<C>{
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub elems: Vec<C>,
 }
@@ -208,7 +208,7 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, 'b, C: Group> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -229,7 +229,7 @@ impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     }
 }
 
-impl<'a, 'b, C: AffineRepr> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, 'b, C: Group> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -254,7 +254,7 @@ impl<C: AffineRepr> PolyComm<C>
 where
     <C as AffineRepr>::Group: VariableBaseMSM,
 {
-    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
+    pub fn scale(&self, c: <C as AffineRepr>::ScalarField) -> PolyComm<C> {
         PolyComm {
             elems: self.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
@@ -266,14 +266,12 @@ where
     /// ## Panics
     ///
     /// Panics if `com` and `elm` are not of the same size.
-    pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
+    pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[<C as AffineRepr>::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
             return Self::new(vec![C::zero()]);
         }
-
-        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
 
         let elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
         let mut elems = Vec::with_capacity(elems_size);
@@ -375,7 +373,7 @@ pub trait CommitmentCurve: AffineRepr {
 }
 
 /// A trait extending CommitmentCurve for endomorphisms.
-/// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
+/// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 pub trait EndoCurve: CommitmentCurve {
     /// Combine where x1 = one
@@ -404,7 +402,7 @@ pub trait EndoCurve: CommitmentCurve {
     }
 }
 
-impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P> {
+impl<P: SWCurveConfig + Clone> CommitmentCurve for Affine<P> {
     type Params = P;
     type Map = BWParameters<P>;
 
@@ -695,7 +693,7 @@ where
             .map(|(g, b)| {
                 let mut g_masked: <G as AffineRepr>::Group =
                     self.h.into_group().mul_bigint(b.into_bigint());
-                g_masked.add_assign(&g);
+                g_masked += &g;
                 g_masked.into_affine()
             });
         Ok(BlindedCommitment {
@@ -724,7 +722,7 @@ where
             elems.push(G::zero());
         } else {
             coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = G::Group::msm(&self.g, coeffs_chunk).expect("Unable to perform MSM");
+                let chunk = G::Group::msm_bigint(&self.g, coeffs_chunk);
                 elems.push(chunk.into_affine());
             });
         }
@@ -957,7 +955,7 @@ impl<G: CommitmentCurve> SRS<G> {
             // == sum_j sum_i evalscale^j polyscale^i f_i(elm_j)
             // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
             combine_commitments(
-                evaluations,
+                &evaluations,
                 &mut scalars,
                 &mut points,
                 *polyscale,

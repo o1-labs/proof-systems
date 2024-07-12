@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, PrimeField};
-use num_bigint::{BigUint, RandBigInt};
+use num_bigint::{BigUint, RandBigInt, BigInt, ToBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;

@@ -4,7 +4,7 @@ use crate::{
     test::test_circuit::columns::TestColumn,
     LIMB_BITSIZE, N_LIMBS,
 };
-use ark_ff::{PrimeField, SquareRootField, Zero};
+use ark_ff::{PrimeField, Field, Zero};
 
 fn fill_limbs_a_b<
     F: PrimeField,
@@ -248,7 +248,7 @@ pub fn test_fixed_sel_degree_7_with_constants<
 
 /// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_E.
 pub fn test_fixed_sel_degree_7_mul_witness<
-    F: SquareRootField + PrimeField,
+    F: Field + PrimeField,
     Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn> + DirectWitnessCap<F, TestColumn>,
 >(
     env: &mut Env,
