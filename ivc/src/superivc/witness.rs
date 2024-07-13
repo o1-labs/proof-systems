@@ -19,6 +19,9 @@ use poly_commitment::PolyComm;
 /// - N_APP_COL: the number of columns used by the applications. It does suppose
 /// all applications use the same number of columns
 // FIXME: constrain the curve, field, etc to be the same
+// FIXME: instead of indexing by usize, it would be nice to have a type
+// "instruction" or "application" that can be later generalized. It could simply
+// be an enum.
 pub struct Env<
     SpongeConfig: SpongeConstants,
     FCApp: FoldingConfig,
