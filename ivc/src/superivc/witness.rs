@@ -34,3 +34,11 @@ pub struct Env<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usiz
     /// Contains the current application instance that will be folded with
     pub current_app_instance: [PolyComm<FCApp::Curve>; N_APP_COL],
 }
+
+impl<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usize>
+    Env<FCApp, FCIVC, N_APP_COL>
+{
+    pub fn set_current_app_instance(&mut self, instance: [PolyComm<FCApp::Curve>; N_APP_COL]) {
+        self.current_app_instance = instance
+    }
+}
