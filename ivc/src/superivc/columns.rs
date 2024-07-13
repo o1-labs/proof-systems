@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, PartialEq)]
 pub enum SuperIVCColumn {
     /// Public selectors
     /// Selector to compute the ECC addition

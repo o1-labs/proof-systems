@@ -5,6 +5,8 @@ use folding::{FoldingConfig, FoldingOutput};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::PolyComm;
 
+use super::{columns::SuperIVCColumn, interpreter::InterpreterEnv};
+
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
 /// instance k, including the sponges.
@@ -72,4 +74,16 @@ impl<
     ) -> <<FCApp as FoldingConfig>::Curve as AffineCurve>::ScalarField {
         self.sponges[&instruction].state[0]
     }
+}
+
+impl<
+        SpongeConfig: SpongeConstants,
+        FCApp: FoldingConfig,
+        FCIVC: FoldingConfig<Curve = FCApp::Curve, Srs = FCApp::Srs>,
+        const N_APP_COL: usize,
+    > InterpreterEnv for Env<SpongeConfig, FCApp, FCIVC, N_APP_COL>
+{
+    type Position = SuperIVCColumn;
+
+    type Variable = <<FCApp as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 }
