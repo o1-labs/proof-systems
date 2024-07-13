@@ -16,6 +16,7 @@ use poly_commitment::PolyComm;
 /// - FCIVC: a folding configuration specific for the IVC circuit only
 /// - N_APP_COL: the number of columns used by the applications. It does suppose
 /// all applications use the same number of columns
+// FIXME: constrain the curve, field, etc to be the same
 pub struct Env<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usize> {
     /// IVC accumulators, indexed by natural numbers, but it should be an
     /// instruction or an enum representing a list of accepting "functions".
