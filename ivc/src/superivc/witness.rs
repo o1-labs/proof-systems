@@ -17,7 +17,11 @@ use poly_commitment::PolyComm;
 /// - N_APP_COL: the number of columns used by the applications. It does suppose
 /// all applications use the same number of columns
 // FIXME: constrain the curve, field, etc to be the same
-pub struct Env<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usize> {
+pub struct Env<
+    FCApp: FoldingConfig,
+    FCIVC: FoldingConfig<Curve = FCApp::Curve, Srs = FCApp::Srs>,
+    const N_APP_COL: usize,
+> {
     /// IVC accumulators, indexed by natural numbers, but it should be an
     /// instruction or an enum representing a list of accepting "functions".
     pub ivc_accumulators: BTreeMap<usize, FoldingOutput<FCIVC>>,
@@ -36,8 +40,11 @@ pub struct Env<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usiz
     pub current_app_instance: [PolyComm<FCApp::Curve>; N_APP_COL],
 }
 
-impl<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usize>
-    Env<FCApp, FCIVC, N_APP_COL>
+impl<
+        FCApp: FoldingConfig,
+        FCIVC: FoldingConfig<Curve = FCApp::Curve, Srs = FCApp::Srs>,
+        const N_APP_COL: usize,
+    > Env<FCApp, FCIVC, N_APP_COL>
 {
     pub fn set_current_app_instance(&mut self, instance: [PolyComm<FCApp::Curve>; N_APP_COL]) {
         self.current_app_instance = instance
