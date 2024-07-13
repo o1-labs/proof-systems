@@ -7,6 +7,9 @@ pub enum SuperIVCColumn {
     /// Selector to split the foreign field elements into chunks of 150 bits and
     /// 75 bits that can be used for the EC ADD
     BlockAppSplit,
+    /// Public columns. Should be at least the number of round constants for
+    /// Poseidon
+    PublicColumn(usize),
     /// Any variable
     X(usize),
 }
