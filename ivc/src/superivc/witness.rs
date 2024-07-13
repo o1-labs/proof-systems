@@ -60,11 +60,14 @@ impl<
         self.current_app_instance = instance
     }
 
-    // FIXME: get the output of selected application
+    /// Return the output of the application.
+    /// We define the output as the first element of the sponge specialised for
+    /// the application, after absorbing all the commitments of the current app
+    /// instance being processed
     pub fn get_application_output(
         &self,
-        _instruction: usize,
+        instruction: usize,
     ) -> <<FCApp as FoldingConfig>::Curve as AffineCurve>::ScalarField {
-        <FCApp::Curve as AffineCurve>::ScalarField::one()
+        self.sponges[&instruction].state[0]
     }
 }
