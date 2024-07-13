@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use folding::{FoldingConfig, FoldingOutput};
 use mina_poseidon::poseidon::SpongeState;
+use poly_commitment::PolyComm;
 
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
@@ -29,4 +30,7 @@ pub struct Env<FCApp: FoldingConfig, FCIVC: FoldingConfig, const N_APP_COL: usiz
     /// instructions, we can use the different sponges states to compute a new
     /// global one.
     pub sponges: BTreeMap<usize, SpongeState>,
+
+    /// Contains the current application instance that will be folded with
+    pub current_app_instance: [PolyComm<FCApp::Curve>; N_APP_COL],
 }
