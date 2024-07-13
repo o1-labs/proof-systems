@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use ark_ec::AffineCurve;
+use ark_ff::One;
 use folding::{FoldingConfig, FoldingOutput};
 use mina_poseidon::poseidon::SpongeState;
 use poly_commitment::PolyComm;
@@ -48,5 +50,13 @@ impl<
 {
     pub fn set_current_app_instance(&mut self, instance: [PolyComm<FCApp::Curve>; N_APP_COL]) {
         self.current_app_instance = instance
+    }
+
+    // FIXME: get the output of selected application
+    pub fn get_application_output(
+        &self,
+        _instruction: usize,
+    ) -> <<FCApp as FoldingConfig>::Curve as AffineCurve>::ScalarField {
+        <FCApp::Curve as AffineCurve>::ScalarField::one()
     }
 }
