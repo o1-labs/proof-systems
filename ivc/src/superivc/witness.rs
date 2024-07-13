@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ark_ec::AffineCurve;
-use ark_ff::One;
 use folding::{FoldingConfig, FoldingOutput};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::PolyComm;
