@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use folding::{FoldingConfig, FoldingOutput};
-use mina_poseidon::poseidon::SpongeState;
+use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::PolyComm;
 
 /// An environment that can be shared between IVC instances
@@ -20,6 +20,7 @@ use poly_commitment::PolyComm;
 /// all applications use the same number of columns
 // FIXME: constrain the curve, field, etc to be the same
 pub struct Env<
+    SpongeConfig: SpongeConstants,
     FCApp: FoldingConfig,
     FCIVC: FoldingConfig<Curve = FCApp::Curve, Srs = FCApp::Srs>,
     const N_APP_COL: usize,
@@ -36,17 +37,24 @@ pub struct Env<
     /// We keep one sponge state by isntruction and when we merge different
     /// instructions, we can use the different sponges states to compute a new
     /// global one.
-    pub sponges: BTreeMap<usize, SpongeState>,
+    pub sponges: BTreeMap<
+        usize,
+        ArithmeticSponge<
+            <<FCApp as FoldingConfig>::Curve as AffineCurve>::ScalarField,
+            SpongeConfig,
+        >,
+    >,
 
     /// Contains the current application instance that will be folded with
     pub current_app_instance: [PolyComm<FCApp::Curve>; N_APP_COL],
 }
 
 impl<
+        SpongeConfig: SpongeConstants,
         FCApp: FoldingConfig,
         FCIVC: FoldingConfig<Curve = FCApp::Curve, Srs = FCApp::Srs>,
         const N_APP_COL: usize,
-    > Env<FCApp, FCIVC, N_APP_COL>
+    > Env<SpongeConfig, FCApp, FCIVC, N_APP_COL>
 {
     pub fn set_current_app_instance(&mut self, instance: [PolyComm<FCApp::Curve>; N_APP_COL]) {
         self.current_app_instance = instance
