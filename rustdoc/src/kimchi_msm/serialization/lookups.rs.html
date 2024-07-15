@@ -174,6 +174,7 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
@@ -238,7 +239,8 @@
     }
 
     <span class="doccomment">/// Converts a value to its index in the fixed table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; usize {
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+        <span class="kw">let </span>value = value[<span class="number">0</span>];
         <span class="macro">assert!</span>(<span class="self">self</span>.is_member(value));
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),

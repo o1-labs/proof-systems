@@ -222,8 +222,8 @@
         <span class="bool-val">true
     </span>}
 
-    <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; usize {
-        <span class="kw">if </span>value == F::zero() {
+    <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+        <span class="kw">if </span>value[<span class="number">0</span>] == F::zero() {
             <span class="number">0
         </span>} <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;Invalid value for DummyLookupTable&quot;</span>)
@@ -281,7 +281,7 @@
         <span class="bool-val">true
     </span>}
 
-    <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: F) -&gt; usize {
+    <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
         <span class="macro">todo!</span>()
     }
 

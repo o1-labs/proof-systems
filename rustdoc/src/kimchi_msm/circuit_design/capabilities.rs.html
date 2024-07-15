@@ -219,7 +219,7 @@
 <span class="kw">where
     </span><span class="self">Self</span>: ColAccessCap&lt;F, CIx&gt;,
 {
-    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: Vec&lt;<span class="self">Self</span>::Variable&gt;);
 }
 
 <span class="doccomment">/// Capability for reading and moving forward in a multirow fashion.

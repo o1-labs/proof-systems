@@ -166,26 +166,26 @@
     <span class="kw">let </span>f: Env::Variable = Env::read_column(env, FFAColumn::ModulusF(limb_num));
     <span class="kw">let </span>r: Env::Variable = Env::read_column(env, FFAColumn::Remainder(limb_num));
     <span class="kw">let </span>q: Env::Variable = Env::read_column(env, FFAColumn::Quotient);
-    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>a);
-    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>b);
-    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>f);
-    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>r);
-    env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>q);
+    env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[a.clone()]);
+    env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[b.clone()]);
+    env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[f.clone()]);
+    env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[r.clone()]);
+    env.lookup(LookupTable::RangeCheck1BitSigned, <span class="macro">vec!</span>[q.clone()]);
     <span class="kw">let </span>constraint = <span class="kw">if </span>limb_num == <span class="number">0 </span>{
         <span class="kw">let </span>limb_size = Env::constant(From::from((<span class="number">1 </span>&lt;&lt; LIMB_BITSIZE) <span class="kw">as </span>u64));
         <span class="kw">let </span>c0: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
-        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c0);
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="macro">vec!</span>[c0.clone()]);
         a + b - q * f - r - c0 * limb_size
     } <span class="kw">else if </span>limb_num &lt; N_LIMBS - <span class="number">1 </span>{
         <span class="kw">let </span>limb_size = Env::constant(From::from((<span class="number">1 </span>&lt;&lt; LIMB_BITSIZE) <span class="kw">as </span>u64));
         <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - <span class="number">1</span>));
         <span class="kw">let </span>c_cur: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
-        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_prev);
-        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_cur);
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="macro">vec!</span>[c_prev.clone()]);
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="macro">vec!</span>[c_cur.clone()]);
         a + b - q * f - r - c_cur * limb_size + c_prev
     } <span class="kw">else </span>{
         <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - <span class="number">1</span>));
-        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_prev);
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="macro">vec!</span>[c_prev.clone()]);
         a + b - q * f - r + c_prev
     };
     env.assert_zero(constraint);

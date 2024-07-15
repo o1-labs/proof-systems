@@ -344,7 +344,7 @@
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,
                 )),
-                x,
+                <span class="macro">vec!</span>[x.clone()],
             );
         } <span class="kw">else </span>{
             <span class="comment">// TODO Add this lookup.
@@ -368,12 +368,12 @@
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,
                 )),
-                x,
+                <span class="macro">vec!</span>[x.clone()],
             );
         } <span class="kw">else </span>{
             env.lookup(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
-                x,
+                <span class="macro">vec!</span>[x.clone()],
             );
         }
     }

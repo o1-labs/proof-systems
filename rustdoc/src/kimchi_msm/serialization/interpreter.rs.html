@@ -852,6 +852,9 @@
 <a href="#852" id="852">852</a>
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -1022,7 +1025,7 @@
     <span class="comment">// Range check on each limb
     </span>limb2_vars
         .iter()
-        .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
+        .for_each(|v| env.lookup(LookupTable::RangeCheck4, <span class="macro">vec!</span>[v.clone()]));
 
     <span class="kw">let </span><span class="kw-2">mut </span>fifteen_bits_vars = <span class="macro">vec!</span>[];
 
@@ -1052,7 +1055,7 @@
     <span class="comment">// Range check on each limb
     </span>fifteen_bits_vars
         .iter()
-        .for_each(|v| env.lookup(LookupTable::RangeCheck15, v));
+        .for_each(|v| env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[v.clone()]));
 
     <span class="kw">let </span>shl_88_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">88u128</span>));
     <span class="kw">let </span>shl_15_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">15u128</span>));
@@ -1256,15 +1259,18 @@
     </span><span class="kw">for </span>(i, x) <span class="kw">in </span>coeff_result_limbs_small.iter().enumerate() {
         <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
             <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
-            </span>env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
+            </span>env.lookup(
+                LookupTable::RangeCheckFfHighest(PhantomData),
+                <span class="macro">vec!</span>[x.clone()],
+            );
         } <span class="kw">else </span>{
-            env.lookup(LookupTable::RangeCheck15, x);
+            env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[x.clone()]);
         }
     }
 
     <span class="comment">// Quotient limbs must fit into 15 bits, but we don&#39;t care if they&#39;re in the field.
     </span><span class="kw">for </span>x <span class="kw">in </span>quotient_limbs_small.iter() {
-        env.lookup(LookupTable::RangeCheck15, x);
+        env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[x.clone()]);
     }
 
     <span class="comment">// Carry limbs need to be in particular ranges.
@@ -1272,10 +1278,10 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a different range check depending on which big-limb we&#39;re processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.lookup(LookupTable::RangeCheck9Abs, x); <span class="comment">// 4 + 5 ?
+            </span>env.lookup(LookupTable::RangeCheck9Abs, <span class="macro">vec!</span>[x.clone()]); <span class="comment">// 4 + 5 ?
         </span>} <span class="kw">else </span>{
             <span class="comment">// TODO add actual lookup
-            </span>env.lookup(LookupTable::RangeCheck14Abs, x);
+            </span>env.lookup(LookupTable::RangeCheck14Abs, <span class="macro">vec!</span>[x.clone()]);
             <span class="comment">//env.range_check_abs15(x);
             // assert!(x &lt; F::from(1u64 &lt;&lt; 15) || x &gt;= F::zero() - F::from(1u64 &lt;&lt; 15));
         </span>}

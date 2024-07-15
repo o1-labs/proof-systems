@@ -87,6 +87,7 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::logup::LookupTableID;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
@@ -131,7 +132,8 @@
     }
 
     <span class="doccomment">/// Converts a value to its index in the fixed table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; usize {
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+        <span class="kw">let </span>value = value[<span class="number">0</span>];
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
             <span class="self">Self</span>::RangeCheck1BitSigned =&gt; {

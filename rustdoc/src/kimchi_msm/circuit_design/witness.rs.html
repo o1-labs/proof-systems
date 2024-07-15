@@ -635,8 +635,8 @@
         LT: LookupTableID,
     &gt; LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
-    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: <span class="kw-2">&amp;</span>&lt;<span class="self">Self </span><span class="kw">as </span>ColAccessCap&lt;F, CIx&gt;&gt;::Variable) {
-        <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">*</span>value);
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: Vec&lt;&lt;<span class="self">Self </span><span class="kw">as </span>ColAccessCap&lt;F, CIx&gt;&gt;::Variable&gt;) {
+        <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">&amp;</span>value);
         <span class="self">self</span>.lookup_multiplicities.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap()[value_ix] += F::one();
         <span class="self">self</span>.lookups
             .last_mut()
@@ -646,7 +646,7 @@
             .push(Logup {
                 table_id,
                 numerator: F::one(),
-                value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
+                value,
             })
     }
 }

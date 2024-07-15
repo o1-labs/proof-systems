@@ -694,6 +694,9 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},
@@ -954,9 +957,12 @@
     {
         <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
             <span class="comment">// If it&#39;s the highest limb, we need to check that it&#39;s representing a field element.
-            </span>env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
+            </span>env.lookup(
+                LookupTable::RangeCheckFfHighest(PhantomData),
+                <span class="macro">vec!</span>[x.clone()],
+            );
         } <span class="kw">else </span>{
-            env.lookup(LookupTable::RangeCheck15, x);
+            env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[x.clone()]);
         }
     }
 
@@ -966,7 +972,7 @@
         .chain(q2_limbs_small.iter())
         .chain(q3_limbs_small.iter())
     {
-        env.lookup(LookupTable::RangeCheck15, x);
+        env.lookup(LookupTable::RangeCheck15, <span class="macro">vec!</span>[x.clone()]);
     }
 
     <span class="comment">// Signs must be -1 or 1.
@@ -984,9 +990,9 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a diferent range check depending on which big-limb we&#39;re processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.lookup(LookupTable::RangeCheck9Abs, x);
+            </span>env.lookup(LookupTable::RangeCheck9Abs, <span class="macro">vec!</span>[x.clone()]);
         } <span class="kw">else </span>{
-            env.lookup(LookupTable::RangeCheck14Abs, x);
+            env.lookup(LookupTable::RangeCheck14Abs, <span class="macro">vec!</span>[x.clone()]);
         }
     }
 

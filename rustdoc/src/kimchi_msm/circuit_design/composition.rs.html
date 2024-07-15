@@ -768,7 +768,7 @@
         L: MPrism&lt;Source = LT1, Target = LT2&gt;,
     &gt; LookupCap&lt;F, CIx, LT2&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx, Env1, L&gt;
 {
-    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT2, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT2, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="self">self</span>.<span class="number">0</span>.env.lookup(<span class="self">self</span>.<span class="number">0</span>.lens.re_get(lookup_id), value)
     }
 }
@@ -783,7 +783,7 @@
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; LookupCap&lt;F, CIx2, LT&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
-    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="self">self</span>.<span class="number">0</span>.env.lookup(lookup_id, value)
     }
 }
