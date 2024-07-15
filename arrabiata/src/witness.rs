@@ -76,3 +76,16 @@ impl<
         }
     }
 }
+
+impl<
+        Fp: PrimeField,
+        Fq: PrimeField,
+        SpongeConfig: SpongeConstants,
+        E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+    > Default for Env<Fp, Fq, SpongeConfig, E1, E2>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
