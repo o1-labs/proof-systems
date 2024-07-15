@@ -29,3 +29,20 @@ interpreter. An interpreter will be implemented over an abstract environment.
 The environment used for the witness will contain all the information required
 to make an IVC proof, i.e. the current witness in addition to the oracle, the
 folding accumulator, etc.
+
+### Examples
+
+Different built-in examples are provided. For instance:
+```
+cargo run --bin arrabiata --release -- square-root --n 10
+```
+
+will generate 10 full Nova iterations of the polynomial-time function `f(X, Y) =
+X^2 - Y` and for each witness, generates random values, and make an IVC proof at
+the end.
+
+### Run tests
+
+```
+cargo nextest run --all-features --release
+```
