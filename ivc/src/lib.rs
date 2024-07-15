@@ -198,6 +198,26 @@
 //! constraints are in [crate::ivc::constraints::constrain_ivc]. The fold
 //! iteration column is set at each row by each process_* function in the
 //! interpreter.
+//!
+//! ## Bifolding (work in progress)
+//!
+//! The Nova IVC scheme only allows to perform sequential computation.
+//! However, in some applications, like for o1VM, we need to perform parallel
+//! computation. For instance, we want to be able to fold all instances of the
+//! ADD instructions while we are folding all instances of MUL instructions, and
+//! only at the end, merge the accumulators. To do so, we need to introduce a
+//! new concept called "bifolding".
+//!
+//! The main idea behind bifolding is to allow in the augmented circuit to
+//! perform the acccumulation of two individual application circuits only (i.e.
+//! no IVC circuit accumulation), and when we finished accumulating the
+//! application circuits, we only want to accumulate the IVC parts.
+//!
+//! This can also help to parallelize the folding of application circuits.
+//! For instance, if we have 4 application instances, `u_1^{APP}`, `u_2^{APP}`,
+//! `u_3^{APP}` and `u_4^{APP}`, we want to be able to fold `u_1^{APP}` with
+//! `u_2^{APP}` while we are doing in parallel the folding of `u_3^{APP}`
+//! with`u_4^{APP}`, and then fold the result of the two accumulations.
 
 pub mod expr_eval;
 pub mod ivc;
