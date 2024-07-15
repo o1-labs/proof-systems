@@ -25,7 +25,9 @@ pub struct Env<
     /// We keep one sponge state by isntruction and when we merge different
     /// instructions, we can use the different sponges states to compute a new
     /// global one.
-    pub sponge_fp: ArithmeticSponge<Fp, SpongeConfig>,
+    // FIXME: must not be a Option. Only because I don't want to instiate for
+    // now.
+    pub sponge_fp: Option<ArithmeticSponge<Fp, SpongeConfig>>,
 
     /// List of public inputs, used first to verify the consistency of the
     /// previous iteration.
@@ -54,4 +56,23 @@ impl<
 
     // Only constraint
     fn add_constraint(&mut self, _constraint: Self::Variable) {}
+}
+
+impl<
+        Fp: PrimeField,
+        Fq: PrimeField,
+        SpongeConfig: SpongeConstants,
+        E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+    > Env<Fp, Fq, SpongeConfig, E1, E2>
+{
+    pub fn new() -> Self {
+        Self {
+            ivc_accumulator_e1: E1::zero(),
+            ivc_accumulator_e2: E2::zero(),
+            sponge_fp: None,
+            current_iteration: 0,
+            previous_hash: [0; 2],
+        }
+    }
 }

@@ -1,3 +1,8 @@
+use arrabiata::witness::Env;
+use mina_curves::pasta::{Fp, Fq, Vesta, Pallas};
+// FIXME: use other parameters, like one with the partial rounds
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
+
 pub fn main() {
     let arg_n =
         clap::arg!(--"n" <U64> "Number of iterations").value_parser(clap::value_parser!(u64));
@@ -13,4 +18,6 @@ pub fn main() {
     };
     let n_iteration = matches.get_one::<u64>("n");
     println!("{n_iteration:?}");
+
+    let _env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new();
 }
