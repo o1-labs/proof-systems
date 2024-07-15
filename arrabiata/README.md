@@ -12,7 +12,7 @@ arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
 The first iteration of the project will allow to fold a polynomial-time function
-`f`, of degree 2.
+`f`, of degree 2. No lookup argument will be implemented in the first version.
 A generalisation can be done using different constructions, like the ones
 described in the [folding](../folding) library, or in papers like
 [ProtoGalaxy](https://eprint.iacr.org/2023/1106),
@@ -20,3 +20,12 @@ described in the [folding](../folding) library, or in papers like
 work.
 
 *This might need changes to the Mina blockchain, with a possible new hardfork.
+
+### Implementation details
+
+We provide a binary to run arbitrarily large computation.
+The implementation of the circuits will follow the one used by the o1vm
+interpreter. An interpreter will be implemented over an abstract environment.
+The environment used for the witness will contain all the information required
+to make an IVC proof, i.e. the current witness in addition to the oracle, the
+folding accumulator, etc.
