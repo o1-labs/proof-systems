@@ -1,5 +1,5 @@
 use arrabiata::witness::Env;
-use mina_curves::pasta::{Fp, Fq, Vesta, Pallas};
+use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
 
