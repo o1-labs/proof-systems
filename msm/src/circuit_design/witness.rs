@@ -194,7 +194,7 @@ impl<
             .push(Logup {
                 table_id,
                 numerator: F::one(),
-                value: value,
+                value,
             })
     }
 }
