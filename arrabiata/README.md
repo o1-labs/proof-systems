@@ -15,6 +15,8 @@ The first iteration of the project will allow to fold a polynomial-time function
 `f`, of degree 2.
 A generalisation can be done using different constructions, like the ones
 described in the [folding](../folding) library, or in papers like
-[ProtoGalaxy](), [ProtoStar](), etc. We leave this for future workProto.
+[ProtoGalaxy](https://eprint.iacr.org/2023/1106),
+[ProtoStar](https://eprint.iacr.org/2023/620), etc. We leave this for future
+work.
 
 *This might need changes to the Mina blockchain, with a possible new hardfork.
