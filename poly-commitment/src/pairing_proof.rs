@@ -2,8 +2,9 @@ use crate::{
     commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
     PolynomialsToCombine, SRS as SRSTrait,
 };
+
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
@@ -369,15 +370,24 @@ impl<
             .elems[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
+        // We compute the result of the multiplication of two miller loop,
+        // to apply only one final exponentation
+        let to_loop = [
+            (
+                ark_ec::prepare_g1::<Pair>(numerator_commitment),
+                ark_ec::prepare_g2::<Pair>(Pair::G2Affine::prime_subgroup_generator()),
+            ),
+            (
+                // Note that we do a neagtion here, to put everything on the same side
+                (self.quotient).neg().into(),
+                ark_ec::prepare_g2::<Pair>(divisor_commitment),
+            ),
+        ];
+        // the result here is numerator_commitment * 1 - quotient * divisor_commitment
+        // Note that the unwrap cannot fail as the output of a miller loop is non zero
+        let res = Pair::final_exponentiation(&(Pair::miller_loop(&to_loop))).unwrap();
 
-        // IMRPROVEME: we could simply do one pairing, and split in two miller
-        // loop + pow
-        let numerator = Pair::pairing(
-            numerator_commitment,
-            Pair::G2Affine::prime_subgroup_generator(),
-        );
-        let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
-        numerator == scaled_quotient
+        res == Pair::Fqk::one()
     }
 }
 
