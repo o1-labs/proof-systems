@@ -1,5 +1,10 @@
 use ark_ff::{One, Zero};
 
+/// For the IVC circuit, we need different gadgets in addition to run the
+/// polynomial-time function:
+/// - Hash: we need compute the hash of the public input, which is the output of
+/// the previous instance.
+/// - Elliptic curve addition: we need to compute the elliptic curve operation.
 pub trait InterpreterEnv {
     type Position;
 
