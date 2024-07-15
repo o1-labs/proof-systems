@@ -2,15 +2,14 @@ use ark_ff::Field;
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 
-use super::{columns::SuperIVCColumn, interpreter::InterpreterEnv};
+use super::{columns::Column, interpreter::InterpreterEnv};
 
 pub struct Env<Fp: Field> {
-    pub current_idx: usize,
-    pub constraints: Vec<Expr<ConstantExpr<Fp>, SuperIVCColumn>>,
+    pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
-    type Position = SuperIVCColumn;
+    type Position = Column;
 
-    type Variable = Expr<ConstantExpr<Fp>, SuperIVCColumn>;
+    type Variable = Expr<ConstantExpr<Fp>, Column>;
 }

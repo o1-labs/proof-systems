@@ -26,6 +26,13 @@ pub struct Env<
     /// instructions, we can use the different sponges states to compute a new
     /// global one.
     pub sponge_fp: ArithmeticSponge<Fp, SpongeConfig>,
+
+    /// List of public inputs, used first to verify the consistency of the
+    /// previous iteration.
+    pub current_iteration: usize,
+
+    /// A previous hash, encoded in 2 chunks of 128 bits.
+    pub previous_hash: [u128; 2],
 }
 
 impl<
