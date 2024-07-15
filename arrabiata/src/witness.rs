@@ -31,7 +31,7 @@ pub struct Env<
 
     /// List of public inputs, used first to verify the consistency of the
     /// previous iteration.
-    pub current_iteration: usize,
+    pub current_iteration: u64,
 
     /// A previous hash, encoded in 2 chunks of 128 bits.
     pub previous_hash: [u128; 2],
