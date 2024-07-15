@@ -20,13 +20,7 @@ pub struct Env<
     // FIXME
     pub ivc_accumulator_e2: E2,
 
-    /// Sponges, index by natural numbers. The natural numbers should be the
-    /// instruction.
-    /// We keep one sponge state by isntruction and when we merge different
-    /// instructions, we can use the different sponges states to compute a new
-    /// global one.
-    // FIXME: must not be a Option. Only because I don't want to instiate for
-    // now.
+    // FIXME: must not be an option
     pub sponge_fp: Option<ArithmeticSponge<Fp, SpongeConfig>>,
 
     /// List of public inputs, used first to verify the consistency of the
