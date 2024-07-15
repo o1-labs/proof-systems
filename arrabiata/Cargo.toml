@@ -7,6 +7,10 @@ documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
 edition = "2021"
 license = "Apache-2.0"
 
+[[bin]]
+name = "arrabiata"
+path = "src/main.rs"
+
 [dependencies]
 ark-ec.workspace = true
 ark-ff.workspace = true
