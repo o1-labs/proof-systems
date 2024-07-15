@@ -95,7 +95,7 @@ impl LookupTableID for LookupTableIDs {
         }
     }
 
-    fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
+    fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> usize {
         todo!()
     }
 

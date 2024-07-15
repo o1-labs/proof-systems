@@ -39,7 +39,7 @@ fn range_check_scalar_limbs<F, Ff, Env>(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,
                 )),
-                x,
+                vec![x.clone()],
             );
         } else {
             // TODO Add this lookup.
@@ -63,12 +63,12 @@ fn range_check_small_limbs<F, Ff, Env>(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,
                 )),
-                x,
+                vec![x.clone()],
             );
         } else {
             env.lookup(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
-                x,
+                vec![x.clone()],
             );
         }
     }
