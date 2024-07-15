@@ -20,3 +20,17 @@ pub trait InterpreterEnv {
 
     fn add_constraint(&mut self, constraint: Self::Variable);
 }
+
+/// Run an iteration of the IVC scheme.
+/// It consists of the following steps:
+/// 1. Compute the hash of the public input.
+/// 2. Compute the elliptic curve addition.
+/// 3. Run the polynomial-time function.
+/// 4. Compute the hash of the output.
+/// The environment is updated over time.
+/// When the environment is the one described in the [Witness
+/// environment](crate::witness::Env), the structure will be updated
+/// with the new accumulator, the new public input, etc. The public output will
+/// be in the structure also. The user can simply rerun the function for the
+/// next iteration.
+pub fn run<E: InterpreterEnv>(_env: &mut E) {}
