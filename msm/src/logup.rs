@@ -684,6 +684,7 @@ pub mod prover {
                 .values()
                 .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
 
+            // Does not contain the right key
             #[allow(clippy::type_complexity)]
             let lookup_terms_evals_d1: BTreeMap<
                 ID,
@@ -715,6 +716,7 @@ pub mod prover {
                 })
                 .collect();
 
+            // This does not contain the right key
             let lookup_terms_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>> =
                 (&lookup_terms_evals_d1)
                     .into_par_iter()
@@ -733,6 +735,7 @@ pub mod prover {
                     .map(|(id, evals)| (*id, evals.interpolate_by_ref()))
                     .collect();
 
+            // this does not contain the runtime table key
             #[allow(clippy::type_complexity)]
             let lookup_terms_evals_d8: BTreeMap<
                 ID,
