@@ -33,4 +33,6 @@ pub trait InterpreterEnv {
 /// with the new accumulator, the new public input, etc. The public output will
 /// be in the structure also. The user can simply rerun the function for the
 /// next iteration.
+/// A row must be created to generate a challenge to combine the constraints
+/// later. The challenge will be also accumulated over time.
 pub fn run<E: InterpreterEnv>(_env: &mut E) {}
