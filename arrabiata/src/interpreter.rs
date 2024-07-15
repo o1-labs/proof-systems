@@ -10,4 +10,8 @@ pub trait InterpreterEnv {
         + std::fmt::Debug
         + Zero
         + One;
+
+    fn variable(&self, position: Self::Position) -> Self::Variable;
+
+    fn add_constraint(&mut self, constraint: Self::Variable);
 }

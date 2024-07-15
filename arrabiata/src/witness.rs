@@ -47,4 +47,11 @@ impl<
 
     // FIXME
     type Variable = Fp;
+
+    fn variable(&self, _column: Self::Position) -> Self::Variable {
+        todo!();
+    }
+
+    // Only constraint
+    fn add_constraint(&mut self, _constraint: Self::Variable) {}
 }

@@ -1,6 +1,10 @@
 use ark_ff::Field;
+use kimchi::circuits::{
+    expr::{Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 
-use crate::columns::E;
+use crate::{columns::E, MAX_DEGREE};
 
 use super::{columns::Column, interpreter::InterpreterEnv};
 
@@ -17,4 +21,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Position = Column;
 
     type Variable = E<Fp>;
+
+    fn variable(&self, column: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn add_constraint(&mut self, constraint: Self::Variable) {
+        let degree = constraint.degree(1, 0);
+        assert!(degree <= MAX_DEGREE, "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
+        self.constraints.push(constraint);
+    }
 }
