@@ -27,9 +27,15 @@ Not even sure it is possible right now.
 We provide a binary to run arbitrarily large computation.
 The implementation of the circuits will follow the one used by the o1vm
 interpreter. An interpreter will be implemented over an abstract environment.
+
 The environment used for the witness will contain all the information required
 to make an IVC proof, i.e. the current witness in addition to the oracle, the
-folding accumulator, etc.
+folding accumulator, etc. And the implementation attempts to have the smallest
+memory footprint it can have by optimising the use of the CPU cache and using
+references as much as it can. The implementation attempts to prioritize
+allocations on the stack when possible, and attempts to keep in the CPU cache as
+many data as required as long as possible to avoid indirection.
+
 
 ### Examples
 
