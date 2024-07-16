@@ -10,6 +10,8 @@ use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
 /// instance k, including the sponges.
+// FIXME: run the interpreter over integers and not field elements to avoid the
+// reduction at every step?
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
