@@ -33,10 +33,20 @@ pub struct WitnessBuilderEnv<
     /// `i` was looked up.
     pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
 
+    // @volhovm: It seems much more ineffective to store
+    // Vec<BTreeMap<LT, Vec<Logup>>> than BTreeMap<LT, Vec<Vec<Logup>>>.
     /// Lookup requests. Each vector element represents one row, and
     /// each row is a map from lookup type to a vector of concrete
     /// lookups requested.
     pub lookups: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
+
+    /// Values of the runtime tables. Each element (value) in the map
+    /// is a on-the-fly built column.
+    pub runtime_tables: BTreeMap<LT, Vec<Vec<F>>>,
+
+    /// A runtime table resolver; the inverse of `runtime_tables`:
+    /// maps runtime lookup table to its `usize` position in `runtime_tables`.
+    pub runtime_tables_resolver: BTreeMap<LT, BTreeMap<Vec<F>, usize>>,
 
     /// Fixed values for selector columns. `fixed_selectors[i][j]` is the
     /// value for row #j of the selector #i.
@@ -184,28 +194,39 @@ impl<
     > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {
-        let value_ix = table_id.ix_by_value(&value);
-        if let Some(value_ix) = value_ix {
-            self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-            self.lookups
-                .last_mut()
-                .unwrap()
-                .get_mut(&table_id)
-                .unwrap()
-                .push(Logup {
-                    table_id,
-                    numerator: F::one(),
-                    value,
-                })
+        let value_ix = if table_id.is_fixed() {
+            table_id
+                .ix_by_value(&value)
+                .expect("Could not resolve lookup for a fixed table")
         } else {
-            // runtime table lookups are temporarily disabled since we
-            // don't yet have a mechanism to resolve values to indices
-            // for runtime tables.
-            assert!(
-                !table_id.is_fixed(),
-                "Could not resolve lookup for a fixed table"
-            );
-        }
+            // For runtime tables, we check if this value was already
+            // present in a table; if yes, we return its index (row),
+            // otherwise we add this value to the runtime table and
+            // return its new index (runtime_table.len() == cur_height).
+            let cur_height = self.runtime_tables.get_mut(&table_id).unwrap().len();
+            let resolver = self.runtime_tables_resolver.get_mut(&table_id).unwrap();
+            if let Some(prev_index) = resolver.get_mut(&value) {
+                *prev_index
+            } else {
+                (*resolver).insert(value.clone(), cur_height);
+                self.runtime_tables
+                    .get_mut(&table_id)
+                    .unwrap()
+                    .push(value.clone());
+                cur_height
+            }
+        };
+        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+        self.lookups
+            .last_mut()
+            .unwrap()
+            .get_mut(&table_id)
+            .unwrap()
+            .push(Logup {
+                table_id,
+                numerator: F::one(),
+                value,
+            })
     }
 }
 
@@ -302,10 +323,16 @@ impl<
     pub fn create() -> Self {
         let mut lookups_row = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
+        let mut runtime_tables_resolver = BTreeMap::new();
+        let mut runtime_tables = BTreeMap::new();
         let fixed_selectors = vec![vec![]; N_FSEL];
         for table_id in LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
+            if !table_id.is_fixed() {
+                runtime_tables_resolver.insert(table_id, BTreeMap::new());
+                runtime_tables.insert(table_id, vec![]);
+            }
         }
 
         Self {
@@ -315,6 +342,8 @@ impl<
 
             lookup_multiplicities,
             lookups: vec![lookups_row],
+            runtime_tables_resolver,
+            runtime_tables,
             fixed_selectors,
             phantom_cix: PhantomData,
             assert_mapper: Box::new(|x| x),
@@ -377,10 +406,23 @@ impl<
         *witness
     }
 
+    /// Return all runtime tables collected so far, padded to the domain size.
+    pub fn get_runtime_tables(&self, domain_size: usize) -> BTreeMap<LT, Vec<Vec<F>>> {
+        let mut runtime_tables: BTreeMap<_, _> = self.runtime_tables.clone();
+        for (_table_id, content) in runtime_tables.iter_mut() {
+            // We pad the runtime table with dummies if it's too small.
+            if content.len() < domain_size {
+                let dummy_value = content[0].clone(); // we assume runtime tables are never empty
+                content.append(&mut vec![dummy_value; domain_size - content.len()]);
+            }
+        }
+        runtime_tables
+    }
+
     pub fn get_logup_witness(
         &self,
         domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+        lookup_tables_data: BTreeMap<LT, Vec<Vec<F>>>,
     ) -> Vec<LogupWitness<F, LT>> {
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
@@ -423,7 +465,7 @@ impl<
                 .map(|(i, v)| Logup {
                     table_id: *table_id,
                     numerator: -lookup_m[i],
-                    value: vec![*v],
+                    value: v.clone(),
                 });
             *(table.last_mut().unwrap()) = lookup_t.collect();
         }
@@ -449,7 +491,7 @@ impl<
     pub fn get_proof_inputs(
         &self,
         domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+        lookup_tables_data: BTreeMap<LT, Vec<Vec<F>>>,
     ) -> ProofInputs<N_WIT, F, LT> {
         let evaluations = self.get_relation_witness(domain_size);
         let logups = self.get_logup_witness(domain_size, lookup_tables_data);

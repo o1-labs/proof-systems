@@ -383,9 +383,6 @@ pub fn constrain_multiplication<
 >(
     env: &mut Env,
 ) {
-    let current_row = env.read_column(SerializationColumn::CurrentRow);
-    let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
-
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
     let coeff_input_limbs_small: [_; N_LIMBS_SMALL] =
@@ -406,6 +403,9 @@ pub fn constrain_multiplication<
     };
 
     {
+        let current_row = env.read_column(SerializationColumn::CurrentRow);
+        let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
+
         // Reading the input:
         // (prev_i, [VEC])
         let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
@@ -415,9 +415,9 @@ pub fn constrain_multiplication<
         // Writing the output
         // FIXME we should actually /write/ here, not read!
         // (cur_i, [VEC])
-        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
-        vec_output.insert(0, current_row);
-        env.lookup(LookupTable::MultiplicationBus, vec_output);
+        let mut _vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        _vec_output.insert(0, current_row);
+        //env.lookup(LookupTable::MultiplicationBus, vec_output);
     }
 
     // Result variable must be in the field.
@@ -686,6 +686,7 @@ pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER
             }
         })
         .collect();
+
     [sel1, sel2]
 }
 

@@ -89,12 +89,27 @@ mod tests {
             }
         }
 
+        let runtime_tables: BTreeMap<_, _> = witness_env.get_runtime_tables(domain_size);
+
+        // TODO remove this clone
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
-        let multiplication_bus: Vec<Fp> = vec![];
-        let mut lookup_tables_data = BTreeMap::new();
+        let multiplication_bus: Vec<Vec<Fp>> = runtime_tables
+            .get(&LookupTable::MultiplicationBus)
+            .unwrap()
+            .clone();
+
+        let mut lookup_tables_data: BTreeMap<LookupTable<Ff1>, Vec<Vec<Fp>>> = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             if table_id.is_fixed() {
-                lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64).unwrap());
+                lookup_tables_data.insert(
+                    table_id,
+                    table_id
+                        .entries(domain_size as u64)
+                        .unwrap()
+                        .into_iter()
+                        .map(|x| vec![x])
+                        .collect(),
+                );
             }
         }
         lookup_tables_data.insert(LookupTable::MultiplicationBus, multiplication_bus);

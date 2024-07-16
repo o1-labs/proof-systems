@@ -151,6 +151,12 @@ where
                 .values()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
+            // FIXME @volhovm it seems that the verifier does not
+            // actually check that the fixed tables used in the proof
+            // are the fixed tables defined in the code. In other
+            // words, all the currently used "fixed" tables are
+            // runtime and can be chosen freely by the prover.
+
             // To generate the challenges
             let joint_combiner = fq_sponge.challenge();
             let beta = fq_sponge.challenge();
