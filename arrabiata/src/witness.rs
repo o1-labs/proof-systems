@@ -5,6 +5,7 @@ use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
+use num_bigint::BigUint;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm};
 
 use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
@@ -52,7 +53,7 @@ pub struct Env<
     pub current_row: usize,
 
     /// State of the current row in the execution trace
-    pub state: [Fp; NUMBER_OF_COLUMNS],
+    pub state: [BigUint; NUMBER_OF_COLUMNS],
 
     // FIXME: must not be an option
     pub sponge_fp: Option<ArithmeticSponge<Fp, SpongeConfig>>,
@@ -86,7 +87,7 @@ impl<
     type Position = Column;
 
     // FIXME
-    type Variable = Fp;
+    type Variable = BigUint;
 
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!();
@@ -104,7 +105,7 @@ impl<
     }
 
     fn assert_zero(&mut self, var: Self::Variable) {
-        assert_eq!(var, Fp::zero());
+        assert_eq!(var, BigUint::from(0_usize));
     }
 
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
@@ -113,8 +114,8 @@ impl<
 
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
         let Column::X(idx) = col;
-        let res = x * x;
-        self.state[idx] = res;
+        let res = x.clone() * x.clone();
+        self.state[idx] = res.clone();
         res
     }
 
@@ -122,10 +123,10 @@ impl<
     // This is only for testing purposes, and having something to build the
     // witness.
     fn fetch_input(&mut self, res: Self::Position) -> Self::Variable {
-        let x = Fp::from(self.current_row as u64);
+        let x = BigUint::from(self.current_row as u64);
         // Update the state accordinly to keep track of it
         let Column::X(idx) = res;
-        self.state[idx] = x;
+        self.state[idx] = x.clone();
         x
     }
 
@@ -133,12 +134,12 @@ impl<
     fn reset(&mut self) {
         // Save the current state in the witness
         self.state.iter().enumerate().for_each(|(i, x)| {
-            self.witness[i][self.current_row] = *x;
+            self.witness[i][self.current_row] = Fp::from(x.clone());
         });
         self.current_row += 1;
         self.idx_var = 0;
         // Rest the state for the next row
-        self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
+        self.state = std::array::from_fn(|_| BigUint::from(0_usize));
     }
 }
 
@@ -206,7 +207,7 @@ impl<
             // Witness builder related
             witness,
             current_row: 0,
-            state: [Fp::zero(); NUMBER_OF_COLUMNS],
+            state: std::array::from_fn(|_| BigUint::from(0_usize)),
         }
     }
 
@@ -214,7 +215,7 @@ impl<
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
-        self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
+        self.state = std::array::from_fn(|_| BigUint::from(0_usize));
         self.idx_var = 0;
     }
 

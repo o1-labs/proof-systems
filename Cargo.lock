@@ -274,6 +274,7 @@ dependencies = [
  "log",
  "mina-curves",
  "mina-poseidon",
+ "num-bigint",
  "poly-commitment",
  "rand",
  "rayon",
