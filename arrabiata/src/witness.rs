@@ -29,6 +29,12 @@ pub struct Env<
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
 
+    // FIXME
+    pub ivc_accumulator_e1: E1,
+
+    // FIXME
+    pub ivc_accumulator_e2: E2,
+
     /// The index of the latest allocated variable in the circuit.
     /// It is used to allocate new variables without having to keep track of the
     /// position.
@@ -39,12 +45,6 @@ pub struct Env<
 
     /// State of the current row in the execution trace
     pub state: [Fp; NUMBER_OF_COLUMNS],
-
-    // FIXME
-    pub ivc_accumulator_e1: E1,
-
-    // FIXME
-    pub ivc_accumulator_e2: E2,
 
     // FIXME: must not be an option
     pub sponge_fp: Option<ArithmeticSponge<Fp, SpongeConfig>>,
