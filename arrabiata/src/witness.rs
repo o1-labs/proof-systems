@@ -1,7 +1,9 @@
+use std::time::Instant;
+
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
-use log::info;
+use log::{debug, info};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm};
 
@@ -154,11 +156,25 @@ impl<
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
 
         info!("Create an SRS of size {srs_log2_size} for the first curve");
-        let mut srs_e1: SRS<E1> = SRS::create(srs_size);
-        srs_e1.add_lagrange_basis(domain_fp.d1);
+        let srs_e1: SRS<E1> = {
+            let start = Instant::now();
+            let mut srs = SRS::create(srs_size);
+            debug!("SRS for E1 created in {:?}", start.elapsed());
+            let start = Instant::now();
+            srs.add_lagrange_basis(domain_fp.d1);
+            debug!("Lagrange basis for E1 added in {:?}", start.elapsed());
+            srs
+        };
         info!("Create an SRS of size {srs_log2_size} for the second curve");
-        let mut srs_e2: SRS<E2> = SRS::create(srs_size);
-        srs_e2.add_lagrange_basis(domain_fq.d1);
+        let srs_e2: SRS<E2> = {
+            let start = Instant::now();
+            let mut srs = SRS::create(srs_size);
+            debug!("SRS for E2 created in {:?}", start.elapsed());
+            let start = Instant::now();
+            srs.add_lagrange_basis(domain_fq.d1);
+            debug!("Lagrange basis for E2 added in {:?}", start.elapsed());
+            srs
+        };
 
         let mut witness: Vec<Vec<Fp>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
