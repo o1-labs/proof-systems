@@ -13,6 +13,21 @@ pub struct Env<Fp: Field> {
     pub constraints: Vec<E<Fp>>,
 }
 
+impl<Fp: Field> Env<Fp> {
+    pub fn new() -> Self {
+        Self {
+            idx_var: 0,
+            constraints: Vec::new(),
+        }
+    }
+}
+
+impl<Fp: Field> Default for Env<Fp> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// An environment to build constraints.
 /// The constraint environment is mostly useful when we want to perform a Nova
 /// proof.

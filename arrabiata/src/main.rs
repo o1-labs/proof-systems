@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use ark_poly::Evaluations;
 use arrabiata::{
+    constraints,
     interpreter::{self},
     witness::Env,
     MIN_SRS_LOG2_SIZE,
@@ -110,4 +111,23 @@ pub fn main() {
         env.reset_for_next_iteration();
         env.current_iteration += 1;
     }
+
+    // Checking constraints, for both fields.
+    info!("Creating constraints for the circuit, over the Fp field");
+    let mut constraints_fp = constraints::Env::<Fp>::new();
+    interpreter::run_app(&mut constraints_fp);
+    assert_eq!(constraints_fp.constraints.len(), 1);
+    info!(
+        "Number of constraints for the Fp field: {n}",
+        n = constraints_fp.constraints.len()
+    );
+
+    info!("Creating constraints for the circuit, over the Fq field");
+    let mut constraints_fq = constraints::Env::<Fq>::new();
+    interpreter::run_app(&mut constraints_fq);
+    assert_eq!(constraints_fq.constraints.len(), 1);
+    info!(
+        "Number of constraints for the Fq field: {n}",
+        n = constraints_fq.constraints.len()
+    );
 }
