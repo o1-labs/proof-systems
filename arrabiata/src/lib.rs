@@ -6,6 +6,9 @@ pub const MAX_DEGREE: u64 = 2;
 // FIXME: that might change.
 pub const MIN_SRS_LOG2_SIZE: usize = 15;
 
+/// The maximum number of columns that can be used in the circuit.
+pub const NUMBER_OF_COLUMNS: usize = 50;
+
 pub mod column_env;
 pub mod columns;
 pub mod constraints;

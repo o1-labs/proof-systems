@@ -1,3 +1,7 @@
+//! This module contains the implementation of the IVC scheme in addition to
+//! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
+//! columns.
+
 use ark_ff::{One, Zero};
 
 /// For the IVC circuit, we need different gadgets in addition to run the

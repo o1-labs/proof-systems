@@ -4,10 +4,7 @@ use log::debug;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
 
-use crate::{columns::Column, interpreter::InterpreterEnv};
-
-/// Number of columns used in the circuit.
-pub const N: usize = 50;
+use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
@@ -34,7 +31,7 @@ pub struct Env<
     pub current_row: usize,
 
     /// State of the current row in the execution trace
-    pub state: [Fp; N],
+    pub state: [Fp; NUMBER_OF_COLUMNS],
 
     // FIXME
     pub ivc_accumulator_e1: E1,
@@ -120,7 +117,7 @@ impl<
         // Save the current state in the witness
         self.witness.push(self.state.to_vec());
         // Rest the state for the next row
-        self.state = [Fp::zero(); N];
+        self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
     }
 }
 
@@ -150,7 +147,7 @@ impl<
             // Witness builder related
             witness: Vec::new(),
             current_row: 0,
-            state: [Fp::zero(); N],
+            state: [Fp::zero(); NUMBER_OF_COLUMNS],
         }
     }
 }
