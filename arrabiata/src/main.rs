@@ -1,10 +1,12 @@
+use std::time::Instant;
+
 use ark_poly::Evaluations;
 use arrabiata::{
     interpreter::{self},
     witness::Env,
     MIN_SRS_LOG2_SIZE,
 };
-use log::info;
+use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 // FIXME: use other parameters, like one with the partial rounds
@@ -51,10 +53,19 @@ pub fn main() {
     let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(*srs_log2_size);
 
     while env.current_iteration < *n_iteration {
+        let start_iteration = Instant::now();
+
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
         for _i in 0..domain_size {
             interpreter::run_app(&mut env);
         }
+
+        debug!(
+            "Witness for iteration {i} computed in {elapsed} μs",
+            i = env.current_iteration,
+            elapsed = start_iteration.elapsed().as_micros()
+        );
+
         // FIXME:
         // - if i % 2 == 0, commit with e1.
         // - if i % 2 == 1, commit with e2.
@@ -89,6 +100,13 @@ pub fn main() {
             //     .collect();
             // env.previous_commitments_e1 = comms
         }
+
+        debug!(
+            "Iteration {i} fully proved in {elapsed} μs",
+            i = env.current_iteration,
+            elapsed = start_iteration.elapsed().as_micros()
+        );
+
         env.reset_for_next_iteration();
         env.current_iteration += 1;
     }

@@ -51,6 +51,9 @@ will generate 10 full Nova iterations of the polynomial-time function `f(X, Y) =
 X^2 - Y` and for each witness, generates random values, and make an IVC proof at
 the end.
 
+You can also activate logging which contains benchmarking by using the
+environment variable `RUST_LOG=debug`.
+
 ### Run tests
 
 ```
