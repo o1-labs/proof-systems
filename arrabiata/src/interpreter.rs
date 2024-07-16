@@ -16,16 +16,21 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
+    /// Allocate a new variable in the circuit
     fn allocate(&mut self) -> Self::Position;
 
+    /// Build a variable from the given position
     fn variable(&self, position: Self::Position) -> Self::Variable;
 
+    /// Assert that the variable is zero
     fn assert_zero(&mut self, x: Self::Variable);
 
+    /// Assert that the two variables are equal
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable);
 
     fn add_constraint(&mut self, x: Self::Variable);
 
+    /// Compute the square a field element
     fn square(&mut self, res: Self::Position, x: Self::Variable) -> Self::Variable;
 
     /// Fetch an input of the application
