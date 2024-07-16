@@ -36,6 +36,9 @@ references as much as it can. The implementation attempts to prioritize
 allocations on the stack when possible, and attempts to keep in the CPU cache as
 many data as required as long as possible to avoid indirection.
 
+The witness interpreter attempts to perform most of the algebraic operations
+using integers, and not field element. The results are reduced into the field
+when mandatory.
 
 ### Examples
 
