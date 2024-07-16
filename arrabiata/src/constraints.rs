@@ -72,4 +72,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn reset(&mut self) {
         self.idx_var = 0;
     }
+
+    fn reset_for_next_iteration(&mut self) {
+        self.reset();
+    }
 }

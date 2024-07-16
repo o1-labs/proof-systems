@@ -49,6 +49,7 @@ pub fn main() {
         // FIXME:
         // update current instance with the previous "next" commitments (i.e. env.next_commitments)
         // update next instance with current commitments
+        env.reset_for_next_iteration();
         env.current_iteration += 1;
     }
 }

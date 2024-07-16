@@ -119,6 +119,13 @@ impl<
         // Rest the state for the next row
         self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
     }
+
+    fn reset_for_next_iteration(&mut self) {
+        // Rest the state for the next row
+        self.current_row = 0;
+        self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
+        self.idx_var = 0;
+    }
 }
 
 impl<

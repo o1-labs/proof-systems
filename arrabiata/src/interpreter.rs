@@ -43,6 +43,9 @@ pub trait InterpreterEnv {
 
     /// Reset the environment to build the next row
     fn reset(&mut self);
+
+    /// Reset the environment to build the next iteration
+    fn reset_for_next_iteration(&mut self);
 }
 
 /// Run an iteration of the IVC scheme.
