@@ -1,4 +1,8 @@
-use arrabiata::{interpreter::{self, InterpreterEnv}, witness::Env, MIN_SRS_LOG2_SIZE};
+use arrabiata::{
+    interpreter::{self},
+    witness::Env,
+    MIN_SRS_LOG2_SIZE,
+};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
