@@ -1,3 +1,4 @@
+use ark_poly::Evaluations;
 use arrabiata::{
     interpreter::{self},
     witness::Env,
@@ -6,6 +7,7 @@ use arrabiata::{
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
+use poly_commitment::{PolyComm, SRS};
 
 pub fn main() {
     let arg_n =
@@ -40,12 +42,12 @@ pub fn main() {
 
     println!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
+    let domain_size = 1 << srs_log2_size;
     let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(*srs_log2_size);
-    let srs_size = 1 << srs_log2_size;
 
     while env.current_iteration < *n_iteration {
         println!("Run iteration: {}", env.current_iteration);
-        for _i in 0..srs_size {
+        for _i in 0..domain_size {
             interpreter::run_app(&mut env);
         }
         // FIXME:

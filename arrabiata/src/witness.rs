@@ -1,5 +1,6 @@
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
+use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
@@ -16,6 +17,12 @@ pub struct Env<
     E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
 > {
+    /// Domain for Fp
+    pub domain_fp: EvaluationDomains<Fp>,
+
+    /// Domain for Fq
+    pub domain_fq: EvaluationDomains<Fq>,
+
     /// SRS for the first curve
     pub srs_e1: SRS<E1>,
 
@@ -50,10 +57,13 @@ pub struct Env<
     pub previous_hash: [u128; 2],
 
     /// The witness of the current instance of the circuit.
-    /// The size of the outer vector must be equal to the number of rows in the
+    /// The size of the outer vector must be equal to the number of columns in the
     /// circuit.
-    /// The size of the inner vector must be equal to the number of columns in
+    /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
+    ///
+    /// The layout columns/rows is used to avoid rebuilding the witness per
+    /// column when committing to the witness.
     pub witness: Vec<Vec<Fp>>,
 }
 
@@ -112,10 +122,12 @@ impl<
 
     /// Reset the environment to build the next row
     fn reset(&mut self) {
+        // Save the current state in the witness
+        self.state.iter().enumerate().for_each(|(i, x)| {
+            self.witness[i][self.current_row] = *x;
+        });
         self.current_row += 1;
         self.idx_var = 0;
-        // Save the current state in the witness
-        self.witness.push(self.state.to_vec());
         // Rest the state for the next row
         self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
     }
@@ -130,11 +142,24 @@ impl<
     > Env<Fp, Fq, SpongeConfig, E1, E2>
 {
     pub fn new(srs_log2_size: usize) -> Self {
+        let srs_size = 1 << srs_log2_size;
+        let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
+        let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
         debug!("Create an SRS of size {srs_log2_size} for the first curve");
-        let srs_e1: SRS<E1> = SRS::create(1 << srs_log2_size);
+        let mut srs_e1: SRS<E1> = SRS::create(srs_size);
+        srs_e1.add_lagrange_basis(domain_fp.d1);
         debug!("Create an SRS of size {srs_log2_size} for the second curve");
-        let srs_e2: SRS<E2> = SRS::create(1 << srs_log2_size);
+        let mut srs_e2: SRS<E2> = SRS::create(srs_size);
+        srs_e2.add_lagrange_basis(domain_fq.d1);
+        let mut witness: Vec<Vec<Fp>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        {
+            let mut vec: Vec<Fp> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(Fp::zero()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
+        };
         Self {
+            domain_fp,
+            domain_fq,
             srs_e1,
             srs_e2,
             ivc_accumulator_e1: E1::zero(),
@@ -145,7 +170,7 @@ impl<
             // Used to allocate variables
             idx_var: 0,
             // Witness builder related
-            witness: Vec::new(),
+            witness,
             current_row: 0,
             state: [Fp::zero(); NUMBER_OF_COLUMNS],
         }
