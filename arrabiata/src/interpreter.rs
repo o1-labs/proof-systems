@@ -1,6 +1,50 @@
 //! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.
+//! At the moment, all constraints must be of maximum degree
+//! [crate::MAX_DEGREE], but it might change in the future.
+//!
+//! The implementation relies on a representation of the circuit as a 2D array
+//! of "data points" the interpreter can use.
+//!
+//! An interpreter defines what a "position" is in the circuit and allow to
+//! perform operations using these positions.
+//! Some of these positions will be considered as public inputs and might be
+//! fixed at setup time while making a proof, when other will be considered as
+//! private inputs.
+//!
+//! On top of these abstraction, gadgets are implemented.
+//! For the Nova IVC scheme, we describe below the different gadgets and how
+//! they are implemented with this abstraction.
+//!
+//! ## Gadgets implemented
+//!
+//! ### Elliptic curve addition
+//!
+//! The Nova augmented circuit requires to perform elliptic curve operations, in
+//! particular additions and scalar multiplications.
+//!
+//! To reduce the number of operations, we consider the affine coordinates.
+//! As a reminder, here the equations to compute the addition of two different
+//! points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let define `P3 = (X3, Y3) = P1 +
+//! P2`.
+//!
+//! ```text
+//! - λ = (Y2 - Y1) / (X2 - X1)
+//! - X3 = λ^2 - X1 - X2
+//! - Y3 = λ (X3 - X1) + Y1
+//! ```
+//!
+//! Therefore, the addition of elliptic curve points can be computed using the
+//! following degree-2 constraint
+//!
+//! ```text
+//! - Constraint 1: λ (X2 - X1) - Y2 - Y1 = 0
+//! - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+//! - Constraint 3: Y3 - λ (X3 - X1) - Y1 = 0
+//! ```
+//!
+//! The gadget requires therefore 7 columns.
 
 use ark_ff::{One, Zero};
 
