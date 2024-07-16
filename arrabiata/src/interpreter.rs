@@ -50,7 +50,7 @@ pub trait InterpreterEnv {
 /// next iteration.
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
-pub fn run<E: InterpreterEnv>(env: &mut E) {
+pub fn run_app<E: InterpreterEnv>(env: &mut E) {
     let x1 = {
         let pos = env.allocate();
         env.fetch_input(pos)

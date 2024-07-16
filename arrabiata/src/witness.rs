@@ -1,6 +1,8 @@
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
+use log::debug;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
 
 use crate::{columns::Column, interpreter::InterpreterEnv};
 
@@ -17,6 +19,12 @@ pub struct Env<
     E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
 > {
+    /// SRS for the first curve
+    pub srs_e1: SRS<E1>,
+
+    /// SRS for the second curve
+    pub srs_e2: SRS<E2>,
+
     pub idx_var: usize,
 
     /// Current processing row. Used to build the witness.
@@ -112,12 +120,18 @@ impl<
         Fp: PrimeField,
         Fq: PrimeField,
         SpongeConfig: SpongeConstants,
-        E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, SpongeConfig, E1, E2>
 {
-    pub fn new() -> Self {
+    pub fn new(srs_log2_size: usize) -> Self {
+        debug!("Create an SRS of size {srs_log2_size} for the first curve");
+        let srs_e1: SRS<E1> = SRS::create(1 << srs_log2_size);
+        debug!("Create an SRS of size {srs_log2_size} for the second curve");
+        let srs_e2: SRS<E2> = SRS::create(1 << srs_log2_size);
         Self {
+            srs_e1,
+            srs_e2,
             ivc_accumulator_e1: E1::zero(),
             ivc_accumulator_e2: E2::zero(),
             sponge_fp: None,
@@ -137,11 +151,12 @@ impl<
         Fp: PrimeField,
         Fq: PrimeField,
         SpongeConfig: SpongeConstants,
-        E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > Default for Env<Fp, Fq, SpongeConfig, E1, E2>
 {
+    /// By default, we will suppose we have 2^16 rows.
     fn default() -> Self {
-        Self::new()
+        Self::new(16)
     }
 }
