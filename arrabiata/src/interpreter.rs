@@ -45,6 +45,10 @@
 //! ```
 //!
 //! The gadget requires therefore 7 columns.
+//!
+//! ### Hash - Poseidon
+//!
+//! TODO
 
 use ark_ff::{One, Zero};
 
