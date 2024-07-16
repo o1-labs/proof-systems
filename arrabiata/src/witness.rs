@@ -149,12 +149,14 @@ impl<
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
+
         debug!("Create an SRS of size {srs_log2_size} for the first curve");
         let mut srs_e1: SRS<E1> = SRS::create(srs_size);
         srs_e1.add_lagrange_basis(domain_fp.d1);
         debug!("Create an SRS of size {srs_log2_size} for the second curve");
         let mut srs_e2: SRS<E2> = SRS::create(srs_size);
         srs_e2.add_lagrange_basis(domain_fq.d1);
+
         let mut witness: Vec<Vec<Fp>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
             let mut vec: Vec<Fp> = Vec::with_capacity(srs_size);
