@@ -5,6 +5,7 @@ use arrabiata::{
     MIN_SRS_LOG2_SIZE,
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
 use poly_commitment::{PolyComm, SRS};
@@ -56,7 +57,6 @@ pub fn main() {
         // FIXME:
         // update current instance with the previous "next" commitments (i.e. env.next_commitments)
         // update next instance with current commitments
-        // FIXME: parallelize
         // FIXME: the environment is built using Fp elements. We must handle
         // both circuits in the interpreter. Maybe having two type of witnesses?
         // We must abstract the function being executed in a certain way.
@@ -64,7 +64,7 @@ pub fn main() {
         if env.current_iteration % 2 == 0 {
             let comms: Vec<PolyComm<Vesta>> = env
                 .witness
-                .iter()
+                .par_iter()
                 .map(|evals| {
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
                     env.srs_e1
