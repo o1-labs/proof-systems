@@ -3,7 +3,7 @@ use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm};
 
 use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 
@@ -34,6 +34,10 @@ pub struct Env<
 
     // FIXME
     pub ivc_accumulator_e2: E2,
+
+    /// Commitments to the previous instances
+    pub previous_commitments_e1: Vec<PolyComm<E1>>,
+    pub previous_commitments_e2: Vec<PolyComm<E2>>,
 
     /// The index of the latest allocated variable in the circuit.
     /// It is used to allocate new variables without having to keep track of the
@@ -157,6 +161,13 @@ impl<
             (0..srs_size).for_each(|_| vec.push(Fp::zero()));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
+        // Default set to the blinders
+        let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![srs_e1.h]))
+            .collect();
+        let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![srs_e2.h]))
+            .collect();
         Self {
             domain_fp,
             domain_fq,
@@ -164,6 +175,8 @@ impl<
             srs_e2,
             ivc_accumulator_e1: E1::zero(),
             ivc_accumulator_e2: E2::zero(),
+            previous_commitments_e1,
+            previous_commitments_e2,
             sponge_fp: None,
             current_iteration: 0,
             previous_hash: [0; 2],
