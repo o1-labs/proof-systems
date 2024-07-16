@@ -1,4 +1,4 @@
-use arrabiata::{interpreter, witness::Env};
+use arrabiata::{interpreter, witness::Env, MIN_SRS_LOG2_SIZE};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
@@ -25,7 +25,14 @@ pub fn main() {
         _ => unreachable!("clap should ensure we don't get here"),
     };
     let n_iteration = matches.get_one::<u64>("n").unwrap();
-    let srs_log2_size = matches.get_one::<usize>("srs-size").unwrap_or(&16);
+    let srs_log2_size = matches
+        .get_one::<usize>("srs-size")
+        .unwrap_or(&MIN_SRS_LOG2_SIZE);
+
+    assert!(
+        *srs_log2_size >= MIN_SRS_LOG2_SIZE,
+        "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support IVC"
+    );
 
     println!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
