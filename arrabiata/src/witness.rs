@@ -25,6 +25,9 @@ pub struct Env<
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
 
+    /// The index of the latest allocated variable in the circuit.
+    /// It is used to allocate new variables without having to keep track of the
+    /// position.
     pub idx_var: usize,
 
     /// Current processing row. Used to build the witness.
