@@ -16,9 +16,24 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
+    fn allocate(&mut self) -> Self::Position;
+
     fn variable(&self, position: Self::Position) -> Self::Variable;
 
-    fn add_constraint(&mut self, constraint: Self::Variable);
+    fn assert_zero(&mut self, x: Self::Variable);
+
+    fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable);
+
+    fn add_constraint(&mut self, x: Self::Variable);
+
+    fn square(&mut self, res: Self::Position, x: Self::Variable) -> Self::Variable;
+
+    /// Fetch an input of the application
+    /// Witness-only
+    fn fetch_input(&mut self, res: Self::Position) -> Self::Variable;
+
+    /// Reset the environment to build the next row
+    fn reset(&mut self);
 }
 
 /// Run an iteration of the IVC scheme.
@@ -35,4 +50,14 @@ pub trait InterpreterEnv {
 /// next iteration.
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
-pub fn run<E: InterpreterEnv>(_env: &mut E) {}
+pub fn run<E: InterpreterEnv>(env: &mut E) {
+    let x1 = {
+        let pos = env.allocate();
+        env.fetch_input(pos)
+    };
+    let _x1_square = {
+        let res = env.allocate();
+        env.square(res, x1.clone())
+    };
+    env.reset();
+}

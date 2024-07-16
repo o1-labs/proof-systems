@@ -9,6 +9,7 @@ use crate::{columns::E, MAX_DEGREE};
 use super::{columns::Column, interpreter::InterpreterEnv};
 
 pub struct Env<Fp: Field> {
+    pub idx_var: usize,
     pub constraints: Vec<E<Fp>>,
 }
 
@@ -22,6 +23,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = E<Fp>;
 
+    fn allocate(&mut self) -> Self::Position {
+        let pos = Column::X(self.idx_var);
+        self.idx_var += 1;
+        pos
+    }
+
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: column,
@@ -33,5 +40,36 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let degree = constraint.degree(1, 0);
         assert!(degree <= MAX_DEGREE, "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
         self.constraints.push(constraint);
+    }
+
+    fn assert_zero(&mut self, x: Self::Variable) {
+        self.add_constraint(x);
+    }
+
+    fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
+        self.add_constraint(x - y);
+    }
+
+    fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
+        let v = Expr::Atom(ExprInner::Cell(Variable {
+            col,
+            row: CurrOrNext::Curr,
+        }));
+        let x = x.square();
+        self.add_constraint(x - v.clone());
+        v
+    }
+
+    // This is witness-only. We simply return the corresponding expression to
+    // use later in constraints
+    fn fetch_input(&mut self, res: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: res,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn reset(&mut self) {
+        self.idx_var = 0;
     }
 }
