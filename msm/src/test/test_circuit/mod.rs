@@ -34,7 +34,7 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         for row_i in 0..domain_size {
@@ -63,7 +63,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel::<Fp, _>(&mut constraint_env);
@@ -118,7 +118,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::<Fp, _>(&mut constraint_env);
@@ -176,7 +176,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_with_constants::<Fp, _>(
@@ -303,7 +303,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::<Fp, _>(&mut constraint_env);
@@ -372,7 +372,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let (witness_env, constant) =
             build_test_const_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
@@ -437,7 +437,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);
@@ -469,7 +469,7 @@ mod tests {
         // We generate two different witness and two different proofs.
         let domain_size: usize = 1 << 8;
 
-        let fixed_selectors = test_interpreter::build_selectors(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);

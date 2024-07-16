@@ -272,6 +272,6 @@ pub fn test_fixed_sel_degree_7_mul_witness<
 }
 
 /// Fixed selectors for the test circuit.
-pub fn build_selectors<F: Field>(domain_size: usize) -> Box<[Vec<F>; 1]> {
+pub fn build_fixed_selectors<F: Field>(domain_size: usize) -> Box<[Vec<F>; 1]> {
     Box::new([(0..domain_size).map(|i| F::from(i as u64)).collect()])
 }

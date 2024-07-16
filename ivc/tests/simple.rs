@@ -14,7 +14,7 @@ use ivc::{
     ivc::{
         columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
         constraints::constrain_ivc,
-        interpreter::{build_selectors, ivc_circuit, ivc_circuit_base_case},
+        interpreter::{build_fixed_selectors, ivc_circuit, ivc_circuit_base_case},
         lookups::IVCLookupTable,
         N_ADDITIONAL_WIT_COL_QUAD as N_COL_QUAD_IVC, N_ALPHAS as N_ALPHAS_IVC,
     },
@@ -195,7 +195,7 @@ pub fn heavy_test_simple_add() {
     // For the IVC, we have all the "block selectors" - which depends on the
     // number of columns of the circuit - and the poseidon round constants.
     let ivc_fixed_selectors: Vec<Vec<Fp>> =
-        build_selectors::<N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(domain_size).to_vec();
+        build_fixed_selectors::<N_COL_TOTAL_QUAD, N_ALPHAS_QUAD>(domain_size).to_vec();
 
     // Sanity check on the domain size, can be removed later
     assert_eq!(ivc_fixed_selectors.len(), N_FSEL_TOTAL);
