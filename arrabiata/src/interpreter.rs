@@ -38,7 +38,7 @@ pub trait InterpreterEnv {
     fn square(&mut self, res: Self::Position, x: Self::Variable) -> Self::Variable;
 
     /// Fetch an input of the application
-    /// Witness-only
+    // Witness-only
     fn fetch_input(&mut self, res: Self::Position) -> Self::Variable;
 
     /// Reset the environment to build the next row
