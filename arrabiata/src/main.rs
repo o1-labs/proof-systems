@@ -61,6 +61,7 @@ pub fn main() {
         // both circuits in the interpreter. Maybe having two type of witnesses?
         // We must abstract the function being executed in a certain way.
         // FIXME: Check twice the updated commitments
+        // FIXME: move into the environment. It is something abstract to the user.
         if env.current_iteration % 2 == 0 {
             let comms: Vec<PolyComm<Vesta>> = env
                 .witness
