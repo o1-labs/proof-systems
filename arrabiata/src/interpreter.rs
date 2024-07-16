@@ -36,7 +36,7 @@
 //! ```
 //!
 //! Therefore, the addition of elliptic curve points can be computed using the
-//! following degree-2 constraint
+//! following degree-2 constraints
 //!
 //! ```text
 //! - Constraint 1: λ (X2 - X1) - Y2 - Y1 = 0
