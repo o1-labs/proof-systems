@@ -20,6 +20,7 @@ described in the [folding](../folding) library, or in papers like
 work.
 
 *This might need changes to the Mina blockchain, with a possible new hardfork.
+Not even sure it is possible right now.
 
 ### Implementation details
 
