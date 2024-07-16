@@ -51,11 +51,39 @@ pub fn main() {
             interpreter::run_app(&mut env);
         }
         // FIXME:
-        // - if i % 2 == 0, commit with e2.
-        // - if i % 2 == 1, commit with e1.
+        // - if i % 2 == 0, commit with e1.
+        // - if i % 2 == 1, commit with e2.
         // FIXME:
         // update current instance with the previous "next" commitments (i.e. env.next_commitments)
         // update next instance with current commitments
+        // FIXME: parallelize
+        // FIXME: the environment is built using Fp elements. We must handle
+        // both circuits in the interpreter. Maybe having two type of witnesses?
+        // We must abstract the function being executed in a certain way.
+        // FIXME: Check twice the updated commitments
+        if env.current_iteration % 2 == 0 {
+            let comms: Vec<PolyComm<Vesta>> = env
+                .witness
+                .iter()
+                .map(|evals| {
+                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
+                    env.srs_e1
+                        .commit_evaluations_non_hiding(env.domain_fp.d1, &evals)
+                })
+                .collect();
+            env.previous_commitments_e1 = comms
+        } else {
+            // let comms: Vec<PolyComm<Vesta>> = env
+            //     .witness
+            //     .iter()
+            //     .map(|evals| {
+            //         let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
+            //         env.srs_e1
+            //             .commit_evaluations_non_hiding(env.domain_fp.d1, &evals)
+            //     })
+            //     .collect();
+            // env.previous_commitments_e1 = comms
+        }
         env.reset_for_next_iteration();
         env.current_iteration += 1;
     }
