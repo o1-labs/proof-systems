@@ -4,6 +4,7 @@ use arrabiata::{
     witness::Env,
     MIN_SRS_LOG2_SIZE,
 };
+use log::info;
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 // FIXME: use other parameters, like one with the partial rounds
@@ -11,6 +12,9 @@ use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
 use poly_commitment::{PolyComm, SRS};
 
 pub fn main() {
+    // See https://github.com/rust-lang/log
+    env_logger::init();
+
     let arg_n =
         clap::arg!(--"n" <U64> "Number of iterations").value_parser(clap::value_parser!(u64));
 
@@ -41,13 +45,13 @@ pub fn main() {
         "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support IVC"
     );
 
-    println!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
+    info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
     let domain_size = 1 << srs_log2_size;
     let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(*srs_log2_size);
 
     while env.current_iteration < *n_iteration {
-        println!("Run iteration: {}", env.current_iteration);
+        info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
         for _i in 0..domain_size {
             interpreter::run_app(&mut env);
         }

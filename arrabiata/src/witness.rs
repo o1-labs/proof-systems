@@ -1,7 +1,7 @@
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
-use log::debug;
+use log::info;
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm};
 
@@ -151,10 +151,10 @@ impl<
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
 
-        debug!("Create an SRS of size {srs_log2_size} for the first curve");
+        info!("Create an SRS of size {srs_log2_size} for the first curve");
         let mut srs_e1: SRS<E1> = SRS::create(srs_size);
         srs_e1.add_lagrange_basis(domain_fp.d1);
-        debug!("Create an SRS of size {srs_log2_size} for the second curve");
+        info!("Create an SRS of size {srs_log2_size} for the second curve");
         let mut srs_e2: SRS<E2> = SRS::create(srs_size);
         srs_e2.add_lagrange_basis(domain_fq.d1);
 

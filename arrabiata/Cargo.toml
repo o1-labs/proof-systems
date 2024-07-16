@@ -16,6 +16,7 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
 clap.workspace = true
+env_logger.workspace = true
 groupmap.workspace = true
 kimchi.workspace = true
 itertools.workspace = true
