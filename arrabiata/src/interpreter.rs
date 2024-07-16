@@ -107,6 +107,9 @@ pub trait InterpreterEnv {
 /// next iteration.
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
+///
+/// FIXME: homogeneize
+/// FIXME: compute error terms
 pub fn run_app<E: InterpreterEnv>(env: &mut E) {
     let x1 = {
         let pos = env.allocate();
