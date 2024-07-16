@@ -52,6 +52,11 @@ pub struct Env<
     /// A previous hash, encoded in 2 chunks of 128 bits.
     pub previous_hash: [u128; 2],
 
+    /// The witness of the current instance of the circuit.
+    /// The size of the outer vector must be equal to the number of rows in the
+    /// circuit.
+    /// The size of the inner vector must be equal to the number of columns in
+    /// the circuit.
     pub witness: Vec<Vec<Fp>>,
 }
 
