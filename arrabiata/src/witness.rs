@@ -158,6 +158,14 @@ impl<
         self.state = [Fp::zero(); NUMBER_OF_COLUMNS];
         self.idx_var = 0;
     }
+
+    /// The blinder used to commit, to avoid committing to the zero polynomial
+    /// and accumulate it in the IVC.
+    ///
+    /// It is part of the instance, and it is accumulated in the IVC.
+    pub fn accumulate_commitment_blinder(&mut self) {
+        // TODO
+    }
 }
 
 impl<
