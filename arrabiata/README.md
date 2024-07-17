@@ -78,4 +78,6 @@ The zkApp registry can be found in TODO
 
 <!-- The idea is to able to load at runtime a function of type <E:
 InterpreterEnv> -> () which takes an environment as a parameter, and anything
-can be built from there, in Rust, directly. We simply need to provide an interface -->
+can be built from there, in Rust, directly. We simply need to provide an
+interface. A zkApp can use up to N columns, N being the value defined in the
+lib.rs file. In this registry, we could have for instance o1VM -->
