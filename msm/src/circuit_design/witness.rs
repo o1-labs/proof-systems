@@ -216,7 +216,18 @@ impl<
                 cur_height
             }
         };
-        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+        {
+            let multiplicities = self.lookup_multiplicities.get_mut(&table_id).unwrap();
+            // Since we allow multiple lookups per row, runtime tables
+            // can in theory grow bigger than the domain size. We
+            // still collect multiplicities as if runtime table vector
+            // is not height-bounded, but we will split it into chunks
+            // later.
+            if !table_id.is_fixed() && value_ix > multiplicities.len() {
+                multiplicities.resize(value_ix, F::zero());
+            }
+            multiplicities[value_ix] += F::one();
+        }
         self.lookups
             .last_mut()
             .unwrap()
@@ -455,6 +466,15 @@ impl<
         }
 
         let mut lookup_multiplicities: BTreeMap<LT, Vec<F>> = BTreeMap::new();
+        for (table_id, m) in lookup_multiplicities.iter() {
+            if !table_id.is_fixed() {
+                // Temporary assertion; to be removed when we support bigger
+                // runtime table/RAMlookups functionality.
+                assert!(m.len() <= domain_size,
+                        "We do not _yet_ support wrapping runtime tables that are bigger than domain size.");
+            }
+        }
+
         // Counting multiplicities & adding fixed column into the last column of every table.
         for (table_id, table) in lookup_tables.iter_mut() {
             let lookup_m = self.get_lookup_multiplicities(domain_size, *table_id);
