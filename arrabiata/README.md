@@ -7,7 +7,7 @@ arguments based on folding schemes (initially defined in
 [Nova](https://eprint.iacr.org/2021/370)), over the [pasta]() curves and using
 the IPA polynomial commitment.
 
-The end goal of this repository is to implement a Nova prover, and have a zkApp
+The end goal of this repository is to implement a Nova-like prover, and have a zkApp
 on the Mina blockchain verifying the recursive proof*. This way, any user can run
 arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
