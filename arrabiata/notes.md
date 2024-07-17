@@ -12,3 +12,6 @@ It leaves only:
 Note that we also need lookups. Lookups require, per instance, `m`, `t`,
 "accumulator φ" and some lookup partial sums. It must also be folded.
 
+If we use a "horizontal layout" (i.e. IVC next to APP), we could use the spare
+rows to build some non-uniform circuits like SuperNova does by selecting an
+instruction, and have more than one accumulators.
