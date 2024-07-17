@@ -2,7 +2,7 @@
 
 ### Motivation
 
-This library provides a basic implementation of the recursive zero-knowledge
+This library provides an implementation of the recursive zero-knowledge
 arguments described in the paper [Nova](https://eprint.iacr.org/2021/370), over
 the [pasta]() curves and using the IPA polynomial commitment.
 
@@ -12,8 +12,9 @@ arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
 The first iteration of the project will allow to fold a polynomial-time function
-`f`, of degree 2**. No generic lookup argument will be implemented in the first
-version, even though a "runtime" lookup/permutation argument will be required
+`f` (which can be, in a near future, a zkApp), of degree 2**. No generic lookup
+argument will be implemented in the first version, even though a "runtime"
+lookup/permutation argument will be required
 for cross-cells referencing. A generalisation can be done using different
 constructions, like the ones
 described in the [folding](../folding) library, or in papers like
