@@ -109,7 +109,7 @@ pub fn main() {
         }
 
         debug!(
-            "Iteration {i} fully proved in {elapsed} μs",
+            "Iteration {i} fully proven in {elapsed} μs",
             i = env.current_iteration,
             elapsed = start_iteration.elapsed().as_micros()
         );
