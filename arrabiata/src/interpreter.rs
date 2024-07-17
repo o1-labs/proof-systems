@@ -62,10 +62,8 @@
 //! For a first version, we consider an instance of the Poseidon hash function
 //! that it suitable for curves whose field size is around 256 bits.
 //! A security analysis for these curves give us a recommandation of 8 full
-//! rounds and 56 partial rounds if we consider a 128-bit security level.
-//! Another way to reach the same security level is to consider only full
-//! rounds, and we get therefore 55 rounds.
-//! We will consider the latter for the moment.
+//! rounds and 56 partial rounds if we consider a 128-bit security level and a
+//! low-degree exponentiation of `5`.
 //!
 //! When applying the full/partial round strategy, an optimisation can be used,
 //! see [New Optimization techniques for PlonK's
