@@ -50,7 +50,9 @@
 //!
 //! Hashing is a crucial part of the Nova IVC scheme. The hash function the
 //! interpreter does use for the moment is an instance of the Poseidon hash
-//! function with a fixed state size of 3.
+//! function with a fixed state size of 3. Increasing the state size can be a
+//! considerable option as it would potentially optimize the number of rounds,
+//! and allow hashing more data on one row. We leave this for future works.
 //!
 //! A direct optimisation would be to use Poseidon2 as its performance on CPU is
 //! better, for the same security level and the same cost in circuit. We leave
