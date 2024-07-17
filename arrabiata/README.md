@@ -1,4 +1,4 @@
-## Arrabiata - a recursive zero-knowledge arguments implementation based on folding scheme
+## Arrabiata - a recursive zero-knowledge argument implementation based on folding scheme
 
 ### Motivation
 
