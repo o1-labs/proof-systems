@@ -12,8 +12,10 @@ arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
 The first iteration of the project will allow to fold a polynomial-time function
-`f`, of degree 2. No lookup argument will be implemented in the first version.
-A generalisation can be done using different constructions, like the ones
+`f`, of degree 2. No generic lookup argument will be implemented in the first
+version, even though a "runtime" lookup/permutation argument will be required
+for cross-cells referencing. A generalisation can be done using different
+constructions, like the ones
 described in the [folding](../folding) library, or in papers like
 [ProtoGalaxy](https://eprint.iacr.org/2023/1106),
 [ProtoStar](https://eprint.iacr.org/2023/620), etc. We leave this for future
