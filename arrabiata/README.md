@@ -1,9 +1,9 @@
-## Arrabiata - a recursive zero-knowledge argument implementation based on folding scheme
+## Arrabiata - a generic recursive zero-knowledge argument implementation based on folding schemes
 
 ### Motivation
 
 This library provides an implementation of a generic recursive zero-knowledge
-arguments based on folding schemes (initially defined in
+argument based on folding schemes (initially defined in
 [Nova](https://eprint.iacr.org/2021/370)), over the [pasta]() curves and using
 the IPA polynomial commitment.
 
