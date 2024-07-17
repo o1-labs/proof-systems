@@ -12,17 +12,20 @@ arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
 The first iteration of the project will allow to fold a polynomial-time function
-`f`, of degree 2. No generic lookup argument will be implemented in the first
+`f`, of degree 2**. No generic lookup argument will be implemented in the first
 version, even though a "runtime" lookup/permutation argument will be required
 for cross-cells referencing. A generalisation can be done using different
 constructions, like the ones
 described in the [folding](../folding) library, or in papers like
 [ProtoGalaxy](https://eprint.iacr.org/2023/1106),
 [ProtoStar](https://eprint.iacr.org/2023/620), etc. We leave this for future
-work.
+work***.
 
 *This might need changes to the Mina blockchain, with a possible new hardfork.
 Not even sure it is possible right now.
+
+**This will change. We might go up to degree 6 or 7, as we're building the
+different gadgets (EC addition, EC scalar multiplication, Poseidon).
 
 ### Implementation details
 
@@ -41,6 +44,10 @@ many data as required as long as possible to avoid indirection.
 The witness interpreter attempts to perform most of the algebraic operations
 using integers, and not field element. The results are reduced into the field
 when mandatory.
+
+While building the witness, the cross terms are also computed on the fly, to be
+used in the next iteration. This way, the prover only pays the price of the
+activated gate on each row.
 
 ### Examples
 

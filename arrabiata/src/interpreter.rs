@@ -78,6 +78,18 @@
 //!
 //! TODO
 //!
+//! ### Elliptic curve scalar multiplication
+//!
+//! The Nova IVC scheme requires to perform scalar multiplications on elliptic
+//! curve points. The scalar multiplication is computed using the double-and-add
+//! algorithm.
+//! First, the scalar is converted to its binary representation. We do use 17
+//! rows using 17 columns to compute the 256 bits of the scalar.
+//!
+//! On a first row, we decompose the scalar into 16 bits chunks, with additional
+//! range check constraints.
+//! On the next 16 rows, we split each 16 chunks into 16 bits chunks.
+//!
 //! ## Handle the combinaison of constraints
 //!
 //! The prover will have to combine the constraints to generate the
