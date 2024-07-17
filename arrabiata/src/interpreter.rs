@@ -54,7 +54,8 @@
 //! considerable option as it would potentially optimize the number of rounds,
 //! and allow hashing more data on one row. We leave this for future works.
 //!
-//! A direct optimisation would be to use Poseidon2 as its performance on CPU is
+//! A direct optimisation would be to use
+//! [Poseidon2](https://eprint.iacr.org/2023/323) as its performance on CPU is
 //! better, for the same security level and the same cost in circuit. We leave
 //! this for future works.
 //!
