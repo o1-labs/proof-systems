@@ -68,3 +68,14 @@ environment variable `RUST_LOG=debug`.
 ```
 cargo nextest run --all-features --release
 ```
+
+### Registry of zkApps
+
+A registry of zkApps is already preconfigured.
+To write a zkApp, check TODO.
+
+The zkApp registry can be found in TODO
+
+<!-- The idea is to able to load at runtime a function of type <E:
+InterpreterEnv> -> () which takes an environment as a parameter, and anything
+can be built from there, in Rust, directly. We simply need to provide an interface -->
