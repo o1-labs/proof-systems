@@ -71,6 +71,10 @@
 //! in the paper can also be generalized to other constraints used in the
 //! interpreter, but we leave this for future works.
 //!
+//! ### Gadget layout
+//!
+//! TODO
+//!
 //! ### Handle the combinaison of constraints
 //!
 //! The prover will have to combine the constraints to generate the
