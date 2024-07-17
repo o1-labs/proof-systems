@@ -62,7 +62,7 @@ pub fn main() {
             interpreter::run_app(&mut env);
         }
 
-        info!("Buildint the IVC circuit");
+        info!("Building the IVC circuit");
         // Build the IVC circuit
         for _i in 0..IVC_CIRCUIT_SIZE {
             interpreter::run_ivc(&mut env);
