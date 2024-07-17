@@ -17,6 +17,7 @@ pub mod column_env;
 pub mod columns;
 pub mod constraints;
 pub mod interpreter;
+pub mod logup;
 pub mod proof;
 pub mod prover;
 pub mod verifier;
