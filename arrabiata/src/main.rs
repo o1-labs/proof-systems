@@ -2,7 +2,7 @@ use arrabiata::{
     constraints,
     interpreter::{self},
     witness::Env,
-    MIN_SRS_LOG2_SIZE,
+    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
@@ -49,12 +49,23 @@ pub fn main() {
     let domain_size = 1 << srs_log2_size;
     let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(*srs_log2_size);
 
+    let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
+
     while env.current_iteration < *n_iteration {
         let start_iteration = Instant::now();
 
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
-        for _i in 0..domain_size {
+
+        // Build the application circuit
+        info!("Running N iterations of the application circuit");
+        for _i in 0..n_iteration_per_fold {
             interpreter::run_app(&mut env);
+        }
+
+        info!("Buildint the IVC circuit");
+        // Build the IVC circuit
+        for _i in 0..IVC_CIRCUIT_SIZE {
+            interpreter::run_ivc(&mut env);
         }
 
         debug!(
@@ -64,10 +75,8 @@ pub fn main() {
         );
 
         // FIXME:
-        // - if i % 2 == 0, commit with e1.
-        // - if i % 2 == 1, commit with e2.
-        // FIXME:
-        // update current instance with the previous "next" commitments (i.e. env.next_commitments)
+        // update current instance with the previous "next" commitments (i.e.
+        // env.next_commitments)
         // update next instance with current commitments
         // FIXME: Check twice the updated commitments
         env.compute_and_update_previous_commitments();

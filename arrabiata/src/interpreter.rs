@@ -150,6 +150,19 @@ pub trait InterpreterEnv {
     fn reset(&mut self);
 }
 
+/// Run the application
+pub fn run_app<E: InterpreterEnv>(env: &mut E) {
+    let x1 = {
+        let pos = env.allocate();
+        env.fetch_input(pos)
+    };
+    let _x1_square = {
+        let res = env.allocate();
+        env.square(res, x1.clone())
+    };
+    env.reset();
+}
+
 /// Run an iteration of the IVC scheme.
 /// It consists of the following steps:
 /// 1. Compute the hash of the public input.
@@ -167,14 +180,6 @@ pub trait InterpreterEnv {
 ///
 /// FIXME: homogeneize
 /// FIXME: compute error terms
-pub fn run_app<E: InterpreterEnv>(env: &mut E) {
-    let x1 = {
-        let pos = env.allocate();
-        env.fetch_input(pos)
-    };
-    let _x1_square = {
-        let res = env.allocate();
-        env.square(res, x1.clone())
-    };
+pub fn run_ivc<E: InterpreterEnv>(env: &mut E) {
     env.reset();
 }
