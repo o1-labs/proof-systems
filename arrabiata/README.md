@@ -1,13 +1,14 @@
-## Arrabiata - a Nova implementation over the Pasta curve
+## Arrabiata - a recursive zero-knowledge arguments implementation based on folding scheme
 
 ### Motivation
 
-This library provides an implementation of the recursive zero-knowledge
-arguments described in the paper [Nova](https://eprint.iacr.org/2021/370), over
-the [pasta]() curves and using the IPA polynomial commitment.
+This library provides an implementation of a generic recursive zero-knowledge
+arguments based on folding schemes (initially defined in
+[Nova](https://eprint.iacr.org/2021/370)), over the [pasta]() curves and using
+the IPA polynomial commitment.
 
 The end goal of this repository is to implement a Nova prover, and have a zkApp
-on the Mina blockchain verifying the Nova proof*. This way, any user can run
+on the Mina blockchain verifying the recursive proof*. This way, any user can run
 arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
@@ -15,12 +16,10 @@ The first iteration of the project will allow to fold a polynomial-time function
 `f` (which can be, in a near future, a zkApp), of degree 2**. No generic lookup
 argument will be implemented in the first version, even though a "runtime"
 lookup/permutation argument will be required
-for cross-cells referencing. A generalisation can be done using different
-constructions, like the ones
-described in the [folding](../folding) library, or in papers like
+for cross-cells referencing. The implementation leverages different
+constructions and ideas described in papers like
 [ProtoGalaxy](https://eprint.iacr.org/2023/1106),
-[ProtoStar](https://eprint.iacr.org/2023/620), etc. We leave this for future
-work***.
+[ProtoStar](https://eprint.iacr.org/2023/620), etc.
 
 *This might need changes to the Mina blockchain, with a possible new hardfork.
 Not even sure it is possible right now.
