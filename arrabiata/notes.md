@@ -15,3 +15,11 @@ Note that we also need lookups. Lookups require, per instance, `m`, `t`,
 If we use a "horizontal layout" (i.e. IVC next to APP), we could use the spare
 rows to build some non-uniform circuits like SuperNova does by selecting an
 instruction, and have more than one accumulators.
+
+### Cross terms computation
+
+based on the idea of computing on-the-fly: we might need to keep for each row
+the partial evaluations, and define a polynomial in the second homogeneous value
+`u''`.
+
+
