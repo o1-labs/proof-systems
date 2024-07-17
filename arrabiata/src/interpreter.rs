@@ -72,6 +72,23 @@
 //! arithmetisation](https://eprint.iacr.org/2022/462). The techniques described
 //! in the paper can also be generalized to other constraints used in the
 //! interpreter, but we leave this for future works.
+//!
+//! ### Handle the combinaison of constraints
+//!
+//! The prover will have to combine the constraints to generate the
+//! full circuit at the end. The constraints will be combined using a
+//! challenge (often called α) that will be generated in the verifier circuit by
+//! simulating the Fiat-Shamir transformation.
+//! The challenges will then be accumulated over time using the random coin used
+//! by the folding argument.
+//! The verifier circuit must be carefully implemented to ensure that all the
+//! messages that the prover would have sent before coining the random combiner
+//! for the constraints has been absorbed properly in the verifier circuit.
+//!
+//! Using this technique requires us a folding scheme that handles degree 3
+//! constraints, as the challenge will be considered as a variable.
+//! The reader can refer to the folding library available in this monorepo for
+//! more contexts.
 
 use ark_ff::{One, Zero};
 
