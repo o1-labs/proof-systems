@@ -1,12 +1,14 @@
-use std::time::Instant;
-
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
+use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
 use num_bigint::BigUint;
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm};
+use o1_utils::field_helpers::FieldHelpers;
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::time::Instant;
 
 use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 
@@ -230,6 +232,43 @@ impl<
     /// It is part of the instance, and it is accumulated in the IVC.
     pub fn accumulate_commitment_blinder(&mut self) {
         // TODO
+    }
+
+    /// Compute the commitments to the current witness, and update the previous
+    /// instances.
+    // Might be worth renaming this function
+    pub fn compute_and_update_previous_commitments(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let comms: Vec<PolyComm<E1>> = self
+                .witness
+                .par_iter()
+                .map(|evals| {
+                    let evals: Vec<Fp> = evals
+                        .par_iter()
+                        .map(|x| Fp::from_biguint(x).unwrap())
+                        .collect();
+                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
+                    self.srs_e1
+                        .commit_evaluations_non_hiding(self.domain_fp.d1, &evals)
+                })
+                .collect();
+            self.previous_commitments_e1 = comms
+        } else {
+            let comms: Vec<PolyComm<E2>> = self
+                .witness
+                .iter()
+                .map(|evals| {
+                    let evals: Vec<Fq> = evals
+                        .par_iter()
+                        .map(|x| Fq::from_biguint(x).unwrap())
+                        .collect();
+                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
+                    self.srs_e2
+                        .commit_evaluations_non_hiding(self.domain_fq.d1, &evals)
+                })
+                .collect();
+            self.previous_commitments_e2 = comms
+        }
     }
 }
 

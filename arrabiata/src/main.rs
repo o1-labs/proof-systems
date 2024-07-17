@@ -1,6 +1,3 @@
-use std::time::Instant;
-
-use ark_poly::Evaluations;
 use arrabiata::{
     constraints,
     interpreter::{self},
@@ -9,11 +6,9 @@ use arrabiata::{
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
-use o1_utils::field_helpers::FieldHelpers;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::time::Instant;
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
-use poly_commitment::{PolyComm, SRS};
 
 pub fn main() {
     // See https://github.com/rust-lang/log
@@ -75,38 +70,7 @@ pub fn main() {
         // update current instance with the previous "next" commitments (i.e. env.next_commitments)
         // update next instance with current commitments
         // FIXME: Check twice the updated commitments
-        // FIXME: move into the environment. It is something abstract to the user.
-        if env.current_iteration % 2 == 0 {
-            let comms: Vec<PolyComm<Vesta>> = env
-                .witness
-                .par_iter()
-                .map(|evals| {
-                    let evals: Vec<Fp> = evals
-                        .par_iter()
-                        .map(|x| Fp::from_biguint(x).unwrap())
-                        .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
-                    env.srs_e1
-                        .commit_evaluations_non_hiding(env.domain_fp.d1, &evals)
-                })
-                .collect();
-            env.previous_commitments_e1 = comms
-        } else {
-            let comms: Vec<PolyComm<Pallas>> = env
-                .witness
-                .iter()
-                .map(|evals| {
-                    let evals: Vec<Fq> = evals
-                        .par_iter()
-                        .map(|x| Fq::from_biguint(x).unwrap())
-                        .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fq.d1);
-                    env.srs_e2
-                        .commit_evaluations_non_hiding(env.domain_fq.d1, &evals)
-                })
-                .collect();
-            env.previous_commitments_e2 = comms
-        }
+        env.compute_and_update_previous_commitments();
 
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",
