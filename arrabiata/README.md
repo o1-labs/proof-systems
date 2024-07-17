@@ -81,3 +81,7 @@ InterpreterEnv> -> () which takes an environment as a parameter, and anything
 can be built from there, in Rust, directly. We simply need to provide an
 interface. A zkApp can use up to N columns, N being the value defined in the
 lib.rs file. In this registry, we could have for instance o1VM -->
+
+<!-- The user should also be able to switch the IVC circuit to use different
+versions over time. It can also be done using a registry. We keep only one IVC
+circuit for now -->
