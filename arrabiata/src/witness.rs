@@ -73,7 +73,9 @@ pub struct Env<
     ///
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
-    pub witness: Vec<Vec<Fp>>,
+    pub witness: Vec<Vec<BigUint>>,
+
+    pub _marker: std::marker::PhantomData<(Fp, Fq, SpongeConfig, E1, E2)>,
 }
 
 impl<
@@ -86,7 +88,9 @@ impl<
 {
     type Position = Column;
 
-    // FIXME
+    /// For efficiency, and for having a single interpreter, we do not use one
+    /// of the fields. We use a generic BigUint to represent the values.
+    /// When building the witness, we will reduce into the corresponding field
     type Variable = BigUint;
 
     fn variable(&self, _column: Self::Position) -> Self::Variable {
@@ -134,7 +138,7 @@ impl<
     fn reset(&mut self) {
         // Save the current state in the witness
         self.state.iter().enumerate().for_each(|(i, x)| {
-            self.witness[i][self.current_row] = Fp::from(x.clone());
+            self.witness[i][self.current_row] = x.clone();
         });
         self.current_row += 1;
         self.idx_var = 0;
@@ -177,10 +181,10 @@ impl<
             srs
         };
 
-        let mut witness: Vec<Vec<Fp>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        let mut witness: Vec<Vec<BigUint>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            let mut vec: Vec<Fp> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(Fp::zero()));
+            let mut vec: Vec<BigUint> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(BigUint::from(0_usize)));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
         // Default set to the blinders
@@ -208,6 +212,7 @@ impl<
             witness,
             current_row: 0,
             state: std::array::from_fn(|_| BigUint::from(0_usize)),
+            _marker: std::marker::PhantomData,
         }
     }
 

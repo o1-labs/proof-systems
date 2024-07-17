@@ -9,6 +9,7 @@ use arrabiata::{
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use o1_utils::field_helpers::FieldHelpers;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
@@ -73,9 +74,6 @@ pub fn main() {
         // FIXME:
         // update current instance with the previous "next" commitments (i.e. env.next_commitments)
         // update next instance with current commitments
-        // FIXME: the environment is built using Fp elements. We must handle
-        // both circuits in the interpreter. Maybe having two type of witnesses?
-        // We must abstract the function being executed in a certain way.
         // FIXME: Check twice the updated commitments
         // FIXME: move into the environment. It is something abstract to the user.
         if env.current_iteration % 2 == 0 {
@@ -83,6 +81,10 @@ pub fn main() {
                 .witness
                 .par_iter()
                 .map(|evals| {
+                    let evals: Vec<Fp> = evals
+                        .par_iter()
+                        .map(|x| Fp::from_biguint(x).unwrap())
+                        .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
                     env.srs_e1
                         .commit_evaluations_non_hiding(env.domain_fp.d1, &evals)
@@ -90,16 +92,20 @@ pub fn main() {
                 .collect();
             env.previous_commitments_e1 = comms
         } else {
-            // let comms: Vec<PolyComm<Vesta>> = env
-            //     .witness
-            //     .iter()
-            //     .map(|evals| {
-            //         let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fp.d1);
-            //         env.srs_e1
-            //             .commit_evaluations_non_hiding(env.domain_fp.d1, &evals)
-            //     })
-            //     .collect();
-            // env.previous_commitments_e1 = comms
+            let comms: Vec<PolyComm<Pallas>> = env
+                .witness
+                .iter()
+                .map(|evals| {
+                    let evals: Vec<Fq> = evals
+                        .par_iter()
+                        .map(|x| Fq::from_biguint(x).unwrap())
+                        .collect();
+                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), env.domain_fq.d1);
+                    env.srs_e2
+                        .commit_evaluations_non_hiding(env.domain_fq.d1, &evals)
+                })
+                .collect();
+            env.previous_commitments_e2 = comms
         }
 
         debug!(
