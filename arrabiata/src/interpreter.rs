@@ -48,7 +48,30 @@
 //!
 //! ### Hash - Poseidon
 //!
-//! TODO
+//! Hashing is a crucial part of the Nova IVC scheme. The hash function the
+//! interpreter does use for the moment is an instance of the Poseidon hash
+//! function with a fixed state size of 3.
+//!
+//! A direct optimisation would be to use Poseidon2 as its performance on CPU is
+//! better, for the same security level and the same cost in circuit. We leave
+//! this for future works.
+//!
+//! Note that the interpreter enforces degree 2 constraints, therefore we have
+//! to reduce all computations to degree 2.
+//!
+//! For a first version, we consider an instance of the Poseidon hash function
+//! that it suitable for curves whose field size is around 256 bits.
+//! A security analysis for these curves give us a recommandation of 8 full
+//! rounds and 56 partial rounds if we consider a 128-bit security level.
+//! Another way to reach the same security level is to consider only full
+//! rounds, and we get therefore 55 rounds.
+//! We will consider the latter for the moment.
+//!
+//! When applying the full/partial round strategy, an optimisation can be used,
+//! see [New Optimization techniques for PlonK's
+//! arithmetisation](https://eprint.iacr.org/2022/462). The techniques described
+//! in the paper can also be generalized to other constraints used in the
+//! interpreter, but we leave this for future works.
 
 use ark_ff::{One, Zero};
 
