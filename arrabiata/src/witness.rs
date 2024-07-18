@@ -133,6 +133,10 @@ impl<
         pos
     }
 
+    fn constant(&self, v: BigUint) -> Self::Variable {
+        v
+    }
+
     fn add_constraint(&mut self, _x: Self::Variable) {
         unimplemented!("Only when building the constraints")
     }

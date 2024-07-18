@@ -1,8 +1,10 @@
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
-    expr::{Expr, ExprInner, Variable},
+    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
+use num_bigint::BigUint;
+use o1_utils::FieldHelpers;
 
 use crate::{columns::E, MAX_DEGREE};
 
@@ -33,7 +35,7 @@ impl<Fp: Field> Default for Env<Fp> {
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-impl<Fp: Field> InterpreterEnv for Env<Fp> {
+impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     type Position = Column;
 
     type Variable = E<Fp>;
@@ -49,6 +51,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             col: column,
             row: CurrOrNext::Curr,
         }))
+    }
+
+    fn constant(&self, value: BigUint) -> Self::Variable {
+        let v = Fp::from_biguint(&value).unwrap();
+        let v_inner = Operations::from(Literal(v));
+        Self::Variable::constant(v_inner)
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {

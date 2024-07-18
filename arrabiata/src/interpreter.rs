@@ -108,6 +108,7 @@
 //! more contexts.
 
 use ark_ff::{One, Zero};
+use num_bigint::BigUint;
 
 /// An abstract interpreter that provides some functionality on the circuit. The
 /// interpreter should be seen as a state machine with some built-in
@@ -134,6 +135,8 @@ pub trait InterpreterEnv {
 
     /// Build a variable from the given position
     fn variable(&self, position: Self::Position) -> Self::Variable;
+
+    fn constant(&self, v: BigUint) -> Self::Variable;
 
     /// Assert that the variable is zero
     fn assert_zero(&mut self, x: Self::Variable);
