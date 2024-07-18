@@ -127,9 +127,9 @@ impl<
     }
 
     fn allocate(&mut self) -> Self::Position {
+        assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
         let pos = Column::X(self.idx_var);
         self.idx_var += 1;
-        assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
         pos
     }
 
