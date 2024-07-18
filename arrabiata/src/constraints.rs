@@ -5,6 +5,7 @@ use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
+use log::debug;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
@@ -60,6 +61,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
 
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
+        debug!("Adding constraint of degree {degree}: {:}", constraint);
         assert!(degree <= MAX_DEGREE, "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
         self.constraints.push(constraint);
     }
