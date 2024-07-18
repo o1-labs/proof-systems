@@ -10,7 +10,9 @@ use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _}
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
-use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
+use crate::{
+    columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+};
 
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
@@ -61,11 +63,20 @@ pub struct Env<
     /// position.
     pub idx_var: usize,
 
+    /// The index of the latest allocated public inputs in the circuit.
+    /// It is used to allocate new public inputs without having to keep track of
+    /// the position.
+    pub idx_var_pi: usize,
+
     /// Current processing row. Used to build the witness.
     pub current_row: usize,
 
     /// State of the current row in the execution trace
     pub state: [BigUint; NUMBER_OF_COLUMNS],
+
+    /// Contain the public state
+    // FIXME: I don't like this design. Feel free to suggest a better solution
+    pub public_state: [BigUint; NUMBER_OF_PUBLIC_INPUTS],
 
     /// The sponges will be used to simulate the verifier messages, and will
     /// also be used to verify the consistency of the computation by hashing the
@@ -131,6 +142,21 @@ impl<
         let pos = Column::X(self.idx_var);
         self.idx_var += 1;
         pos
+    }
+
+    fn allocate_public_input(&mut self) -> Self::Position {
+        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
+        let pos = Column::PublicInput(self.idx_var_pi);
+        self.idx_var_pi += 1;
+        pos
+    }
+
+    fn write_public_input(&mut self, col: Self::Position, v: BigUint) -> Self::Variable {
+        let Column::PublicInput(idx) = col else {
+            unimplemented!("Only works for public input columns")
+        };
+        self.public_state[idx] = v.clone();
+        v
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -216,6 +242,7 @@ impl<
         });
         self.current_row += 1;
         self.idx_var = 0;
+        self.idx_var_pi = 0;
         // Rest the state for the next row
         self.state = std::array::from_fn(|_| BigUint::from(0_usize));
     }
@@ -305,8 +332,10 @@ impl<
             // ------
             // ------
             idx_var: 0,
+            idx_var_pi: 0,
             current_row: 0,
             state: std::array::from_fn(|_| BigUint::from(0_usize)),
+            public_state: std::array::from_fn(|_| BigUint::from(0_usize)),
             sponge_e1,
             sponge_e2,
             current_iteration: 0,

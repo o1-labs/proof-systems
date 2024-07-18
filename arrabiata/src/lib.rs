@@ -13,6 +13,10 @@ pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 /// The maximum number of columns that can be used in the circuit.
 pub const NUMBER_OF_COLUMNS: usize = 17;
 
+/// The maximum number of public inputs the circuit can use per row
+// FIXME: that might change
+pub const NUMBER_OF_PUBLIC_INPUTS: usize = 3;
+
 pub mod column_env;
 pub mod columns;
 pub mod constraints;

@@ -142,6 +142,13 @@ pub trait InterpreterEnv {
     /// Allocate a new variable in the circuit
     fn allocate(&mut self) -> Self::Position;
 
+    fn allocate_public_input(&mut self) -> Self::Position;
+
+    /// Write the corresponding public inputs.
+    // FIXME: This design might not be the best. Feel free to come up with a
+    // better solution. The PI should be static for all witnesses
+    fn write_public_input(&mut self, x: Self::Position, v: BigUint) -> Self::Variable;
+
     /// Build a variable from the given position
     fn variable(&self, position: Self::Position) -> Self::Variable;
 

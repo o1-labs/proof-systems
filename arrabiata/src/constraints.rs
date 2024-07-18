@@ -1,5 +1,5 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
-use crate::{columns::E, MAX_DEGREE, NUMBER_OF_COLUMNS};
+use crate::{columns::E, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS};
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -11,6 +11,7 @@ use o1_utils::FieldHelpers;
 
 pub struct Env<Fp: Field> {
     pub idx_var: usize,
+    pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
 
@@ -18,6 +19,7 @@ impl<Fp: Field> Env<Fp> {
     pub fn new() -> Self {
         Self {
             idx_var: 0,
+            idx_var_pi: 0,
             constraints: Vec::new(),
         }
     }
@@ -46,6 +48,13 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos
     }
 
+    fn allocate_public_input(&mut self) -> Self::Position {
+        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
+        let pos = Column::PublicInput(self.idx_var_pi);
+        self.idx_var_pi += 1;
+        pos
+    }
+
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: column,
@@ -59,6 +68,13 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         Self::Variable::constant(v_inner)
     }
 
+    /// Return the corresponding expression regarding the selected public input
+    fn write_public_input(&mut self, col: Self::Position, _v: BigUint) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col,
+            row: CurrOrNext::Curr,
+        }))
+    }
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
         debug!("Adding constraint of degree {degree}: {:}", constraint);
