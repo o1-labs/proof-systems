@@ -110,6 +110,15 @@
 use ark_ff::{One, Zero};
 use num_bigint::BigUint;
 
+// FIXME: Can we use an "instruction" kind of circuit?
+// We do use a "fetch_next_instruction" method to mention what is the next
+// gadget/isntruction to run
+// pub enum Instruction {
+//     App(usize),
+//     SixteenBitsDecomposition,
+//     BitDecompositionFrom16Bits(usize),
+// }
+
 /// An abstract interpreter that provides some functionality on the circuit. The
 /// interpreter should be seen as a state machine with some built-in
 /// functionality whose state is a matrix, and whose transitions are described
