@@ -232,8 +232,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E) {
         });
     env.assert_zero(cstr);
 
+    env.reset();
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
-
-    env.reset();
 }

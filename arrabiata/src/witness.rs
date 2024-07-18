@@ -155,14 +155,18 @@ impl<
 
     // FIXME: it should not be a check, but it should build the related logup
     // values
-    fn range_check16(&mut self, x: Self::Position) {
-        let Column::X(idx) = x;
+    fn range_check16(&mut self, col: Self::Position) {
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private columns")
+        };
         let x = self.state[idx].clone();
         assert!(x < BigUint::from(2_usize).pow(16));
     }
 
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
-        let Column::X(idx) = col;
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private columns")
+        };
         let res = x.clone() * x.clone();
         self.state[idx] = res.clone();
         res
@@ -174,7 +178,7 @@ impl<
         x: &Self::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: Self::Position,
+        col: Self::Position,
     ) -> Self::Variable {
         let diff = highest_bit - lowest_bit;
         assert!(
@@ -184,7 +188,9 @@ impl<
         let rht = BigUint::from(1_usize << diff) - BigUint::from(1_usize);
         let lft = x >> lowest_bit;
         let res: BigUint = lft & rht;
-        let Column::X(idx) = position;
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private columns")
+        };
         self.state[idx] = res.clone();
         res
     }
@@ -192,10 +198,12 @@ impl<
     // FIXME: for now, we use the row number and compute the square.
     // This is only for testing purposes, and having something to build the
     // witness.
-    fn fetch_input(&mut self, res: Self::Position) -> Self::Variable {
+    fn fetch_input(&mut self, col: Self::Position) -> Self::Variable {
         let x = BigUint::from(self.current_row as u64);
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private columns")
+        };
         // Update the state accordinly to keep track of it
-        let Column::X(idx) = res;
         self.state[idx] = x.clone();
         x
     }
@@ -213,13 +221,15 @@ impl<
     }
 
     /// FIXME: check if we need to pick the left or right sponge
-    fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
+    fn coin_folding_combiner(&mut self, col: Self::Position) -> Self::Variable {
         let r = if self.current_iteration % 2 == 0 {
             self.sponge_e1.challenge().to_biguint()
         } else {
             self.sponge_e2.challenge().to_biguint()
         };
-        let Column::X(idx) = pos;
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private columns")
+        };
         self.state[idx] = r.clone();
         r
     }
