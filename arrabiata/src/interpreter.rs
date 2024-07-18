@@ -109,11 +109,10 @@
 
 use ark_ff::{One, Zero};
 
-/// For the IVC circuit, we need different gadgets in addition to run the
-/// polynomial-time function:
-/// - Hash: we need compute the hash of the public input, which is the output of
-/// the previous instance.
-/// - Elliptic curve addition: we need to compute the elliptic curve operation.
+/// An abstract interpreter that provides some functionality on the circuit. The
+/// interpreter should be seen as a state machine with some built-in
+/// functionality whose state is a matrix, and whose transitions are described
+/// by polynomial functions.
 pub trait InterpreterEnv {
     type Position;
 
