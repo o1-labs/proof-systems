@@ -4,8 +4,9 @@
 
 This library provides an implementation of a generic recursive zero-knowledge
 argument based on folding schemes (initially defined in
-[Nova](https://eprint.iacr.org/2021/370)), over the [pasta]() curves and using
-the IPA polynomial commitment.
+[Nova](https://eprint.iacr.org/2021/370)), over the
+[pasta](https://github.com/zcash/pasta_curves) curves and using the IPA
+polynomial commitment.
 
 The end goal of this repository is to implement a Nova-like prover, and have a zkApp
 on the Mina blockchain verifying the recursive proof*. This way, any user can run
