@@ -86,6 +86,15 @@ pub struct Env<
     /// column when committing to the witness.
     pub witness: Vec<Vec<BigUint>>,
 
+    // --------------
+    // Inputs
+    /// Initial input
+    pub z0: BigUint,
+
+    /// Current input
+    pub zi: BigUint,
+    // ---------------
+
     // ---------------
     // Only used to have type safety and think about the design at the
     // type-level
@@ -170,7 +179,7 @@ impl<
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, SpongeConfig, E1, E2>
 {
-    pub fn new(srs_log2_size: usize) -> Self {
+    pub fn new(srs_log2_size: usize, z0: BigUint) -> Self {
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
@@ -210,23 +219,38 @@ impl<
             .map(|_| PolyComm::new(vec![srs_e2.h]))
             .collect();
         Self {
+            // -------
+            // Setup
             domain_fp,
             domain_fq,
             srs_e1,
             srs_e2,
+            // -------
+            // -------
+            // IVC only
             ivc_accumulator_e1: E1::zero(),
             ivc_accumulator_e2: E2::zero(),
             previous_commitments_e1,
             previous_commitments_e2,
+            // ------
+            // ------
+            idx_var: 0,
+            current_row: 0,
+            state: std::array::from_fn(|_| BigUint::from(0_usize)),
             sponge_fp: None,
             current_iteration: 0,
             previous_hash: [0; 2],
+            // ------
+            // ------
+            // Used by the interpreter
             // Used to allocate variables
-            idx_var: 0,
             // Witness builder related
             witness,
-            current_row: 0,
-            state: std::array::from_fn(|_| BigUint::from(0_usize)),
+            // ------
+            // Inputs
+            z0: z0.clone(),
+            zi: z0,
+            // ------
             _marker: std::marker::PhantomData,
         }
     }
@@ -283,6 +307,13 @@ impl<
             self.previous_commitments_e2 = comms
         }
     }
+
+    /// Compute the output of the application on the previous output
+    // TODO: we should compute the hash of the previous commitments, only on
+    // CPU?
+    pub fn compute_output(&mut self) {
+        self.zi = BigUint::from(42_usize)
+    }
 }
 
 impl<
@@ -295,6 +326,6 @@ impl<
 {
     /// By default, we will suppose we have 2^16 rows.
     fn default() -> Self {
-        Self::new(16)
+        Self::new(16, BigUint::from(0_usize))
     }
 }

@@ -6,6 +6,7 @@ use arrabiata::{
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use num_bigint::BigUint;
 use std::time::Instant;
 // FIXME: use other parameters, like one with the partial rounds
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
@@ -47,7 +48,10 @@ pub fn main() {
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
     let domain_size = 1 << srs_log2_size;
-    let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(*srs_log2_size);
+    let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(
+        *srs_log2_size,
+        BigUint::from(1u64),
+    );
 
     let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
 
