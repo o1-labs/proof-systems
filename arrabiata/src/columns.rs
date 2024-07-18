@@ -4,8 +4,10 @@ use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gadget {
+    App,
     SixteenBitsDecomposition,
     BitDecomposition,
+    NativeECAdd,
     Poseidon,
 }
 
@@ -23,6 +25,8 @@ impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::App => "q_app".to_string(),
+                Gadget::NativeECAdd => "q_ec_add".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
@@ -35,6 +39,8 @@ impl FormattedOutput for Column {
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::App => "q_app".to_string(),
+                Gadget::NativeECAdd => "q_ec_add".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
