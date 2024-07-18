@@ -24,6 +24,8 @@ pub struct Env<
     E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
 > {
+    // ----------------
+    // Setup related (domains + SRS)
     /// Domain for Fp
     pub domain_fp: EvaluationDomains<Fp>,
 
@@ -35,7 +37,11 @@ pub struct Env<
 
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
+    // ----------------
 
+    // ----------------
+    // Information related to the IVC, which will be used by the prover/verifier
+    // at the end of the whole execution
     // FIXME
     pub ivc_accumulator_e1: E1,
 
@@ -45,7 +51,10 @@ pub struct Env<
     /// Commitments to the previous instances
     pub previous_commitments_e1: Vec<PolyComm<E1>>,
     pub previous_commitments_e2: Vec<PolyComm<E2>>,
+    // ----------------
 
+    // ----------------
+    // Data only used by the interpreter while building the witness over time
     /// The index of the latest allocated variable in the circuit.
     /// It is used to allocate new variables without having to keep track of the
     /// position.
@@ -66,7 +75,7 @@ pub struct Env<
 
     /// A previous hash, encoded in 2 chunks of 128 bits.
     pub previous_hash: [u128; 2],
-
+    // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in the
     /// circuit.
@@ -77,7 +86,11 @@ pub struct Env<
     /// column when committing to the witness.
     pub witness: Vec<Vec<BigUint>>,
 
+    // ---------------
+    // Only used to have type safety and think about the design at the
+    // type-level
     pub _marker: std::marker::PhantomData<(Fp, Fq, SpongeConfig, E1, E2)>,
+    // ---------------
 }
 
 impl<
