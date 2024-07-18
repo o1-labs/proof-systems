@@ -178,6 +178,18 @@ impl<
         // Rest the state for the next row
         self.state = std::array::from_fn(|_| BigUint::from(0_usize));
     }
+
+    /// FIXME: check if we need to pick the left or right sponge
+    fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
+        let r = if self.current_iteration % 2 == 0 {
+            self.sponge_e1.challenge().to_biguint()
+        } else {
+            self.sponge_e2.challenge().to_biguint()
+        };
+        let Column::X(idx) = pos;
+        self.state[idx] = r.clone();
+        r
+    }
 }
 
 impl<

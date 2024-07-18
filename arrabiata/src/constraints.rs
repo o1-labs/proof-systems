@@ -95,4 +95,11 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     fn reset(&mut self) {
         self.idx_var = 0;
     }
+
+    fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
 }

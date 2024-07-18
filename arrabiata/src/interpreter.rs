@@ -155,6 +155,9 @@ pub trait InterpreterEnv {
 
     /// Reset the environment to build the next row
     fn reset(&mut self);
+
+    /// Return the folding combiner
+    fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable;
 }
 
 /// Run the application
