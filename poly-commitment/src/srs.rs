@@ -7,6 +7,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use mina_poseidon::FqSponge;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -264,6 +265,16 @@ impl<G: CommitmentCurve> SRS<G> {
             h,
             lagrange_bases: HashMap::new(),
         }
+    }
+
+    /// Absorb all the information of the verification key into the given sponge.
+    ///
+    /// It is useful in SNARK protocols where the verification key must be
+    /// absorbed at the beginning of the protocol.
+    /// It does absorb first the basis G and after that the blinder H.
+    pub fn digest<Sponge: FqSponge<G::BaseField, G, G::ScalarField>>(&self, sponge: &mut Sponge) {
+        self.g.iter().for_each(|g| sponge.absorb_g(&[*g]));
+        sponge.absorb_g(&[self.h])
     }
 }
 
