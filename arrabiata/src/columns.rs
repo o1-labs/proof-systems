@@ -1,6 +1,6 @@
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Column {
     X(usize),
 }

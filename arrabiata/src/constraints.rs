@@ -1,3 +1,5 @@
+use super::{columns::Column, interpreter::InterpreterEnv};
+use crate::{columns::E, MAX_DEGREE};
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -5,10 +7,6 @@ use kimchi::circuits::{
 };
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
-
-use crate::{columns::E, MAX_DEGREE};
-
-use super::{columns::Column, interpreter::InterpreterEnv};
 
 pub struct Env<Fp: Field> {
     pub idx_var: usize,
@@ -72,6 +70,19 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
         self.add_constraint(x - y);
     }
+
+    unsafe fn bitmask_be(
+        &mut self,
+        _x: &Self::Variable,
+        _highest_bit: u32,
+        _lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    // FIXME
+    fn range_check16(&mut self, _x: Self::Position) {}
 
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
         let v = Expr::Atom(ExprInner::Cell(Variable {

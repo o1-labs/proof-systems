@@ -149,9 +149,38 @@ impl<
         assert_eq!(x, y);
     }
 
+    // FIXME: it should not be a check, but it should build the related logup
+    // values
+    fn range_check16(&mut self, x: Self::Position) {
+        let Column::X(idx) = x;
+        let x = self.state[idx].clone();
+        assert!(x < BigUint::from(2_usize).pow(16));
+    }
+
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
         let Column::X(idx) = col;
         let res = x.clone() * x.clone();
+        self.state[idx] = res.clone();
+        res
+    }
+
+    /// Flagged as unsafe as it does require an additional range check
+    unsafe fn bitmask_be(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let diff = highest_bit - lowest_bit;
+        assert!(
+            diff <= 16,
+            "The difference between the highest and lowest bit should be less than 16"
+        );
+        let rht = BigUint::from(1_usize << diff) - BigUint::from(1_usize);
+        let lft = x >> lowest_bit;
+        let res: BigUint = lft & rht;
+        let Column::X(idx) = position;
         self.state[idx] = res.clone();
         res
     }

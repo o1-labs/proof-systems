@@ -115,7 +115,7 @@ use num_bigint::BigUint;
 /// functionality whose state is a matrix, and whose transitions are described
 /// by polynomial functions.
 pub trait InterpreterEnv {
-    type Position;
+    type Position: Clone + Copy;
 
     /// The variable should be seen as a certain object that can be built by
     /// multiplying and adding, i.e. the variable can be seen as a solution
@@ -144,10 +144,28 @@ pub trait InterpreterEnv {
     /// Assert that the two variables are equal
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable);
 
+    /// Check if the variable is between [0, 2^16 - 1]
+    fn range_check16(&mut self, x: Self::Position);
+
     fn add_constraint(&mut self, x: Self::Variable);
 
     /// Compute the square a field element
     fn square(&mut self, res: Self::Position, x: Self::Variable) -> Self::Variable;
+
+    /// Flagged as unsafe as it does require an additional range check
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
+    /// bits.
+    unsafe fn bitmask_be(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable;
 
     /// Fetch an input of the application
     // Witness-only
@@ -191,7 +209,29 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// FIXME: homogeneize
 /// FIXME: compute error terms
 pub fn run_ivc<E: InterpreterEnv>(env: &mut E) {
+    // Decompositing the random coin in chunks of 16 bits. One row.
+    let r = {
+        let pos = env.allocate();
+        env.coin_folding_combiner(pos)
+    };
+    let decomposition_16bits: Vec<E::Variable> = (0..16)
+        .map(|i| {
+            let pos = env.allocate();
+            env.range_check16(pos);
+            unsafe { env.bitmask_be(&r, (i + 1) * 16, i * 16, pos) }
+        })
+        .collect();
+
+    let cstr = decomposition_16bits
+        .iter()
+        .enumerate()
+        .fold(r, |acc, (i, x)| {
+            acc - env.constant(BigUint::from(1_usize) << (i * 16)) * x.clone()
+        });
+    env.assert_zero(cstr);
+
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
+
     env.reset();
 }
