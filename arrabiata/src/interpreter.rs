@@ -116,6 +116,11 @@ use ark_ff::{One, Zero};
 pub trait InterpreterEnv {
     type Position;
 
+    /// The variable should be seen as a certain object that can be built by
+    /// multiplying and adding, i.e. the variable can be seen as a solution
+    /// to a polynomial.
+    /// When instantiating as expressions - "constraints" - it defines
+    /// multivariate polynomials.
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
