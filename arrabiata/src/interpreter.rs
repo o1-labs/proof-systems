@@ -149,6 +149,8 @@ pub trait InterpreterEnv {
 
     fn add_constraint(&mut self, x: Self::Variable);
 
+    fn constrain_boolean(&mut self, x: Self::Variable);
+
     /// Compute the square a field element
     fn square(&mut self, res: Self::Position, x: Self::Variable) -> Self::Variable;
 

@@ -66,6 +66,12 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.constraints.push(constraint);
     }
 
+    fn constrain_boolean(&mut self, x: Self::Variable) {
+        let one_bui = BigUint::from(1_usize);
+        let one = self.constant(one_bui);
+        let c = x.clone() * (x.clone() - one);
+        self.constraints.push(c)
+    }
     fn assert_zero(&mut self, x: Self::Variable) {
         self.add_constraint(x);
     }

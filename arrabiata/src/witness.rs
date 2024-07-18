@@ -133,6 +133,10 @@ impl<
         pos
     }
 
+    fn constrain_boolean(&mut self, x: Self::Variable) {
+        assert!(x < BigUint::from(2_usize));
+    }
+
     fn constant(&self, v: BigUint) -> Self::Variable {
         v
     }
