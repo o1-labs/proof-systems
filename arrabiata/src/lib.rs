@@ -11,7 +11,7 @@ pub const MIN_SRS_LOG2_SIZE: usize = 15;
 pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 
 /// The maximum number of columns that can be used in the circuit.
-pub const NUMBER_OF_COLUMNS: usize = 50;
+pub const NUMBER_OF_COLUMNS: usize = 17;
 
 pub mod column_env;
 pub mod columns;
