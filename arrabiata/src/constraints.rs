@@ -1,5 +1,5 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
-use crate::{columns::E, MAX_DEGREE};
+use crate::{columns::E, MAX_DEGREE, NUMBER_OF_COLUMNS};
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
