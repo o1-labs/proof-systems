@@ -1,6 +1,6 @@
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
-pub const MAX_DEGREE: u64 = 2;
+pub const MAX_DEGREE: u64 = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
 // FIXME: that might change.
