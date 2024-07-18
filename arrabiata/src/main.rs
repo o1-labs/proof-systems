@@ -60,6 +60,7 @@ pub fn main() {
         fp_kimchi::static_params(),
     );
 
+    // FIXME: make a setup phase to build the selectors
     let mut env = Env::<
         Fp,
         Fq,
