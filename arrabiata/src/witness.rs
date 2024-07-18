@@ -327,17 +327,3 @@ impl<
         self.zi = BigUint::from(42_usize)
     }
 }
-
-impl<
-        Fp: PrimeField,
-        Fq: PrimeField,
-        SpongeConfig: SpongeConstants,
-        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
-    > Default for Env<Fp, Fq, SpongeConfig, E1, E2>
-{
-    /// By default, we will suppose we have 2^16 rows.
-    fn default() -> Self {
-        Self::new(16, BigUint::from(0_usize))
-    }
-}
