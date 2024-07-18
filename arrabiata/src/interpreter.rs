@@ -181,5 +181,7 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// FIXME: homogeneize
 /// FIXME: compute error terms
 pub fn run_ivc<E: InterpreterEnv>(env: &mut E) {
+    // Compute the hash of the public input
+    // FIXME: add the verification key. We should have a hash of it.
     env.reset();
 }

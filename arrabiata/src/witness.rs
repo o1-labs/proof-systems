@@ -3,7 +3,7 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
-use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSponge};
+use mina_poseidon::FqSponge;
 use num_bigint::BigUint;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
@@ -20,9 +20,10 @@ use crate::{columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
-    SpongeConfig: SpongeConstants,
     E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+    E1Sponge: FqSponge<Fq, E1, Fp>,
+    E2Sponge: FqSponge<Fp, E2, Fq>,
 > {
     // ----------------
     // Setup related (domains + SRS)
@@ -66,8 +67,11 @@ pub struct Env<
     /// State of the current row in the execution trace
     pub state: [BigUint; NUMBER_OF_COLUMNS],
 
-    // FIXME: must not be an option
-    pub sponge_fp: Option<ArithmeticSponge<Fp, SpongeConfig>>,
+    /// The sponges will be used to simulate the verifier messages, and will
+    /// also be used to verify the consistency of the computation by hashing the
+    /// public IO.
+    pub sponge_e1: E1Sponge,
+    pub sponge_e2: E2Sponge,
 
     /// List of public inputs, used first to verify the consistency of the
     /// previous iteration.
@@ -98,17 +102,18 @@ pub struct Env<
     // ---------------
     // Only used to have type safety and think about the design at the
     // type-level
-    pub _marker: std::marker::PhantomData<(Fp, Fq, SpongeConfig, E1, E2)>,
+    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2)>,
     // ---------------
 }
 
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
-        SpongeConfig: SpongeConstants,
         E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
         E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
-    > InterpreterEnv for Env<Fp, Fq, SpongeConfig, E1, E2>
+        E1Sponge: FqSponge<Fq, E1, Fp>,
+        E2Sponge: FqSponge<Fp, E2, Fq>,
+    > InterpreterEnv for Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge>
 {
     type Position = Column;
 
@@ -174,12 +179,18 @@ impl<
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
-        SpongeConfig: SpongeConstants,
         E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
-    > Env<Fp, Fq, SpongeConfig, E1, E2>
+        E1Sponge: FqSponge<Fq, E1, Fp>,
+        E2Sponge: FqSponge<Fp, E2, Fq>,
+    > Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge>
 {
-    pub fn new(srs_log2_size: usize, z0: BigUint) -> Self {
+    pub fn new(
+        srs_log2_size: usize,
+        z0: BigUint,
+        sponge_e1: E1Sponge,
+        sponge_e2: E2Sponge,
+    ) -> Self {
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
@@ -237,7 +248,8 @@ impl<
             idx_var: 0,
             current_row: 0,
             state: std::array::from_fn(|_| BigUint::from(0_usize)),
-            sponge_fp: None,
+            sponge_e1,
+            sponge_e2,
             current_iteration: 0,
             previous_hash: [0; 2],
             // ------

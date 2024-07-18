@@ -5,11 +5,15 @@ use arrabiata::{
     IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
 };
 use log::{debug, info};
-use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    pasta::{fp_kimchi, fq_kimchi},
+    sponge::DefaultFqSponge,
+    FqSponge,
+};
 use num_bigint::BigUint;
 use std::time::Instant;
-// FIXME: use other parameters, like one with the partial rounds
-use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
 
 pub fn main() {
     // See https://github.com/rust-lang/log
@@ -48,9 +52,26 @@ pub fn main() {
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
     let domain_size = 1 << srs_log2_size;
-    let mut env = Env::<Fp, Fq, PlonkSpongeConstantsKimchi, Vesta, Pallas>::new(
+
+    let sponge_vesta = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        fq_kimchi::static_params(),
+    );
+    let sponge_pallas = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
+        fp_kimchi::static_params(),
+    );
+
+    let mut env = Env::<
+        Fp,
+        Fq,
+        Vesta,
+        Pallas,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
+    >::new(
         *srs_log2_size,
         BigUint::from(1u64),
+        sponge_vesta,
+        sponge_pallas,
     );
 
     let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
