@@ -3,8 +3,8 @@
 pub const MAX_DEGREE: u64 = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
-// FIXME: that might change.
-pub const MIN_SRS_LOG2_SIZE: usize = 15;
+/// Requiring at least 2^16 to perform 16bits range checks.
+pub const MIN_SRS_LOG2_SIZE: usize = 16;
 
 /// The number of rows the IVC circuit requires.
 // FIXME: that might change. We use a vertical layout for now.
