@@ -120,7 +120,8 @@ pub fn main() {
     info!("Creating constraints for the circuit, over the Fp field");
     let mut constraints_fp = constraints::Env::<Fp>::new();
     interpreter::run_app(&mut constraints_fp);
-    assert_eq!(constraints_fp.constraints.len(), 1);
+    interpreter::run_ivc(&mut constraints_fp);
+    assert_eq!(constraints_fp.constraints.len(), 2);
     info!(
         "Number of constraints for the Fp field: {n}",
         n = constraints_fp.constraints.len()
@@ -129,7 +130,8 @@ pub fn main() {
     info!("Creating constraints for the circuit, over the Fq field");
     let mut constraints_fq = constraints::Env::<Fq>::new();
     interpreter::run_app(&mut constraints_fq);
-    assert_eq!(constraints_fq.constraints.len(), 1);
+    interpreter::run_ivc(&mut constraints_fq);
+    assert_eq!(constraints_fq.constraints.len(), 2);
     info!(
         "Number of constraints for the Fq field: {n}",
         n = constraints_fq.constraints.len()
