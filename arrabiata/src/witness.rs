@@ -19,8 +19,9 @@ use crate::{
 /// An environment that can be shared between IVC instances
 /// It contains all the accumulators that can be picked for a given fold
 /// instance k, including the sponges.
-// FIXME: run the interpreter over integers and not field elements to avoid the
-// reduction at every step?
+/// The environment is run over big unsigned integers to avoid performing
+/// reduction at all step. Instead the user implementing the interpreter can
+/// reduce in the corresponding field when they want.
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
