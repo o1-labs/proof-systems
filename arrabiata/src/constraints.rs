@@ -75,6 +75,15 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
             row: CurrOrNext::Curr,
         }))
     }
+
+    /// Return the corresponding expression regarding the selected column
+    fn write_column(&mut self, col: Self::Position, _v: BigUint) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
         debug!("Adding constraint of degree {degree}: {:}", constraint);

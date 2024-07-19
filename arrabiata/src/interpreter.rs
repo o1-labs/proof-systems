@@ -144,6 +144,8 @@ pub trait InterpreterEnv {
 
     fn allocate_public_input(&mut self) -> Self::Position;
 
+    fn write_column(&mut self, col: Self::Position, v: BigUint) -> Self::Variable;
+
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
     // better solution. The PI should be static for all witnesses

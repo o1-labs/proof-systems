@@ -159,6 +159,14 @@ impl<
         pos
     }
 
+    fn write_column(&mut self, col: Self::Position, v: BigUint) -> Self::Variable {
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private inputs")
+        };
+        self.state[idx] = v.clone();
+        v
+    }
+
     fn write_public_input(&mut self, col: Self::Position, v: BigUint) -> Self::Variable {
         let Column::PublicInput(idx) = col else {
             unimplemented!("Only works for public input columns")
@@ -201,11 +209,8 @@ impl<
     }
 
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
         let res = x.clone() * x.clone();
-        self.state[idx] = res.clone();
+        self.write_column(col, res.clone());
         res
     }
 
@@ -225,10 +230,7 @@ impl<
         let rht = BigUint::from(1_usize << diff) - BigUint::from(1_usize);
         let lft = x >> lowest_bit;
         let res: BigUint = lft & rht;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
-        self.state[idx] = res.clone();
+        self.write_column(col, res.clone());
         res
     }
 
@@ -237,11 +239,7 @@ impl<
     // witness.
     fn fetch_input(&mut self, col: Self::Position) -> Self::Variable {
         let x = BigUint::from(self.current_row as u64);
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
-        // Update the state accordinly to keep track of it
-        self.state[idx] = x.clone();
+        self.write_column(col, x.clone());
         x
     }
 
