@@ -117,6 +117,7 @@ use num_bigint::BigUint;
 pub enum Instruction {
     SixteenBitsDecomposition,
     BitDecompositionFrom16Bits(usize),
+    Poseidon(usize),
 }
 
 /// An abstract interpreter that provides some functionality on the circuit. The
@@ -251,7 +252,8 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 });
             env.assert_zero(cstr);
         }
-        _ => unimplemented!("Not yet implemented"),
+        Instruction::BitDecompositionFrom16Bits(_i) => unimplemented!("Gadget not implemented yet"),
+        Instruction::Poseidon(_i) => unimplemented!("Gadget not implemented yet"),
     }
 
     // Compute the hash of the public input

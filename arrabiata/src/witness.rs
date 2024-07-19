@@ -448,6 +448,7 @@ impl<
         match self.current_instruction {
             // FIXME
             Instruction::SixteenBitsDecomposition => Instruction::SixteenBitsDecomposition,
+            Instruction::Poseidon(i) => Instruction::Poseidon(i + 1),
             // Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::BitDecompositionFrom16Bits(i) => {
                 if i < 15 {
