@@ -139,7 +139,7 @@
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
 
-use kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner};
+use kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
 
 use crate::{
     columns::Column,
@@ -400,24 +400,38 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
 /// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
 pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
-    lookups_map: &BTreeMap<ID, Vec<Logup<E<F>, ID>>>,
+    lookup_reads: &BTreeMap<ID, Vec<Vec<E<F>>>>,
+    _lookup_writes: &BTreeMap<ID, Vec<Vec<E<F>>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
     let mut lookup_terms_cols: Vec<Column> = vec![];
-    lookups_map.iter().for_each(|(id, lookups)| {
+    lookup_reads.iter().for_each(|(table_id, reads)| {
         let mut idx_partial_sum = 0;
-        let id_u32 = id.to_u32();
-        let table_lookup = Logup {
-            table_id: *id,
-            numerator: -curr_cell(Column::LookupMultiplicity(id_u32)),
-            value: vec![curr_cell(Column::LookupFixedTable(id_u32))],
-        };
+        let table_id_u32 = table_id.to_u32();
+
         // FIXME: do not clone
-        let mut lookups = lookups.clone();
+        let mut lookups: Vec<_> = reads
+            .clone()
+            .into_iter()
+            .map(|value| Logup {
+                table_id: *table_id,
+                numerator: Expr::Atom(ExprInner::Constant(ConstantExpr::from(
+                    ConstantTerm::Literal(F::one()),
+                ))),
+                value,
+            })
+            .collect();
+
+        let table_lookup = Logup {
+            table_id: *table_id,
+            numerator: -curr_cell(Column::LookupMultiplicity(table_id_u32)),
+            value: vec![curr_cell(Column::LookupFixedTable(table_id_u32))],
+        };
         lookups.push(table_lookup);
+
         // We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
         lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
-            let col = Column::LookupPartialSum((id_u32, idx_partial_sum));
+            let col = Column::LookupPartialSum((table_id_u32, idx_partial_sum));
             lookup_terms_cols.push(col);
             constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += 1;

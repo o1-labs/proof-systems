@@ -65,11 +65,11 @@ mod tests {
             constrain_multiplication(&mut constraints_env);
 
             // Sanity checks.
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck4].len() == 20);
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck9Abs].len() == 6);
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck4].len() == 20);
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck9Abs].len() == 6);
             assert!(
-                constraints_env.lookups
+                constraints_env.lookup_reads
                     [&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
                     .len()
                     == 1

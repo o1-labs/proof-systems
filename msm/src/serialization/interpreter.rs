@@ -406,17 +406,19 @@ pub fn constrain_multiplication<
         let current_row = env.read_column(SerializationColumn::CurrentRow);
         let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
 
-        // Reading the input:
-        // (prev_i, [VEC])
-        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
-        vec_input.insert(0, previous_coeff_row);
-        env.lookup(LookupTable::MultiplicationBus, vec_input);
+        // TODO: We don't have to write top half of the table since it's never read.
 
         // Writing the output
         // (cur_i, [VEC])
         let mut _vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
         _vec_output.insert(0, current_row);
         //env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
+
+        // Reading the input:
+        // (prev_i, [VEC])
+        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
+        vec_input.insert(0, previous_coeff_row);
+        env.lookup(LookupTable::MultiplicationBus, vec_input);
     }
 
     // Result variable must be in the field.
@@ -673,7 +675,27 @@ pub fn multiplication_circuit<
     coeff_result
 }
 
-/// Builds fixed selectors for serialization circuit
+/// Builds fixed selectors for serialization circuit.
+///
+///
+/// | i    | sel1 | sel2 |
+/// |------|------|------|
+/// | 0000 |  0   |  0   |
+/// | 0001 |  1   |  0   |
+/// | 0010 |  2   |  0   |
+/// | 0011 |  3   |  1   |
+/// | 0100 |  4   |  0   |
+/// | 0101 |  5   |  1   |
+/// | 0110 |  6   |  2   |
+/// | 0111 |  7   |  3   |
+/// | 1000 |  8   |  0   |
+/// | 1001 |  9   |  1   |
+/// | 1010 |  10  |  2   |
+/// | 1011 |  11  |  3   |
+/// | 1100 |  12  |  4   |
+/// | 1101 |  13  |  5   |
+/// | 1110 |  14  |  6   |
+/// | 1111 |  15  |  7   |
 pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
     let sel1 = (0..domain_size).map(|i| F::from(i as u64)).collect();
     let sel2 = (0..domain_size)
