@@ -180,7 +180,9 @@ where
 }
 
 /// Trait for lookup table variants
-pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + PartialOrd {
+pub trait LookupTableID:
+    Send + Sync + Copy + Hash + Eq + PartialEq + Ord + PartialOrd + core::fmt::Debug
+{
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 
@@ -207,8 +209,9 @@ pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + Part
     /// Returns the length of each table.
     fn length(&self) -> usize;
 
-    /// Given a value, returns an index of this value in the table.
-    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> usize;
+    /// Returns None if the table is runtime (and thus mapping value
+    /// -> ix is not known at compile time.
+    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> Option<usize>;
 
     fn all_variants() -> Vec<Self>;
 }
@@ -297,8 +300,8 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 ///    |------------------------------------------|
 ///    |                           denominators   |
 ///    |                         /--------------\ |
-/// column * (\prod_{i = 1}^{N} (β + f_{i}(X))) =
-/// \sum_{i = 1}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))
+/// column * (\prod_{i = 0}^{N} (β + f_{i}(X))) =
+/// \sum_{i = 0}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))
 ///    |             |--------------------------------------------------|
 ///    |                             Inner part of rhs                  |
 ///    |                                                                |
@@ -310,13 +313,17 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// ```
 /// It is because h(X) (column) is defined as:
 /// ```text
-///        n      m_i(X)
-/// h(X)   ∑    ----------
-///       i=1   β + f_i(X)
+///         n      m_i(X)        n         1            m_0(ω^j)
+/// h(X) =  ∑    ----------  =   ∑   ------------  -  -----------
+///        i=0   β + f_i(X)     i=1  β + f_i(ω^j)      β + t(ω^j)
 ///```
-/// For instance, if i = 2, we have
+/// The first form is generic, the second is concrete with f_0 = t; m_0 = m; m_i = 1 for ≠ 1.
+/// We will be thinking in the generic form.
+///
+/// For instance, if N = 2, we have
 /// ```text
 /// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
+///
 ///        m_1(X) * (β + f_2(X)) + m_2(X) * (β + f_{1}(X))
 ///      = ----------------------------------------------
 ///                  (β + f_2(X)) * (β + f_1(X))
@@ -362,10 +369,13 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
             beta.clone() + combined_value + x.table_id.to_constraint()
         })
         .collect::<Vec<_>>();
+
     // Compute `column * (\prod_{i = 1}^{N} (β + f_{i}(X)))`
     let lhs = denominators
         .iter()
         .fold(curr_cell(column), |acc, x| acc * x.clone());
+
+    // Compute `\sum_{i = 0}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))`
     let rhs = lookups
         .into_iter()
         .enumerate()
@@ -386,6 +396,7 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
         // Individual sums
         .reduce(|x, y| x + y)
         .unwrap_or(E::zero());
+
     lhs - rhs
 }
 
@@ -521,12 +532,6 @@ pub mod prover {
             > = {
                 (&lookups)
                     .into_par_iter()
-                    .filter(|lookup| {
-                        // FIXME: this is ugly.
-                        // Does not handle RAMLookup
-                        let table_id = lookup.f[0][0].table_id;
-                        table_id.is_fixed()
-                    })
                     .map(|lookup| {
                         let table_id = lookup.f[0][0].table_id;
                         (
@@ -610,21 +615,25 @@ pub mod prover {
                             table_id,
                             value,
                         } = &f_i[j as usize];
-                        // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
-                        let combined_value: G::ScalarField =
+                        // Compute x_{1} + r x_{2} + ... r^{N-1} x_{N}
+                        // This is what we actually put into the `fixed_lookup_tables`.
+                        let combined_value_pow0: G::ScalarField =
                             value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
                                 acc * vector_lookup_combiner + y
-                            }) * vector_lookup_combiner;
+                            });
+                        // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
+                        let combined_value: G::ScalarField =
+                            combined_value_pow0 * vector_lookup_combiner;
                         // add table id
                         let combined_value = combined_value + table_id.to_field::<G::ScalarField>();
 
                         // If last element and fixed lookup tables, we keep
                         // the *combined* value of the table.
-                        if i == (n - 1) && table_id.is_fixed() {
+                        if i == (n - 1) {
                             fixed_lookup_tables
                                 .entry(*table_id)
                                 .or_insert_with(Vec::new)
-                                .push(value[0]);
+                                .push(combined_value_pow0);
                         }
 
                         // β + a_{i}

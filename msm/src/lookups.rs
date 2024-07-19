@@ -33,9 +33,9 @@ impl LookupTableID for DummyLookupTable {
         true
     }
 
-    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> usize {
+    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> Option<usize> {
         if value[0] == F::zero() {
-            0
+            Some(0)
         } else {
             panic!("Invalid value for DummyLookupTable")
         }
@@ -92,7 +92,7 @@ impl LookupTableID for LookupTableIDs {
         true
     }
 
-    fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> usize {
+    fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
         todo!()
     }
 
