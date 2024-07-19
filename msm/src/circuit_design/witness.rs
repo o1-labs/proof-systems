@@ -445,7 +445,7 @@ impl<
         &self,
         domain_size: usize,
         lookup_tables_data: BTreeMap<LT, Vec<Vec<F>>>,
-    ) -> Vec<LogupWitness<F, LT>> {
+    ) -> BTreeMap<LT, LogupWitness<F, LT>> {
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
@@ -506,11 +506,13 @@ impl<
             .filter_map(|(table_id, table)| {
                 // Only add a table if it's used. Otherwise lookups fail.
                 if !table.is_empty() && !table[0].is_empty() {
-                    Some(LogupWitness {
-                        f: table.clone(),
-                        m: lookup_multiplicities[table_id].clone(),
-                        table_id: *table_id,
-                    })
+                    Some((
+                        *table_id,
+                        LogupWitness {
+                            f: table.clone(),
+                            m: lookup_multiplicities[table_id].clone(),
+                        },
+                    ))
                 } else {
                     None
                 }
