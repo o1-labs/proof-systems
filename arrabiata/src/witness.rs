@@ -188,6 +188,9 @@ impl<
 
     // FIXME: it should not be a check, but it should build the related logup
     // values
+    // FIXME: we should have additional columns for the lookups.
+    // This will be implemented when the first version of the IVC is
+    // implemented and we can make recursive arguments
     fn range_check16(&mut self, col: Self::Position) {
         let Column::X(idx) = col else {
             unimplemented!("Only works for private columns")
