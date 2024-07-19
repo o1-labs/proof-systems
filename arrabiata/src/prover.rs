@@ -3,7 +3,7 @@
 use crate::proof::Proof;
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
-use mina_poseidon::FqSponge;
+use mina_poseidon::{constants::SpongeConstants, FqSponge};
 
 use crate::witness::Env;
 
@@ -17,8 +17,9 @@ pub fn prove<
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
     E1Sponge: FqSponge<Fq, E1, Fp>,
     E2Sponge: FqSponge<Fp, E2, Fq>,
+    SC: SpongeConstants,
 >(
-    _env: &Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge>,
+    _env: &Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge, SC>,
 ) -> Result<Proof, String> {
     unimplemented!()
 }

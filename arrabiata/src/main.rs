@@ -68,6 +68,7 @@ pub fn main() {
         Pallas,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
+        PlonkSpongeConstantsKimchi,
     >::new(
         *srs_log2_size,
         BigUint::from(1u64),

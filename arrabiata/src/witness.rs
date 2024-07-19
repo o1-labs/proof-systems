@@ -3,7 +3,7 @@ use ark_ff::{FpParameters, PrimeField};
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
-use mina_poseidon::FqSponge;
+use mina_poseidon::{constants::SpongeConstants, FqSponge};
 use num_bigint::BigUint;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
@@ -22,6 +22,7 @@ use crate::{
 /// The environment is run over big unsigned integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
+// FIXME: Can we remove SpongeConstants as it is in E1Sponge/E2Sponge?
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
@@ -29,6 +30,7 @@ pub struct Env<
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
     E1Sponge: FqSponge<Fq, E1, Fp>,
     E2Sponge: FqSponge<Fp, E2, Fq>,
+    SC: SpongeConstants,
 > {
     // ----------------
     // Setup related (domains + SRS)
@@ -121,7 +123,7 @@ pub struct Env<
     // ---------------
     // Only used to have type safety and think about the design at the
     // type-level
-    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2)>,
+    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2, SC)>,
     // ---------------
 }
 
@@ -132,7 +134,8 @@ impl<
         E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
         E1Sponge: FqSponge<Fq, E1, Fp>,
         E2Sponge: FqSponge<Fp, E2, Fq>,
-    > InterpreterEnv for Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge>
+        SC: SpongeConstants,
+    > InterpreterEnv for Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge, SC>
 {
     type Position = Column;
 
@@ -278,7 +281,8 @@ impl<
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
         E1Sponge: FqSponge<Fq, E1, Fp>,
         E2Sponge: FqSponge<Fp, E2, Fq>,
-    > Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge>
+        SC: SpongeConstants,
+    > Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge, SC>
 {
     pub fn new(
         srs_log2_size: usize,
