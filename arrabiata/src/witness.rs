@@ -11,7 +11,9 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
-    columns::Column, interpreter::InterpreterEnv, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    columns::Column,
+    interpreter::{Instruction, InterpreterEnv},
+    NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
 
 /// An environment that can be shared between IVC instances
@@ -77,6 +79,11 @@ pub struct Env<
     /// Contain the public state
     // FIXME: I don't like this design. Feel free to suggest a better solution
     pub public_state: [BigUint; NUMBER_OF_PUBLIC_INPUTS],
+
+    /// Keep the current executed instruction
+    /// This can be used to identify which gadget the interpreter is currently
+    /// building.
+    pub current_instruction: Instruction,
 
     /// The sponges will be used to simulate the verifier messages, and will
     /// also be used to verify the consistency of the computation by hashing the
@@ -336,6 +343,7 @@ impl<
             current_row: 0,
             state: std::array::from_fn(|_| BigUint::from(0_usize)),
             public_state: std::array::from_fn(|_| BigUint::from(0_usize)),
+            current_instruction: Instruction::SixteenBitsDecomposition,
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
@@ -413,5 +421,24 @@ impl<
     // CPU?
     pub fn compute_output(&mut self) {
         self.zi = BigUint::from(42_usize)
+    }
+
+    pub fn fetch_instruction(&self) -> Instruction {
+        self.current_instruction
+    }
+
+    pub fn fetch_next_instruction(&mut self) -> Instruction {
+        match self.current_instruction {
+            // FIXME
+            Instruction::SixteenBitsDecomposition => Instruction::SixteenBitsDecomposition,
+            // Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
+            Instruction::BitDecompositionFrom16Bits(i) => {
+                if i < 15 {
+                    Instruction::BitDecompositionFrom16Bits(i + 1)
+                } else {
+                    unimplemented!("This should not happen")
+                }
+            }
+        }
     }
 }

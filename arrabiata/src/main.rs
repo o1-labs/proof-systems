@@ -1,6 +1,6 @@
 use arrabiata::{
     constraints,
-    interpreter::{self},
+    interpreter::{self, Instruction, InterpreterEnv},
     witness::Env,
     IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
 };
@@ -86,12 +86,16 @@ pub fn main() {
         info!("Running N iterations of the application circuit");
         for _i in 0..n_iteration_per_fold {
             interpreter::run_app(&mut env);
+            env.reset();
         }
 
         info!("Building the IVC circuit");
         // Build the IVC circuit
         for _i in 0..IVC_CIRCUIT_SIZE {
-            interpreter::run_ivc(&mut env);
+            let instr = env.fetch_instruction();
+            interpreter::run_ivc(&mut env, instr);
+            env.current_instruction = env.fetch_next_instruction();
+            env.reset();
         }
 
         debug!(
@@ -121,7 +125,9 @@ pub fn main() {
     info!("Creating constraints for the circuit, over the Fp field");
     let mut constraints_fp = constraints::Env::<Fp>::new();
     interpreter::run_app(&mut constraints_fp);
-    interpreter::run_ivc(&mut constraints_fp);
+    constraints_fp.reset();
+    interpreter::run_ivc(&mut constraints_fp, Instruction::SixteenBitsDecomposition);
+    constraints_fp.reset();
     assert_eq!(constraints_fp.constraints.len(), 2);
     info!(
         "Number of constraints for the Fp field: {n}",
@@ -131,7 +137,9 @@ pub fn main() {
     info!("Creating constraints for the circuit, over the Fq field");
     let mut constraints_fq = constraints::Env::<Fq>::new();
     interpreter::run_app(&mut constraints_fq);
-    interpreter::run_ivc(&mut constraints_fq);
+    constraints_fq.reset();
+    interpreter::run_ivc(&mut constraints_fq, Instruction::SixteenBitsDecomposition);
+    constraints_fq.reset();
     assert_eq!(constraints_fq.constraints.len(), 2);
     info!(
         "Number of constraints for the Fq field: {n}",

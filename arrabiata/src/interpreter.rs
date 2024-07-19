@@ -113,11 +113,11 @@ use num_bigint::BigUint;
 // FIXME: Can we use an "instruction" kind of circuit?
 // We do use a "fetch_next_instruction" method to mention what is the next
 // gadget/isntruction to run
-// pub enum Instruction {
-//     App(usize),
-//     SixteenBitsDecomposition,
-//     BitDecompositionFrom16Bits(usize),
-// }
+#[derive(Copy, Clone, Debug)]
+pub enum Instruction {
+    SixteenBitsDecomposition,
+    BitDecompositionFrom16Bits(usize),
+}
 
 /// An abstract interpreter that provides some functionality on the circuit. The
 /// interpreter should be seen as a state machine with some built-in
@@ -206,7 +206,6 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
         let res = env.allocate();
         env.square(res, x1.clone())
     };
-    env.reset();
 }
 
 /// Run an iteration of the IVC scheme.
@@ -226,29 +225,33 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 ///
 /// FIXME: homogeneize
 /// FIXME: compute error terms
-pub fn run_ivc<E: InterpreterEnv>(env: &mut E) {
-    // Decompositing the random coin in chunks of 16 bits. One row.
-    let r = {
-        let pos = env.allocate();
-        env.coin_folding_combiner(pos)
-    };
-    let decomposition_16bits: Vec<E::Variable> = (0..16)
-        .map(|i| {
-            let pos = env.allocate();
-            env.range_check16(pos);
-            unsafe { env.bitmask_be(&r, (i + 1) * 16, i * 16, pos) }
-        })
-        .collect();
+pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
+    match instr {
+        Instruction::SixteenBitsDecomposition => {
+            // Decompositing the random coin in chunks of 16 bits. One row.
+            let r = {
+                let pos = env.allocate();
+                env.coin_folding_combiner(pos)
+            };
+            let decomposition_16bits: Vec<E::Variable> = (0..16)
+                .map(|i| {
+                    let pos = env.allocate();
+                    env.range_check16(pos);
+                    unsafe { env.bitmask_be(&r, (i + 1) * 16, i * 16, pos) }
+                })
+                .collect();
 
-    let cstr = decomposition_16bits
-        .iter()
-        .enumerate()
-        .fold(r, |acc, (i, x)| {
-            acc - env.constant(BigUint::from(1_usize) << (i * 16)) * x.clone()
-        });
-    env.assert_zero(cstr);
+            let cstr = decomposition_16bits
+                .iter()
+                .enumerate()
+                .fold(r, |acc, (i, x)| {
+                    acc - env.constant(BigUint::from(1_usize) << (i * 16)) * x.clone()
+                });
+            env.assert_zero(cstr);
+        }
+        _ => unimplemented!("Not yet implemented"),
+    }
 
-    env.reset();
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
 }
