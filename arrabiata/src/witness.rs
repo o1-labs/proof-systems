@@ -100,6 +100,10 @@ pub struct Env<
 
     /// A previous hash, encoded in 2 chunks of 128 bits.
     pub previous_hash: [u128; 2],
+
+    /// The coin folding combiner will be used to generate the combinaison of
+    /// folding instances
+    pub r: BigUint,
     // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in the
@@ -270,6 +274,7 @@ impl<
             unimplemented!("Only works for private columns")
         };
         self.state[idx] = r.clone();
+        self.r = r.clone();
         r
     }
 }
@@ -354,6 +359,7 @@ impl<
             sponge_e2,
             current_iteration: 0,
             previous_hash: [0; 2],
+            r: BigUint::from(0_usize),
             // ------
             // ------
             // Used by the interpreter
