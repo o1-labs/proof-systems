@@ -175,6 +175,36 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
@@ -196,6 +226,8 @@
     <span class="doccomment">/// x ∈ [0, ff_highest] where ff_highest is the highest 15-bit
     /// limb of the modulus of the foreign field `Ff`.
     </span>RangeCheckFfHighest(PhantomData&lt;Ff&gt;),
+    <span class="doccomment">/// Communication bus for the multiplication circuit.
+    </span>MultiplicationBus,
 }
 
 <span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTableID <span class="kw">for </span>LookupTable&lt;Ff&gt; {
@@ -206,6 +238,7 @@
             <span class="self">Self</span>::RangeCheck14Abs =&gt; <span class="number">3</span>,
             <span class="self">Self</span>::RangeCheck9Abs =&gt; <span class="number">4</span>,
             <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="number">5</span>,
+            <span class="self">Self</span>::MultiplicationBus =&gt; <span class="number">6</span>,
         }
     }
 
@@ -216,14 +249,22 @@
             <span class="number">3 </span>=&gt; <span class="self">Self</span>::RangeCheck14Abs,
             <span class="number">4 </span>=&gt; <span class="self">Self</span>::RangeCheck9Abs,
             <span class="number">5 </span>=&gt; <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
+            <span class="number">6 </span>=&gt; <span class="self">Self</span>::MultiplicationBus,
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid lookup table id&quot;</span>),
         }
     }
 
     <span class="doccomment">/// All tables are fixed tables.
     </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::RangeCheck15 =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::RangeCheck14Abs =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::RangeCheck9Abs =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::MultiplicationBus =&gt; <span class="bool-val">false</span>,
+        }
+    }
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
@@ -235,32 +276,42 @@
                 <span class="kw">crate</span>::serialization::interpreter::ff_modulus_highest_limb::&lt;Ff&gt;(),
             )
             .unwrap(),
+            <span class="self">Self</span>::MultiplicationBus =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
         }
     }
 
     <span class="doccomment">/// Converts a value to its index in the fixed table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>value = value[<span class="number">0</span>];
-        <span class="macro">assert!</span>(<span class="self">self</span>.is_member(value));
+        <span class="kw">if </span><span class="self">self</span>.is_fixed() {
+            <span class="macro">assert!</span>(<span class="self">self</span>.is_member(value).unwrap());
+        }
+
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::RangeCheck15 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
-            <span class="self">Self</span>::RangeCheck4 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
+            <span class="self">Self</span>::RangeCheck15 =&gt; <span class="prelude-val">Some</span>(TryFrom::try_from(value.to_biguint()).unwrap()),
+            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="prelude-val">Some</span>(TryFrom::try_from(value.to_biguint()).unwrap()),
             <span class="self">Self</span>::RangeCheck14Abs =&gt; {
                 <span class="kw">if </span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>) {
-                    TryFrom::try_from(value.to_biguint()).unwrap()
+                    <span class="prelude-val">Some</span>(TryFrom::try_from(value.to_biguint()).unwrap())
                 } <span class="kw">else </span>{
-                    TryFrom::try_from((value + F::from(<span class="number">2 </span>* (<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>))).to_biguint()).unwrap()
+                    <span class="prelude-val">Some</span>(
+                        TryFrom::try_from((value + F::from(<span class="number">2 </span>* (<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>))).to_biguint())
+                            .unwrap(),
+                    )
                 }
             }
             <span class="self">Self</span>::RangeCheck9Abs =&gt; {
                 <span class="kw">if </span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>) {
-                    TryFrom::try_from(value.to_biguint()).unwrap()
+                    <span class="prelude-val">Some</span>(TryFrom::try_from(value.to_biguint()).unwrap())
                 } <span class="kw">else </span>{
-                    TryFrom::try_from((value + F::from(<span class="number">2 </span>* (<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>))).to_biguint()).unwrap()
+                    <span class="prelude-val">Some</span>(
+                        TryFrom::try_from((value + F::from(<span class="number">2 </span>* (<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>))).to_biguint()).unwrap(),
+                    )
                 }
             }
 
-            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(TryFrom::try_from(value.to_biguint()).unwrap()),
+            <span class="self">Self</span>::MultiplicationBus =&gt; <span class="prelude-val">None</span>,
         }
     }
 
@@ -271,6 +322,7 @@
             <span class="self">Self</span>::RangeCheck9Abs,
             <span class="self">Self</span>::RangeCheck4,
             <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
+            <span class="self">Self</span>::MultiplicationBus,
         ]
     }
 }
@@ -292,61 +344,69 @@
     }
 
     <span class="doccomment">/// Provides a full list of entries for the given table.
-    </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
+    </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt; {
         <span class="macro">assert!</span>(domain_d1_size &gt;= (<span class="number">1 </span>&lt;&lt; <span class="number">15</span>));
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::RangeCheck15 =&gt; (<span class="number">0</span>..domain_d1_size).map(|i| F::from(i)).collect(),
-            <span class="self">Self</span>::RangeCheck4 =&gt; (<span class="number">0</span>..domain_d1_size)
-                .map(|i| <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) { F::from(i) } <span class="kw">else </span>{ F::zero() })
-                .collect(),
-            <span class="self">Self</span>::RangeCheck14Abs =&gt; (<span class="number">0</span>..domain_d1_size)
-                .map(|i| {
-                    <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>) {
-                        <span class="comment">// [0,1,2 ... (1&lt;&lt;14)-1]
-                        </span>F::from(i)
-                    } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>) {
-                        <span class="comment">// [-(i&lt;&lt;14),...-2,-1]
-                        </span>F::from(i) - F::from(<span class="number">2u64 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>))
-                    } <span class="kw">else </span>{
-                        F::zero()
-                    }
-                })
-                .collect(),
+            <span class="self">Self</span>::RangeCheck15 =&gt; <span class="prelude-val">Some</span>((<span class="number">0</span>..domain_d1_size).map(|i| F::from(i)).collect()),
+            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="prelude-val">Some</span>(
+                (<span class="number">0</span>..domain_d1_size)
+                    .map(|i| <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) { F::from(i) } <span class="kw">else </span>{ F::zero() })
+                    .collect(),
+            ),
+            <span class="self">Self</span>::RangeCheck14Abs =&gt; <span class="prelude-val">Some</span>(
+                (<span class="number">0</span>..domain_d1_size)
+                    .map(|i| {
+                        <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>) {
+                            <span class="comment">// [0,1,2 ... (1&lt;&lt;14)-1]
+                            </span>F::from(i)
+                        } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>) {
+                            <span class="comment">// [-(i&lt;&lt;14),...-2,-1]
+                            </span>F::from(i) - F::from(<span class="number">2u64 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">14</span>))
+                        } <span class="kw">else </span>{
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+            ),
 
-            <span class="self">Self</span>::RangeCheck9Abs =&gt; (<span class="number">0</span>..domain_d1_size)
-                .map(|i| {
-                    <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>) {
-                        <span class="comment">// [0,1,2 ... (1&lt;&lt;9)-1]
-                        </span>F::from(i)
-                    } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>) {
-                        <span class="comment">// [-(i&lt;&lt;9),...-2,-1]
-                        </span>F::from(i) - F::from(<span class="number">2u64 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>))
-                    } <span class="kw">else </span>{
-                        F::zero()
-                    }
-                })
-                .collect(),
-            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::entries_ff_highest::&lt;F&gt;(domain_d1_size),
+            <span class="self">Self</span>::RangeCheck9Abs =&gt; <span class="prelude-val">Some</span>(
+                (<span class="number">0</span>..domain_d1_size)
+                    .map(|i| {
+                        <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>) {
+                            <span class="comment">// [0,1,2 ... (1&lt;&lt;9)-1]
+                            </span>F::from(i)
+                        } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>) {
+                            <span class="comment">// [-(i&lt;&lt;9),...-2,-1]
+                            </span>F::from(i) - F::from(<span class="number">2u64 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">9</span>))
+                        } <span class="kw">else </span>{
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+            ),
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::entries_ff_highest::&lt;F&gt;(domain_d1_size)),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;not possible&quot;</span>),
         }
     }
 
     <span class="doccomment">/// Checks if a value is in a given table.
-    </span><span class="kw">pub fn </span>is_member&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; bool {
+    </span><span class="kw">pub fn </span>is_member&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::RangeCheck15 =&gt; value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">15</span>)),
-            <span class="self">Self</span>::RangeCheck4 =&gt; value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">4</span>)),
+            <span class="self">Self</span>::RangeCheck15 =&gt; <span class="prelude-val">Some</span>(value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">15</span>))),
+            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="prelude-val">Some</span>(value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">4</span>))),
             <span class="self">Self</span>::RangeCheck14Abs =&gt; {
-                value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>)
+                <span class="prelude-val">Some</span>(value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">14</span>))
             }
             <span class="self">Self</span>::RangeCheck9Abs =&gt; {
-                value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>)
+                <span class="prelude-val">Some</span>(value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>))
             }
             <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
                 <span class="kw">let </span>top_modulus_f: F =
                     F::from_biguint(<span class="kw-2">&amp;</span>(f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE))).unwrap();
-                value &lt; top_modulus_f
+                <span class="prelude-val">Some</span>(value &lt; top_modulus_f)
             }
+            <span class="self">Self</span>::MultiplicationBus =&gt; <span class="prelude-val">None</span>,
         }
     }
 }

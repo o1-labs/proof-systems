@@ -132,9 +132,9 @@
     }
 
     <span class="doccomment">/// Converts a value to its index in the fixed table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>value = value[<span class="number">0</span>];
-        <span class="kw">match </span><span class="self">self </span>{
+        <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
             <span class="self">Self</span>::RangeCheck1BitSigned =&gt; {
                 <span class="kw">if </span>value == F::zero() {
@@ -147,7 +147,7 @@
                     <span class="macro">panic!</span>(<span class="string">&quot;Invalid value for rangecheck1abs&quot;</span>)
                 }
             }
-        }
+        })
     }
 
     <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {

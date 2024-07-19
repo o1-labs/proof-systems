@@ -325,6 +325,12 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -478,7 +484,13 @@
                 .values()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
-            <span class="comment">// To generate the challenges
+            <span class="comment">// FIXME @volhovm it seems that the verifier does not
+            // actually check that the fixed tables used in the proof
+            // are the fixed tables defined in the code. In other
+            // words, all the currently used &quot;fixed&quot; tables are
+            // runtime and can be chosen freely by the prover.
+
+            // To generate the challenges
             </span><span class="kw">let </span>joint_combiner = fq_sponge.challenge();
             <span class="kw">let </span>beta = fq_sponge.challenge();
 

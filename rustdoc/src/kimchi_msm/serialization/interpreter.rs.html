@@ -855,6 +855,47 @@
 <a href="#855" id="855">855</a>
 <a href="#856" id="856">856</a>
 <a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -865,7 +906,11 @@
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
-    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
+    serialization::{
+        column::{SerializationColumn, N_FSEL_SER},
+        lookups::LookupTable,
+        N_INTERMEDIATE_LIMBS,
+    },
     LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>kimchi::circuits::{
@@ -1255,6 +1300,24 @@
         Env::constant(From::from(x))
     };
 
+    {
+        <span class="kw">let </span>current_row = env.read_column(SerializationColumn::CurrentRow);
+        <span class="kw">let </span>previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
+
+        <span class="comment">// Reading the input:
+        // (prev_i, [VEC])
+        </span><span class="kw">let </span><span class="kw-2">mut </span>vec_input: Vec&lt;<span class="kw">_</span>&gt; = coeff_input_limbs_small.clone().to_vec();
+        vec_input.insert(<span class="number">0</span>, previous_coeff_row);
+        env.lookup(LookupTable::MultiplicationBus, vec_input);
+
+        <span class="comment">// Writing the output
+        // FIXME we should actually /write/ here, not read!
+        // (cur_i, [VEC])
+        </span><span class="kw">let </span><span class="kw-2">mut </span>_vec_output: Vec&lt;<span class="kw">_</span>&gt; = coeff_result_limbs_small.clone().to_vec();
+        _vec_output.insert(<span class="number">0</span>, current_row);
+        <span class="comment">//env.lookup(LookupTable::MultiplicationBus, vec_output);
+    </span>}
+
     <span class="comment">// Result variable must be in the field.
     </span><span class="kw">for </span>(i, x) <span class="kw">in </span>coeff_result_limbs_small.iter().enumerate() {
         <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
@@ -1509,6 +1572,22 @@
     coeff_result
 }
 
+<span class="doccomment">/// Builds fixed selectors for serialization circuit
+</span><span class="kw">pub fn </span>build_selectors&lt;F: PrimeField&gt;(domain_size: usize) -&gt; [Vec&lt;F&gt;; N_FSEL_SER] {
+    <span class="kw">let </span>sel1 = (<span class="number">0</span>..domain_size).map(|i| F::from(i <span class="kw">as </span>u64)).collect();
+    <span class="kw">let </span>sel2 = (<span class="number">0</span>..domain_size)
+        .map(|i| {
+            <span class="kw">if </span>i &lt; <span class="number">2 </span>{
+                F::zero()
+            } <span class="kw">else </span>{
+                F::from((i - (<span class="number">1 </span>&lt;&lt; (i.ilog2()))) <span class="kw">as </span>u64)
+            }
+        })
+        .collect();
+
+    [sel1, sel2]
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
@@ -1516,7 +1595,7 @@
         columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
-            interpreter::{deserialize_field_element, multiplication_circuit},
+            interpreter::{build_selectors, deserialize_field_element, multiplication_circuit},
             lookups::LookupTable,
             N_INTERMEDIATE_LIMBS,
         },
@@ -1690,7 +1769,10 @@
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        </span><span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
+        </span><span class="kw">let </span>fixed_selectors = build_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+
+        <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>input_chal: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
             <span class="kw">let </span>coeff_input: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
             multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">true</span>);

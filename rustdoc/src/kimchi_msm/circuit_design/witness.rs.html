@@ -450,6 +450,82 @@
 <a href="#450" id="450">450</a>
 <a href="#451" id="451">451</a>
 <a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
@@ -483,12 +559,22 @@
     <span class="doccomment">/// Lookup multiplicities, a vector of values `m_i` per lookup
     /// table, where `m_i` is how many times the lookup value number
     /// `i` was looked up.
-    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;u64&gt;&gt;,
 
-    <span class="doccomment">/// Lookup requests. Each vector element represents one row, and
+    <span class="comment">// @volhovm: It seems much more ineffective to store
+    // Vec&lt;BTreeMap&lt;LT, Vec&lt;Logup&gt;&gt;&gt; than BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&gt;&gt;&gt;.
+    </span><span class="doccomment">/// Lookup requests. Each vector element represents one row, and
     /// each row is a map from lookup type to a vector of concrete
     /// lookups requested.
     </span><span class="kw">pub </span>lookups: Vec&lt;BTreeMap&lt;LT, Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt;,
+
+    <span class="doccomment">/// Values of the runtime tables. Each element (value) in the map
+    /// is a on-the-fly built column.
+    </span><span class="kw">pub </span>runtime_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;F&gt;&gt;&gt;,
+
+    <span class="doccomment">/// A runtime table resolver; the inverse of `runtime_tables`:
+    /// maps runtime lookup table to its `usize` position in `runtime_tables`.
+    </span><span class="kw">pub </span>runtime_tables_resolver: BTreeMap&lt;LT, BTreeMap&lt;Vec&lt;F&gt;, usize&gt;&gt;,
 
     <span class="doccomment">/// Fixed values for selector columns. `fixed_selectors[i][j]` is the
     /// value for row #j of the selector #i.
@@ -636,8 +722,40 @@
     &gt; LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT&gt;
 {
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: Vec&lt;&lt;<span class="self">Self </span><span class="kw">as </span>ColAccessCap&lt;F, CIx&gt;&gt;::Variable&gt;) {
-        <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">&amp;</span>value);
-        <span class="self">self</span>.lookup_multiplicities.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap()[value_ix] += F::one();
+        <span class="kw">let </span>value_ix = <span class="kw">if </span>table_id.is_fixed() {
+            table_id
+                .ix_by_value(<span class="kw-2">&amp;</span>value)
+                .expect(<span class="string">&quot;Could not resolve lookup for a fixed table&quot;</span>)
+        } <span class="kw">else </span>{
+            <span class="comment">// For runtime tables, we check if this value was already
+            // present in a table; if yes, we return its index (row),
+            // otherwise we add this value to the runtime table and
+            // return its new index (runtime_table.len() == cur_height).
+            </span><span class="kw">let </span>cur_height = <span class="self">self</span>.runtime_tables.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap().len();
+            <span class="kw">let </span>resolver = <span class="self">self</span>.runtime_tables_resolver.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap();
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_index) = resolver.get_mut(<span class="kw-2">&amp;</span>value) {
+                <span class="kw-2">*</span>prev_index
+            } <span class="kw">else </span>{
+                (<span class="kw-2">*</span>resolver).insert(value.clone(), cur_height);
+                <span class="self">self</span>.runtime_tables
+                    .get_mut(<span class="kw-2">&amp;</span>table_id)
+                    .unwrap()
+                    .push(value.clone());
+                cur_height
+            }
+        };
+        {
+            <span class="kw">let </span>multiplicities = <span class="self">self</span>.lookup_multiplicities.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap();
+            <span class="comment">// Since we allow multiple lookups per row, runtime tables
+            // can in theory grow bigger than the domain size. We
+            // still collect multiplicities as if runtime table vector
+            // is not height-bounded, but we will split it into chunks
+            // later.
+            </span><span class="kw">if </span>!table_id.is_fixed() &amp;&amp; value_ix &gt; multiplicities.len() {
+                multiplicities.resize(value_ix, <span class="number">0u64</span>);
+            }
+            multiplicities[value_ix] += <span class="number">1</span>;
+        }
         <span class="self">self</span>.lookups
             .last_mut()
             .unwrap()
@@ -716,7 +834,11 @@
     <span class="doccomment">/// Getting multiplicities for range check tables less or equal than 15 bits.
     </span><span class="kw">pub fn </span>get_lookup_multiplicities(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize, table_id: LT) -&gt; Vec&lt;F&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>m = Vec::with_capacity(domain_size);
-        m.extend(<span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>table_id].to_vec());
+        m.extend(
+            <span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>table_id]
+                .iter()
+                .map(|x| F::from(<span class="kw-2">*</span>x)),
+        );
         <span class="kw">if </span>table_id.length() &lt; domain_size {
             <span class="kw">let </span>n_repeated_dummy_value: usize = domain_size - table_id.length() - <span class="number">1</span>;
             <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; = iter::repeat(-F::one())
@@ -744,10 +866,16 @@
     </span><span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>runtime_tables_resolver = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>runtime_tables = BTreeMap::new();
         <span class="kw">let </span>fixed_selectors = <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; N_FSEL];
         <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
-            lookup_multiplicities.insert(table_id, <span class="macro">vec!</span>[F::zero(); table_id.length()]);
+            lookup_multiplicities.insert(table_id, <span class="macro">vec!</span>[<span class="number">0u64</span>; table_id.length()]);
+            <span class="kw">if </span>!table_id.is_fixed() {
+                runtime_tables_resolver.insert(table_id, BTreeMap::new());
+                runtime_tables.insert(table_id, <span class="macro">vec!</span>[]);
+            }
         }
 
         <span class="self">Self </span>{
@@ -757,6 +885,8 @@
 
             lookup_multiplicities,
             lookups: <span class="macro">vec!</span>[lookups_row],
+            runtime_tables_resolver,
+            runtime_tables,
             fixed_selectors,
             phantom_cix: PhantomData,
             assert_mapper: Box::new(|x| x),
@@ -819,10 +949,23 @@
         <span class="kw-2">*</span>witness
     }
 
+    <span class="doccomment">/// Return all runtime tables collected so far, padded to the domain size.
+    </span><span class="kw">pub fn </span>get_runtime_tables(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; BTreeMap&lt;LT, Vec&lt;Vec&lt;F&gt;&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>runtime_tables: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = <span class="self">self</span>.runtime_tables.clone();
+        <span class="kw">for </span>(_table_id, content) <span class="kw">in </span>runtime_tables.iter_mut() {
+            <span class="comment">// We pad the runtime table with dummies if it&#39;s too small.
+            </span><span class="kw">if </span>content.len() &lt; domain_size {
+                <span class="kw">let </span>dummy_value = content[<span class="number">0</span>].clone(); <span class="comment">// we assume runtime tables are never empty
+                </span>content.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[dummy_value; domain_size - content.len()]);
+            }
+        }
+        runtime_tables
+    }
+
     <span class="kw">pub fn </span>get_logup_witness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain_size: usize,
-        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;Vec&lt;F&gt;&gt;&gt;,
     ) -&gt; Vec&lt;LogupWitness&lt;F, LT&gt;&gt; {
         <span class="comment">// Building lookup values
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
@@ -855,6 +998,15 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;F&gt;&gt; = BTreeMap::new();
+        <span class="kw">for </span>(table_id, m) <span class="kw">in </span>lookup_multiplicities.iter() {
+            <span class="kw">if </span>!table_id.is_fixed() {
+                <span class="comment">// Temporary assertion; to be removed when we support bigger
+                // runtime table/RAMlookups functionality.
+                </span><span class="macro">assert!</span>(m.len() &lt;= domain_size,
+                        <span class="string">&quot;We do not _yet_ support wrapping runtime tables that are bigger than domain size.&quot;</span>);
+            }
+        }
+
         <span class="comment">// Counting multiplicities &amp; adding fixed column into the last column of every table.
         </span><span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
             <span class="kw">let </span>lookup_m = <span class="self">self</span>.get_lookup_multiplicities(domain_size, <span class="kw-2">*</span>table_id);
@@ -865,7 +1017,7 @@
                 .map(|(i, v)| Logup {
                     table_id: <span class="kw-2">*</span>table_id,
                     numerator: -lookup_m[i],
-                    value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
+                    value: v.clone(),
                 });
             <span class="kw-2">*</span>(table.last_mut().unwrap()) = lookup_t.collect();
         }
@@ -891,7 +1043,7 @@
     </span><span class="kw">pub fn </span>get_proof_inputs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain_size: usize,
-        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;Vec&lt;F&gt;&gt;&gt;,
     ) -&gt; ProofInputs&lt;N_WIT, F, LT&gt; {
         <span class="kw">let </span>evaluations = <span class="self">self</span>.get_relation_witness(domain_size);
         <span class="kw">let </span>logups = <span class="self">self</span>.get_logup_witness(domain_size, lookup_tables_data);

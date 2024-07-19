@@ -68,18 +68,34 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     serialization::N_INTERMEDIATE_LIMBS,
     N_LIMBS,
 };
 
-<span class="doccomment">/// Total number of columns in the serialization circuit
-</span><span class="kw">pub const </span>SER_N_COLUMNS: usize = <span class="number">6 </span>* N_LIMBS + N_INTERMEDIATE_LIMBS + <span class="number">9</span>;
+<span class="doccomment">/// Total number of columns in the serialization circuit, including fixed selectors.
+</span><span class="kw">pub const </span>N_COL_SER: usize = <span class="number">6 </span>* N_LIMBS + N_INTERMEDIATE_LIMBS + <span class="number">9 </span>+ N_FSEL_SER;
+
+<span class="doccomment">/// Number of fixed selectors for serialization circuit.
+</span><span class="kw">pub const </span>N_FSEL_SER: usize = <span class="number">2</span>;
 
 <span class="doccomment">/// Columns used by the serialization subcircuit.
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>SerializationColumn {
+    <span class="doccomment">/// A fixed selector column that gives one the current row, starting with 0.
+    </span>CurrentRow,
+    <span class="doccomment">/// For current row i, this is i - 2^{ceil(log(i)) - 1}
+    </span>PreviousCoeffRow,
     <span class="doccomment">/// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
     </span>ChalKimchi(usize),
     <span class="doccomment">/// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long. Represent parts of the IPA challenge.
@@ -95,14 +111,16 @@
     </span>Quotient(usize),
     <span class="doccomment">/// Carry limbs
     </span>Carry(usize),
-    <span class="doccomment">/// The resulting coefficient C_i = (C_i &gt;&gt; 1) * xi_{log(i)}. In small limbs.
+    <span class="doccomment">/// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} * xi_{log(i)}. In small limbs.
     </span>CoeffResult(usize),
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {
-    <span class="kw">const </span>N_COL: usize = SER_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = N_COL_SER;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::CurrentRow =&gt; Column::FixedSelector(<span class="number">0</span>),
+            <span class="self">Self</span>::PreviousCoeffRow =&gt; Column::FixedSelector(<span class="number">1</span>),
             <span class="self">Self</span>::ChalKimchi(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">3</span>);
                 Column::Relation(j)

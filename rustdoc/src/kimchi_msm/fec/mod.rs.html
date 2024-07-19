@@ -167,6 +167,13 @@
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -316,7 +323,14 @@
         <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
         <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain_size <span class="kw">as </span>u64));
+            lookup_tables_data.insert(
+                table_id,
+                table_id
+                    .entries(domain_size <span class="kw">as </span>u64)
+                    .into_iter()
+                    .map(|x| <span class="macro">vec!</span>[x])
+                    .collect(),
+            );
         }
         <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 

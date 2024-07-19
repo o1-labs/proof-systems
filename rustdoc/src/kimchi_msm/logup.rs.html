@@ -847,6 +847,15 @@
 <a href="#847" id="847">847</a>
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper [&quot;Multivariate lookups based on logarithmic
 //! derivatives&quot;](https://eprint.iacr.org/2022/1530.pdf).
@@ -1029,7 +1038,9 @@
 }
 
 <span class="doccomment">/// Trait for lookup table variants
-</span><span class="kw">pub trait </span>LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + PartialOrd {
+</span><span class="kw">pub trait </span>LookupTableID:
+    Send + Sync + Copy + Hash + Eq + PartialEq + Ord + PartialOrd + core::fmt::Debug
+{
     <span class="doccomment">/// Assign a unique ID, as a u32 value
     </span><span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32;
 
@@ -1056,8 +1067,9 @@
     <span class="doccomment">/// Returns the length of each table.
     </span><span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
-    <span class="doccomment">/// Given a value, returns an index of this value in the table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize;
+    <span class="doccomment">/// Returns None if the table is runtime (and thus mapping value
+    /// -&gt; ix is not known at compile time.
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt;;
 
     <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt;;
 }
@@ -1146,8 +1158,8 @@
 ///    |------------------------------------------|
 ///    |                           denominators   |
 ///    |                         /--------------\ |
-/// column * (\prod_{i = 1}^{N} (β + f_{i}(X))) =
-/// \sum_{i = 1}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))
+/// column * (\prod_{i = 0}^{N} (β + f_{i}(X))) =
+/// \sum_{i = 0}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))
 ///    |             |--------------------------------------------------|
 ///    |                             Inner part of rhs                  |
 ///    |                                                                |
@@ -1159,13 +1171,17 @@
 /// ```
 /// It is because h(X) (column) is defined as:
 /// ```text
-///        n      m_i(X)
-/// h(X)   ∑    ----------
-///       i=1   β + f_i(X)
+///         n      m_i(X)        n         1            m_0(ω^j)
+/// h(X) =  ∑    ----------  =   ∑   ------------  -  -----------
+///        i=0   β + f_i(X)     i=1  β + f_i(ω^j)      β + t(ω^j)
 ///```
-/// For instance, if i = 2, we have
+/// The first form is generic, the second is concrete with f_0 = t; m_0 = m; m_i = 1 for ≠ 1.
+/// We will be thinking in the generic form.
+///
+/// For instance, if N = 2, we have
 /// ```text
 /// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
+///
 ///        m_1(X) * (β + f_2(X)) + m_2(X) * (β + f_{1}(X))
 ///      = ----------------------------------------------
 ///                  (β + f_2(X)) * (β + f_1(X))
@@ -1211,11 +1227,14 @@
             </span>beta.clone() + combined_value + x.table_id.to_constraint()
         })
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
     <span class="comment">// Compute `column * (\prod_{i = 1}^{N} (β + f_{i}(X)))`
     </span><span class="kw">let </span>lhs = denominators
         .iter()
         .fold(curr_cell(column), |acc, x| acc * x.clone());
-    <span class="kw">let </span>rhs = lookups
+
+    <span class="comment">// Compute `\sum_{i = 0}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (β + f_{j}(X))`
+    </span><span class="kw">let </span>rhs = lookups
         .into_iter()
         .enumerate()
         .map(|(i, x)| {
@@ -1235,6 +1254,7 @@
         <span class="comment">// Individual sums
         </span>.reduce(|x, y| x + y)
         .unwrap_or(E::zero());
+
     lhs - rhs
 }
 
@@ -1370,12 +1390,6 @@
             &gt; = {
                 (<span class="kw-2">&amp;</span>lookups)
                     .into_par_iter()
-                    .filter(|lookup| {
-                        <span class="comment">// FIXME: this is ugly.
-                        // Does not handle RAMLookup
-                        </span><span class="kw">let </span>table_id = lookup.f[<span class="number">0</span>][<span class="number">0</span>].table_id;
-                        table_id.is_fixed()
-                    })
                     .map(|lookup| {
                         <span class="kw">let </span>table_id = lookup.f[<span class="number">0</span>][<span class="number">0</span>].table_id;
                         (
@@ -1459,21 +1473,25 @@
                             table_id,
                             value,
                         } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
-                        <span class="comment">// Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
-                        </span><span class="kw">let </span>combined_value: G::ScalarField =
+                        <span class="comment">// Compute x_{1} + r x_{2} + ... r^{N-1} x_{N}
+                        // This is what we actually put into the `fixed_lookup_tables`.
+                        </span><span class="kw">let </span>combined_value_pow0: G::ScalarField =
                             value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
                                 acc * vector_lookup_combiner + y
-                            }) * vector_lookup_combiner;
+                            });
+                        <span class="comment">// Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
+                        </span><span class="kw">let </span>combined_value: G::ScalarField =
+                            combined_value_pow0 * vector_lookup_combiner;
                         <span class="comment">// add table id
                         </span><span class="kw">let </span>combined_value = combined_value + table_id.to_field::&lt;G::ScalarField&gt;();
 
                         <span class="comment">// If last element and fixed lookup tables, we keep
                         // the *combined* value of the table.
-                        </span><span class="kw">if </span>i == (n - <span class="number">1</span>) &amp;&amp; table_id.is_fixed() {
+                        </span><span class="kw">if </span>i == (n - <span class="number">1</span>) {
                             fixed_lookup_tables
                                 .entry(<span class="kw-2">*</span>table_id)
                                 .or_insert_with(Vec::new)
-                                .push(value[<span class="number">0</span>]);
+                                .push(combined_value_pow0);
                         }
 
                         <span class="comment">// β + a_{i}

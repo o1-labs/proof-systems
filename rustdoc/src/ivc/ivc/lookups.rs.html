@@ -142,7 +142,7 @@
     }
 
     <span class="doccomment">/// Converts a value to its index in the fixed table.
-    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; usize {
+    </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::SerLookupTable(lt) =&gt; lt.ix_by_value(value),
         }
@@ -158,7 +158,7 @@
 
 <span class="kw">impl</span>&lt;Ff: PrimeField&gt; IVCLookupTable&lt;Ff&gt; {
     <span class="doccomment">/// Provides a full list of entries for the given table.
-    </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
+    </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::SerLookupTable(lt) =&gt; lt.entries(domain_d1_size),
         }
