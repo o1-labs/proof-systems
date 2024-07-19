@@ -1,5 +1,5 @@
 use ark_ec::AffineCurve;
-use ark_ff::PrimeField;
+use ark_ff::{FpParameters, PrimeField};
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
@@ -429,6 +429,17 @@ impl<
 
     pub fn fetch_instruction(&self) -> Instruction {
         self.current_instruction
+    }
+
+    #[allow(dead_code)]
+    /// Can be used to reduce the value in the corresponding field when needed
+    fn reduce_in_field(&self, x: BigUint) -> BigUint {
+        let modulo: BigUint = if self.current_row % 2 == 0 {
+            TryFrom::try_from(Fp::Params::MODULUS).unwrap()
+        } else {
+            TryFrom::try_from(Fq::Params::MODULUS).unwrap()
+        };
+        x % modulo
     }
 
     pub fn fetch_next_instruction(&mut self) -> Instruction {
