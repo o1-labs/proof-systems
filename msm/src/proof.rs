@@ -15,13 +15,14 @@ use kimchi::{
 };
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofInputs<const N_WIT: usize, F: PrimeField, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N_WIT, Vec<F>>,
-    pub logups: Vec<LogupWitness<F, ID>>,
+    pub logups: BTreeMap<ID, LogupWitness<F, ID>>,
 }
 
 impl<const N_WIT: usize, F: PrimeField> ProofInputs<N_WIT, F, LookupTableIDs> {
@@ -36,9 +37,13 @@ impl<const N_WIT: usize, F: PrimeField> ProofInputs<N_WIT, F, LookupTableIDs> {
                 .map(|_| F::rand(&mut rng))
                 .collect::<Vec<_>>()
         }));
+        let logups = {
+            let (table_id, item) = LookupWitness::<F>::random(domain);
+            BTreeMap::from([(table_id, item)])
+        };
         ProofInputs {
             evaluations: Witness { cols },
-            logups: vec![LookupWitness::<F>::random(domain)],
+            logups,
         }
     }
 }
@@ -53,7 +58,7 @@ impl<const N_WIT: usize, F: PrimeField, ID: LookupTableID> Default for ProofInpu
                     (0..DOMAIN_SIZE).map(|_| F::zero()).collect()
                 })),
             },
-            logups: vec![],
+            logups: Default::default(),
         }
     }
 }

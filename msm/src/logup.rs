@@ -250,9 +250,6 @@ pub struct LogupWitness<F, ID: LookupTableID> {
     pub(crate) f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
-    /// The table the witness is related to.
-    // We can improve this later by getting rid of it.
-    pub(crate) table_id: ID,
 }
 
 /// Represents the proof of the lookup argument
@@ -516,7 +513,7 @@ pub mod prover {
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
         >(
-            lookups: Vec<LogupWitness<G::ScalarField, ID>>,
+            lookups: BTreeMap<ID, LogupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -524,20 +521,21 @@ pub mod prover {
         where
             OpeningProof::SRS: Sync,
         {
+            // Use parallel iterators where possible.
             // Polynomial m(X)
             // FIXME/IMPROVEME: m(X) is only for fixed table
             let lookup_counters_evals_d1: BTreeMap<
                 ID,
                 Evaluations<G::ScalarField, D<G::ScalarField>>,
             > = {
-                (&lookups)
+                lookups
+                    .clone()
                     .into_par_iter()
-                    .map(|lookup| {
-                        let table_id = lookup.f[0][0].table_id;
+                    .map(|(table_id, logup_witness)| {
                         (
                             table_id,
                             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                                lookup.m.to_vec(),
+                                logup_witness.m.to_vec(),
                                 domain.d1,
                             ),
                         )
@@ -588,8 +586,8 @@ pub mod prover {
             // We keep the lookup terms in a map, to process them in order in the constraints.
             let mut lookup_terms_map: BTreeMap<ID, Vec<Vec<G::ScalarField>>> = BTreeMap::new();
 
-            lookups.into_iter().for_each(|lookup| {
-                let LogupWitness { f, m: _, table_id } = lookup;
+            lookups.into_iter().for_each(|(table_id, logup_witness)| {
+                let LogupWitness { f, m: _ } = logup_witness;
                 // The number of functions to look up, including the fixed table.
                 let n = f.len();
                 let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
