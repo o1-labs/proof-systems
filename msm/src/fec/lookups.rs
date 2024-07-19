@@ -44,6 +44,10 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
         true
     }
 
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
     fn length(&self) -> usize {
         match self {
             Self::RangeCheck15 => 1 << 15,

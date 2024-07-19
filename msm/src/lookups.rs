@@ -33,6 +33,10 @@ impl LookupTableID for DummyLookupTable {
         true
     }
 
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
     fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> Option<usize> {
         if value[0] == F::zero() {
             Some(0)
@@ -90,6 +94,10 @@ impl LookupTableID for LookupTableIDs {
     /// All tables are fixed tables.
     fn is_fixed(&self) -> bool {
         true
+    }
+
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
     }
 
     fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
@@ -184,7 +192,7 @@ impl<F: FftField> LookupWitness<F> {
             LookupTableIDs::Custom(table_id),
             LookupWitness {
                 f: vec![f_evals, t_evals],
-                m,
+                m: vec![m],
             },
         )
     }

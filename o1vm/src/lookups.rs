@@ -95,6 +95,10 @@ impl LookupTableID for LookupTableIDs {
         }
     }
 
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
     fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
         todo!()
     }

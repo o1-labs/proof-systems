@@ -127,9 +127,9 @@ impl<
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(table_id) => {
+            Self::Column::LookupMultiplicity((table_id, idx)) => {
                 if let Some(ref lookup) = self.logup_evals {
-                    lookup.m[&ID::from_u32(table_id)].clone()
+                    lookup.m[&ID::from_u32(table_id)][idx].clone()
                 } else {
                     panic!("No lookup provided")
                 }

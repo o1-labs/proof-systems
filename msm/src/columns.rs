@@ -16,8 +16,9 @@ pub enum Column {
     /// Partial sums. This corresponds to the `h_i`.
     /// It is first indexed by the table ID, and after that internal index.
     LookupPartialSum((u32, usize)),
-    /// Multiplicities, indexed. This corresponds to the `m_i`
-    LookupMultiplicity(u32),
+    /// Multiplicities, indexed. This corresponds to the `m_i`. First
+    /// indexed by table ID, then internal index.
+    LookupMultiplicity((u32, usize)),
     /// The lookup aggregation, i.e. `phi`
     LookupAggregation,
     /// The fixed tables. The parameter is considered to the indexed table.
@@ -41,7 +42,7 @@ impl FormattedOutput for Column {
             Column::FixedSelector(i) => format!("fs_{{{i}}}"),
             Column::DynamicSelector(i) => format!("ds_{{{i}}}"),
             Column::LookupPartialSum((table_id, i)) => format!("h_{{{table_id}, {i}}}"),
-            Column::LookupMultiplicity(i) => format!("m_{{{i}}}"),
+            Column::LookupMultiplicity((table_id, i)) => format!("m_{{{table_id}, {i}}}"),
             Column::LookupFixedTable(i) => format!("t_{{{i}}}"),
             Column::LookupAggregation => String::from("φ"),
         }
@@ -53,7 +54,7 @@ impl FormattedOutput for Column {
             Column::FixedSelector(i) => format!("fs[{i}]"),
             Column::DynamicSelector(i) => format!("ds[{i}]"),
             Column::LookupPartialSum((table_id, i)) => format!("h[{table_id}, {i}]"),
-            Column::LookupMultiplicity(i) => format!("m[{i}]"),
+            Column::LookupMultiplicity((table_id, i)) => format!("m[{table_id}, {i}]"),
             Column::LookupFixedTable(i) => format!("t[{i}]"),
             Column::LookupAggregation => String::from("φ"),
         }
