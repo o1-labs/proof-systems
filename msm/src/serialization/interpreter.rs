@@ -413,11 +413,10 @@ pub fn constrain_multiplication<
         env.lookup(LookupTable::MultiplicationBus, vec_input);
 
         // Writing the output
-        // FIXME we should actually /write/ here, not read!
         // (cur_i, [VEC])
         let mut _vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
         _vec_output.insert(0, current_row);
-        //env.lookup(LookupTable::MultiplicationBus, vec_output);
+        //env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
     }
 
     // Result variable must be in the field.

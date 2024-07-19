@@ -239,6 +239,13 @@ impl<
                 value,
             })
     }
+    fn lookup_runtime_write(&mut self, lookup_id: LT, _value: Vec<Self::Variable>) {
+        assert!(
+            !lookup_id.is_fixed(),
+            "lookup_runtime_write must be called on non-fixed tables only"
+        );
+        // Unimplemented for now
+    }
 }
 
 impl<

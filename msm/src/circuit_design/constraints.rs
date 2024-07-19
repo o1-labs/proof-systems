@@ -85,6 +85,14 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
         };
         self.lookups.entry(table_id).or_default().push(lookup);
     }
+
+    fn lookup_runtime_write(&mut self, lookup_id: LT, _value: Vec<Self::Variable>) {
+        assert!(
+            !lookup_id.is_fixed(),
+            "lookup_runtime_write must be called on non-fixed tables only"
+        );
+        // Unimplemented for now
+    }
 }
 
 impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {

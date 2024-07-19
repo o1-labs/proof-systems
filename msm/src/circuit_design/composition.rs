@@ -362,6 +362,12 @@ impl<
     fn lookup(&mut self, lookup_id: LT2, value: Vec<Self::Variable>) {
         self.0.env.lookup(self.0.lens.re_get(lookup_id), value)
     }
+
+    fn lookup_runtime_write(&mut self, lookup_id: LT2, value: Vec<Self::Variable>) {
+        self.0
+            .env
+            .lookup_runtime_write(self.0.lens.re_get(lookup_id), value)
+    }
 }
 
 impl<
@@ -376,6 +382,10 @@ impl<
 {
     fn lookup(&mut self, lookup_id: LT, value: Vec<Self::Variable>) {
         self.0.env.lookup(lookup_id, value)
+    }
+
+    fn lookup_runtime_write(&mut self, lookup_id: LT, value: Vec<Self::Variable>) {
+        self.0.env.lookup_runtime_write(lookup_id, value)
     }
 }
 
