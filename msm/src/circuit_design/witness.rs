@@ -31,7 +31,7 @@ pub struct WitnessBuilderEnv<
     /// Lookup multiplicities, a vector of values `m_i` per lookup
     /// table, where `m_i` is how many times the lookup value number
     /// `i` was looked up.
-    pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
+    pub lookup_multiplicities: BTreeMap<LT, Vec<u64>>,
 
     // @volhovm: It seems much more ineffective to store
     // Vec<BTreeMap<LT, Vec<Logup>>> than BTreeMap<LT, Vec<Vec<Logup>>>.
@@ -224,9 +224,9 @@ impl<
             // is not height-bounded, but we will split it into chunks
             // later.
             if !table_id.is_fixed() && value_ix > multiplicities.len() {
-                multiplicities.resize(value_ix, F::zero());
+                multiplicities.resize(value_ix, 0u64);
             }
-            multiplicities[value_ix] += F::one();
+            multiplicities[value_ix] += 1;
         }
         self.lookups
             .last_mut()
@@ -306,7 +306,11 @@ impl<
     /// Getting multiplicities for range check tables less or equal than 15 bits.
     pub fn get_lookup_multiplicities(&self, domain_size: usize, table_id: LT) -> Vec<F> {
         let mut m = Vec::with_capacity(domain_size);
-        m.extend(self.lookup_multiplicities[&table_id].to_vec());
+        m.extend(
+            self.lookup_multiplicities[&table_id]
+                .iter()
+                .map(|x| F::from(*x)),
+        );
         if table_id.length() < domain_size {
             let n_repeated_dummy_value: usize = domain_size - table_id.length() - 1;
             let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
@@ -339,7 +343,7 @@ impl<
         let fixed_selectors = vec![vec![]; N_FSEL];
         for table_id in LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
-            lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
+            lookup_multiplicities.insert(table_id, vec![0u64; table_id.length()]);
             if !table_id.is_fixed() {
                 runtime_tables_resolver.insert(table_id, BTreeMap::new());
                 runtime_tables.insert(table_id, vec![]);
