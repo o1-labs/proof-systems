@@ -1,0 +1,67 @@
+[package]
+name = "groth16-plus-lookups"
+version = "0.1.0"
+description = "Groth16 extended with the ability to run MVLookup"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
+
+[dependencies]
+ark-ff.workspace = true
+ark-ec.workspace = true
+ark-poly.workspace = true
+ark-serialize.workspace = true
+ark-bn254 = { workspace = true, optional = true }
+blake2.workspace = true
+num-bigint.workspace = true
+num-derive.workspace = true
+num-integer.workspace = true
+num-traits.workspace = true
+itertools.workspace = true
+log.workspace = true
+rand = { workspace = true, features = ["std_rng"] }
+rand_core.workspace = true
+rayon.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+thiserror.workspace = true
+once_cell.workspace = true
+hex.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+
+snarky-deriver.workspace = true
+
+turshi.workspace = true
+poly-commitment.workspace = true
+groupmap.workspace = true
+mina-curves.workspace = true
+o1-utils.workspace = true
+mina-poseidon.workspace = true
+
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
+
+wasm-bindgen = { workspace = true, optional = true }
+
+internal-tracing.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+proptest-derive.workspace = true
+colored.workspace = true
+serde_json.workspace = true
+num-bigint.workspace = true
+secp256k1.workspace = true
+
+# benchmarks
+criterion.workspace = true
+iai.workspace = true

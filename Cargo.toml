@@ -17,7 +17,8 @@ members = [
     "utils",
     "internal-tracing",
     "ivc",
-    "folding"
+    "folding",
+    "groth16-plus-lookups"
 ]
 resolver = "2"
 
