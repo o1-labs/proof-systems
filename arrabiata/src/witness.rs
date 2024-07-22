@@ -448,17 +448,6 @@ impl<
         self.current_instruction
     }
 
-    #[allow(dead_code)]
-    /// Can be used to reduce the value in the corresponding field when needed
-    fn reduce_in_field(&self, x: BigUint) -> BigUint {
-        let modulo: BigUint = if self.current_row % 2 == 0 {
-            TryFrom::try_from(Fp::Params::MODULUS).unwrap()
-        } else {
-            TryFrom::try_from(Fq::Params::MODULUS).unwrap()
-        };
-        x % modulo
-    }
-
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             // FIXME
