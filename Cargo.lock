@@ -276,6 +276,7 @@ dependencies = [
  "mina-poseidon",
  "num-bigint",
  "o1-utils",
+ "once_cell",
  "poly-commitment",
  "rand",
  "rayon",

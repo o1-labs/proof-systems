@@ -22,6 +22,8 @@ pub mod columns;
 pub mod constraints;
 pub mod interpreter;
 pub mod logup;
+pub mod poseidon_3_60_0_5_5_fp;
+pub mod poseidon_3_60_0_5_5_fq;
 pub mod proof;
 pub mod prover;
 pub mod verifier;

@@ -25,6 +25,7 @@ mina-curves.workspace = true
 mina-poseidon.workspace = true
 num-bigint.workspace = true
 o1-utils.workspace = true
+once_cell.workspace = true
 poly-commitment.workspace = true
 rand.workspace = true
 rayon.workspace = true
