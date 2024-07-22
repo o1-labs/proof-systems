@@ -17,6 +17,12 @@ pub const NUMBER_OF_COLUMNS: usize = 17;
 // FIXME: that might change
 pub const NUMBER_OF_PUBLIC_INPUTS: usize = 3;
 
+/// The number of full rounds in the Poseidon hash function.
+pub const POSEIDON_ROUNDS_FULL: usize = 60;
+
+/// The number of elements in the state of the Poseidon hash function.
+pub const POSEIDON_STATE_SIZE: usize = 3;
+
 pub mod column_env;
 pub mod columns;
 pub mod constraints;
