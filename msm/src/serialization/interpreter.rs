@@ -406,13 +406,27 @@ pub fn constrain_multiplication<
         let current_row = env.read_column(SerializationColumn::CurrentRow);
         let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
 
+        // The very first value cannot be read, because it's never
+        // written... How should I handle this? Disable column read
+        // just for this column? Create an "initial" read? Add an
+        // extra column with "initial" fixed values?.. like an extra
+        // column that "writes" a constant? Maybe I don't even need a
+        // column, and can create a "constant" value read?
+
         // TODO: We don't have to write top half of the table since it's never read.
 
         // Writing the output
         // (cur_i, [VEC])
-        let mut _vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
-        _vec_output.insert(0, current_row);
-        //env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
+        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        vec_output.insert(0, current_row);
+        env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
+
+        // Writing the constant: it's only read once
+        // (0, [VEC representing 0])
+        env.lookup_runtime_write(
+            LookupTable::MultiplicationBus,
+            vec![Env::constant(F::zero()); N_LIMBS_SMALL + 1],
+        );
 
         // Reading the input:
         // (prev_i, [VEC])

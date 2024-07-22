@@ -46,6 +46,14 @@ mod tests {
         let fixed_selectors = build_selectors(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
+        println!("Fixed selectors first 10 rows:");
+        for i in 0..10 {
+            println!(
+                "   {:?}   {:?}",
+                fixed_selectors[0][i], fixed_selectors[1][i]
+            );
+        }
+
         // Boxing to avoid stack overflow
         let mut field_elements = vec![];
 

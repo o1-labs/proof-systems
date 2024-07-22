@@ -199,6 +199,14 @@ pub trait LookupTableID:
     /// like range checks.
     fn is_fixed(&self) -> bool;
 
+    /// If a table is runtime table, `true` means we should create an
+    /// explicit extra column for it to "read" from. `false` means
+    /// that this table will be reading from some existing (e.g.
+    /// relation) columns, and no extra columns should be added.
+    ///
+    /// Panics if the argument is a fixed table.
+    fn runtime_create_column(&self) -> bool;
+
     /// Assign a unique ID to the lookup tables, as an expression.
     fn to_constraint<F: Field>(&self) -> E<F> {
         let f = self.to_field();
@@ -248,8 +256,10 @@ pub struct LogupWitness<F, ID: LookupTableID> {
     // TODO: for efficiency, we might want to have a single flat fixed-size
     // array
     pub(crate) f: Vec<Vec<Logup<F, ID>>>,
-    /// The multiplicity polynomial
-    pub(crate) m: Vec<F>,
+    /// The multiplicity polynomials; by convention, this is a vector
+    /// of columns, corresponding to the `tail` of `f`. That is,
+    /// m[last] ~ f[last].
+    pub(crate) m: Vec<Vec<F>>,
 }
 
 /// Represents the proof of the lookup argument
@@ -447,9 +457,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
             let col = Column::LookupPartialSum((table_id_u32, idx_partial_sum));
             lookup_terms_cols.push(col);
-            if table_id.is_fixed() {
-                constraints.push(combine_lookups(col, chunk.to_vec()));
-            }
+            constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += 1;
         });
     });
