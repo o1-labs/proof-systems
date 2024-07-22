@@ -148,4 +148,15 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
             row: CurrOrNext::Curr,
         }))
     }
+
+    unsafe fn get_sixteen_bits_chunks_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        _i: u32,
+    ) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
 }

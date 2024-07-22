@@ -127,9 +127,16 @@ pub fn main() {
     let mut constraints_fp = constraints::Env::<Fp>::new();
     interpreter::run_app(&mut constraints_fp);
     constraints_fp.reset();
+    // 1 constraint
     interpreter::run_ivc(&mut constraints_fp, Instruction::SixteenBitsDecomposition);
     constraints_fp.reset();
-    assert_eq!(constraints_fp.constraints.len(), 2);
+    // 16 + 1 constraints for the bit decomposition
+    interpreter::run_ivc(
+        &mut constraints_fp,
+        Instruction::BitDecompositionFrom16Bits(0),
+    );
+    constraints_fp.reset();
+    assert_eq!(constraints_fp.constraints.len(), 2 + 16 + 1);
     info!(
         "Number of constraints for the Fp field: {n}",
         n = constraints_fp.constraints.len()
@@ -139,9 +146,16 @@ pub fn main() {
     let mut constraints_fq = constraints::Env::<Fq>::new();
     interpreter::run_app(&mut constraints_fq);
     constraints_fq.reset();
+    // 1 constraint
     interpreter::run_ivc(&mut constraints_fq, Instruction::SixteenBitsDecomposition);
     constraints_fq.reset();
-    assert_eq!(constraints_fq.constraints.len(), 2);
+    // 16 + 1 constraints for the bit decomposition
+    interpreter::run_ivc(
+        &mut constraints_fq,
+        Instruction::BitDecompositionFrom16Bits(0),
+    );
+    constraints_fq.reset();
+    assert_eq!(constraints_fq.constraints.len(), 2 + 16 + 1);
     info!(
         "Number of constraints for the Fq field: {n}",
         n = constraints_fq.constraints.len()

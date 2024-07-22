@@ -197,6 +197,19 @@ pub trait InterpreterEnv {
 
     /// Return the folding combiner
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable;
+
+    /// Get the 16bits chunks of the folding combiner, and save it into `pos`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints saying that it is actually the previous
+    /// computed value. We should do something like a runtime lookup/permutation
+    /// check. It is left for when the lookup is implemented.
+    unsafe fn get_sixteen_bits_chunks_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        i: u32,
+    ) -> Self::Variable;
 }
 
 /// Run the application
@@ -232,6 +245,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     match instr {
         Instruction::SixteenBitsDecomposition => {
             // Decompositing the random coin in chunks of 16 bits. One row.
+            // FIXME: verify the combiner is correctly returned from the sponge.
             let r = {
                 let pos = env.allocate();
                 env.coin_folding_combiner(pos)
@@ -252,7 +266,37 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 });
             env.assert_zero(cstr);
         }
-        Instruction::BitDecompositionFrom16Bits(_i) => unimplemented!("Gadget not implemented yet"),
+        Instruction::BitDecompositionFrom16Bits(i) => {
+            if i < 16 {
+                // FIXME: simulate a RW into a memory cell. Not necessarily
+                // constrained?
+                let sixteen_i = {
+                    let pos = env.allocate();
+                    unsafe { env.get_sixteen_bits_chunks_folding_combiner(pos, i as u32) }
+                };
+                let bit_decompo: Vec<E::Variable> = (0..16)
+                    .map(|j| {
+                        let pos = env.allocate();
+                        unsafe { env.bitmask_be(&sixteen_i, (j + 1) as u32, j as u32, pos) }
+                    })
+                    .collect();
+
+                // Contrain to be one or zero
+                bit_decompo
+                    .iter()
+                    .for_each(|x| env.constrain_boolean(x.clone()));
+
+                let cstr = bit_decompo
+                    .iter()
+                    .enumerate()
+                    .fold(sixteen_i, |acc, (i, x)| {
+                        acc - env.constant(BigUint::from(1_usize) << i) * x.clone()
+                    });
+                env.assert_zero(cstr);
+            } else {
+                panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
+            }
+        }
         Instruction::Poseidon(_i) => unimplemented!("Gadget not implemented yet"),
     }
 

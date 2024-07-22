@@ -277,6 +277,15 @@ impl<
         self.r = r.clone();
         r
     }
+
+    unsafe fn get_sixteen_bits_chunks_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        i: u32,
+    ) -> Self::Variable {
+        let r = self.r.clone();
+        self.bitmask_be(&r, 16 * (i + 1), 16 * i, pos)
+    }
 }
 
 impl<
@@ -453,14 +462,15 @@ impl<
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             // FIXME
-            Instruction::SixteenBitsDecomposition => Instruction::SixteenBitsDecomposition,
+            Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::Poseidon(i) => Instruction::Poseidon(i + 1),
             // Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::BitDecompositionFrom16Bits(i) => {
                 if i < 15 {
                     Instruction::BitDecompositionFrom16Bits(i + 1)
                 } else {
-                    unimplemented!("This should not happen")
+                    // FIXME: we should do the hash?
+                    Instruction::SixteenBitsDecomposition
                 }
             }
         }
