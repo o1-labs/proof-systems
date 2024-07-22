@@ -14,8 +14,9 @@ pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 pub const NUMBER_OF_COLUMNS: usize = 17;
 
 /// The maximum number of public inputs the circuit can use per row
-// FIXME: that might change
-pub const NUMBER_OF_PUBLIC_INPUTS: usize = 3;
+/// We do have 12 for now as we want to compute 4 rounds of poseidon per row.
+// FIXME: we can do 5 rounds per row by using "the next row"
+pub const NUMBER_OF_PUBLIC_INPUTS: usize = 12;
 
 /// The number of full rounds in the Poseidon hash function.
 pub const POSEIDON_ROUNDS_FULL: usize = 60;

@@ -10,24 +10,20 @@ use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
 pub struct Env<Fp: Field> {
+    pub poseidon_mds: Vec<Vec<Fp>>,
     pub idx_var: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
 
 impl<Fp: Field> Env<Fp> {
-    pub fn new() -> Self {
+    pub fn new(poseidon_mds: Vec<Vec<Fp>>) -> Self {
         Self {
+            poseidon_mds,
             idx_var: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
         }
-    }
-}
-
-impl<Fp: Field> Default for Env<Fp> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -77,7 +73,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     /// Return the corresponding expression regarding the selected column
-    fn write_column(&mut self, col: Self::Position, _v: BigUint) -> Self::Variable {
+    fn write_column(&mut self, col: Self::Position, _v: Self::Variable) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col,
             row: CurrOrNext::Curr,
@@ -158,5 +154,37 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
             col: pos,
             row: CurrOrNext::Curr,
         }))
+    }
+
+    fn get_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    // Witness-only
+    fn update_poseidon_state(&mut self, _x: Self::Variable, _i: usize) {}
+
+    fn get_poseidon_round_constant(
+        &mut self,
+        pos: Self::Position,
+        _round: usize,
+        _i: usize,
+    ) -> Self::Variable {
+        match pos {
+            Column::PublicInput(_) => (),
+            _ => panic!("Only public inputs can be used as round constants"),
+        };
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
+        let v = self.poseidon_mds[i][j];
+        let v_inner = Operations::from(Literal(v));
+        Self::Variable::constant(v_inner)
     }
 }

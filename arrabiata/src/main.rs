@@ -1,17 +1,12 @@
 use arrabiata::{
     constraints,
     interpreter::{self, Instruction, InterpreterEnv},
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
     witness::Env,
-    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
+    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE, POSEIDON_STATE_SIZE,
 };
 use log::{debug, info};
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::{fp_kimchi, fq_kimchi},
-    sponge::DefaultFqSponge,
-    FqSponge,
-};
+use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use num_bigint::BigUint;
 use std::time::Instant;
 
@@ -53,27 +48,14 @@ pub fn main() {
 
     let domain_size = 1 << srs_log2_size;
 
-    let sponge_vesta = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-        fq_kimchi::static_params(),
-    );
-    let sponge_pallas = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
-        fp_kimchi::static_params(),
-    );
-
+    // FIXME: setup correctly the initial sponge state
+    let sponge_e1: [BigUint; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigUint::from(42u64));
     // FIXME: make a setup phase to build the selectors
-    let mut env = Env::<
-        Fp,
-        Fq,
-        Vesta,
-        Pallas,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
-        PlonkSpongeConstantsKimchi,
-    >::new(
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         *srs_log2_size,
         BigUint::from(1u64),
-        sponge_vesta,
-        sponge_pallas,
+        sponge_e1.clone(),
+        sponge_e1.clone(),
     );
 
     let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
@@ -124,7 +106,10 @@ pub fn main() {
 
     // Checking constraints, for both fields.
     info!("Creating constraints for the circuit, over the Fp field");
-    let mut constraints_fp = constraints::Env::<Fp>::new();
+    let mut constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec())
+    };
     interpreter::run_app(&mut constraints_fp);
     constraints_fp.reset();
     // 1 constraint
@@ -136,14 +121,19 @@ pub fn main() {
         Instruction::BitDecompositionFrom16Bits(0),
     );
     constraints_fp.reset();
-    assert_eq!(constraints_fp.constraints.len(), 2 + 16 + 1);
+    interpreter::run_ivc(&mut constraints_fp, Instruction::Poseidon(0));
+    constraints_fp.reset();
+    assert_eq!(constraints_fp.constraints.len(), 2 + 16 + 1 + 12);
     info!(
         "Number of constraints for the Fp field: {n}",
         n = constraints_fp.constraints.len()
     );
 
     info!("Creating constraints for the circuit, over the Fq field");
-    let mut constraints_fq = constraints::Env::<Fq>::new();
+    let mut constraints_fq = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fq::static_params().mds.clone();
+        constraints::Env::<Fq>::new(poseidon_mds.to_vec())
+    };
     interpreter::run_app(&mut constraints_fq);
     constraints_fq.reset();
     // 1 constraint
@@ -155,7 +145,10 @@ pub fn main() {
         Instruction::BitDecompositionFrom16Bits(0),
     );
     constraints_fq.reset();
-    assert_eq!(constraints_fq.constraints.len(), 2 + 16 + 1);
+    interpreter::run_ivc(&mut constraints_fq, Instruction::Poseidon(0));
+    constraints_fq.reset();
+
+    assert_eq!(constraints_fq.constraints.len(), 2 + 16 + 1 + 12);
     info!(
         "Number of constraints for the Fq field: {n}",
         n = constraints_fq.constraints.len()

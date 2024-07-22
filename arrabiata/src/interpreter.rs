@@ -59,14 +59,14 @@
 //! better, for the same security level and the same cost in circuit. We leave
 //! this for future works.
 //!
-//! Note that the interpreter enforces degree 2 constraints, therefore we have
-//! to reduce all computations to degree 2.
-//!
 //! For a first version, we consider an instance of the Poseidon hash function
 //! that it suitable for curves whose field size is around 256 bits.
-//! A security analysis for these curves give us a recommandation of 8 full
-//! rounds and 56 partial rounds if we consider a 128-bit security level and a
-//! low-degree exponentiation of `5`.
+//! A security analysis for these curves give us a recommandation of 60 full
+//! rounds if we consider a 128-bit security level and a low-degree
+//! exponentiation of `5`, with only full rounds.
+//! In the near future, we will consider the partial rounds strategy to reduce
+//! the CPU cost. For a first version, we keep the full rounds strategy to keep
+//! the design simple.
 //!
 //! When applying the full/partial round strategy, an optimisation can be used,
 //! see [New Optimization techniques for PlonK's
@@ -76,7 +76,13 @@
 //!
 //! #### Gadget layout
 //!
-//! TODO
+//! We start with the assumption that 17 columns are available for the whole
+//! circuit, and we can support constraints up to degree 5.
+//! Therefore, we can compute 4 full rounds per row.
+//!
+//! FIXME: we can do one more by using "the next row". Also, we can optimize
+//! this by using a partial/full round instance of Poseidon. We leave this when
+//! we move to Poseidon2.
 //!
 //! ### Elliptic curve scalar multiplication
 //!
@@ -107,7 +113,9 @@
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
 
+use crate::POSEIDON_ROUNDS_FULL;
 use ark_ff::{One, Zero};
+use log::debug;
 use num_bigint::BigUint;
 
 // FIXME: Can we use an "instruction" kind of circuit?
@@ -119,6 +127,8 @@ pub enum Instruction {
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
     EllipticCurveScaling(usize),
+    // The NoOp will simply do nothing
+    NoOp,
 }
 
 /// An abstract interpreter that provides some functionality on the circuit. The
@@ -146,7 +156,7 @@ pub trait InterpreterEnv {
 
     fn allocate_public_input(&mut self) -> Self::Position;
 
-    fn write_column(&mut self, col: Self::Position, v: BigUint) -> Self::Variable;
+    fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
 
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
@@ -218,6 +228,21 @@ pub trait InterpreterEnv {
         let x_cubed = x_square.clone() * x.clone();
         x_cubed * x_square.clone()
     }
+
+    /// Get the state of the Poseidon hash function
+    fn get_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable;
+
+    fn update_poseidon_state(&mut self, v: Self::Variable, i: usize);
+
+    fn get_poseidon_round_constant(
+        &mut self,
+        pos: Self::Position,
+        round: usize,
+        i: usize,
+    ) -> Self::Variable;
+
+    /// Return the requested MDS matrix coefficient
+    fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
 }
 
 /// Run the application
@@ -305,10 +330,89 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
             }
         }
-        Instruction::Poseidon(_i) => unimplemented!("Gadget not implemented yet"),
         Instruction::EllipticCurveScaling(i_comm) => {
             panic!("Not implemented yet for {i_comm}")
         }
+        Instruction::Poseidon(curr_round) => {
+            debug!("Executing instruction Poseidon({curr_round})");
+            if curr_round < POSEIDON_ROUNDS_FULL {
+                let x0 = {
+                    let pos = env.allocate();
+                    env.get_poseidon_state(pos, 0)
+                };
+                let x1 = {
+                    let pos = env.allocate();
+                    env.get_poseidon_state(pos, 1)
+                };
+                let x2 = {
+                    let pos = env.allocate();
+                    env.get_poseidon_state(pos, 2)
+                };
+                let mut state: Vec<E::Variable> = vec![x0, x1, x2];
+
+                (0..4).for_each(|i| {
+                    let x0_five = env.compute_x5(state[0].clone());
+                    let x1_five = env.compute_x5(state[1].clone());
+                    let x2_five = env.compute_x5(state[2].clone());
+
+                    let round = curr_round + i;
+                    let rc_0 = {
+                        let pos = env.allocate_public_input();
+                        env.get_poseidon_round_constant(pos, round, 0)
+                    };
+                    let rc_1 = {
+                        let pos = env.allocate_public_input();
+                        env.get_poseidon_round_constant(pos, round, 1)
+                    };
+                    let rc_2 = {
+                        let pos = env.allocate_public_input();
+                        env.get_poseidon_round_constant(pos, round, 2)
+                    };
+
+                    let x0_prime = {
+                        let pos = env.allocate();
+                        let res = env.get_poseidon_mds_matrix(0, 0) * x0_five.clone()
+                            + env.get_poseidon_mds_matrix(0, 1) * x1_five.clone()
+                            + env.get_poseidon_mds_matrix(0, 2) * x2_five.clone()
+                            + rc_0.clone();
+                        let x0_prime = env.write_column(pos, res.clone());
+                        env.assert_equal(x0_prime.clone(), res);
+                        x0_prime
+                    };
+                    let x1_prime = {
+                        let pos = env.allocate();
+                        let res = env.get_poseidon_mds_matrix(1, 0) * x0_five.clone()
+                            + env.get_poseidon_mds_matrix(1, 1) * x1_five.clone()
+                            + env.get_poseidon_mds_matrix(1, 2) * x2_five.clone()
+                            + rc_1.clone();
+                        let x1_prime = env.write_column(pos, res.clone());
+                        env.assert_equal(x1_prime.clone(), res);
+                        x1_prime
+                    };
+                    let x2_prime = {
+                        let pos = env.allocate();
+                        let res = env.get_poseidon_mds_matrix(2, 0) * x0_five.clone()
+                            + env.get_poseidon_mds_matrix(2, 1) * x1_five.clone()
+                            + env.get_poseidon_mds_matrix(2, 2) * x2_five.clone()
+                            + rc_2.clone();
+                        let x2_prime = env.write_column(pos, res.clone());
+                        env.assert_equal(x2_prime.clone(), res);
+                        x2_prime
+                    };
+
+                    state[0] = x0_prime;
+                    state[1] = x1_prime;
+                    state[2] = x2_prime;
+                });
+
+                env.update_poseidon_state(state[0].clone(), 0);
+                env.update_poseidon_state(state[1].clone(), 1);
+                env.update_poseidon_state(state[2].clone(), 2);
+            } else {
+                panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
+            }
+        }
+        Instruction::NoOp => {}
     }
 
     // Compute the hash of the public input

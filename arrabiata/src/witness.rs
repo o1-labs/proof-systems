@@ -1,9 +1,8 @@
 use ark_ec::AffineCurve;
-use ark_ff::PrimeField;
+use ark_ff::{FpParameters, PrimeField};
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
-use mina_poseidon::{constants::SpongeConstants, FqSponge};
 use num_bigint::BigUint;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
@@ -13,7 +12,8 @@ use std::time::Instant;
 use crate::{
     columns::Column,
     interpreter::{Instruction, InterpreterEnv},
-    NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 /// An environment that can be shared between IVC instances
@@ -22,15 +22,11 @@ use crate::{
 /// The environment is run over big unsigned integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
-// FIXME: Can we remove SpongeConstants as it is in E1Sponge/E2Sponge?
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
     E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
     E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
-    E1Sponge: FqSponge<Fq, E1, Fp>,
-    E2Sponge: FqSponge<Fp, E2, Fq>,
-    SC: SpongeConstants,
 > {
     // ----------------
     // Setup related (domains + SRS)
@@ -91,8 +87,10 @@ pub struct Env<
     /// The sponges will be used to simulate the verifier messages, and will
     /// also be used to verify the consistency of the computation by hashing the
     /// public IO.
-    pub sponge_e1: E1Sponge,
-    pub sponge_e2: E2Sponge,
+    // IMPROVEME: use a list of BigUint? It might be faster as the CPU will
+    // already have in its cache the values, and we can use a flat array
+    pub sponge_e1: [BigUint; POSEIDON_STATE_SIZE],
+    pub sponge_e2: [BigUint; POSEIDON_STATE_SIZE],
 
     /// List of public inputs, used first to verify the consistency of the
     /// previous iteration.
@@ -127,7 +125,7 @@ pub struct Env<
     // ---------------
     // Only used to have type safety and think about the design at the
     // type-level
-    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2, SC)>,
+    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2)>,
     // ---------------
 }
 
@@ -136,10 +134,7 @@ impl<
         Fq: PrimeField,
         E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
         E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
-        E1Sponge: FqSponge<Fq, E1, Fp>,
-        E2Sponge: FqSponge<Fp, E2, Fq>,
-        SC: SpongeConstants,
-    > InterpreterEnv for Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge, SC>
+    > InterpreterEnv for Env<Fp, Fq, E1, E2>
 {
     type Position = Column;
 
@@ -166,7 +161,7 @@ impl<
         pos
     }
 
-    fn write_column(&mut self, col: Self::Position, v: BigUint) -> Self::Variable {
+    fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
@@ -266,9 +261,9 @@ impl<
     /// FIXME: check if we need to pick the left or right sponge
     fn coin_folding_combiner(&mut self, col: Self::Position) -> Self::Variable {
         let r = if self.current_iteration % 2 == 0 {
-            self.sponge_e1.challenge().to_biguint()
+            self.sponge_e1[0].clone()
         } else {
-            self.sponge_e2.challenge().to_biguint()
+            self.sponge_e2[0].clone()
         };
         let Column::X(idx) = col else {
             unimplemented!("Only works for private columns")
@@ -286,6 +281,47 @@ impl<
         let r = self.r.clone();
         self.bitmask_be(&r, 16 * (i + 1), 16 * i, pos)
     }
+
+    fn get_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
+        let state = if self.current_iteration % 2 == 0 {
+            self.sponge_e1[i].clone()
+        } else {
+            self.sponge_e2[i].clone()
+        };
+        self.write_column(pos, state)
+    }
+
+    fn get_poseidon_round_constant(
+        &mut self,
+        pos: Self::Position,
+        round: usize,
+        i: usize,
+    ) -> Self::Variable {
+        let rc = if self.current_iteration % 2 == 0 {
+            poseidon_3_60_0_5_5_fp::static_params().round_constants[round][i].to_biguint()
+        } else {
+            poseidon_3_60_0_5_5_fq::static_params().round_constants[round][i].to_biguint()
+        };
+        self.write_public_input(pos, rc)
+    }
+
+    fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
+        if self.current_iteration % 2 == 0 {
+            poseidon_3_60_0_5_5_fp::static_params().mds[i][j].to_biguint()
+        } else {
+            poseidon_3_60_0_5_5_fq::static_params().mds[i][j].to_biguint()
+        }
+    }
+
+    fn update_poseidon_state(&mut self, x: Self::Variable, i: usize) {
+        if self.current_iteration % 2 == 0 {
+            let modulus: BigUint = TryFrom::try_from(Fp::Params::MODULUS).unwrap();
+            self.sponge_e1[i] = x % modulus
+        } else {
+            let modulus: BigUint = TryFrom::try_from(Fq::Params::MODULUS).unwrap();
+            self.sponge_e2[i] = x % modulus
+        }
+    }
 }
 
 impl<
@@ -293,16 +329,13 @@ impl<
         Fq: PrimeField,
         E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
-        E1Sponge: FqSponge<Fq, E1, Fp>,
-        E2Sponge: FqSponge<Fp, E2, Fq>,
-        SC: SpongeConstants,
-    > Env<Fp, Fq, E1, E2, E1Sponge, E2Sponge, SC>
+    > Env<Fp, Fq, E1, E2>
 {
     pub fn new(
         srs_log2_size: usize,
         z0: BigUint,
-        sponge_e1: E1Sponge,
-        sponge_e2: E2Sponge,
+        sponge_e1: [BigUint; 3],
+        sponge_e2: [BigUint; 3],
     ) -> Self {
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
@@ -451,19 +484,26 @@ impl<
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
-            Instruction::Poseidon(i) => Instruction::Poseidon(i + 1),
-            // Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
+            Instruction::Poseidon(i) => {
+                if i < POSEIDON_ROUNDS_FULL - 4 {
+                    // We perform 4 rounds per row
+                    // FIXME: we can do 5 by using the "next row"
+                    Instruction::Poseidon(i + 4)
+                } else {
+                    Instruction::NoOp
+                }
+            }
             Instruction::BitDecompositionFrom16Bits(i) => {
                 if i < 15 {
                     Instruction::BitDecompositionFrom16Bits(i + 1)
                 } else {
-                    // FIXME: we should do the hash?
-                    Instruction::SixteenBitsDecomposition
+                    Instruction::Poseidon(0)
                 }
             }
             Instruction::EllipticCurveScaling(i_comm) => {
                 panic!("Not implemented yet for {i_comm}")
             }
+            Instruction::NoOp => Instruction::NoOp,
         }
     }
 }
