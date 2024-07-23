@@ -118,6 +118,7 @@ pub enum Instruction {
     SixteenBitsDecomposition,
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
+    EllipticCurveScaling(usize),
 }
 
 /// An abstract interpreter that provides some functionality on the circuit. The
@@ -305,6 +306,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::Poseidon(_i) => unimplemented!("Gadget not implemented yet"),
+        Instruction::EllipticCurveScaling(i_comm) => {
+            panic!("Not implemented yet for {i_comm}")
+        }
     }
 
     // Compute the hash of the public input

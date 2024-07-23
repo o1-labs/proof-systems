@@ -450,7 +450,6 @@ impl<
 
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            // FIXME
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::Poseidon(i) => Instruction::Poseidon(i + 1),
             // Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
@@ -461,6 +460,9 @@ impl<
                     // FIXME: we should do the hash?
                     Instruction::SixteenBitsDecomposition
                 }
+            }
+            Instruction::EllipticCurveScaling(i_comm) => {
+                panic!("Not implemented yet for {i_comm}")
             }
         }
     }
