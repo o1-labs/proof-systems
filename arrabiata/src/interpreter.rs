@@ -210,6 +210,13 @@ pub trait InterpreterEnv {
         pos: Self::Position,
         i: u32,
     ) -> Self::Variable;
+
+    /// Compute the x^5 of the given variable
+    fn compute_x5(&self, x: Self::Variable) -> Self::Variable {
+        let x_square = x.clone() * x.clone();
+        let x_cubed = x_square.clone() * x.clone();
+        x_cubed * x_square.clone()
+    }
 }
 
 /// Run the application

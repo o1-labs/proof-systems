@@ -1,5 +1,5 @@
 use ark_ec::AffineCurve;
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
