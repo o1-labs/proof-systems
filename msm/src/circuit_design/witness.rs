@@ -540,7 +540,7 @@ impl<
                     if table_id.is_fixed() || table_id.runtime_create_column() {
                         1
                     } else {
-                        self.runtime_tables.len()
+                        self.runtime_tables[&table_id].len()
                     };
                 // +1 for the fixed table
                 lookup_tables.insert(
@@ -577,12 +577,26 @@ impl<
                         table_id: *table_id,
                         numerator: -lookup_m[0][i],
                         value: v.clone(),
-                    });
-                *(table.last_mut().unwrap()) = lookup_t.collect();
+                    })
+                    .collect();
+                *(table.last_mut().unwrap()) = lookup_t;
             } else {
-                panic!("We have to add multiplicities");
-                // FIXME ???
-                // We don't add these "negative" lookups here...? or rather they don't become separate columns?
+                // Add multiplicity vectors for runtime tables.
+                for (col_i, lookup_column) in lookup_tables_data[table_id].iter().enumerate() {
+                    let lookup_t = lookup_column
+                        .iter()
+                        .enumerate()
+                        .map(|(i, v)| Logup {
+                            table_id: *table_id,
+                            numerator: -lookup_m[col_i][i],
+                            value: v.clone(),
+                        })
+                        .collect();
+
+                    let pos = table.len() - self.runtime_tables[table_id].len() + col_i;
+
+                    (*table)[pos] = lookup_t;
+                }
             }
         }
 

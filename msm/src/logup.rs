@@ -589,10 +589,7 @@ pub mod prover {
                 (&lookup_counters_evals_d1)
                     .into_par_iter()
                     .map(|(id, evals)| {
-                        (
-                            *id,
-                            evals.into_iter().map(|e| e.interpolate_by_ref()).collect(),
-                        )
+                        (*id, evals.iter().map(|e| e.interpolate_by_ref()).collect())
                     })
                     .collect();
 
@@ -605,7 +602,7 @@ pub mod prover {
                     (
                         *id,
                         lookup
-                            .into_iter()
+                            .iter()
                             .map(|l| l.evaluate_over_domain_by_ref(domain.d8))
                             .collect(),
                     )
@@ -619,7 +616,7 @@ pub mod prover {
                         (
                             *id,
                             polys
-                                .into_iter()
+                                .iter()
                                 .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
                                 .collect(),
                         )
@@ -645,12 +642,20 @@ pub mod prover {
             // Coin an evaluation point for the rational functions
             let beta = fq_sponge.challenge();
 
+            //
+            // @volhovm TODO make sure this is h_i. It looks like f_i for fixed tables.
+            // It is an actual fixed column containing "fixed lookup data".
+            //
             // Contain the evalations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             let mut fixed_lookup_tables: BTreeMap<ID, Vec<G::ScalarField>> = BTreeMap::new();
 
+            // @volhovm TODO These are h_i related chunks!
+            //
             // We keep the lookup terms in a map, to process them in order in the constraints.
             let mut lookup_terms_map: BTreeMap<ID, Vec<Vec<G::ScalarField>>> = BTreeMap::new();
+
+            // Where are commitments to the last element are made? First "read" columns we don't commit to, right?..
 
             lookups.into_iter().for_each(|(table_id, logup_witness)| {
                 let LogupWitness { f, m: _ } = logup_witness;
@@ -693,7 +698,12 @@ pub mod prover {
 
                         // If last element and fixed lookup tables, we keep
                         // the *combined* value of the table.
-                        if i == (n - 1) {
+                        //
+                        // Otherwise we're processing a runtime table
+                        // with explicit writes, so we don't need to
+                        // create any extra columns.
+                        if (table_id.is_fixed() || table_id.runtime_create_column()) && i == (n - 1)
+                        {
                             fixed_lookup_tables
                                 .entry(*table_id)
                                 .or_insert_with(Vec::new)
@@ -707,6 +717,7 @@ pub mod prover {
                 }
                 assert!(denominators.len() == n * domain.d1.size as usize);
 
+                // Given a vector {β + a_i}, computes a vector {1/(β + a_i)}
                 ark_ff::fields::batch_inversion(&mut denominators);
 
                 // Evals is the sum on the individual columns for each row
