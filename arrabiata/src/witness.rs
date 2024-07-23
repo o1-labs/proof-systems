@@ -46,11 +46,11 @@ pub struct Env<
     // ----------------
     // Information related to the IVC, which will be used by the prover/verifier
     // at the end of the whole execution
-    // FIXME
-    pub ivc_accumulator_e1: E1,
+    // FIXME: use a blinded comm and also fold the blinder
+    pub ivc_accumulator_e1: Vec<PolyComm<E1>>,
 
-    // FIXME
-    pub ivc_accumulator_e2: E2,
+    // FIXME: use a blinded comm and also fold the blinder
+    pub ivc_accumulator_e2: Vec<PolyComm<E2>>,
 
     /// Commitments to the previous instances
     pub previous_commitments_e1: Vec<PolyComm<E1>>,
@@ -375,6 +375,13 @@ impl<
         let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e2.h]))
             .collect();
+        // FIXME: zero will not work
+        let ivc_accumulator_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![srs_e1.h]))
+            .collect();
+        let ivc_accumulator_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![srs_e2.h]))
+            .collect();
         Self {
             // -------
             // Setup
@@ -385,8 +392,8 @@ impl<
             // -------
             // -------
             // IVC only
-            ivc_accumulator_e1: E1::zero(),
-            ivc_accumulator_e2: E2::zero(),
+            ivc_accumulator_e1,
+            ivc_accumulator_e2,
             previous_commitments_e1,
             previous_commitments_e2,
             // ------
