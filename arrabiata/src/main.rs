@@ -1,7 +1,5 @@
 use arrabiata::{
-    constraints,
-    interpreter::{self, Instruction, InterpreterEnv},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
+    interpreter::{self, InterpreterEnv},
     witness::Env,
     IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE, POSEIDON_STATE_SIZE,
 };
@@ -103,54 +101,4 @@ pub fn main() {
         env.reset_for_next_iteration();
         env.current_iteration += 1;
     }
-
-    // Checking constraints, for both fields.
-    info!("Creating constraints for the circuit, over the Fp field");
-    let mut constraints_fp = {
-        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec())
-    };
-    interpreter::run_app(&mut constraints_fp);
-    constraints_fp.reset();
-    // 1 constraint
-    interpreter::run_ivc(&mut constraints_fp, Instruction::SixteenBitsDecomposition);
-    constraints_fp.reset();
-    // 16 + 1 constraints for the bit decomposition
-    interpreter::run_ivc(
-        &mut constraints_fp,
-        Instruction::BitDecompositionFrom16Bits(0),
-    );
-    constraints_fp.reset();
-    interpreter::run_ivc(&mut constraints_fp, Instruction::Poseidon(0));
-    constraints_fp.reset();
-    assert_eq!(constraints_fp.constraints.len(), 2 + 16 + 1 + 12);
-    info!(
-        "Number of constraints for the Fp field: {n}",
-        n = constraints_fp.constraints.len()
-    );
-
-    info!("Creating constraints for the circuit, over the Fq field");
-    let mut constraints_fq = {
-        let poseidon_mds = poseidon_3_60_0_5_5_fq::static_params().mds.clone();
-        constraints::Env::<Fq>::new(poseidon_mds.to_vec())
-    };
-    interpreter::run_app(&mut constraints_fq);
-    constraints_fq.reset();
-    // 1 constraint
-    interpreter::run_ivc(&mut constraints_fq, Instruction::SixteenBitsDecomposition);
-    constraints_fq.reset();
-    // 16 + 1 constraints for the bit decomposition
-    interpreter::run_ivc(
-        &mut constraints_fq,
-        Instruction::BitDecompositionFrom16Bits(0),
-    );
-    constraints_fq.reset();
-    interpreter::run_ivc(&mut constraints_fq, Instruction::Poseidon(0));
-    constraints_fq.reset();
-
-    assert_eq!(constraints_fq.constraints.len(), 2 + 16 + 1 + 12);
-    info!(
-        "Number of constraints for the Fq field: {n}",
-        n = constraints_fq.constraints.len()
-    );
 }
