@@ -510,6 +510,9 @@ impl<
             Instruction::EllipticCurveScaling(i_comm) => {
                 panic!("Not implemented yet for {i_comm}")
             }
+            Instruction::EllipticCurveAddition(i_comm) => {
+                panic!("Not implemented yet for {i_comm}")
+            }
             Instruction::NoOp => Instruction::NoOp,
         }
     }

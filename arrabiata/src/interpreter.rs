@@ -132,6 +132,7 @@ pub enum Instruction {
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
     EllipticCurveScaling(usize),
+    EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
     NoOp,
 }
@@ -336,6 +337,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::EllipticCurveScaling(i_comm) => {
+            panic!("Not implemented yet for {i_comm}")
+        }
+        Instruction::EllipticCurveAddition(i_comm) => {
             panic!("Not implemented yet for {i_comm}")
         }
         Instruction::Poseidon(curr_round) => {
