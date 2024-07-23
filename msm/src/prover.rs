@@ -371,10 +371,18 @@ where
         m: lookup_env
             .lookup_counters_poly_d1
             .iter()
-            .map(|(id, poly)| {
-                let zeta = poly.evaluate(&zeta);
-                let zeta_omega = poly.evaluate(&zeta_omega);
-                (*id, PointEvaluations { zeta, zeta_omega })
+            .map(|(id, polys)| {
+                (
+                    *id,
+                    polys
+                        .into_iter()
+                        .map(|poly| {
+                            let zeta = poly.evaluate(&zeta);
+                            let zeta_omega = poly.evaluate(&zeta_omega);
+                            PointEvaluations { zeta, zeta_omega }
+                        })
+                        .collect(),
+                )
             })
             .collect(),
         h: lookup_env
@@ -501,7 +509,13 @@ where
             lookup_env
                 .lookup_counters_poly_d1
                 .values()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                .map(|polys| {
+                    polys
+                        .into_iter()
+                        .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                        .collect::<Vec<_>>()
+                })
+                .flatten()
                 .collect::<Vec<_>>(),
         );
         // -- after that the partial sums

@@ -271,7 +271,7 @@ pub struct LogupWitness<F, ID: LookupTableID> {
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
-    pub(crate) m: BTreeMap<ID, T>,
+    pub(crate) m: BTreeMap<ID, Vec<T>>,
     /// The polynomial keeping the sum of each row
     pub(crate) h: BTreeMap<ID, Vec<T>>,
     /// The "running-sum" over the rows, coined `φ`
@@ -290,7 +290,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = vec![];
         // First multiplicities
-        self.m.values().for_each(|m| iter_contents.push(m));
+        self.m.values().for_each(|m| iter_contents.extend(m));
         self.h.values().for_each(|h| iter_contents.extend(h));
         iter_contents.push(&self.sum);
         // Fixed tables
@@ -435,7 +435,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         if table_id.is_fixed() {
             let table_lookup = Logup {
                 table_id: *table_id,
-                numerator: -curr_cell(Column::LookupMultiplicity(table_id_u32)),
+                numerator: -curr_cell(Column::LookupMultiplicity((table_id_u32, 0))),
                 value: vec![curr_cell(Column::LookupFixedTable(table_id_u32))],
             };
             lookups.push(table_lookup);
@@ -444,10 +444,11 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
                 .get(table_id)
                 .unwrap()
                 .iter()
-                .for_each(|write_columns| {
+                .enumerate()
+                .for_each(|(i, write_columns)| {
                     lookups.push(Logup {
                         table_id: *table_id,
-                        numerator: -curr_cell(Column::LookupMultiplicity(table_id_u32)),
+                        numerator: -curr_cell(Column::LookupMultiplicity((table_id_u32, i))),
                         value: write_columns.clone(),
                     });
                 });
@@ -500,7 +501,7 @@ pub mod prover {
         /// The evaluations of the aggregation, over d8.
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
         /// The evaluations of the multiplicities, over d8, indexed by the table ID.
-        pub lookup_counters_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
+        pub lookup_counters_evals_d8: &'a BTreeMap<ID, Vec<Evaluations<F, D<F>>>>,
         /// The evaluations of the fixed tables, over d8, indexed by the table ID.
         pub fixed_tables_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
     }
@@ -508,9 +509,9 @@ pub mod prover {
     /// Represents the environment for the logup argument.
     pub struct Env<G: KimchiCurve, ID: LookupTableID> {
         /// The polynomial of the multiplicities, indexed by the table ID.
-        pub lookup_counters_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>>,
+        pub lookup_counters_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>>,
         /// The commitments to the multiplicities, indexed by the table ID.
-        pub lookup_counters_comm_d1: BTreeMap<ID, PolyComm<G>>,
+        pub lookup_counters_comm_d1: BTreeMap<ID, Vec<PolyComm<G>>>,
 
         /// The polynomials of the inner sums.
         pub lookup_terms_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>>,
@@ -523,7 +524,8 @@ pub mod prover {
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
         // Evaluating over d8 for the quotient polynomial
-        pub lookup_counters_evals_d8: BTreeMap<ID, Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_counters_evals_d8:
+            BTreeMap<ID, Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>,
         #[allow(clippy::type_complexity)]
         pub lookup_terms_evals_d8:
             BTreeMap<ID, Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>,
@@ -564,7 +566,7 @@ pub mod prover {
             // FIXME/IMPROVEME: m(X) is only for fixed table
             let lookup_counters_evals_d1: BTreeMap<
                 ID,
-                Evaluations<G::ScalarField, D<G::ScalarField>>,
+                Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
             > = {
                 lookups
                     .clone()
@@ -572,37 +574,63 @@ pub mod prover {
                     .map(|(table_id, logup_witness)| {
                         (
                             table_id,
-                            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                                logup_witness.m.to_vec(),
-                                domain.d1,
-                            ),
+                            logup_witness.m.into_iter().map(|m|
+                                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                                    m.to_vec(),
+                                    domain.d1,
+                                )
+                            ).collect()
                         )
                     })
                     .collect()
             };
 
-            let lookup_counters_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>> =
+            let lookup_counters_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>> =
                 (&lookup_counters_evals_d1)
                     .into_par_iter()
-                    .map(|(id, evals)| (*id, evals.interpolate_by_ref()))
+                    .map(|(id, evals)| {
+                        (
+                            *id,
+                            evals.into_iter().map(|e| e.interpolate_by_ref()).collect(),
+                        )
+                    })
                     .collect();
 
             let lookup_counters_evals_d8: BTreeMap<
                 ID,
-                Evaluations<G::ScalarField, D<G::ScalarField>>,
+                Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
             > = (&lookup_counters_poly_d1)
                 .into_par_iter()
-                .map(|(id, lookup)| (*id, lookup.evaluate_over_domain_by_ref(domain.d8)))
+                .map(|(id, lookup)| {
+                    (
+                        *id,
+                        lookup
+                            .into_iter()
+                            .map(|l| l.evaluate_over_domain_by_ref(domain.d8))
+                            .collect(),
+                    )
+                })
                 .collect();
 
-            let lookup_counters_comm_d1: BTreeMap<ID, PolyComm<G>> = (&lookup_counters_evals_d1)
-                .into_par_iter()
-                .map(|(id, poly)| (*id, srs.commit_evaluations_non_hiding(domain.d1, poly)))
-                .collect();
+            let lookup_counters_comm_d1: BTreeMap<ID, Vec<PolyComm<G>>> =
+                (&lookup_counters_evals_d1)
+                    .into_par_iter()
+                    .map(|(id, polys)| {
+                        (
+                            *id,
+                            polys
+                                .into_iter()
+                                .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
+                                .collect(),
+                        )
+                    })
+                    .collect();
 
-            lookup_counters_comm_d1
-                .values()
-                .for_each(|comm| absorb_commitment(fq_sponge, comm));
+            lookup_counters_comm_d1.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(fq_sponge, comm))
+            });
             // -- end of m(X)
 
             // -- start computing the row sums h(X)

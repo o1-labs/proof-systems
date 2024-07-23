@@ -149,11 +149,11 @@ mod tests {
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             lookup_tables_data.insert(
                 table_id,
-                table_id
+                vec![table_id
                     .entries(domain_size as u64)
                     .into_iter()
                     .map(|x| vec![x])
-                    .collect(),
+                    .collect()],
             );
         }
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);

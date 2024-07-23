@@ -192,7 +192,7 @@ impl<F: FftField> LookupWitness<F> {
             LookupTableIDs::Custom(table_id),
             LookupWitness {
                 f: vec![f_evals, t_evals],
-                m,
+                m: vec![m],
             },
         )
     }

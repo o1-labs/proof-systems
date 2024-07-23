@@ -242,7 +242,7 @@ impl<
         // We insert value into runtime table in any case, for each row.
         let cur_row = self.witness.len();
 
-        let mut runtime_table = self.runtime_tables.get_mut(&table_id).unwrap();
+        let runtime_table = self.runtime_tables.get_mut(&table_id).unwrap();
 
         let cur_write_number = (0..runtime_table.len()).find(|i| runtime_table[*i].len() < cur_row);
 
@@ -518,7 +518,7 @@ impl<
     pub fn get_logup_witness(
         &self,
         domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<Vec<F>>>,
+        lookup_tables_data: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
     ) -> BTreeMap<LT, LogupWitness<F, LT>> {
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
@@ -569,7 +569,8 @@ impl<
 
             if table_id.is_fixed() || table_id.runtime_create_column() {
                 assert!(lookup_m.len() == 1);
-                let lookup_t = lookup_tables_data[table_id]
+                assert!(lookup_tables_data[table_id].len() == 1);
+                let lookup_t = lookup_tables_data[table_id][0]
                     .iter()
                     .enumerate()
                     .map(|(i, v)| Logup {
@@ -579,6 +580,7 @@ impl<
                     });
                 *(table.last_mut().unwrap()) = lookup_t.collect();
             } else {
+                panic!("We have to add multiplicities");
                 // FIXME ???
                 // We don't add these "negative" lookups here...? or rather they don't become separate columns?
             }
@@ -616,7 +618,7 @@ impl<
     pub fn get_proof_inputs(
         &self,
         domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<Vec<F>>>,
+        lookup_tables_data: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
     ) -> ProofInputs<N_WIT, F, LT> {
         let evaluations = self.get_relation_witness(domain_size);
         let logups = self.get_logup_witness(domain_size, lookup_tables_data);
