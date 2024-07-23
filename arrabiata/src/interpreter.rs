@@ -96,6 +96,11 @@
 //! range check constraints.
 //! On the next 16 rows, we split each 16 chunks into 16 bits chunks.
 //!
+//! FIXME: an optimisation can be implemented using "a bucket" style algorithm,
+//! as described in [Efficient MSMs in Kimchi
+//! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
+//! We leave this for future work.
+//!
 //! ## Handle the combinaison of constraints
 //!
 //! The prover will have to combine the constraints to generate the
