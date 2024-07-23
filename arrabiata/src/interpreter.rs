@@ -137,6 +137,14 @@ pub enum Instruction {
     NoOp,
 }
 
+/// Define the side of the elliptic curve addition.
+/// When computing G1 + G2, the interpreter will load G1 and after that G2.
+/// This enum is used to decide which side fetching into the cells.
+pub enum ECAdditionSide {
+    Left,
+    Right,
+}
+
 /// An abstract interpreter that provides some functionality on the circuit. The
 /// interpreter should be seen as a state machine with some built-in
 /// functionality whose state is a matrix, and whose transitions are described
@@ -249,6 +257,16 @@ pub trait InterpreterEnv {
 
     /// Return the requested MDS matrix coefficient
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
+
+    /// Load the affine coordinates of the elliptic curve point given by the
+    /// index `i` into the cell `pos_x` and `pos_y`.
+    fn load_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        i: usize,
+        side: ECAdditionSide,
+    ) -> (Self::Variable, Self::Variable);
 }
 
 /// Run the application
@@ -340,7 +358,16 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             panic!("Not implemented yet for {i_comm}")
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            panic!("Not implemented yet for {i_comm}")
+            let (_x1, _y1) = {
+                let x1 = env.allocate();
+                let y1 = env.allocate();
+                env.load_ec_point(x1, y1, i_comm, ECAdditionSide::Left)
+            };
+            let (_x2, _y2) = {
+                let x2 = env.allocate();
+                let y2 = env.allocate();
+                env.load_ec_point(x2, y2, i_comm, ECAdditionSide::Right)
+            };
         }
         Instruction::Poseidon(curr_round) => {
             debug!("Executing instruction Poseidon({curr_round})");

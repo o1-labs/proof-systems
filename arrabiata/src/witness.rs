@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use crate::{
     columns::Column,
-    interpreter::{Instruction, InterpreterEnv},
+    interpreter::{ECAdditionSide, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
@@ -132,8 +132,8 @@ pub struct Env<
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
-        E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 {
     type Position = Column;
@@ -321,6 +321,43 @@ impl<
             let modulus: BigUint = TryFrom::try_from(Fq::Params::MODULUS).unwrap();
             self.sponge_e2[i] = x % modulus
         }
+    }
+
+    fn load_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        i: usize,
+        side: ECAdditionSide,
+    ) -> (Self::Variable, Self::Variable) {
+        let (pt_x, pt_y) = match side {
+            ECAdditionSide::Left => {
+                if self.current_iteration % 2 == 0 {
+                    let pt = self.ivc_accumulator_e1[i].elems[0];
+                    let (x, y) = pt.to_coordinates().unwrap();
+                    (x.to_biguint(), y.to_biguint())
+                } else {
+                    let pt = self.ivc_accumulator_e2[i].elems[0];
+                    let (x, y) = pt.to_coordinates().unwrap();
+                    (x.to_biguint(), y.to_biguint())
+                }
+            }
+            ECAdditionSide::Right => {
+                // FIXME: we must get the scaled commitment, not simply the commitment
+                if self.current_iteration % 2 == 0 {
+                    let pt = self.previous_commitments_e1[i].elems[0];
+                    let (x, y) = pt.to_coordinates().unwrap();
+                    (x.to_biguint(), y.to_biguint())
+                } else {
+                    let pt = self.previous_commitments_e2[i].elems[0];
+                    let (x, y) = pt.to_coordinates().unwrap();
+                    (x.to_biguint(), y.to_biguint())
+                }
+            }
+        };
+        self.write_column(pos_x, pt_x.clone());
+        self.write_column(pos_y, pt_y.clone());
+        (pt_x, pt_y)
     }
 }
 

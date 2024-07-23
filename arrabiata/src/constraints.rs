@@ -1,5 +1,7 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
-use crate::{columns::E, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS};
+use crate::{
+    columns::E, interpreter::ECAdditionSide, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+};
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -186,5 +188,23 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         let v = self.poseidon_mds[i][j];
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
+    }
+
+    fn load_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        _i: usize,
+        _side: ECAdditionSide,
+    ) -> (Self::Variable, Self::Variable) {
+        let x = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos_x,
+            row: CurrOrNext::Curr,
+        }));
+        let y = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos_y,
+            row: CurrOrNext::Curr,
+        }));
+        (x, y)
     }
 }
