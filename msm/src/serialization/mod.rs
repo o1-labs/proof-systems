@@ -7,7 +7,7 @@ pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use std::collections::BTreeMap;
 
     use crate::{
@@ -65,8 +65,8 @@ mod tests {
         for _ in 0..domain_size {
             field_elements.push([input1, input2, input3])
         }
-        let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
+        println!("Building constraints");
         let constraints = {
             let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
             deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
@@ -86,16 +86,34 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        for (i, limbs) in field_elements.iter().enumerate() {
-            // Witness
-            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
-            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
+        println!("Building witness");
+        {
+            // A map containing results of multiplications, per row
+            let mut prev_rows: Vec<Ff1> = vec![];
 
-            // Don't reset on the last iteration.
-            if i < domain_size {
-                witness_env.next_row()
+            // TODO move this into interpreter.rs
+            for (i, limbs) in field_elements.iter().enumerate() {
+                // Witness
+
+                let coeff_input = if i == 0 {
+                    Ff1::zero()
+                } else {
+                    prev_rows[i - (1 << (i.ilog2()))]
+                };
+
+                deserialize_field_element(&mut witness_env, limbs.map(Into::into));
+                let mul_result =
+                    multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
+
+                prev_rows.push(mul_result);
+
+                // Don't reset on the last iteration.
+                if i < domain_size {
+                    witness_env.next_row()
+                }
             }
         }
+        println!("Building runtime table");
 
         let runtime_tables: BTreeMap<_, Vec<Vec<Vec<_>>>> =
             witness_env.get_runtime_tables(domain_size);
@@ -107,6 +125,7 @@ mod tests {
             .unwrap()
             .clone();
 
+        println!("Multiplication bus created, adding fixed lookup tables");
         let mut lookup_tables_data: BTreeMap<LookupTable<Ff1>, Vec<Vec<Vec<Fp>>>> = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             if table_id.is_fixed() {
@@ -122,6 +141,7 @@ mod tests {
             }
         }
         lookup_tables_data.insert(LookupTable::MultiplicationBus, multiplication_bus);
+        println!("Calling get_proof_inputs");
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
         crate::test::test_completeness_generic::<

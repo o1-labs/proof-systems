@@ -240,11 +240,12 @@ impl<
         //println!("Writing id {table_id:?}, value {value:?}");
 
         // We insert value into runtime table in any case, for each row.
-        let cur_row = self.witness.len();
+        let cur_row = self.witness.len() - 1;
 
         let runtime_table = self.runtime_tables.get_mut(&table_id).unwrap();
 
-        let cur_write_number = (0..runtime_table.len()).find(|i| runtime_table[*i].len() < cur_row);
+        let cur_write_number =
+            (0..runtime_table.len()).find(|i| runtime_table[*i].len() <= cur_row);
 
         let cur_write_number = if let Some(v) = cur_write_number {
             v
@@ -505,11 +506,13 @@ impl<
     /// Return all runtime tables collected so far, padded to the domain size.
     pub fn get_runtime_tables(&self, domain_size: usize) -> BTreeMap<LT, Vec<Vec<Vec<F>>>> {
         let mut runtime_tables: BTreeMap<_, _> = self.runtime_tables.clone();
-        for (_table_id, content) in runtime_tables.iter_mut() {
-            // We pad the runtime table with dummies if it's too small.
-            if content.len() < domain_size {
-                let dummy_value = content[0].clone(); // we assume runtime tables are never empty
-                content.append(&mut vec![dummy_value; domain_size - content.len()]);
+        for (_table_id, columns) in runtime_tables.iter_mut() {
+            for column in columns.iter_mut() {
+                // We pad the runtime table with dummies if it's too small.
+                if column.len() < domain_size {
+                    let dummy_value = column[0].clone(); // we assume runtime tables are never empty
+                    column.append(&mut vec![dummy_value; domain_size - column.len()]);
+                }
             }
         }
         runtime_tables
@@ -520,6 +523,7 @@ impl<
         domain_size: usize,
         lookup_tables_data: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
     ) -> BTreeMap<LT, LogupWitness<F, LT>> {
+        println!("Building logup witness");
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
@@ -560,6 +564,7 @@ impl<
             }
         }
 
+        println!("Building logup witness: multiplicities");
         let mut lookup_multiplicities: BTreeMap<LT, Vec<Vec<F>>> = BTreeMap::new();
 
         // Counting multiplicities & adding fixed column into the last column of every table.
@@ -609,6 +614,7 @@ impl<
             }
         }
 
+        println!("Building logup witness: final step");
         lookup_tables
             .iter()
             .filter_map(|(table_id, table)| {

@@ -371,7 +371,8 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
                 * joint_combiner.clone();
             // FIXME: sanity check for the domain, we should consider it in prover.rs.
             // We do only support degree one constraint in the denominator.
-            assert_eq!(combined_value.degree(1, 0), 1, "Only degree one is supported in the denominator of the lookup because of the maximum degree supported (8)");
+            let combined_degree_real = combined_value.degree(1, 0);
+            assert!(combined_degree_real <= 1, "Only degree zero and one is supported in the denominator of the lookup because of the maximum degree supported (8); got degree {combined_degree_real}",);
             // add table id + evaluation point
             beta.clone() + combined_value + x.table_id.to_constraint()
         })
@@ -561,6 +562,8 @@ pub mod prover {
         where
             OpeningProof::SRS: Sync,
         {
+            println!("BUilding logup env: start");
+
             // Use parallel iterators where possible.
             // Polynomial m(X)
             // FIXME/IMPROVEME: m(X) is only for fixed table
@@ -629,6 +632,8 @@ pub mod prover {
                     .for_each(|comm| absorb_commitment(fq_sponge, comm))
             });
             // -- end of m(X)
+
+            println!("Got through m(x) part, computing h(x)");
 
             // -- start computing the row sums h(X)
             // It will be used to compute the running sum in lookup_aggregation
