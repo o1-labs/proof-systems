@@ -42,7 +42,7 @@ mod tests {
         ivc::{
             columns::{IVCColumn, N_BLOCKS, N_FSEL_IVC},
             constraints::constrain_ivc,
-            interpreter::{build_selectors, ivc_circuit},
+            interpreter::{build_fixed_selectors, ivc_circuit},
             lookups::IVCLookupTable,
         },
         poseidon_8_56_5_3_2::bn254::PoseidonBN254Parameters,
@@ -116,7 +116,7 @@ mod tests {
         println!("Building fixed selectors");
 
         let fixed_selectors: [Vec<Fp>; N_FSEL_IVC] =
-            build_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
+            build_fixed_selectors::<TEST_N_COL_TOTAL, TEST_N_CHALS>(domain_size);
 
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
@@ -208,7 +208,7 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
+        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_fixed_selectors::<
             TEST_N_COL_TOTAL,
             TEST_N_CHALS,
         >(domain_size));
@@ -250,7 +250,7 @@ mod tests {
         constrain_ivc::<Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_selectors::<
+        let fixed_selectors: Box<[Vec<Fp>; N_FSEL_IVC]> = Box::new(build_fixed_selectors::<
             TEST_N_COL_TOTAL,
             TEST_N_CHALS,
         >(domain_size));

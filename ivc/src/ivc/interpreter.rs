@@ -787,7 +787,7 @@ pub fn process_u<F, Env, const N_COL_TOTAL: usize>(
 /// IVC. Therefore, it includes the potential round constants required by
 /// the hash function.
 #[allow(clippy::needless_range_loop)]
-pub fn build_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
+pub fn build_fixed_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
     domain_size: usize,
 ) -> [Vec<kimchi_msm::Fp>; N_FSEL_IVC] {
     // Selectors can be only generated for BN254G1 for now, because

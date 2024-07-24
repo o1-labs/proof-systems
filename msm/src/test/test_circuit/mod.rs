@@ -34,8 +34,8 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
@@ -63,17 +63,16 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let witness_env =
-            build_test_fixed_sel_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+        let witness_env =
+            build_test_fixed_sel_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -119,17 +118,16 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let witness_env =
-            build_test_fixed_sel_degree_7_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+        let witness_env =
+            build_test_fixed_sel_degree_7_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -178,11 +176,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let witness_env = build_test_fixed_sel_degree_7_circuit_with_constants::<_, DummyLookupTable>(
-            &mut rng,
-            domain_size,
-        );
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_with_constants::<Fp, _>(
@@ -191,8 +185,11 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
+        let witness_env = build_test_fixed_sel_degree_7_circuit_with_constants::<_, DummyLookupTable>(
+            &mut rng,
+            domain_size,
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -218,6 +215,7 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
+        // NB: Non-standard fixed selectors.
         let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect();
         witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
@@ -241,11 +239,9 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let witness_env = build_test_fixed_sel_degree_7_circuit_mul_witness::<_, DummyLookupTable>(
-            &mut rng,
-            domain_size,
-        );
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        // NB: Non-standard fixed selectors.
+        let fixed_selectors: Box<[Vec<Fp>; 1]> =
+            Box::new([(0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect()]);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_mul_witness::<Fp, _>(
@@ -254,8 +250,11 @@ mod tests {
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect()]);
+        let witness_env = build_test_fixed_sel_degree_7_circuit_mul_witness::<_, DummyLookupTable>(
+            &mut rng,
+            domain_size,
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -281,8 +280,8 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        let fixed_sel: Vec<Fp> = (0..domain_size).map(|_i| Fp::from(42u32)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
@@ -304,19 +303,18 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        let witness_env = build_test_fixed_sel_degree_7_circuit_fixed_values::<_, DummyLookupTable>(
-            &mut rng,
-            domain_size,
-        );
-        let relation_witness = witness_env.get_relation_witness(domain_size);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|_i| Fp::from(42u32)).collect()]);
+        let witness_env = build_test_fixed_sel_degree_7_circuit_fixed_values::<_, DummyLookupTable>(
+            &mut rng,
+            domain_size,
+        );
+        let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -374,6 +372,8 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         let (witness_env, constant) =
             build_test_const_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let relation_witness = witness_env.get_relation_witness(domain_size);
@@ -381,9 +381,6 @@ mod tests {
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_const::<Fp, _>(&mut constraint_env, constant);
         let constraints = constraint_env.get_relation_constraints();
-
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
 
         crate::test::test_completeness_generic_no_lookups::<
             { TEST_N_COLUMNS - 1 },
@@ -440,16 +437,14 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
-
         let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
-
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
@@ -474,12 +469,11 @@ mod tests {
         // We generate two different witness and two different proofs.
         let domain_size: usize = 1 << 8;
 
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);
         let constraints = constraint_env.get_relation_constraints();
-
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from(i as u64)).collect()]);
 
         let lookup_tables_data = BTreeMap::new();
         let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);

@@ -4,7 +4,7 @@ use crate::{
     test::test_circuit::columns::TestColumn,
     LIMB_BITSIZE, N_LIMBS,
 };
-use ark_ff::{PrimeField, SquareRootField, Zero};
+use ark_ff::{Field, PrimeField, SquareRootField, Zero};
 
 fn fill_limbs_a_b<
     F: PrimeField,
@@ -28,7 +28,7 @@ fn fill_limbs_a_b<
     (a_limbs, b_limbs)
 }
 
-/// A consraint function for A + B - C that reads values from limbs A
+/// A constraint function for A + B - C that reads values from limbs A
 /// and B, and additionally returns resulting value in C.
 pub fn constrain_addition<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(env: &mut Env) {
     let a_limbs: [Env::Variable; N_LIMBS] =
@@ -65,7 +65,7 @@ pub fn test_addition<
     constrain_addition(env);
 }
 
-/// A consraint function for A * B - D that reads values from limbs A
+/// A constraint function for A * B - D that reads values from limbs A
 /// and B, and multiplicationally returns resulting value in D.
 pub fn constrain_multiplication<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(env: &mut Env) {
     let a_limbs: [Env::Variable; N_LIMBS] =
@@ -102,7 +102,7 @@ pub fn test_multiplication<
     constrain_multiplication(env);
 }
 
-/// A consraint function for A * B - D that reads values from limbs A
+/// A constraint function for A * B - D that reads values from limbs A
 /// and B, and multiplication_constally returns resulting value in D.
 pub fn constrain_test_const<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(
     env: &mut Env,
@@ -127,7 +127,7 @@ pub fn test_const<F: PrimeField, Env: ColAccessCap<F, TestColumn> + ColWriteCap<
     constrain_test_const(env, constant);
 }
 
-/// A consraint function for A_0 + B_0 - FIXED_E
+/// A constraint function for A_0 + B_0 - FIXED_E
 pub fn constrain_test_fixed_sel<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(env: &mut Env) {
     let a0 = Env::read_column(env, TestColumn::A(0));
     let b0 = Env::read_column(env, TestColumn::B(0));
@@ -136,7 +136,7 @@ pub fn constrain_test_fixed_sel<F: PrimeField, Env: ColAccessCap<F, TestColumn>>
     env.assert_zero(equation.clone());
 }
 
-/// A consraint function for A_0^7 + B_0 - FIXED_E
+/// A constraint function for A_0^7 + B_0 - FIXED_E
 pub fn constrain_test_fixed_sel_degree_7<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(
     env: &mut Env,
 ) {
@@ -151,7 +151,7 @@ pub fn constrain_test_fixed_sel_degree_7<F: PrimeField, Env: ColAccessCap<F, Tes
     env.assert_zero(equation.clone());
 }
 
-/// A consraint function for 3 * A_0^7 + 42 * B_0 - FIXED_E
+/// A constraint function for 3 * A_0^7 + 42 * B_0 - FIXED_E
 pub fn constrain_test_fixed_sel_degree_7_with_constants<
     F: PrimeField,
     Env: ColAccessCap<F, TestColumn>,
@@ -171,7 +171,8 @@ pub fn constrain_test_fixed_sel_degree_7_with_constants<
     env.assert_zero(equation.clone());
 }
 
-/// A consraint function for 3 * A_0^7 + B_0 * FIXED_E
+// NB: Assumes non-standard selectors
+/// A constraint function for 3 * A_0^7 + B_0 * FIXED_E
 pub fn constrain_test_fixed_sel_degree_7_mul_witness<
     F: PrimeField,
     Env: ColAccessCap<F, TestColumn>,
@@ -246,6 +247,7 @@ pub fn test_fixed_sel_degree_7_with_constants<
     constrain_test_fixed_sel_degree_7_with_constants(env);
 }
 
+// NB: Assumes non-standard selectors
 /// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_E.
 pub fn test_fixed_sel_degree_7_mul_witness<
     F: SquareRootField + PrimeField,
@@ -267,4 +269,9 @@ pub fn test_fixed_sel_degree_7_mul_witness<
     let res_var = Env::constant(res);
     env.write_column(TestColumn::B(0), &res_var);
     constrain_test_fixed_sel_degree_7_mul_witness(env);
+}
+
+/// Fixed selectors for the test circuit.
+pub fn build_fixed_selectors<F: Field>(domain_size: usize) -> Box<[Vec<F>; 1]> {
+    Box::new([(0..domain_size).map(|i| F::from(i as u64)).collect()])
 }
