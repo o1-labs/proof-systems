@@ -89,6 +89,16 @@ pub trait FieldHelpers<F> {
             .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
+    /// Deserialize from BigUint, panics on error
+    fn from_biguint_err(big: &BigUint) -> F
+    where
+        F: PrimeField,
+    {
+        big.clone()
+            .try_into()
+            .expect("Failed to deserialize BigUint")
+    }
+
     /// Serialize to bytes
     fn to_bytes(&self) -> Vec<u8>;
 
