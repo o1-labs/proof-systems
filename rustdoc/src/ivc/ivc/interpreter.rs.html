@@ -1724,7 +1724,7 @@
 /// IVC. Therefore, it includes the potential round constants required by
 /// the hash function.
 </span><span class="attr">#[allow(clippy::needless_range_loop)]
-</span><span class="kw">pub fn </span>build_selectors&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
+</span><span class="kw">pub fn </span>build_fixed_selectors&lt;<span class="kw">const </span>N_COL_TOTAL: usize, <span class="kw">const </span>N_CHALS: usize&gt;(
     domain_size: usize,
 ) -&gt; [Vec&lt;kimchi_msm::Fp&gt;; N_FSEL_IVC] {
     <span class="comment">// Selectors can be only generated for BN254G1 for now, because

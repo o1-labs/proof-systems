@@ -268,13 +268,20 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{ColAccessCap, ColWriteCap, DirectWitnessCap},
     serialization::interpreter::limb_decompose_ff,
     test::test_circuit::columns::TestColumn,
     LIMB_BITSIZE, N_LIMBS,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ff::{Field, PrimeField, SquareRootField, Zero};
 
 <span class="kw">fn </span>fill_limbs_a_b&lt;
     F: PrimeField,
@@ -298,7 +305,7 @@
     (a_limbs, b_limbs)
 }
 
-<span class="doccomment">/// A consraint function for A + B - C that reads values from limbs A
+<span class="doccomment">/// A constraint function for A + B - C that reads values from limbs A
 /// and B, and additionally returns resulting value in C.
 </span><span class="kw">pub fn </span>constrain_addition&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
@@ -335,7 +342,7 @@
     constrain_addition(env);
 }
 
-<span class="doccomment">/// A consraint function for A * B - D that reads values from limbs A
+<span class="doccomment">/// A constraint function for A * B - D that reads values from limbs A
 /// and B, and multiplicationally returns resulting value in D.
 </span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
@@ -372,7 +379,7 @@
     constrain_multiplication(env);
 }
 
-<span class="doccomment">/// A consraint function for A * B - D that reads values from limbs A
+<span class="doccomment">/// A constraint function for A * B - D that reads values from limbs A
 /// and B, and multiplication_constally returns resulting value in D.
 </span><span class="kw">pub fn </span>constrain_test_const&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
@@ -397,7 +404,7 @@
     constrain_test_const(env, constant);
 }
 
-<span class="doccomment">/// A consraint function for A_0 + B_0 - FIXED_E
+<span class="doccomment">/// A constraint function for A_0 + B_0 - FIXED_E
 </span><span class="kw">pub fn </span>constrain_test_fixed_sel&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
     <span class="kw">let </span>a0 = Env::read_column(env, TestColumn::A(<span class="number">0</span>));
     <span class="kw">let </span>b0 = Env::read_column(env, TestColumn::B(<span class="number">0</span>));
@@ -406,7 +413,7 @@
     env.assert_zero(equation.clone());
 }
 
-<span class="doccomment">/// A consraint function for A_0^7 + B_0 - FIXED_E
+<span class="doccomment">/// A constraint function for A_0^7 + B_0 - FIXED_E
 </span><span class="kw">pub fn </span>constrain_test_fixed_sel_degree_7&lt;F: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
 ) {
@@ -421,7 +428,7 @@
     env.assert_zero(equation.clone());
 }
 
-<span class="doccomment">/// A consraint function for 3 * A_0^7 + 42 * B_0 - FIXED_E
+<span class="doccomment">/// A constraint function for 3 * A_0^7 + 42 * B_0 - FIXED_E
 </span><span class="kw">pub fn </span>constrain_test_fixed_sel_degree_7_with_constants&lt;
     F: PrimeField,
     Env: ColAccessCap&lt;F, TestColumn&gt;,
@@ -441,7 +448,8 @@
     env.assert_zero(equation.clone());
 }
 
-<span class="doccomment">/// A consraint function for 3 * A_0^7 + B_0 * FIXED_E
+<span class="comment">// NB: Assumes non-standard selectors
+</span><span class="doccomment">/// A constraint function for 3 * A_0^7 + B_0 * FIXED_E
 </span><span class="kw">pub fn </span>constrain_test_fixed_sel_degree_7_mul_witness&lt;
     F: PrimeField,
     Env: ColAccessCap&lt;F, TestColumn&gt;,
@@ -516,7 +524,8 @@
     constrain_test_fixed_sel_degree_7_with_constants(env);
 }
 
-<span class="doccomment">/// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_E.
+<span class="comment">// NB: Assumes non-standard selectors
+</span><span class="doccomment">/// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_E.
 </span><span class="kw">pub fn </span>test_fixed_sel_degree_7_mul_witness&lt;
     F: SquareRootField + PrimeField,
     Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt; + DirectWitnessCap&lt;F, TestColumn&gt;,
@@ -537,5 +546,10 @@
     <span class="kw">let </span>res_var = Env::constant(res);
     env.write_column(TestColumn::B(<span class="number">0</span>), <span class="kw-2">&amp;</span>res_var);
     constrain_test_fixed_sel_degree_7_mul_witness(env);
+}
+
+<span class="doccomment">/// Fixed selectors for the test circuit.
+</span><span class="kw">pub fn </span>build_fixed_selectors&lt;F: Field&gt;(domain_size: usize) -&gt; Box&lt;[Vec&lt;F&gt;; <span class="number">1</span>]&gt; {
+    Box::new([(<span class="number">0</span>..domain_size).map(|i| F::from(i <span class="kw">as </span>u64)).collect()])
 }
 </code></pre></div></section></main></body></html>

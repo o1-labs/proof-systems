@@ -504,12 +504,6 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 
@@ -546,8 +540,8 @@
     ) -&gt; TestWitnessBuilderEnv&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -575,17 +569,16 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="kw">let </span>witness_env =
-            build_test_fixed_sel_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
-        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
+        <span class="kw">let </span>witness_env =
+            build_test_fixed_sel_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -631,17 +624,16 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="kw">let </span>witness_env =
-            build_test_fixed_sel_degree_7_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
-        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
+        <span class="kw">let </span>witness_env =
+            build_test_fixed_sel_degree_7_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -690,11 +682,7 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_with_constants::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
-            <span class="kw-2">&amp;mut </span>rng,
-            domain_size,
-        );
-        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_with_constants::&lt;Fp, <span class="kw">_</span>&gt;(
@@ -703,8 +691,11 @@
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
+        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_with_constants::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            domain_size,
+        );
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -730,7 +721,8 @@
     ) -&gt; TestWitnessBuilderEnv&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect();
+        <span class="comment">// NB: Non-standard fixed selectors.
+        </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect();
         witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
@@ -753,11 +745,9 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_mul_witness::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
-            <span class="kw-2">&amp;mut </span>rng,
-            domain_size,
-        );
-        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+        <span class="comment">// NB: Non-standard fixed selectors.
+        </span><span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
+            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect()]);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_mul_witness::&lt;Fp, <span class="kw">_</span>&gt;(
@@ -766,8 +756,11 @@
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect()]);
+        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_mul_witness::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            domain_size,
+        );
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -793,8 +786,8 @@
     ) -&gt; TestWitnessBuilderEnv&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|_i| Fp::from(<span class="number">42u32</span>)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -816,19 +809,18 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_fixed_values::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
-            <span class="kw-2">&amp;mut </span>rng,
-            domain_size,
-        );
-        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel_degree_7::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|_i| Fp::from(<span class="number">42u32</span>)).collect()]);
+        <span class="kw">let </span>witness_env = build_test_fixed_sel_degree_7_circuit_fixed_values::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(
+            <span class="kw-2">&amp;mut </span>rng,
+            domain_size,
+        );
+        <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -886,6 +878,8 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         <span class="kw">let </span>(witness_env, constant) =
             build_test_const_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
@@ -893,9 +887,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_const::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env, constant);
         <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
-
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},
@@ -952,16 +943,14 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_multiplication::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="comment">// Don&#39;t use lookups for now
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
-
         <span class="kw">let </span>witness_env = build_test_mul_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
-
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
@@ -986,12 +975,11 @@
         <span class="comment">// We generate two different witness and two different proofs.
         </span><span class="kw">let </span>domain_size: usize = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_multiplication::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
-
-        <span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect()]);
 
         <span class="kw">let </span>lookup_tables_data = BTreeMap::new();
         <span class="kw">let </span>witness_env = build_test_mul_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
