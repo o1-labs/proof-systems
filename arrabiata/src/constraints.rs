@@ -2,7 +2,7 @@ use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
     columns::E, interpreter::ECAdditionSide, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, FpParameters, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -13,15 +13,22 @@ use o1_utils::FieldHelpers;
 
 pub struct Env<Fp: Field> {
     pub poseidon_mds: Vec<Vec<Fp>>,
+    /// The parameter a is the coefficients of the elliptic curve in affine
+    /// coordinates.
+    // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
+    pub a: BigUint,
     pub idx_var: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
 
-impl<Fp: Field> Env<Fp> {
-    pub fn new(poseidon_mds: Vec<Vec<Fp>>) -> Self {
+impl<Fp: PrimeField> Env<Fp> {
+    pub fn new(poseidon_mds: Vec<Vec<Fp>>, a: BigUint) -> Self {
+        // This check might not be useful
+        assert!(a < (Fp::Params::MODULUS).into(), "a is too large");
         Self {
             poseidon_mds,
+            a,
             idx_var: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
@@ -75,11 +82,13 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     /// Return the corresponding expression regarding the selected column
-    fn write_column(&mut self, col: Self::Position, _v: Self::Variable) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
+    fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
+        let res = Expr::Atom(ExprInner::Cell(Variable {
             col,
             row: CurrOrNext::Curr,
-        }))
+        }));
+        self.assert_equal(res.clone(), v);
+        res
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {
@@ -90,8 +99,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
-        let one_bui = BigUint::from(1_usize);
-        let one = self.constant(one_bui);
+        let one = self.one();
         let c = x.clone() * (x.clone() - one);
         self.constraints.push(c)
     }
@@ -207,8 +215,49 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }));
         (x, y)
     }
+
+    // FIXME: no constraint added for now.
+    fn is_same_ec_point(
+        &mut self,
+        pos: Self::Position,
+        _x1: Self::Variable,
+        _y1: Self::Variable,
+        _x2: Self::Variable,
+        _y2: Self::Variable,
+    ) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn one(&self) -> Self::Variable {
         self.constant(BigUint::from(1_usize))
     }
 
+    fn compute_lambda(
+        &mut self,
+        pos: Self::Position,
+        is_same_point: Self::Variable,
+        x1: Self::Variable,
+        y1: Self::Variable,
+        x2: Self::Variable,
+        y2: Self::Variable,
+    ) -> Self::Variable {
+        let lambda = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }));
+        let lhs = lambda.clone() * (x2.clone() - x1.clone()) - (y2.clone() - y1.clone());
+        let rhs = {
+            let x1_square = x1.clone() * x1.clone();
+            let two_x1_square = x1_square.clone() + x1_square.clone();
+            let three_x1_square = two_x1_square.clone() + x1_square.clone();
+            let two_y1 = y1.clone() + y1.clone();
+            lambda.clone() * two_y1 - (three_x1_square + self.constant(self.a.clone()))
+        };
+        let res = is_same_point.clone() * lhs + (self.one() - is_same_point.clone()) * rhs;
+        self.assert_zero(res);
+        lambda
+    }
 }

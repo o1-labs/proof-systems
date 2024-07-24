@@ -273,6 +273,30 @@ pub trait InterpreterEnv {
         i: usize,
         side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable);
+
+    fn is_same_ec_point(
+        &mut self,
+        pos: Self::Position,
+        x1: Self::Variable,
+        y1: Self::Variable,
+        x2: Self::Variable,
+        y2: Self::Variable,
+    ) -> Self::Variable;
+
+    /// Compute the coefficient λ used in the elliptic curve addition.
+    /// If the two points are the same, the λ is computed as follows:
+    /// - λ = (3 X1^2 + a) / (2Y1)
+    /// Otherwise, the λ is computed as follows:
+    /// - λ = (Y2 - Y1) / (X2 - X1)
+    fn compute_lambda(
+        &mut self,
+        pos: Self::Position,
+        is_same_point: Self::Variable,
+        x1: Self::Variable,
+        y1: Self::Variable,
+        x2: Self::Variable,
+        y2: Self::Variable,
+    ) -> Self::Variable;
 }
 
 /// Run the application
@@ -364,15 +388,44 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             panic!("Not implemented yet for {i_comm}")
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            let (_x1, _y1) = {
+            let (x1, y1) = {
                 let x1 = env.allocate();
                 let y1 = env.allocate();
                 env.load_ec_point(x1, y1, i_comm, ECAdditionSide::Left)
             };
-            let (_x2, _y2) = {
+            let (x2, y2) = {
                 let x2 = env.allocate();
                 let y2 = env.allocate();
                 env.load_ec_point(x2, y2, i_comm, ECAdditionSide::Right)
+            };
+            let is_same_point = {
+                let pos = env.allocate();
+                env.is_same_ec_point(pos, x1.clone(), y1.clone(), x2.clone(), y2.clone())
+            };
+            let lambda = {
+                let pos = env.allocate();
+                env.compute_lambda(
+                    pos,
+                    is_same_point,
+                    x1.clone(),
+                    y1.clone(),
+                    x2.clone(),
+                    y2.clone(),
+                )
+            };
+            // x3 = λ^2 - x1 - x2
+            let x3 = {
+                let pos = env.allocate();
+                let lambda_square = lambda.clone() * lambda.clone();
+                let res = lambda_square.clone() - x1.clone() - x2.clone();
+                env.write_column(pos, res)
+            };
+            // y3 = λ (x3 - x1) + y1
+            {
+                let pos = env.allocate();
+                let x3_minus_x1 = x3.clone() - x1.clone();
+                let res = lambda.clone() * x3_minus_x1.clone() + y1.clone();
+                env.write_column(pos, res)
             };
         }
         Instruction::Poseidon(curr_round) => {
@@ -417,9 +470,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                             + env.get_poseidon_mds_matrix(0, 1) * x1_five.clone()
                             + env.get_poseidon_mds_matrix(0, 2) * x2_five.clone()
                             + rc_0.clone();
-                        let x0_prime = env.write_column(pos, res.clone());
-                        env.assert_equal(x0_prime.clone(), res);
-                        x0_prime
+                        env.write_column(pos, res.clone())
                     };
                     let x1_prime = {
                         let pos = env.allocate();
@@ -427,9 +478,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                             + env.get_poseidon_mds_matrix(1, 1) * x1_five.clone()
                             + env.get_poseidon_mds_matrix(1, 2) * x2_five.clone()
                             + rc_1.clone();
-                        let x1_prime = env.write_column(pos, res.clone());
-                        env.assert_equal(x1_prime.clone(), res);
-                        x1_prime
+                        env.write_column(pos, res.clone())
                     };
                     let x2_prime = {
                         let pos = env.allocate();
@@ -437,9 +486,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                             + env.get_poseidon_mds_matrix(2, 1) * x1_five.clone()
                             + env.get_poseidon_mds_matrix(2, 2) * x2_five.clone()
                             + rc_2.clone();
-                        let x2_prime = env.write_column(pos, res.clone());
-                        env.assert_equal(x2_prime.clone(), res);
-                        x2_prime
+                        env.write_column(pos, res.clone())
                     };
 
                     state[0] = x0_prime;

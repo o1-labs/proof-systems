@@ -1,3 +1,4 @@
+use num_bigint::BigUint;
 use std::collections::HashMap;
 
 use arrabiata::{
@@ -10,7 +11,7 @@ use mina_curves::pasta::fields::{Fp, Fq};
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec())
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
     };
 
     interpreter::run_ivc(&mut constraints_fp, instr);
@@ -18,7 +19,7 @@ fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize)
 
     let mut constraints_fq = {
         let poseidon_mds = poseidon_3_60_0_5_5_fq::static_params().mds.clone();
-        constraints::Env::<Fq>::new(poseidon_mds.to_vec())
+        constraints::Env::<Fq>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
     };
     interpreter::run_ivc(&mut constraints_fq, instr);
     assert_eq!(constraints_fq.constraints.len(), exp_constraints);
@@ -43,34 +44,42 @@ fn test_gadget_bit_decomposition() {
 }
 
 #[test]
+fn test_gadget_elliptic_curve_addition() {
+    let instr = Instruction::EllipticCurveAddition(0);
+    helper_compute_constraints_gadget(instr, 3);
+}
+
+#[test]
 fn test_ivc_total_number_of_constraints_ivc() {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec())
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
     };
 
     let ivc_instructions = [
         Instruction::Poseidon(0),
         Instruction::SixteenBitsDecomposition,
         Instruction::BitDecompositionFrom16Bits(0),
+        Instruction::EllipticCurveAddition(0),
     ];
     ivc_instructions.iter().for_each(|instr| {
         interpreter::run_ivc(&mut constraints_fp, *instr);
         constraints_fp.reset();
     });
-    assert_eq!(constraints_fp.constraints.len(), 30);
+    assert_eq!(constraints_fp.constraints.len(), 33);
 }
 
 #[test]
 fn test_degree_of_constraints_ivc() {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec())
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
     };
     let ivc_instructions = [
         Instruction::Poseidon(0),
         Instruction::SixteenBitsDecomposition,
         Instruction::BitDecompositionFrom16Bits(0),
+        Instruction::EllipticCurveAddition(0),
     ];
 
     ivc_instructions.iter().for_each(|instr| {
@@ -86,8 +95,8 @@ fn test_degree_of_constraints_ivc() {
     });
 
     assert_eq!(degree_per_constraints.get(&1), Some(&2));
-    assert_eq!(degree_per_constraints.get(&2), Some(&16));
-    assert_eq!(degree_per_constraints.get(&3), None);
+    assert_eq!(degree_per_constraints.get(&2), Some(&18));
+    assert_eq!(degree_per_constraints.get(&3), Some(&1));
     assert_eq!(degree_per_constraints.get(&4), None);
     assert_eq!(degree_per_constraints.get(&5), Some(&12));
 }

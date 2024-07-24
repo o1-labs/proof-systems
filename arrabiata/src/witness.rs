@@ -1,4 +1,4 @@
-use ark_ec::AffineCurve;
+use ark_ec::{AffineCurve, SWModelParameters};
 use ark_ff::{FpParameters, PrimeField};
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
@@ -129,12 +129,20 @@ pub struct Env<
     // ---------------
 }
 
+// The condition on the parameters for E1 and E2 is to get the coefficients and
+// convert them into biguint.
+// The condition SWModelParameters is to get the parameters of the curve as
+// biguint to use them to compute the slope in the elliptic curve addition
+// algorithm.
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
         E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
+where
+    <E1::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
+    <E2::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
 {
     type Position = Column;
 
@@ -359,10 +367,90 @@ impl<
         self.write_column(pos_y, pt_y.clone());
         (pt_x, pt_y)
     }
+
+    fn is_same_ec_point(
+        &mut self,
+        pos: Self::Position,
+        x1: Self::Variable,
+        y1: Self::Variable,
+        x2: Self::Variable,
+        y2: Self::Variable,
+    ) -> Self::Variable {
+        let res = if x1 == x2 && y1 == y2 {
+            BigUint::from(1_usize)
+        } else {
+            BigUint::from(0_usize)
+        };
+        self.write_column(pos, res)
+    }
+
     fn one(&self) -> Self::Variable {
         BigUint::from(1_usize)
     }
 
+    fn compute_lambda(
+        &mut self,
+        pos: Self::Position,
+        is_same_point: Self::Variable,
+        x1: Self::Variable,
+        y1: Self::Variable,
+        x2: Self::Variable,
+        y2: Self::Variable,
+    ) -> Self::Variable {
+        let modulus: BigUint = if self.current_iteration % 2 == 0 {
+            Fp::Params::MODULUS.into()
+        } else {
+            Fq::Params::MODULUS.into()
+        };
+        // If it is not the same point, we compute lambda as:
+        // - λ = (Y2 - Y1) / (X2 - X1)
+        let (num, denom): (BigUint, BigUint) = if is_same_point == BigUint::from(0_usize) {
+            let num = (y2.clone() - y1.clone()) % modulus.clone();
+            let x2_minus_x1 = (x2.clone() - x1.clone()) % modulus.clone();
+            let denom: BigUint = if self.current_iteration % 2 == 0 {
+                Fp::from_biguint_err(&x2_minus_x1)
+                    .inverse()
+                    .unwrap()
+                    .to_biguint()
+            } else {
+                Fq::from_biguint_err(&x2_minus_x1)
+                    .inverse()
+                    .unwrap()
+                    .to_biguint()
+            };
+            (num, denom)
+        } else {
+            // Otherwise, we compute λ as:
+            // - λ = (3X1^2 + a) / (2Y1)
+            let denom = {
+                let double_y1 = y1.clone() + y1.clone();
+                if self.current_iteration % 2 == 0 {
+                    Fp::from_biguint_err(&double_y1)
+                        .inverse()
+                        .unwrap()
+                        .to_biguint()
+                } else {
+                    Fq::from_biguint_err(&double_y1)
+                        .inverse()
+                        .unwrap()
+                        .to_biguint()
+                }
+            };
+            let num = {
+                let a: BigUint = if self.current_iteration % 2 == 0 {
+                    (E1::Params::COEFF_A).to_biguint()
+                } else {
+                    (E2::Params::COEFF_A).to_biguint()
+                };
+                let x1_square = x1.clone() * x1.clone();
+                let two_x1_square = x1_square.clone() + x1_square.clone();
+                (two_x1_square + x1_square + a) % modulus.clone()
+            };
+            (num, denom)
+        };
+        let res = (num * denom) % modulus;
+        self.write_column(pos, res)
+    }
 }
 
 impl<
@@ -538,7 +626,7 @@ impl<
                     // FIXME: we can do 5 by using the "next row"
                     Instruction::Poseidon(i + 4)
                 } else {
-                    Instruction::NoOp
+                    Instruction::EllipticCurveAddition(0)
                 }
             }
             Instruction::BitDecompositionFrom16Bits(i) => {
@@ -552,7 +640,11 @@ impl<
                 panic!("Not implemented yet for {i_comm}")
             }
             Instruction::EllipticCurveAddition(i_comm) => {
-                panic!("Not implemented yet for {i_comm}")
+                if i_comm < NUMBER_OF_COLUMNS - 1 {
+                    Instruction::EllipticCurveAddition(i_comm + 1)
+                } else {
+                    Instruction::NoOp
+                }
             }
             Instruction::NoOp => Instruction::NoOp,
         }
