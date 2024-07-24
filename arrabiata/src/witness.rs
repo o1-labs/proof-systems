@@ -1,9 +1,10 @@
 use ark_ec::{AffineCurve, SWModelParameters};
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
 use num_bigint::BigUint;
+use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -174,11 +175,11 @@ where
             unimplemented!("Only works for private inputs")
         };
         let modulus: BigUint = if self.current_iteration % 2 == 0 {
-            Fp::Params::MODULUS.into()
+            Fp::modulus_biguint()
         } else {
-            Fq::Params::MODULUS.into()
+            Fq::modulus_biguint()
         };
-        self.state[idx] = v.clone() % modulus;
+        self.state[idx] = v.clone().mod_floor(&modulus);
         v
     }
 
@@ -328,10 +329,10 @@ where
 
     fn update_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
-            let modulus: BigUint = TryFrom::try_from(Fp::Params::MODULUS).unwrap();
+            let modulus: BigUint = Fp::modulus_biguint();
             self.sponge_e1[i] = x % modulus
         } else {
-            let modulus: BigUint = TryFrom::try_from(Fq::Params::MODULUS).unwrap();
+            let modulus: BigUint = Fq::modulus_biguint();
             self.sponge_e2[i] = x % modulus
         }
     }
@@ -403,9 +404,9 @@ where
         y2: Self::Variable,
     ) -> Self::Variable {
         let modulus: BigUint = if self.current_iteration % 2 == 0 {
-            Fp::Params::MODULUS.into()
+            Fp::modulus_biguint()
         } else {
-            Fq::Params::MODULUS.into()
+            Fq::modulus_biguint()
         };
         // If it is not the same point, we compute lambda as:
         // - λ = (Y2 - Y1) / (X2 - X1)
