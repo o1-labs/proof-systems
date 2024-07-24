@@ -355,11 +355,11 @@ where
         let (pt_x, pt_y): (BigInt, BigInt) = match side {
             ECAdditionSide::Left => {
                 if self.current_iteration % 2 == 0 {
-                    let pt = self.ivc_accumulator_e1[i].elems[0];
+                    let pt = self.ivc_accumulator_e2[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
                     (x.to_biguint().into(), y.to_biguint().into())
                 } else {
-                    let pt = self.ivc_accumulator_e2[i].elems[0];
+                    let pt = self.ivc_accumulator_e1[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
                     (x.to_biguint().into(), y.to_biguint().into())
                 }
@@ -367,11 +367,11 @@ where
             ECAdditionSide::Right => {
                 // FIXME: we must get the scaled commitment, not simply the commitment
                 if self.current_iteration % 2 == 0 {
-                    let pt = self.previous_commitments_e1[i].elems[0];
+                    let pt = self.previous_commitments_e2[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
                     (x.to_biguint().into(), y.to_biguint().into())
                 } else {
-                    let pt = self.previous_commitments_e2[i].elems[0];
+                    let pt = self.previous_commitments_e1[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
                     (x.to_biguint().into(), y.to_biguint().into())
                 }
@@ -402,6 +402,24 @@ where
         BigInt::from(1_usize)
     }
 
+    fn compute_inverse(&mut self, x: Self::Variable) -> Self::Variable {
+        if self.current_iteration % 2 == 0 {
+            Fp::from_biguint(&x.to_biguint().unwrap())
+                .unwrap()
+                .inverse()
+                .unwrap()
+                .to_biguint()
+                .into()
+        } else {
+            Fq::from_biguint(&x.to_biguint().unwrap())
+                .unwrap()
+                .inverse()
+                .unwrap()
+                .to_biguint()
+                .into()
+        }
+    }
+
     fn compute_lambda(
         &mut self,
         pos: Self::Position,
@@ -417,28 +435,28 @@ where
             Fq::modulus_biguint().into()
         };
         // If it is not the same point, we compute lambda as:
-        // - λ = (Y2 - Y1) / (X2 - X1)
+        // - λ = (Y1 - Y2) / (X1 - X2)
         let (num, denom): (BigInt, BigInt) = if is_same_point == BigInt::from(0_usize) {
-            let num: BigInt = (y2.clone() - y1.clone()).mod_floor(&modulus.clone());
-            let x2_minus_x1: BigInt = (x2.clone() - x1.clone()).mod_floor(&modulus.clone());
-            let denom: BigInt = x2_minus_x1.mod_floor(&modulus.clone());
+            let num: BigInt = y1.clone() - y2.clone();
+            let x1_minus_x2: BigInt = (x1.clone() - x2.clone()).mod_floor(&modulus);
+            let denom = self.compute_inverse(x1_minus_x2);
             (num, denom)
         } else {
             // Otherwise, we compute λ as:
             // - λ = (3X1^2 + a) / (2Y1)
             let denom = {
                 let double_y1 = y1.clone() + y1.clone();
-                double_y1.mod_floor(&modulus.clone())
+                self.compute_inverse(double_y1)
             };
             let num = {
                 let a: BigInt = if self.current_iteration % 2 == 0 {
-                    (E1::Params::COEFF_A).to_biguint().into()
-                } else {
                     (E2::Params::COEFF_A).to_biguint().into()
+                } else {
+                    (E1::Params::COEFF_A).to_biguint().into()
                 };
                 let x1_square = x1.clone() * x1.clone();
                 let two_x1_square = x1_square.clone() + x1_square.clone();
-                (two_x1_square + x1_square + a).mod_floor(&modulus.clone())
+                two_x1_square + x1_square + a
             };
             (num, denom)
         };

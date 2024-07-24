@@ -217,6 +217,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         (x, y)
     }
 
+    fn compute_inverse(&mut self, _x: Self::Variable) -> Self::Variable {
+        unimplemented!("This is witness-only")
+    }
+
     // FIXME: no constraint added for now.
     fn is_same_ec_point(
         &mut self,
@@ -249,7 +253,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
             col: pos,
             row: CurrOrNext::Curr,
         }));
-        let lhs = lambda.clone() * (x2.clone() - x1.clone()) - (y2.clone() - y1.clone());
+        let lhs = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
         let rhs = {
             let x1_square = x1.clone() * x1.clone();
             let two_x1_square = x1_square.clone() + x1_square.clone();

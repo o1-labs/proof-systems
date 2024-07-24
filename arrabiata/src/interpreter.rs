@@ -30,19 +30,21 @@
 //! P2`.
 //!
 //! ```text
-//! - λ = (Y2 - Y1) / (X2 - X1)
+//! - λ = (Y1 - Y2) / (X1 - X2)
 //! - X3 = λ^2 - X1 - X2
-//! - Y3 = λ (X3 - X1) + Y1
+//! - Y3 = λ (X1 - X3) - Y1
 //! ```
 //!
 //! Therefore, the addition of elliptic curve points can be computed using the
 //! following degree-2 constraints
 //!
 //! ```text
-//! - Constraint 1: λ (X2 - X1) - Y2 - Y1 = 0
+//! - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
 //! - Constraint 2: X3 + X1 + X2 - λ^2 = 0
-//! - Constraint 3: Y3 - λ (X3 - X1) - Y1 = 0
+//! - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
 //! ```
+//!
+//! FIXME: supports negation and the infinity point.
 //!
 //! The gadget requires therefore 7 columns.
 //!
@@ -283,6 +285,11 @@ pub trait InterpreterEnv {
         y2: Self::Variable,
     ) -> Self::Variable;
 
+    /// Witness only
+    // FIXME: this is ugly
+    // There is no check if the value is 0
+    fn compute_inverse(&mut self, x: Self::Variable) -> Self::Variable;
+
     /// Compute the coefficient λ used in the elliptic curve addition.
     /// If the two points are the same, the λ is computed as follows:
     /// - λ = (3 X1^2 + a) / (2Y1)
@@ -420,11 +427,11 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 let res = lambda_square.clone() - x1.clone() - x2.clone();
                 env.write_column(pos, res)
             };
-            // y3 = λ (x3 - x1) + y1
+            // y3 = λ (x1 - x3) - y1
             {
                 let pos = env.allocate();
-                let x3_minus_x1 = x3.clone() - x1.clone();
-                let res = lambda.clone() * x3_minus_x1.clone() + y1.clone();
+                let x1_minus_x3 = x1.clone() - x3.clone();
+                let res = lambda.clone() * x1_minus_x3.clone() - y1.clone();
                 env.write_column(pos, res)
             };
         }

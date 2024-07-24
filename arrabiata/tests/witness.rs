@@ -6,8 +6,9 @@ use arrabiata::{
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
-use num_bigint::BigInt;
+use num_bigint::{BigInt, ToBigInt};
 use o1_utils::FieldHelpers;
+use poly_commitment::commitment::CommitmentCurve;
 
 // Used by the mina_poseidon library. Only for testing.
 #[derive(Clone)]
@@ -59,4 +60,31 @@ fn test_unit_witness_poseidon_gadget() {
     assert_eq!(env.sponge_e1.to_vec(), exp_output);
     // Check the other sponge hasn't been modified
     assert_eq!(env.sponge_e2, sponge_e1.clone());
+}
+
+#[test]
+fn test_unit_witness_elliptic_curve_addition() {
+    let srs_log2_size = 6;
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        srs_log2_size,
+        BigInt::from(1u64),
+        sponge_e1.clone(),
+        sponge_e1.clone(),
+    );
+    // If we are at iteration 0, we will compute the addition of points over
+    // Pallas, whose scalar field is Fp.
+    assert_eq!(env.current_iteration, 0);
+    let (exp_x3, exp_y3) = {
+        let res: Pallas =
+            env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0];
+        let (x3, y3) = res.to_coordinates().unwrap();
+        (
+            x3.to_biguint().to_bigint().unwrap(),
+            y3.to_biguint().to_bigint().unwrap(),
+        )
+    };
+    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+    assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
+    assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 }
