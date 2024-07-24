@@ -3,7 +3,7 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
@@ -74,11 +74,11 @@ pub struct Env<
     pub current_row: usize,
 
     /// State of the current row in the execution trace
-    pub state: [BigUint; NUMBER_OF_COLUMNS],
+    pub state: [BigInt; NUMBER_OF_COLUMNS],
 
     /// Contain the public state
     // FIXME: I don't like this design. Feel free to suggest a better solution
-    pub public_state: [BigUint; NUMBER_OF_PUBLIC_INPUTS],
+    pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
 
     /// Keep the current executed instruction
     /// This can be used to identify which gadget the interpreter is currently
@@ -88,10 +88,10 @@ pub struct Env<
     /// The sponges will be used to simulate the verifier messages, and will
     /// also be used to verify the consistency of the computation by hashing the
     /// public IO.
-    // IMPROVEME: use a list of BigUint? It might be faster as the CPU will
+    // IMPROVEME: use a list of BigInt? It might be faster as the CPU will
     // already have in its cache the values, and we can use a flat array
-    pub sponge_e1: [BigUint; POSEIDON_STATE_SIZE],
-    pub sponge_e2: [BigUint; POSEIDON_STATE_SIZE],
+    pub sponge_e1: [BigInt; POSEIDON_STATE_SIZE],
+    pub sponge_e2: [BigInt; POSEIDON_STATE_SIZE],
 
     /// List of public inputs, used first to verify the consistency of the
     /// previous iteration.
@@ -102,7 +102,7 @@ pub struct Env<
 
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
-    pub r: BigUint,
+    pub r: BigInt,
     // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in the
@@ -112,15 +112,15 @@ pub struct Env<
     ///
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
-    pub witness: Vec<Vec<BigUint>>,
+    pub witness: Vec<Vec<BigInt>>,
 
     // --------------
     // Inputs
     /// Initial input
-    pub z0: BigUint,
+    pub z0: BigInt,
 
     /// Current input
-    pub zi: BigUint,
+    pub zi: BigInt,
     // ---------------
 
     // ---------------
@@ -148,9 +148,9 @@ where
     type Position = Column;
 
     /// For efficiency, and for having a single interpreter, we do not use one
-    /// of the fields. We use a generic BigUint to represent the values.
+    /// of the fields. We use a generic BigInt to represent the values.
     /// When building the witness, we will reduce into the corresponding field
-    type Variable = BigUint;
+    type Variable = BigInt;
 
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!();
@@ -174,16 +174,16 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        let modulus: BigUint = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint()
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint()
+            Fq::modulus_biguint().into()
         };
         self.state[idx] = v.clone().mod_floor(&modulus);
         v
     }
 
-    fn write_public_input(&mut self, col: Self::Position, v: BigUint) -> Self::Variable {
+    fn write_public_input(&mut self, col: Self::Position, v: BigInt) -> Self::Variable {
         let Column::PublicInput(idx) = col else {
             unimplemented!("Only works for public input columns")
         };
@@ -192,10 +192,10 @@ where
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
-        assert!(x < BigUint::from(2_usize));
+        assert!(x < BigInt::from(2_usize));
     }
 
-    fn constant(&self, v: BigUint) -> Self::Variable {
+    fn constant(&self, v: BigInt) -> Self::Variable {
         v
     }
 
@@ -204,7 +204,7 @@ where
     }
 
     fn assert_zero(&mut self, var: Self::Variable) {
-        assert_eq!(var, BigUint::from(0_usize));
+        assert_eq!(var, BigInt::from(0_usize));
     }
 
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
@@ -221,7 +221,7 @@ where
             unimplemented!("Only works for private columns")
         };
         let x = self.state[idx].clone();
-        assert!(x < BigUint::from(2_usize).pow(16));
+        assert!(x < BigInt::from(2_usize).pow(16));
     }
 
     fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
@@ -243,9 +243,9 @@ where
             diff <= 16,
             "The difference between the highest and lowest bit should be less than 16"
         );
-        let rht = BigUint::from(1_usize << diff) - BigUint::from(1_usize);
+        let rht = BigInt::from(1_usize << diff) - BigInt::from(1_usize);
         let lft = x >> lowest_bit;
-        let res: BigUint = lft & rht;
+        let res: BigInt = lft & rht;
         self.write_column(col, res.clone());
         res
     }
@@ -254,7 +254,7 @@ where
     // This is only for testing purposes, and having something to build the
     // witness.
     fn fetch_input(&mut self, col: Self::Position) -> Self::Variable {
-        let x = BigUint::from(self.current_row as u64);
+        let x = BigInt::from(self.current_row as u64);
         self.write_column(col, x.clone());
         x
     }
@@ -269,7 +269,7 @@ where
         self.idx_var = 0;
         self.idx_var_pi = 0;
         // Rest the state for the next row
-        self.state = std::array::from_fn(|_| BigUint::from(0_usize));
+        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
     }
 
     /// FIXME: check if we need to pick the left or right sponge
@@ -312,27 +312,35 @@ where
         i: usize,
     ) -> Self::Variable {
         let rc = if self.current_iteration % 2 == 0 {
-            poseidon_3_60_0_5_5_fp::static_params().round_constants[round][i].to_biguint()
+            poseidon_3_60_0_5_5_fp::static_params().round_constants[round][i]
+                .to_biguint()
+                .into()
         } else {
-            poseidon_3_60_0_5_5_fq::static_params().round_constants[round][i].to_biguint()
+            poseidon_3_60_0_5_5_fq::static_params().round_constants[round][i]
+                .to_biguint()
+                .into()
         };
         self.write_public_input(pos, rc)
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
         if self.current_iteration % 2 == 0 {
-            poseidon_3_60_0_5_5_fp::static_params().mds[i][j].to_biguint()
+            poseidon_3_60_0_5_5_fp::static_params().mds[i][j]
+                .to_biguint()
+                .into()
         } else {
-            poseidon_3_60_0_5_5_fq::static_params().mds[i][j].to_biguint()
+            poseidon_3_60_0_5_5_fq::static_params().mds[i][j]
+                .to_biguint()
+                .into()
         }
     }
 
     fn update_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
-            let modulus: BigUint = Fp::modulus_biguint();
+            let modulus: BigInt = Fp::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
         } else {
-            let modulus: BigUint = Fq::modulus_biguint();
+            let modulus: BigInt = Fq::modulus_biguint().into();
             self.sponge_e2[i] = x.mod_floor(&modulus)
         }
     }
@@ -344,16 +352,16 @@ where
         i: usize,
         side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable) {
-        let (pt_x, pt_y) = match side {
+        let (pt_x, pt_y): (BigInt, BigInt) = match side {
             ECAdditionSide::Left => {
                 if self.current_iteration % 2 == 0 {
                     let pt = self.ivc_accumulator_e1[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint(), y.to_biguint())
+                    (x.to_biguint().into(), y.to_biguint().into())
                 } else {
                     let pt = self.ivc_accumulator_e2[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint(), y.to_biguint())
+                    (x.to_biguint().into(), y.to_biguint().into())
                 }
             }
             ECAdditionSide::Right => {
@@ -361,11 +369,11 @@ where
                 if self.current_iteration % 2 == 0 {
                     let pt = self.previous_commitments_e1[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint(), y.to_biguint())
+                    (x.to_biguint().into(), y.to_biguint().into())
                 } else {
                     let pt = self.previous_commitments_e2[i].elems[0];
                     let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint(), y.to_biguint())
+                    (x.to_biguint().into(), y.to_biguint().into())
                 }
             }
         };
@@ -383,15 +391,15 @@ where
         y2: Self::Variable,
     ) -> Self::Variable {
         let res = if x1 == x2 && y1 == y2 {
-            BigUint::from(1_usize)
+            BigInt::from(1_usize)
         } else {
-            BigUint::from(0_usize)
+            BigInt::from(0_usize)
         };
         self.write_column(pos, res)
     }
 
     fn one(&self) -> Self::Variable {
-        BigUint::from(1_usize)
+        BigInt::from(1_usize)
     }
 
     fn compute_lambda(
@@ -403,50 +411,30 @@ where
         x2: Self::Variable,
         y2: Self::Variable,
     ) -> Self::Variable {
-        let modulus: BigUint = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint()
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint()
+            Fq::modulus_biguint().into()
         };
         // If it is not the same point, we compute lambda as:
         // - λ = (Y2 - Y1) / (X2 - X1)
-        let (num, denom): (BigUint, BigUint) = if is_same_point == BigUint::from(0_usize) {
-            let num = (y2.clone() - y1.clone()).mod_floor(&modulus.clone());
-            let x2_minus_x1 = (x2.clone() - x1.clone()).mod_floor(&modulus.clone());
-            let denom: BigUint = if self.current_iteration % 2 == 0 {
-                Fp::from_biguint_err(&x2_minus_x1)
-                    .inverse()
-                    .unwrap()
-                    .to_biguint()
-            } else {
-                Fq::from_biguint_err(&x2_minus_x1)
-                    .inverse()
-                    .unwrap()
-                    .to_biguint()
-            };
+        let (num, denom): (BigInt, BigInt) = if is_same_point == BigInt::from(0_usize) {
+            let num: BigInt = (y2.clone() - y1.clone()).mod_floor(&modulus.clone());
+            let x2_minus_x1: BigInt = (x2.clone() - x1.clone()).mod_floor(&modulus.clone());
+            let denom: BigInt = x2_minus_x1.mod_floor(&modulus.clone());
             (num, denom)
         } else {
             // Otherwise, we compute λ as:
             // - λ = (3X1^2 + a) / (2Y1)
             let denom = {
                 let double_y1 = y1.clone() + y1.clone();
-                if self.current_iteration % 2 == 0 {
-                    Fp::from_biguint_err(&double_y1)
-                        .inverse()
-                        .unwrap()
-                        .to_biguint()
-                } else {
-                    Fq::from_biguint_err(&double_y1)
-                        .inverse()
-                        .unwrap()
-                        .to_biguint()
-                }
+                double_y1.mod_floor(&modulus.clone())
             };
             let num = {
-                let a: BigUint = if self.current_iteration % 2 == 0 {
-                    (E1::Params::COEFF_A).to_biguint()
+                let a: BigInt = if self.current_iteration % 2 == 0 {
+                    (E1::Params::COEFF_A).to_biguint().into()
                 } else {
-                    (E2::Params::COEFF_A).to_biguint()
+                    (E2::Params::COEFF_A).to_biguint().into()
                 };
                 let x1_square = x1.clone() * x1.clone();
                 let two_x1_square = x1_square.clone() + x1_square.clone();
@@ -468,9 +456,9 @@ impl<
 {
     pub fn new(
         srs_log2_size: usize,
-        z0: BigUint,
-        sponge_e1: [BigUint; 3],
-        sponge_e2: [BigUint; 3],
+        z0: BigInt,
+        sponge_e1: [BigInt; 3],
+        sponge_e2: [BigInt; 3],
     ) -> Self {
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
@@ -497,10 +485,10 @@ impl<
             srs
         };
 
-        let mut witness: Vec<Vec<BigUint>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        let mut witness: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            let mut vec: Vec<BigUint> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(BigUint::from(0_usize)));
+            let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
         // Default set to the blinders
@@ -536,14 +524,14 @@ impl<
             idx_var: 0,
             idx_var_pi: 0,
             current_row: 0,
-            state: std::array::from_fn(|_| BigUint::from(0_usize)),
-            public_state: std::array::from_fn(|_| BigUint::from(0_usize)),
+            state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             current_instruction: Instruction::SixteenBitsDecomposition,
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
             previous_hash: [0; 2],
-            r: BigUint::from(0_usize),
+            r: BigInt::from(0_usize),
             // ------
             // ------
             // Used by the interpreter
@@ -563,7 +551,7 @@ impl<
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
-        self.state = std::array::from_fn(|_| BigUint::from(0_usize));
+        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
     }
 
@@ -586,7 +574,7 @@ impl<
                 .map(|evals| {
                     let evals: Vec<Fp> = evals
                         .par_iter()
-                        .map(|x| Fp::from_biguint(x).unwrap())
+                        .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
                     self.srs_e1
@@ -601,7 +589,7 @@ impl<
                 .map(|evals| {
                     let evals: Vec<Fq> = evals
                         .par_iter()
-                        .map(|x| Fq::from_biguint(x).unwrap())
+                        .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
                     self.srs_e2
@@ -616,7 +604,7 @@ impl<
     // TODO: we should compute the hash of the previous commitments, only on
     // CPU?
     pub fn compute_output(&mut self) {
-        self.zi = BigUint::from(42_usize)
+        self.zi = BigInt::from(42_usize)
     }
 
     pub fn fetch_instruction(&self) -> Instruction {

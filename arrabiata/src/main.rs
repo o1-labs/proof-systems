@@ -5,7 +5,7 @@ use arrabiata::{
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 use std::time::Instant;
 
 pub fn main() {
@@ -47,11 +47,11 @@ pub fn main() {
     let domain_size = 1 << srs_log2_size;
 
     // FIXME: setup correctly the initial sponge state
-    let sponge_e1: [BigUint; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigUint::from(42u64));
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
     // FIXME: make a setup phase to build the selectors
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         *srs_log2_size,
-        BigUint::from(1u64),
+        BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
     );

@@ -6,7 +6,7 @@ use arrabiata::{
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
 
 // Used by the mina_poseidon library. Only for testing.
@@ -28,10 +28,10 @@ impl SpongeConstants for PlonkSpongeConstants {
 #[test]
 fn test_unit_witness_poseidon_gadget() {
     let srs_log2_size = 6;
-    let sponge_e1: [BigUint; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigUint::from(42u64));
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
-        BigUint::from(1u64),
+        BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
     );
@@ -44,13 +44,16 @@ fn test_unit_witness_poseidon_gadget() {
             .clone()
             .to_vec()
             .iter()
-            .map(Fp::from_biguint_err)
+            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
         poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
             poseidon_3_60_0_5_5_fp::static_params(),
             &mut state,
         );
-        state.iter().map(|x| x.to_biguint()).collect::<Vec<_>>()
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
     };
     // Check correctness for current iteration
     assert_eq!(env.sponge_e1.to_vec(), exp_output);

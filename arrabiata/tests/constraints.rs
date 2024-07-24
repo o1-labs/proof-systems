@@ -1,4 +1,4 @@
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 use std::collections::HashMap;
 
 use arrabiata::{
@@ -11,7 +11,7 @@ use mina_curves::pasta::fields::{Fp, Fq};
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
 
     interpreter::run_ivc(&mut constraints_fp, instr);
@@ -19,7 +19,7 @@ fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize)
 
     let mut constraints_fq = {
         let poseidon_mds = poseidon_3_60_0_5_5_fq::static_params().mds.clone();
-        constraints::Env::<Fq>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
+        constraints::Env::<Fq>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
     interpreter::run_ivc(&mut constraints_fq, instr);
     assert_eq!(constraints_fq.constraints.len(), exp_constraints);
@@ -53,7 +53,7 @@ fn test_gadget_elliptic_curve_addition() {
 fn test_ivc_total_number_of_constraints_ivc() {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
 
     let ivc_instructions = [
@@ -73,7 +73,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
 fn test_degree_of_constraints_ivc() {
     let mut constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
-        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigUint::from(0_usize))
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
     let ivc_instructions = [
         Instruction::Poseidon(0),

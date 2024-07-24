@@ -2,13 +2,13 @@ use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
     columns::E, interpreter::ECAdditionSide, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-use ark_ff::{Field, FpParameters, PrimeField};
+use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use log::debug;
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
 
 pub struct Env<Fp: Field> {
@@ -16,16 +16,16 @@ pub struct Env<Fp: Field> {
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
-    pub a: BigUint,
+    pub a: BigInt,
     pub idx_var: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
-    pub fn new(poseidon_mds: Vec<Vec<Fp>>, a: BigUint) -> Self {
+    pub fn new(poseidon_mds: Vec<Vec<Fp>>, a: BigInt) -> Self {
         // This check might not be useful
-        assert!(a < (Fp::Params::MODULUS).into(), "a is too large");
+        assert!(a < Fp::modulus_biguint().into(), "a is too large");
         Self {
             poseidon_mds,
             a,
@@ -67,14 +67,15 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }))
     }
 
-    fn constant(&self, value: BigUint) -> Self::Variable {
-        let v = Fp::from_biguint(&value).unwrap();
+    fn constant(&self, value: BigInt) -> Self::Variable {
+        let v = value.to_biguint().unwrap();
+        let v = Fp::from_biguint(&v).unwrap();
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
     }
 
     /// Return the corresponding expression regarding the selected public input
-    fn write_public_input(&mut self, col: Self::Position, _v: BigUint) -> Self::Variable {
+    fn write_public_input(&mut self, col: Self::Position, _v: BigInt) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col,
             row: CurrOrNext::Curr,
@@ -232,7 +233,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     fn one(&self) -> Self::Variable {
-        self.constant(BigUint::from(1_usize))
+        self.constant(BigInt::from(1_usize))
     }
 
     fn compute_lambda(

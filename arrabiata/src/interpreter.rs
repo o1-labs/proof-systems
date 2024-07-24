@@ -124,7 +124,7 @@
 use crate::POSEIDON_ROUNDS_FULL;
 use ark_ff::{One, Zero};
 use log::debug;
-use num_bigint::BigUint;
+use num_bigint::BigInt;
 
 // FIXME: Can we use an "instruction" kind of circuit?
 // We do use a "fetch_next_instruction" method to mention what is the next
@@ -178,7 +178,7 @@ pub trait InterpreterEnv {
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
     // better solution. The PI should be static for all witnesses
-    fn write_public_input(&mut self, x: Self::Position, v: BigUint) -> Self::Variable;
+    fn write_public_input(&mut self, x: Self::Position, v: BigInt) -> Self::Variable;
 
     /// Build the constant one
     fn one(&self) -> Self::Variable;
@@ -186,7 +186,7 @@ pub trait InterpreterEnv {
     /// Build a variable from the given position
     fn variable(&self, position: Self::Position) -> Self::Variable;
 
-    fn constant(&self, v: BigUint) -> Self::Variable;
+    fn constant(&self, v: BigInt) -> Self::Variable;
 
     /// Assert that the variable is zero
     fn assert_zero(&mut self, x: Self::Variable);
@@ -349,7 +349,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 .iter()
                 .enumerate()
                 .fold(r, |acc, (i, x)| {
-                    acc - env.constant(BigUint::from(1_usize) << (i * 16)) * x.clone()
+                    acc - env.constant(BigInt::from(1_usize) << (i * 16)) * x.clone()
                 });
             env.assert_zero(cstr);
         }
@@ -377,7 +377,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     .iter()
                     .enumerate()
                     .fold(sixteen_i, |acc, (i, x)| {
-                        acc - env.constant(BigUint::from(1_usize) << i) * x.clone()
+                        acc - env.constant(BigInt::from(1_usize) << i) * x.clone()
                     });
                 env.assert_zero(cstr);
             } else {
