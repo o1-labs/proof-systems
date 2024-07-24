@@ -330,10 +330,10 @@ where
     fn update_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
             let modulus: BigUint = Fp::modulus_biguint();
-            self.sponge_e1[i] = x % modulus
+            self.sponge_e1[i] = x.mod_floor(&modulus)
         } else {
             let modulus: BigUint = Fq::modulus_biguint();
-            self.sponge_e2[i] = x % modulus
+            self.sponge_e2[i] = x.mod_floor(&modulus)
         }
     }
 
@@ -411,8 +411,8 @@ where
         // If it is not the same point, we compute lambda as:
         // - λ = (Y2 - Y1) / (X2 - X1)
         let (num, denom): (BigUint, BigUint) = if is_same_point == BigUint::from(0_usize) {
-            let num = (y2.clone() - y1.clone()) % modulus.clone();
-            let x2_minus_x1 = (x2.clone() - x1.clone()) % modulus.clone();
+            let num = (y2.clone() - y1.clone()).mod_floor(&modulus.clone());
+            let x2_minus_x1 = (x2.clone() - x1.clone()).mod_floor(&modulus.clone());
             let denom: BigUint = if self.current_iteration % 2 == 0 {
                 Fp::from_biguint_err(&x2_minus_x1)
                     .inverse()
@@ -450,11 +450,11 @@ where
                 };
                 let x1_square = x1.clone() * x1.clone();
                 let two_x1_square = x1_square.clone() + x1_square.clone();
-                (two_x1_square + x1_square + a) % modulus.clone()
+                (two_x1_square + x1_square + a).mod_floor(&modulus.clone())
             };
             (num, denom)
         };
-        let res = (num * denom) % modulus;
+        let res = (num * denom).mod_floor(&modulus);
         self.write_column(pos, res)
     }
 }
