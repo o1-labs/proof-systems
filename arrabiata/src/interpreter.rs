@@ -96,6 +96,9 @@
 //! range check constraints.
 //! On the next 16 rows, we split each 16 chunks into 16 bits chunks.
 //!
+//! FIXME: we could avoid the lookup and simply decomposing on 17 rows, with
+//! chunks of 15 bits (usual method).
+//!
 //! FIXME: an optimisation can be implemented using "a bucket" style algorithm,
 //! as described in [Efficient MSMs in Kimchi
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
