@@ -1,16 +1,15 @@
+use crate::{
+    circuit_design::capabilities::{ColAccessCap, HybridCopyCap, LookupCap, NextCap},
+    columns::{Column, ColumnIndexer},
+    expr::E,
+    logup::{constraint_lookups, Logup, LookupTableID},
+};
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 use std::collections::BTreeMap;
-
-use crate::{
-    circuit_design::capabilities::{ColAccessCap, HybridCopyCap, LookupCap},
-    columns::{Column, ColumnIndexer},
-    expr::E,
-    logup::{constraint_lookups, Logup, LookupTableID},
-};
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
@@ -54,6 +53,16 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
+    }
+}
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> NextCap<F, CIx>
+    for ConstraintBuilderEnv<F, LT>
+{
+    fn read_next(&self, col: CIx) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: col.to_column(),
+            row: CurrOrNext::Next,
+        }))
     }
 }
 
