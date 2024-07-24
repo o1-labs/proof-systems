@@ -359,6 +359,10 @@ impl<
         self.write_column(pos_y, pt_y.clone());
         (pt_x, pt_y)
     }
+    fn one(&self) -> Self::Variable {
+        BigUint::from(1_usize)
+    }
+
 }
 
 impl<

@@ -180,6 +180,9 @@ pub trait InterpreterEnv {
     // better solution. The PI should be static for all witnesses
     fn write_public_input(&mut self, x: Self::Position, v: BigUint) -> Self::Variable;
 
+    /// Build the constant one
+    fn one(&self) -> Self::Variable;
+
     /// Build a variable from the given position
     fn variable(&self, position: Self::Position) -> Self::Variable;
 

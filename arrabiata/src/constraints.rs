@@ -207,4 +207,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }));
         (x, y)
     }
+    fn one(&self) -> Self::Variable {
+        self.constant(BigUint::from(1_usize))
+    }
+
 }
