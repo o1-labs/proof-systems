@@ -173,7 +173,12 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        self.state[idx] = v.clone();
+        let modulus: BigUint = if self.current_iteration % 2 == 0 {
+            Fp::Params::MODULUS.into()
+        } else {
+            Fq::Params::MODULUS.into()
+        };
+        self.state[idx] = v.clone() % modulus;
         v
     }
 
