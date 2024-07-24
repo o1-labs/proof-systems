@@ -112,6 +112,8 @@
 //! executed, `0` otherwise.
 
 pub mod ivc;
+/// poseidon implementation that hashes commitments to the columns containing values
+pub mod poseidon;
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
 /// state of 3 elements and constraints of degree 2
 pub mod poseidon_55_0_7_3_2;
@@ -124,3 +126,52 @@ pub mod poseidon_8_56_5_3_2;
 /// Poseidon parameters for 55 full rounds, 0 partial rounds, sbox 7, a state of
 /// 3 elements
 pub mod poseidon_params_55_0_7_3;
+
+#[test]
+fn estimate_ivc() {
+    const D1: usize = 1 << 16;
+    const FOLDS: usize = 3;
+
+    // const MAX_EC_ADD: usize = D1 / 35;
+    const EC_SIZE: usize = 230 + (17 * 4 + 1);
+    const EC_ROWS_PER_COL: usize = 35;
+    // const MAX_HASH: usize = D1 / (3 * 4);
+    // const HASH_SIZE: usize = 435;
+    const HASH_SIZE: usize = 15;
+    // const HASH_ROWS_PER_COL: usize = 2 * 2 * 3;
+    const HASH_ROWS_PER_COL: usize = 1;
+
+    let mut cols = EC_SIZE + HASH_SIZE;
+    let mut hash_sets = 1;
+    let mut ec_sets = 1;
+
+    loop {
+        if cols > 10_000 {
+            break;
+        }
+        let ec_adds = cols * EC_ROWS_PER_COL * FOLDS;
+        if ec_adds > ec_sets * D1 {
+            ec_sets += 1;
+            cols += EC_SIZE;
+            continue;
+        }
+        let hashes = cols * HASH_ROWS_PER_COL * FOLDS;
+        if hashes > hash_sets * D1 {
+            hash_sets += 1;
+            cols += HASH_SIZE;
+            continue;
+        }
+        println!("not found");
+        break;
+    }
+    let ec_spare_capacity = (D1) - (cols * EC_ROWS_PER_COL * FOLDS);
+    let ec_spare_capacity = ec_spare_capacity / EC_ROWS_PER_COL;
+    println!("COLS:\n");
+    println!(
+        "HASH: {HASH_SIZE} * {hash_sets} = {}",
+        hash_sets * HASH_SIZE
+    );
+    println!("EC: {EC_SIZE} * {ec_sets} = {}", ec_sets * EC_SIZE);
+    println!("TOTAL: {cols}");
+    println!("ec spare capacity: {} cols", ec_spare_capacity);
+}
