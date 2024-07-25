@@ -17,7 +17,8 @@ members = [
     "utils",
     "internal-tracing",
     "ivc",
-    "folding"
+    "folding",
+    "groth16",
 ]
 resolver = "2"
 
@@ -77,6 +78,7 @@ syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.90"
+matrix = "0.22.0"
 
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
