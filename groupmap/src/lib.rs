@@ -22,7 +22,7 @@
 use ark_ec::models::SWModelParameters;
 use ark_ff::{Field, One, SquareRootField, Zero};
 
-pub trait GroupMap<F> {
+pub trait GroupMap<F>: Sync {
     fn setup() -> Self;
     fn to_group(&self, u: F) -> (F, F);
     fn batch_to_group_x(&self, ts: Vec<F>) -> Vec<[F; 3]>;

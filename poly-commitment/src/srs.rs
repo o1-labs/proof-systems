@@ -245,6 +245,7 @@ where
         let m = G::Map::setup();
 
         let g: Vec<_> = (0..depth)
+            .into_par_iter()
             .map(|i| {
                 let mut h = Blake2b512::new();
                 h.update((i as u32).to_be_bytes());
