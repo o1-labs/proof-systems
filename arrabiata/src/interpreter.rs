@@ -288,6 +288,9 @@ pub trait InterpreterEnv {
     ///
     /// Zero is not allowed as an input.
     /// Witness only
+    // IMPROVEME: when computing the witness, we could have an additional column
+    // that would stand for the inverse, and compute all inverses at the end
+    // using a batch inversion.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable;
 
     /// Compute the coefficient λ used in the elliptic curve addition.
