@@ -25,28 +25,72 @@ fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize)
     assert_eq!(constraints_fq.constraints.len(), exp_constraints);
 }
 
+fn helper_check_expected_degree_constraints(instr: Instruction, exp_degrees: HashMap<u64, usize>) {
+    let mut constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
+    };
+    interpreter::run_ivc(&mut constraints_fp, instr);
+
+    let mut actual_degrees: HashMap<u64, usize> = HashMap::new();
+    constraints_fp.constraints.iter().for_each(|c| {
+        let degree = c.degree(1, 0);
+        let count = actual_degrees.entry(degree).or_insert(0);
+        *count += 1;
+    });
+
+    exp_degrees.iter().for_each(|(degree, count)| {
+        assert_eq!(
+            actual_degrees.get(degree),
+            Some(count),
+            "Instruction {:?}: invalid count for degree {} (computed: {}, expected: {})",
+            instr,
+            degree,
+            actual_degrees.get(degree).unwrap(),
+            count
+        );
+    });
+}
 #[test]
 fn test_gadget_poseidon() {
     let instr = Instruction::Poseidon(0);
     helper_compute_constraints_gadget(instr, 12);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(5, 12);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
 }
 
 #[test]
 fn test_gadget_sixteen_bits_decomposition() {
     let instr = Instruction::SixteenBitsDecomposition;
     helper_compute_constraints_gadget(instr, 1);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(1, 1);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
 }
 
 #[test]
 fn test_gadget_bit_decomposition() {
     let instr = Instruction::BitDecompositionFrom16Bits(0);
     helper_compute_constraints_gadget(instr, 17);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(1, 1);
+    exp_degrees.insert(2, 16);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
 }
 
 #[test]
 fn test_gadget_elliptic_curve_addition() {
     let instr = Instruction::EllipticCurveAddition(0);
     helper_compute_constraints_gadget(instr, 3);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(3, 1);
+    exp_degrees.insert(2, 2);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
 }
 
 #[test]
