@@ -424,22 +424,23 @@ pub fn constrain_multiplication<
 
         // Writing the output
         // (cur_i, [VEC])
-        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
-        vec_output.insert(0, current_row);
-        env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
+        //let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        //vec_output.insert(0, current_row);
+        //env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
 
-        // Writing the constant: it's only read once
-        // (0, [VEC representing 0])
-        env.lookup_runtime_write(
-            LookupTable::MultiplicationBus,
-            vec![Env::constant(F::zero()); N_LIMBS_SMALL + 1],
-        );
+        //// Writing the constant: it's only read once
+        //// (0, [VEC representing 0])
+        //env.lookup_runtime_write(
+        //    LookupTable::MultiplicationBus,
+        //    vec![Env::constant(F::zero()); N_LIMBS_SMALL + 1],
+        //);
 
         // Reading the input:
         // (prev_i, [VEC])
-        let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
-        vec_input.insert(0, previous_coeff_row);
-        env.lookup(LookupTable::MultiplicationBus, vec_input);
+        //let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
+        //vec_input.insert(0, previous_coeff_row);
+        //env.lookup(LookupTable::MultiplicationBus, vec_input);
+        env.lookup(LookupTable::MultiplicationBus, vec![previous_coeff_row]);
     }
 
     // Quotient sign must be -1 or 1.
@@ -754,7 +755,6 @@ pub fn serialization_circuit<
 
         // Check the circuit is internaly consistent
         deserialize_field_element(env, field_elements[0].map(Into::into));
-        constrain_multiplication(env);
 
         // Don't reset on the last iteration.
         if i < domain_size {

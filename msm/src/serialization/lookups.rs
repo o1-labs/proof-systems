@@ -60,7 +60,7 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
 
     fn runtime_create_column(&self) -> bool {
         match self {
-            Self::MultiplicationBus => false,
+            Self::MultiplicationBus => true,
             _ => panic!("runtime_create_column was called on a non-runtime table"),
         }
     }

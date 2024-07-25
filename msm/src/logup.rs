@@ -433,7 +433,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
             })
             .collect();
 
-        if table_id.is_fixed() {
+        if table_id.is_fixed() || table_id.runtime_create_column() {
             let table_lookup = Logup {
                 table_id: *table_id,
                 numerator: -curr_cell(Column::LookupMultiplicity((table_id_u32, 0))),
@@ -443,7 +443,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         } else {
             lookup_writes
                 .get(table_id)
-                .unwrap()
+                .expect("Lookup writes for table_id {table_id:?} not present")
                 .iter()
                 .enumerate()
                 .for_each(|(i, write_columns)| {
