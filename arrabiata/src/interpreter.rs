@@ -298,7 +298,12 @@ pub trait InterpreterEnv {
         side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable);
 
-    fn is_same_ec_point(
+    /// Check if the points given by (x1, y1) and (x2, y2) are equals.
+    ///
+    /// # Safety
+    ///
+    /// No constraint is added. It should be used with caution.
+    unsafe fn is_same_ec_point(
         &mut self,
         pos: Self::Position,
         x1: Self::Variable,
@@ -435,7 +440,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
             let is_same_point = {
                 let pos = env.allocate();
-                env.is_same_ec_point(pos, x1.clone(), y1.clone(), x2.clone(), y2.clone())
+                unsafe { env.is_same_ec_point(pos, x1.clone(), y1.clone(), x2.clone(), y2.clone()) }
             };
             let lambda = {
                 let pos = env.allocate();

@@ -239,8 +239,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         v
     }
 
-    // FIXME: no constraint added for now.
-    fn is_same_ec_point(
+    unsafe fn is_same_ec_point(
         &mut self,
         pos: Self::Position,
         _x1: Self::Variable,

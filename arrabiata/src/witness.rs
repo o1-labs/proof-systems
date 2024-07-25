@@ -394,7 +394,8 @@ where
         (pt_x, pt_y)
     }
 
-    fn is_same_ec_point(
+    // It is unsafe as no constraint is added
+    unsafe fn is_same_ec_point(
         &mut self,
         pos: Self::Position,
         x1: Self::Variable,
