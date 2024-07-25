@@ -105,6 +105,22 @@ pub struct Env<
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
     pub r: BigInt,
+
+    /// Temporary registers for elliptic curve points in affine coordinates than
+    /// can be used to save values between instructions.
+    ///
+    /// These temporary registers can be loaded into the state by using the
+    /// function `load_temporary_accumulators`.
+    ///
+    /// The registers can, and must, be cleaned after the gadget is computed.
+    ///
+    /// The values are considered as BigInt, even though we should add some
+    /// type. As we want to apply the KISS method, we tend to avoid adding
+    /// types. We leave this for future work.
+    ///
+    /// Two registers are provided, represented by a tuple for the coordinates
+    /// (x, y).
+    pub temporary_accumulators: ((BigInt, BigInt), (BigInt, BigInt)),
     // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in the
@@ -573,6 +589,11 @@ impl<
             current_iteration: 0,
             previous_hash: [0; 2],
             r: BigInt::from(0_usize),
+            // Initialize the temporary accumulators with 0
+            temporary_accumulators: (
+                (BigInt::from(0_u64), BigInt::from(0_u64)),
+                (BigInt::from(0_u64), BigInt::from(0_u64)),
+            ),
             // ------
             // ------
             // Used by the interpreter
