@@ -27,6 +27,8 @@ pub struct WitnessBuilderEnv<
     /// Every element of the vector is a row, and the builder is
     /// always processing the last row.
     pub witness: Vec<Witness<N_WIT, F>>,
+    /// The actual last row, which is next to the last in [witness]
+    pub next: Witness<N_WIT, F>,
 
     /// Lookup multiplicities, a vector of values `m_i` per lookup
     /// table, where `m_i` is how many times the lookup value number
@@ -87,6 +89,13 @@ impl<
             other => panic!("WitnessBuilderEnv::read_column does not support {other:?}"),
         }
     }
+
+    fn read_column_next(&self, col: CIx) -> Self::Variable {
+        match col.to_column() {
+            Column::Relation(i) => self.next.cols[i],
+            other => panic!("WitnessBuilderEnv::read_column_next does not support {other:?}"),
+        }
+    }
 }
 
 impl<
@@ -101,6 +110,15 @@ impl<
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
         self.write_column_raw(ix.to_column(), *value);
+    }
+    fn write_column_next(&mut self, col: CIx, value: &Self::Variable) {
+        match col.to_column() {
+            Column::Relation(i) => {
+                self.next.cols[i] = *value;
+            }
+            // there shouldn't be a use case for these
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -302,7 +320,9 @@ impl<
             witness: vec![Witness {
                 cols: Box::new([F::zero(); N_WIT]),
             }],
-
+            next: Witness {
+                cols: Box::new([F::zero(); N_WIT]),
+            },
             lookup_multiplicities,
             lookups: vec![lookups_row],
             fixed_selectors,
@@ -340,11 +360,21 @@ impl<
             }
         }
 
+        let next = &self.next;
         // Then filling witness rows up with zeroes to the domain size
         // FIXME: Maybe this is not always wise, as default instance can be non-zero.
         if self.witness.len() < domain_size {
+            // adding next as the last row
+            for i in 0..N_REL {
+                witness.cols[i].push(next.cols[i]);
+            }
             for i in 0..N_REL {
                 witness.cols[i].extend(vec![F::zero(); domain_size - self.witness.len()]);
+            }
+        } else {
+            // in case the domain is full, next will wrap and be the first row
+            for i in 0..N_REL {
+                witness.cols[i][0] += next[i];
             }
         }
 

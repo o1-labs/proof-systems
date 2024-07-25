@@ -225,6 +225,10 @@ impl<
     fn read_column(&self, ix: CIx2) -> Self::Variable {
         self.env.read_column(self.lens.re_get(ix))
     }
+
+    fn read_column_next(&self, col: CIx2) -> Self::Variable {
+        self.env.read_column_next(self.lens.re_get(col))
+    }
 }
 
 impl<
@@ -238,6 +242,9 @@ impl<
 {
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.env.write_column(self.lens.re_get(ix), value)
+    }
+    fn write_column_next(&mut self, ix: CIx2, value: &Self::Variable) {
+        self.env.write_column_next(self.lens.re_get(ix), value)
     }
 }
 
@@ -281,6 +288,10 @@ impl<
     fn read_column(&self, ix: CIx2) -> Self::Variable {
         self.0.read_column(ix)
     }
+
+    fn read_column_next(&self, col: CIx2) -> Self::Variable {
+        self.0.read_column_next(col)
+    }
 }
 
 impl<
@@ -294,6 +305,9 @@ impl<
 {
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.0.write_column(ix, value);
+    }
+    fn write_column_next(&mut self, ix: CIx2, value: &Self::Variable) {
+        self.0.write_column_next(ix, value);
     }
 }
 
@@ -331,12 +345,19 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> Col
     fn read_column(&self, ix: CIx1) -> Self::Variable {
         self.0.env.read_column(ix)
     }
+
+    fn read_column_next(&self, col: CIx1) -> Self::Variable {
+        self.0.env.read_column_next(col)
+    }
 }
 
 impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColWriteCap<F, CIx1>, L> ColWriteCap<F, CIx1>
     for SubEnvLookup<'a, F, CIx1, Env1, L>
 {
     fn write_column(&mut self, ix: CIx1, value: &Self::Variable) {
+        self.0.env.write_column(ix, value);
+    }
+    fn write_column_next(&mut self, ix: CIx1, value: &Self::Variable) {
         self.0.env.write_column(ix, value);
     }
 }

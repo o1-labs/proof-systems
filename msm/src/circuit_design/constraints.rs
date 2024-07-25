@@ -50,6 +50,13 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
         }))
     }
 
+    fn read_column_next(&self, col: CIx) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: col.to_column(),
+            row: CurrOrNext::Next,
+        }))
+    }
+
     fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))

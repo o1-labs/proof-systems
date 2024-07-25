@@ -32,6 +32,8 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
 
     /// Reads value from a column position.
     fn read_column(&self, col: CIx) -> Self::Variable;
+    /// Reads value from a column position in the next row.
+    fn read_column_next(&self, col: CIx) -> Self::Variable;
 
     /// Turns a constant value into a variable.
     fn constant(value: F) -> Self::Variable;
@@ -48,6 +50,7 @@ where
     Self: ColAccessCap<F, CIx>,
 {
     fn write_column(&mut self, col: CIx, value: &Self::Variable);
+    fn write_column_next(&mut self, col: CIx, value: &Self::Variable);
 }
 
 /// Capability for invoking table lookups.
