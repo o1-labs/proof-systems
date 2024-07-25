@@ -1,6 +1,6 @@
 use arrabiata::{
     interpreter::{self, Instruction, InterpreterEnv},
-    poseidon_3_60_0_5_5_fp,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
     witness::Env,
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
@@ -29,19 +29,19 @@ impl SpongeConstants for PlonkSpongeConstants {
 #[test]
 fn test_unit_witness_poseidon_gadget() {
     let srs_log2_size = 6;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
+        sponge.clone(),
+        sponge.clone(),
     );
     (0..(POSEIDON_ROUNDS_FULL / 4)).for_each(|i| {
         interpreter::run_ivc(&mut env, Instruction::Poseidon(4 * i));
         env.reset();
     });
     let exp_output = {
-        let mut state = sponge_e1
+        let mut state = sponge
             .clone()
             .to_vec()
             .iter()
@@ -59,7 +59,34 @@ fn test_unit_witness_poseidon_gadget() {
     // Check correctness for current iteration
     assert_eq!(env.sponge_e1.to_vec(), exp_output);
     // Check the other sponge hasn't been modified
-    assert_eq!(env.sponge_e2, sponge_e1.clone());
+    assert_eq!(env.sponge_e2, sponge.clone());
+
+    env.reset_for_next_iteration();
+    env.current_iteration += 1;
+
+    (0..(POSEIDON_ROUNDS_FULL / 4)).for_each(|i| {
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(4 * i));
+        env.reset();
+    });
+
+    let exp_output = {
+        let mut state = sponge
+            .clone()
+            .to_vec()
+            .iter()
+            .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        poseidon_block_cipher::<Fq, PlonkSpongeConstants>(
+            poseidon_3_60_0_5_5_fq::static_params(),
+            &mut state,
+        );
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
+    };
+    // Check correctness for current iteration
+    assert_eq!(env.sponge_e2.to_vec(), exp_output);
 }
 
 #[test]
