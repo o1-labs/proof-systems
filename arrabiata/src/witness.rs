@@ -295,6 +295,17 @@ where
         self.bitmask_be(&r, 16 * (i + 1), 16 * i, pos)
     }
 
+    unsafe fn read_bit_of_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        i: u32,
+    ) -> Self::Variable {
+        let r = self.r.clone();
+        let bit = (r >> i) & BigInt::from(1_usize);
+        self.write_column(pos, bit.clone());
+        bit
+    }
+
     fn get_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
         let state = if self.current_iteration % 2 == 0 {
             self.sponge_e1[i].clone()

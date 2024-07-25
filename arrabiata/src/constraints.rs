@@ -163,6 +163,17 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }))
     }
 
+    unsafe fn read_bit_of_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        _i: u32,
+    ) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn get_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: pos,

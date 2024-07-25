@@ -241,6 +241,18 @@ pub trait InterpreterEnv {
         i: u32,
     ) -> Self::Variable;
 
+    /// Read the i-th bit of the folding combiner, in little endian, and safe it
+    /// in the column given by `pos`.
+    ///
+    /// # Safety
+    ///
+    /// There is no check that the output is actually a boolean
+    unsafe fn read_bit_of_folding_combiner(
+        &mut self,
+        pos: Self::Position,
+        i: u32,
+    ) -> Self::Variable;
+
     /// Compute the x^5 of the given variable
     fn compute_x5(&self, x: Self::Variable) -> Self::Variable {
         let x_square = x.clone() * x.clone();
