@@ -359,6 +359,18 @@ pub trait InterpreterEnv {
         pos_y: Self::Position,
         side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable);
+
+    /// Save temporary accumulators into the environment
+    ///
+    /// # Safety
+    ///
+    /// It does not have any effect on the constraints.
+    unsafe fn save_temporary_accumulators(
+        &mut self,
+        _v1: Self::Variable,
+        _v2: Self::Variable,
+        _side: ECAdditionSide,
+    );
 }
 
 /// Run the application

@@ -497,6 +497,22 @@ where
         }
     }
 
+    unsafe fn save_temporary_accumulators(
+        &mut self,
+        x: Self::Variable,
+        y: Self::Variable,
+        side: ECAdditionSide,
+    ) {
+        match side {
+            ECAdditionSide::Left => {
+                self.temporary_accumulators.0 = (x, y);
+            }
+            ECAdditionSide::Right => {
+                self.temporary_accumulators.1 = (x, y);
+            }
+        }
+    }
+
     // It is unsafe as no constraint is added
     unsafe fn is_same_ec_point(
         &mut self,

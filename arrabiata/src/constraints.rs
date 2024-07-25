@@ -235,6 +235,15 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         (x, y)
     }
 
+    // witness only
+    unsafe fn save_temporary_accumulators(
+        &mut self,
+        _x: Self::Variable,
+        _y: Self::Variable,
+        _side: ECAdditionSide,
+    ) {
+    }
+
     /// Inverse of a variable
     ///
     /// # Safety
