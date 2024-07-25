@@ -35,7 +35,7 @@ type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 /// The instance is the commitments to the polynomials and the challenges
 /// There are 3 commitments and challanges because there are 3 columns, A, B and
 /// C.
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
@@ -460,8 +460,8 @@ fn test_folding_instance() {
     }
 
     // pairs
-    let left = (left_instance, left_witness);
-    let right = (right_instance, right_witness);
+    let left = (left_instance.clone(), left_witness);
+    let right = (right_instance.clone(), right_witness);
 
     let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
     let FoldingOutput {
@@ -469,10 +469,24 @@ fn test_folding_instance() {
         folded_witness,
         t_0,
         t_1,
-        relaxed_extended_left_instance: _,
-        relaxed_extended_right_instance: _,
+        relaxed_extended_left_instance,
+        relaxed_extended_right_instance,
         to_absorb,
     } = folded;
+
+    {
+        let folded_instance_explicit = {
+            let mut fq_sponge_inst = BaseSponge::new(Curve::other_curve_sponge_params());
+            scheme.fold_instance_pair(
+                relaxed_extended_left_instance,
+                relaxed_extended_right_instance,
+                [t_0.clone(), t_1.clone()],
+                &mut fq_sponge_inst,
+            )
+        };
+
+        assert!(folded_instance == folded_instance_explicit);
+    }
 
     // Verifying that error terms are not points at infinity
     // It doesn't test that the computation happens correctly, but at least
