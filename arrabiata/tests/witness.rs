@@ -87,4 +87,41 @@ fn test_unit_witness_elliptic_curve_addition() {
     interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
+
+    env.reset();
+    env.reset_for_next_iteration();
+    env.current_iteration += 1;
+
+    assert_eq!(env.current_iteration, 1);
+    let (exp_x3, exp_y3) = {
+        let res: Vesta =
+            env.ivc_accumulator_e1[0].elems[0] + env.previous_commitments_e1[0].elems[0];
+        let (x3, y3) = res.to_coordinates().unwrap();
+        (
+            x3.to_biguint().to_bigint().unwrap(),
+            y3.to_biguint().to_bigint().unwrap(),
+        )
+    };
+    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+    assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
+    assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
+
+    env.reset();
+    env.reset_for_next_iteration();
+    env.current_iteration += 1;
+
+    assert_eq!(env.current_iteration, 2);
+    let (exp_x3, exp_y3) = {
+        let res: Pallas =
+            env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0];
+        let (x3, y3) = res.to_coordinates().unwrap();
+        (
+            x3.to_biguint().to_bigint().unwrap(),
+            y3.to_biguint().to_bigint().unwrap(),
+        )
+    };
+    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+
+    assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
+    assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 }
