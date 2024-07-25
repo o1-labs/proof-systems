@@ -274,10 +274,15 @@ pub trait InterpreterEnv {
         x_cubed * x_square.clone()
     }
 
-    /// Get the state of the Poseidon hash function
-    fn get_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable;
+    /// Load the state of the Poseidon hash function into the environment
+    fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable;
 
-    fn update_poseidon_state(&mut self, v: Self::Variable, i: usize);
+    /// Save the state of poseidon into the environment
+    ///
+    /// # Safety
+    ///
+    /// It does not have any effect on the constraints
+    unsafe fn save_poseidon_state(&mut self, v: Self::Variable, i: usize);
 
     fn get_poseidon_round_constant(
         &mut self,
@@ -520,15 +525,15 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             if curr_round < POSEIDON_ROUNDS_FULL {
                 let x0 = {
                     let pos = env.allocate();
-                    env.get_poseidon_state(pos, 0)
+                    env.load_poseidon_state(pos, 0)
                 };
                 let x1 = {
                     let pos = env.allocate();
-                    env.get_poseidon_state(pos, 1)
+                    env.load_poseidon_state(pos, 1)
                 };
                 let x2 = {
                     let pos = env.allocate();
-                    env.get_poseidon_state(pos, 2)
+                    env.load_poseidon_state(pos, 2)
                 };
                 let mut state: Vec<E::Variable> = vec![x0, x1, x2];
 
@@ -581,9 +586,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     state[2] = x2_prime;
                 });
 
-                env.update_poseidon_state(state[0].clone(), 0);
-                env.update_poseidon_state(state[1].clone(), 1);
-                env.update_poseidon_state(state[2].clone(), 2);
+                unsafe { env.save_poseidon_state(state[0].clone(), 0) };
+                unsafe { env.save_poseidon_state(state[1].clone(), 1) };
+                unsafe { env.save_poseidon_state(state[2].clone(), 2) };
             } else {
                 panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
             }

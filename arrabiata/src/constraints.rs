@@ -174,7 +174,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }))
     }
 
-    fn get_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
+    fn load_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: pos,
             row: CurrOrNext::Curr,
@@ -182,7 +182,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     // Witness-only
-    fn update_poseidon_state(&mut self, _x: Self::Variable, _i: usize) {}
+    unsafe fn save_poseidon_state(&mut self, _x: Self::Variable, _i: usize) {}
 
     fn get_poseidon_round_constant(
         &mut self,

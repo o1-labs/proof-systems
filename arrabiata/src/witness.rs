@@ -324,7 +324,7 @@ where
         bit
     }
 
-    fn get_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
+    fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
         let state = if self.current_iteration % 2 == 0 {
             self.sponge_e1[i].clone()
         } else {
@@ -363,7 +363,7 @@ where
         }
     }
 
-    fn update_poseidon_state(&mut self, x: Self::Variable, i: usize) {
+    unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = Fp::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
