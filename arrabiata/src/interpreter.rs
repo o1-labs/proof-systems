@@ -185,9 +185,6 @@ pub trait InterpreterEnv {
     /// Build the constant one
     fn one(&self) -> Self::Variable;
 
-    /// Build a variable from the given position
-    fn variable(&self, position: Self::Position) -> Self::Variable;
-
     fn constant(&self, v: BigInt) -> Self::Variable;
 
     /// Assert that the variable is zero

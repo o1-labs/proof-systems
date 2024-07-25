@@ -60,13 +60,6 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos
     }
 
-    fn variable(&self, column: Self::Position) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
-            row: CurrOrNext::Curr,
-        }))
-    }
-
     fn constant(&self, value: BigInt) -> Self::Variable {
         let v = value.to_biguint().unwrap();
         let v = Fp::from_biguint(&v).unwrap();
@@ -119,7 +112,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
-        self.variable(position)
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
     }
 
     // FIXME
