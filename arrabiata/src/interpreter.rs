@@ -282,10 +282,13 @@ pub trait InterpreterEnv {
         y2: Self::Variable,
     ) -> Self::Variable;
 
+    /// Inverse of a variable
+    ///
+    /// # Safety
+    ///
+    /// Zero is not allowed as an input.
     /// Witness only
-    // FIXME: this is ugly
-    // There is no check if the value is 0
-    fn compute_inverse(&mut self, x: Self::Variable) -> Self::Variable;
+    unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable;
 
     /// Compute the coefficient λ used in the elliptic curve addition.
     /// If the two points are the same, the λ is computed as follows:

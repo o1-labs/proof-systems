@@ -213,8 +213,19 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         (x, y)
     }
 
-    fn compute_inverse(&mut self, _x: Self::Variable) -> Self::Variable {
-        unimplemented!("This is witness-only")
+    /// Inverse of a variable
+    ///
+    /// # Safety
+    ///
+    /// Zero is not allowed as an input.
+    unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
+        let v = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }));
+        let res = v.clone() * x.clone();
+        self.assert_equal(res.clone(), self.one());
+        v
     }
 
     // FIXME: no constraint added for now.

@@ -401,8 +401,13 @@ where
         BigInt::from(1_usize)
     }
 
-    fn compute_inverse(&mut self, x: Self::Variable) -> Self::Variable {
-        if self.current_iteration % 2 == 0 {
+    /// Inverse of a variable
+    ///
+    /// # Safety
+    ///
+    /// Zero is not allowed as an input.
+    unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
+        let res = if self.current_iteration % 2 == 0 {
             Fp::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
@@ -416,7 +421,8 @@ where
                 .unwrap()
                 .to_biguint()
                 .into()
-        }
+        };
+        self.write_column(pos, res)
     }
 
     fn compute_lambda(
@@ -438,14 +444,18 @@ where
         let (num, denom): (BigInt, BigInt) = if is_same_point == BigInt::from(0_usize) {
             let num: BigInt = y1.clone() - y2.clone();
             let x1_minus_x2: BigInt = (x1.clone() - x2.clone()).mod_floor(&modulus);
-            let denom = self.compute_inverse(x1_minus_x2);
+            // We temporarily store the inverse of the denominator into the
+            // given position.
+            let denom = unsafe { self.inverse(pos, x1_minus_x2) };
             (num, denom)
         } else {
             // Otherwise, we compute λ as:
             // - λ = (3X1^2 + a) / (2Y1)
             let denom = {
                 let double_y1 = y1.clone() + y1.clone();
-                self.compute_inverse(double_y1)
+                // We temporarily store the inverse of the denominator into the
+                // given position.
+                unsafe { self.inverse(pos, double_y1) }
             };
             let num = {
                 let a: BigInt = if self.current_iteration % 2 == 0 {
