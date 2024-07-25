@@ -149,7 +149,7 @@ pub enum Instruction {
     SixteenBitsDecomposition,
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
-    EllipticCurveScaling(usize),
+    EllipticCurveScaling(usize, u32),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
     NoOp,
@@ -158,6 +158,7 @@ pub enum Instruction {
 /// Define the side of the elliptic curve addition.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
 /// This enum is used to decide which side fetching into the cells.
+// FIXME: It is now used by temporary accumulators. We should rename this.
 pub enum ECAdditionSide {
     Left,
     Right,
@@ -337,6 +338,27 @@ pub trait InterpreterEnv {
         x2: Self::Variable,
         y2: Self::Variable,
     ) -> Self::Variable;
+
+    /// Load the affine coordinates of the elliptic curve point currently saved
+    /// in the temporary accumulators. Temporary accumulators could be seen as
+    /// a CPU cache, an intermediate storage between the RAM (random access
+    /// memory) and the CPU registers (memory cells that are constrained).
+    ///
+    /// For now, it can only be used to load affine coordinates of elliptic
+    /// curve points given in the short Weierstrass form.
+    ///
+    /// Temporary accumulators could also be seen as return values of a function.
+    ///
+    /// # Safety
+    ///
+    /// No constraints are enforced. It is not also enforced that the
+    /// accumulators have been cleaned between two different gadgets.
+    unsafe fn load_temporary_accumulators(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        side: ECAdditionSide,
+    ) -> (Self::Variable, Self::Variable);
 }
 
 /// Run the application
@@ -424,8 +446,21 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
             }
         }
-        Instruction::EllipticCurveScaling(i_comm) => {
-            panic!("Not implemented yet for {i_comm}")
+        Instruction::EllipticCurveScaling(_i_comm, processing_bit) => {
+            let _bit = {
+                let pos = env.allocate();
+                unsafe { env.read_bit_of_folding_combiner(pos, processing_bit) }
+            };
+            let (_tmp_x, _tmp_y) = {
+                let pos_x = env.allocate();
+                let pos_y = env.allocate();
+                unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Left) }
+            };
+            let (_res_x, _res_y) = {
+                let pos_x = env.allocate();
+                let pos_y = env.allocate();
+                unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Right) }
+            };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
             let (x1, y1) = {

@@ -206,11 +206,22 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         Self::Variable::constant(v_inner)
     }
 
+    // FIXME: this function should be removed, see the trait `InterpreterEnv`
+    // and `witness::Env`
     fn load_ec_point(
         &mut self,
         pos_x: Self::Position,
         pos_y: Self::Position,
         _i: usize,
+        side: ECAdditionSide,
+    ) -> (Self::Variable, Self::Variable) {
+        unsafe { self.load_temporary_accumulators(pos_x, pos_y, side) }
+    }
+
+    unsafe fn load_temporary_accumulators(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
         _side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable) {
         let x = Expr::Atom(ExprInner::Cell(Variable {
