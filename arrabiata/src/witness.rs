@@ -149,7 +149,10 @@ where
 
     /// For efficiency, and for having a single interpreter, we do not use one
     /// of the fields. We use a generic BigInt to represent the values.
-    /// When building the witness, we will reduce into the corresponding field
+    /// When building the witness, we will reduce into the corresponding field.
+    // FIXME: it might not be efficient as I initially thought. We do need to
+    // make some transformations between biguint and bigint, with an extra cost
+    // for allocations.
     type Variable = BigInt;
 
     fn allocate(&mut self) -> Self::Position {
