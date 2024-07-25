@@ -453,41 +453,40 @@ pub fn heavy_test_simple_add() {
     //     folding_instance
     // });
     // ```
-    let one = (folding_instance_one, folding_witness_one);
-    let two = (folding_instance_two, folding_witness_two);
     println!("fold_instance_witness_pair");
-    let folding_output = folding_scheme.fold_instance_witness_pair(one, two, &mut fq_sponge);
+    let folding_output_one = folding_scheme.fold_instance_witness_pair(
+        (folding_instance_one, folding_witness_one),
+        (folding_instance_two, folding_witness_two),
+        &mut fq_sponge,
+    );
     println!("Folding 1 succeeded");
 
     let FoldingOutput {
-        folded_instance,
+        folded_instance: folded_instance_one,
         // Should not be required for the IVC circuit as it is encoding the
         // verifier.
-        folded_witness,
-        t_0,
-        t_1,
-        relaxed_extended_left_instance,
-        relaxed_extended_right_instance,
-        to_absorb: _,
-    } = folding_output;
+        folded_witness: folded_witness_one,
+        ..
+    } = folding_output_one;
 
     // The polynomial of the computation is linear, therefore, the error terms
     // are zero
-    assert_ne!(t_0.elems[0], Curve::zero());
-    assert_ne!(t_1.elems[0], Curve::zero());
+    assert_ne!(folding_output_one.t_0.elems[0], Curve::zero());
+    assert_ne!(folding_output_one.t_1.elems[0], Curve::zero());
 
     // Sanity check that the u values are the same. The u value is there to
     // homogeneoize the polynomial describing the NP relation.
     assert_eq!(
-        relaxed_extended_left_instance.u,
-        relaxed_extended_right_instance.u
+        folding_output_one.relaxed_extended_left_instance.u,
+        folding_output_one.relaxed_extended_right_instance.u
     );
 
     // 1. Get all the commitments from the left instance.
     // We want a way to get also the potential additional columns.
     let mut comms_left: Vec<Curve> = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_left.extend(
-        relaxed_extended_left_instance
+        folding_output_one
+            .relaxed_extended_left_instance
             .extended_instance
             .instance
             .commitments,
@@ -495,7 +494,10 @@ pub fn heavy_test_simple_add() {
 
     // Additional columns of quadri
     {
-        let extended = relaxed_extended_left_instance.extended_instance.extended;
+        let extended = folding_output_one
+            .relaxed_extended_left_instance
+            .extended_instance
+            .extended;
         let extended_comms: Vec<_> = extended.iter().map(|x| x.elems[0]).collect();
         comms_left.extend(extended_comms.clone());
         extended_comms.iter().enumerate().for_each(|(i, x)| {
@@ -520,13 +522,17 @@ pub fn heavy_test_simple_add() {
     // We want a way to get also the potential additional columns.
     let mut comms_right = Vec::with_capacity(N_COL_TOTAL_QUAD);
     comms_right.extend(
-        relaxed_extended_left_instance
+        folding_output_one
+            .relaxed_extended_left_instance
             .extended_instance
             .instance
             .commitments,
     );
     {
-        let extended = relaxed_extended_right_instance.extended_instance.extended;
+        let extended = folding_output_one
+            .relaxed_extended_right_instance
+            .extended_instance
+            .extended;
         comms_right.extend(extended.iter().map(|x| x.elems[0]));
     }
     assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
@@ -542,9 +548,9 @@ pub fn heavy_test_simple_add() {
     // 3. Get all the commitments from the folded instance.
     // We want a way to get also the potential additional columns.
     let mut comms_out = Vec::with_capacity(AdditionColumn::N_COL + additional_columns);
-    comms_out.extend(folded_instance.extended_instance.instance.commitments);
+    comms_out.extend(folded_instance_one.extended_instance.instance.commitments);
     {
-        let extended = folded_instance.extended_instance.extended.clone();
+        let extended = folded_instance_one.extended_instance.extended.clone();
         comms_out.extend(extended.iter().map(|x| x.elems[0]));
     }
     // Checking they are all not zero.
@@ -560,7 +566,9 @@ pub fn heavy_test_simple_add() {
     let left_error_term = srs
         .full_srs
         .mask_custom(
-            relaxed_extended_left_instance.error_commitment,
+            folding_output_one
+                .relaxed_extended_left_instance
+                .error_commitment,
             &PolyComm::new(vec![Fp::one()]),
         )
         .unwrap()
@@ -570,7 +578,9 @@ pub fn heavy_test_simple_add() {
     let right_error_term = srs
         .full_srs
         .mask_custom(
-            relaxed_extended_right_instance.error_commitment,
+            folding_output_one
+                .relaxed_extended_right_instance
+                .error_commitment,
             &PolyComm::new(vec![Fp::one()]),
         )
         .unwrap()
@@ -579,7 +589,7 @@ pub fn heavy_test_simple_add() {
     let error_terms = [
         left_error_term.elems[0],
         right_error_term.elems[0],
-        folded_instance.error_commitment.elems[0],
+        folded_instance_one.error_commitment.elems[0],
     ];
     error_terms.iter().for_each(|c| {
         assert_ne!(c, &Curve::zero());
@@ -587,13 +597,16 @@ pub fn heavy_test_simple_add() {
 
     let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
 
-    let t_terms = [t_0.elems[0], t_1.elems[0]];
+    let t_terms = [
+        folding_output_one.t_0.elems[0],
+        folding_output_one.t_1.elems[0],
+    ];
     t_terms.iter().for_each(|c| {
         assert_ne!(c, &Curve::zero());
     });
     let t_terms: [(Fq, Fq); 2] = std::array::from_fn(|i| (t_terms[i].x, t_terms[i].y));
 
-    let u = relaxed_extended_left_instance.u;
+    let u = folding_output_one.relaxed_extended_left_instance.u;
 
     // FIXME: add columns of the previous IVC circuit in the comms_left,
     // comms_right and comms_out. Can be faked. We should have 400 + 3 columns
@@ -622,7 +635,7 @@ pub fn heavy_test_simple_add() {
     let mut ivc_witness_env_1 = IVCWitnessBuilderEnvRaw::<LT>::create();
     ivc_witness_env_1.set_fixed_selectors(ivc_fixed_selectors.clone());
 
-    let alphas: Vec<_> = folded_instance
+    let alphas: Vec<_> = folded_instance_one
         .extended_instance
         .instance
         .alphas
@@ -706,14 +719,19 @@ pub fn heavy_test_simple_add() {
 
     println!("Folding two");
 
-    let _folding_output_two = folding_scheme.fold_instance_witness_pair(
-        (folded_instance.clone(), folded_witness.clone()),
+    let mut fq_sponge_before_last_fold = fq_sponge.clone();
+
+    let folding_output_two = folding_scheme.fold_instance_witness_pair(
+        (folded_instance_one.clone(), folded_witness_one.clone()),
         (
             folding_instance_three.clone(),
             folding_witness_three.clone(),
         ),
         &mut fq_sponge,
     );
+
+    let folded_instance_two = folding_output_two.folded_instance;
+    let folded_witness_two = folding_output_two.folded_witness;
 
     ////////////////////////////////////////////////////////////////////////////
     // Testing folding exprs validity for last  fold
@@ -828,7 +846,7 @@ pub fn heavy_test_simple_add() {
         let simple_eval_env: SimpleEvalEnv<Curve, N_COL_TOTAL, N_FSEL_TOTAL> = {
             let ext_witness = ExtendedWitness {
                 witness: PlonkishWitness {
-                    witness: (&folded_witness.extended_witness.witness.witness)
+                    witness: (&folded_witness_two.extended_witness.witness.witness)
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
@@ -838,7 +856,7 @@ pub fn heavy_test_simple_add() {
                         .collect(),
                     phantom: std::marker::PhantomData,
                 },
-                extended: folded_witness
+                extended: folded_witness_two
                     .extended_witness
                     .extended
                     .iter()
@@ -848,10 +866,14 @@ pub fn heavy_test_simple_add() {
 
             SimpleEvalEnv {
                 ext_witness,
-                alphas: folded_instance.extended_instance.instance.alphas.clone(),
-                challenges: folded_instance.extended_instance.instance.challenges,
-                error_vec: enlarge_to_domain(&folded_witness.error_vec),
-                u: folded_instance.u,
+                alphas: folded_instance_two
+                    .extended_instance
+                    .instance
+                    .alphas
+                    .clone(),
+                challenges: folded_instance_two.extended_instance.instance.challenges,
+                error_vec: enlarge_to_domain(&folded_witness_two.error_vec),
+                u: folded_instance_two.u,
             }
         };
 
@@ -887,6 +909,10 @@ pub fn heavy_test_simple_add() {
         }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // SNARKing everything
+    ////////////////////////////////////////////////////////////////////////////
+
     // quad columns become regular witness columns
     let real_folding_compat_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
         let noquad_mapper = &(|quad_index: usize| {
@@ -904,7 +930,7 @@ pub fn heavy_test_simple_add() {
 
     println!("Creating a proof");
 
-    let fixed_selectors_verifier = folded_witness
+    let fixed_selectors_verifier = folded_witness_one
         .extended_witness
         .witness
         .fixed_selectors
@@ -926,14 +952,20 @@ pub fn heavy_test_simple_add() {
         domain,
         &srs,
         &real_folding_compat_constraint,
-        folded_instance,
-        folded_witness,
+        folded_instance_one.clone(),
+        folded_witness_one,
         &mut rng,
     )
     .unwrap();
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Verifying;
+    //   below is everything one needs to do to verify the whole computation
+    ////////////////////////////////////////////////////////////////////////////
+
     println!("Verifying a proof");
 
+    // Check that the last SNARK is correct
     let verifies = ivc::verifier::verify::<
         BaseSponge,
         ScalarSponge,
@@ -952,4 +984,23 @@ pub fn heavy_test_simple_add() {
     );
 
     assert!(verifies, "The proof does not verify");
+
+    // Check that the last fold is correct
+
+    println!("Checking last fold was done correctly");
+
+    {
+        assert!(
+            folded_instance_two
+                == folding_scheme.fold_instance_pair(
+                    folding_output_two.relaxed_extended_left_instance,
+                    folding_output_two.relaxed_extended_right_instance,
+                    [folding_output_two.t_0, folding_output_two.t_1],
+                    &mut fq_sponge_before_last_fold,
+                ),
+            "Last fold must (natively) verify"
+        );
+    }
+
+    // TODO check that A4 vas relaxed.
 }

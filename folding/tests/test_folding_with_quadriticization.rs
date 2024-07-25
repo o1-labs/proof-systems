@@ -53,7 +53,7 @@ impl FoldingColumnTrait for TestColumn {
 }
 
 /// The instance is the commitments to the polynomials and the challenges
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct TestInstance {
     // 3 from the normal witness + 2 from the dynamic selectors
     commitments: [Curve; 5],
@@ -396,6 +396,21 @@ fn test_quadriticization() {
             folded_witness,
             ..
         } = folded;
+
+        {
+            let folded_instance_explicit = {
+                let mut fq_sponge_inst = BaseSponge::new(Curve::other_curve_sponge_params());
+                scheme.fold_instance_pair(
+                    folded.relaxed_extended_left_instance,
+                    folded.relaxed_extended_right_instance,
+                    [folded.t_0.clone(), folded.t_1.clone()],
+                    &mut fq_sponge_inst,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
+
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
         checker.check(&final_constraint, domain);
         let ExtendedProvider {
@@ -415,6 +430,8 @@ fn test_quadriticization() {
         let wit2 = mul_witness(a, b);
         let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
 
+        let mut fq_sponge_before_fold = fq_sponge.clone();
+
         let left = (instance1, witness1);
         let right = (instance2, witness2);
         let folded = scheme.fold_instance_witness_pair(
@@ -429,6 +446,19 @@ fn test_quadriticization() {
             ..
         } = folded;
 
+        {
+            let folded_instance_explicit = {
+                scheme.fold_instance_pair(
+                    folded.relaxed_extended_left_instance,
+                    folded.relaxed_extended_right_instance,
+                    [folded.t_0.clone(), folded.t_1.clone()],
+                    &mut fq_sponge_before_fold,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
+
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
         checker.check(&final_constraint, domain);
@@ -441,6 +471,8 @@ fn test_quadriticization() {
     debug!("fold mixed");
 
     {
+        let mut fq_sponge_before_fold = fq_sponge.clone();
+
         // here we use already relaxed pairs, which have a trival x -> x implementation
         let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
         let FoldingOutput {
@@ -448,10 +480,23 @@ fn test_quadriticization() {
             folded_witness,
             t_0,
             t_1,
-            relaxed_extended_left_instance: _,
-            relaxed_extended_right_instance: _,
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb: _,
         } = folded;
+
+        {
+            let folded_instance_explicit = {
+                scheme.fold_instance_pair(
+                    relaxed_extended_left_instance,
+                    relaxed_extended_right_instance,
+                    [t_0.clone(), t_1.clone()],
+                    &mut fq_sponge_before_fold,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
 
         // Verifying that error terms are not points at infinity
         // It doesn't test that the computation happens correctly, but at least

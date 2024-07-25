@@ -102,8 +102,7 @@ impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Index<()>
     }
 }
 
-#[derive(Clone, Debug)]
-
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PlonkishInstance<
     G: KimchiCurve,
     const N_COL: usize,
