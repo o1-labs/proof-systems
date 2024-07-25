@@ -204,12 +204,23 @@ where
         let Column::PublicInput(idx) = col else {
             unimplemented!("Only works for public input columns")
         };
-        self.public_state[idx] = v.clone();
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
+        } else {
+            Fq::modulus_biguint().into()
+        };
+        self.public_state[idx] = v.clone().mod_floor(&modulus);
         v
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
-        assert!(x < BigInt::from(2_usize));
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
+        } else {
+            Fq::modulus_biguint().into()
+        };
+        let x = x.mod_floor(&modulus);
+        assert!(x == BigInt::from(0_usize) || x == BigInt::from(1_usize));
     }
 
     fn constant(&self, v: BigInt) -> Self::Variable {
