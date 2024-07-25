@@ -128,9 +128,22 @@ use ark_ff::{One, Zero};
 use log::debug;
 use num_bigint::BigInt;
 
-// FIXME: Can we use an "instruction" kind of circuit?
-// We do use a "fetch_next_instruction" method to mention what is the next
-// gadget/isntruction to run
+/// A list of instruction/gadget implemented in the interpreter.
+/// The control flow can be managed by implementing a function
+/// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
+/// See the [Witness environment](crate::witness::Env) for more details.
+///
+/// Mostly, the instructions will be used to build the IVC circuit, but it can be
+/// generalized.
+///
+/// When the circuit is predefined, the instructions can be accompanied by a
+/// public selector. When implementing a virtual machine, where instructions are
+/// unknown at compile time, other methods can be used. We leave this for future
+/// work.
+///
+/// For the moment, the type is not parametrized, on purpose, to keep it simple
+/// (KISS method). However, IO could be encoded in the type, and encode a
+/// typed control-flow. We leave this for future work.
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     SixteenBitsDecomposition,

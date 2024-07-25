@@ -17,10 +17,12 @@ use crate::{
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
-/// An environment that can be shared between IVC instances
+/// An environment that can be shared between IVC instances.
+///
 /// It contains all the accumulators that can be picked for a given fold
 /// instance k, including the sponges.
-/// The environment is run over big unsigned integers to avoid performing
+///
+/// The environment is run over big integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
 pub struct Env<
