@@ -7,7 +7,7 @@ pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{UniformRand, Zero};
+    use ark_ff::UniformRand;
     use std::collections::BTreeMap;
 
     use crate::{
@@ -18,7 +18,7 @@ mod tests {
             column::{SerializationColumn, N_COL_SER, N_FSEL_SER},
             interpreter::{
                 build_selectors, constrain_multiplication, deserialize_field_element,
-                limb_decompose_ff, multiplication_circuit,
+                limb_decompose_ff, serialization_circuit,
             },
             lookups::LookupTable,
         },
@@ -54,7 +54,6 @@ mod tests {
             );
         }
 
-        // Boxing to avoid stack overflow
         let mut field_elements = vec![];
 
         // FIXME: we do use always the same values here, because we have a
@@ -87,32 +86,7 @@ mod tests {
         };
 
         println!("Building witness");
-        {
-            // A map containing results of multiplications, per row
-            let mut prev_rows: Vec<Ff1> = vec![];
-
-            // TODO move this into interpreter.rs
-            for (i, limbs) in field_elements.iter().enumerate() {
-                // Witness
-
-                let coeff_input = if i == 0 {
-                    Ff1::zero()
-                } else {
-                    prev_rows[i - (1 << (i.ilog2()))]
-                };
-
-                deserialize_field_element(&mut witness_env, limbs.map(Into::into));
-                let mul_result =
-                    multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
-
-                prev_rows.push(mul_result);
-
-                // Don't reset on the last iteration.
-                if i < domain_size {
-                    witness_env.next_row()
-                }
-            }
-        }
+        serialization_circuit(&mut witness_env, input_chal, field_elements, domain_size);
         println!("Building runtime table");
 
         let runtime_tables: BTreeMap<_, Vec<Vec<Vec<_>>>> =
