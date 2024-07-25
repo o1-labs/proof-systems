@@ -291,7 +291,7 @@ pub trait InterpreterEnv {
     /// If the two points are the same, the λ is computed as follows:
     /// - λ = (3 X1^2 + a) / (2Y1)
     /// Otherwise, the λ is computed as follows:
-    /// - λ = (Y2 - Y1) / (X2 - X1)
+    /// - λ = (Y1 - Y2) / (X1 - X2)
     fn compute_lambda(
         &mut self,
         pos: Self::Position,
