@@ -682,7 +682,7 @@
 /// described by a degree 3 polynomial, an additional column will be added, and
 /// `extended` will contain `1` commitment.
 </span><span class="comment">// FIXME: We should forbid cloning, for memory footprint.
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(PartialEq, Eq, Clone)]
 </span><span class="kw">pub struct </span>ExtendedInstance&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; {
     <span class="doccomment">/// The original instance.
     </span><span class="kw">pub </span>instance: I,
@@ -749,7 +749,7 @@
 /// slack/error term.
 /// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 </span><span class="comment">// FIXME: We should forbid cloning, for memory footprint.
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(PartialEq, Eq, Clone)]
 </span><span class="kw">pub struct </span>RelaxedInstance&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; {
     <span class="doccomment">/// The original instance, extended with the columns added by
     /// quadriticization

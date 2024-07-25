@@ -464,6 +464,7 @@
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
 <a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the functions used to compute the error terms, as
 //! described in the [top-level documentation of the expressions
 //! module](crate::expressions).
@@ -924,6 +925,7 @@
     ) -&gt; (Vec&lt;ScalarField&lt;CF&gt;&gt;, Vec&lt;CF::Curve&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>left = <span class="self">self</span>.instances[<span class="number">0</span>].to_absorb();
         <span class="kw">let </span>right = <span class="self">self</span>.instances[<span class="number">1</span>].to_absorb();
+
         left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
         left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
         left.<span class="number">1</span>.extend([t0, t1]);

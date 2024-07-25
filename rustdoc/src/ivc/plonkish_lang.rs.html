@@ -233,7 +233,6 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
@@ -338,8 +337,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Debug)]
-
+<span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
 </span><span class="kw">pub struct </span>PlonkishInstance&lt;
     G: KimchiCurve,
     <span class="kw">const </span>N_COL: usize,

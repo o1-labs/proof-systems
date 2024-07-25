@@ -161,6 +161,48 @@
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -171,7 +213,7 @@
     columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
     expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
-    instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
+    instance_witness::{RelaxableInstance, RelaxablePair, RelaxedInstance, RelaxedWitness},
     BaseField, FoldingConfig, FoldingOutput, FoldingScheme, ScalarField,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -315,6 +357,48 @@
             relaxed_extended_right_instance,
             to_absorb,
         }
+    }
+
+    <span class="doccomment">/// Fold two relaxable instances into a relaxed instance.
+    /// It is parametrized by two different types `A` and `B` that represent
+    /// &quot;relaxable&quot; instances to be able to fold a normal and &quot;already relaxed&quot;
+    /// instance.
+    </span><span class="kw">pub fn </span>fold_instance_pair&lt;A, B, Sponge&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        a: A,
+        b: B,
+        error_commitments: [PolyComm&lt;CF::Curve&gt;; <span class="number">2</span>],
+        fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
+    ) -&gt; RelaxedInstance&lt;CF::Curve, CF::Instance&gt;
+    <span class="kw">where
+        </span>A: RelaxableInstance&lt;CF::Curve, CF::Instance&gt;,
+        B: RelaxableInstance&lt;CF::Curve, CF::Instance&gt;,
+        Sponge: FqSponge&lt;BaseField&lt;CF&gt;, CF::Curve, ScalarField&lt;CF&gt;&gt;,
+    {
+        <span class="kw">let </span>a: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = a.relax();
+        <span class="kw">let </span>b: RelaxedInstance&lt;CF::Curve, CF::Instance&gt; = b.relax();
+
+        <span class="comment">// sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+
+        <span class="kw">let </span>to_absorb = {
+            <span class="kw">let </span><span class="kw-2">mut </span>left = a.to_absorb();
+            <span class="kw">let </span>right = b.to_absorb();
+            left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
+            left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
+            left.<span class="number">1
+                </span>.extend([error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>], error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>]]);
+            left
+        };
+
+        fq_sponge.absorb_fr(<span class="kw-2">&amp;</span>to_absorb.<span class="number">0</span>);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>to_absorb.<span class="number">1</span>);
+
+        <span class="kw">let </span>challenge = fq_sponge.challenge();
+
+        RelaxedInstance::combine_and_sub_cross_terms(a, b, challenge, <span class="kw-2">&amp;</span>error_commitments)
     }
 }
 
