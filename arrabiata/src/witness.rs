@@ -286,7 +286,7 @@ where
         r
     }
 
-    unsafe fn get_sixteen_bits_chunks_folding_combiner(
+    unsafe fn read_sixteen_bits_chunks_folding_combiner(
         &mut self,
         pos: Self::Position,
         i: u32,

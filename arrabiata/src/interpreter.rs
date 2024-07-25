@@ -235,7 +235,7 @@ pub trait InterpreterEnv {
     /// There are no constraints saying that it is actually the previous
     /// computed value. We should do something like a runtime lookup/permutation
     /// check. It is left for when the lookup is implemented.
-    unsafe fn get_sixteen_bits_chunks_folding_combiner(
+    unsafe fn read_sixteen_bits_chunks_folding_combiner(
         &mut self,
         pos: Self::Position,
         i: u32,
@@ -381,7 +381,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 // constrained?
                 let sixteen_i = {
                     let pos = env.allocate();
-                    unsafe { env.get_sixteen_bits_chunks_folding_combiner(pos, i as u32) }
+                    unsafe { env.read_sixteen_bits_chunks_folding_combiner(pos, i as u32) }
                 };
                 let bit_decompo: Vec<E::Variable> = (0..16)
                     .map(|j| {
