@@ -34,13 +34,13 @@ use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Power {
-    //0..=2
+    // 0..=2
     Square(usize),
-    //0..=2
+    // 0..=2
     Fourth(usize),
-    //0..=2
+    // 0..=2
     Sixth(usize),
-    //0..=2
+    // 0..=2
     Seventh(usize),
 }
 
@@ -58,14 +58,14 @@ pub enum Selector {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PoseidonColumn {
-    //0..=2
+    // 0..=2
     State(usize),
-    //(0..=2)
+    // (0..=2)
     RoundConstant(usize),
-    //0..=1
+    // 0..=1
     Absorb(usize),
     Check,
-    //for the x^7 constraints
+    // for the x^7 constraints
     Powers(Power),
     Mode(Selector),
 }
