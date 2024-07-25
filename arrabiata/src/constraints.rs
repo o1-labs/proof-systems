@@ -273,6 +273,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }))
     }
 
+    fn zero(&self) -> Self::Variable {
+        self.constant(BigInt::from(0_usize))
+    }
+
     fn one(&self) -> Self::Variable {
         self.constant(BigInt::from(1_usize))
     }

@@ -530,6 +530,10 @@ where
         self.write_column(pos, res)
     }
 
+    fn zero(&self) -> Self::Variable {
+        BigInt::from(0_usize)
+    }
+
     fn one(&self) -> Self::Variable {
         BigInt::from(1_usize)
     }
