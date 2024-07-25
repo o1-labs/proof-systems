@@ -123,7 +123,7 @@
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
 
-use crate::POSEIDON_ROUNDS_FULL;
+use crate::{POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE};
 use ark_ff::{One, Zero};
 use log::debug;
 use num_bigint::BigInt;
@@ -526,72 +526,44 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         Instruction::Poseidon(curr_round) => {
             debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
-                let x0 = {
-                    let pos = env.allocate();
-                    env.load_poseidon_state(pos, 0)
-                };
-                let x1 = {
-                    let pos = env.allocate();
-                    env.load_poseidon_state(pos, 1)
-                };
-                let x2 = {
-                    let pos = env.allocate();
-                    env.load_poseidon_state(pos, 2)
-                };
-                let mut state: Vec<E::Variable> = vec![x0, x1, x2];
+                let state: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
+                    .map(|i| {
+                        let pos = env.allocate();
+                        env.load_poseidon_state(pos, i)
+                    })
+                    .collect();
 
-                (0..4).for_each(|i| {
-                    let x0_five = env.compute_x5(state[0].clone());
-                    let x1_five = env.compute_x5(state[1].clone());
-                    let x2_five = env.compute_x5(state[2].clone());
+                let state = (0..4).fold(state, |state, i| {
+                    let state: Vec<E::Variable> =
+                        state.iter().map(|x| env.compute_x5(x.clone())).collect();
 
                     let round = curr_round + i;
-                    let rc_0 = {
-                        let pos = env.allocate_public_input();
-                        env.get_poseidon_round_constant(pos, round, 0)
-                    };
-                    let rc_1 = {
-                        let pos = env.allocate_public_input();
-                        env.get_poseidon_round_constant(pos, round, 1)
-                    };
-                    let rc_2 = {
-                        let pos = env.allocate_public_input();
-                        env.get_poseidon_round_constant(pos, round, 2)
-                    };
 
-                    let x0_prime = {
-                        let pos = env.allocate();
-                        let res = env.get_poseidon_mds_matrix(0, 0) * x0_five.clone()
-                            + env.get_poseidon_mds_matrix(0, 1) * x1_five.clone()
-                            + env.get_poseidon_mds_matrix(0, 2) * x2_five.clone()
-                            + rc_0.clone();
-                        env.write_column(pos, res.clone())
-                    };
-                    let x1_prime = {
-                        let pos = env.allocate();
-                        let res = env.get_poseidon_mds_matrix(1, 0) * x0_five.clone()
-                            + env.get_poseidon_mds_matrix(1, 1) * x1_five.clone()
-                            + env.get_poseidon_mds_matrix(1, 2) * x2_five.clone()
-                            + rc_1.clone();
-                        env.write_column(pos, res.clone())
-                    };
-                    let x2_prime = {
-                        let pos = env.allocate();
-                        let res = env.get_poseidon_mds_matrix(2, 0) * x0_five.clone()
-                            + env.get_poseidon_mds_matrix(2, 1) * x1_five.clone()
-                            + env.get_poseidon_mds_matrix(2, 2) * x2_five.clone()
-                            + rc_2.clone();
-                        env.write_column(pos, res.clone())
-                    };
+                    let rcs: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
+                        .map(|i| {
+                            let pos = env.allocate_public_input();
+                            env.get_poseidon_round_constant(pos, round, i)
+                        })
+                        .collect();
 
-                    state[0] = x0_prime;
-                    state[1] = x1_prime;
-                    state[2] = x2_prime;
+                    let state: Vec<E::Variable> = rcs
+                        .iter()
+                        .enumerate()
+                        .map(|(i, rc)| {
+                            let pos = env.allocate();
+                            let acc: E::Variable =
+                                state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
+                                    acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
+                                });
+                            env.write_column(pos, acc + rc.clone())
+                        })
+                        .collect();
+                    state
                 });
 
-                unsafe { env.save_poseidon_state(state[0].clone(), 0) };
-                unsafe { env.save_poseidon_state(state[1].clone(), 1) };
-                unsafe { env.save_poseidon_state(state[2].clone(), 2) };
+                state.iter().enumerate().for_each(|(i, x)| {
+                    unsafe { env.save_poseidon_state(x.clone(), i) };
+                })
             } else {
                 panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
             }
