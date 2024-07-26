@@ -269,9 +269,11 @@ impl<
 
     /// Progress to the computations on the next row.
     pub fn next_row(&mut self) {
-        self.witness.push(Witness {
+        let mut new_last = Witness {
             cols: Box::new([F::zero(); N_WIT]),
-        });
+        };
+        std::mem::swap(&mut new_last, &mut self.next);
+        self.witness.push(new_last);
         let mut lookups_row = BTreeMap::new();
         for table_id in LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
