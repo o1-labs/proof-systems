@@ -26,6 +26,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     };
     let a_values = compute_contributions(&circuit_layout.a_contributions);
     let b_values = compute_contributions(&circuit_layout.b_contributions);
+    let c_values = compute_contributions(&circuit_layout.c_contributions);
 
     let a_poly = a_values.interpolate();
     let b_poly = b_values.interpolate();
@@ -33,12 +34,17 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     let quotient_poly = {
         let mut a_values_d2 = a_poly.evaluate_over_domain_by_ref(circuit_layout.domain_d2);
         let b_values_d2 = b_poly.evaluate_over_domain_by_ref(circuit_layout.domain_d2);
-        for (a, b) in a_values_d2
-            .evals
-            .iter_mut()
-            .zip(b_values_d2.evals.into_iter())
-        {
-            *a *= b;
+        // TODO: Wasteful
+        let c_values_d2 = c_values
+            .interpolate()
+            .evaluate_over_domain_by_ref(circuit_layout.domain_d2);
+        for (a, (b, c)) in a_values_d2.evals.iter_mut().zip(
+            b_values_d2
+                .evals
+                .into_iter()
+                .zip(c_values_d2.evals.into_iter()),
+        ) {
+            *a *= b + c;
         }
         let (quotient, res) = a_values_d2
             .interpolate()
