@@ -14,8 +14,8 @@
 //! private inputs.
 //!
 //! On top of these abstraction, gadgets are implemented.
-//! For the Nova IVC scheme, we describe below the different gadgets and how
-//! they are implemented with this abstraction.
+//! For the Nova-like IVC schemes, we describe below the different gadgets and
+//! how they are implemented with this abstraction.
 //!
 //! ## Gadgets implemented
 //!
@@ -59,7 +59,7 @@
 //! Hashing is a crucial part of the IVC scheme. The hash function the
 //! interpreter does use for the moment is an instance of the Poseidon hash
 //! function with a fixed state size of [POSEIDON_STATE_SIZE]. Increasing the
-//! state size can be a considerable option as it would potentially optimize the
+//! state size can be considered as it would potentially optimize the
 //! number of rounds, and allow hashing more data on one row. We leave this for
 //! future works.
 //!
@@ -69,7 +69,7 @@
 //! this for future works.
 //!
 //! For a first version, we consider an instance of the Poseidon hash function
-//! that it suitable for curves whose field size is around 256 bits.
+//! that is suitable for curves whose field size is around 256 bits.
 //! A security analysis for these curves give us a recommandation of 60 full
 //! rounds if we consider a 128-bit security level and a low-degree
 //! exponentiation of `5`, with only full rounds.
@@ -95,9 +95,9 @@
 //!
 //! ### Elliptic curve scalar multiplication
 //!
-//! The Nova IVC scheme requires to perform scalar multiplications on elliptic
-//! curve points. The scalar multiplication is computed using the double-and-add
-//! algorithm.
+//! The Nova-based IVC schemes require to perform scalar multiplications on
+//! elliptic curve points. The scalar multiplication is computed using the
+//! double-and-add algorithm.
 //! First, the scalar is converted to its binary representation. We do use 17
 //! rows using 17 columns to compute the 256 bits of the scalar.
 //!
@@ -125,8 +125,8 @@
 //! messages that the prover would have sent before coining the random combiner
 //! for the constraints has been absorbed properly in the verifier circuit.
 //!
-//! Using this technique requires us a folding scheme that handles degree 3
-//! constraints, as the challenge will be considered as a variable.
+//! Using this technique requires us a folding scheme that handles degree
+//! `5 + 1` constraints, as the challenge will be considered as a variable.
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
 
