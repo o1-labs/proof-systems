@@ -44,6 +44,12 @@
 //! - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
 //! ```
 //!
+//! If the points are the same, the λ is computed as follows:
+//!
+//! ```text
+//! - λ = (3 X1^2 + a) / (2Y1)
+//! ```
+//!
 //! FIXME: supports negation and the infinity point.
 //!
 //! The gadget requires therefore 7 columns.
