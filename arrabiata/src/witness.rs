@@ -196,7 +196,8 @@ where
         } else {
             Fq::modulus_biguint().into()
         };
-        self.state[idx] = v.clone().mod_floor(&modulus);
+        let v = v.mod_floor(&modulus);
+        self.state[idx] = v.clone();
         v
     }
 
@@ -209,7 +210,8 @@ where
         } else {
             Fq::modulus_biguint().into()
         };
-        self.public_state[idx] = v.clone().mod_floor(&modulus);
+        let v = v.mod_floor(&modulus);
+        self.public_state[idx] = v.clone();
         v
     }
 
