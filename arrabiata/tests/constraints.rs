@@ -51,6 +51,26 @@ fn helper_check_expected_degree_constraints(instr: Instruction, exp_degrees: Has
         );
     });
 }
+
+// Helper to verify the number of columns each gadget uses
+fn helper_gadget_number_of_columns_used(
+    instr: Instruction,
+    exp_nb_columns: usize,
+    exp_nb_public_input: usize,
+) {
+    let mut constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
+    };
+    interpreter::run_ivc(&mut constraints_fp, instr);
+
+    let nb_columns = constraints_fp.idx_var;
+    assert_eq!(nb_columns, exp_nb_columns);
+
+    let nb_public_input = constraints_fp.idx_var_pi;
+    assert_eq!(nb_public_input, exp_nb_public_input);
+}
+
 #[test]
 fn test_gadget_poseidon() {
     let instr = Instruction::Poseidon(0);
