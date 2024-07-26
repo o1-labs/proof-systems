@@ -384,7 +384,7 @@ where
                 (
                     *id,
                     polys
-                        .into_iter()
+                        .iter()
                         .map(|poly| {
                             let zeta = poly.evaluate(&zeta);
                             let zeta_omega = poly.evaluate(&zeta_omega);
@@ -518,13 +518,12 @@ where
             lookup_env
                 .lookup_counters_poly_d1
                 .values()
-                .map(|polys| {
+                .flat_map(|polys| {
                     polys
-                        .into_iter()
+                        .iter()
                         .map(|poly| (coefficients_form(poly), non_hiding(1)))
                         .collect::<Vec<_>>()
                 })
-                .flatten()
                 .collect::<Vec<_>>(),
         );
         // -- after that the partial sums

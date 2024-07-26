@@ -148,7 +148,7 @@ where
             // First, we absorb the multiplicity polynomials
             logup_comms.m.values().for_each(|comms| {
                 comms
-                    .into_iter()
+                    .iter()
                     .for_each(|comm| absorb_commitment(&mut fq_sponge, comm))
             });
 

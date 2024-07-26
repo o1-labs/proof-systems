@@ -392,8 +392,8 @@ impl<
                         }
                     }
                 } else {
-                    for col_i in 0..num_writes {
-                        for (row_i, value) in runtime_table[col_i].iter().enumerate() {
+                    for (col_i, col) in runtime_table.iter().take(num_writes).enumerate() {
+                        for (row_i, value) in col.iter().enumerate() {
                             if resolver.get_mut(value).is_none() {
                                 resolver.insert(value.clone(), (col_i, row_i));
                             }

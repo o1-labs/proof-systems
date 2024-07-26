@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 //! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper ["Multivariate lookups based on logarithmic
 //! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
@@ -529,6 +531,7 @@ pub mod prover {
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
         // Evaluating over d8 for the quotient polynomial
+        #[allow(clippy::type_complexity)]
         pub lookup_counters_evals_d8:
             BTreeMap<ID, Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>,
         #[allow(clippy::type_complexity)]
