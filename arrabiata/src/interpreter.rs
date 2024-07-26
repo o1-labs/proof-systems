@@ -130,7 +130,9 @@
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
 
-use crate::{MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE};
+use crate::{
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+};
 use ark_ff::{One, Zero};
 use log::debug;
 use num_bigint::BigInt;
@@ -483,8 +485,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
             }
         }
-        Instruction::EllipticCurveScaling(_i_comm, processing_bit) => {
+        Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
+            assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             // FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O
