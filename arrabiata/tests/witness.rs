@@ -1,16 +1,16 @@
-use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
+use ark_ec::{short_weierstrass_jacobian::GroupAffine, ProjectiveCurve, SWModelParameters};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
-    interpreter::{self, Instruction, InterpreterEnv},
+    interpreter::{self, ECAdditionSide, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
     witness::Env,
-    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
-use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use mina_curves::pasta::{Fp, Fq, Pallas, ProjectivePallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
 use num_bigint::{BigInt, ToBigInt};
 use o1_utils::FieldHelpers;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use rand::{CryptoRng, RngCore};
 
 // Used by the mina_poseidon library. Only for testing.
@@ -29,7 +29,6 @@ impl SpongeConstants for PlonkSpongeConstants {
     const PERM_INITIAL_ARK: bool = false;
 }
 
-#[allow(dead_code)]
 fn helper_generate_random_elliptic_curve_point<RNG, P: SWModelParameters>(
     rng: &mut RNG,
 ) -> GroupAffine<P>
@@ -172,4 +171,98 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
+}
+
+#[test]
+fn test_witness_double_elliptic_curve_point() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let srs_log2_size = 6;
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        srs_log2_size,
+        BigInt::from(1u64),
+        sponge_e1.clone(),
+        sponge_e1.clone(),
+    );
+
+    // Generate a random point
+    let p1: Pallas = helper_generate_random_elliptic_curve_point(&mut rng);
+
+    // Doubling in the environment
+    let pos_x = env.allocate();
+    let pos_y = env.allocate();
+    let p1_x = env.write_column(pos_x, p1.x.to_biguint().into());
+    let p1_y = env.write_column(pos_y, p1.y.to_biguint().into());
+    let (res_x, res_y) = env.double_ec_point(pos_x, pos_y, p1_x, p1_y);
+
+    let exp_res: Pallas = p1 + p1;
+    let exp_x: BigInt = exp_res.x.to_biguint().into();
+    let exp_y: BigInt = exp_res.y.to_biguint().into();
+
+    assert_eq!(res_x, exp_x, "The x coordinate is incorrect");
+    assert_eq!(res_y, exp_y, "The y coordinate is incorrect");
+}
+
+fn helper_elliptic_curve_scalar_multiplication<RNG>(r: BigInt, rng: &mut RNG)
+where
+    RNG: RngCore + CryptoRng,
+{
+    let srs_log2_size = 10;
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        srs_log2_size,
+        BigInt::from(1u64),
+        sponge_e1.clone(),
+        sponge_e1.clone(),
+    );
+
+    let i_comm = 0;
+    let p1: Pallas = helper_generate_random_elliptic_curve_point(rng);
+    env.previous_commitments_e2[0] = PolyComm::new(vec![p1]);
+
+    env.r = r.clone();
+
+    // We only go up to the maximum bit field size.
+    (0..MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap()).for_each(|bit_idx| {
+        let instr = Instruction::EllipticCurveScaling(i_comm, bit_idx);
+        env.current_instruction = instr;
+        interpreter::run_ivc(&mut env, instr);
+        env.reset();
+    });
+
+    let (res_x, res_y) = {
+        let pos_x = env.allocate();
+        let pos_y = env.allocate();
+        let side = ECAdditionSide::Right;
+        unsafe { env.load_temporary_accumulators(pos_x, pos_y, side) }
+    };
+
+    let p1_proj: ProjectivePallas = p1.into();
+    let p1_r: Pallas = p1_proj.mul(r.clone().to_u64_digits().1).into();
+    let exp_res: Pallas = p1_r + env.srs_e2.h;
+
+    let exp_x: BigInt = exp_res.x.to_biguint().into();
+    let exp_y: BigInt = exp_res.y.to_biguint().into();
+    assert_eq!(res_x, exp_x, "The x coordinate is incorrect");
+    assert_eq!(res_y, exp_y, "The y coordinate is incorrect");
+}
+
+#[test]
+fn test_witness_elliptic_curve_scalar_multiplication_doubling() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    // We start with doubling
+    helper_elliptic_curve_scalar_multiplication(BigInt::from(2u64), &mut rng);
+
+    // Special case of the identity
+    helper_elliptic_curve_scalar_multiplication(BigInt::from(1u64), &mut rng);
+
+    helper_elliptic_curve_scalar_multiplication(BigInt::from(3u64), &mut rng);
+
+    // The answer to everything
+    helper_elliptic_curve_scalar_multiplication(BigInt::from(42u64), &mut rng);
+
+    // A random scalar
+    let r: BigInt = Fp::rand(&mut rng).to_biguint().to_bigint().unwrap();
+    helper_elliptic_curve_scalar_multiplication(r, &mut rng);
 }

@@ -281,6 +281,51 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.constant(BigInt::from(1_usize))
     }
 
+    /// Double the elliptic curve point given by the affine coordinates
+    /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    fn double_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        x1: Self::Variable,
+        y1: Self::Variable,
+    ) -> (Self::Variable, Self::Variable) {
+        let lambda = {
+            let pos = self.allocate();
+            Expr::Atom(ExprInner::Cell(Variable {
+                col: pos,
+                row: CurrOrNext::Curr,
+            }))
+        };
+        let x3 = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos_x,
+            row: CurrOrNext::Curr,
+        }));
+        let y3 = Expr::Atom(ExprInner::Cell(Variable {
+            col: pos_y,
+            row: CurrOrNext::Curr,
+        }));
+
+        // λ 2y1 = 3x1^2 + a
+        let x1_square = x1.clone() * x1.clone();
+        let two_x1_square = x1_square.clone() + x1_square.clone();
+        let three_x1_square = two_x1_square.clone() + x1_square.clone();
+        let two_y1 = y1.clone() + y1.clone();
+        let res = lambda.clone() * two_y1 - (three_x1_square + self.constant(self.a.clone()));
+        self.assert_zero(res);
+        // x3 = λ^2 - 2 x1
+        self.assert_equal(
+            x3.clone(),
+            lambda.clone() * lambda.clone() - x1.clone() - x1.clone(),
+        );
+        // y3 = λ(x1 - x3) - y1
+        self.assert_equal(
+            y3.clone(),
+            lambda.clone() * (x1.clone() - x3.clone()) - y1.clone(),
+        );
+        (x3, y3.clone())
+    }
+
     fn compute_lambda(
         &mut self,
         pos: Self::Position,

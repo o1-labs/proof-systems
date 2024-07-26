@@ -622,6 +622,57 @@ where
         let res = (num * denom).mod_floor(&modulus);
         self.write_column(pos, res)
     }
+
+    /// Double the elliptic curve point given by the affine coordinates
+    /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    fn double_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        x1: Self::Variable,
+        y1: Self::Variable,
+    ) -> (Self::Variable, Self::Variable) {
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
+        } else {
+            Fq::modulus_biguint().into()
+        };
+        // - λ = (3X1^2 + a) / (2Y1)
+        // We compute λ and use an additional column as a temporary value
+        // otherwise, we get a constraint of degree higher than 5
+        let lambda_pos = self.allocate();
+        let denom = {
+            let double_y1 = y1.clone() + y1.clone();
+            // We temporarily store the inverse of the denominator into the
+            // given position.
+            unsafe { self.inverse(lambda_pos, double_y1) }
+        };
+        let num = {
+            let a: BigInt = if self.current_iteration % 2 == 0 {
+                (E2::Params::COEFF_A).to_biguint().into()
+            } else {
+                (E1::Params::COEFF_A).to_biguint().into()
+            };
+            let x1_square = x1.clone() * x1.clone();
+            let two_x1_square = x1_square.clone() + x1_square.clone();
+            two_x1_square + x1_square + a
+        };
+        let lambda = (num * denom).mod_floor(&modulus);
+        self.write_column(lambda_pos, lambda.clone());
+        // - X3 = λ^2 - X1 - X2
+        let x3 = {
+            let double_x1 = x1.clone() + x1.clone();
+            let res = lambda.clone() * lambda.clone() - double_x1.clone();
+            self.write_column(pos_x, res.clone())
+        };
+        // - Y3 = λ(X1 - X3) - Y1
+        let y3 = {
+            let x1_minus_x3 = x1.clone() - x3.clone();
+            let res = lambda.clone() * x1_minus_x3 - y1.clone();
+            self.write_column(pos_y, res.clone())
+        };
+        (x3, y3)
+    }
 }
 
 impl<

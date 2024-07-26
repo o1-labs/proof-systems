@@ -354,6 +354,16 @@ pub trait InterpreterEnv {
         y2: Self::Variable,
     ) -> Self::Variable;
 
+    /// Double the elliptic curve point given by the affine coordinates
+    /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    fn double_ec_point(
+        &mut self,
+        pos_x: Self::Position,
+        pos_y: Self::Position,
+        x1: Self::Variable,
+        y1: Self::Variable,
+    ) -> (Self::Variable, Self::Variable);
+
     /// Load the affine coordinates of the elliptic curve point currently saved
     /// in the temporary accumulators. Temporary accumulators could be seen as
     /// a CPU cache, an intermediate storage between the RAM (random access
@@ -474,19 +484,95 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::EllipticCurveScaling(_i_comm, processing_bit) => {
-            let _bit = {
+            // FIXME: we do add the blinder. We must substract it at the end.
+            // Perform the following algorithm (double-and-add):
+            // res = O
+            // tmp = P
+            // for i in 0..256:
+            //   if r[i] == 1:
+            //     res = res + tmp
+            //   tmp = tmp + tmp
+            //
+            // - `processing_bit` is the i-th bit of the scalar, i.e. i in the loop
+            // described above.
+            // - `i_comm` is used to fetch the commitment.
+            // The temporary values res and tmp will be stored in the temporary
+            // accumulators, and loaded with `load_temporary_accumulators`.
+            // At the end of the execution, the temporary accumulators will be
+            // saved with `save_temporary_accumulators`.
+            let bit = {
                 let pos = env.allocate();
                 unsafe { env.read_bit_of_folding_combiner(pos, processing_bit) }
             };
-            let (_tmp_x, _tmp_y) = {
+            let (tmp_x, tmp_y) = {
                 let pos_x = env.allocate();
                 let pos_y = env.allocate();
                 unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Left) }
             };
-            let (_res_x, _res_y) = {
+            let (res_x, res_y) = {
                 let pos_x = env.allocate();
                 let pos_y = env.allocate();
                 unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Right) }
+            };
+            // tmp = tmp + tmp
+            // Compute the double of the temporary value
+            let (tmp_prime_x, tmp_prime_y) = {
+                let pos_x = env.allocate();
+                let pos_y = env.allocate();
+                env.double_ec_point(pos_x, pos_y, tmp_x.clone(), tmp_y.clone())
+            };
+            unsafe {
+                env.save_temporary_accumulators(tmp_prime_x, tmp_prime_y, ECAdditionSide::Left);
+            };
+            // Conditional addition:
+            // if bit == 1, then res = tmp + res
+            // else res = res
+            // First we compute tmp + res
+            // FIXME: we do suppose that res != tmp -> no doubling and no check
+            // if they are the same
+            // IMPROVEME: reuse elliptic curve addition
+            let (res_plus_tmp_x, res_plus_tmp_y) = {
+                let lambda = {
+                    let pos = env.allocate();
+                    env.compute_lambda(
+                        pos,
+                        env.zero(),
+                        tmp_x.clone(),
+                        tmp_y.clone(),
+                        res_x.clone(),
+                        res_y.clone(),
+                    )
+                };
+                // x3 = λ^2 - x1 - x2
+                let x3 = {
+                    let pos = env.allocate();
+                    let lambda_square = lambda.clone() * lambda.clone();
+                    let res = lambda_square.clone() - tmp_x.clone() - res_x.clone();
+                    env.write_column(pos, res)
+                };
+                // y3 = λ (x1 - x3) - y1
+                let y3 = {
+                    let pos = env.allocate();
+                    let x1_minus_x3 = tmp_x.clone() - x3.clone();
+                    let res = lambda.clone() * x1_minus_x3.clone() - tmp_y.clone();
+                    env.write_column(pos, res)
+                };
+                (x3, y3)
+            };
+            let x3 = {
+                let pos = env.allocate();
+                let res = bit.clone() * res_plus_tmp_x.clone()
+                    + (env.one() - bit.clone()) * res_x.clone();
+                env.write_column(pos, res)
+            };
+            let y3 = {
+                let pos = env.allocate();
+                let res = bit.clone() * res_plus_tmp_y.clone()
+                    + (env.one() - bit.clone()) * res_y.clone();
+                env.write_column(pos, res)
+            };
+            unsafe {
+                env.save_temporary_accumulators(x3, y3, ECAdditionSide::Right);
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {

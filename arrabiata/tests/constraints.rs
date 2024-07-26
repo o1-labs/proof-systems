@@ -144,3 +144,14 @@ fn test_degree_of_constraints_ivc() {
     assert_eq!(degree_per_constraints.get(&4), None);
     assert_eq!(degree_per_constraints.get(&5), Some(&12));
 }
+
+#[test]
+fn test_gadget_elliptic_curve_scaling() {
+    let instr = Instruction::EllipticCurveScaling(0, 0);
+    // FIXME: update when the gadget is fnished
+    helper_compute_constraints_gadget(instr, 8);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(2, 8);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
+}
