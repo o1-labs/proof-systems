@@ -44,7 +44,8 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
                 .into_iter()
                 .zip(c_values_d2.evals.into_iter()),
         ) {
-            *a *= b + c;
+            *a *= b;
+            *a -= c;
         }
         let (quotient, res) = a_values_d2
             .interpolate()
