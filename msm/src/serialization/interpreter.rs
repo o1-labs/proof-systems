@@ -753,9 +753,6 @@ pub fn serialization_circuit<
 
         prev_rows.push(mul_result);
 
-        // Check the circuit is internaly consistent
-        deserialize_field_element(env, field_elements[0].map(Into::into));
-
         // Don't reset on the last iteration.
         if i < domain_size {
             env.next_row()

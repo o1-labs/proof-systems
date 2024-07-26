@@ -459,12 +459,10 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
             let col = Column::LookupPartialSum((table_id_u32, idx_partial_sum));
             lookup_terms_cols.push(col);
-            if !table_id.is_fixed() {
-                println!(
-                    "Pushing constraint for {table_id:?}: {}",
-                    combine_lookups(col, chunk.to_vec())
-                );
-            }
+            println!(
+                "Pushing constraint for {table_id:?}: {}",
+                combine_lookups(col, chunk.to_vec())
+            );
             constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += 1;
         });

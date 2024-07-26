@@ -587,6 +587,8 @@ impl<
                     } else {
                         self.runtime_tables[&table_id].len()
                     };
+                println!("get_logup_witness: table {table_id:?} gives #reads={number_of_lookup_reads} #writes={number_of_lookup_writes}");
+
                 // +1 for the fixed table
                 lookup_tables.insert(
                     table_id,
