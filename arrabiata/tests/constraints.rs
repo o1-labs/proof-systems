@@ -79,6 +79,8 @@ fn test_gadget_poseidon() {
     let mut exp_degrees = HashMap::new();
     exp_degrees.insert(5, 12);
     helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 15, 12);
 }
 
 #[test]
@@ -89,6 +91,8 @@ fn test_gadget_sixteen_bits_decomposition() {
     let mut exp_degrees = HashMap::new();
     exp_degrees.insert(1, 1);
     helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 17, 0);
 }
 
 #[test]
@@ -100,6 +104,8 @@ fn test_gadget_bit_decomposition() {
     exp_degrees.insert(1, 1);
     exp_degrees.insert(2, 16);
     helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 17, 0);
 }
 
 #[test]
@@ -111,6 +117,8 @@ fn test_gadget_elliptic_curve_addition() {
     exp_degrees.insert(3, 1);
     exp_degrees.insert(2, 2);
     helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 8, 0);
 }
 
 #[test]
@@ -174,4 +182,6 @@ fn test_gadget_elliptic_curve_scaling() {
     let mut exp_degrees = HashMap::new();
     exp_degrees.insert(2, 8);
     helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 13, 0);
 }
