@@ -40,6 +40,7 @@ strum_macros.workspace = true
 
 snarky-deriver.workspace = true
 
+kimchi.workspace = true
 turshi.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true

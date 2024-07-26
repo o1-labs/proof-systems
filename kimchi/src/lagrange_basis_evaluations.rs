@@ -144,6 +144,10 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
             Self::new_with_chunked_segments(max_poly_size, domain, x)
         }
     }
+
+    pub fn evaluations(self) -> Vec<Vec<F>> {
+        self.evals
+    }
 }
 
 #[cfg(test)]
