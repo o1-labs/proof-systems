@@ -34,16 +34,10 @@ pub struct WitnessBuilderEnv<
     pub lookup_multiplicities: BTreeMap<LT, Vec<u64>>,
 
     // TODO Update doc
-    // @volhovm: It seems much more ineffective to store
-    // Vec<BTreeMap<LT, Vec<Logup>>> than BTreeMap<LT, Vec<Vec<Logup>>>.
     /// Lookup requests. Each vector element represents one row, and
     /// each row is a map from lookup type to a vector of concrete
     /// lookups requested.
     pub lookup_reads: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
-
-    /// For each runtime lookup table, the vector of requested values.
-    /// We assume one read lookup per row at the moment.
-    pub runtime_lookup_reads: BTreeMap<LT, Vec<Vec<F>>>,
 
     // This includes runtime tables which do not /need/ an explicit
     // column, so it is duplicated in `witness` in this case.
@@ -199,24 +193,8 @@ impl<
     > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {
-        if table_id.is_fixed() {
-            let value_ix = table_id
-                .ix_by_value(&value)
-                .expect("Could not resolve lookup for a fixed table");
-
-            let multiplicities = self.lookup_multiplicities.get_mut(&table_id).unwrap();
-            // Since we allow multiple lookups per row, runtime tables
-            // can in theory grow bigger than the domain size. We
-            // still collect multiplicities as if runtime table vector
-            // is not height-bounded, but we will split it into chunks
-            // later.
-            if !table_id.is_fixed() && value_ix > multiplicities.len() {
-                multiplicities.resize(value_ix, 0u64);
-            }
-            multiplicities[value_ix] += 1;
-
-            // Adding the lookup read into the corresponding slot in `lookup_reads`.
-
+        // Recording the lookup read into the corresponding slot in `lookup_reads`.
+        {
             let curr_row = self.curr_row();
 
             let lookup_read_table = self.lookup_reads.get_mut(&table_id).unwrap();
@@ -237,12 +215,25 @@ impl<
                 lookup_read_table.len() - 1
             };
 
-            lookup_read_table[curr_write_number].push(value);
-        } else {
-            self.runtime_lookup_reads
-                .get_mut(&table_id)
-                .unwrap()
-                .push(value)
+            lookup_read_table[curr_write_number].push(value.clone());
+        }
+
+        // If the table is fixed we also compute multiplicities on the fly.
+        if table_id.is_fixed() {
+            let value_ix = table_id
+                .ix_by_value(&value)
+                .expect("Could not resolve lookup for a fixed table");
+
+            let multiplicities = self.lookup_multiplicities.get_mut(&table_id).unwrap();
+            // Since we allow multiple lookups per row, runtime tables
+            // can in theory grow bigger than the domain size. We
+            // still collect multiplicities as if runtime table vector
+            // is not height-bounded, but we will split it into chunks
+            // later.
+            if !table_id.is_fixed() && value_ix > multiplicities.len() {
+                multiplicities.resize(value_ix, 0u64);
+            }
+            multiplicities[value_ix] += 1;
         }
     }
 
@@ -373,20 +364,16 @@ impl<
             let mut resolver: BTreeMap<Vec<F>, (usize, usize)> = BTreeMap::new();
 
             {
-                assert!(
-                    self.runtime_lookup_reads.get(&table_id).unwrap().len() <= 1 << 15,
-                    "the len is {:?}",
-                    self.runtime_lookup_reads.get(&table_id).unwrap().len()
-                );
                 // Populate resolver map either from "reads" or from "writes"
                 if table_id.runtime_create_column() {
-                    for (row_i, value) in self
-                        .runtime_lookup_reads
-                        .get(&table_id)
-                        .unwrap()
-                        .iter()
-                        .enumerate()
-                    {
+                    let columns = &self.lookup_reads.get(&table_id).unwrap();
+                    assert!(
+                        columns.len() == 1,
+                        "We only allow 1 read for runtime tables yet"
+                    );
+                    let column = &columns[0];
+                    assert!(column.len() <= domain_size,);
+                    for (row_i, value) in column.iter().enumerate() {
                         if resolver.get_mut(value).is_none() {
                             resolver.insert(value.clone(), (0, row_i));
                         }
@@ -406,7 +393,7 @@ impl<
 
             let mut multiplicities = vec![vec![0u64; domain_size]; num_writes];
 
-            for value in self.runtime_lookup_reads.get(&table_id).unwrap().iter() {
+            for value in self.lookup_reads.get(&table_id).unwrap()[0].iter() {
                 if let Some((col_i, row_i)) = resolver.get_mut(value) {
                     multiplicities[*col_i][*row_i] += 1;
                 } else {
@@ -436,15 +423,13 @@ impl<
     pub fn create() -> Self {
         let mut lookup_reads = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
-        let mut runtime_lookup_reads = BTreeMap::new();
         let mut runtime_tables = BTreeMap::new();
         let fixed_selectors = vec![vec![]; N_FSEL];
         for table_id in LT::all_variants().into_iter() {
+            lookup_reads.insert(table_id, vec![]);
             if table_id.is_fixed() {
-                lookup_reads.insert(table_id, vec![]);
                 lookup_multiplicities.insert(table_id, vec![0u64; table_id.length()]);
             } else {
-                runtime_lookup_reads.insert(table_id, vec![]);
                 runtime_tables.insert(table_id, vec![]);
             }
         }
@@ -456,7 +441,6 @@ impl<
 
             lookup_multiplicities,
             lookup_reads,
-            runtime_lookup_reads,
             runtime_tables,
             fixed_selectors,
             phantom_cix: PhantomData,
@@ -531,10 +515,7 @@ impl<
                 // For runtime tables with no explicit writes, we
                 // store only read requests, so we assemble read
                 // requests into a column.
-                runtime_tables.insert(
-                    table_id,
-                    vec![self.runtime_lookup_reads.get(&table_id).unwrap().clone()],
-                );
+                runtime_tables.insert(table_id, self.lookup_reads.get(&table_id).unwrap().clone());
             } else {
                 // For runtime tables /with/ explicit writes, these
                 // writes are stored in self.runtime_tables.
@@ -600,17 +581,6 @@ impl<
                     })
                     .collect();
             }
-        }
-
-        for (runtime_table_id, column) in self.runtime_lookup_reads.iter() {
-            lookup_tables.get_mut(runtime_table_id).unwrap()[0] = column
-                .iter()
-                .map(|value| Logup {
-                    table_id: *runtime_table_id,
-                    numerator: F::one(),
-                    value: value.clone(),
-                })
-                .collect();
         }
 
         // FIXME add runtime tables, runtime_lookup_reads must be used here
