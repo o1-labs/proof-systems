@@ -1,4 +1,5 @@
-use ark_ff::UniformRand;
+use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
+use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
     interpreter::{self, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
@@ -10,6 +11,7 @@ use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_ciph
 use num_bigint::{BigInt, ToBigInt};
 use o1_utils::FieldHelpers;
 use poly_commitment::commitment::CommitmentCurve;
+use rand::{CryptoRng, RngCore};
 
 // Used by the mina_poseidon library. Only for testing.
 #[derive(Clone)]
@@ -25,6 +27,24 @@ impl SpongeConstants for PlonkSpongeConstants {
     const PERM_SBOX: u32 = 5;
     const PERM_FULL_MDS: bool = true;
     const PERM_INITIAL_ARK: bool = false;
+}
+
+#[allow(dead_code)]
+fn helper_generate_random_elliptic_curve_point<RNG, P: SWModelParameters>(
+    rng: &mut RNG,
+) -> GroupAffine<P>
+where
+    P::BaseField: PrimeField,
+    RNG: RngCore + CryptoRng,
+{
+    let p1_x = P::BaseField::rand(rng);
+    let mut p1: Option<GroupAffine<P>> = GroupAffine::<P>::get_point_from_x(p1_x, false);
+    while p1.is_none() {
+        let p1_x = P::BaseField::rand(rng);
+        p1 = GroupAffine::<P>::get_point_from_x(p1_x, false);
+    }
+    let p1: GroupAffine<P> = p1.unwrap().scale_by_cofactor().into();
+    p1
 }
 
 #[test]
