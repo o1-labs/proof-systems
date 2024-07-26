@@ -33,12 +33,13 @@ pub struct WitnessBuilderEnv<
     /// `i` was looked up.
     pub lookup_multiplicities: BTreeMap<LT, Vec<u64>>,
 
+    // TODO Update doc
     // @volhovm: It seems much more ineffective to store
     // Vec<BTreeMap<LT, Vec<Logup>>> than BTreeMap<LT, Vec<Vec<Logup>>>.
     /// Lookup requests. Each vector element represents one row, and
     /// each row is a map from lookup type to a vector of concrete
     /// lookups requested.
-    pub lookup_reads: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
+    pub lookup_reads: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
 
     /// For each runtime lookup table, the vector of requested values.
     /// We assume one read lookup per row at the moment.
@@ -214,19 +215,30 @@ impl<
             }
             multiplicities[value_ix] += 1;
 
-            self.lookup_reads
-                .last_mut()
-                .unwrap()
-                .get_mut(&table_id)
-                .unwrap()
-                .push(Logup {
-                    table_id,
-                    numerator: F::one(),
-                    value,
-                })
-        } else {
-            //println!("Reading id {table_id:?}, value {value:?}");
+            // Adding the lookup read into the corresponding slot in `lookup_reads`.
 
+            let curr_row = self.curr_row();
+
+            let lookup_read_table = self.lookup_reads.get_mut(&table_id).unwrap();
+
+            let curr_write_number =
+                (0..lookup_read_table.len()).find(|i| lookup_read_table[*i].len() <= curr_row);
+
+            // If we're at row 0, we can declare as many reads as we want.
+            // If we're at non-zero row, we cannot declare more reads than before.
+            let curr_write_number = if let Some(v) = curr_write_number {
+                v
+            } else {
+                assert!(
+                    curr_row == 0,
+                    "Number of writes in row {curr_row:?} is different from row 0",
+                );
+                lookup_read_table.push(vec![]);
+                lookup_read_table.len() - 1
+            };
+
+            lookup_read_table[curr_write_number].push(value);
+        } else {
             self.runtime_lookup_reads
                 .get_mut(&table_id)
                 .unwrap()
@@ -240,28 +252,26 @@ impl<
             "lookup_runtime_write must be called on non-fixed tables that work with dynamic writes only"
         );
 
-        //println!("Writing id {table_id:?}, value {value:?}");
-
         // We insert value into runtime table in any case, for each row.
-        let cur_row = self.witness.len() - 1;
+        let curr_row = self.witness.len() - 1;
 
         let runtime_table = self.runtime_tables.get_mut(&table_id).unwrap();
 
-        let cur_write_number =
-            (0..runtime_table.len()).find(|i| runtime_table[*i].len() <= cur_row);
+        let curr_write_number =
+            (0..runtime_table.len()).find(|i| runtime_table[*i].len() <= curr_row);
 
-        let cur_write_number = if let Some(v) = cur_write_number {
+        let curr_write_number = if let Some(v) = curr_write_number {
             v
         } else {
             assert!(
-                cur_row == 0,
-                "Number of writes in row {cur_row:?} is different from row 0"
+                curr_row == 0,
+                "Number of writes in row {curr_row:?} is different from row 0"
             );
             runtime_table.push(vec![]);
             runtime_table.len() - 1
         };
 
-        runtime_table[cur_write_number].push(value);
+        runtime_table[curr_write_number].push(value);
     }
 }
 
@@ -320,14 +330,6 @@ impl<
         self.witness.push(Witness {
             cols: Box::new([F::zero(); N_WIT]),
         });
-        let mut lookups_row = BTreeMap::new();
-        for table_id in LT::all_variants()
-            .into_iter()
-            .filter(|table_id| table_id.is_fixed())
-        {
-            lookups_row.insert(table_id, Vec::new());
-        }
-        self.lookup_reads.push(lookups_row);
     }
 
     /// Getting multiplicities for range check tables less or equal
@@ -432,17 +434,17 @@ impl<
 {
     /// Create a new empty-state witness builder.
     pub fn create() -> Self {
-        let mut lookups_row = BTreeMap::new();
+        let mut lookup_reads = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
-        let mut runtime_lookups = BTreeMap::new();
+        let mut runtime_lookup_reads = BTreeMap::new();
         let mut runtime_tables = BTreeMap::new();
         let fixed_selectors = vec![vec![]; N_FSEL];
         for table_id in LT::all_variants().into_iter() {
             if table_id.is_fixed() {
-                lookups_row.insert(table_id, Vec::new());
+                lookup_reads.insert(table_id, vec![]);
                 lookup_multiplicities.insert(table_id, vec![0u64; table_id.length()]);
             } else {
-                runtime_lookups.insert(table_id, vec![]);
+                runtime_lookup_reads.insert(table_id, vec![]);
                 runtime_tables.insert(table_id, vec![]);
             }
         }
@@ -453,8 +455,8 @@ impl<
             }],
 
             lookup_multiplicities,
-            lookup_reads: vec![lookups_row],
-            runtime_lookup_reads: runtime_lookups,
+            lookup_reads,
+            runtime_lookup_reads,
             runtime_tables,
             fixed_selectors,
             phantom_cix: PhantomData,
@@ -564,19 +566,7 @@ impl<
             for table_id in LT::all_variants().into_iter() {
                 // Find how many lookups are done per table.
                 let number_of_lookup_reads = if table_id.is_fixed() {
-                    let number_of_lookup_reads = self.lookup_reads[0].get(&table_id).unwrap().len();
-
-                    // Technically the number of lookups must be the same per
-                    // row, but let's check if it's actually so.
-                    for (i, lookup_row) in self.lookup_reads.iter().enumerate().take(domain_size) {
-                        let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
-                        assert!(
-                        number_of_lookup_reads == number_of_lookups_currow,
-                        "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookup_reads:?}"
-                    );
-                    }
-
-                    number_of_lookup_reads
+                    self.lookup_reads.get(&table_id).unwrap().len()
                 } else {
                     // For now we only have 1 runtime lookup read always.
                     1
@@ -599,13 +589,16 @@ impl<
             debug!("No lookup tables data provided. Skipping lookup tables.");
         }
 
-        for lookup_row in self.lookup_reads.iter().take(domain_size) {
-            for (table_id, table) in lookup_tables.iter_mut() {
-                if table_id.is_fixed() {
-                    for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
-                        table[j].push(lookup.clone())
-                    }
-                }
+        for (table_id, columns) in self.lookup_reads.iter() {
+            for (read_i, column) in columns.iter().enumerate() {
+                lookup_tables.get_mut(table_id).unwrap()[read_i] = column
+                    .iter()
+                    .map(|value| Logup {
+                        table_id: *table_id,
+                        numerator: F::one(),
+                        value: value.clone(),
+                    })
+                    .collect();
             }
         }
 
