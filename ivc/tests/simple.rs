@@ -31,7 +31,9 @@ use kimchi_msm::{
     },
     columns::{Column, ColumnIndexer},
     expr::E,
+    logup::LogupWitness,
     lookups::DummyLookupTable,
+    proof::ProofInputs,
     witness::Witness as GenericWitness,
     BN254G1Affine, Fp,
 };
@@ -328,8 +330,7 @@ pub fn heavy_test_simple_add() {
 
     let mut app_witness_one: AppWitnessBuilderEnv = WitnessBuilderEnv::create();
 
-    let empty_lookups_app = BTreeMap::new();
-    let empty_lookups_ivc = BTreeMap::new();
+    let empty_logups: BTreeMap<LT, LogupWitness<Fp, LT>> = BTreeMap::new();
 
     // Witness one
     for _i in 0..domain_size {
@@ -342,7 +343,10 @@ pub fn heavy_test_simple_add() {
         app_witness_one.next_row();
     }
 
-    let proof_inputs_one = app_witness_one.get_proof_inputs(domain_size, empty_lookups_app.clone());
+    let proof_inputs_one = ProofInputs {
+        evaluations: app_witness_one.get_relation_witness(domain_size),
+        logups: empty_logups.clone(),
+    };
     assert!(proof_inputs_one.evaluations.len() == 3);
 
     ivc_witness_env_0.set_fixed_selectors(ivc_fixed_selectors.clone());
@@ -350,8 +354,10 @@ pub fn heavy_test_simple_add() {
         &mut ivc_witness_env_0,
         domain_size,
     );
-    let ivc_proof_inputs_0 =
-        ivc_witness_env_0.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
+    let ivc_proof_inputs_0 = ProofInputs {
+        evaluations: ivc_witness_env_0.get_relation_witness(domain_size),
+        logups: empty_logups.clone(),
+    };
     assert!(ivc_proof_inputs_0.evaluations.len() == N_WIT_IVC);
     for i in 0..10 {
         assert!(
@@ -406,7 +412,10 @@ pub fn heavy_test_simple_add() {
         app_witness_two.next_row();
     }
 
-    let proof_inputs_two = app_witness_two.get_proof_inputs(domain_size, empty_lookups_app.clone());
+    let proof_inputs_two = ProofInputs {
+        evaluations: app_witness_two.get_relation_witness(domain_size),
+        logups: empty_logups.clone(),
+    };
 
     // IVC for the second witness is the same as for the first one,
     // since they're both height 0.
@@ -661,8 +670,10 @@ pub fn heavy_test_simple_add() {
         domain_size,
     );
 
-    let ivc_proof_inputs_1 =
-        ivc_witness_env_1.get_proof_inputs(domain_size, empty_lookups_ivc.clone());
+    let ivc_proof_inputs_1 = ProofInputs {
+        evaluations: ivc_witness_env_1.get_relation_witness(domain_size),
+        logups: empty_logups.clone(),
+    };
     assert!(ivc_proof_inputs_1.evaluations.len() == N_WIT_IVC);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -685,8 +696,10 @@ pub fn heavy_test_simple_add() {
         app_witness_three.next_row();
     }
 
-    let proof_inputs_three =
-        app_witness_three.get_proof_inputs(domain_size, empty_lookups_app.clone());
+    let proof_inputs_three = ProofInputs {
+        evaluations: app_witness_three.get_relation_witness(domain_size),
+        logups: empty_logups.clone(),
+    };
 
     // Here we concatenate with ivc_proof_inputs 1, inductive case
     let joint_witness_three: Vec<_> = (proof_inputs_three.evaluations)

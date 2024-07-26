@@ -257,11 +257,11 @@ pub struct LogupWitness<F, ID: LookupTableID> {
     //
     // TODO: for efficiency, we might want to have a single flat fixed-size
     // array
-    pub(crate) f: Vec<Vec<Logup<F, ID>>>,
+    pub f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomials; by convention, this is a vector
     /// of columns, corresponding to the `tail` of `f`. That is,
-    /// m[last] ~ f[last].
-    pub(crate) m: Vec<Vec<F>>,
+    /// `m[last] ~ f[last]`.
+    pub m: Vec<Vec<F>>,
 }
 
 /// Represents the proof of the lookup argument
