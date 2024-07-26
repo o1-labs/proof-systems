@@ -38,10 +38,6 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     /// Turns a constant value into a variable.
     fn constant(value: F) -> Self::Variable;
 }
-/// Environment capability for accessing the next row, constraint only.
-pub trait NextCap<F: PrimeField, CIx: ColumnIndexer>: ColAccessCap<F, CIx> {
-    fn read_next(&self, col: CIx) -> Self::Variable;
-}
 
 /// Environment capability similar to `ColAccessCap` but for /also
 /// writing/ columns. Used on the witness side.

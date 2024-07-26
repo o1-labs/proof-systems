@@ -1,7 +1,7 @@
 use super::columns::{Power, Selector};
 use crate::poseidon::columns::PoseidonColumn;
 use ark_ff::PrimeField;
-use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, NextCap};
+use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 
 // combines the powers with a rows of the mds
 fn combine<F: PrimeField, Env>(
@@ -110,9 +110,7 @@ where
 pub fn constraint_round<F: PrimeField, Env>(env: &mut Env)
 where
     F: PrimeField,
-    Env: ColAccessCap<F, PoseidonColumn>
-        + HybridCopyCap<F, PoseidonColumn>
-        + NextCap<F, PoseidonColumn>,
+    Env: ColAccessCap<F, PoseidonColumn> + HybridCopyCap<F, PoseidonColumn>,
 {
     let s0 = env.read_column(PoseidonColumn::State(0));
     let s1 = env.read_column(PoseidonColumn::State(1));
@@ -124,7 +122,7 @@ where
     let check_out = env.read_column(PoseidonColumn::Check);
     let res = round(env, state, absorb, check_out);
     for i in 0..=2 {
-        let next = env.read_next(PoseidonColumn::State(i));
+        let next = env.read_column_next(PoseidonColumn::State(i));
         env.assert_zero(res[i].clone() - next);
     }
 }
@@ -132,7 +130,7 @@ where
 /// generates witness for a round
 pub fn compute_round<F: PrimeField, Env>(
     env: &mut Env,
-    state: [Env::Variable; 3],
+    state: Option<[Env::Variable; 3]>,
     absorb: Option<[Env::Variable; 2]>,
     check: Option<Env::Variable>,
 ) -> [<Env as ColAccessCap<F, PoseidonColumn>>::Variable; 3]
@@ -142,9 +140,15 @@ where
         + ColAccessCap<F, PoseidonColumn>
         + HybridCopyCap<F, PoseidonColumn>,
 {
-    for i in 0..=2 {
-        env.write_column(PoseidonColumn::State(i), &state[i]);
-    }
+    let state = match state {
+        Some(s) => {
+            for i in 0..=2 {
+                env.write_column(PoseidonColumn::State(i), &s[i]);
+            }
+            s
+        }
+        None => [0, 1, 2].map(|i| env.read_column(PoseidonColumn::State(i))),
+    };
     let zero = || Env::constant(F::zero());
     let absorb = absorb.unwrap_or_else(|| [zero(), zero()]);
     env.write_column(PoseidonColumn::Absorb(0), &absorb[0]);
@@ -152,5 +156,8 @@ where
     let check_out = check.unwrap_or_else(|| zero());
     env.write_column(PoseidonColumn::Check, &check_out);
     let res = round(env, state, absorb, check_out);
+    for i in 0..=2 {
+        env.write_column_next(PoseidonColumn::State(i), &res[i]);
+    }
     res
 }
