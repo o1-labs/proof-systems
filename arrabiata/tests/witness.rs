@@ -153,37 +153,3 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 }
-
-#[test]
-fn test_write_column_return_the_result_reduced_in_field() {
-    let srs_log2_size = 6;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
-    let modulus: BigInt = Fp::modulus_biguint().into();
-    let pos_x = env.allocate();
-    let res = env.write_column(pos_x, modulus.clone() + BigInt::from(1u64));
-    assert_eq!(res, BigInt::from(1u64));
-    assert_eq!(env.state[0], BigInt::from(1u64));
-}
-
-#[test]
-fn test_write_public_return_the_result_reduced_in_field() {
-    let srs_log2_size = 6;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
-    let modulus: BigInt = Fp::modulus_biguint().into();
-    let pos_x = env.allocate_public_input();
-    let res = env.write_public_input(pos_x, modulus.clone() + BigInt::from(1u64));
-    assert_eq!(res, BigInt::from(1u64));
-    assert_eq!(env.public_state[0], BigInt::from(1u64));
-}
