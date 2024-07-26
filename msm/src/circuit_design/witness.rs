@@ -321,7 +321,10 @@ impl<
             cols: Box::new([F::zero(); N_WIT]),
         });
         let mut lookups_row = BTreeMap::new();
-        for table_id in LT::all_variants().into_iter() {
+        for table_id in LT::all_variants()
+            .into_iter()
+            .filter(|table_id| table_id.is_fixed())
+        {
             lookups_row.insert(table_id, Vec::new());
         }
         self.lookup_reads.push(lookups_row);
@@ -435,9 +438,10 @@ impl<
         let mut runtime_tables = BTreeMap::new();
         let fixed_selectors = vec![vec![]; N_FSEL];
         for table_id in LT::all_variants().into_iter() {
-            lookups_row.insert(table_id, Vec::new());
-            lookup_multiplicities.insert(table_id, vec![0u64; table_id.length()]);
-            if !table_id.is_fixed() {
+            if table_id.is_fixed() {
+                lookups_row.insert(table_id, Vec::new());
+                lookup_multiplicities.insert(table_id, vec![0u64; table_id.length()]);
+            } else {
                 runtime_lookups.insert(table_id, vec![]);
                 runtime_tables.insert(table_id, vec![]);
             }
@@ -559,17 +563,24 @@ impl<
         if !lookup_tables_data.is_empty() {
             for table_id in LT::all_variants().into_iter() {
                 // Find how many lookups are done per table.
-                let number_of_lookup_reads = self.lookup_reads[0].get(&table_id).unwrap().len();
+                let number_of_lookup_reads = if table_id.is_fixed() {
+                    let number_of_lookup_reads = self.lookup_reads[0].get(&table_id).unwrap().len();
 
-                // Technically the number of lookups must be the same per
-                // row, but let's check if it's actually so.
-                for (i, lookup_row) in self.lookup_reads.iter().enumerate().take(domain_size) {
-                    let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
-                    assert!(
+                    // Technically the number of lookups must be the same per
+                    // row, but let's check if it's actually so.
+                    for (i, lookup_row) in self.lookup_reads.iter().enumerate().take(domain_size) {
+                        let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
+                        assert!(
                         number_of_lookup_reads == number_of_lookups_currow,
                         "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookup_reads:?}"
                     );
-                }
+                    }
+
+                    number_of_lookup_reads
+                } else {
+                    // For now we only have 1 runtime lookup read always.
+                    1
+                };
                 let number_of_lookup_writes =
                     if table_id.is_fixed() || table_id.runtime_create_column() {
                         1
@@ -588,11 +599,26 @@ impl<
 
         for lookup_row in self.lookup_reads.iter().take(domain_size) {
             for (table_id, table) in lookup_tables.iter_mut() {
-                for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
-                    table[j].push(lookup.clone())
+                if table_id.is_fixed() {
+                    for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
+                        table[j].push(lookup.clone())
+                    }
                 }
             }
         }
+
+        for (runtime_table_id, column) in self.runtime_lookup_reads.iter() {
+            lookup_tables.get_mut(runtime_table_id).unwrap()[0] = column
+                .iter()
+                .map(|value| Logup {
+                    table_id: *runtime_table_id,
+                    numerator: F::one(),
+                    value: value.clone(),
+                })
+                .collect();
+        }
+
+        // FIXME add runtime tables, runtime_lookup_reads must be used here
 
         println!("Building logup witness: multiplicities");
         let mut lookup_multiplicities: BTreeMap<LT, Vec<Vec<F>>> = BTreeMap::new();

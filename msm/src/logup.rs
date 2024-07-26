@@ -459,6 +459,12 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
             let col = Column::LookupPartialSum((table_id_u32, idx_partial_sum));
             lookup_terms_cols.push(col);
+            if !table_id.is_fixed() {
+                println!(
+                    "Pushing constraint for {table_id:?}: {}",
+                    combine_lookups(col, chunk.to_vec())
+                );
+            }
             constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += 1;
         });
@@ -663,6 +669,8 @@ pub mod prover {
             // Where are commitments to the last element are made? First "read" columns we don't commit to, right?..
 
             lookups.into_iter().for_each(|(table_id, logup_witness)| {
+                println!("Building lookup_terms_map for {table_id:?}");
+
                 let LogupWitness { f, m: _ } = logup_witness;
                 // The number of functions to look up, including the fixed table.
                 let n = f.len();
@@ -671,6 +679,11 @@ pub mod prover {
                 } else {
                     n / (MAX_SUPPORTED_DEGREE - 2) + 1
                 };
+
+                println!("logup_witness.f.len() = {:?}", n);
+
+                println!("n_partial_sums = {n_partial_sums:?}");
+
                 let mut partial_sums =
                     vec![
                         Vec::<G::ScalarField>::with_capacity(domain.d1.size as usize);
@@ -883,21 +896,42 @@ pub mod prover {
             //                         (m(ω^{j + 1}) / (β + t(ω^{j + 1})))
             // - φ(ω^n) = 0
             let lookup_aggregation_evals_d1 = {
-                let mut evals = Vec::with_capacity(domain.d1.size as usize);
-                let mut acc = G::ScalarField::zero();
-                for i in 0..domain.d1.size as usize {
-                    // φ(1) = 0
-                    evals.push(acc);
-                    lookup_terms_evals_d1.iter().for_each(|(_, lookup_terms)| {
-                        acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
-                    })
+                {
+                    for table_id in ID::all_variants().into_iter() {
+                        let mut acc = G::ScalarField::zero();
+                        for i in 0..domain.d1.size as usize {
+                            // φ(1) = 0
+                            let lookup_terms = lookup_terms_evals_d1.get(&table_id).unwrap();
+                            acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                        }
+                        // Sanity check to verify that the accumulator ends up being zero.
+                        assert_eq!(
+                            acc,
+                            G::ScalarField::zero(),
+                            "Logup accumulator for table {table_id:?} must be zero"
+                        );
+                        if acc == G::ScalarField::zero() {
+                            println!("OK: Logup accumulator for table {table_id:?} is zero");
+                        }
+                    }
                 }
-                // Sanity check to verify that the accumulator ends up being zero.
-                assert_eq!(
-                    acc,
-                    G::ScalarField::zero(),
-                    "Logup accumulator must be zero"
-                );
+                let mut evals = Vec::with_capacity(domain.d1.size as usize);
+                {
+                    let mut acc = G::ScalarField::zero();
+                    for i in 0..domain.d1.size as usize {
+                        // φ(1) = 0
+                        evals.push(acc);
+                        lookup_terms_evals_d1.iter().for_each(|(_, lookup_terms)| {
+                            acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                        })
+                    }
+                    // Sanity check to verify that the accumulator ends up being zero.
+                    assert_eq!(
+                        acc,
+                        G::ScalarField::zero(),
+                        "Logup accumulator must be zero"
+                    );
+                }
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                     evals, domain.d1,
                 )
