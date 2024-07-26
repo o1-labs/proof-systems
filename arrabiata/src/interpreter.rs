@@ -484,6 +484,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::EllipticCurveScaling(_i_comm, processing_bit) => {
+            assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             // FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O
