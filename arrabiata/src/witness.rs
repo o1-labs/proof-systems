@@ -3,7 +3,7 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
-use num_bigint::BigInt;
+use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, srs::SRS, PolyComm, SRS as _};
@@ -13,8 +13,8 @@ use std::time::Instant;
 use crate::{
     columns::Column,
     interpreter::{ECAdditionSide, Instruction, InterpreterEnv},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
-    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 /// An environment that can be shared between IVC instances.
@@ -635,6 +635,22 @@ impl<
         sponge_e1: [BigInt; 3],
         sponge_e2: [BigInt; 3],
     ) -> Self {
+        {
+            assert!(Fp::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS, "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(Fq::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS, "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            let modulus_fp = Fp::modulus_biguint();
+            assert!(
+                (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))
+                    == BigUint::from(1_u64),
+                "The modulus of Fp should be coprime with {POSEIDON_ALPHA}"
+            );
+            let modulus_fq = Fq::modulus_biguint();
+            assert!(
+                (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))
+                    == BigUint::from(1_u64),
+                "The modulus of Fq should be coprime with {POSEIDON_ALPHA}"
+            );
+        }
         let srs_size = 1 << srs_log2_size;
         let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
         let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
