@@ -166,7 +166,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     unsafe fn read_bit_of_folding_combiner(
         &mut self,
         pos: Self::Position,
-        _i: u32,
+        _i: u64,
     ) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: pos,

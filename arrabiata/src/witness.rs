@@ -329,7 +329,7 @@ where
     unsafe fn read_bit_of_folding_combiner(
         &mut self,
         pos: Self::Position,
-        i: u32,
+        i: u64,
     ) -> Self::Variable {
         let r = self.r.clone();
         let bit = (r >> i) & BigInt::from(1_usize);
@@ -689,8 +689,8 @@ impl<
         sponge_e2: [BigInt; 3],
     ) -> Self {
         {
-            assert!(Fp::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS, "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            assert!(Fq::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS, "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(Fp::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(Fq::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             let modulus_fp = Fp::modulus_biguint();
             assert!(
                 (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))

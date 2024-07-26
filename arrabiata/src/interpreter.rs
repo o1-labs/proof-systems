@@ -130,7 +130,7 @@
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
 
-use crate::{POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE};
+use crate::{MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE};
 use ark_ff::{One, Zero};
 use log::debug;
 use num_bigint::BigInt;
@@ -156,7 +156,7 @@ pub enum Instruction {
     SixteenBitsDecomposition,
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
-    EllipticCurveScaling(usize, u32),
+    EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
     NoOp,
@@ -274,7 +274,7 @@ pub trait InterpreterEnv {
     unsafe fn read_bit_of_folding_combiner(
         &mut self,
         pos: Self::Position,
-        i: u32,
+        i: u64,
     ) -> Self::Variable;
 
     /// Compute the x^5 of the given variable

@@ -33,7 +33,7 @@ pub const POSEIDON_STATE_SIZE: usize = 3;
 /// The maximum number of bits the fields can be.
 /// It is critical as we have some assumptions for the gadgets describing the
 /// IVC.
-pub const MAXIMUM_FIELD_SIZE_IN_BITS: usize = 255;
+pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 
 pub mod column_env;
 pub mod columns;

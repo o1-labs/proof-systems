@@ -223,7 +223,7 @@ where
     env.r = r.clone();
 
     // We only go up to the maximum bit field size.
-    (0..MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap()).for_each(|bit_idx| {
+    (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
         let instr = Instruction::EllipticCurveScaling(i_comm, bit_idx);
         env.current_instruction = instr;
         interpreter::run_ivc(&mut env, instr);
