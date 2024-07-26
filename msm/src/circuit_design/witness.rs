@@ -207,10 +207,15 @@ impl<
             let curr_write_number = if let Some(v) = curr_write_number {
                 v
             } else {
-                assert!(
-                    curr_row == 0,
-                    "Number of writes in row {curr_row:?} is different from row 0",
-                );
+                // TODO: This must be a panic; however, we don't yet have support
+                // different number of lookups on different rows.
+                //
+                // See https://github.com/o1-labs/proof-systems/issues/2440
+                if curr_row != 0 {
+                    eprintln!(
+                        "ERROR: Number of writes in row {curr_row:?} is different from row 0",
+                    );
+                }
                 lookup_read_table.push(vec![]);
                 lookup_read_table.len() - 1
             };
