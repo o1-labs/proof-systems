@@ -111,7 +111,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
         };
         let scaled_a_values_commitment = a.mul(s).into_affine();
         let scaled_b_values_commitment = {
-            let witness: Vec<_> = b_poly.iter().map(|x| (s * *x).into_repr()).collect();
+            let witness: Vec<_> = b_poly.iter().map(|x| (r * *x).into_repr()).collect();
             VariableBaseMSM::multi_scalar_mul(
                 &trusted_setup_outputs.left_commitments,
                 witness.as_slice(),
