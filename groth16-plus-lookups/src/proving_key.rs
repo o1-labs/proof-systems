@@ -133,7 +133,7 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
         };
         let out_comms: Vec<_> = {
             let inv_randomizer = output_randomizer.inverse().unwrap();
-            (0..layout.public_input_size)
+            (layout.public_input_size..layout.a_contributions.len())
                 .map(|i| comm_evals(i, inv_randomizer))
                 .collect()
         };
