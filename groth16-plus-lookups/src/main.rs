@@ -121,7 +121,7 @@ pub fn main() {
         a_delayed: vec![],
     });
 
-    // Lookups
+    // Lookup table initialisation
     let mut delayed_lookup_inverse_indicies = Vec::with_capacity(16);
     let mut delayed_lookup_multiplicities = Vec::with_capacity(16);
     let mut delayed_lookup_terms = Vec::with_capacity(16);
@@ -152,6 +152,23 @@ pub fn main() {
         });
     }
 
+    // Lookup x1
+    let delayed_lookup_x1_inv = {
+        let delayed_inv = store(Fr::from(0u64));
+        // (r + i) * inv = 1
+        constraints.push(LayoutPerRow {
+            a: vec![(x1, Fr::from(1u64))],
+            b: vec![(delayed_inv, Fr::from(1u64))],
+            c: vec![(constant_1, Fr::from(1u64))],
+            a_delayed: vec![(delayed_lookup_randomizer, Fr::from(1u64))],
+        });
+        lookups.push(Lookup {
+            scalar: -Fr::from(1u64),
+            idx: delayed_inv,
+        });
+        delayed_inv
+    };
+
     // Final lookup check
     constraints.push(LayoutPerRow {
         a: vec![],
@@ -164,6 +181,14 @@ pub fn main() {
     });
 
     let layout = create_layout(size, public_input_size, witness.len(), constraints);
+
+    // Finalize lookup multiplicities
+    {
+        // Finalize lookup x1
+        let _x1_value = witness[x1];
+        let x1_value_idx: usize = /* TODO */ 4;
+        witness[delayed_lookup_multiplicities[x1_value_idx]] += Fr::from(1u64);
+    }
 
     let (prover_setup, vk) = trusted_setup::<_, _, BN254>(&layout, &mut rand::rngs::OsRng);
 
@@ -190,7 +215,21 @@ pub fn main() {
                 + Fr::from(lookup_value))
             .inverse()
             .unwrap();
-            // TODO: Multiplicities
+        }
+
+        // Handle lookup for x1
+        {
+            let x1_value = witness[x1];
+            witness[delayed_lookup_x1_inv] = (lookup_randomizer + x1_value).inverse().unwrap();
+        }
+
+        // Handle multiplicities
+        for (inverse, (multiplicity, term)) in delayed_lookup_inverse_indicies.into_iter().zip(
+            delayed_lookup_multiplicities
+                .into_iter()
+                .zip(delayed_lookup_terms.into_iter()),
+        ) {
+            witness[term] = witness[inverse] * witness[multiplicity];
         }
     }
 
