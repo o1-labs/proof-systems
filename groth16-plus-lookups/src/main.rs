@@ -62,7 +62,12 @@ pub fn main() {
 
     let proof = prove_stage_2::<_, BN254>(prover_env, witness.as_slice(), &prover_setup, &layout);
 
-    let verifies = verify::<BN254>(vec![Fr::from(1u64).into_repr()].as_slice(), &proof, &vk);
+    let public_input: Vec<_> = witness[0..public_input_size]
+        .into_iter()
+        .map(|x| x.into_repr())
+        .collect();
+
+    let verifies = verify::<BN254>(public_input.as_slice(), &proof, &vk);
 
     println!("verifies? {}", verifies);
 }
