@@ -13,12 +13,16 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
+[[bin]]
+name = "test_groth16_prover"
+path = "src/main.rs"
+
 [dependencies]
 ark-ff.workspace = true
 ark-ec.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
-ark-bn254 = { workspace = true, optional = true }
+ark-bn254.workspace = true
 blake2.workspace = true
 num-bigint.workspace = true
 num-derive.workspace = true
