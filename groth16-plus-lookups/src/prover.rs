@@ -1,8 +1,22 @@
 use crate::proof::Proof;
 use crate::proving_key::{CircuitLayout, TrustedSetupProverOutputs};
 use ark_ec::{group::Group, msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve};
-use ark_ff::{PrimeField, UniformRand, Zero};
+use ark_ff::{FftField, PrimeField, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+
+fn compute_contributions<F: FftField>(
+    domain: D<F>,
+    witness: &[F],
+    contributions: &[Box<[(usize, F)]>],
+) -> Evaluations<F, D<F>> {
+    let mut values = vec![F::zero(); domain.size()];
+    for (witness_value, contributions) in witness.iter().zip(contributions.iter()) {
+        for (idx, scalar) in contributions.iter() {
+            values[*idx] += *witness_value * *scalar;
+        }
+    }
+    Evaluations::<F, D<F>>::from_vec_and_domain(values, domain)
+}
 
 pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     witness: &[<Pair::G1Projective as Group>::ScalarField],
@@ -10,24 +24,17 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     circuit_layout: &CircuitLayout<<Pair::G1Projective as Group>::ScalarField>,
     rng: &mut Rng,
 ) -> Proof<Pair::G1Affine, Pair::G2Affine> {
-    let domain_size: usize = circuit_layout.domain.size();
-
     let r = <F as UniformRand>::rand(rng);
     let r_delayed = <F as UniformRand>::rand(rng);
     let r_sum = r + r_delayed;
     let s = <F as UniformRand>::rand(rng);
 
-    let compute_contributions = |contributions: &[Box<[(usize, F)]>]| {
-        let mut values = vec![F::zero(); domain_size];
-        for (witness_value, contributions) in witness.iter().zip(contributions.iter()) {
-            for (idx, scalar) in contributions.iter() {
-                values[*idx] += *witness_value * *scalar;
-            }
-        }
-        Evaluations::<F, D<F>>::from_vec_and_domain(values, circuit_layout.domain)
-    };
-
-    let a_poly = compute_contributions(&circuit_layout.a_contributions).interpolate();
+    let a_poly = compute_contributions(
+        circuit_layout.domain,
+        &witness,
+        &circuit_layout.a_contributions,
+    )
+    .interpolate();
     let a = {
         let initial = trusted_setup_outputs
             .output_fixed_randomizer
@@ -45,8 +52,12 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     };
     let neg_a = -a;
 
-    let a_delayed_poly =
-        compute_contributions(&circuit_layout.a_delayed_contributions).interpolate();
+    let a_delayed_poly = compute_contributions(
+        circuit_layout.domain,
+        &witness,
+        &circuit_layout.a_delayed_contributions,
+    )
+    .interpolate();
     let a_delayed = {
         let initial = trusted_setup_outputs
             .output_fixed_randomizer
@@ -63,7 +74,12 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     };
     let neg_a_delayed = -a_delayed;
 
-    let b_poly = compute_contributions(&circuit_layout.b_contributions).interpolate();
+    let b_poly = compute_contributions(
+        circuit_layout.domain,
+        &witness,
+        &circuit_layout.b_contributions,
+    )
+    .interpolate();
     let b = {
         let initial = trusted_setup_outputs.right_fixed_randomizer.1
             + trusted_setup_outputs
@@ -100,9 +116,13 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
                     (a_poly + a_delayed_poly).evaluate_over_domain_by_ref(circuit_layout.domain_d2);
                 let b_values_d2 = b_poly.evaluate_over_domain_by_ref(circuit_layout.domain_d2);
                 // TODO: Wasteful
-                let c_values_d2 = compute_contributions(&circuit_layout.c_contributions)
-                    .interpolate()
-                    .evaluate_over_domain_by_ref(circuit_layout.domain_d2);
+                let c_values_d2 = compute_contributions(
+                    circuit_layout.domain,
+                    &witness,
+                    &circuit_layout.c_contributions,
+                )
+                .interpolate()
+                .evaluate_over_domain_by_ref(circuit_layout.domain_d2);
                 for (a, (b, c)) in a_values_d2.evals.iter_mut().zip(
                     b_values_d2
                         .evals
