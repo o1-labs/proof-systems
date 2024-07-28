@@ -2,7 +2,7 @@ use ark_bn254::Fr;
 use ark_ff::PrimeField;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use groth16_plus_lookups::{
-    prover::prove,
+    prover::{prove_stage_1, prove_stage_2},
     proving_key::{trusted_setup, CircuitLayout},
     verifier::verify,
 };
@@ -53,12 +53,14 @@ pub fn main() {
 
     let (prover_setup, vk) = trusted_setup::<_, _, BN254>(&layout, &mut rand::rngs::OsRng);
 
-    let proof = prove::<_, _, BN254>(
+    let prover_env = prove_stage_1::<_, _, BN254>(
         witness.as_slice(),
         &prover_setup,
         &layout,
         &mut rand::rngs::OsRng,
     );
+
+    let proof = prove_stage_2::<_, BN254>(prover_env, witness.as_slice(), &prover_setup, &layout);
 
     let verifies = verify::<BN254>(vec![Fr::from(1u64).into_repr()].as_slice(), &proof, &vk);
 

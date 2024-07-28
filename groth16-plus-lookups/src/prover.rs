@@ -2,7 +2,9 @@ use crate::proof::Proof;
 use crate::proving_key::{CircuitLayout, TrustedSetupProverOutputs};
 use ark_ec::{group::Group, msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, PrimeField, UniformRand, Zero};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 
 fn compute_contributions<F: FftField>(
     domain: D<F>,
@@ -18,15 +20,22 @@ fn compute_contributions<F: FftField>(
     Evaluations::<F, D<F>>::from_vec_and_domain(values, domain)
 }
 
-pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
+pub struct Stage1ProverEnv<G: AffineCurve> {
+    r: G::ScalarField,
+    r_delayed: G::ScalarField,
+    s: G::ScalarField,
+    a_poly: DensePolynomial<G::ScalarField>,
+    a: G,
+}
+
+pub fn prove_stage_1<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     witness: &[<Pair::G1Projective as Group>::ScalarField],
     trusted_setup_outputs: &TrustedSetupProverOutputs<Pair::G1Affine, Pair::G2Affine>,
     circuit_layout: &CircuitLayout<<Pair::G1Projective as Group>::ScalarField>,
     rng: &mut Rng,
-) -> Proof<Pair::G1Affine, Pair::G2Affine> {
+) -> Stage1ProverEnv<Pair::G1Affine> {
     let r = <F as UniformRand>::rand(rng);
     let r_delayed = <F as UniformRand>::rand(rng);
-    let r_sum = r + r_delayed;
     let s = <F as UniformRand>::rand(rng);
 
     let a_poly = compute_contributions(
@@ -50,6 +59,31 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
         .into_affine()
             + initial
     };
+
+    Stage1ProverEnv {
+        r,
+        r_delayed,
+        s,
+        a_poly,
+        a,
+    }
+}
+
+pub fn prove_stage_2<F: PrimeField, Pair: PairingEngine<Fr = F>>(
+    env: Stage1ProverEnv<Pair::G1Affine>,
+    witness: &[<Pair::G1Projective as Group>::ScalarField],
+    trusted_setup_outputs: &TrustedSetupProverOutputs<Pair::G1Affine, Pair::G2Affine>,
+    circuit_layout: &CircuitLayout<<Pair::G1Projective as Group>::ScalarField>,
+) -> Proof<Pair::G1Affine, Pair::G2Affine> {
+    let Stage1ProverEnv {
+        r,
+        r_delayed,
+        s,
+        a_poly,
+        a,
+    } = env;
+
+    let r_sum = r + r_delayed;
     let neg_a = -a;
 
     let a_delayed_poly = compute_contributions(
