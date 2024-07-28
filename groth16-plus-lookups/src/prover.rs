@@ -43,6 +43,14 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     };
     let neg_a = -a;
 
+    let (neg_a, neg_a_delayed) = {
+        // TODO
+        (
+            neg_a + (-Pair::G1Affine::prime_subgroup_generator()),
+            Pair::G1Affine::prime_subgroup_generator(),
+        )
+    };
+
     let b_poly = compute_contributions(&circuit_layout.b_contributions).interpolate();
     let b = {
         let initial = trusted_setup_outputs.right_fixed_randomizer.1
@@ -127,5 +135,10 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
             + scaled_a_values_commitment
             + scaled_b_values_commitment
     };
-    Proof { neg_a, b, c }
+    Proof {
+        neg_a,
+        neg_a_delayed,
+        b,
+        c,
+    }
 }

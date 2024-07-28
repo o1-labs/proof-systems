@@ -16,7 +16,7 @@ pub fn verify<Pair: PairingEngine>(
 
     let to_loop = [
         (
-            ark_ec::prepare_g1::<Pair>(proof.neg_a),
+            ark_ec::prepare_g1::<Pair>(proof.neg_a + proof.neg_a_delayed),
             ark_ec::prepare_g2::<Pair>(proof.b),
         ),
         (
