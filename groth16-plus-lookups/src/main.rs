@@ -85,34 +85,39 @@ fn create_layout(
 pub fn main() {
     let size = 1 << 5;
     let public_input_size = 3;
-    let mut witness = vec![
-        // Public inputs
-        // * Constant 1
-        Fr::from(1u64),
-        // * (Delayed) lookup randomizer
-        Fr::from(0u64),
-        // * (Delayed) lookup table combiner
-        Fr::from(0u64),
-        // Witness
-        Fr::from(4u64),
-        Fr::from(16u64),
-    ];
+
+    let mut witness = vec![];
+    let mut store = |x| {
+        let idx = witness.len();
+        witness.push(x);
+        idx
+    };
+
+    // Public
+    let constant_1 = store(Fr::from(1u64));
+    let delayed_lookup_randomizer = store(Fr::from(0u64));
+    let delayed_lookup_table_combiner = store(Fr::from(0u64));
+
+    // Private
+    let x_1 = store(Fr::from(4u64));
+    let x_2 = store(Fr::from(16u64));
+
     let layout = create_layout(
         size,
         public_input_size,
         witness.len(),
         vec![
             LayoutPerRow {
-                a: vec![(0, Fr::from(1u64))],
-                b: vec![(0, Fr::from(2u64))],
-                c: vec![(3, Fr::from(1u64))],
-                a_delayed: vec![(0, Fr::from(1u64))],
-                c_equality: vec![(0, Fr::from(1u64))],
+                a: vec![(constant_1, Fr::from(1u64))],
+                b: vec![(constant_1, Fr::from(2u64))],
+                c: vec![(x_1, Fr::from(1u64))],
+                a_delayed: vec![(constant_1, Fr::from(1u64))],
+                c_equality: vec![(constant_1, Fr::from(1u64))],
             },
             LayoutPerRow {
-                a: vec![(3, Fr::from(1u64))],
-                b: vec![(3, Fr::from(1u64))],
-                c: vec![(4, Fr::from(1u64))],
+                a: vec![(x_1, Fr::from(1u64))],
+                b: vec![(x_1, Fr::from(1u64))],
+                c: vec![(x_2, Fr::from(1u64))],
                 a_delayed: vec![],
                 c_equality: vec![],
             },
