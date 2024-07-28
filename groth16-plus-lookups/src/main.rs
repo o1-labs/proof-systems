@@ -1,5 +1,5 @@
 use ark_bn254::Fr;
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use groth16_plus_lookups::{
     prover::{prove_stage_1, prove_stage_2},
@@ -14,7 +14,6 @@ struct LayoutPerRow {
     b: Vec<(usize, Fr)>,
     c: Vec<(usize, Fr)>,
     a_delayed: Vec<(usize, Fr)>,
-    c_equality: Vec<(usize, Fr)>,
 }
 
 fn create_layout(
@@ -44,8 +43,7 @@ fn create_layout(
         }
         for (idx, scalar) in row_layout.a_delayed {
             a_delayed_contributions[idx].push((row_idx, scalar));
-        }
-        for (idx, scalar) in row_layout.c_equality {
+            // May not need a separate field for this if not useful.
             c_delayed_equality_contributions[idx].push((row_idx, scalar));
         }
     }
@@ -82,12 +80,18 @@ fn create_layout(
     }
 }
 
+struct Lookup {
+    scalar: Fr,
+    idx: usize,
+}
+
 pub fn main() {
-    let size = 1 << 5;
+    let size = 1 << 7;
     let public_input_size = 3;
 
     let mut witness = vec![];
     let mut constraints = vec![];
+    let mut lookups = vec![];
     let mut store = |x| {
         let idx = witness.len();
         witness.push(x);
@@ -107,7 +111,6 @@ pub fn main() {
         b: vec![(constant_1, Fr::from(2u64))],
         c: vec![(x1, Fr::from(1u64))],
         a_delayed: vec![(constant_1, Fr::from(1u64))],
-        c_equality: vec![(constant_1, Fr::from(1u64))],
     });
     let x2 = store(Fr::from(16u64));
     // x2 = x1 * x1
@@ -116,7 +119,48 @@ pub fn main() {
         b: vec![(x1, Fr::from(1u64))],
         c: vec![(x2, Fr::from(1u64))],
         a_delayed: vec![],
-        c_equality: vec![],
+    });
+
+    // Lookups
+    let mut delayed_lookup_inverse_indicies = Vec::with_capacity(16);
+    let mut delayed_lookup_multiplicities = Vec::with_capacity(16);
+    let mut delayed_lookup_terms = Vec::with_capacity(16);
+    for lookup_value in 0..16u64 {
+        let delayed_inv = store(Fr::from(0u64));
+        delayed_lookup_inverse_indicies.push(delayed_inv);
+        // (r + i) * inv = 1
+        constraints.push(LayoutPerRow {
+            a: vec![(constant_1, Fr::from(lookup_value))],
+            b: vec![(delayed_inv, Fr::from(1u64))],
+            c: vec![(constant_1, Fr::from(1u64))],
+            a_delayed: vec![(delayed_lookup_randomizer, Fr::from(1u64))],
+        });
+        let delayed_multiplicity = store(Fr::from(0u64));
+        delayed_lookup_multiplicities.push(delayed_multiplicity);
+        let delayed_lookup_term = store(Fr::from(0u64));
+        delayed_lookup_terms.push(delayed_lookup_term);
+        // m * inv = m_inv
+        constraints.push(LayoutPerRow {
+            a: vec![(delayed_multiplicity, Fr::from(1u64))],
+            b: vec![(delayed_inv, Fr::from(1u64))],
+            c: vec![(delayed_lookup_term, Fr::from(1u64))],
+            a_delayed: vec![],
+        });
+        lookups.push(Lookup {
+            scalar: Fr::from(1u64),
+            idx: delayed_lookup_term,
+        });
+    }
+
+    // Final lookup check
+    constraints.push(LayoutPerRow {
+        a: vec![],
+        b: vec![(constant_1, Fr::from(1u64))],
+        c: vec![],
+        a_delayed: lookups
+            .into_iter()
+            .map(|Lookup { scalar, idx }| (idx, scalar))
+            .collect(),
     });
 
     let layout = create_layout(size, public_input_size, witness.len(), constraints);
@@ -140,6 +184,14 @@ pub fn main() {
 
         witness[delayed_lookup_randomizer] = lookup_randomizer;
         witness[delayed_lookup_table_combiner] = lookup_table_combiner;
+
+        for lookup_value in 0..16u64 {
+            witness[delayed_lookup_inverse_indicies[lookup_value as usize]] = (lookup_randomizer
+                + Fr::from(lookup_value))
+            .inverse()
+            .unwrap();
+            // TODO: Multiplicities
+        }
     }
 
     let proof = prove_stage_2::<_, BN254>(prover_env, witness.as_slice(), &prover_setup, &layout);
