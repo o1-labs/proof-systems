@@ -41,6 +41,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
         .into_affine()
             + initial
     };
+    let neg_a = -a;
 
     let b_poly = compute_contributions(&circuit_layout.b_contributions).interpolate();
     let b = {
@@ -126,5 +127,5 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
             + scaled_a_values_commitment
             + scaled_b_values_commitment
     };
-    Proof { a, b, c }
+    Proof { neg_a, b, c }
 }
