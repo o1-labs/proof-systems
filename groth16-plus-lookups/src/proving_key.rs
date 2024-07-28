@@ -7,6 +7,7 @@ pub struct TrustedSetupProverOutputs<G1, G2> {
     pub left_fixed_randomizer: G1,
     pub right_fixed_randomizer: (G1, G2),
     pub output_fixed_randomizer: (G1, G2),
+    pub output_delayed_fixed_randomizer: G1,
     pub left_commitments: Box<[G1]>,
     pub right_commitments: Box<[G2]>,
     pub out_commitments: Box<[G1]>,
@@ -19,6 +20,7 @@ pub struct CircuitLayout<F: FftField> {
     pub a_delayed_contributions: Box<[Box<[(usize, F)]>]>,
     pub b_contributions: Box<[Box<[(usize, F)]>]>,
     pub c_contributions: Box<[Box<[(usize, F)]>]>,
+    pub c_delayed_equality_contributions: Box<[Box<[(usize, F)]>]>,
     pub domain: D<F>,
     pub domain_d2: D<F>,
 }
@@ -31,12 +33,16 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
     VerificationKey<Pair::G1Affine, Pair::G2Affine>,
 ) {
     let left_randomizer: F = <F as UniformRand>::rand(rng);
+    let left_delayed_randomizer: F = <F as UniformRand>::rand(rng);
     let right_randomizer: F = <F as UniformRand>::rand(rng);
     let output_randomizer: F = <F as UniformRand>::rand(rng);
     let public_input_randomizer_: F = <F as UniformRand>::rand(rng);
 
     let left_fixed_randomizer = Pair::G1Affine::prime_subgroup_generator()
         .mul(left_randomizer)
+        .into_affine();
+    let left_delayed_fixed_randomizer = Pair::G2Affine::prime_subgroup_generator()
+        .mul(left_delayed_randomizer)
         .into_affine();
     let right_fixed_randomizer = (
         Pair::G1Affine::prime_subgroup_generator()
@@ -54,6 +60,9 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
             .mul(output_randomizer)
             .into_affine(),
     );
+    let output_delayed_fixed_randomizer = Pair::G1Affine::prime_subgroup_generator()
+        .mul(left_delayed_randomizer)
+        .into_affine();
     let public_input_randomizer = Pair::G2Affine::prime_subgroup_generator()
         .mul(public_input_randomizer_)
         .into_affine();
@@ -120,7 +129,13 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
             for (idx, scalar) in layout.b_contributions[i].iter() {
                 right_eval += lagrange_basis[0][*idx] * *scalar;
             }
-            let mut eval = left_eval * right_randomizer + right_eval * left_randomizer;
+            let mut delayed_equality_eval = F::zero();
+            for (idx, scalar) in layout.c_delayed_equality_contributions[i].iter() {
+                delayed_equality_eval += lagrange_basis[0][*idx] * *scalar;
+            }
+            let mut eval = left_eval * right_randomizer
+                + right_eval * left_randomizer
+                + delayed_equality_eval * left_delayed_randomizer;
             for (idx, scalar) in layout.c_contributions[i].iter() {
                 eval += lagrange_basis[0][*idx] * *scalar;
             }
@@ -152,6 +167,7 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
             left_fixed_randomizer,
             right_fixed_randomizer,
             output_fixed_randomizer,
+            output_delayed_fixed_randomizer,
             left_commitments,
             right_commitments,
             out_commitments,
@@ -159,6 +175,7 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
         },
         VerificationKey {
             left_fixed_randomizer,
+            left_delayed_fixed_randomizer,
             right_fixed_randomizer: right_fixed_randomizer.1,
             output_fixed_randomizer: output_fixed_randomizer.1,
             public_input_randomizer,

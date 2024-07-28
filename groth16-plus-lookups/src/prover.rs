@@ -143,10 +143,15 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
                     .mul(r_sum)
                     .into_affine()
         };
+        let delayed_equality_correction_commitment = trusted_setup_outputs
+            .output_delayed_fixed_randomizer
+            .mul(r_delayed)
+            .into_affine();
         witness_commitment
             + quotient_commitment
             + scaled_a_values_commitment
             + scaled_b_values_commitment
+            + delayed_equality_correction_commitment
     };
     Proof {
         neg_a,

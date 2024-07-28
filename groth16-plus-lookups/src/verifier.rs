@@ -20,6 +20,10 @@ pub fn verify<Pair: PairingEngine>(
             ark_ec::prepare_g2::<Pair>(proof.b),
         ),
         (
+            ark_ec::prepare_g1::<Pair>(proof.neg_a_delayed),
+            ark_ec::prepare_g2::<Pair>(verification_key.left_delayed_fixed_randomizer),
+        ),
+        (
             ark_ec::prepare_g1::<Pair>(verification_key.left_fixed_randomizer),
             ark_ec::prepare_g2::<Pair>(verification_key.right_fixed_randomizer),
         ),

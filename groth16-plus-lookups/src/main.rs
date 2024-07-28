@@ -41,6 +41,12 @@ pub fn main() {
             vec![(2, Fr::from(1u64))].into_boxed_slice(),
         ]
         .into_boxed_slice(),
+        c_delayed_equality_contributions: vec![
+            vec![(1, Fr::from(1u64))].into_boxed_slice(),
+            vec![].into_boxed_slice(),
+            vec![].into_boxed_slice(),
+        ]
+        .into_boxed_slice(),
         domain,
         domain_d2,
     };
