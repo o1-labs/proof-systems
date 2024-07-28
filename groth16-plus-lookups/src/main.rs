@@ -14,7 +14,7 @@ pub fn main() {
     let domain = D::new(size).unwrap();
     let domain_d2 = D::new(size << 1).unwrap();
     let public_input_size = 3;
-    let witness = vec![
+    let mut witness = vec![
         // Public inputs
         // * Constant 1
         Fr::from(1u64),
@@ -80,6 +80,18 @@ pub fn main() {
         &layout,
         &mut rand::rngs::OsRng,
     );
+
+    // Update witness with now-known values
+    {
+        use ark_ff::UniformRand;
+
+        // TODO: Fiat shamir
+        let lookup_randomizer = Fr::rand(&mut rand::rngs::OsRng);
+        let lookup_table_combiner = Fr::rand(&mut rand::rngs::OsRng);
+
+        witness[1] = lookup_randomizer;
+        witness[2] = lookup_table_combiner;
+    }
 
     let proof = prove_stage_2::<_, BN254>(prover_env, witness.as_slice(), &prover_setup, &layout);
 
