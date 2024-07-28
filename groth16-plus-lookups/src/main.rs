@@ -9,10 +9,81 @@ use groth16_plus_lookups::{
 
 type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 
+struct LayoutPerRow {
+    a: Vec<(usize, Fr)>,
+    b: Vec<(usize, Fr)>,
+    c: Vec<(usize, Fr)>,
+    a_delayed: Vec<(usize, Fr)>,
+    c_equality: Vec<(usize, Fr)>,
+}
+
+fn create_layout(
+    domain_size: usize,
+    public_input_size: usize,
+    witness_size: usize,
+    layout: Vec<LayoutPerRow>,
+) -> CircuitLayout<Fr> {
+    let domain = D::new(domain_size).unwrap();
+    let domain_d2 = D::new(domain_size << 1).unwrap();
+
+    let mut a_contributions = vec![vec![]; witness_size];
+    let mut b_contributions = vec![vec![]; witness_size];
+    let mut c_contributions = vec![vec![]; witness_size];
+    let mut a_delayed_contributions = vec![vec![]; witness_size];
+    let mut c_delayed_equality_contributions = vec![vec![]; witness_size];
+
+    for (row_idx, row_layout) in layout.into_iter().enumerate() {
+        for (idx, scalar) in row_layout.a {
+            a_contributions[idx].push((row_idx, scalar));
+        }
+        for (idx, scalar) in row_layout.b {
+            b_contributions[idx].push((row_idx, scalar));
+        }
+        for (idx, scalar) in row_layout.c {
+            c_contributions[idx].push((row_idx, scalar));
+        }
+        for (idx, scalar) in row_layout.a_delayed {
+            a_delayed_contributions[idx].push((row_idx, scalar));
+        }
+        for (idx, scalar) in row_layout.c_equality {
+            c_delayed_equality_contributions[idx].push((row_idx, scalar));
+        }
+    }
+
+    CircuitLayout {
+        public_input_size,
+        a_contributions: a_contributions
+            .into_iter()
+            .map(|x| x.into_boxed_slice())
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        a_delayed_contributions: a_delayed_contributions
+            .into_iter()
+            .map(|x| x.into_boxed_slice())
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        b_contributions: b_contributions
+            .into_iter()
+            .map(|x| x.into_boxed_slice())
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        c_contributions: c_contributions
+            .into_iter()
+            .map(|x| x.into_boxed_slice())
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        c_delayed_equality_contributions: c_delayed_equality_contributions
+            .into_iter()
+            .map(|x| x.into_boxed_slice())
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        domain,
+        domain_d2,
+    }
+}
+
 pub fn main() {
     let size = 1 << 5;
-    let domain = D::new(size).unwrap();
-    let domain_d2 = D::new(size << 1).unwrap();
     let public_input_size = 3;
     let mut witness = vec![
         // Public inputs
@@ -26,51 +97,27 @@ pub fn main() {
         Fr::from(4u64),
         Fr::from(16u64),
     ];
-    let layout = CircuitLayout {
+    let layout = create_layout(
+        size,
         public_input_size,
-        a_contributions: vec![
-            vec![(0, Fr::from(1u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![(1, Fr::from(1u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-        ]
-        .into_boxed_slice(),
-        a_delayed_contributions: vec![
-            vec![(0, Fr::from(1u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-        ]
-        .into_boxed_slice(),
-        b_contributions: vec![
-            vec![(0, Fr::from(2u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![(1, Fr::from(1u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-        ]
-        .into_boxed_slice(),
-        c_contributions: vec![
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![(0, Fr::from(1u64))].into_boxed_slice(),
-            vec![(1, Fr::from(1u64))].into_boxed_slice(),
-        ]
-        .into_boxed_slice(),
-        c_delayed_equality_contributions: vec![
-            vec![(0, Fr::from(1u64))].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-            vec![].into_boxed_slice(),
-        ]
-        .into_boxed_slice(),
-        domain,
-        domain_d2,
-    };
+        witness.len(),
+        vec![
+            LayoutPerRow {
+                a: vec![(0, Fr::from(1u64))],
+                b: vec![(0, Fr::from(2u64))],
+                c: vec![(3, Fr::from(1u64))],
+                a_delayed: vec![(0, Fr::from(1u64))],
+                c_equality: vec![(0, Fr::from(1u64))],
+            },
+            LayoutPerRow {
+                a: vec![(3, Fr::from(1u64))],
+                b: vec![(3, Fr::from(1u64))],
+                c: vec![(4, Fr::from(1u64))],
+                a_delayed: vec![],
+                c_equality: vec![],
+            },
+        ],
+    );
 
     let (prover_setup, vk) = trusted_setup::<_, _, BN254>(&layout, &mut rand::rngs::OsRng);
 
