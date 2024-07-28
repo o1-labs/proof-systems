@@ -43,13 +43,17 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     };
     let neg_a = -a;
 
-    let (neg_a, neg_a_delayed) = {
-        // TODO
-        (
-            neg_a + (-Pair::G1Affine::prime_subgroup_generator()),
-            Pair::G1Affine::prime_subgroup_generator(),
+    let a_delayed_poly =
+        compute_contributions(&circuit_layout.a_delayed_contributions).interpolate();
+    let a_delayed = {
+        let coefficients: Vec<_> = a_delayed_poly.iter().map(|x| x.into_repr()).collect();
+        VariableBaseMSM::multi_scalar_mul(
+            &trusted_setup_outputs.left_commitments,
+            coefficients.as_slice(),
         )
+        .into_affine()
     };
+    let neg_a_delayed = -a_delayed;
 
     let b_poly = compute_contributions(&circuit_layout.b_contributions).interpolate();
     let b = {
@@ -84,7 +88,8 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
         };
         let quotient_commitment = {
             let quotient_poly = {
-                let mut a_values_d2 = a_poly.evaluate_over_domain_by_ref(circuit_layout.domain_d2);
+                let mut a_values_d2 =
+                    (a_poly + a_delayed_poly).evaluate_over_domain_by_ref(circuit_layout.domain_d2);
                 let b_values_d2 = b_poly.evaluate_over_domain_by_ref(circuit_layout.domain_d2);
                 // TODO: Wasteful
                 let c_values_d2 = compute_contributions(&circuit_layout.c_contributions)
@@ -116,7 +121,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
             )
             .into_affine()
         };
-        let scaled_a_values_commitment = a.mul(s).into_affine();
+        let scaled_a_values_commitment = (a + a_delayed).mul(s).into_affine();
         let scaled_b_values_commitment = {
             let witness: Vec<_> = b_poly.iter().map(|x| (r * *x).into_repr()).collect();
             VariableBaseMSM::multi_scalar_mul(

@@ -18,8 +18,14 @@ pub fn main() {
     let layout = CircuitLayout {
         public_input_size,
         a_contributions: vec![
-            vec![(1, Fr::from(2u64))].into_boxed_slice(),
+            vec![(1, Fr::from(1u64))].into_boxed_slice(),
             vec![(2, Fr::from(1u64))].into_boxed_slice(),
+            vec![].into_boxed_slice(),
+        ]
+        .into_boxed_slice(),
+        a_delayed_contributions: vec![
+            vec![(1, Fr::from(1u64))].into_boxed_slice(),
+            vec![].into_boxed_slice(),
             vec![].into_boxed_slice(),
         ]
         .into_boxed_slice(),

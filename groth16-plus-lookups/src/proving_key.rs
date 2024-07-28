@@ -16,6 +16,7 @@ pub struct TrustedSetupProverOutputs<G1, G2> {
 pub struct CircuitLayout<F: FftField> {
     pub public_input_size: usize,
     pub a_contributions: Box<[Box<[(usize, F)]>]>,
+    pub a_delayed_contributions: Box<[Box<[(usize, F)]>]>,
     pub b_contributions: Box<[Box<[(usize, F)]>]>,
     pub c_contributions: Box<[Box<[(usize, F)]>]>,
     pub domain: D<F>,
@@ -110,6 +111,9 @@ pub fn trusted_setup<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
         let comm_evals = |i: usize, scalar: F| {
             let mut left_eval = F::zero();
             for (idx, scalar) in layout.a_contributions[i].iter() {
+                left_eval += lagrange_basis[0][*idx] * *scalar;
+            }
+            for (idx, scalar) in layout.a_delayed_contributions[i].iter() {
                 left_eval += lagrange_basis[0][*idx] * *scalar;
             }
             let mut right_eval = F::zero();
