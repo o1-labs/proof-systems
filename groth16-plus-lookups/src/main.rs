@@ -141,8 +141,8 @@ pub fn main() {
         let lookup_randomizer = Fr::rand(&mut rand::rngs::OsRng);
         let lookup_table_combiner = Fr::rand(&mut rand::rngs::OsRng);
 
-        witness[1] = lookup_randomizer;
-        witness[2] = lookup_table_combiner;
+        witness[delayed_lookup_randomizer] = lookup_randomizer;
+        witness[delayed_lookup_table_combiner] = lookup_table_combiner;
     }
 
     let proof = prove_stage_2::<_, BN254>(prover_env, witness.as_slice(), &prover_setup, &layout);
