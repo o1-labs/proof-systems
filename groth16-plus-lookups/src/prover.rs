@@ -13,6 +13,8 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     let domain_size: usize = circuit_layout.domain.size();
 
     let r = <F as UniformRand>::rand(rng);
+    let r_delayed = <F as UniformRand>::rand(rng);
+    let r_sum = r + r_delayed;
     let s = <F as UniformRand>::rand(rng);
 
     let compute_contributions = |contributions: &[Box<[(usize, F)]>]| {
@@ -46,12 +48,18 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
     let a_delayed_poly =
         compute_contributions(&circuit_layout.a_delayed_contributions).interpolate();
     let a_delayed = {
+        let initial = trusted_setup_outputs
+            .output_fixed_randomizer
+            .0
+            .mul(r_delayed)
+            .into_affine();
         let coefficients: Vec<_> = a_delayed_poly.iter().map(|x| x.into_repr()).collect();
         VariableBaseMSM::multi_scalar_mul(
             &trusted_setup_outputs.left_commitments,
             coefficients.as_slice(),
         )
         .into_affine()
+            + initial
     };
     let neg_a_delayed = -a_delayed;
 
@@ -123,7 +131,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
         };
         let scaled_a_values_commitment = (a + a_delayed).mul(s).into_affine();
         let scaled_b_values_commitment = {
-            let witness: Vec<_> = b_poly.iter().map(|x| (r * *x).into_repr()).collect();
+            let witness: Vec<_> = b_poly.iter().map(|x| (r_sum * *x).into_repr()).collect();
             VariableBaseMSM::multi_scalar_mul(
                 &trusted_setup_outputs.left_commitments,
                 witness.as_slice(),
@@ -132,7 +140,7 @@ pub fn prove<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
                 + trusted_setup_outputs
                     .right_fixed_randomizer
                     .0
-                    .mul(r)
+                    .mul(r_sum)
                     .into_affine()
         };
         witness_commitment
