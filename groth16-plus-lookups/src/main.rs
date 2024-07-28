@@ -87,6 +87,7 @@ pub fn main() {
     let public_input_size = 3;
 
     let mut witness = vec![];
+    let mut constraints = vec![];
     let mut store = |x| {
         let idx = witness.len();
         witness.push(x);
@@ -99,30 +100,26 @@ pub fn main() {
     let delayed_lookup_table_combiner = store(Fr::from(0u64));
 
     // Private
-    let x_1 = store(Fr::from(4u64));
-    let x_2 = store(Fr::from(16u64));
+    let x1 = store(Fr::from(4u64));
+    // x1 = 2 * 2
+    constraints.push(LayoutPerRow {
+        a: vec![(constant_1, Fr::from(1u64))],
+        b: vec![(constant_1, Fr::from(2u64))],
+        c: vec![(x1, Fr::from(1u64))],
+        a_delayed: vec![(constant_1, Fr::from(1u64))],
+        c_equality: vec![(constant_1, Fr::from(1u64))],
+    });
+    let x2 = store(Fr::from(16u64));
+    // x2 = x1 * x1
+    constraints.push(LayoutPerRow {
+        a: vec![(x1, Fr::from(1u64))],
+        b: vec![(x1, Fr::from(1u64))],
+        c: vec![(x2, Fr::from(1u64))],
+        a_delayed: vec![],
+        c_equality: vec![],
+    });
 
-    let layout = create_layout(
-        size,
-        public_input_size,
-        witness.len(),
-        vec![
-            LayoutPerRow {
-                a: vec![(constant_1, Fr::from(1u64))],
-                b: vec![(constant_1, Fr::from(2u64))],
-                c: vec![(x_1, Fr::from(1u64))],
-                a_delayed: vec![(constant_1, Fr::from(1u64))],
-                c_equality: vec![(constant_1, Fr::from(1u64))],
-            },
-            LayoutPerRow {
-                a: vec![(x_1, Fr::from(1u64))],
-                b: vec![(x_1, Fr::from(1u64))],
-                c: vec![(x_2, Fr::from(1u64))],
-                a_delayed: vec![],
-                c_equality: vec![],
-            },
-        ],
-    );
+    let layout = create_layout(size, public_input_size, witness.len(), constraints);
 
     let (prover_setup, vk) = trusted_setup::<_, _, BN254>(&layout, &mut rand::rngs::OsRng);
 
