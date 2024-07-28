@@ -1,16 +1,36 @@
+use crate::digest::FieldDigests;
 use crate::proof::Proof;
 use crate::verification_key::VerificationKey;
 use ark_ec::{group::Group, msm::VariableBaseMSM, PairingEngine};
 use ark_ff::{One, PrimeField};
 
 pub fn verify<Pair: PairingEngine>(
-    public_input: &[<<Pair::G1Projective as Group>::ScalarField as PrimeField>::BigInt],
+    public_input: &[<Pair::Fr as PrimeField>::BigInt],
     proof: &Proof<Pair::G1Affine, Pair::G2Affine>,
     verification_key: &VerificationKey<Pair::G1Affine, Pair::G2Affine>,
-) -> bool {
+) -> bool
+where
+    Pair::G1Affine: FieldDigests<Pair::Fr>,
+{
     if public_input.len() != verification_key.public_input_commitments.len() {
         return false;
     }
+
+    // Validate public inputs (TODO: inject them instead).
+    {
+        // Check that first public input is 1
+        if public_input[0]
+            != <<Pair::G1Projective as Group>::ScalarField as PrimeField>::BigInt::from(1u64)
+        {
+            return false;
+        }
+
+        let (r1, r2) = proof.neg_a.field_digests();
+        if public_input[1] != r1.into_repr() || public_input[2] != r2.into_repr() {
+            return false;
+        }
+    }
+
     let public_input =
         VariableBaseMSM::multi_scalar_mul(&verification_key.public_input_commitments, public_input);
 

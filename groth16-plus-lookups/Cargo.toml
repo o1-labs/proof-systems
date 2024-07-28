@@ -59,6 +59,8 @@ wasm-bindgen = { workspace = true, optional = true }
 
 internal-tracing.workspace = true
 
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+
 [dev-dependencies]
 proptest.workspace = true
 proptest-derive.workspace = true

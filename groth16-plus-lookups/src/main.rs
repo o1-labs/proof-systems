@@ -201,11 +201,8 @@ pub fn main() {
 
     // Update witness with now-known values
     {
-        use ark_ff::UniformRand;
-
-        // TODO: Fiat shamir
-        let lookup_randomizer = Fr::rand(&mut rand::rngs::OsRng);
-        let lookup_table_combiner = Fr::rand(&mut rand::rngs::OsRng);
+        let lookup_randomizer = prover_env.neg_a_digest.0;
+        let lookup_table_combiner = prover_env.neg_a_digest.1;
 
         witness[delayed_lookup_randomizer] = lookup_randomizer;
         witness[delayed_lookup_table_combiner] = lookup_table_combiner;

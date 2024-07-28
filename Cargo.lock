@@ -1233,6 +1233,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
+ "tiny-keccak",
  "turshi",
  "wasm-bindgen",
 ]

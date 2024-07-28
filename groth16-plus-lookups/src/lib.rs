@@ -1,3 +1,4 @@
+pub mod digest;
 pub mod proof;
 pub mod prover;
 pub mod proving_key;

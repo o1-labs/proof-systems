@@ -1,3 +1,4 @@
+use crate::digest::FieldDigests;
 use crate::proof::Proof;
 use crate::proving_key::{CircuitLayout, TrustedSetupProverOutputs};
 use ark_ec::{group::Group, msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve};
@@ -26,6 +27,8 @@ pub struct Stage1ProverEnv<G: AffineCurve> {
     s: G::ScalarField,
     a_poly: DensePolynomial<G::ScalarField>,
     a: G,
+    neg_a: G,
+    pub neg_a_digest: (G::ScalarField, G::ScalarField),
 }
 
 pub fn prove_stage_1<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr = F>>(
@@ -33,7 +36,10 @@ pub fn prove_stage_1<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
     trusted_setup_outputs: &TrustedSetupProverOutputs<Pair::G1Affine, Pair::G2Affine>,
     circuit_layout: &CircuitLayout<<Pair::G1Projective as Group>::ScalarField>,
     rng: &mut Rng,
-) -> Stage1ProverEnv<Pair::G1Affine> {
+) -> Stage1ProverEnv<Pair::G1Affine>
+where
+    Pair::G1Affine: FieldDigests<F>,
+{
     let r = <F as UniformRand>::rand(rng);
     let r_delayed = <F as UniformRand>::rand(rng);
     let s = <F as UniformRand>::rand(rng);
@@ -60,12 +66,18 @@ pub fn prove_stage_1<F: PrimeField, Rng: rand::RngCore, Pair: PairingEngine<Fr =
             + initial
     };
 
+    let neg_a = -a;
+
+    let neg_a_digest = neg_a.field_digests();
+
     Stage1ProverEnv {
         r,
         r_delayed,
         s,
         a_poly,
         a,
+        neg_a,
+        neg_a_digest,
     }
 }
 
@@ -81,10 +93,11 @@ pub fn prove_stage_2<F: PrimeField, Pair: PairingEngine<Fr = F>>(
         s,
         a_poly,
         a,
+        neg_a,
+        neg_a_digest: _,
     } = env;
 
     let r_sum = r + r_delayed;
-    let neg_a = -a;
 
     let a_delayed_poly = compute_contributions(
         circuit_layout.domain,
