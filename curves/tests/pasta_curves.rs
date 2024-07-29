@@ -1,13 +1,11 @@
 use std::str::FromStr;
 
-use crate::pasta::{Fp, Pallas};
 use ark_algebra_test_templates::{curves::*, groups::*};
 use ark_ec::AffineCurve;
 use ark_std::test_rng;
+use mina_curves::pasta::{curves::pallas, Fp, Pallas};
 use num_bigint::BigUint;
 use rand::Rng;
-
-use super::pallas;
 
 #[test]
 fn test_pallas_projective_curve() {
