@@ -261,7 +261,7 @@ where
     let (_, endo_r) = G::endos();
 
     let quotient_poly = {
-        let evaluation_domain = domain.d2;
+        let evaluation_domain = domain.d4;
 
         let enlarge_to_domain_generic =
             |evaluations: &Evaluations<Fp, R2D<Fp>>, new_domain: R2D<Fp>| {
@@ -329,8 +329,8 @@ where
         }
     };
 
-    // we assume our folding degree is always 2, so number of chunks should be 1
-    let num_chunks: usize = 1;
+    // we interpolate over d4, so number of chunks should be 3
+    let num_chunks: usize = 3;
 
     //~ 1. commit to the quotient polynomial $t$.
     let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);

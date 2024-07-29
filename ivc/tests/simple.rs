@@ -706,6 +706,8 @@ pub fn heavy_test_simple_add() {
         phantom: std::marker::PhantomData,
     };
 
+    let mut fq_sponge_before_instance_three = fq_sponge.clone();
+
     let folding_instance_three = PlonkishInstance::from_witness(
         &folding_witness_three.witness,
         &mut fq_sponge,
@@ -914,7 +916,7 @@ pub fn heavy_test_simple_add() {
     ////////////////////////////////////////////////////////////////////////////
 
     // quad columns become regular witness columns
-    let real_folding_compat_constraint_noquad: FoldingCompatibleExpr<MainTestConfig> = {
+    let real_folding_compat_constraint_quad_merged: FoldingCompatibleExpr<MainTestConfig> = {
         let noquad_mapper = &(|quad_index: usize| {
             let col = kimchi_msm::columns::Column::Relation(N_COL_TOTAL + quad_index);
             Variable {
@@ -929,13 +931,6 @@ pub fn heavy_test_simple_add() {
     };
 
     println!("Creating a proof");
-
-    let fixed_selectors_verifier = folded_witness_one
-        .extended_witness
-        .witness
-        .fixed_selectors
-        .cols
-        .clone();
 
     let proof = ivc::prover::prove::<
         BaseSponge,
@@ -952,8 +947,8 @@ pub fn heavy_test_simple_add() {
         domain,
         &srs,
         &real_folding_compat_constraint,
-        folded_instance_one.clone(),
-        folded_witness_one,
+        folded_instance_two.clone(),
+        folded_witness_two.clone(),
         &mut rng,
     )
     .unwrap();
@@ -964,6 +959,12 @@ pub fn heavy_test_simple_add() {
     ////////////////////////////////////////////////////////////////////////////
 
     println!("Verifying a proof");
+
+    let fixed_selectors_verifier = folded_witness_two
+        .extended_witness
+        .witness
+        .fixed_selectors
+        .cols;
 
     // Check that the last SNARK is correct
     let verifies = ivc::verifier::verify::<
@@ -978,7 +979,7 @@ pub fn heavy_test_simple_add() {
     >(
         domain,
         &srs,
-        &real_folding_compat_constraint_noquad,
+        &real_folding_compat_constraint_quad_merged,
         fixed_selectors_verifier,
         &proof,
     );
@@ -1002,5 +1003,20 @@ pub fn heavy_test_simple_add() {
         );
     }
 
-    // TODO check that A4 vas relaxed.
+    // We have to check that:
+    // 1. `folding_instance_three` is relaxed (E = 0, u = 1)
+    // 2. u.x = Hash(n, z0, zn, U)
+
+    // We don't yet do (2) because we don't support public input yet.
+    //
+    // And (1) we achieve automatically because
+    // `folding_instance_three` is a `PlonkishInstance` and not
+    // `RelaxedInstance`. We only have to check that its `alphas` are
+    // powers (and not arbitrary elements):
+
+    // Check that `folding_instance_three` vas relaxed.
+    assert_eq!(
+        Ok(()),
+        folding_instance_three.verify_from_witness(&mut fq_sponge_before_instance_three)
+    );
 }

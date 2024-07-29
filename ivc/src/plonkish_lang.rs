@@ -19,7 +19,7 @@ use std::ops::Index;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 /// Vector field over F. Something like a vector.
-pub trait CombinableEvals<F: Field> {
+pub trait CombinableEvals<F: Field>: PartialEq {
     fn e_as_slice(&self) -> &[F];
     fn e_as_mut_slice(&mut self) -> &mut [F];
 }
@@ -63,6 +63,7 @@ impl<const N_COL: usize, const N_FSEL: usize, F: Field, Evals: CombinableEvals<F
                 *a += *b * challenge;
             }
         }
+        assert!(a.fixed_selectors == b.fixed_selectors);
         a
     }
 }
@@ -174,9 +175,10 @@ impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
             .collect();
 
         // Absorbing commitments
-        (&commitments)
-            .into_iter()
-            .for_each(|c| absorb_commitment(fq_sponge, c));
+        (&commitments).into_iter().for_each(|c| {
+            assert!(c.elems.len() == 1);
+            absorb_commitment(fq_sponge, c)
+        });
 
         let commitments: [G; N_COL] = commitments
             .into_iter()
@@ -199,6 +201,36 @@ impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
             alphas,
             blinder,
         }
+    }
+
+    pub fn verify_from_witness<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+        &self,
+        fq_sponge: &mut EFqSponge,
+    ) -> Result<(), String> {
+        (self.blinder == G::ScalarField::one())
+            .then_some(())
+            .ok_or("Blinder must be one")?;
+
+        // Absorbing commitments
+        self.commitments
+            .iter()
+            .for_each(|c| absorb_commitment(fq_sponge, &PolyComm { elems: vec![*c] }));
+
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
+        let joint_combiner = fq_sponge.challenge();
+
+        (self.challenges == [beta, gamma, joint_combiner])
+            .then_some(())
+            .ok_or("Challenges do not match the expected result")?;
+
+        let alpha = fq_sponge.challenge();
+
+        (self.alphas == Alphas::new_sized(alpha, N_ALPHAS))
+            .then_some(())
+            .ok_or("Alphas do not match the expected result")?;
+
+        Ok(())
     }
 }
 
