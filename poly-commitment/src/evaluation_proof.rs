@@ -1,3 +1,8 @@
+//! This module contains the implementation of the polynomial commitment scheme
+//! called the Inner Product Argument (IPA) as described in [Efficient
+//! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
+//! Setting](https://eprint.iacr.org/2016/263)
+
 use crate::{
     commitment::*,
     srs::{endos, SRS},
