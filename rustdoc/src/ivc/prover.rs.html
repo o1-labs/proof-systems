@@ -761,7 +761,7 @@
     </span><span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
 
     <span class="kw">let </span>quotient_poly = {
-        <span class="kw">let </span>evaluation_domain = domain.d2;
+        <span class="kw">let </span>evaluation_domain = domain.d4;
 
         <span class="kw">let </span>enlarge_to_domain_generic =
             |evaluations: <span class="kw-2">&amp;</span>Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;, new_domain: R2D&lt;Fp&gt;| {
@@ -829,8 +829,8 @@
         }
     };
 
-    <span class="comment">// we assume our folding degree is always 2, so number of chunks should be 1
-    </span><span class="kw">let </span>num_chunks: usize = <span class="number">1</span>;
+    <span class="comment">// we interpolate over d4, so number of chunks should be 3
+    </span><span class="kw">let </span>num_chunks: usize = <span class="number">3</span>;
 
     <span class="comment">//~ 1. commit to the quotient polynomial $t$.
     </span><span class="kw">let </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);

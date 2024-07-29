@@ -233,6 +233,38 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
@@ -254,7 +286,7 @@
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
 <span class="doccomment">/// Vector field over F. Something like a vector.
-</span><span class="kw">pub trait </span>CombinableEvals&lt;F: Field&gt; {
+</span><span class="kw">pub trait </span>CombinableEvals&lt;F: Field&gt;: PartialEq {
     <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F];
     <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F];
 }
@@ -298,6 +330,7 @@
                 <span class="kw-2">*</span>a += <span class="kw-2">*</span>b * challenge;
             }
         }
+        <span class="macro">assert!</span>(a.fixed_selectors == b.fixed_selectors);
         a
     }
 }
@@ -409,9 +442,10 @@
             .collect();
 
         <span class="comment">// Absorbing commitments
-        </span>(<span class="kw-2">&amp;</span>commitments)
-            .into_iter()
-            .for_each(|c| absorb_commitment(fq_sponge, c));
+        </span>(<span class="kw-2">&amp;</span>commitments).into_iter().for_each(|c| {
+            <span class="macro">assert!</span>(c.elems.len() == <span class="number">1</span>);
+            absorb_commitment(fq_sponge, c)
+        });
 
         <span class="kw">let </span>commitments: [G; N_COL] = commitments
             .into_iter()
@@ -434,6 +468,36 @@
             alphas,
             blinder,
         }
+    }
+
+    <span class="kw">pub fn </span>verify_from_witness&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        (<span class="self">self</span>.blinder == G::ScalarField::one())
+            .then_some(())
+            .ok_or(<span class="string">&quot;Blinder must be one&quot;</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Absorbing commitments
+        </span><span class="self">self</span>.commitments
+            .iter()
+            .for_each(|c| absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>PolyComm { elems: <span class="macro">vec!</span>[<span class="kw-2">*</span>c] }));
+
+        <span class="kw">let </span>beta = fq_sponge.challenge();
+        <span class="kw">let </span>gamma = fq_sponge.challenge();
+        <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
+
+        (<span class="self">self</span>.challenges == [beta, gamma, joint_combiner])
+            .then_some(())
+            .ok_or(<span class="string">&quot;Challenges do not match the expected result&quot;</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>alpha = fq_sponge.challenge();
+
+        (<span class="self">self</span>.alphas == Alphas::new_sized(alpha, N_ALPHAS))
+            .then_some(())
+            .ok_or(<span class="string">&quot;Alphas do not match the expected result&quot;</span>)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
