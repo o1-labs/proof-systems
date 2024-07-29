@@ -883,6 +883,13 @@ impl<
     /// ```text
     /// acc_(i + 1)_j = acc_i + r C_j
     /// ```
+    /// And also the cross-terms:
+    ///
+    /// ```text
+    /// E = E1 - r T1 - r^2 T2 - ... - r^d T^d + r^(d+1) E2
+    ///   = E1 - r (T1 + r (T2 + ... + r T^(d - 1)) - r E2)
+    /// ```
+    /// where (d + 1) is the degree of the highest gate.
     ///
     /// - We compute the next hash we give to the next instance
     ///
