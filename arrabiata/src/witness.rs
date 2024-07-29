@@ -860,6 +860,35 @@ impl<
         self.current_instruction
     }
 
+    /// Describe the control-flow for the IVC circuit.
+    ///
+    /// The control flow is as follow:
+    /// - We compute the hash of the previous commitments and verify the hash
+    /// corresponds to the public input:
+    ///
+    /// ```text
+    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
+    /// ```
+    /// - We compute the output of the application
+    ///
+    /// ```text
+    /// z_(i + 1) = F(w_i, z_i)
+    /// ```
+    ///
+    /// - We decompose the scalar `r`, the random combiner, into bits to compute
+    /// the MSM for the next step.
+    ///
+    /// - We compute the MSM (verifier)
+    ///
+    /// ```text
+    /// acc_(i + 1)_j = acc_i + r C_j
+    /// ```
+    ///
+    /// - We compute the next hash we give to the next instance
+    ///
+    /// ```text
+    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1), vk)
+    /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
@@ -879,8 +908,19 @@ impl<
                     Instruction::Poseidon(0)
                 }
             }
-            Instruction::EllipticCurveScaling(i_comm, _) => {
-                panic!("Not implemented yet for {i_comm}")
+            Instruction::EllipticCurveScaling(i_comm, bit) => {
+                // TODO: we still need to substract (or not?) the blinder.
+                // Maybe we can avoid this by aggregating them.
+                assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+                assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
+                if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
+                    Instruction::EllipticCurveScaling(i_comm, bit + 1)
+                } else if i_comm < NUMBER_OF_COLUMNS - 1 {
+                    Instruction::EllipticCurveScaling(i_comm + 1, 0)
+                } else {
+                    // We have computed all the bits for all the columns
+                    Instruction::NoOp
+                }
             }
             Instruction::EllipticCurveAddition(i_comm) => {
                 if i_comm < NUMBER_OF_COLUMNS - 1 {
