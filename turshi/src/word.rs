@@ -2,17 +2,20 @@
 //! modulus 0x800000000000011000000000000000000000000000000000000000000000001
 //! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
 //! Our Pallas curves have 255 bits, so Cairo native instructions will fit.
-//! This means that our Cairo implementation can admit a larger domain for immediate values than theirs.
+//! This means that our Cairo implementation can admit a larger domain for
+//! immediate values than theirs.
 
 use crate::{flags::*, helper::CairoFieldHelpers};
 use ark_ff::Field;
 use o1_utils::field_helpers::FieldHelpers;
 
-/// A Cairo word for the runner. Some words are instructions (which fit inside a `u64`). Others are immediate values (any `F` element).
+/// A Cairo word for the runner. Some words are instructions (which fit inside a
+/// `u64`). Others are immediate values (any `F` element).
 #[derive(Clone, Copy)]
 pub struct CairoWord<F>(F);
 
-/// Returns an offset of 16 bits to its biased representation in the interval `[-2^15,2^15)` as a field element
+/// Returns an offset of 16 bits to its biased representation in the interval
+/// `[-2^15,2^15)` as a field element
 pub fn bias<F: Field>(offset: F) -> F {
     offset - F::from(2u16.pow(15u32)) // -2^15 + sum_(i=0..15) b_i * 2^i
 }
@@ -34,7 +37,8 @@ impl<F: Field> CairoWord<F> {
     }
 }
 
-/// This trait contains methods to obtain the offset decomposition of a [CairoWord]
+/// This trait contains methods to obtain the offset decomposition of a
+/// [CairoWord]
 pub trait Offsets<F> {
     /// Returns the destination offset in biased representation
     fn off_dst(&self) -> F;
@@ -46,7 +50,8 @@ pub trait Offsets<F> {
     fn off_op1(&self) -> F;
 }
 
-/// This trait contains methods that decompose a field element into [CairoWord] flagbits
+/// This trait contains methods that decompose a field element into [CairoWord]
+/// flagbits
 pub trait FlagBits<F> {
     /// Returns bit-flag for destination register as `F`
     fn f_dst_fp(&self) -> F;
@@ -75,13 +80,16 @@ pub trait FlagBits<F> {
     /// Returns bit-flag for program counter update being relative jump as `F`
     fn f_pc_rel(&self) -> F;
 
-    /// Returns bit-flag for program counter update being conditional jump as `F`
+    /// Returns bit-flag for program counter update being conditional jump as
+    /// `F`
     fn f_pc_jnz(&self) -> F;
 
-    /// Returns bit-flag for allocation counter update being a manual addition as `F`
+    /// Returns bit-flag for allocation counter update being a manual addition
+    /// as `F`
     fn f_ap_add(&self) -> F;
 
-    /// Returns bit-flag for allocation counter update being a self increment as `F`
+    /// Returns bit-flag for allocation counter update being a self increment as
+    /// `F`
     fn f_ap_one(&self) -> F;
 
     /// Returns bit-flag for operation being a call as `F`
@@ -97,7 +105,8 @@ pub trait FlagBits<F> {
     fn f15(&self) -> F;
 }
 
-/// This trait contains methods that decompose a field element into [CairoWord] flagsets
+/// This trait contains methods that decompose a field element into [CairoWord]
+/// flagsets
 pub trait FlagSets<F> {
     /// Returns flagset for destination register
     fn dst_reg(&self) -> u8;
