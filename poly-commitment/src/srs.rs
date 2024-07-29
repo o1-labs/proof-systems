@@ -1,4 +1,5 @@
-//! This module implements the Marlin structured reference string primitive
+//! This module implements structures and methods to handle Structure Reference
+//! String (SRS).
 
 use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -10,7 +11,7 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, cmp::min, collections::HashMap};
+use std::{cmp::min, collections::HashMap};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -221,13 +222,15 @@ impl<G: CommitmentCurve> SRS<G> {
             })
             .collect();
 
-        const MISC: usize = 1;
-        let [h]: [G; MISC] = array::from_fn(|i| {
+        // Compute a blinder
+        let h = {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
-            h.update((i as u32).to_be_bytes());
+            // FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            h.update(0_u32.to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())
-        });
+        };
 
         SRS {
             g,
@@ -251,13 +254,15 @@ impl<G: CommitmentCurve> SRS<G> {
             })
             .collect();
 
-        const MISC: usize = 1;
-        let [h]: [G; MISC] = array::from_fn(|i| {
+        // Compute a blinder
+        let h = {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
-            h.update((i as u32).to_be_bytes());
+            // FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            h.update(0_u32.to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())
-        });
+        };
 
         SRS {
             g,
@@ -286,13 +291,15 @@ where
             })
             .collect();
 
-        const MISC: usize = 1;
-        let [h]: [G; MISC] = array::from_fn(|i| {
+        // Compute a blinder
+        let h = {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
-            h.update((i as u32).to_be_bytes());
+            // FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            h.update(0_u32.to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())
-        });
+        };
 
         SRS {
             g,
