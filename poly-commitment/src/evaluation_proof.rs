@@ -179,11 +179,6 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
 
-        // @volhovm: FIXME: this duplicates the definition of rounds
-        // above. Either it should be removed, or it's a bug and it
-        // should use the local g, and not self.g.
-        let rounds = math::ceil_log2(self.g.len());
-
         // The initial evaluation vector for polynomial commitment b_init is not
         // just the powers of a single point as in the original IPA, but rather
         // a vector of linearly combined powers with `evalscale` as recombiner.
