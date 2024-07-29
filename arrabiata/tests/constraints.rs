@@ -133,12 +133,13 @@ fn test_ivc_total_number_of_constraints_ivc() {
         Instruction::SixteenBitsDecomposition,
         Instruction::BitDecompositionFrom16Bits(0),
         Instruction::EllipticCurveAddition(0),
+        Instruction::EllipticCurveScaling(0, 0),
     ];
     ivc_instructions.iter().for_each(|instr| {
         interpreter::run_ivc(&mut constraints_fp, *instr);
         constraints_fp.reset();
     });
-    assert_eq!(constraints_fp.constraints.len(), 33);
+    assert_eq!(constraints_fp.constraints.len(), 41);
 }
 
 #[test]
@@ -152,6 +153,7 @@ fn test_degree_of_constraints_ivc() {
         Instruction::SixteenBitsDecomposition,
         Instruction::BitDecompositionFrom16Bits(0),
         Instruction::EllipticCurveAddition(0),
+        Instruction::EllipticCurveScaling(0, 0),
     ];
 
     ivc_instructions.iter().for_each(|instr| {
@@ -167,7 +169,7 @@ fn test_degree_of_constraints_ivc() {
     });
 
     assert_eq!(degree_per_constraints.get(&1), Some(&2));
-    assert_eq!(degree_per_constraints.get(&2), Some(&18));
+    assert_eq!(degree_per_constraints.get(&2), Some(&26));
     assert_eq!(degree_per_constraints.get(&3), Some(&1));
     assert_eq!(degree_per_constraints.get(&4), None);
     assert_eq!(degree_per_constraints.get(&5), Some(&12));
