@@ -911,6 +911,9 @@ impl<
             Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // TODO: we still need to substract (or not?) the blinder.
                 // Maybe we can avoid this by aggregating them.
+                // TODO: we also need to aggregate the cross-terms.
+                // Therefore i_comm must also take into the account the number
+                // of cross-terms.
                 assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
                 assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
                 if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
