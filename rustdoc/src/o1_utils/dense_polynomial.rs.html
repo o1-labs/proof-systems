@@ -67,35 +67,6 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -162,35 +133,6 @@
         ChunkedPolynomial {
             polys: chunk_polys,
             size: chunk_size,
-        }
-    }
-}
-
-<span class="comment">//
-// Tests
-//
-
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>ark_ff::One;
-    <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, UVPolynomial};
-    <span class="kw">use </span>mina_curves::pasta::Fp;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_chunk() {
-        <span class="kw">let </span>one = Fp::one();
-        <span class="kw">let </span>two = one + one;
-        <span class="kw">let </span>three = two + one;
-        <span class="kw">let </span>num_chunks = <span class="number">4</span>;
-
-        <span class="comment">// 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7
-        </span><span class="kw">let </span>coeffs = [one, one, one, one, one, one, one, one];
-        <span class="kw">let </span>f = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs);
-        <span class="kw">let </span>evals = f.to_chunked_polynomial(num_chunks, <span class="number">2</span>).evaluate_chunks(two);
-        <span class="macro">assert_eq!</span>(evals.len(), num_chunks);
-        <span class="kw">for </span>eval <span class="kw">in </span>evals.into_iter().take(num_chunks) {
-            <span class="macro">assert!</span>(eval == three);
         }
     }
 }
