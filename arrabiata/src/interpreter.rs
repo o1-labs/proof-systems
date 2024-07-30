@@ -148,6 +148,23 @@
 //! `5 + 1` constraints, as the challenge will be considered as a variable.
 //! The reader can refer to the folding library available in this monorepo for
 //! more contexts.
+//!
+//! ## Permutation argument
+//!
+//! Communication between rows must be done using a permutation argument. The
+//! argument we use will be a generalisation of the one used in the [PlonK
+//! paper](https://eprint.iacr.org/2019/953).
+//!
+//! The construction of the permutations will be done using the methods prefixed
+//! `save` and `load`. The index of the current row and the index of the
+//! time the value has been written will be used to generate the permutation on
+//! the fly.
+//!
+//! TBD:
+//! - number of columns
+//! - accumulator column
+//! - folding of the permutation argument
+//!
 
 use crate::{
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
