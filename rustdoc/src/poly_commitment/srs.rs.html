@@ -301,7 +301,15 @@
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module implements structures and methods to handle Structure Reference
+//! String (SRS).
 
 </span><span class="kw">use crate</span>::{commitment::CommitmentCurve, PolyComm};
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
@@ -313,7 +321,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::{array, cmp::min, collections::HashMap};
+<span class="kw">use </span>std::{cmp::min, collections::HashMap};
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -524,13 +532,15 @@
             })
             .collect();
 
-        <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
-        <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
+        <span class="comment">// Compute a blinder
+        </span><span class="kw">let </span>h = {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
             h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
-            h.update((i <span class="kw">as </span>u32).to_be_bytes());
+            <span class="comment">// FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            </span>h.update(<span class="number">0_u32</span>.to_be_bytes());
             point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
-        });
+        };
 
         SRS {
             g,
@@ -554,13 +564,15 @@
             })
             .collect();
 
-        <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
-        <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
+        <span class="comment">// Compute a blinder
+        </span><span class="kw">let </span>h = {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
             h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
-            h.update((i <span class="kw">as </span>u32).to_be_bytes());
+            <span class="comment">// FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            </span>h.update(<span class="number">0_u32</span>.to_be_bytes());
             point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
-        });
+        };
 
         SRS {
             g,
@@ -589,13 +601,15 @@
             })
             .collect();
 
-        <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
-        <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
+        <span class="comment">// Compute a blinder
+        </span><span class="kw">let </span>h = {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
             h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
-            h.update((i <span class="kw">as </span>u32).to_be_bytes());
+            <span class="comment">// FIXME: This is for retrocompatibility with a previous version
+            // that was using a list initialisation. It is not necessary.
+            </span>h.update(<span class="number">0_u32</span>.to_be_bytes());
             point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
-        });
+        };
 
         SRS {
             g,
