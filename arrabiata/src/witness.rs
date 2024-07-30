@@ -892,6 +892,13 @@ impl<
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
+            Instruction::BitDecomposition(i) => {
+                if i < 15 {
+                    Instruction::BitDecomposition(i + 1)
+                } else {
+                    Instruction::Poseidon(0)
+                }
+            }
             Instruction::Poseidon(i) => {
                 if i < POSEIDON_ROUNDS_FULL - 4 {
                     // We perform 4 rounds per row

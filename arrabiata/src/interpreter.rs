@@ -113,6 +113,28 @@
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
+//! ### Bit composition instruction
+//!
+//! TODO: to implement
+//!
+//! Decomposing a 255 bits value into bits can also be done using 17 columns and
+//! 17 rows without lookups using the following layout:
+//!
+//! ```text
+//! | y  | x  | b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8 | b9 | b10 | b11 | b12 | b13 | b14 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- |
+//! | x0 | x  | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... |
+//! | x1 | x0 | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... |
+//! | x2 | x1 | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... |
+//! | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... |
+//! | x16| x15| .. | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... |
+//! ```
+//!
+//! where:
+//! - `x` is the input value
+//! - for each row `i`, we have `x_i = x_{i - 1} - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
+//! - `b_i` is the i-th bit of the input value
+//!
 //! ## Handle the combinaison of constraints
 //!
 //! The prover will have to combine the constraints to generate the
@@ -155,6 +177,9 @@ use num_bigint::BigInt;
 /// typed control-flow. We leave this for future work.
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
+    /// This gadget decomposes a 255 bits value into bits using 17 lines and 17
+    /// columns. The constructor parameter is the line number.
+    BitDecomposition(usize),
     SixteenBitsDecomposition,
     BitDecompositionFrom16Bits(usize),
     Poseidon(usize),
@@ -474,6 +499,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             } else {
                 panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
             }
+        }
+        Instruction::BitDecomposition(_i) => {
+            unimplemented!("TODO")
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
