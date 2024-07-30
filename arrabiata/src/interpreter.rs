@@ -308,6 +308,7 @@ pub trait InterpreterEnv {
         x_cubed * x_square.clone()
     }
 
+    // ---- Poseidon gadget -----
     /// Load the state of the Poseidon hash function into the environment
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable;
 
@@ -327,6 +328,23 @@ pub trait InterpreterEnv {
 
     /// Return the requested MDS matrix coefficient
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
+
+    /// Load the public value to absorb at the current step.
+    /// The position should be a public column.
+    ///
+    /// IMPROVEME: we could have in the environment an heterogeneous typed list,
+    /// and we pop values call after call. However, we try to keep the
+    /// interpreter simple.
+    ///
+    /// # Safety
+    ///
+    /// No constraint is added. It should be used with caution.
+    unsafe fn fetch_value_to_absorb(
+        &mut self,
+        pos: Self::Position,
+        curr_round: usize,
+    ) -> Self::Variable;
+    // -------------------------
 
     /// Check if the points given by (x1, y1) and (x2, y2) are equals.
     ///
@@ -639,10 +657,22 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         Instruction::Poseidon(curr_round) => {
             debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
+                let values_to_absorb: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE - 1)
+                    .map(|_i| {
+                        let pos = env.allocate_public_input();
+                        unsafe { env.fetch_value_to_absorb(pos, curr_round) }
+                    })
+                    .collect();
                 let state: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
                     .map(|i| {
                         let pos = env.allocate();
-                        env.load_poseidon_state(pos, i)
+                        let res = env.load_poseidon_state(pos, i);
+                        // Absorb value
+                        if i < POSEIDON_STATE_SIZE - 1 {
+                            res + values_to_absorb[i].clone()
+                        } else {
+                            res
+                        }
                     })
                     .collect();
 

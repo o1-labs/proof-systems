@@ -206,6 +206,17 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         Self::Variable::constant(v_inner)
     }
 
+    unsafe fn fetch_value_to_absorb(
+        &mut self,
+        pos: Self::Position,
+        _curr_round: usize,
+    ) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     unsafe fn load_temporary_accumulators(
         &mut self,
         pos_x: Self::Position,

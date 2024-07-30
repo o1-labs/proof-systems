@@ -14,7 +14,8 @@ use crate::{
     columns::Column,
     interpreter::{Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-    NUMBER_OF_PUBLIC_INPUTS, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA,
+    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 /// An environment that can be shared between IVC instances.
@@ -121,6 +122,9 @@ pub struct Env<
     /// Two registers are provided, represented by a tuple for the coordinates
     /// (x, y).
     pub temporary_accumulators: ((BigInt, BigInt), (BigInt, BigInt)),
+
+    /// Index of the values to absorb in the sponge
+    pub idx_values_to_absorb: usize,
     // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in the
@@ -383,6 +387,63 @@ where
         } else {
             let modulus: BigInt = Fq::modulus_biguint().into();
             self.sponge_e2[i] = x.mod_floor(&modulus)
+        }
+    }
+
+    // The following values are expected to be absorbed in order:
+    // - vk
+    // - z0
+    // - z1
+    // - acc[0]
+    // - acc[1]
+    // - ...
+    // - acc[N_COL - 1]
+    // FIXME: for now, we will only absorb the accumulators as z0 and z1 are not
+    // updated yet.
+    unsafe fn fetch_value_to_absorb(
+        &mut self,
+        pos: Self::Position,
+        curr_round: usize,
+    ) -> Self::Variable {
+        let Column::PublicInput(_idx) = pos else {
+            panic!("Only works for public inputs")
+        };
+        // If we are not the round 0, we must absorb nothing.
+        if curr_round != 0 {
+            self.write_public_input(pos, self.zero())
+        } else {
+            // FIXME: we must absorb vk, z0, z1 and i!
+            // We multiply by 2 as we have two coordinates
+            let idx = self.idx_values_to_absorb;
+            let res = if idx < 2 * NUMBER_OF_COLUMNS {
+                let idx_col = idx / 2;
+                debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
+                if self.current_iteration % 2 == 0 {
+                    let (pt_x, pt_y) = self.ivc_accumulator_e2[idx_col].elems[0]
+                        .to_coordinates()
+                        .unwrap();
+                    if idx % 2 == 0 {
+                        self.write_public_input(pos, pt_x.to_biguint().into())
+                    } else {
+                        self.write_public_input(pos, pt_y.to_biguint().into())
+                    }
+                } else {
+                    let (pt_x, pt_y) = self.ivc_accumulator_e1[idx_col].elems[0]
+                        .to_coordinates()
+                        .unwrap();
+                    if idx % 2 == 0 {
+                        self.write_public_input(pos, pt_x.to_biguint().into())
+                    } else {
+                        self.write_public_input(pos, pt_y.to_biguint().into())
+                    }
+                }
+            } else {
+                unimplemented!(
+                    "We only absorb the accumulators for now. Of course, this is not sound."
+                )
+            };
+            self.idx_values_to_absorb += 1;
+            res
         }
     }
 
@@ -774,6 +835,7 @@ impl<
                 (BigInt::from(0_u64), BigInt::from(0_u64)),
                 (BigInt::from(0_u64), BigInt::from(0_u64)),
             ),
+            idx_values_to_absorb: 0,
             // ------
             // ------
             // Used by the interpreter
@@ -862,6 +924,7 @@ impl<
     /// ```text
     /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
     /// ```
+    ///
     /// - We compute the output of the application
     ///
     /// ```text
@@ -905,7 +968,16 @@ impl<
                     // FIXME: we can do 5 by using the "next row"
                     Instruction::Poseidon(i + 4)
                 } else {
-                    Instruction::EllipticCurveAddition(0)
+                    // If we absorbed all the elements, we go to the next instruction
+                    // In our case, it is the elliptic curve addition
+                    // FIXME: it is not the correct next instruction.
+                    // We must check the computed value is the one given as a
+                    // public input.
+                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
+                        Instruction::EllipticCurveAddition(0)
+                    } else {
+                        Instruction::Poseidon(0)
+                    }
                 }
             }
             Instruction::BitDecompositionFrom16Bits(i) => {

@@ -47,7 +47,7 @@ where
 }
 
 #[test]
-fn test_unit_witness_poseidon_gadget() {
+fn test_unit_witness_poseidon_gadget_one_full_hash() {
     let srs_log2_size = 6;
     let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
@@ -67,6 +67,8 @@ fn test_unit_witness_poseidon_gadget() {
             .iter()
             .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
+        state[0] += env.srs_e2.h.x;
+        state[1] += env.srs_e2.h.y;
         poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
             poseidon_3_60_0_5_5_fp::static_params(),
             &mut state,
@@ -96,6 +98,8 @@ fn test_unit_witness_poseidon_gadget() {
             .iter()
             .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
+        state[0] += env.srs_e1.h.x;
+        state[1] += env.srs_e1.h.y;
         poseidon_block_cipher::<Fq, PlonkSpongeConstants>(
             poseidon_3_60_0_5_5_fq::static_params(),
             &mut state,

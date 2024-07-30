@@ -15,8 +15,10 @@ pub const NUMBER_OF_COLUMNS: usize = 17;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 12 for now as we want to compute 4 rounds of poseidon per row.
+/// In addition to the 12 public inputs required for the rounds, we add 2 more
+/// for the values to absorb.
 // FIXME: we can do 5 rounds per row by using "the next row"
-pub const NUMBER_OF_PUBLIC_INPUTS: usize = 12;
+pub const NUMBER_OF_PUBLIC_INPUTS: usize = 12 + 2;
 
 /// The low-exponentiation value used by the Poseidon hash function for the
 /// substitution box.
@@ -34,6 +36,18 @@ pub const POSEIDON_STATE_SIZE: usize = 3;
 /// It is critical as we have some assumptions for the gadgets describing the
 /// IVC.
 pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
+
+/// Define the number of values we must absorb when computating the hash to the
+/// public IO.
+///
+/// FIXME:
+/// For now, it is the number of columns as we are only absorbing the
+/// accumulators, which consists of 2 native field elements. However, it doesn't
+/// make the protocol sound. We must absorb in addition to that the index, the
+/// vk and the application inputs/outputs.
+/// It is left for the future as at this time, we're still sketching the IVC
+/// circuit.
+pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 pub mod column_env;
 pub mod columns;

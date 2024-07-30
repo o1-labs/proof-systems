@@ -80,7 +80,7 @@ fn test_gadget_poseidon() {
     exp_degrees.insert(5, 12);
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
-    helper_gadget_number_of_columns_used(instr, 15, 12);
+    helper_gadget_number_of_columns_used(instr, 15, 14);
 }
 
 #[test]
