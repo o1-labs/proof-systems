@@ -1,7 +1,7 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ProjectiveCurve, SWModelParameters};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
-    interpreter::{self, ECAdditionSide, Instruction, InterpreterEnv},
+    interpreter::{self, Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
     witness::Env,
     MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
@@ -235,7 +235,7 @@ where
     let (res_x, res_y) = {
         let pos_x = env.allocate();
         let pos_y = env.allocate();
-        let side = ECAdditionSide::Right;
+        let side = Side::Right;
         unsafe { env.load_temporary_accumulators(pos_x, pos_y, side) }
     };
 

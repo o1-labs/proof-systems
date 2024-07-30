@@ -186,11 +186,11 @@ pub enum Instruction {
     NoOp,
 }
 
-/// Define the side of the elliptic curve addition.
+/// Define the side of the temporary accumulator.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
 /// This enum is used to decide which side fetching into the cells.
-// FIXME: It is now used by temporary accumulators. We should rename this.
-pub enum ECAdditionSide {
+/// In the near future, it can be replaced by an index.
+pub enum Side {
     Left,
     Right,
 }
@@ -396,7 +396,7 @@ pub trait InterpreterEnv {
         &mut self,
         pos_x: Self::Position,
         pos_y: Self::Position,
-        side: ECAdditionSide,
+        side: Side,
     ) -> (Self::Variable, Self::Variable);
 
     /// Save temporary accumulators into the environment
@@ -408,7 +408,7 @@ pub trait InterpreterEnv {
         &mut self,
         _v1: Self::Variable,
         _v2: Self::Variable,
-        _side: ECAdditionSide,
+        _side: Side,
     );
 }
 
@@ -526,12 +526,12 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let (tmp_x, tmp_y) = {
                 let pos_x = env.allocate();
                 let pos_y = env.allocate();
-                unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Left) }
+                unsafe { env.load_temporary_accumulators(pos_x, pos_y, Side::Left) }
             };
             let (res_x, res_y) = {
                 let pos_x = env.allocate();
                 let pos_y = env.allocate();
-                unsafe { env.load_temporary_accumulators(pos_x, pos_y, ECAdditionSide::Right) }
+                unsafe { env.load_temporary_accumulators(pos_x, pos_y, Side::Right) }
             };
             // tmp = tmp + tmp
             // Compute the double of the temporary value
@@ -541,7 +541,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 env.double_ec_point(pos_x, pos_y, tmp_x.clone(), tmp_y.clone())
             };
             unsafe {
-                env.save_temporary_accumulators(tmp_prime_x, tmp_prime_y, ECAdditionSide::Left);
+                env.save_temporary_accumulators(tmp_prime_x, tmp_prime_y, Side::Left);
             };
             // Conditional addition:
             // if bit == 1, then res = tmp + res
@@ -591,7 +591,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 env.write_column(pos, res)
             };
             unsafe {
-                env.save_temporary_accumulators(x3, y3, ECAdditionSide::Right);
+                env.save_temporary_accumulators(x3, y3, Side::Right);
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
@@ -599,12 +599,12 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let (x1, y1) = {
                 let x1 = env.allocate();
                 let y1 = env.allocate();
-                unsafe { env.load_temporary_accumulators(x1, y1, ECAdditionSide::Left) }
+                unsafe { env.load_temporary_accumulators(x1, y1, Side::Left) }
             };
             let (x2, y2) = {
                 let x2 = env.allocate();
                 let y2 = env.allocate();
-                unsafe { env.load_temporary_accumulators(x2, y2, ECAdditionSide::Right) }
+                unsafe { env.load_temporary_accumulators(x2, y2, Side::Right) }
             };
             let is_same_point = {
                 let pos = env.allocate();

@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use crate::{
     columns::Column,
-    interpreter::{ECAdditionSide, Instruction, InterpreterEnv},
+    interpreter::{Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
     NUMBER_OF_PUBLIC_INPUTS, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
@@ -390,7 +390,7 @@ where
         &mut self,
         pos_x: Self::Position,
         pos_y: Self::Position,
-        side: ECAdditionSide,
+        side: Side,
     ) -> (Self::Variable, Self::Variable) {
         match self.current_instruction {
             Instruction::EllipticCurveScaling(i_comm, bit) => {
@@ -401,7 +401,7 @@ where
                 if bit == 0 {
                     if self.current_iteration % 2 == 0 {
                         match side {
-                            ECAdditionSide::Left => {
+                            Side::Left => {
                                 let pt = self.previous_commitments_e2[i_comm].elems[0];
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
@@ -417,7 +417,7 @@ where
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
-                            ECAdditionSide::Right => {
+                            Side::Right => {
                                 let pt = self.srs_e2.h;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
@@ -427,7 +427,7 @@ where
                         }
                     } else {
                         match side {
-                            ECAdditionSide::Left => {
+                            Side::Left => {
                                 let pt = self.previous_commitments_e1[i_comm].elems[0];
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
@@ -443,7 +443,7 @@ where
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
-                            ECAdditionSide::Right => {
+                            Side::Right => {
                                 let pt = self.srs_e1.h;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
@@ -456,12 +456,12 @@ where
                     // If it is not first call, we simply load from the CPU cache (i.e.
                     // the temporary accumulators)
                     match side {
-                        ECAdditionSide::Left => {
+                        Side::Left => {
                             let pt_x = self.write_column(pos_x, self.temporary_accumulators.0 .0.clone());
                             let pt_y = self.write_column(pos_y, self.temporary_accumulators.0 .1.clone());
                             (pt_x, pt_y)
                         }
-                        ECAdditionSide::Right => {
+                        Side::Right => {
                             let pt_x = self.write_column(pos_x, self.temporary_accumulators.1 .0.clone());
                             let pt_y = self.write_column(pos_y, self.temporary_accumulators.1 .1.clone());
                             (pt_x, pt_y)
@@ -472,7 +472,7 @@ where
             Instruction::EllipticCurveAddition(i_comm) => {
                 // FIXME: we must get the scaled commitment, not simply the commitment
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
-                    ECAdditionSide::Left => {
+                    Side::Left => {
                         if self.current_iteration % 2 == 0 {
                             let pt = self.ivc_accumulator_e2[i_comm].elems[0];
                             let (x, y) = pt.to_coordinates().unwrap();
@@ -483,7 +483,7 @@ where
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
-                    ECAdditionSide::Right => {
+                    Side::Right => {
                         if self.current_iteration % 2 == 0 {
                             let pt = self.previous_commitments_e2[i_comm].elems[0];
                             let (x, y) = pt.to_coordinates().unwrap();
@@ -507,13 +507,13 @@ where
         &mut self,
         x: Self::Variable,
         y: Self::Variable,
-        side: ECAdditionSide,
+        side: Side,
     ) {
         match side {
-            ECAdditionSide::Left => {
+            Side::Left => {
                 self.temporary_accumulators.0 = (x, y);
             }
-            ECAdditionSide::Right => {
+            Side::Right => {
                 self.temporary_accumulators.1 = (x, y);
             }
         }

@@ -1,6 +1,6 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
-    columns::E, interpreter::ECAdditionSide, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    columns::E, interpreter::Side, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
@@ -210,7 +210,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         &mut self,
         pos_x: Self::Position,
         pos_y: Self::Position,
-        _side: ECAdditionSide,
+        _side: Side,
     ) -> (Self::Variable, Self::Variable) {
         let x = Expr::Atom(ExprInner::Cell(Variable {
             col: pos_x,
@@ -228,7 +228,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         &mut self,
         _x: Self::Variable,
         _y: Self::Variable,
-        _side: ECAdditionSide,
+        _side: Side,
     ) {
     }
 
