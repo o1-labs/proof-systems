@@ -176,6 +176,9 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="attr">#![deny(missing_docs)]
 #![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 
@@ -184,6 +187,9 @@
 <span class="kw">pub use </span>mina_curves::pasta::Fp;
 <span class="kw">pub use </span>poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
 <span class="kw">pub use </span>roinput::ROInput;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>o1_utils::FieldHelpers;
