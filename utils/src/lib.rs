@@ -1,6 +1,5 @@
-#![deny(missing_docs)]
-
-//! A collection of utility functions and constants that can be reused from multiple projects
+//! A collection of utility functions and constants that can be reused from
+//! multiple projects
 
 pub mod adjacent_pairs;
 pub mod array;
