@@ -272,16 +272,19 @@ where
         lowest_bit: u32,
         col: Self::Position,
     ) -> Self::Variable {
-        let diff = highest_bit - lowest_bit;
-        assert!(
-            diff <= 16,
-            "The difference between the highest and lowest bit should be less than 16"
-        );
-        let rht = BigInt::from(1_usize << diff) - BigInt::from(1_usize);
-        let lft = x >> lowest_bit;
-        let res: BigInt = lft & rht;
-        self.write_column(col, res.clone());
-        res
+        let diff: u32 = highest_bit - lowest_bit;
+        if diff == 0 {
+            self.write_column(col, BigInt::from(0_usize))
+        } else {
+            assert!(
+                diff > 0,
+                "The difference between the highest and lowest bit should be greater than 0"
+            );
+            let rht = (BigInt::from(1_usize) << diff) - BigInt::from(1_usize);
+            let lft = x >> lowest_bit;
+            let res: BigInt = lft & rht;
+            self.write_column(col, res)
+        }
     }
 
     // FIXME: for now, we use the row number and compute the square.

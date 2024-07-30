@@ -532,8 +532,36 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
             }
         }
-        Instruction::BitDecomposition(_i) => {
-            unimplemented!("TODO")
+        Instruction::BitDecomposition(i) => {
+            // Decompositing the random coin in chunks of 15 bits.
+            // Step i is the decomposition of the bits between 15 * i and 15 * (i + 1).
+            // We make a constraint for each bit and we check that the sum of the
+            // bits is equal to the previous value.
+            let pos_x0 = env.allocate();
+            let pos_x1 = env.allocate();
+            // Temporary variable
+            // FIXME: use `load/save` to fetch the previous value
+            let r = env.coin_folding_combiner(pos_x0);
+            // previous value
+            let x0 = unsafe { env.bitmask_be(&r, 255, (15 * i).try_into().unwrap(), pos_x0) };
+            // new value
+            let x1 = unsafe { env.bitmask_be(&r, 255, (15 * (i + 1)).try_into().unwrap(), pos_x1) };
+            let bits: Vec<E::Variable> = (0..15)
+                .map(|j| {
+                    let pos = env.allocate();
+                    let bit = unsafe { env.bitmask_be(&x0, j + 1, j, pos) };
+                    env.constrain_boolean(bit.clone());
+                    bit
+                })
+                .collect();
+            let rhs = bits.iter().enumerate().fold(env.zero(), |acc, (j, b)| {
+                acc + env.constant(BigInt::from(1_usize) << j) * b.clone()
+            });
+            // x0 = x1 + \sum_{j=0}^{14} 2^j b_j
+            env.assert_equal(
+                x0,
+                x1.clone() * env.constant(BigInt::from(1_usize) << 15) + rhs,
+            );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");

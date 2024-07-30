@@ -96,7 +96,7 @@ fn test_gadget_sixteen_bits_decomposition() {
 }
 
 #[test]
-fn test_gadget_bit_decomposition() {
+fn test_gadget_bit_decomposition_from_16bits() {
     let instr = Instruction::BitDecompositionFrom16Bits(0);
     helper_compute_constraints_gadget(instr, 17);
 
@@ -186,4 +186,17 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 13, 0);
+}
+
+#[test]
+fn test_gadget_bit_decomposition() {
+    let instr = Instruction::BitDecomposition(0);
+    helper_compute_constraints_gadget(instr, 16);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(1, 1);
+    exp_degrees.insert(2, 15);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 17, 0);
 }

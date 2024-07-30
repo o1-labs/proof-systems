@@ -272,3 +272,58 @@ fn test_witness_elliptic_curve_scalar_multiplication_doubling() {
     let r: BigInt = Fp::rand(&mut rng).to_biguint().to_bigint().unwrap();
     helper_elliptic_curve_scalar_multiplication(r, &mut rng);
 }
+
+#[test]
+fn test_witness_bit_decomposition() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let srs_log2_size = 10;
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] =
+        std::array::from_fn(|_i| Fp::rand(&mut rng).to_biguint().to_bigint().unwrap());
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        srs_log2_size,
+        BigInt::from(1u64),
+        sponge_e1.clone(),
+        sponge_e1.clone(),
+    );
+
+    // The answer to everything
+    env.sponge_e1[0] = BigInt::from(42u64);
+
+    (0..17).for_each(|bit_idx| {
+        let instr = Instruction::BitDecomposition(bit_idx);
+        env.current_instruction = instr;
+        interpreter::run_ivc(&mut env, instr);
+        env.reset();
+    });
+
+    // Special case of 0
+    env.sponge_e1[0] = BigInt::from(0);
+
+    (0..17).for_each(|bit_idx| {
+        let instr = Instruction::BitDecomposition(bit_idx);
+        env.current_instruction = instr;
+        interpreter::run_ivc(&mut env, instr);
+        env.reset();
+    });
+
+    // Special case of 1
+    env.sponge_e1[0] = BigInt::from(1);
+
+    (0..17).for_each(|bit_idx| {
+        let instr = Instruction::BitDecomposition(bit_idx);
+        env.current_instruction = instr;
+        interpreter::run_ivc(&mut env, instr);
+        env.reset();
+    });
+
+    // Special case of (2 << 15) + 1
+    env.sponge_e1[0] = (BigInt::from(1) << 15) + 1;
+
+    (0..17).for_each(|bit_idx| {
+        let instr = Instruction::BitDecomposition(bit_idx);
+        env.current_instruction = instr;
+        interpreter::run_ivc(&mut env, instr);
+        env.reset();
+    });
+}
