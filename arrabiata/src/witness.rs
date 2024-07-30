@@ -431,82 +431,88 @@ where
         pos_y: Self::Position,
         side: ECAdditionSide,
     ) -> (Self::Variable, Self::Variable) {
-        let Instruction::EllipticCurveScaling(i_comm, bit) = self.current_instruction else {
-            unimplemented!("For now, the accumulators can only be used by the elliptic curve scaling gadget. This should be changed as soon as the gadget is implemented.")
-        };
-        // If we're processing the leftmost bit (i.e. bit == 0), we must load
-        // the initial value into the accumulators from the environment.
-        // In the left accumulator, we keep track of the value we keep doubling.
-        // In the right accumulator, we keep the result.
-        if bit == 0 {
-            if self.current_iteration % 2 == 0 {
-                match side {
-                    ECAdditionSide::Left => {
-                        let pt = self.previous_commitments_e2[i_comm].elems[0];
-                        // We suppose we never have a commitment equals to the
-                        // point at infinity
-                        let (pt_x, pt_y) = pt.to_coordinates().unwrap();
-                        let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
-                        let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
-                        (pt_x, pt_y)
+        match self.current_instruction {
+            Instruction::EllipticCurveScaling(i_comm, bit) => {
+                // If we're processing the leftmost bit (i.e. bit == 0), we must load
+                // the initial value into the accumulators from the environment.
+                // In the left accumulator, we keep track of the value we keep doubling.
+                // In the right accumulator, we keep the result.
+                if bit == 0 {
+                    if self.current_iteration % 2 == 0 {
+                        match side {
+                            ECAdditionSide::Left => {
+                                let pt = self.previous_commitments_e2[i_comm].elems[0];
+                                // We suppose we never have a commitment equals to the
+                                // point at infinity
+                                let (pt_x, pt_y) = pt.to_coordinates().unwrap();
+                                let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
+                                let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
+                                (pt_x, pt_y)
+                            }
+                            // As it is the first iteration, we must use the point at infinity.
+                            // However, to avoid handling the case equal to zero, we will
+                            // use a blinder, that we will substract at the end.
+                            // As we suppose the probability to get a folding combiner
+                            // equals to zero is negligible, we know we have a negligible
+                            // probability to request to compute `0 * P`.
+                            // FIXME: ! check this statement !
+                            ECAdditionSide::Right => {
+                                let pt = self.srs_e2.h;
+                                let (pt_x, pt_y) = pt.to_coordinates().unwrap();
+                                let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
+                                let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
+                                (pt_x, pt_y)
+                            }
+                        }
+                    } else {
+                        match side {
+                            ECAdditionSide::Left => {
+                                let pt = self.previous_commitments_e1[i_comm].elems[0];
+                                // We suppose we never have a commitment equals to the
+                                // point at infinity
+                                let (pt_x, pt_y) = pt.to_coordinates().unwrap();
+                                let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
+                                let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
+                                (pt_x, pt_y)
+                            }
+                            // As it is the first iteration, we must use the point at infinity.
+                            // However, to avoid handling the case equal to zero, we will
+                            // use a blinder, that we will substract at the end.
+                            // As we suppose the probability to get a folding combiner
+                            // equals to zero is negligible, we know we have a negligible
+                            // probability to request to compute `0 * P`.
+                            // FIXME: ! check this statement !
+                            ECAdditionSide::Right => {
+                                let pt = self.srs_e1.h;
+                                let (pt_x, pt_y) = pt.to_coordinates().unwrap();
+                                let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
+                                let pt_y = self.write_column(pos_x, pt_y.to_biguint().into());
+                                (pt_x, pt_y)
+                            }
+                        }
                     }
-                    // As it is the first iteration, we must use the point at infinity.
-                    // However, to avoid handling the case equal to zero, we will
-                    // use a blinder, that we will substract at the end.
-                    // As we suppose the probability to get a folding combiner
-                    // equals to zero is negligible, we know we have a negligible
-                    // probability to request to compute `0 * P`.
-                    // FIXME: ! check this statement !
-                    ECAdditionSide::Right => {
-                        let pt = self.srs_e2.h;
-                        let (pt_x, pt_y) = pt.to_coordinates().unwrap();
-                        let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
-                        let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
-                        (pt_x, pt_y)
-                    }
-                }
-            } else {
-                match side {
-                    ECAdditionSide::Left => {
-                        let pt = self.previous_commitments_e1[i_comm].elems[0];
-                        // We suppose we never have a commitment equals to the
-                        // point at infinity
-                        let (pt_x, pt_y) = pt.to_coordinates().unwrap();
-                        let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
-                        let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
-                        (pt_x, pt_y)
-                    }
-                    // As it is the first iteration, we must use the point at infinity.
-                    // However, to avoid handling the case equal to zero, we will
-                    // use a blinder, that we will substract at the end.
-                    // As we suppose the probability to get a folding combiner
-                    // equals to zero is negligible, we know we have a negligible
-                    // probability to request to compute `0 * P`.
-                    // FIXME: ! check this statement !
-                    ECAdditionSide::Right => {
-                        let pt = self.srs_e1.h;
-                        let (pt_x, pt_y) = pt.to_coordinates().unwrap();
-                        let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
-                        let pt_y = self.write_column(pos_x, pt_y.to_biguint().into());
-                        (pt_x, pt_y)
+                } else {
+                    // If it is not first call, we simply load from the CPU cache (i.e.
+                    // the temporary accumulators)
+                    match side {
+                        ECAdditionSide::Left => {
+                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.0 .0.clone());
+                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.0 .1.clone());
+                            (pt_x, pt_y)
+                        }
+                        ECAdditionSide::Right => {
+                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.1 .0.clone());
+                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.1 .1.clone());
+                            (pt_x, pt_y)
+                        }
                     }
                 }
             }
-        } else {
-            // If it is not first call, we simply load from the CPU cache (i.e.
-            // the temporary accumulators)
-            match side {
-                ECAdditionSide::Left => {
-                    let pt_x = self.write_column(pos_x, self.temporary_accumulators.0 .0.clone());
-                    let pt_y = self.write_column(pos_y, self.temporary_accumulators.0 .1.clone());
-                    (pt_x, pt_y)
-                }
-                ECAdditionSide::Right => {
-                    let pt_x = self.write_column(pos_x, self.temporary_accumulators.1 .0.clone());
-                    let pt_y = self.write_column(pos_y, self.temporary_accumulators.1 .1.clone());
-                    (pt_x, pt_y)
-                }
+            Instruction::EllipticCurveAddition(_) => {
+                unimplemented!("FIXME: replace load_ec_point by load_temporary_accumulators")
             }
+
+            _ => unimplemented!("For now, the accumulators can only be used by the elliptic curve scaling gadget. This should be changed as soon as the gadget is implemented.")
         }
     }
 
