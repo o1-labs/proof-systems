@@ -13,9 +13,10 @@ use std::time::Instant;
 use crate::{
     columns::Column,
     interpreter::{Instruction, InterpreterEnv, Side},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA,
-    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
+    POSEIDON_STATE_SIZE,
 };
 
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
@@ -963,7 +964,7 @@ impl<
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::BitDecomposition(i) => {
-                if i < 17 {
+                if i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS {
                     Instruction::BitDecomposition(i + 1)
                 } else {
                     Instruction::EllipticCurveScaling(0, 0)

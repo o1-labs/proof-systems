@@ -98,12 +98,9 @@
 //! The Nova-based IVC schemes require to perform scalar multiplications on
 //! elliptic curve points. The scalar multiplication is computed using the
 //! double-and-add algorithm.
-//! First, the scalar is converted to its binary representation. We do use 17
-//! rows using 17 columns to compute the 256 bits of the scalar.
-//!
-//! On a first row, we decompose the scalar into 16 bits chunks, with additional
-//! range check constraints.
-//! On the next 16 rows, we split each 16 chunks into 16 bits chunks.
+//! First, the scalar is converted to its binary representation. We do use
+//! [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows using [NUMBER_OF_COLUMNS] columns
+//! to compute the 255 bits of the scalar.
 //!
 //! FIXME: an optimisation can be implemented using "a bucket" style algorithm,
 //! as described in [Efficient MSMs in Kimchi
@@ -112,10 +109,9 @@
 //!
 //! ### Bit composition instruction
 //!
-//! TODO: to implement
-//!
-//! Decomposing a 255 bits value into bits can also be done using 17 columns and
-//! 17 rows without lookups using the following layout:
+//! Decomposing a 255 bits value into bits can also be done using
+//! [NUMBER_OF_COLUMNS] columns and [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows
+//! without lookups using the following layout:
 //!
 //! ```text
 //! | y  | x  | b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8 | b9 | b10 | b11 | b12 | b13 | b14 |
@@ -129,7 +125,7 @@
 //!
 //! where:
 //! - `x` is the input value
-//! - for each row `i`, we have `x_i = x_{i - 1} - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
+//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
 //! - `b_i` is the i-th bit of the input value
 //!
 //! ## Handle the combinaison of constraints
@@ -167,6 +163,7 @@
 //!
 
 use crate::{
+    BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
@@ -535,7 +532,10 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::BitDecomposition(i) => {
-            assert!(i < 17, "Bit decomposition is on 17 rows");
+            assert!(
+                i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
+                "Bit decomposition is on {BIT_DECOMPOSITION_NUMBER_OF_CHUNKS} rows"
+            );
             // Decompositing the random coin in chunks of 15 bits.
             // Step i is the decomposition of the bits between 15 * i and 15 * (i + 1).
             // We make a constraint for each bit and we check that the sum of the
@@ -546,13 +546,33 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             // FIXME: use `load/save` to fetch the previous value
             let r = env.coin_folding_combiner(pos_x0);
             // previous value
-            let x0 = unsafe { env.bitmask_be(&r, 255, (15 * i).try_into().unwrap(), pos_x0) };
+            let x0 = unsafe {
+                env.bitmask_be(
+                    &r,
+                    255,
+                    (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * i)
+                        .try_into()
+                        .unwrap(),
+                    pos_x0,
+                )
+            };
             // new value
-            let x1 = unsafe { env.bitmask_be(&r, 255, (15 * (i + 1)).try_into().unwrap(), pos_x1) };
-            let bits: Vec<E::Variable> = (0..15)
+            let x1 = unsafe {
+                env.bitmask_be(
+                    &r,
+                    255,
+                    (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * (i + 1))
+                        .try_into()
+                        .unwrap(),
+                    pos_x1,
+                )
+            };
+            let bits: Vec<E::Variable> = (0..BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK)
                 .map(|j| {
                     let pos = env.allocate();
-                    let bit = unsafe { env.bitmask_be(&x0, j + 1, j, pos) };
+                    let bit = unsafe {
+                        env.bitmask_be(&x0, (j + 1).try_into().unwrap(), j.try_into().unwrap(), pos)
+                    };
                     env.constrain_boolean(bit.clone());
                     bit
                 })
@@ -563,7 +583,11 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             // x0 = x1 + \sum_{j=0}^{14} 2^j b_j
             env.assert_equal(
                 x0,
-                x1.clone() * env.constant(BigInt::from(1_usize) << 15) + rhs,
+                x1.clone()
+                    * env.constant(
+                        BigInt::from(1_usize) << BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
+                    )
+                    + rhs,
             );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
