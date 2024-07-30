@@ -100,43 +100,6 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
@@ -237,43 +200,6 @@
     </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: F) -&gt; <span class="prelude-ty">Option</span>&lt;F&gt; {
         <span class="self">self</span>.resize(addr.to_u64()); <span class="comment">// Resize if necessary
         </span><span class="self">self</span>[addr].map(|x| x.word())
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>ark_ff::One;
-    <span class="kw">use </span>mina_curves::pasta::Fp <span class="kw">as </span>F;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_cairo_bytecode() {
-        <span class="comment">// This test starts with the public memory corresponding to a simple Cairo program
-        // func main{}():
-        //    tempvar x = 10;
-        //    return()
-        // end
-        // And checks that memory writing and reading works as expected by completing
-        // the total memory of executing the program
-        </span><span class="kw">let </span>instrs = [<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
-            .iter()
-            .map(|<span class="kw-2">&amp;</span>i: <span class="kw-2">&amp;</span>i64| F::from(i))
-            .collect();
-        <span class="kw">let </span><span class="kw-2">mut </span>memory = CairoMemory::new(instrs);
-        memory.write(F::from(memory.len()), F::from(<span class="number">7u64</span>));
-        memory.write(F::from(memory.len()), F::from(<span class="number">7u64</span>));
-        memory.write(F::from(memory.len()), F::from(<span class="number">10u64</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{memory}&quot;</span>);
-        <span class="comment">// Check content of an address
-        </span><span class="macro">assert_eq!</span>(
-            memory.read(F::one()).unwrap(),
-            F::from(<span class="number">0x480680017fff8000u64</span>)
-        );
-        <span class="comment">// Check that the program contained 3 words
-        </span><span class="macro">assert_eq!</span>(<span class="number">3</span>, memory.get_codelen());
-        <span class="comment">// Check we have 6 words, excluding the dummy entry
-        </span><span class="macro">assert_eq!</span>(<span class="number">6</span>, memory.len() - <span class="number">1</span>);
-        memory.read(F::from(<span class="number">10u32</span>));
     }
 }
 </code></pre></div></section></main></body></html>
