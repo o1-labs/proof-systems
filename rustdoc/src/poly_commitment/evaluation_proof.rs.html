@@ -493,11 +493,6 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     commitment::<span class="kw-2">*</span>,
     srs::{endos, SRS},
@@ -678,11 +673,6 @@
         g.extend(<span class="macro">vec!</span>[G::zero(); padding]);
 
         <span class="kw">let </span>(p, blinding_factor) = combine_polys::&lt;G, D&gt;(plnms, polyscale, <span class="self">self</span>.g.len());
-
-        <span class="comment">// @volhovm: FIXME: this duplicates the definition of rounds
-        // above. Either it should be removed, or it&#39;s a bug and it
-        // should use the local g, and not self.g.
-        </span><span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
 
         <span class="comment">// The initial evaluation vector for polynomial commitment b_init is not
         // just the powers of a single point as in the original IPA, but rather
