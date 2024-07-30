@@ -56,6 +56,9 @@ fn test_unit_witness_poseidon_gadget_one_full_hash() {
         sponge.clone(),
         sponge.clone(),
     );
+
+    env.current_instruction = Instruction::Poseidon(0);
+
     (0..(POSEIDON_ROUNDS_FULL / 4)).for_each(|i| {
         interpreter::run_ivc(&mut env, Instruction::Poseidon(4 * i));
         env.reset();
@@ -123,8 +126,10 @@ fn test_unit_witness_elliptic_curve_addition() {
         sponge_e1.clone(),
         sponge_e1.clone(),
     );
+
     let instr = Instruction::EllipticCurveAddition(0);
     env.current_instruction = instr;
+
     // If we are at iteration 0, we will compute the addition of points over
     // Pallas, whose scalar field is Fp.
     assert_eq!(env.current_iteration, 0);
@@ -143,6 +148,7 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     env.reset();
     env.reset_for_next_iteration();
+    env.current_instruction = instr;
     env.current_iteration += 1;
 
     assert_eq!(env.current_iteration, 1);
@@ -161,6 +167,7 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     env.reset();
     env.reset_for_next_iteration();
+    env.current_instruction = instr;
     env.current_iteration += 1;
 
     assert_eq!(env.current_iteration, 2);
@@ -190,6 +197,8 @@ fn test_witness_double_elliptic_curve_point() {
         sponge_e1.clone(),
         sponge_e1.clone(),
     );
+
+    env.current_instruction = Instruction::EllipticCurveAddition(0);
 
     // Generate a random point
     let p1: Pallas = helper_generate_random_elliptic_curve_point(&mut rng);

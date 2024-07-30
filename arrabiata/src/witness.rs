@@ -18,6 +18,8 @@ use crate::{
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
+pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+
 /// An environment that can be shared between IVC instances.
 ///
 /// It contains all the accumulators that can be picked for a given fold
@@ -792,14 +794,14 @@ impl<
             (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
-        // Default set to the blinders
+        // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e1.h]))
+            .map(|_| PolyComm::new(vec![srs_e1.h + srs_e1.h]))
             .collect();
         let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e2.h]))
+            .map(|_| PolyComm::new(vec![srs_e2.h + srs_e2.h]))
             .collect();
-        // FIXME: zero will not work
+        // FIXME: zero will not work.
         let ivc_accumulator_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e1.h]))
             .collect();
@@ -827,7 +829,7 @@ impl<
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            current_instruction: Instruction::SixteenBitsDecomposition,
+            current_instruction: IVC_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
@@ -860,6 +862,8 @@ impl<
         self.current_row = 0;
         self.state = std::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
+        self.current_instruction = IVC_STARTING_INSTRUCTION;
+        self.idx_values_to_absorb = 0;
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial
@@ -928,7 +932,7 @@ impl<
     /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
     /// ```
     ///
-    /// - We compute the output of the application
+    /// - We compute the output of the application (TODO)
     ///
     /// ```text
     /// z_(i + 1) = F(w_i, z_i)
@@ -962,7 +966,7 @@ impl<
                 if i < 15 {
                     Instruction::BitDecomposition(i + 1)
                 } else {
-                    Instruction::Poseidon(0)
+                    Instruction::EllipticCurveScaling(0, 0)
                 }
             }
             Instruction::Poseidon(i) => {
@@ -972,13 +976,14 @@ impl<
                     Instruction::Poseidon(i + 4)
                 } else {
                     // If we absorbed all the elements, we go to the next instruction
-                    // In our case, it is the elliptic curve addition
+                    // In this case, it is the decomposition of the folding combiner
                     // FIXME: it is not the correct next instruction.
                     // We must check the computed value is the one given as a
                     // public input.
                     if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::EllipticCurveAddition(0)
+                        Instruction::BitDecomposition(0)
                     } else {
+                        // Otherwise, we continue absorbing
                         Instruction::Poseidon(0)
                     }
                 }
