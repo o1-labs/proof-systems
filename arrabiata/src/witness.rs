@@ -386,45 +386,6 @@ where
         }
     }
 
-    // FIXME: use load_temporary_accumulators instead, and use a match on the
-    // current instruction
-    fn load_ec_point(
-        &mut self,
-        pos_x: Self::Position,
-        pos_y: Self::Position,
-        i: usize,
-        side: ECAdditionSide,
-    ) -> (Self::Variable, Self::Variable) {
-        let (pt_x, pt_y): (BigInt, BigInt) = match side {
-            ECAdditionSide::Left => {
-                if self.current_iteration % 2 == 0 {
-                    let pt = self.ivc_accumulator_e2[i].elems[0];
-                    let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint().into(), y.to_biguint().into())
-                } else {
-                    let pt = self.ivc_accumulator_e1[i].elems[0];
-                    let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint().into(), y.to_biguint().into())
-                }
-            }
-            ECAdditionSide::Right => {
-                // FIXME: we must get the scaled commitment, not simply the commitment
-                if self.current_iteration % 2 == 0 {
-                    let pt = self.previous_commitments_e2[i].elems[0];
-                    let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint().into(), y.to_biguint().into())
-                } else {
-                    let pt = self.previous_commitments_e1[i].elems[0];
-                    let (x, y) = pt.to_coordinates().unwrap();
-                    (x.to_biguint().into(), y.to_biguint().into())
-                }
-            }
-        };
-        self.write_column(pos_x, pt_x.clone());
-        self.write_column(pos_y, pt_y.clone());
-        (pt_x, pt_y)
-    }
-
     unsafe fn load_temporary_accumulators(
         &mut self,
         pos_x: Self::Position,
@@ -508,11 +469,37 @@ where
                     }
                 }
             }
-            Instruction::EllipticCurveAddition(_) => {
-                unimplemented!("FIXME: replace load_ec_point by load_temporary_accumulators")
+            Instruction::EllipticCurveAddition(i_comm) => {
+                // FIXME: we must get the scaled commitment, not simply the commitment
+                let (pt_x, pt_y): (BigInt, BigInt) = match side {
+                    ECAdditionSide::Left => {
+                        if self.current_iteration % 2 == 0 {
+                            let pt = self.ivc_accumulator_e2[i_comm].elems[0];
+                            let (x, y) = pt.to_coordinates().unwrap();
+                            (x.to_biguint().into(), y.to_biguint().into())
+                        } else {
+                            let pt = self.ivc_accumulator_e1[i_comm].elems[0];
+                            let (x, y) = pt.to_coordinates().unwrap();
+                            (x.to_biguint().into(), y.to_biguint().into())
+                        }
+                    }
+                    ECAdditionSide::Right => {
+                        if self.current_iteration % 2 == 0 {
+                            let pt = self.previous_commitments_e2[i_comm].elems[0];
+                            let (x, y) = pt.to_coordinates().unwrap();
+                            (x.to_biguint().into(), y.to_biguint().into())
+                        } else {
+                            let pt = self.previous_commitments_e1[i_comm].elems[0];
+                            let (x, y) = pt.to_coordinates().unwrap();
+                            (x.to_biguint().into(), y.to_biguint().into())
+                        }
+                    }
+                };
+                let pt_x = self.write_column(pos_x, pt_x.clone());
+                let pt_y = self.write_column(pos_y, pt_y.clone());
+                (pt_x, pt_y)
             }
-
-            _ => unimplemented!("For now, the accumulators can only be used by the elliptic curve scaling gadget. This should be changed as soon as the gadget is implemented.")
+            _ => unimplemented!("For now, the accumulators can only be used by the elliptic curve scaling gadget and {:?} is not supported. This should be changed as soon as the gadget is implemented.", self.current_instruction),
         }
     }
 

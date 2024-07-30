@@ -306,16 +306,6 @@ pub trait InterpreterEnv {
     /// Return the requested MDS matrix coefficient
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
 
-    /// Load the affine coordinates of the elliptic curve point given by the
-    /// index `i` into the cell `pos_x` and `pos_y`.
-    fn load_ec_point(
-        &mut self,
-        pos_x: Self::Position,
-        pos_y: Self::Position,
-        i: usize,
-        side: ECAdditionSide,
-    ) -> (Self::Variable, Self::Variable);
-
     /// Check if the points given by (x1, y1) and (x2, y2) are equals.
     ///
     /// # Safety
@@ -580,15 +570,16 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
+            assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
                 let x1 = env.allocate();
                 let y1 = env.allocate();
-                env.load_ec_point(x1, y1, i_comm, ECAdditionSide::Left)
+                unsafe { env.load_temporary_accumulators(x1, y1, ECAdditionSide::Left) }
             };
             let (x2, y2) = {
                 let x2 = env.allocate();
                 let y2 = env.allocate();
-                env.load_ec_point(x2, y2, i_comm, ECAdditionSide::Right)
+                unsafe { env.load_temporary_accumulators(x2, y2, ECAdditionSide::Right) }
             };
             let is_same_point = {
                 let pos = env.allocate();

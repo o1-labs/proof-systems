@@ -119,6 +119,8 @@ fn test_unit_witness_elliptic_curve_addition() {
         sponge_e1.clone(),
         sponge_e1.clone(),
     );
+    let instr = Instruction::EllipticCurveAddition(0);
+    env.current_instruction = instr;
     // If we are at iteration 0, we will compute the addition of points over
     // Pallas, whose scalar field is Fp.
     assert_eq!(env.current_iteration, 0);
@@ -131,7 +133,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+    interpreter::run_ivc(&mut env, instr);
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 
@@ -149,7 +151,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+    interpreter::run_ivc(&mut env, instr);
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 
@@ -167,7 +169,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+    interpreter::run_ivc(&mut env, instr);
 
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
