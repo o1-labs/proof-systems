@@ -170,7 +170,7 @@ use crate::{
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
-use log::debug;
+use log::{debug, error};
 use num_bigint::BigInt;
 
 /// A list of instruction/gadget implemented in the interpreter.
@@ -479,6 +479,7 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     match instr {
         Instruction::SixteenBitsDecomposition => {
+            error!("This gadget is outdated. You should not use it");
             // Decompositing the random coin in chunks of 16 bits. One row.
             // FIXME: verify the combiner is correctly returned from the sponge.
             let r = {
@@ -502,6 +503,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             env.assert_zero(cstr);
         }
         Instruction::BitDecompositionFrom16Bits(i) => {
+            error!("This gadget is outdated. You should not use it");
             if i < 16 {
                 // FIXME: simulate a RW into a memory cell. Not necessarily
                 // constrained?
