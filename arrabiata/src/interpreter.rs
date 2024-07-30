@@ -568,6 +568,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
+            debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
             // FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O
