@@ -963,7 +963,7 @@ impl<
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::BitDecomposition(i) => {
-                if i < 15 {
+                if i < 17 {
                     Instruction::BitDecomposition(i + 1)
                 } else {
                     Instruction::EllipticCurveScaling(0, 0)

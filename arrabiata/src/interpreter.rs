@@ -535,6 +535,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::BitDecomposition(i) => {
+            assert!(i < 17, "Bit decomposition is on 17 rows");
             // Decompositing the random coin in chunks of 15 bits.
             // Step i is the decomposition of the bits between 15 * i and 15 * (i + 1).
             // We make a constraint for each bit and we check that the sum of the
