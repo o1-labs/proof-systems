@@ -14,16 +14,13 @@ use poly_commitment::{
     SRS as _,
 };
 
-use rand::{rngs::StdRng, SeedableRng};
-
 #[test]
 fn test_pairing_proof() {
     let n = 64;
     let domain = D::<ScalarField>::new(n).unwrap();
 
-    let rng = &mut StdRng::from_seed([0u8; 32]);
-
-    let x = ScalarField::rand(rng);
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let x = ScalarField::rand(&mut rng);
 
     let mut srs = SRS::<G1>::create_trusted_setup(x, n);
     let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
@@ -36,14 +33,14 @@ fn test_pairing_proof() {
 
     let polynomials: Vec<_> = (0..4)
         .map(|_| {
-            let coeffs = (0..63).map(|_| ScalarField::rand(rng)).collect();
+            let coeffs = (0..63).map(|_| ScalarField::rand(&mut rng)).collect();
             DensePolynomial::from_coefficients_vec(coeffs)
         })
         .collect();
 
     let comms: Vec<_> = polynomials
         .iter()
-        .map(|p| srs.full_srs.commit(p, 1, rng))
+        .map(|p| srs.full_srs.commit(p, 1, &mut rng))
         .collect();
 
     let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _)> = polynomials
@@ -55,7 +52,7 @@ fn test_pairing_proof() {
         })
         .collect();
 
-    let evaluation_points = vec![ScalarField::rand(rng), ScalarField::rand(rng)];
+    let evaluation_points = vec![ScalarField::rand(&mut rng), ScalarField::rand(&mut rng)];
 
     let evaluations: Vec<_> = polynomials
         .iter()
@@ -75,7 +72,7 @@ fn test_pairing_proof() {
         })
         .collect();
 
-    let polyscale = ScalarField::rand(rng);
+    let polyscale = ScalarField::rand(&mut rng);
 
     let pairing_proof = PairingProof::<Bn<Parameters>>::create(
         &srs,
@@ -96,7 +93,9 @@ fn check_srs_g2_valid_and_serializes() {
     type BN254G2BaseField = <BN254 as ark_ec::PairingEngine>::Fqe;
     type Fp = ark_bn254::Fr;
 
-    let x = Fp::rand(&mut rand::rngs::OsRng);
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let x = Fp::rand(&mut rng);
     let srs: PairingSRS<BN254> = PairingSRS::create(x, 1 << 5);
 
     let mut vec: Vec<u8> = vec![0u8; 1024];
