@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["bias"],"struct":["CairoWord"],"trait":["FlagBits","FlagSets","Offsets"]};
+window.SIDEBAR_ITEMS = {"struct":["CairoWord"],"trait":["FlagBits","FlagSets","Offsets"]};
