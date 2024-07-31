@@ -564,7 +564,8 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
     };
 }
 
-/// Run an iteration of the IVC scheme.
+/// Run an iteration of the IVC scheme
+///
 /// It consists of the following steps:
 /// 1. Compute the hash of the public input.
 /// 2. Compute the elliptic curve addition.
