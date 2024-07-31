@@ -50,7 +50,19 @@
 //! - λ = (3 X1^2 + a) / (2Y1)
 //! ```
 //!
-//! FIXME: supports negation and the infinity point.
+//! #### Gadget layout
+//!
+//! For given inputs (x1, y1) and (x2, y2), the layout will be as follow:
+//!
+//! ```text
+//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 | C16 | C17 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- | --- | --- |
+//! | x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |     |     |
+//! ```
+//!
+//! where `b0` is equal two `1` if the points are the same, and `0` otherwise.
+//!
+//! TBD/FIXME: supports negation and the infinity point.
 //!
 //! The gadget requires therefore 7 columns.
 //!
