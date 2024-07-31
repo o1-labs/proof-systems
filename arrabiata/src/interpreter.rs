@@ -175,6 +175,19 @@
 //!
 //! And from this, we build an accumulator, like for Plookup.
 //!
+//! The methods `save` and `load` will accept as arguments only a column that is
+//! included in the permutation argument. For instance, `save_poseidon_state`
+//! will only accept columns with index 3, 4 and 5, where the
+//! `load_poseidon_state` will only accepts columns with index 0, 1 and 2.
+//!
+//! The permutations values will be saved in public values, and will contain the
+//! index of the row. The permutation values will be encoded with a 32 bits
+//! value (u32) as we can suppose a negligible probability that a user will use
+//! more than 2^32 rows.
+//!
+//! The permutation argument also generates constraints that will be
+//! homogeneized with the gadget constraints.
+//!
 //! TBD:
 //! - number of columns
 //! - accumulator column
