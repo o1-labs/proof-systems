@@ -114,6 +114,31 @@
 //! [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows using [NUMBER_OF_COLUMNS] columns
 //! to compute the 255 bits of the scalar.
 //!
+//! #### Gadget layout
+//!
+//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
+//! Therefore, we have 255 rows to compute the scalar multiplication.
+//! For a given step `i`, we have the following intermediary values:
+//! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
+//! - `res_x`, `res_y`: the result of the scalar multiplication i.e. the accumulator.
+//! - `b`: the i-th bit of the scalar.
+//!
+//! We have the following layout:
+//!
+//! ```text
+//! | C1 |   C2  |   C3   |   C4  |   C5  |   C6   |   C7   | C8 | C9|    C10   |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
+//! | -- | ----- | ------ | ----- | ----- | ------ | ------ | -- | -- | ------- | -------- | --- | --- | --- | --- | --- | --- |
+//! | b  | tmp_x |  tmp_y | res_x | res_y | tmp'_x | tmp'_y | λ' | λ  | res'_x  |  res'_y  | o_x | o_y |     |     |     |     |
+//! ```
+//! where `o_x` and `o_y` are the output of the current step, `tmp'_x` and
+//! `tmp'_y` are the double of the temporary values used for the next step, `λ'`
+//! is the slope computed for tmp' and λ is the slope for computing `res'`.
+//!
+//! FIXME: we might need to change the layout for the permutation argument.
+//! We want `o_x` and `o_y` to be with `res_x` and `res_y`, and `tmp_x` and
+//! `tmp_y` to be with `tmp'_x` and `tmp'_y`.
+//! Also, the bit `b` must come from the decomposition.
+//!
 //! FIXME: an optimisation can be implemented using "a bucket" style algorithm,
 //! as described in [Efficient MSMs in Kimchi
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
