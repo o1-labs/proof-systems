@@ -2,6 +2,13 @@ use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
+/// This enum represents the different gadgets that can be used in the circuit.
+/// The selectors are defined at setup time, can take only the values `0` or
+/// `1` and are public.
+// IMPROVEME: should we merge it with the Instruction enum?
+// It might not be that obvious to do so, as the Instruction enum could be
+// defining operations that are not "fixed" in the circuit, but rather
+// depend on runtime values (e.g. in a zero-knowledge virtual machine).
 #[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
 pub enum Gadget {
     App,
