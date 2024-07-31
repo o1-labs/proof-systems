@@ -193,6 +193,9 @@
 //! - accumulator column
 //! - folding of the permutation argument
 //!
+//! TBD/FIXME: do we use a additive permutation argument to increase the number
+//! of columns we can perform the permutation on?
+//!
 //! ## Fiat-Shamir challenges
 //!
 //! The challenges sent by the verifier must also be simulated by the IVC
