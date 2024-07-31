@@ -1000,7 +1000,7 @@ impl<
         match self.current_instruction {
             Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
             Instruction::BitDecomposition(i) => {
-                if i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS {
+                if i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS - 1 {
                     Instruction::BitDecomposition(i + 1)
                 } else {
                     Instruction::EllipticCurveScaling(0, 0)
