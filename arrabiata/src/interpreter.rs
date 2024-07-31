@@ -17,6 +17,19 @@
 //! For the Nova-like IVC schemes, we describe below the different gadgets and
 //! how they are implemented with this abstraction.
 //!
+//! **Table of contents**:
+//! - [Gadgets implemented](#gadgets-implemented)
+//!   - [Elliptic curve addition](#elliptic-curve-addition)
+//!     - [Gadget layout](#gadget-layout)
+//!   - [Hash - Poseidon](#hash---poseidon)
+//!     - [Gadget layout](#gadget-layout-1)
+//!   - [Elliptic curve scalar multiplication](#elliptic-curve-scalar-multiplication)
+//!     - [Gadget layout](#gadget-layout-2)
+//!   - [Bit composition instruction](#bit-composition-instruction)
+//! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
+//! - [Permutation argument](#permutation-argument)
+//! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
+//!
 //! ## Gadgets implemented
 //!
 //! ### Elliptic curve addition
