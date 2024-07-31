@@ -477,6 +477,9 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 ///
 /// FIXME: homogeneize
 /// FIXME: compute error terms
+/// FIXME: the resulting constraints do not include the selectors. We decided to
+/// use this design to only keep in the constraints the columns that are not
+/// fixed by the relation.
 pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     match instr {
         Instruction::SixteenBitsDecomposition => {
