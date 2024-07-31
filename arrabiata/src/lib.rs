@@ -69,4 +69,5 @@ pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 pub const BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK: usize = 15;
 pub const BIT_DECOMPOSITION_NUMBER_OF_CHUNKS: usize = 17;
 
+/// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;
