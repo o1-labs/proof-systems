@@ -198,8 +198,13 @@
 //! The challenges sent by the verifier must also be simulated by the IVC
 //! circuit.
 //!
-//! TBD/FIXME: specify. Might require foreign field arithmetic.
+//! For a step `i + 1`, the challenges of the step `i` must be computed by the
+//! verifier, and check that it corresponds to the ones received as a public
+//! input.
 //!
+//!
+//! TBD/FIXME: specify. Might require foreign field arithmetic.
+//! TBD/FIXME: do we need to aggregate them for the end?
 
 use crate::{
     columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
