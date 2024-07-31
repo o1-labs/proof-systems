@@ -156,6 +156,25 @@
 //! time the value has been written will be used to generate the permutation on
 //! the fly.
 //!
+//! The permutation argument described in the PlonK paper is a kind of "inverse
+//! lookup" protocol, like Plookup. The polynomials are defined as follows:
+//!
+//! ```text
+//!            Can be seen as T[f(X)] = Χ
+//!          --------
+//!          |      |
+//! f'(X) = f(X) + β X + γ
+//!                      |--- Can be seen as the evaluation point.
+//!                         |
+//!                         |
+//! g'(X) = g(X) + β σ(X) + γ
+//!          |      |
+//!          --------
+//!          Can be seen as T[g(X)] = σ(X)
+//! ```
+//!
+//! And from this, we build an accumulator, like for Plookup.
+//!
 //! TBD:
 //! - number of columns
 //! - accumulator column
