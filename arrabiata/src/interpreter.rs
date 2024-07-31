@@ -161,6 +161,13 @@
 //! - accumulator column
 //! - folding of the permutation argument
 //!
+//! ## Fiat-Shamir challenges
+//!
+//! The challenges sent by the verifier must also be simulated by the IVC
+//! circuit.
+//!
+//! TBD/FIXME: specify. Might require foreign field arithmetic.
+//!
 
 use crate::{
     columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,

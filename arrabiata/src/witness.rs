@@ -96,6 +96,12 @@ pub struct Env<
     /// column when committing to the witness.
     pub selectors: Vec<Vec<bool>>,
 
+    /// While folding, we must keep track of the challenges the verifier would
+    /// have sent in the SNARK, and we must aggregate them.
+    // FIXME: nothing is done yet, and the challenges haven't been decided yet.
+    // See top-level documentation of the interpreter for more information.
+    pub challenges: Vec<BigInt>,
+
     /// Keep the current executed instruction
     /// This can be used to identify which gadget the interpreter is currently
     /// building.
@@ -833,6 +839,10 @@ impl<
         let ivc_accumulator_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e2.h]))
             .collect();
+
+        // FIXME: challenges
+        let challenges: Vec<BigInt> = vec![];
+
         Self {
             // -------
             // Setup
@@ -855,6 +865,7 @@ impl<
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
+            challenges,
             current_instruction: IVC_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
