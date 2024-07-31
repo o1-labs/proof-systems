@@ -174,6 +174,13 @@
 //! ```
 //!
 //! And from this, we build an accumulator, like for Plookup.
+//! The accumulator requires to coin two challenges, β and γ, and it must be
+//! done after the columns to the columns have been absorbed.
+//! The verifier at the next step will verify that the challenges have been
+//! correctly computed.
+//! In the implementation, the accumulator will be computed after the challenges
+//! and the commitments. Note that the accumulator must also be aggregated, and
+//! the aggregation must be performed by the verifier at the next step.
 //!
 //! The methods `save` and `load` will accept as arguments only a column that is
 //! included in the permutation argument. For instance, `save_poseidon_state`
