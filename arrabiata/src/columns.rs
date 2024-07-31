@@ -1,13 +1,18 @@
-use std::collections::HashMap;
-
 use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
+use std::collections::HashMap;
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
 pub enum Gadget {
     App,
+    // Two old gadgets
     SixteenBitsDecomposition,
+    BitDecompositionFrom16Bits,
+    // Use this one instead to decompose scalar
     BitDecomposition,
-    NativeECAdd,
+    // Elliptic curve related gadgets
+    EllipticCurveAddition,
+    EllipticCurveScaling,
     Poseidon,
 }
 
@@ -26,10 +31,12 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::NativeECAdd => "q_ec_add".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
+                Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
+                Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
+                Gadget::Poseidon => "q_pos".to_string(),
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -40,10 +47,12 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::NativeECAdd => "q_ec_add".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
+                Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
+                Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
+                Gadget::Poseidon => "q_pos".to_string(),
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),

@@ -281,6 +281,8 @@ dependencies = [
  "poly-commitment",
  "rand",
  "rayon",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
