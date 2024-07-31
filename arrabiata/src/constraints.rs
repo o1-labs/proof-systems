@@ -1,6 +1,8 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
-    columns::E, interpreter::Side, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    columns::{Gadget, E},
+    interpreter::Side,
+    MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
 use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
@@ -83,6 +85,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }));
         self.assert_equal(res.clone(), v);
         res
+    }
+
+    fn activate_gadget(&mut self, _gadget: Gadget) {
+        // Nothing to do. It is only useful for the witness.
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {

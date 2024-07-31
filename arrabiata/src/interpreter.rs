@@ -163,8 +163,9 @@
 //!
 
 use crate::{
-    BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
+    BIT_DECOMPOSITION_NUMBER_OF_CHUNKS, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
 use log::{debug, error};
@@ -240,6 +241,9 @@ pub trait InterpreterEnv {
     // FIXME: This design might not be the best. Feel free to come up with a
     // better solution. The PI should be static for all witnesses
     fn write_public_input(&mut self, x: Self::Position, v: BigInt) -> Self::Variable;
+
+    /// Activate the gadget for the row.
+    fn activate_gadget(&mut self, gadget: Gadget);
 
     /// Build the constant zero
     fn zero(&self) -> Self::Variable;
@@ -477,6 +481,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     match instr {
         Instruction::SixteenBitsDecomposition => {
             error!("This gadget is outdated. You should not use it");
+            env.activate_gadget(Gadget::SixteenBitsDecomposition);
             // Decompositing the random coin in chunks of 16 bits. One row.
             // FIXME: verify the combiner is correctly returned from the sponge.
             let r = {
@@ -501,6 +506,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         }
         Instruction::BitDecompositionFrom16Bits(i) => {
             error!("This gadget is outdated. You should not use it");
+            env.activate_gadget(Gadget::BitDecompositionFrom16Bits);
             if i < 16 {
                 // FIXME: simulate a RW into a memory cell. Not necessarily
                 // constrained?
@@ -532,6 +538,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             }
         }
         Instruction::BitDecomposition(i) => {
+            env.activate_gadget(Gadget::BitDecomposition);
             assert!(
                 i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
                 "Bit decomposition is on {BIT_DECOMPOSITION_NUMBER_OF_CHUNKS} rows"
@@ -591,6 +598,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
+            env.activate_gadget(Gadget::EllipticCurveScaling);
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
@@ -686,6 +694,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
+            env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
                 let x1 = env.allocate();
@@ -728,6 +737,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::Poseidon(curr_round) => {
+            env.activate_gadget(Gadget::Poseidon);
             debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
                 let values_to_absorb: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE - 1)

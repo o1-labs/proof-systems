@@ -1,3 +1,17 @@
+use strum::EnumCount as _;
+
+pub mod column_env;
+pub mod columns;
+pub mod constraints;
+pub mod interpreter;
+pub mod logup;
+pub mod poseidon_3_60_0_5_5_fp;
+pub mod poseidon_3_60_0_5_5_fq;
+pub mod proof;
+pub mod prover;
+pub mod verifier;
+pub mod witness;
+
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
 pub const MAX_DEGREE: u64 = 5;
@@ -55,14 +69,4 @@ pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 pub const BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK: usize = 15;
 pub const BIT_DECOMPOSITION_NUMBER_OF_CHUNKS: usize = 17;
 
-pub mod column_env;
-pub mod columns;
-pub mod constraints;
-pub mod interpreter;
-pub mod logup;
-pub mod poseidon_3_60_0_5_5_fp;
-pub mod poseidon_3_60_0_5_5_fq;
-pub mod proof;
-pub mod prover;
-pub mod verifier;
-pub mod witness;
+pub const NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;

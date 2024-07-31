@@ -11,10 +11,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
-    columns::Column,
+    columns::{Column, Gadget},
     interpreter::{Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
     POSEIDON_STATE_SIZE,
 };
@@ -85,6 +85,16 @@ pub struct Env<
     /// Contain the public state
     // FIXME: I don't like this design. Feel free to suggest a better solution
     pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
+
+    /// Selectors to activate the gadgets.
+    /// The size of the outer vector must be equal to the number of gadgets in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    ///
+    /// The layout columns/rows is used to avoid rebuilding the arrays per
+    /// column when committing to the witness.
+    pub selectors: Vec<Vec<bool>>,
 
     /// Keep the current executed instruction
     /// This can be used to identify which gadget the interpreter is currently
@@ -220,6 +230,12 @@ where
         let v = v.mod_floor(&modulus);
         self.public_state[idx] = v.clone();
         v
+    }
+
+    /// Activate the gadget for the current row
+    fn activate_gadget(&mut self, gadget: Gadget) {
+        // IMPROVEME: it should be called only once per row
+        self.selectors[gadget as usize][self.current_row] = true;
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -795,6 +811,14 @@ impl<
             (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
+
+        let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
+        {
+            let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(false));
+            (0..NUMBER_OF_SELECTORS).for_each(|_| selectors.push(vec.clone()));
+        };
+
         // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e1.h + srs_e1.h]))
@@ -830,6 +854,7 @@ impl<
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            selectors,
             current_instruction: IVC_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
