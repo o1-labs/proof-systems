@@ -961,6 +961,20 @@ impl<
 
     /// Describe the control-flow for the IVC circuit.
     ///
+    /// For a step i + 1, the IVC circuit receives as public input the following
+    /// values:
+    ///
+    /// - The commitments to the previous witnesses.
+    /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
+    /// are used by the permutation argument where α is used by the quotient
+    /// polynomial, generated after also absorbing the accumulator of the
+    /// permutation argument.
+    /// - The previous accumulators (acc_1, ..., acc_17).
+    /// - The previous output z_i.
+    /// - The initial input z_0.
+    /// - The verification key vk.
+    /// - The natural i describing the previous step.
+    ///
     /// The control flow is as follow:
     /// - We compute the hash of the previous commitments and verify the hash
     /// corresponds to the public input:
@@ -968,6 +982,12 @@ impl<
     /// ```text
     /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
     /// ```
+    ///
+    /// - We also have to check that the previous challenges (α, β, γ) have been
+    /// correctly generated. Therefore, we must compute the hashes of the
+    /// witnesses and verify they correspond to the public input.
+    ///
+    /// TODO
     ///
     /// - We compute the output of the application (TODO)
     ///
