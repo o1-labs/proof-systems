@@ -215,6 +215,10 @@
 //! TBD/FIXME: do we use a additive permutation argument to increase the number
 //! of columns we can perform the permutation on?
 //!
+//! TBD/FIXME: We can have more than one permutation argument. For instance, we
+//! can have a permutation argument for the columns 0, 1, 2, 3 and one for the
+//! columns 4, 5, 6, 7. It can help to decrease the degree.
+//!
 //! ## Fiat-Shamir challenges
 //!
 //! The challenges sent by the verifier must also be simulated by the IVC
