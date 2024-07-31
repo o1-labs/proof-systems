@@ -64,6 +64,11 @@
 //!
 //! TBD/FIXME: supports negation and the infinity point.
 //!
+//! TBD/FIXME: the gadget layout might change when we will implement the
+//! permutation argument. The values `(x1, y1)` can be public inputs.
+//! The values `(x2, y2)` can be fetched from the permutation argument, and must
+//! be the output of the elliptic curve scaling.
+//!
 //! The gadget requires therefore 7 columns.
 //!
 //! ### Hash - Poseidon
@@ -104,6 +109,9 @@
 //! FIXME: we can do one more by using "the next row". Also, we can optimize
 //! this by using a partial/full round instance of Poseidon. We leave this when
 //! we move to Poseidon2.
+//!
+//! TBD/FIXME: define gadget layout + maybe change the current implementation
+//! for the permutation argument.
 //!
 //! ### Elliptic curve scalar multiplication
 //!
