@@ -262,8 +262,8 @@
 //! verifier, and check that it corresponds to the ones received as a public
 //! input.
 //!
-//!
 //! TBD/FIXME: specify. Might require foreign field arithmetic.
+//!
 //! TBD/FIXME: do we need to aggregate them for the end?
 
 use crate::{
