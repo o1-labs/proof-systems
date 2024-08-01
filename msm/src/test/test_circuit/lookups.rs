@@ -6,11 +6,11 @@ use strum_macros::EnumIter;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
 pub enum LookupTable {
-    /// x ∈ [0, 2^15]
+    /// Fixed table, x ∈ [0, 2^15].
     RangeCheck15,
-    /// A runtime table.
+    /// A runtime table, with no explicit writes.
     RuntimeTable1,
-    /// A runtime table.
+    /// A runtime table, with explicit writes.
     RuntimeTable2,
 }
 
@@ -42,7 +42,8 @@ impl LookupTableID for LookupTable {
 
     fn runtime_create_column(&self) -> bool {
         match self {
-            Self::RuntimeTable1 => false,
+            Self::RuntimeTable1 => true,
+            Self::RuntimeTable2 => false,
             _ => panic!("runtime_create_column was called on a non-runtime table"),
         }
     }

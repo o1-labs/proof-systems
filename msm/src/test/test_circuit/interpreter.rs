@@ -1,7 +1,10 @@
 use crate::{
-    circuit_design::{ColAccessCap, ColWriteCap, DirectWitnessCap},
+    circuit_design::{ColAccessCap, ColWriteCap, DirectWitnessCap, LookupCap},
     serialization::interpreter::limb_decompose_ff,
-    test::test_circuit::columns::{TestColumn, N_FSEL_TEST},
+    test::test_circuit::{
+        columns::{TestColumn, N_FSEL_TEST},
+        lookups::LookupTable,
+    },
     LIMB_BITSIZE, N_LIMBS,
 };
 use ark_ff::{Field, PrimeField, SquareRootField, Zero};
@@ -269,6 +272,81 @@ pub fn test_fixed_sel_degree_7_mul_witness<
     let res_var = Env::constant(res);
     env.write_column(TestColumn::B(0), &res_var);
     constrain_test_fixed_sel_degree_7_mul_witness(env);
+}
+
+pub fn constrain_lookups<
+    F: PrimeField,
+    Env: ColAccessCap<F, TestColumn> + LookupCap<F, TestColumn, LookupTable>,
+>(
+    env: &mut Env,
+) {
+    let a0 = Env::read_column(env, TestColumn::A(0));
+    let a1 = Env::read_column(env, TestColumn::A(1));
+
+    env.lookup(LookupTable::RangeCheck15, vec![a0.clone()]);
+    env.lookup(LookupTable::RangeCheck15, vec![a1.clone()]);
+
+    let cur_index = Env::read_column(env, TestColumn::FixedSel1);
+    let prev_index = Env::read_column(env, TestColumn::FixedSel2);
+    let next_index = Env::read_column(env, TestColumn::FixedSel3);
+
+    env.lookup(
+        LookupTable::RuntimeTable1,
+        vec![
+            cur_index.clone(),
+            prev_index.clone(),
+            next_index.clone(),
+            Env::constant(F::from(4u64)),
+        ],
+    );
+
+    // For now we only allow one read per runtime table with runtime_create_column = true.
+    //env.lookup(LookupTable::RuntimeTable1, vec![a0.clone(), a1.clone()]);
+
+    env.lookup_runtime_write(
+        LookupTable::RuntimeTable2,
+        vec![
+            Env::constant(F::from(1u64 << 26)),
+            Env::constant(F::from(5u64)),
+        ],
+    );
+    env.lookup_runtime_write(
+        LookupTable::RuntimeTable2,
+        vec![cur_index, Env::constant(F::from(5u64))],
+    );
+    env.lookup(
+        LookupTable::RuntimeTable2,
+        vec![
+            Env::constant(F::from(1u64 << 26)),
+            Env::constant(F::from(5u64)),
+        ],
+    );
+    env.lookup(
+        LookupTable::RuntimeTable2,
+        vec![prev_index, Env::constant(F::from(5u64))],
+    );
+}
+
+pub fn lookups_circuit<
+    F: SquareRootField + PrimeField,
+    Env: ColAccessCap<F, TestColumn>
+        + ColWriteCap<F, TestColumn>
+        + DirectWitnessCap<F, TestColumn>
+        + LookupCap<F, TestColumn, LookupTable>,
+>(
+    env: &mut Env,
+    domain_size: usize,
+) {
+    for row_i in 0..domain_size {
+        env.write_column(TestColumn::A(0), &Env::constant(F::from(11u64)));
+        env.write_column(TestColumn::A(1), &Env::constant(F::from(17u64)));
+
+        constrain_lookups(env);
+
+        if row_i < domain_size - 1 {
+            env.next_row();
+        }
+    }
 }
 
 /// Fixed selectors for the test circuit.

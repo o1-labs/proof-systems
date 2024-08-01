@@ -11,6 +11,7 @@ mod tests {
         test::test_circuit::{
             columns::{TestColumn, N_COL_TEST, N_FSEL_TEST},
             interpreter as test_interpreter,
+            lookups::LookupTable as TestLookupTable,
         },
         Ff1, Fp,
     };
@@ -424,6 +425,62 @@ mod tests {
     pub fn test_build_test_mul_circuit() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
+    }
+
+    #[test]
+    fn test_completeness_lookups() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        // Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        let domain_size = 1 << 15;
+
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, TestLookupTable>::create();
+        test_interpreter::constrain_lookups::<Fp, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut witness_env: TestWitnessBuilderEnv<TestLookupTable> = WitnessBuilderEnv::create();
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+        test_interpreter::lookups_circuit(&mut witness_env, domain_size);
+        let runtime_tables: BTreeMap<_, Vec<Vec<Vec<_>>>> =
+            witness_env.get_runtime_tables(domain_size);
+
+        let mut lookup_tables_data: BTreeMap<TestLookupTable, Vec<Vec<Vec<Fp>>>> = BTreeMap::new();
+        for table_id in TestLookupTable::all_variants().into_iter() {
+            if table_id.is_fixed() {
+                lookup_tables_data.insert(
+                    table_id,
+                    vec![table_id
+                        .entries(domain_size as u64)
+                        .unwrap()
+                        .into_iter()
+                        .map(|x| vec![x])
+                        .collect()],
+                );
+            }
+        }
+        for (table_id, runtime_table) in runtime_tables.into_iter() {
+            lookup_tables_data.insert(table_id, runtime_table);
+        }
+
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
+
+        crate::test::test_completeness_generic::<
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
+            0,
+            N_FSEL_TEST,
+            TestLookupTable,
+            _,
+        >(
+            constraints,
+            fixed_selectors,
+            proof_inputs,
+            domain_size,
+            &mut rng,
+        );
     }
 
     #[test]
