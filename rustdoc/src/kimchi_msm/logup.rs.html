@@ -856,7 +856,107 @@
 <a href="#856" id="856">856</a>
 <a href="#857" id="857">857</a>
 <a href="#858" id="858">858</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+</pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
+
+</span><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper [&quot;Multivariate lookups based on logarithmic
 //! derivatives&quot;](https://eprint.iacr.org/2022/1530.pdf).
 //!
@@ -997,7 +1097,7 @@
 </span><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
 
-<span class="kw">use </span>kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner};
+<span class="kw">use </span>kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
 
 <span class="kw">use crate</span>::{
     columns::Column,
@@ -1057,6 +1157,14 @@
     /// like range checks.
     </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
 
+    <span class="doccomment">/// If a table is runtime table, `true` means we should create an
+    /// explicit extra column for it to &quot;read&quot; from. `false` means
+    /// that this table will be reading from some existing (e.g.
+    /// relation) columns, and no extra columns should be added.
+    ///
+    /// Panics if the argument is a fixed table.
+    </span><span class="kw">fn </span>runtime_create_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
+
     <span class="doccomment">/// Assign a unique ID to the lookup tables, as an expression.
     </span><span class="kw">fn </span>to_constraint&lt;F: Field&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; E&lt;F&gt; {
         <span class="kw">let </span>f = <span class="self">self</span>.to_field();
@@ -1105,12 +1213,11 @@
     //
     // TODO: for efficiency, we might want to have a single flat fixed-size
     // array
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) f: Vec&lt;Vec&lt;Logup&lt;F, ID&gt;&gt;&gt;,
-    <span class="doccomment">/// The multiplicity polynomial
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;F&gt;,
-    <span class="doccomment">/// The table the witness is related to.
-    </span><span class="comment">// We can improve this later by getting rid of it.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) table_id: ID,
+    </span><span class="kw">pub </span>f: Vec&lt;Vec&lt;Logup&lt;F, ID&gt;&gt;&gt;,
+    <span class="doccomment">/// The multiplicity polynomials; by convention, this is a vector
+    /// of columns, corresponding to the `tail` of `f`. That is,
+    /// `m[last] ~ f[last]`.
+    </span><span class="kw">pub </span>m: Vec&lt;Vec&lt;F&gt;&gt;,
 }
 
 <span class="doccomment">/// Represents the proof of the lookup argument
@@ -1122,7 +1229,7 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupProof&lt;T, ID&gt; {
     <span class="doccomment">/// The multiplicity polynomials
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: BTreeMap&lt;ID, T&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: BTreeMap&lt;ID, Vec&lt;T&gt;&gt;,
     <span class="doccomment">/// The polynomial keeping the sum of each row
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: BTreeMap&lt;ID, Vec&lt;T&gt;&gt;,
     <span class="doccomment">/// The &quot;running-sum&quot; over the rows, coined `φ`
@@ -1141,7 +1248,7 @@
     <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = <span class="macro">vec!</span>[];
         <span class="comment">// First multiplicities
-        </span><span class="self">self</span>.m.values().for_each(|m| iter_contents.push(m));
+        </span><span class="self">self</span>.m.values().for_each(|m| iter_contents.extend(m));
         <span class="self">self</span>.h.values().for_each(|h| iter_contents.extend(h));
         iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.sum);
         <span class="comment">// Fixed tables
@@ -1222,7 +1329,8 @@
                 * joint_combiner.clone();
             <span class="comment">// FIXME: sanity check for the domain, we should consider it in prover.rs.
             // We do only support degree one constraint in the denominator.
-            </span><span class="macro">assert_eq!</span>(combined_value.degree(<span class="number">1</span>, <span class="number">0</span>), <span class="number">1</span>, <span class="string">&quot;Only degree one is supported in the denominator of the lookup because of the maximum degree supported (8)&quot;</span>);
+            </span><span class="kw">let </span>combined_degree_real = combined_value.degree(<span class="number">1</span>, <span class="number">0</span>);
+            <span class="macro">assert!</span>(combined_degree_real &lt;= <span class="number">1</span>, <span class="string">&quot;Only degree zero and one is supported in the denominator of the lookup because of the maximum degree supported (8); got degree {combined_degree_real}&quot;</span>,);
             <span class="comment">// add table id + evaluation point
             </span>beta.clone() + combined_value + x.table_id.to_constraint()
         })
@@ -1261,24 +1369,53 @@
 <span class="doccomment">/// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
 </span><span class="kw">pub fn </span>constraint_lookups&lt;F: PrimeField, ID: LookupTableID&gt;(
-    lookups_map: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;&gt;,
+    lookup_reads: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Vec&lt;E&lt;F&gt;&gt;&gt;&gt;,
+    lookup_writes: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Vec&lt;E&lt;F&gt;&gt;&gt;&gt;,
 ) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
     <span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_cols: Vec&lt;Column&gt; = <span class="macro">vec!</span>[];
-    lookups_map.iter().for_each(|(id, lookups)| {
+    lookup_reads.iter().for_each(|(table_id, reads)| {
         <span class="kw">let </span><span class="kw-2">mut </span>idx_partial_sum = <span class="number">0</span>;
-        <span class="kw">let </span>id_u32 = id.to_u32();
-        <span class="kw">let </span>table_lookup = Logup {
-            table_id: <span class="kw-2">*</span>id,
-            numerator: -curr_cell(Column::LookupMultiplicity(id_u32)),
-            value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(id_u32))],
-        };
+        <span class="kw">let </span>table_id_u32 = table_id.to_u32();
+
         <span class="comment">// FIXME: do not clone
-        </span><span class="kw">let </span><span class="kw-2">mut </span>lookups = lookups.clone();
-        lookups.push(table_lookup);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lookups: Vec&lt;<span class="kw">_</span>&gt; = reads
+            .clone()
+            .into_iter()
+            .map(|value| Logup {
+                table_id: <span class="kw-2">*</span>table_id,
+                numerator: Expr::Atom(ExprInner::Constant(ConstantExpr::from(
+                    ConstantTerm::Literal(F::one()),
+                ))),
+                value,
+            })
+            .collect();
+
+        <span class="kw">if </span>table_id.is_fixed() || table_id.runtime_create_column() {
+            <span class="kw">let </span>table_lookup = Logup {
+                table_id: <span class="kw-2">*</span>table_id,
+                numerator: -curr_cell(Column::LookupMultiplicity((table_id_u32, <span class="number">0</span>))),
+                value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(table_id_u32))],
+            };
+            lookups.push(table_lookup);
+        } <span class="kw">else </span>{
+            lookup_writes
+                .get(table_id)
+                .expect(<span class="string">&quot;Lookup writes for table_id {table_id:?} not present&quot;</span>)
+                .iter()
+                .enumerate()
+                .for_each(|(i, write_columns)| {
+                    lookups.push(Logup {
+                        table_id: <span class="kw-2">*</span>table_id,
+                        numerator: -curr_cell(Column::LookupMultiplicity((table_id_u32, i))),
+                        value: write_columns.clone(),
+                    });
+                });
+        }
+
         <span class="comment">// We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
         </span>lookups.chunks(MAX_SUPPORTED_DEGREE - <span class="number">2</span>).for_each(|chunk| {
-            <span class="kw">let </span>col = Column::LookupPartialSum((id_u32, idx_partial_sum));
+            <span class="kw">let </span>col = Column::LookupPartialSum((table_id_u32, idx_partial_sum));
             lookup_terms_cols.push(col);
             constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += <span class="number">1</span>;
@@ -1323,7 +1460,7 @@
         <span class="doccomment">/// The evaluations of the aggregation, over d8.
         </span><span class="kw">pub </span>lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
         <span class="doccomment">/// The evaluations of the multiplicities, over d8, indexed by the table ID.
-        </span><span class="kw">pub </span>lookup_counters_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BTreeMap&lt;ID, Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_counters_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BTreeMap&lt;ID, Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;&gt;,
         <span class="doccomment">/// The evaluations of the fixed tables, over d8, indexed by the table ID.
         </span><span class="kw">pub </span>fixed_tables_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BTreeMap&lt;ID, Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     }
@@ -1331,9 +1468,9 @@
     <span class="doccomment">/// Represents the environment for the logup argument.
     </span><span class="kw">pub struct </span>Env&lt;G: KimchiCurve, ID: LookupTableID&gt; {
         <span class="doccomment">/// The polynomial of the multiplicities, indexed by the table ID.
-        </span><span class="kw">pub </span>lookup_counters_poly_d1: BTreeMap&lt;ID, DensePolynomial&lt;G::ScalarField&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_counters_poly_d1: BTreeMap&lt;ID, Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;&gt;,
         <span class="doccomment">/// The commitments to the multiplicities, indexed by the table ID.
-        </span><span class="kw">pub </span>lookup_counters_comm_d1: BTreeMap&lt;ID, PolyComm&lt;G&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_counters_comm_d1: BTreeMap&lt;ID, Vec&lt;PolyComm&lt;G&gt;&gt;&gt;,
 
         <span class="doccomment">/// The polynomials of the inner sums.
         </span><span class="kw">pub </span>lookup_terms_poly_d1: BTreeMap&lt;ID, Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;&gt;,
@@ -1346,7 +1483,9 @@
         </span><span class="kw">pub </span>lookup_aggregation_comm_d1: PolyComm&lt;G&gt;,
 
         <span class="comment">// Evaluating over d8 for the quotient polynomial
-        </span><span class="kw">pub </span>lookup_counters_evals_d8: BTreeMap&lt;ID, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+        </span><span class="attr">#[allow(clippy::type_complexity)]
+        </span><span class="kw">pub </span>lookup_counters_evals_d8:
+            BTreeMap&lt;ID, Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;,
         <span class="attr">#[allow(clippy::type_complexity)]
         </span><span class="kw">pub </span>lookup_terms_evals_d8:
             BTreeMap&lt;ID, Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;,
@@ -1374,7 +1513,7 @@
             OpeningProof: OpenProof&lt;G&gt;,
             Sponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         &gt;(
-            lookups: Vec&lt;LogupWitness&lt;G::ScalarField, ID&gt;&gt;,
+            lookups: BTreeMap&lt;ID, LogupWitness&lt;G::ScalarField, ID&gt;&gt;,
             domain: EvaluationDomains&lt;G::ScalarField&gt;,
             fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
             srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
@@ -1382,49 +1521,73 @@
         </span><span class="kw">where
             </span>OpeningProof::SRS: Sync,
         {
-            <span class="comment">// Polynomial m(X)
+            <span class="comment">// Use parallel iterators where possible.
+            // Polynomial m(X)
             // FIXME/IMPROVEME: m(X) is only for fixed table
             </span><span class="kw">let </span>lookup_counters_evals_d1: BTreeMap&lt;
                 ID,
-                Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
+                Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
             &gt; = {
-                (<span class="kw-2">&amp;</span>lookups)
+                lookups
+                    .clone()
                     .into_par_iter()
-                    .map(|lookup| {
-                        <span class="kw">let </span>table_id = lookup.f[<span class="number">0</span>][<span class="number">0</span>].table_id;
+                    .map(|(table_id, logup_witness)| {
                         (
                             table_id,
-                            Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                                lookup.m.to_vec(),
-                                domain.d1,
-                            ),
+                            logup_witness.m.into_iter().map(|m|
+                                Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                                    m.to_vec(),
+                                    domain.d1,
+                                )
+                            ).collect()
                         )
                     })
                     .collect()
             };
 
-            <span class="kw">let </span>lookup_counters_poly_d1: BTreeMap&lt;ID, DensePolynomial&lt;G::ScalarField&gt;&gt; =
+            <span class="kw">let </span>lookup_counters_poly_d1: BTreeMap&lt;ID, Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;&gt; =
                 (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
                     .into_par_iter()
-                    .map(|(id, evals)| (<span class="kw-2">*</span>id, evals.interpolate_by_ref()))
+                    .map(|(id, evals)| {
+                        (<span class="kw-2">*</span>id, evals.iter().map(|e| e.interpolate_by_ref()).collect())
+                    })
                     .collect();
 
             <span class="kw">let </span>lookup_counters_evals_d8: BTreeMap&lt;
                 ID,
-                Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
+                Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
             &gt; = (<span class="kw-2">&amp;</span>lookup_counters_poly_d1)
                 .into_par_iter()
-                .map(|(id, lookup)| (<span class="kw-2">*</span>id, lookup.evaluate_over_domain_by_ref(domain.d8)))
+                .map(|(id, lookup)| {
+                    (
+                        <span class="kw-2">*</span>id,
+                        lookup
+                            .iter()
+                            .map(|l| l.evaluate_over_domain_by_ref(domain.d8))
+                            .collect(),
+                    )
+                })
                 .collect();
 
-            <span class="kw">let </span>lookup_counters_comm_d1: BTreeMap&lt;ID, PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
-                .into_par_iter()
-                .map(|(id, poly)| (<span class="kw-2">*</span>id, srs.commit_evaluations_non_hiding(domain.d1, poly)))
-                .collect();
+            <span class="kw">let </span>lookup_counters_comm_d1: BTreeMap&lt;ID, Vec&lt;PolyComm&lt;G&gt;&gt;&gt; =
+                (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
+                    .into_par_iter()
+                    .map(|(id, polys)| {
+                        (
+                            <span class="kw-2">*</span>id,
+                            polys
+                                .iter()
+                                .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
+                                .collect(),
+                        )
+                    })
+                    .collect();
 
-            lookup_counters_comm_d1
-                .values()
-                .for_each(|comm| absorb_commitment(fq_sponge, comm));
+            lookup_counters_comm_d1.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(fq_sponge, comm))
+            });
             <span class="comment">// -- end of m(X)
 
             // -- start computing the row sums h(X)
@@ -1439,15 +1602,23 @@
             <span class="comment">// Coin an evaluation point for the rational functions
             </span><span class="kw">let </span>beta = fq_sponge.challenge();
 
-            <span class="comment">// Contain the evalations of the h_i. We divide the looked-up values
+            <span class="comment">//
+            // @volhovm TODO make sure this is h_i. It looks like f_i for fixed tables.
+            // It is an actual fixed column containing &quot;fixed lookup data&quot;.
+            //
+            // Contain the evalations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             </span><span class="kw">let </span><span class="kw-2">mut </span>fixed_lookup_tables: BTreeMap&lt;ID, Vec&lt;G::ScalarField&gt;&gt; = BTreeMap::new();
 
-            <span class="comment">// We keep the lookup terms in a map, to process them in order in the constraints.
+            <span class="comment">// @volhovm TODO These are h_i related chunks!
+            //
+            // We keep the lookup terms in a map, to process them in order in the constraints.
             </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_map: BTreeMap&lt;ID, Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = BTreeMap::new();
 
-            lookups.into_iter().for_each(|lookup| {
-                <span class="kw">let </span>LogupWitness { f, m: <span class="kw">_</span>, table_id } = lookup;
+            <span class="comment">// Where are commitments to the last element are made? First &quot;read&quot; columns we don&#39;t commit to, right?..
+
+            </span>lookups.into_iter().for_each(|(table_id, logup_witness)| {
+                <span class="kw">let </span>LogupWitness { f, m: <span class="kw">_ </span>} = logup_witness;
                 <span class="comment">// The number of functions to look up, including the fixed table.
                 </span><span class="kw">let </span>n = f.len();
                 <span class="kw">let </span>n_partial_sums = <span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
@@ -1455,6 +1626,7 @@
                 } <span class="kw">else </span>{
                     n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) + <span class="number">1
                 </span>};
+
                 <span class="kw">let </span><span class="kw-2">mut </span>partial_sums =
                     <span class="macro">vec!</span>[
                         Vec::&lt;G::ScalarField&gt;::with_capacity(domain.d1.size <span class="kw">as </span>usize);
@@ -1487,7 +1659,12 @@
 
                         <span class="comment">// If last element and fixed lookup tables, we keep
                         // the *combined* value of the table.
-                        </span><span class="kw">if </span>i == (n - <span class="number">1</span>) {
+                        //
+                        // Otherwise we&#39;re processing a runtime table
+                        // with explicit writes, so we don&#39;t need to
+                        // create any extra columns.
+                        </span><span class="kw">if </span>(table_id.is_fixed() || table_id.runtime_create_column()) &amp;&amp; i == (n - <span class="number">1</span>)
+                        {
                             fixed_lookup_tables
                                 .entry(<span class="kw-2">*</span>table_id)
                                 .or_insert_with(Vec::new)
@@ -1501,7 +1678,8 @@
                 }
                 <span class="macro">assert!</span>(denominators.len() == n * domain.d1.size <span class="kw">as </span>usize);
 
-                ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
+                <span class="comment">// Given a vector {β + a_i}, computes a vector {1/(β + a_i)}
+                </span>ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
 
                 <span class="comment">// Evals is the sum on the individual columns for each row
                 </span><span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
@@ -1661,21 +1839,39 @@
             //                         (m(ω^{j + 1}) / (β + t(ω^{j + 1})))
             // - φ(ω^n) = 0
             </span><span class="kw">let </span>lookup_aggregation_evals_d1 = {
-                <span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-                <span class="kw">let </span><span class="kw-2">mut </span>acc = G::ScalarField::zero();
-                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize {
-                    <span class="comment">// φ(1) = 0
-                    </span>evals.push(acc);
-                    lookup_terms_evals_d1.iter().for_each(|(<span class="kw">_</span>, lookup_terms)| {
-                        acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
-                    })
+                {
+                    <span class="kw">for </span>table_id <span class="kw">in </span>ID::all_variants().into_iter() {
+                        <span class="kw">let </span><span class="kw-2">mut </span>acc = G::ScalarField::zero();
+                        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize {
+                            <span class="comment">// φ(1) = 0
+                            </span><span class="kw">let </span>lookup_terms = lookup_terms_evals_d1.get(<span class="kw-2">&amp;</span>table_id).unwrap();
+                            acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                        }
+                        <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
+                        </span><span class="macro">assert_eq!</span>(
+                            acc,
+                            G::ScalarField::zero(),
+                            <span class="string">&quot;Logup accumulator for table {table_id:?} must be zero&quot;
+                        </span>);
+                    }
                 }
-                <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
-                </span><span class="macro">assert_eq!</span>(
-                    acc,
-                    G::ScalarField::zero(),
-                    <span class="string">&quot;Logup accumulator must be zero&quot;
-                </span>);
+                <span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+                {
+                    <span class="kw">let </span><span class="kw-2">mut </span>acc = G::ScalarField::zero();
+                    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize {
+                        <span class="comment">// φ(1) = 0
+                        </span>evals.push(acc);
+                        lookup_terms_evals_d1.iter().for_each(|(<span class="kw">_</span>, lookup_terms)| {
+                            acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                        })
+                    }
+                    <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
+                    </span><span class="macro">assert_eq!</span>(
+                        acc,
+                        G::ScalarField::zero(),
+                        <span class="string">&quot;Logup accumulator must be zero&quot;
+                    </span>);
+                }
                 Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
                     evals, domain.d1,
                 )

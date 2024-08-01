@@ -315,7 +315,7 @@
 {
     <span class="kw">let </span>proof_inputs = ProofInputs {
         evaluations,
-        logups: <span class="macro">vec!</span>[],
+        logups: Default::default(),
     };
     test_completeness_generic::&lt;N_WIT, N_REL, N_DSEL, N_FSEL, LookupTableIDs, <span class="kw">_</span>&gt;(
         constraints,

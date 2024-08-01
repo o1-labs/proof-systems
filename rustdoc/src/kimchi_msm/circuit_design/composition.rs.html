@@ -407,6 +407,16 @@
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Tools to /compose/ different circuit designers.
 ///
 /// Assume we have several sets of columns:
@@ -771,6 +781,12 @@
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT2, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="self">self</span>.<span class="number">0</span>.env.lookup(<span class="self">self</span>.<span class="number">0</span>.lens.re_get(lookup_id), value)
     }
+
+    <span class="kw">fn </span>lookup_runtime_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT2, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.<span class="number">0
+            </span>.env
+            .lookup_runtime_write(<span class="self">self</span>.<span class="number">0</span>.lens.re_get(lookup_id), value)
+    }
 }
 
 <span class="kw">impl</span>&lt;
@@ -785,6 +801,10 @@
 {
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="self">self</span>.<span class="number">0</span>.env.lookup(lookup_id, value)
+    }
+
+    <span class="kw">fn </span>lookup_runtime_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.env.lookup_runtime_write(lookup_id, value)
     }
 }
 

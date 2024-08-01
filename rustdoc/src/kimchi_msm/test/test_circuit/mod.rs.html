@@ -985,13 +985,13 @@
         <span class="kw">let </span>witness_env = build_test_mul_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
         <span class="kw">let </span><span class="kw-2">mut </span>proof_inputs =
             witness_env.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs.logups = <span class="macro">vec!</span>[];
+        proof_inputs.logups = Default::default();
 
         <span class="kw">let </span>witness_env_prime =
             build_test_mul_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
         <span class="kw">let </span><span class="kw-2">mut </span>proof_inputs_prime =
             witness_env_prime.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs_prime.logups = <span class="macro">vec!</span>[];
+        proof_inputs_prime.logups = Default::default();
 
         <span class="kw">crate</span>::test::test_soundness_generic::&lt;
             { TEST_N_COLUMNS - <span class="number">1 </span>},

@@ -331,6 +331,7 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -479,10 +480,11 @@
     </span><span class="kw">let </span>(joint_combiner, beta) = {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(logup_comms) = <span class="kw-2">&amp;</span>proof_comms.logup_comms {
             <span class="comment">// First, we absorb the multiplicity polynomials
-            </span>logup_comms
-                .m
-                .values()
-                .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+            </span>logup_comms.m.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm))
+            });
 
             <span class="comment">// FIXME @volhovm it seems that the verifier does not
             // actually check that the fixed tables used in the proof

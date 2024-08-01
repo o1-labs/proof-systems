@@ -77,14 +77,25 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
-    serialization::N_INTERMEDIATE_LIMBS,
+    serialization::{interpreter::N_LIMBS_LARGE, N_INTERMEDIATE_LIMBS},
     N_LIMBS,
 };
 
 <span class="doccomment">/// Total number of columns in the serialization circuit, including fixed selectors.
-</span><span class="kw">pub const </span>N_COL_SER: usize = <span class="number">6 </span>* N_LIMBS + N_INTERMEDIATE_LIMBS + <span class="number">9 </span>+ N_FSEL_SER;
+</span><span class="kw">pub const </span>N_COL_SER: usize = N_INTERMEDIATE_LIMBS + <span class="number">6 </span>* N_LIMBS + N_LIMBS_LARGE + <span class="number">12</span>;
 
 <span class="doccomment">/// Number of fixed selectors for serialization circuit.
 </span><span class="kw">pub const </span>N_FSEL_SER: usize = <span class="number">2</span>;
@@ -107,8 +118,12 @@
     </span>CoeffInput(usize),
     <span class="doccomment">/// Trusted (for range) foreign field modulus, in 4 big limbs.
     </span>FFieldModulus(usize),
-    <span class="doccomment">/// Quotient limbs
-    </span>Quotient(usize),
+    <span class="doccomment">/// Quotient limbs (small)
+    </span>QuotientSmall(usize),
+    <span class="doccomment">/// Quotient limbs (large)
+    </span>QuotientLarge(usize),
+    <span class="doccomment">/// Sign of the quotient, one bit
+    </span>QuotientSign,
     <span class="doccomment">/// Carry limbs
     </span>Carry(usize),
     <span class="doccomment">/// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} * xi_{log(i)}. In small limbs.
@@ -141,17 +156,24 @@
                 <span class="macro">assert!</span>(j &lt; <span class="number">4</span>);
                 Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">3 </span>+ j)
             }
-            <span class="self">Self</span>::Quotient(j) =&gt; {
+            <span class="self">Self</span>::QuotientSmall(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
                 Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">7 </span>+ j)
             }
+            <span class="self">Self</span>::QuotientLarge(j) =&gt; {
+                <span class="macro">assert!</span>(j &lt; N_LIMBS_LARGE);
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + <span class="number">7 </span>+ j)
+            }
+            <span class="self">Self</span>::QuotientSign =&gt; {
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + N_LIMBS_LARGE + <span class="number">7</span>)
+            }
             <span class="self">Self</span>::Carry(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">2 </span>* N_LIMBS + <span class="number">2</span>);
-                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + <span class="number">7 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + N_LIMBS_LARGE + <span class="number">8 </span>+ j)
             }
             <span class="self">Self</span>::CoeffResult(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
-                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">5 </span>* N_LIMBS + <span class="number">9 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">5 </span>* N_LIMBS + N_LIMBS_LARGE + <span class="number">10 </span>+ j)
             }
         }
     }

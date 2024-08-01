@@ -98,6 +98,7 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>folding::expressions::FoldingColumnTrait;
@@ -116,8 +117,9 @@
     </span><span class="doccomment">/// Partial sums. This corresponds to the `h_i`.
     /// It is first indexed by the table ID, and after that internal index.
     </span>LookupPartialSum((u32, usize)),
-    <span class="doccomment">/// Multiplicities, indexed. This corresponds to the `m_i`
-    </span>LookupMultiplicity(u32),
+    <span class="doccomment">/// Multiplicities, indexed. This corresponds to the `m_i`. First
+    /// indexed by table ID, then internal index.
+    </span>LookupMultiplicity((u32, usize)),
     <span class="doccomment">/// The lookup aggregation, i.e. `phi`
     </span>LookupAggregation,
     <span class="doccomment">/// The fixed tables. The parameter is considered to the indexed table.
@@ -141,7 +143,7 @@
             Column::FixedSelector(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;fs_{{{i}}}&quot;</span>),
             Column::DynamicSelector(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;ds_{{{i}}}&quot;</span>),
             Column::LookupPartialSum((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;h_{{{table_id}, {i}}}&quot;</span>),
-            Column::LookupMultiplicity(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;m_{{{i}}}&quot;</span>),
+            Column::LookupMultiplicity((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;m_{{{table_id}, {i}}}&quot;</span>),
             Column::LookupFixedTable(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;t_{{{i}}}&quot;</span>),
             Column::LookupAggregation =&gt; String::from(<span class="string">&quot;φ&quot;</span>),
         }
@@ -153,7 +155,7 @@
             Column::FixedSelector(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;fs[{i}]&quot;</span>),
             Column::DynamicSelector(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;ds[{i}]&quot;</span>),
             Column::LookupPartialSum((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;h[{table_id}, {i}]&quot;</span>),
-            Column::LookupMultiplicity(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;m[{i}]&quot;</span>),
+            Column::LookupMultiplicity((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;m[{table_id}, {i}]&quot;</span>),
             Column::LookupFixedTable(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;t[{i}]&quot;</span>),
             Column::LookupAggregation =&gt; String::from(<span class="string">&quot;φ&quot;</span>),
         }

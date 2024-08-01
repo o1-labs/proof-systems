@@ -271,6 +271,10 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -366,6 +370,10 @@
             | SparseLookup | ResetLookup =&gt; <span class="bool-val">true</span>,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; <span class="bool-val">false</span>,
         }
+    }
+
+    <span class="kw">fn </span>runtime_create_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="macro">panic!</span>(<span class="string">&quot;No runtime tables specified&quot;</span>);
     }
 
     <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {

@@ -168,6 +168,11 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     logup::{LookupProof, LookupTableID},
     lookups::{LookupTableIDs, LookupWitness},
@@ -185,13 +190,14 @@
 };
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 <span class="kw">use </span>rand::thread_rng;
+<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N_WIT: usize, F: PrimeField, ID: LookupTableID&gt; {
     <span class="doccomment">/// Actual values w_i of the witness columns. &quot;Evaluations&quot; as in
     /// evaluations of polynomial P_w that interpolates w_i.
     </span><span class="kw">pub </span>evaluations: Witness&lt;N_WIT, Vec&lt;F&gt;&gt;,
-    <span class="kw">pub </span>logups: Vec&lt;LogupWitness&lt;F, ID&gt;&gt;,
+    <span class="kw">pub </span>logups: BTreeMap&lt;ID, LogupWitness&lt;F, ID&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N_WIT: usize, F: PrimeField&gt; ProofInputs&lt;N_WIT, F, LookupTableIDs&gt; {
@@ -206,9 +212,13 @@
                 .map(|<span class="kw">_</span>| F::rand(<span class="kw-2">&amp;mut </span>rng))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         }));
+        <span class="kw">let </span>logups = {
+            <span class="kw">let </span>(table_id, item) = LookupWitness::&lt;F&gt;::random(domain);
+            BTreeMap::from([(table_id, item)])
+        };
         ProofInputs {
             evaluations: Witness { cols },
-            logups: <span class="macro">vec!</span>[LookupWitness::&lt;F&gt;::random(domain)],
+            logups,
         }
     }
 }
@@ -223,7 +233,7 @@
                     (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| F::zero()).collect()
                 })),
             },
-            logups: <span class="macro">vec!</span>[],
+            logups: Default::default(),
         }
     }
 }
@@ -292,9 +302,9 @@
                     <span class="macro">panic!</span>(<span class="string">&quot;No lookup provided&quot;</span>)
                 }
             }
-            <span class="self">Self</span>::Column::LookupMultiplicity(table_id) =&gt; {
+            <span class="self">Self</span>::Column::LookupMultiplicity((table_id, idx)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.logup_evals {
-                    lookup.m[<span class="kw-2">&amp;</span>ID::from_u32(table_id)].clone()
+                    lookup.m[<span class="kw-2">&amp;</span>ID::from_u32(table_id)][idx].clone()
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">&quot;No lookup provided&quot;</span>)
                 }

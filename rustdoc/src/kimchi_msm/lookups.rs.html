@@ -187,6 +187,16 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the Logup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::logup::{Logup, LogupWitness, LookupTableID};
@@ -221,6 +231,10 @@
     </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">true
     </span>}
+
+    <span class="kw">fn </span>runtime_create_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="macro">panic!</span>(<span class="string">&quot;No runtime tables specified&quot;</span>);
+    }
 
     <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">if </span>value[<span class="number">0</span>] == F::zero() {
@@ -281,6 +295,10 @@
         <span class="bool-val">true
     </span>}
 
+    <span class="kw">fn </span>runtime_create_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="macro">panic!</span>(<span class="string">&quot;No runtime tables specified&quot;</span>);
+    }
+
     <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="macro">todo!</span>()
     }
@@ -304,7 +322,7 @@
 // real production code.
 </span><span class="kw">impl</span>&lt;F: FftField&gt; LookupWitness&lt;F&gt; {
     <span class="doccomment">/// Generate a random number of correct lookups in the table RangeCheck16
-    </span><span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;F&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;F&gt;) -&gt; (LookupTableIDs, <span class="self">Self</span>) {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="comment">// TODO: generate more random f
         </span><span class="kw">let </span>table_size: u64 = rng.gen_range(<span class="number">1</span>..domain.d1.size);
@@ -369,11 +387,13 @@
             table
         };
         <span class="kw">let </span>m = (<span class="number">0</span>..domain.d1.size).map(|<span class="kw">_</span>| F::one()).collect();
-        LookupWitness {
-            f: <span class="macro">vec!</span>[f_evals, t_evals],
-            m,
-            table_id: LookupTableIDs::Custom(table_id),
-        }
+        (
+            LookupTableIDs::Custom(table_id),
+            LookupWitness {
+                f: <span class="macro">vec!</span>[f_evals, t_evals],
+                m: <span class="macro">vec!</span>[m],
+            },
+        )
     }
 }
 </code></pre></div></section></main></body></html>

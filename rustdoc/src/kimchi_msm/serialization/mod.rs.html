@@ -123,14 +123,6 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -151,7 +143,7 @@
             column::{SerializationColumn, N_COL_SER, N_FSEL_SER},
             interpreter::{
                 build_selectors, constrain_multiplication, deserialize_field_element,
-                limb_decompose_ff, multiplication_circuit,
+                limb_decompose_ff, serialization_circuit,
             },
             lookups::LookupTable,
         },
@@ -179,8 +171,7 @@
         <span class="kw">let </span>fixed_selectors = build_selectors(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
-        <span class="comment">// Boxing to avoid stack overflow
-        </span><span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
 
         <span class="comment">// FIXME: we do use always the same values here, because we have a
         // constant check (X - c), different for each row. And there is no
@@ -190,7 +181,6 @@
         <span class="kw">for _ in </span><span class="number">0</span>..domain_size {
             field_elements.push([input1, input2, input3])
         }
-        <span class="kw">let </span>coeff_input: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
 
         <span class="kw">let </span>constraints = {
             <span class="kw">let </span><span class="kw-2">mut </span>constraints_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
@@ -198,11 +188,11 @@
             constrain_multiplication(<span class="kw-2">&amp;mut </span>constraints_env);
 
             <span class="comment">// Sanity checks.
-            </span><span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck15].len() == (<span class="number">3 </span>* <span class="number">17 </span>- <span class="number">1</span>));
-            <span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4].len() == <span class="number">20</span>);
-            <span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck9Abs].len() == <span class="number">6</span>);
+            </span><span class="macro">assert!</span>(constraints_env.lookup_reads[<span class="kw-2">&amp;</span>LookupTable::RangeCheck15].len() == (<span class="number">3 </span>* <span class="number">17 </span>- <span class="number">1</span>));
+            <span class="macro">assert!</span>(constraints_env.lookup_reads[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4].len() == <span class="number">20</span>);
+            <span class="macro">assert!</span>(constraints_env.lookup_reads[<span class="kw-2">&amp;</span>LookupTable::RangeCheck9Abs].len() == <span class="number">6</span>);
             <span class="macro">assert!</span>(
-                constraints_env.lookups
+                constraints_env.lookup_reads
                     [<span class="kw-2">&amp;</span>LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
                     .len()
                     == <span class="number">1
@@ -211,37 +201,31 @@
             constraints_env.get_constraints()
         };
 
-        <span class="kw">for </span>(i, limbs) <span class="kw">in </span>field_elements.iter().enumerate() {
-            <span class="comment">// Witness
-            </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, limbs.map(Into::into));
-            multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">false</span>);
+        serialization_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, field_elements, domain_size);
 
-            <span class="comment">// Don&#39;t reset on the last iteration.
-            </span><span class="kw">if </span>i &lt; domain_size {
-                witness_env.next_row()
-            }
-        }
-
-        <span class="kw">let </span>runtime_tables: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = witness_env.get_runtime_tables(domain_size);
+        <span class="kw">let </span>runtime_tables: BTreeMap&lt;<span class="kw">_</span>, Vec&lt;Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;&gt; =
+            witness_env.get_runtime_tables(domain_size);
 
         <span class="comment">// TODO remove this clone
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
-        </span><span class="kw">let </span>multiplication_bus: Vec&lt;Vec&lt;Fp&gt;&gt; = runtime_tables
+        </span><span class="kw">let </span>multiplication_bus: Vec&lt;Vec&lt;Vec&lt;Fp&gt;&gt;&gt; = runtime_tables
             .get(<span class="kw-2">&amp;</span>LookupTable::MultiplicationBus)
             .unwrap()
             .clone();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Fp&gt;&gt;&gt; = BTreeMap::new();
+        <span class="macro">assert!</span>(multiplication_bus.len() == <span class="number">2</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Vec&lt;Fp&gt;&gt;&gt;&gt; = BTreeMap::new();
         <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::all_variants().into_iter() {
             <span class="kw">if </span>table_id.is_fixed() {
                 lookup_tables_data.insert(
                     table_id,
-                    table_id
+                    <span class="macro">vec!</span>[table_id
                         .entries(domain_size <span class="kw">as </span>u64)
                         .unwrap()
                         .into_iter()
                         .map(|x| <span class="macro">vec!</span>[x])
-                        .collect(),
+                        .collect()],
                 );
             }
         }
