@@ -1,5 +1,6 @@
 pub mod columns;
 pub mod interpreter;
+pub mod lookups;
 
 #[cfg(test)]
 mod tests {
