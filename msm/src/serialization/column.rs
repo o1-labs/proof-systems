@@ -1,11 +1,11 @@
 use crate::{
     columns::{Column, ColumnIndexer},
-    serialization::N_INTERMEDIATE_LIMBS,
+    serialization::{interpreter::N_LIMBS_LARGE, N_INTERMEDIATE_LIMBS},
     N_LIMBS,
 };
 
 /// Total number of columns in the serialization circuit, including fixed selectors.
-pub const N_COL_SER: usize = 6 * N_LIMBS + N_INTERMEDIATE_LIMBS + 9 + N_FSEL_SER;
+pub const N_COL_SER: usize = N_INTERMEDIATE_LIMBS + 6 * N_LIMBS + N_LIMBS_LARGE + 12;
 
 /// Number of fixed selectors for serialization circuit.
 pub const N_FSEL_SER: usize = 2;
@@ -28,8 +28,12 @@ pub enum SerializationColumn {
     CoeffInput(usize),
     /// Trusted (for range) foreign field modulus, in 4 big limbs.
     FFieldModulus(usize),
-    /// Quotient limbs
-    Quotient(usize),
+    /// Quotient limbs (small)
+    QuotientSmall(usize),
+    /// Quotient limbs (large)
+    QuotientLarge(usize),
+    /// Sign of the quotient, one bit
+    QuotientSign,
     /// Carry limbs
     Carry(usize),
     /// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} * xi_{log(i)}. In small limbs.
@@ -62,17 +66,24 @@ impl ColumnIndexer for SerializationColumn {
                 assert!(j < 4);
                 Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 3 + j)
             }
-            Self::Quotient(j) => {
+            Self::QuotientSmall(j) => {
                 assert!(j < N_LIMBS);
                 Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 7 + j)
             }
+            Self::QuotientLarge(j) => {
+                assert!(j < N_LIMBS_LARGE);
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
+            }
+            Self::QuotientSign => {
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + N_LIMBS_LARGE + 7)
+            }
             Self::Carry(j) => {
                 assert!(j < 2 * N_LIMBS + 2);
-                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + N_LIMBS_LARGE + 8 + j)
             }
             Self::CoeffResult(j) => {
                 assert!(j < N_LIMBS);
-                Column::Relation(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + N_LIMBS_LARGE + 10 + j)
             }
         }
     }

@@ -18,7 +18,7 @@ mod tests {
             column::{SerializationColumn, N_COL_SER, N_FSEL_SER},
             interpreter::{
                 build_selectors, constrain_multiplication, deserialize_field_element,
-                limb_decompose_ff, multiplication_circuit,
+                limb_decompose_ff, serialization_circuit,
             },
             lookups::LookupTable,
         },
@@ -46,7 +46,6 @@ mod tests {
         let fixed_selectors = build_selectors(domain_size);
         witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
-        // Boxing to avoid stack overflow
         let mut field_elements = vec![];
 
         // FIXME: we do use always the same values here, because we have a
@@ -57,7 +56,6 @@ mod tests {
         for _ in 0..domain_size {
             field_elements.push([input1, input2, input3])
         }
-        let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
         let constraints = {
             let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
@@ -65,11 +63,11 @@ mod tests {
             constrain_multiplication(&mut constraints_env);
 
             // Sanity checks.
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck4].len() == 20);
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck9Abs].len() == 6);
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck4].len() == 20);
+            assert!(constraints_env.lookup_reads[&LookupTable::RangeCheck9Abs].len() == 6);
             assert!(
-                constraints_env.lookups
+                constraints_env.lookup_reads
                     [&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
                     .len()
                     == 1
@@ -78,37 +76,31 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        for (i, limbs) in field_elements.iter().enumerate() {
-            // Witness
-            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
-            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
+        serialization_circuit(&mut witness_env, input_chal, field_elements, domain_size);
 
-            // Don't reset on the last iteration.
-            if i < domain_size {
-                witness_env.next_row()
-            }
-        }
-
-        let runtime_tables: BTreeMap<_, _> = witness_env.get_runtime_tables(domain_size);
+        let runtime_tables: BTreeMap<_, Vec<Vec<Vec<_>>>> =
+            witness_env.get_runtime_tables(domain_size);
 
         // TODO remove this clone
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
-        let multiplication_bus: Vec<Vec<Fp>> = runtime_tables
+        let multiplication_bus: Vec<Vec<Vec<Fp>>> = runtime_tables
             .get(&LookupTable::MultiplicationBus)
             .unwrap()
             .clone();
 
-        let mut lookup_tables_data: BTreeMap<LookupTable<Ff1>, Vec<Vec<Fp>>> = BTreeMap::new();
+        assert!(multiplication_bus.len() == 2);
+
+        let mut lookup_tables_data: BTreeMap<LookupTable<Ff1>, Vec<Vec<Vec<Fp>>>> = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             if table_id.is_fixed() {
                 lookup_tables_data.insert(
                     table_id,
-                    table_id
+                    vec![table_id
                         .entries(domain_size as u64)
                         .unwrap()
                         .into_iter()
                         .map(|x| vec![x])
-                        .collect(),
+                        .collect()],
                 );
             }
         }

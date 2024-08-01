@@ -31,6 +31,10 @@ impl<Ff: PrimeField> LookupTableID for IVCLookupTable<Ff> {
         true
     }
 
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
     fn length(&self) -> usize {
         match self {
             Self::SerLookupTable(lt) => lt.length(),

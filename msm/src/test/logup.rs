@@ -33,7 +33,8 @@ mod tests {
         let mut inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
-        let looked_up_values = inputs.logups[0].f[0].clone();
+        let test_table_id = *inputs.logups.first_key_value().unwrap().0;
+        let looked_up_values = inputs.logups.get_mut(&test_table_id).unwrap().f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
         let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
@@ -41,7 +42,7 @@ mod tests {
             value: vec![Fp::rand(&mut rng)],
         };
         // Overwriting the first looked up value
-        inputs.logups[0].f[0][0] = wrong_looked_up_value;
+        inputs.logups.get_mut(&test_table_id).unwrap().f[0][0] = wrong_looked_up_value;
         // generate the proof
         let proof = prove::<
             _,

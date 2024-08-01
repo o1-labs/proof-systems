@@ -146,10 +146,11 @@ where
     let (joint_combiner, beta) = {
         if let Some(logup_comms) = &proof_comms.logup_comms {
             // First, we absorb the multiplicity polynomials
-            logup_comms
-                .m
-                .values()
-                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+            logup_comms.m.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(&mut fq_sponge, comm))
+            });
 
             // FIXME @volhovm it seems that the verifier does not
             // actually check that the fixed tables used in the proof

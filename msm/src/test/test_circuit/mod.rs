@@ -479,13 +479,13 @@ mod tests {
         let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs =
             witness_env.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs.logups = vec![];
+        proof_inputs.logups = Default::default();
 
         let witness_env_prime =
             build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs_prime =
             witness_env_prime.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs_prime.logups = vec![];
+        proof_inputs_prime.logups = Default::default();
 
         crate::test::test_soundness_generic::<
             { TEST_N_COLUMNS - 1 },

@@ -5,7 +5,10 @@ use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
 
 use crate::{
-    circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
+    circuit_design::{
+        capabilities::write_column_const, ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap,
+        MultiRowReadCap,
+    },
     columns::ColumnIndexer,
     logup::LookupTableID,
     serialization::{
@@ -393,9 +396,13 @@ pub fn constrain_multiplication<
     let ffield_modulus_limbs_large: [_; N_LIMBS_LARGE] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::FFieldModulus(i)));
     let quotient_limbs_small: [_; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column(SerializationColumn::Quotient(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::QuotientSmall(i)));
+    let quotient_limbs_large: [_; N_LIMBS_LARGE] =
+        core::array::from_fn(|i| env.read_column(SerializationColumn::QuotientLarge(i)));
     let carry_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
         core::array::from_fn(|i| env.read_column(SerializationColumn::Carry(i)));
+
+    let quotient_sign = env.read_column(SerializationColumn::QuotientSign);
 
     // u128 covers our limb sizes shifts which is good
     let constant_u128 = |x: u128| -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
@@ -406,19 +413,30 @@ pub fn constrain_multiplication<
         let current_row = env.read_column(SerializationColumn::CurrentRow);
         let previous_coeff_row = env.read_column(SerializationColumn::PreviousCoeffRow);
 
+        // TODO: We don't have to write top half of the table since it's never read.
+
+        // Writing the output
+        // (cur_i, [VEC])
+        let mut vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
+        vec_output.insert(0, current_row);
+        env.lookup_runtime_write(LookupTable::MultiplicationBus, vec_output);
+
+        //// Writing the constant: it's only read once
+        //// (0, [VEC representing 0])
+        env.lookup_runtime_write(
+            LookupTable::MultiplicationBus,
+            vec![Env::constant(F::zero()); N_LIMBS_SMALL + 1],
+        );
+
         // Reading the input:
         // (prev_i, [VEC])
         let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
         vec_input.insert(0, previous_coeff_row);
         env.lookup(LookupTable::MultiplicationBus, vec_input);
-
-        // Writing the output
-        // FIXME we should actually /write/ here, not read!
-        // (cur_i, [VEC])
-        let mut _vec_output: Vec<_> = coeff_result_limbs_small.clone().to_vec();
-        _vec_output.insert(0, current_row);
-        //env.lookup(LookupTable::MultiplicationBus, vec_output);
     }
+
+    // Quotient sign must be -1 or 1.
+    env.assert_zero(quotient_sign.clone() * quotient_sign.clone() - Env::constant(F::one()));
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -460,7 +478,14 @@ pub fn constrain_multiplication<
         combine_small_to_large::<_, _, Env>(coeff_input_limbs_small.clone());
     let coeff_result_limbs_large =
         combine_small_to_large::<_, _, Env>(coeff_result_limbs_small.clone());
-    let quotient_limbs_large = combine_small_to_large::<_, _, Env>(quotient_limbs_small.clone());
+    let quotient_limbs_large_abs_expected =
+        combine_small_to_large::<_, _, Env>(quotient_limbs_small.clone());
+    for j in 0..N_LIMBS_LARGE {
+        env.assert_zero(
+            quotient_limbs_large[j].clone()
+                - quotient_sign.clone() * quotient_limbs_large_abs_expected[j].clone(),
+        );
+    }
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
@@ -586,13 +611,11 @@ pub fn multiplication_circuit<
 
     let (quotient_bi, r_bi) = (&chal_bi * coeff_input_bi - coeff_result_bi).div_rem(&f_bi);
     assert!(r_bi.is_zero());
-    assert!(quotient_bi.is_positive());
-
-    // Used for witness computation
-    let quotient_limbs_large: [F; N_LIMBS_LARGE] =
-        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
-            quotient_bi.to_biguint().unwrap(),
-        );
+    let (quotient_bi, quotient_sign): (BigInt, F) = if quotient_bi.is_negative() {
+        (-quotient_bi, -F::one())
+    } else {
+        (quotient_bi, F::one())
+    };
 
     // Written into the columns
     let quotient_limbs_small: [F; N_LIMBS_SMALL] =
@@ -600,9 +623,25 @@ pub fn multiplication_circuit<
             quotient_bi.to_biguint().unwrap(),
         );
 
+    // Used for witness computation
+    let quotient_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
+            quotient_bi.to_biguint().unwrap(),
+        )
+        .into_iter()
+        .map(|v| v * quotient_sign)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+
     write_array_small(env, quotient_limbs_small, &|i| {
-        SerializationColumn::Quotient(i)
+        SerializationColumn::QuotientSmall(i)
     });
+    write_array_large(env, quotient_limbs_large, &|i| {
+        SerializationColumn::QuotientLarge(i)
+    });
+
+    write_column_const(env, SerializationColumn::QuotientSign, &quotient_sign);
 
     let mut carry: F = From::from(0u64);
 
@@ -674,7 +713,66 @@ pub fn multiplication_circuit<
     coeff_result
 }
 
-/// Builds fixed selectors for serialization circuit
+/// Full serialization circuit.
+pub fn serialization_circuit<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColWriteCap<F, SerializationColumn>
+        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
+        + HybridCopyCap<F, SerializationColumn>
+        + HybridSerHelpers<F, SerializationColumn, LookupTable<Ff>>
+        + MultiRowReadCap<F, SerializationColumn>,
+>(
+    env: &mut Env,
+    input_chal: Ff,
+    field_elements: Vec<[F; 3]>,
+    domain_size: usize,
+) {
+    // A map containing results of multiplications, per row
+    let mut prev_rows: Vec<Ff> = vec![];
+
+    for (i, limbs) in field_elements.iter().enumerate() {
+        // Witness
+
+        let coeff_input = if i == 0 {
+            Ff::zero()
+        } else {
+            prev_rows[i - (1 << (i.ilog2()))]
+        };
+
+        deserialize_field_element(env, limbs.map(Into::into));
+        let mul_result = multiplication_circuit(env, input_chal, coeff_input, false);
+
+        prev_rows.push(mul_result);
+
+        // Don't reset on the last iteration.
+        if i < domain_size {
+            env.next_row()
+        }
+    }
+}
+
+/// Builds fixed selectors for serialization circuit.
+///
+///
+/// | i    | sel1 | sel2 |
+/// |------|------|------|
+/// | 0000 |  0   |  0   |
+/// | 0001 |  1   |  0   |
+/// | 0010 |  2   |  0   |
+/// | 0011 |  3   |  1   |
+/// | 0100 |  4   |  0   |
+/// | 0101 |  5   |  1   |
+/// | 0110 |  6   |  2   |
+/// | 0111 |  7   |  3   |
+/// | 1000 |  8   |  0   |
+/// | 1001 |  9   |  1   |
+/// | 1010 |  10  |  2   |
+/// | 1011 |  11  |  3   |
+/// | 1100 |  12  |  4   |
+/// | 1101 |  13  |  5   |
+/// | 1110 |  14  |  6   |
+/// | 1111 |  15  |  7   |
 pub fn build_selectors<F: PrimeField>(domain_size: usize) -> [Vec<F>; N_FSEL_SER] {
     let sel1 = (0..domain_size).map(|i| F::from(i as u64)).collect();
     let sel2 = (0..domain_size)
@@ -697,7 +795,10 @@ mod tests {
         columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
-            interpreter::{build_selectors, deserialize_field_element, multiplication_circuit},
+            interpreter::{
+                build_selectors, deserialize_field_element, limb_decompose_ff,
+                multiplication_circuit, serialization_circuit,
+            },
             lookups::LookupTable,
             N_INTERMEDIATE_LIMBS,
         },
@@ -894,5 +995,35 @@ mod tests {
     pub fn test_serialization_mul_circuit() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_serialization_mul_circuit(&mut rng, 1 << 4);
+    }
+
+    #[test]
+    /// Builds the whole serialization circuit and checks it internally.
+    pub fn test_serialization_full_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let domain_size = 1 << 15;
+
+        let mut witness_env: SerializationWitnessBuilderEnv = WitnessBuilderEnv::create();
+
+        let fixed_selectors = build_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+
+        let mut field_elements = vec![];
+
+        // FIXME: we do use always the same values here, because we have a
+        // constant check (X - c), different for each row. And there is no
+        // constant support/public input yet in the quotient polynomial.
+        let input_chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+        let [input1, input2, input3]: [Fp; 3] = limb_decompose_ff::<Fp, Ff1, 88, 3>(&input_chal);
+        for _ in 0..domain_size {
+            field_elements.push([input1, input2, input3])
+        }
+
+        serialization_circuit(
+            &mut witness_env,
+            input_chal,
+            field_elements.clone(),
+            domain_size,
+        );
     }
 }
