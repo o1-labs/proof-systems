@@ -432,7 +432,7 @@ pub fn constrain_multiplication<
         // (prev_i, [VEC])
         let mut vec_input: Vec<_> = coeff_input_limbs_small.clone().to_vec();
         vec_input.insert(0, previous_coeff_row);
-        env.lookup(LookupTable::MultiplicationBus, vec_input);
+        env.lookup(LookupTable::MultiplicationBus, vec_input.clone());
     }
 
     // Quotient sign must be -1 or 1.
