@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "arrabiata",
     "book",
     "turshi",
     "curves",
