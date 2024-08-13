@@ -86,3 +86,8 @@ lib.rs file. In this registry, we could have for instance o1VM -->
 <!-- The user should also be able to switch the IVC circuit to use different
 versions over time. It can also be done using a registry. We keep only one IVC
 circuit for now -->
+
+### References
+
+- The name is not only used as a reference to Kimchi and Pickles, but also to
+  the mathematician [Aryabhata](https://en.wikipedia.org/wiki/Aryabhata).
