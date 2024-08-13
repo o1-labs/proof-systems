@@ -278,6 +278,36 @@
 //! TBD/FIXME: specify. Might require foreign field arithmetic.
 //!
 //! TBD/FIXME: do we need to aggregate them for the end?
+//!
+//! ## Folding
+//!
+//! Constraints must be homogeneized for the folding scheme.
+//! Homogeneising a constraint means that we add a new variable (called "U" in
+//! Nova for instance) that will be used to homogeneize the degree of the monomials
+//! forming the constraint.
+//! Next to this, additional information, like the cross-terms and the error
+//! terms must be computed.
+//!
+//! This computation depends on the constraints, and in particular on the
+//! monomials describing the constraints.
+//! The computation of the cross-terms and the error terms happen after the
+//! witness has been built. Therefore, the interpreter must provide a method to
+//! compute it, and the constraints should be passed as an argument.
+//!
+//! When computing the cross-terms, we must compute the contribution of each
+//! monomial to it.
+//!
+//! The implementation works as follow:
+//! - Split the constraint in monomials
+//! - For the monomials of degree `d`, compute the contribution when
+//! homogeneizing to degree `d'`.
+//! - Sum all the contributions.
+//!
+//! When a variable is unused (or in other terms, equal to zero), the
+//! contribution is null.
+//!
+//! TBD/FIXME: note that there is a contribution with the α when combining the
+//! constraints.
 
 use crate::{
     columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
