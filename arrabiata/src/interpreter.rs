@@ -306,6 +306,9 @@
 //! When a variable is unused (or in other terms, equal to zero), the
 //! contribution is null.
 //!
+//! Note that the cross-terms computations result in computation of
+//! [multi-binomials](https://en.wikipedia.org/wiki/Binomial_theorem#Multi-binomial_theorem).
+//!
 //! TBD/FIXME: note that there is a contribution with the α when combining the
 //! constraints.
 
