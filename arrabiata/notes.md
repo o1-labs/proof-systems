@@ -23,3 +23,10 @@ the partial evaluations, and define a polynomial in the second homogeneous value
 `u''`.
 
 
+See PDF in drive for the formula, but we can recursively populate a contiguous
+array with the individual powers, and keep an index to get the appropriate power.
+With this method, we avoid recomputing the powers of a certain value. Repeated
+multiplications can also be avoided.
+The contiguous array is passed as a parameter on the stack to the function. The
+CPU cache should be big enough to handle for low-degree folding schemes (like 5
+or 6).
