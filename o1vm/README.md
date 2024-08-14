@@ -6,6 +6,25 @@ the ISA MIPS used by [Cannon](https://github.com/ethereum-optimism/cannon). In
 the future, the codebase will be generalised to handle more ISA and more
 programs.
 
+## Description
+
+The current version of o1vm depends on an Optimism infrastructure to fetch
+blocks and transaction data (see [README-optimism.md](./README-optimism.md)).
+Currently, the only program that the codebase has been tested on is the
+[op-program](./ethereum-optimism/op-program), which contains code to verify
+Ethereum state transitions (EVM).
+
+`op-program` is first compiled into MIPS, using the Go compiler.
+From there, we fetch the latest Ethereum/Optimism network information (latest
+block, etc), and execute the op-program using the MIPS VM provided by Optimism,
+named Cannon (`./run-cannon`).
+
+We can execute o1vm later using `run-vm.sh`. It will build the whole data
+points (witness) required to make a proof later.
+Note that everything is only local at the moment. Nothing is posted on-chain or
+anywhere else.
+
+Each different step can be run using `./run-code.sh`.
 
 ## Pre-requisites
 
