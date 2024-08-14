@@ -7,7 +7,16 @@ the future, the codebase will be generalised to handle more ISA and more
 programs.
 
 
+## Pre-requisites
+
+o1vm compiles a certain version of the Optimism codebase (written in Go), and
+therefore you need to have a Go compiler installed on your machine. For now,
+at least go 1.21 is required.
+You can use [gvm](https://github.com/moovweb/gvm) to install a Go compiler.
+Switch to go 1.21 before continuing.
+
 ## Running the Optimism demo
+
 Start by initializing the submodules:
 ```bash
 git submodule init && git submodule update
