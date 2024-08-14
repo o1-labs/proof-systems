@@ -401,11 +401,13 @@ impl<
 
             let mut multiplicities = vec![vec![0u64; domain_size]; num_writes];
 
-            for value in self.lookup_reads.get(&table_id).unwrap()[0].iter() {
-                if let Some((col_i, row_i)) = resolver.get_mut(value) {
-                    multiplicities[*col_i][*row_i] += 1;
-                } else {
-                    panic!("Could not resolve a runtime table read");
+            for lookup_read_column in self.lookup_reads.get(&table_id).unwrap().iter() {
+                for value in lookup_read_column.iter() {
+                    if let Some((col_i, row_i)) = resolver.get_mut(value) {
+                        multiplicities[*col_i][*row_i] += 1;
+                    } else {
+                        panic!("Could not resolve a runtime table read");
+                    }
                 }
             }
 
@@ -553,12 +555,7 @@ impl<
         if !lookup_tables_data.is_empty() {
             for table_id in LT::all_variants().into_iter() {
                 // Find how many lookups are done per table.
-                let number_of_lookup_reads = if table_id.is_fixed() {
-                    self.lookup_reads.get(&table_id).unwrap().len()
-                } else {
-                    // For now we only have 1 runtime lookup read always.
-                    1
-                };
+                let number_of_lookup_reads = self.lookup_reads.get(&table_id).unwrap().len();
                 let number_of_lookup_writes =
                     if table_id.is_fixed() || table_id.runtime_create_column() {
                         1
