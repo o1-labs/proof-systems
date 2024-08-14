@@ -675,9 +675,6 @@
 <a href="#675" id="675">675</a>
 <a href="#676" id="676">676</a>
 <a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
@@ -1081,11 +1078,13 @@
 
             </span><span class="kw">let </span><span class="kw-2">mut </span>multiplicities = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="number">0u64</span>; domain_size]; num_writes];
 
-            <span class="kw">for </span>value <span class="kw">in </span><span class="self">self</span>.lookup_reads.get(<span class="kw-2">&amp;</span>table_id).unwrap()[<span class="number">0</span>].iter() {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((col_i, row_i)) = resolver.get_mut(value) {
-                    multiplicities[<span class="kw-2">*</span>col_i][<span class="kw-2">*</span>row_i] += <span class="number">1</span>;
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Could not resolve a runtime table read&quot;</span>);
+            <span class="kw">for </span>lookup_read_column <span class="kw">in </span><span class="self">self</span>.lookup_reads.get(<span class="kw-2">&amp;</span>table_id).unwrap().iter() {
+                <span class="kw">for </span>value <span class="kw">in </span>lookup_read_column.iter() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>((col_i, row_i)) = resolver.get_mut(value) {
+                        multiplicities[<span class="kw-2">*</span>col_i][<span class="kw-2">*</span>row_i] += <span class="number">1</span>;
+                    } <span class="kw">else </span>{
+                        <span class="macro">panic!</span>(<span class="string">&quot;Could not resolve a runtime table read&quot;</span>);
+                    }
                 }
             }
 
@@ -1233,12 +1232,7 @@
         <span class="kw">if </span>!lookup_tables_data.is_empty() {
             <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
                 <span class="comment">// Find how many lookups are done per table.
-                </span><span class="kw">let </span>number_of_lookup_reads = <span class="kw">if </span>table_id.is_fixed() {
-                    <span class="self">self</span>.lookup_reads.get(<span class="kw-2">&amp;</span>table_id).unwrap().len()
-                } <span class="kw">else </span>{
-                    <span class="comment">// For now we only have 1 runtime lookup read always.
-                    </span><span class="number">1
-                </span>};
+                </span><span class="kw">let </span>number_of_lookup_reads = <span class="self">self</span>.lookup_reads.get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
                 <span class="kw">let </span>number_of_lookup_writes =
                     <span class="kw">if </span>table_id.is_fixed() || table_id.runtime_create_column() {
                         <span class="number">1

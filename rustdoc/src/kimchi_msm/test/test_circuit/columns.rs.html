@@ -37,31 +37,33 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     N_LIMBS,
 };
 
-<span class="doccomment">/// Number of columns in the test circuits.
-</span><span class="kw">pub const </span>TEST_N_COLUMNS: usize = <span class="number">4 </span>* N_LIMBS + <span class="number">1</span>;
+<span class="doccomment">/// Number of columns in the test circuits, including fixed selectors.
+</span><span class="kw">pub const </span>N_COL_TEST: usize = <span class="number">4 </span>* N_LIMBS + N_FSEL_TEST;
 
-<span class="doccomment">/// Column indexer for MSM columns.
-///
-/// Columns A to D are used for testing right now, they are used for
-/// either of the two equations:
-///   A + B - C = 0
-///   A * B - D = 0
+<span class="doccomment">/// Number of fixed selectors in the test circuit.
+</span><span class="kw">pub const </span>N_FSEL_TEST: usize = <span class="number">3</span>;
+
+<span class="doccomment">/// Test column indexer.
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>TestColumn {
     A(usize),
     B(usize),
     C(usize),
     D(usize),
-    FixedE,
+    FixedSel1,
+    FixedSel2,
+    FixedSel3,
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumn {
-    <span class="kw">const </span>N_COL: usize = TEST_N_COLUMNS;
+    <span class="kw">const </span>N_COL: usize = N_COL_TEST;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);
@@ -72,7 +74,9 @@
             TestColumn::B(i) =&gt; to_column_inner(<span class="number">1</span>, i),
             TestColumn::C(i) =&gt; to_column_inner(<span class="number">2</span>, i),
             TestColumn::D(i) =&gt; to_column_inner(<span class="number">3</span>, i),
-            TestColumn::FixedE =&gt; Column::FixedSelector(<span class="number">0</span>),
+            TestColumn::FixedSel1 =&gt; Column::FixedSelector(<span class="number">0</span>),
+            TestColumn::FixedSel2 =&gt; Column::FixedSelector(<span class="number">1</span>),
+            TestColumn::FixedSel3 =&gt; Column::FixedSelector(<span class="number">2</span>),
         }
     }
 }

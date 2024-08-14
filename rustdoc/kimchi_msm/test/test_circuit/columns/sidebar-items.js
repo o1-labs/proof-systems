@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["TEST_N_COLUMNS"],"enum":["TestColumn"]};
+window.SIDEBAR_ITEMS = {"constant":["N_COL_TEST","N_FSEL_TEST"],"enum":["TestColumn"]};

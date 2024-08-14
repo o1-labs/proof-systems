@@ -1461,7 +1461,7 @@
         // (prev_i, [VEC])
         </span><span class="kw">let </span><span class="kw-2">mut </span>vec_input: Vec&lt;<span class="kw">_</span>&gt; = coeff_input_limbs_small.clone().to_vec();
         vec_input.insert(<span class="number">0</span>, previous_coeff_row);
-        env.lookup(LookupTable::MultiplicationBus, vec_input);
+        env.lookup(LookupTable::MultiplicationBus, vec_input.clone());
     }
 
     <span class="comment">// Quotient sign must be -1 or 1.

@@ -213,9 +213,9 @@
             .unwrap()
             .clone();
 
-        <span class="macro">assert!</span>(multiplication_bus.len() == <span class="number">2</span>);
+        <span class="comment">//assert!(multiplication_bus.len() == 2);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Vec&lt;Fp&gt;&gt;&gt;&gt; = BTreeMap::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Vec&lt;Fp&gt;&gt;&gt;&gt; = BTreeMap::new();
         <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::all_variants().into_iter() {
             <span class="kw">if </span>table_id.is_fixed() {
                 lookup_tables_data.insert(

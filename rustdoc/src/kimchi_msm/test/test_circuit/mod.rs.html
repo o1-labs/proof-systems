@@ -504,19 +504,74 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
+<span class="kw">pub mod </span>lookups;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::ColumnIndexer,
         logup::LookupTableID,
         lookups::DummyLookupTable,
         test::test_circuit::{
-            columns::{TestColumn, TEST_N_COLUMNS},
+            columns::{TestColumn, N_COL_TEST, N_FSEL_TEST},
             interpreter <span class="kw">as </span>test_interpreter,
+            lookups::LookupTable <span class="kw">as </span>TestLookupTable,
         },
         Ff1, Fp,
     };
@@ -527,10 +582,10 @@
     <span class="kw">type </span>TestWitnessBuilderEnv&lt;LT&gt; = WitnessBuilderEnv&lt;
         Fp,
         TestColumn,
-        { &lt;TestColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - <span class="number">1 </span>},
-        { &lt;TestColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - <span class="number">1 </span>},
+        { N_COL_TEST - N_FSEL_TEST },
+        { N_COL_TEST - N_FSEL_TEST },
         <span class="number">0</span>,
-        <span class="number">1</span>,
+        N_FSEL_TEST,
         LT,
     &gt;;
 
@@ -581,10 +636,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -602,7 +657,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
         <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -636,10 +691,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -660,7 +715,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
         <span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -698,10 +753,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -721,9 +776,8 @@
     ) -&gt; TestWitnessBuilderEnv&lt;LT&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="comment">// NB: Non-standard fixed selectors.
-        </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
             <span class="kw">let </span>a: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
@@ -745,9 +799,7 @@
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
-        <span class="comment">// NB: Non-standard fixed selectors.
-        </span><span class="kw">let </span>fixed_selectors: Box&lt;[Vec&lt;Fp&gt;; <span class="number">1</span>]&gt; =
-            Box::new([(<span class="number">0</span>..domain_size).map(|i| Fp::from((i + <span class="number">1</span>) <span class="kw">as </span>u64)).collect()]);
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_mul_witness::&lt;Fp, <span class="kw">_</span>&gt;(
@@ -763,10 +815,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -823,10 +875,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -847,7 +899,7 @@
         //let row_num = rng.gen_range(0..domain_size);
 
         </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         <span class="kw">let </span>constant: Fp = &lt;Fp <span class="kw">as </span>UniformRand&gt;::rand(rng);
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
@@ -889,10 +941,10 @@
         <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -913,7 +965,7 @@
         //let row_num = rng.gen_range(0..domain_size);
 
         </span><span class="kw">let </span>fixed_sel: Vec&lt;Fp&gt; = (<span class="number">0</span>..domain_size).map(|i| Fp::from(i <span class="kw">as </span>u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         <span class="kw">let </span>row_num = <span class="number">10</span>;
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..row_num {
@@ -936,6 +988,62 @@
     }
 
     <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_completeness_lookups() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+
+        <span class="comment">// Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+
+        <span class="kw">let </span>fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, TestLookupTable&gt;::create();
+        test_interpreter::constrain_lookups::&lt;Fp, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
+        <span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env: TestWitnessBuilderEnv&lt;TestLookupTable&gt; = WitnessBuilderEnv::create();
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+        test_interpreter::lookups_circuit(<span class="kw-2">&amp;mut </span>witness_env, domain_size);
+        <span class="kw">let </span>runtime_tables: BTreeMap&lt;<span class="kw">_</span>, Vec&lt;Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;&gt; =
+            witness_env.get_runtime_tables(domain_size);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data: BTreeMap&lt;TestLookupTable, Vec&lt;Vec&lt;Vec&lt;Fp&gt;&gt;&gt;&gt; = BTreeMap::new();
+        <span class="kw">for </span>table_id <span class="kw">in </span>TestLookupTable::all_variants().into_iter() {
+            <span class="kw">if </span>table_id.is_fixed() {
+                lookup_tables_data.insert(
+                    table_id,
+                    <span class="macro">vec!</span>[table_id
+                        .entries(domain_size <span class="kw">as </span>u64)
+                        .unwrap()
+                        .into_iter()
+                        .map(|x| <span class="macro">vec!</span>[x])
+                        .collect()],
+                );
+            }
+        }
+        <span class="kw">for </span>(table_id, runtime_table) <span class="kw">in </span>runtime_tables.into_iter() {
+            lookup_tables_data.insert(table_id, runtime_table);
+        }
+
+        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
+
+        <span class="kw">crate</span>::test::test_completeness_generic::&lt;
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
+            <span class="number">0</span>,
+            N_FSEL_TEST,
+            TestLookupTable,
+            <span class="kw">_</span>,
+        &gt;(
+            constraints,
+            fixed_selectors,
+            proof_inputs,
+            domain_size,
+            <span class="kw-2">&amp;mut </span>rng,
+        );
+    }
+
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
 
@@ -954,10 +1062,10 @@
         <span class="kw">let </span>relation_witness = witness_env.get_relation_witness(domain_size);
 
         <span class="kw">crate</span>::test::test_completeness_generic_no_lookups::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             <span class="kw">_</span>,
         &gt;(
             constraints,
@@ -994,10 +1102,10 @@
         proof_inputs_prime.logups = Default::default();
 
         <span class="kw">crate</span>::test::test_soundness_generic::&lt;
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
-            { TEST_N_COLUMNS - <span class="number">1 </span>},
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             <span class="number">0</span>,
-            <span class="number">1</span>,
+            N_FSEL_TEST,
             DummyLookupTable,
             <span class="kw">_</span>,
         &gt;(
