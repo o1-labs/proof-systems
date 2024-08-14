@@ -31,8 +31,21 @@ Each different step can be run using `./run-code.sh`.
 o1vm compiles a certain version of the Optimism codebase (written in Go), and
 therefore you need to have a Go compiler installed on your machine. For now,
 at least go 1.21 is required.
+
 You can use [gvm](https://github.com/moovweb/gvm) to install a Go compiler.
 Switch to go 1.21 before continuing.
+
+```shell
+gvm install go1.21
+gvm use go1.21 [--default]
+```
+
+You also will need to install the [Foundry](https://getfoundry.sh/) toolkit 
+in order to utilize applicaitons like `cast`.
+
+```shell
+foundryup
+```
 
 ## Running the Optimism demo
 
