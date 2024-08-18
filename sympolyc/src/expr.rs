@@ -1,6 +1,8 @@
 //! Multivariate polynomial
 //! See [these notes](https://hackmd.io/@dannywillems/SyHar7p5A) for more context.
 
+use std::ops::Add;
+
 use ark_ff::Field;
 use num_integer::binomial;
 
@@ -24,5 +26,17 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
 impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
     fn default() -> Self {
         MVPoly::new()
+    }
+}
+
+impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        let mut result = MVPoly::new();
+        for i in 0..dimension_of_multivariate_polynomial::<N, D>() {
+            result.coeff[i] = self.coeff[i] + other.coeff[i];
+        }
+        result
     }
 }

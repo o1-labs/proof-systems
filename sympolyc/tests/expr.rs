@@ -11,3 +11,11 @@ fn test_vector_space_dimension() {
     let p = MVPoly::<Fp, 1, 10>::new();
     assert_eq!(p.coeff.len(), 11);
 }
+
+#[test]
+fn test_add() {
+    let p1 = MVPoly::<Fp, 2, 2>::new();
+    let p2 = MVPoly::<Fp, 2, 2>::new();
+    let p3 = p1 + p2;
+    assert_eq!(p3.coeff.len(), 6);
+}
