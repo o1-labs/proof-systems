@@ -1,13 +1,13 @@
-use sympolyc::utils::{is_prime, PrimeNumberGenerator};
+use sympolyc::{
+    constants::FIRST_FIFTY_PRIMES,
+    utils::{get_mapping_with_primes, is_prime, PrimeNumberGenerator},
+};
 
 #[test]
 pub fn test_is_prime() {
-    let primes: [usize; 45] = [
-        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
-        97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
-        191, 193, 197,
-    ];
-    primes.iter().for_each(|&prime| assert!(is_prime(prime)));
+    FIRST_FIFTY_PRIMES
+        .iter()
+        .for_each(|&prime| assert!(is_prime(prime)));
 }
 
 #[test]
@@ -51,4 +51,15 @@ pub fn test_nth_prime() {
     assert_eq!(61, prime_gen.generate_nth_prime(18));
     assert_eq!(67, prime_gen.generate_nth_prime(19));
     assert_eq!(71, prime_gen.generate_nth_prime(20));
+}
+
+#[test]
+pub fn test_mapping_variables_indexes_to_primes() {
+    {
+        let map = get_mapping_with_primes::<3>();
+        assert_eq!(map[3], 2);
+        assert_eq!(map[4], 3);
+        assert_eq!(map[5], 5);
+        assert_eq!(map.len(), 6);
+    }
 }
