@@ -40,3 +40,6 @@ impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
         result
     }
 }
+
+// TODO: implement multiplication
+// TODO: implement From/To Expr<F, Column>
