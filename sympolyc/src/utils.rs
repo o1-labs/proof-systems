@@ -1,3 +1,6 @@
+//! This module contains functions to work with prime numbers and to compute
+//! dimension of multivariate spaces
+
 /// Basic implementation checking if u is prime
 pub fn is_prime(n: usize) -> bool {
     if n == 2 {

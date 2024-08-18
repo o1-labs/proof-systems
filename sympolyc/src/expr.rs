@@ -1,30 +1,24 @@
+use ark_ff::Field;
 use num_integer::binomial;
 
+pub fn dimension_of_multivariate_polynomial<const N: usize, const D: usize>() -> usize {
+    binomial(N + D, D)
+}
+
 /// Represents a multivariate polynomial of degree `D` in `N` variables.
-pub struct MVPoly<const N: usize, const D: usize> {
-    pub n: usize,
-    pub d: usize,
+pub struct MVPoly<F: Field, const N: usize, const D: usize> {
+    pub coeff: Vec<F>,
 }
 
-impl<const N: usize, const D: usize> MVPoly<N, D> {
+impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
     pub fn new() -> Self {
-        MVPoly { n: N, d: D }
-    }
-
-    pub fn degree(&self) -> usize {
-        self.d
-    }
-
-    pub fn variables(&self) -> usize {
-        self.n
-    }
-
-    pub fn monomials(&self) -> usize {
-        binomial(self.n + self.d, self.d)
+        MVPoly {
+            coeff: vec![F::zero(); dimension_of_multivariate_polynomial::<N, D>()],
+        }
     }
 }
 
-impl<const N: usize, const D: usize> Default for MVPoly<N, D> {
+impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
     fn default() -> Self {
         MVPoly::new()
     }

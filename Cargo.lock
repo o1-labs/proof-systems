@@ -2850,6 +2850,7 @@ name = "sympolyc"
 version = "0.1.0"
 dependencies = [
  "ark-ff",
+ "mina-curves",
  "num-integer",
  "rand",
 ]
