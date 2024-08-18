@@ -1,3 +1,6 @@
+//! Multivariate polynomial
+//! See [these notes](https://hackmd.io/@dannywillems/SyHar7p5A) for more context.
+
 use ark_ff::Field;
 use num_integer::binomial;
 
