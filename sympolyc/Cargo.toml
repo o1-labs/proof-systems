@@ -13,5 +13,8 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-# Should be the only real dependencies for symbolic execution.
 ark-ff.workspace = true
+num-integer.workspace = true
+
+[dev-dependencies]
+rand.workspace = true
