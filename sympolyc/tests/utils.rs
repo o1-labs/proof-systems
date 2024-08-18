@@ -2,51 +2,12 @@ use sympolyc::utils::{is_prime, PrimeNumberGenerator};
 
 #[test]
 pub fn test_is_prime() {
-    assert!(is_prime(2));
-    assert!(is_prime(3));
-    assert!(is_prime(5));
-    assert!(is_prime(7));
-    assert!(is_prime(11));
-    assert!(is_prime(13));
-    assert!(is_prime(17));
-    assert!(is_prime(19));
-    assert!(is_prime(23));
-    assert!(is_prime(29));
-    assert!(is_prime(31));
-    assert!(is_prime(37));
-    assert!(is_prime(41));
-    assert!(is_prime(43));
-    assert!(is_prime(47));
-    assert!(is_prime(53));
-    assert!(is_prime(59));
-    assert!(is_prime(61));
-    assert!(is_prime(67));
-    assert!(is_prime(71));
-    assert!(is_prime(73));
-    assert!(is_prime(79));
-    assert!(is_prime(83));
-    assert!(is_prime(89));
-    assert!(is_prime(97));
-    assert!(is_prime(101));
-    assert!(is_prime(103));
-    assert!(is_prime(107));
-    assert!(is_prime(109));
-    assert!(is_prime(113));
-    assert!(is_prime(127));
-    assert!(is_prime(131));
-    assert!(is_prime(137));
-    assert!(is_prime(139));
-    assert!(is_prime(149));
-    assert!(is_prime(151));
-    assert!(is_prime(157));
-    assert!(is_prime(163));
-    assert!(is_prime(167));
-    assert!(is_prime(173));
-    assert!(is_prime(179));
-    assert!(is_prime(181));
-    assert!(is_prime(191));
-    assert!(is_prime(193));
-    assert!(is_prime(197));
+    let primes: [usize; 45] = [
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
+        97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+        191, 193, 197,
+    ];
+    primes.iter().for_each(|&prime| assert!(is_prime(prime)));
 }
 
 #[test]
