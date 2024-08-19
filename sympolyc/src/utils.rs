@@ -1,6 +1,8 @@
 //! This module contains functions to work with prime numbers and to compute
 //! dimension of multivariate spaces
 
+use std::collections::HashMap;
+
 use log::debug;
 
 /// Basic implementation checking if u is prime
@@ -19,6 +21,30 @@ pub fn is_prime(n: usize) -> bool {
         i += 2;
     }
     true
+}
+
+/// Given a number n, return the list of prime factors of n, with their
+/// multiplicity
+// IMPROVEME: native algorithm, could be optimized
+pub fn naive_prime_factors(n: usize, primes: Vec<usize>) -> Vec<(usize, usize)> {
+    let mut hash_factors = HashMap::new();
+    let mut n = n;
+    for p in primes {
+        while n % p == 0 {
+            hash_factors.entry(p).and_modify(|e| *e += 1).or_insert(1);
+            n /= p;
+        }
+        if n == 1 {
+            break;
+        }
+    }
+    let mut factors = vec![];
+    hash_factors.into_iter().for_each(|(k, v)| {
+        factors.push((k, v));
+    });
+    // sort by the prime number
+    factors.sort();
+    factors
 }
 
 pub struct PrimeNumberGenerator {

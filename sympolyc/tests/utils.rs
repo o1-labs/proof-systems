@@ -1,6 +1,6 @@
 use sympolyc::{
     constants::FIRST_FIFTY_PRIMES,
-    utils::{get_mapping_with_primes, is_prime, PrimeNumberGenerator},
+    utils::{get_mapping_with_primes, is_prime, naive_prime_factors, PrimeNumberGenerator},
 };
 
 #[test]
@@ -63,4 +63,35 @@ pub fn test_mapping_variables_indexes_to_primes() {
         assert_eq!(map[5], 5);
         assert_eq!(map.len(), 6);
     }
+}
+
+#[test]
+pub fn test_naive_prime_factors() {
+    let n = 4;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 2)]);
+
+    let n = 6;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 1), (3, 1)]);
+
+    let n = 2;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 1)]);
+
+    let n = 10;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 1), (5, 1)]);
+
+    let n = 12;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 2), (3, 1)]);
+
+    let n = 40;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(2, 3), (5, 1)]);
+
+    let n = 1023;
+    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    assert_eq!(factors, vec![(3, 1), (11, 1), (31, 1)]);
 }
