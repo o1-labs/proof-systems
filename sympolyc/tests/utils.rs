@@ -18,7 +18,8 @@ pub fn test_is_not_prime() {
         assert!(!is_prime(random_even));
     }
     {
-        let random_product = rand::random::<usize>() % 10000 * rand::random::<usize>() % 10000;
+        let random_product =
+            (2 + rand::random::<usize>() % 10000) * (2 + rand::random::<usize>() % 10000);
         assert!(!is_prime(random_product));
     }
 }
