@@ -40,7 +40,7 @@ fn ec_test() {
 
     let rng = &mut StdRng::from_seed([0; 32]);
 
-    let ps = {
+    let ps: Vec<Other> = {
         let p = Other::generator()
             .into_group()
             .mul(<Other as AffineRepr>::ScalarField::rand(rng));
@@ -53,7 +53,7 @@ fn ec_test() {
         <Other as AffineRepr>::Group::normalize_batch(&res)
     };
 
-    let qs = {
+    let qs: Vec<Other> = {
         let q = Other::generator()
             .into_group()
             .mul(<Other as AffineRepr>::ScalarField::rand(rng));
@@ -67,7 +67,7 @@ fn ec_test() {
     };
 
     for &p in ps.iter().take(num_doubles) {
-        let p2 = p + p;
+        let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = 3 * x1^2
@@ -95,11 +95,12 @@ fn ec_test() {
         let p = ps[i];
         let q = qs[i];
 
-        let pq = p + q;
+        let pq: Other = (p + q).into();
         let (x1, y1) = (p.x, p.y);
         let (x2, y2) = (q.x, q.y);
         // (x2 - x1) * s = y2 - y1
         let s = (y2 - y1) / (x2 - x1);
+
         witness[0].push(x1);
         witness[1].push(y1);
         witness[2].push(x2);
@@ -121,11 +122,12 @@ fn ec_test() {
     for &p in ps.iter().take(num_infs) {
         let q = -p;
 
-        let p2 = p + p;
+        let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = -3 * x1^2
         let s = (x1_squared.double() + x1_squared) / y1.double();
+
         witness[0].push(p.x);
         witness[1].push(p.y);
         witness[2].push(q.x);
