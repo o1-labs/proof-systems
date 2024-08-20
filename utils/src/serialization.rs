@@ -87,3 +87,61 @@ where
         T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use ark_ec::AffineCurve;
+    use ark_serialize::Write;
+    use mina_curves::pasta::{Pallas, Vesta};
+    use serde::{Deserialize, Serialize};
+    use serde_with::serde_as;
+    use std::io::BufReader;
+
+    #[test]
+    pub fn serde_as_regression_pasta() {
+        #[serde_as]
+        #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+        struct TestStruct {
+            #[serde_as(as = "crate::serialization::SerdeAs")]
+            pallas: Pallas,
+            #[serde_as(as = "crate::serialization::SerdeAs")]
+            vesta: Vesta,
+        }
+
+        let data_expected = TestStruct {
+            pallas: Pallas::prime_subgroup_generator(),
+            vesta: Vesta::prime_subgroup_generator(),
+        };
+
+        // reference serialized value
+        let buf_expected: Vec<u8> = vec![
+            146, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+
+        let mut buf_written: Vec<u8> = vec![0; buf_expected.len()];
+
+        let srs_bytes = rmp_serde::to_vec(&data_expected).unwrap();
+        (buf_written.as_mut_slice())
+            .write_all(&srs_bytes)
+            .expect("failed to write file");
+        (buf_written.as_mut_slice())
+            .flush()
+            .expect("failed to flush file");
+
+        assert!(
+            buf_written == buf_expected,
+            "Serialized (written) representation {buf_written:?} does not match the expected one {buf_expected:?}"
+        );
+
+        let reader = BufReader::new(buf_expected.as_slice());
+        let data_read: TestStruct = rmp_serde::from_read(reader).unwrap();
+
+        assert!(
+            data_read == data_expected,
+            "Deserialized value {data_read:?} does not match the expected one {data_expected:?}"
+        );
+    }
+}
