@@ -166,7 +166,7 @@ impl PubKey {
         let mut pt =
             CurvePoint::get_point_from_x_unchecked(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
 
-        if pt.y.0.is_even() == y_parity {
+        if pt.y.into_bigint().is_even() == y_parity {
             pt.y = pt.y.neg();
         }
 
@@ -200,7 +200,7 @@ impl PubKey {
     /// Serialize public key into corresponding Mina address
     pub fn into_address(&self) -> String {
         let point = self.point();
-        into_address(&point.x, point.y.0.is_odd())
+        into_address(&point.x, point.y.into_bigint().is_odd())
     }
 
     /// Deserialize public key into bytes
