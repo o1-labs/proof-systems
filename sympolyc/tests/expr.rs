@@ -1,3 +1,4 @@
+use ark_ff::{One, Zero};
 use mina_curves::pasta::Fp;
 use sympolyc::expr::MVPoly;
 
@@ -45,4 +46,81 @@ pub fn test_normalized_indices() {
     assert_eq!(indices[7], 10);
     assert_eq!(indices[8], 15);
     assert_eq!(indices[9], 25);
+}
+
+#[test]
+fn test_is_homogeneous() {
+    // X1 X2 + X1^2 + X1^2
+    let coeffs: Vec<Fp> = vec![
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::one(),
+        Fp::one(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(p.is_homogeneous());
+
+    // X1 X2 + X1^2
+    let coeffs: Vec<Fp> = vec![
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::one(),
+        Fp::zero(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(p.is_homogeneous());
+
+    // X1 X2 + X2^2
+    let coeffs: Vec<Fp> = vec![
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::zero(),
+        Fp::one(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(p.is_homogeneous());
+
+    // X1 X2
+    let coeffs: Vec<Fp> = vec![
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::zero(),
+        Fp::zero(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(p.is_homogeneous());
+}
+
+#[test]
+fn test_is_not_homogeneous() {
+    // 1 + X1 X2 + X1^2 + X2^2
+    let coeffs: Vec<Fp> = vec![
+        Fp::from(42_u32),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::one(),
+        Fp::one(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(!p.is_homogeneous());
+
+    let coeffs: Vec<Fp> = vec![
+        Fp::zero(),
+        Fp::zero(),
+        Fp::one(),
+        Fp::one(),
+        Fp::one(),
+        Fp::zero(),
+    ];
+    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    assert!(!p.is_homogeneous());
 }
