@@ -67,7 +67,6 @@ impl PrimeNumberGenerator {
     }
 
     /// Generate the nth prime number
-    // IMPROVEME: could use the previous primes to speed up the search
     pub fn get_nth_prime(&mut self, n: usize) -> usize {
         assert!(n > 0);
         if n <= self.primes.len() {
