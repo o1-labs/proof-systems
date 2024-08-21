@@ -12,7 +12,7 @@ pub fn dimension_of_multivariate_polynomial<const N: usize, const D: usize>() ->
 
 /// Represents a multivariate polynomial of degree `D` in `N` variables.
 pub struct MVPoly<F: Field, const N: usize, const D: usize> {
-    pub coeff: Vec<F>,
+    coeff: Vec<F>,
 }
 
 impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
@@ -20,6 +20,10 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
         MVPoly {
             coeff: vec![F::zero(); dimension_of_multivariate_polynomial::<N, D>()],
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.coeff.len()
     }
 }
 
