@@ -64,7 +64,7 @@ impl PrimeNumberGenerator {
 
     /// Generate the nth prime number
     // IMPROVEME: could use the previous primes to speed up the search
-    pub fn generate_nth_prime(&mut self, n: usize) -> usize {
+    pub fn get_nth_prime(&mut self, n: usize) -> usize {
         debug!("Generating prime number {}", n);
         if n <= self.primes.len() {
             self.primes[n - 1]
@@ -91,11 +91,11 @@ impl PrimeNumberGenerator {
     /// Get the next prime number
     pub fn get_next_prime(&mut self) -> usize {
         let n = self.primes.len();
-        self.generate_nth_prime(n + 1)
+        self.get_nth_prime(n + 1)
     }
 
     pub fn get_first_nth_primes(&mut self, n: usize) -> Vec<usize> {
-        let _ = self.generate_nth_prime(n);
+        let _ = self.get_nth_prime(n);
         self.primes.clone()
     }
 }
@@ -105,7 +105,7 @@ impl Iterator for PrimeNumberGenerator {
 
     fn next(&mut self) -> Option<Self::Item> {
         let n = self.primes.len();
-        Some(self.generate_nth_prime(n + 1))
+        Some(self.get_nth_prime(n + 1))
     }
 }
 
@@ -129,7 +129,7 @@ pub fn get_mapping_with_primes<const N: usize>() -> Vec<usize> {
         *v = i + 1;
     }
     for (i, v) in mapping.iter_mut().enumerate().skip(N) {
-        *v = primes.generate_nth_prime(i - N + 1);
+        *v = primes.get_nth_prime(i - N + 1);
     }
     mapping
 }
