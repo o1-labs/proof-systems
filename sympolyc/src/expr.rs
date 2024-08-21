@@ -58,7 +58,12 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
         let mut normalized_indices = vec![1; self.len()];
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
-        let max_index = primes[N - 1].pow(D as u32);
+        let max_index = primes[N - 1].checked_pow(D as u32);
+        assert!(
+            max_index.is_some(),
+            "Overflow in computing the maximum index"
+        );
+        let max_index = max_index.unwrap();
         let mut j = 0;
         (1..=max_index).for_each(|i| {
             let prime_decomposition_of_index = naive_prime_factors(i, &mut prime_gen);
