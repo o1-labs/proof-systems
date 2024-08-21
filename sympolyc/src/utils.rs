@@ -3,8 +3,6 @@
 
 use std::collections::HashMap;
 
-use log::debug;
-
 /// Naive implementation checking if n is prime
 /// You can also use the structure PrimeNumberGenerator to check if a number is
 /// prime using
@@ -72,7 +70,6 @@ impl PrimeNumberGenerator {
     // IMPROVEME: could use the previous primes to speed up the search
     pub fn get_nth_prime(&mut self, n: usize) -> usize {
         assert!(n > 0);
-        debug!("Generating prime number {}", n);
         if n <= self.primes.len() {
             self.primes[n - 1]
         } else {
