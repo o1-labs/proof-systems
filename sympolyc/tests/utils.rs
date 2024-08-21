@@ -8,10 +8,16 @@ pub fn test_is_prime() {
     FIRST_FIFTY_PRIMES
         .iter()
         .for_each(|&prime| assert!(is_prime(prime)));
+
+    let mut prime_gen = PrimeNumberGenerator::new();
+    FIRST_FIFTY_PRIMES
+        .iter()
+        .for_each(|&prime| assert!(prime_gen.is_prime(prime)))
 }
 
 #[test]
 pub fn test_is_not_prime() {
+    assert!(!is_prime(0));
     assert!(!is_prime(1));
     {
         let random_even = 2 * (rand::random::<usize>() % 1000);

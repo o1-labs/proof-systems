@@ -5,7 +5,13 @@ use std::collections::HashMap;
 
 use log::debug;
 
-/// Basic implementation checking if u is prime
+/// Naive implementation checking if n is prime
+/// You can also use the structure PrimeNumberGenerator to check if a number is
+/// prime using
+/// ```rust
+/// let mut prime_gen = PrimeNumberGenerator::new();
+/// prime_gen.is_prime(n);
+/// ```
 pub fn is_prime(n: usize) -> bool {
     if n == 2 {
         return true;
@@ -86,6 +92,29 @@ impl PrimeNumberGenerator {
                 self.primes.push(i);
             }
             self.primes[n - 1]
+        }
+    }
+
+    /// Check if a number is prime using the list of prime numbers
+    /// It is different than the is_prime function because it uses the list
+    /// of prime numbers to check if a number is prime instead of checking
+    /// all the numbers up to the square root of n by step of 2.
+    /// This method can be more efficient if the list of prime numbers is
+    /// already computed.
+    pub fn is_prime(&mut self, n: usize) -> bool {
+        if n == 0 || n == 1 {
+            false
+        } else {
+            let mut i = 1;
+            let mut p = self.get_nth_prime(i);
+            while p * p <= n {
+                if n % p == 0 {
+                    return false;
+                }
+                i += 1;
+                p = self.get_nth_prime(i);
+            }
+            true
         }
     }
 
