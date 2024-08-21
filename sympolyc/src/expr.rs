@@ -46,17 +46,52 @@ impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
     }
 }
 
+// Addition
 impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
         let mut result = MVPoly::new();
-        for i in 0..dimension_of_multivariate_polynomial::<N, D>() {
+        for i in 0..self.len() {
             result.coeff[i] = self.coeff[i] + other.coeff[i];
         }
         result
     }
 }
 
-// TODO: implement multiplication
+impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for MVPoly<F, N, D> {
+    type Output = MVPoly<F, N, D>;
+
+    fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
+        let mut result = MVPoly::new();
+        for i in 0..self.len() {
+            result.coeff[i] = self.coeff[i] + other.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: Field, const N: usize, const D: usize> Add<MVPoly<F, N, D>> for &MVPoly<F, N, D> {
+    type Output = MVPoly<F, N, D>;
+
+    fn add(self, other: MVPoly<F, N, D>) -> MVPoly<F, N, D> {
+        let mut result = MVPoly::new();
+        for i in 0..self.len() {
+            result.coeff[i] = self.coeff[i] + other.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for &MVPoly<F, N, D> {
+    type Output = MVPoly<F, N, D>;
+
+    fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
+        let mut result = MVPoly::new();
+        for i in 0..self.len() {
+            result.coeff[i] = self.coeff[i] + other.coeff[i];
+        }
+        result
+    }
+}
 // TODO: implement From/To Expr<F, Column>
