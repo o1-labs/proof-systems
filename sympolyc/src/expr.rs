@@ -30,6 +30,10 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
         self.coeff.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.coeff.is_empty()
+    }
+
     pub fn number_of_variables(&self) -> usize {
         N
     }
