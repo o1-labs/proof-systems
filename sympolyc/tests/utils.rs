@@ -78,32 +78,33 @@ pub fn test_mapping_variables_indexes_to_primes() {
 
 #[test]
 pub fn test_naive_prime_factors() {
+    let mut prime_gen = PrimeNumberGenerator::new();
     let n = 4;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 2)]);
 
     let n = 6;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 1), (3, 1)]);
 
     let n = 2;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 1)]);
 
     let n = 10;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 1), (5, 1)]);
 
     let n = 12;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 2), (3, 1)]);
 
     let n = 40;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(2, 3), (5, 1)]);
 
     let n = 1023;
-    let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
+    let factors = naive_prime_factors(n, &mut prime_gen);
     assert_eq!(factors, vec![(3, 1), (11, 1), (31, 1)]);
 }
 

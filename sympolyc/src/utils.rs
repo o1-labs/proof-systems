@@ -36,25 +36,32 @@ pub fn is_prime(n: usize) -> bool {
 /// factorization of n.
 // IMPROVEME: native algorithm, could be optimized. Use an accumulator to store
 // the prime factors of the previous numbers
-pub fn naive_prime_factors(n: usize, primes: Vec<usize>) -> Vec<(usize, usize)> {
+pub fn naive_prime_factors(n: usize, prime_gen: &mut PrimeNumberGenerator) -> Vec<(usize, usize)> {
+    assert!(n > 0);
     let mut hash_factors = HashMap::new();
     let mut n = n;
-    for p in primes {
-        while n % p == 0 {
-            hash_factors.entry(p).and_modify(|e| *e += 1).or_insert(1);
-            n /= p;
+    if prime_gen.is_prime(n) {
+        vec![(n, 1)]
+    } else {
+        let mut i = 1;
+        let mut p = prime_gen.get_nth_prime(i);
+        while n != 1 {
+            if n % p == 0 {
+                hash_factors.entry(p).and_modify(|e| *e += 1).or_insert(1);
+                n /= p;
+            } else {
+                i += 1;
+                p = prime_gen.get_nth_prime(i);
+            }
         }
-        if n == 1 {
-            break;
-        }
+        let mut factors = vec![];
+        hash_factors.into_iter().for_each(|(k, v)| {
+            factors.push((k, v));
+        });
+        // sort by the prime number
+        factors.sort();
+        factors
     }
-    let mut factors = vec![];
-    hash_factors.into_iter().for_each(|(k, v)| {
-        factors.push((k, v));
-    });
-    // sort by the prime number
-    factors.sort();
-    factors
 }
 
 pub struct PrimeNumberGenerator {
