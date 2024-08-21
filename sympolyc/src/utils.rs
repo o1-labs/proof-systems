@@ -193,8 +193,14 @@ pub fn compute_all_two_factors_decomposition(
                     let res_factors =
                         compute_all_two_factors_decomposition(res, acc, prime_numbers);
                     for (a, b) in res_factors {
-                        factors.push((p * a, b));
-                        factors.push((a, p * b));
+                        let x = (p * a, b);
+                        if !factors.contains(&x) {
+                            factors.push(x);
+                        }
+                        let x = (a, p * b);
+                        if !factors.contains(&x) {
+                            factors.push(x);
+                        }
                     }
                 }
                 i += 1;

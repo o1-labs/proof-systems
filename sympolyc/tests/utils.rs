@@ -168,19 +168,56 @@ pub fn test_compoute_all_factors_decomposition_no_multiplicity() {
 }
 
 #[test]
-pub fn test_compute_all_two_factors_decomposition() {
+pub fn test_compute_all_two_factors_decomposition_with_multiplicity() {
     let mut prime_gen = PrimeNumberGenerator::new();
     let mut acc = HashMap::new();
 
     let mut res = compute_all_two_factors_decomposition(4, &mut acc, &mut prime_gen);
     res.sort();
-    assert_eq!(res, [(1, 4), (2, 2), (2, 2), (4, 1)].to_vec());
+    assert_eq!(res, [(1, 4), (2, 2), (4, 1)].to_vec());
 
-    // FIXME
     let mut res = compute_all_two_factors_decomposition(8, &mut acc, &mut prime_gen);
+    res.sort();
+    assert_eq!(res, [(1, 8), (2, 4), (4, 2), (8, 1)].to_vec());
+
+    let mut res = compute_all_two_factors_decomposition(16, &mut acc, &mut prime_gen);
+    res.sort();
+    assert_eq!(res, [(1, 16), (2, 8), (4, 4), (8, 2), (16, 1)].to_vec());
+
+    let mut res = compute_all_two_factors_decomposition(48, &mut acc, &mut prime_gen);
     res.sort();
     assert_eq!(
         res,
-        [(1, 8), (2, 4), (2, 4), (4, 2), (4, 2), (8, 1)].to_vec()
+        [
+            (1, 48),
+            (2, 24),
+            (3, 16),
+            (4, 12),
+            (6, 8),
+            (8, 6),
+            (12, 4),
+            (16, 3),
+            (24, 2),
+            (48, 1)
+        ]
+        .to_vec()
+    );
+
+    let mut res = compute_all_two_factors_decomposition(100, &mut acc, &mut prime_gen);
+    res.sort();
+    assert_eq!(
+        res,
+        [
+            (1, 100),
+            (2, 50),
+            (4, 25),
+            (5, 20),
+            (10, 10),
+            (20, 5),
+            (25, 4),
+            (50, 2),
+            (100, 1)
+        ]
+        .to_vec()
     );
 }
