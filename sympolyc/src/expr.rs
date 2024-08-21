@@ -13,6 +13,7 @@ pub fn dimension_of_multivariate_polynomial<const N: usize, const D: usize>() ->
 }
 
 /// Represents a multivariate polynomial of degree `D` in `N` variables.
+/// The natural representation is the coefficients given in the monomial basis.
 pub struct MVPoly<F: Field, const N: usize, const D: usize> {
     coeff: Vec<F>,
 }
