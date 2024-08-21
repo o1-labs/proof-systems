@@ -12,9 +12,9 @@ degree $d$.
 
 For instance, for multivariate polynomials with two variables, and maximum
 degree 2, the set is
-$$
+```math
 \mathbb{F}^{\le 2}[X_{1}, X_{2}] = \left\{ a_{0} + a_{1} X_{1} + a_{2} X_{2} + a_{3} X_{1} X_{2} + a_{4} X_{1}^2 + a_{5} X_{2}^2 \, | \, a_{i} \in \mathbb{F} \right\}
-$$
+```
 
 The normal form of a multivariate polynomials is the multi-variate polynomials
 whose monomials are all different, i.e. the coefficients are in the "canonical"
