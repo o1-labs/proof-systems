@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 use sympolyc::{
     constants::FIRST_FIFTY_PRIMES,
-    utils::{get_mapping_with_primes, is_prime, naive_prime_factors, PrimeNumberGenerator},
+    utils::{
+        compute_all_two_factors_decomposition, get_mapping_with_primes, is_prime,
+        naive_prime_factors, PrimeNumberGenerator,
+    },
 };
 
 #[test]
@@ -124,4 +129,29 @@ pub fn test_iterator_on_prime_number_generator() {
     assert_eq!(11, prime_gen.next().unwrap());
     assert_eq!(13, prime_gen.next().unwrap());
     assert_eq!(17, prime_gen.next().unwrap());
+}
+
+#[test]
+pub fn test_compute_all_two_factors_decomposition() {
+    let mut prime_gen = PrimeNumberGenerator::new();
+    let mut acc = HashMap::new();
+    {
+        let mut res = compute_all_two_factors_decomposition(2, &mut acc, &mut prime_gen);
+        res.sort();
+        assert_eq!(res, [(1, 2), (2, 1)].to_vec());
+    }
+    {
+        let random_prime = prime_gen.get_nth_prime(rand::random::<usize>() % 1000);
+        let mut res = compute_all_two_factors_decomposition(random_prime, &mut acc, &mut prime_gen);
+        res.sort();
+        assert_eq!(res, [(1, random_prime), (random_prime, 1)].to_vec());
+    }
+
+    let mut res = compute_all_two_factors_decomposition(4, &mut acc, &mut prime_gen);
+    res.sort();
+    assert_eq!(res, [(1, 4), (2, 2), (2, 2), (4, 1)].to_vec());
+
+    let mut res = compute_all_two_factors_decomposition(6, &mut acc, &mut prime_gen);
+    res.sort();
+    assert_eq!(res, [(1, 6), (2, 3), (3, 2), (6, 1)].to_vec());
 }

@@ -163,3 +163,48 @@ pub fn get_mapping_with_primes<const N: usize>() -> Vec<usize> {
     }
     mapping
 }
+
+/// Compute all the possible two factors decomposition of a number n.
+/// It uses an accumulator where previous values have been computed.
+/// For instance, if n = 6, the function will return [(1, 6), (2, 3), (3, 2), (6, 1)].
+/// The accumulator might be used to store the results of previous computations.
+/// The accumulator is a hashmap where the key is the number and the value is the
+/// list of all the possible two factors decomposition.
+/// The hashmap is updated in place.
+/// The third parameter is a precomputed list of prime numbers. It is updated in
+/// place in case new prime numbers are generated.
+pub fn compute_all_two_factors_decomposition(
+    n: usize,
+    acc: &mut HashMap<usize, Vec<(usize, usize)>>,
+    prime_numbers: &mut PrimeNumberGenerator,
+) -> Vec<(usize, usize)> {
+    if acc.contains_key(&n) {
+        acc[&n].clone()
+    } else {
+        let mut factors = vec![];
+        if n == 1 {
+            factors.push((1, 1));
+        } else if prime_numbers.is_prime(n) {
+            factors.push((1, n));
+            factors.push((n, 1));
+        } else {
+            let mut i = 1;
+            let mut p = prime_numbers.get_nth_prime(i);
+            while p * p <= n {
+                if n % p == 0 {
+                    let res = n / p;
+                    let res_factors =
+                        compute_all_two_factors_decomposition(res, acc, prime_numbers);
+                    for (a, b) in res_factors {
+                        factors.push((p * a, b));
+                        factors.push((a, p * b));
+                    }
+                }
+                i += 1;
+                p = prime_numbers.get_nth_prime(i);
+            }
+        }
+        acc.insert(n, factors.clone());
+        factors
+    }
+}
