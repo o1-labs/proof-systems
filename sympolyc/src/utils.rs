@@ -73,6 +73,11 @@ impl PrimeNumberGenerator {
             self.primes[n - 1]
         }
     }
+
+    pub fn get_first_nth_primes(&mut self, n: usize) -> Vec<usize> {
+        let _ = self.generate_nth_prime(n);
+        self.primes.clone()
+    }
 }
 
 impl Default for PrimeNumberGenerator {
