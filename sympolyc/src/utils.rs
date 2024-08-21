@@ -25,7 +25,13 @@ pub fn is_prime(n: usize) -> bool {
 
 /// Given a number n, return the list of prime factors of n, with their
 /// multiplicity
-// IMPROVEME: native algorithm, could be optimized
+/// The first argument is the number to factorize, the second argument is the
+/// list of prime numbers to use to factorize the number
+/// The output is a list of tuples, where the first element is the prime number
+/// and the second element is the multiplicity of the prime number in the
+/// factorization of n.
+// IMPROVEME: native algorithm, could be optimized. Use an accumulator to store
+// the prime factors of the previous numbers
 pub fn naive_prime_factors(n: usize, primes: Vec<usize>) -> Vec<(usize, usize)> {
     let mut hash_factors = HashMap::new();
     let mut n = n;
@@ -53,7 +59,7 @@ pub struct PrimeNumberGenerator {
 
 impl PrimeNumberGenerator {
     pub fn new() -> Self {
-        PrimeNumberGenerator { primes: vec![2, 3] }
+        PrimeNumberGenerator { primes: vec![] }
     }
 
     /// Generate the nth prime number
@@ -64,7 +70,15 @@ impl PrimeNumberGenerator {
             self.primes[n - 1]
         } else {
             while self.primes.len() < n {
-                let mut i = self.primes.last().unwrap() + 2;
+                let mut i = {
+                    if self.primes.is_empty() {
+                        2
+                    } else if self.primes.len() == 1 {
+                        3
+                    } else {
+                        self.primes[self.primes.len() - 1] + 2
+                    }
+                };
                 while !is_prime(i) {
                     i += 2;
                 }
@@ -74,9 +88,24 @@ impl PrimeNumberGenerator {
         }
     }
 
+    /// Get the next prime number
+    pub fn get_next_prime(&mut self) -> usize {
+        let n = self.primes.len();
+        self.generate_nth_prime(n + 1)
+    }
+
     pub fn get_first_nth_primes(&mut self, n: usize) -> Vec<usize> {
         let _ = self.generate_nth_prime(n);
         self.primes.clone()
+    }
+}
+
+impl Iterator for PrimeNumberGenerator {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let n = self.primes.len();
+        Some(self.generate_nth_prime(n + 1))
     }
 }
 

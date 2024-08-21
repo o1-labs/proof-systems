@@ -95,3 +95,27 @@ pub fn test_naive_prime_factors() {
     let factors = naive_prime_factors(n, FIRST_FIFTY_PRIMES.to_vec());
     assert_eq!(factors, vec![(3, 1), (11, 1), (31, 1)]);
 }
+
+#[test]
+pub fn test_generate_next_prime() {
+    let mut prime_gen = PrimeNumberGenerator::new();
+    assert_eq!(2, prime_gen.get_next_prime());
+    assert_eq!(3, prime_gen.get_next_prime());
+    assert_eq!(5, prime_gen.get_next_prime());
+    assert_eq!(7, prime_gen.get_next_prime());
+    assert_eq!(11, prime_gen.get_next_prime());
+    assert_eq!(13, prime_gen.get_next_prime());
+    assert_eq!(17, prime_gen.get_next_prime());
+}
+
+#[test]
+pub fn test_iterator_on_prime_number_generator() {
+    let mut prime_gen = PrimeNumberGenerator::new();
+    assert_eq!(2, prime_gen.next().unwrap());
+    assert_eq!(3, prime_gen.next().unwrap());
+    assert_eq!(5, prime_gen.next().unwrap());
+    assert_eq!(7, prime_gen.next().unwrap());
+    assert_eq!(11, prime_gen.next().unwrap());
+    assert_eq!(13, prime_gen.next().unwrap());
+    assert_eq!(17, prime_gen.next().unwrap());
+}
