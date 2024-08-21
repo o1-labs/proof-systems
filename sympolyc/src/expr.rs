@@ -8,33 +8,34 @@ use num_integer::binomial;
 
 use crate::utils::{naive_prime_factors, PrimeNumberGenerator};
 
-pub fn dimension_of_multivariate_polynomial<const N: usize, const D: usize>() -> usize {
-    binomial(N + D, D)
-}
-
 /// Represents a multivariate polynomial of degree `D` in `N` variables.
 /// The natural representation is the coefficients given in the monomial basis.
 pub struct MVPoly<F: Field, const N: usize, const D: usize> {
     coeff: Vec<F>,
+    // keeping track of the indices of the monomials that are normalized
+    // to avoid recomputing them
+    normalized_indices: Vec<usize>,
 }
 
 impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
     pub fn new() -> Self {
+        let normalized_indices = Self::compute_normalized_indices();
         MVPoly {
-            coeff: vec![F::zero(); dimension_of_multivariate_polynomial::<N, D>()],
+            coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices,
         }
     }
 
+    pub fn dimension() -> usize {
+        binomial(N + D, D)
+    }
+
     pub fn from_coeffs(coeff: Vec<F>) -> Self {
-        MVPoly { coeff }
-    }
-
-    pub fn len(&self) -> usize {
-        self.coeff.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.coeff.is_empty()
+        let normalized_indices = Self::compute_normalized_indices();
+        MVPoly {
+            coeff,
+            normalized_indices,
+        }
     }
 
     pub fn number_of_variables(&self) -> usize {
@@ -54,8 +55,9 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
     /// - 4 -> 6
     /// - 5 -> 9
     /// ```
-    pub fn normalized_indices(&self) -> Vec<usize> {
-        let mut normalized_indices = vec![1; self.len()];
+    pub fn compute_normalized_indices() -> Vec<usize> {
+        let length = Self::dimension();
+        let mut normalized_indices = vec![1; length];
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
         let max_index = primes[N - 1].checked_pow(D as u32);
@@ -84,7 +86,7 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
 
     /// Returns `true` if the polynomial is homoegenous of degree `d`
     pub fn is_homogeneous(&self) -> bool {
-        let normalized_indices = self.normalized_indices();
+        let normalized_indices = self.normalized_indices.clone();
         let mut prime_gen = PrimeNumberGenerator::new();
         let is_homogeneous = normalized_indices
             .iter()
@@ -110,7 +112,7 @@ impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
 
     fn add(self, other: Self) -> Self {
         let mut result = MVPoly::new();
-        for i in 0..self.len() {
+        for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] + other.coeff[i];
         }
         result
@@ -122,7 +124,7 @@ impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for MVPoly<
 
     fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
         let mut result = MVPoly::new();
-        for i in 0..self.len() {
+        for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] + other.coeff[i];
         }
         result
@@ -134,7 +136,7 @@ impl<F: Field, const N: usize, const D: usize> Add<MVPoly<F, N, D>> for &MVPoly<
 
     fn add(self, other: MVPoly<F, N, D>) -> MVPoly<F, N, D> {
         let mut result = MVPoly::new();
-        for i in 0..self.len() {
+        for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] + other.coeff[i];
         }
         result
@@ -146,7 +148,7 @@ impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for &MVPoly
 
     fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
         let mut result = MVPoly::new();
-        for i in 0..self.len() {
+        for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] + other.coeff[i];
         }
         result
