@@ -1,23 +1,30 @@
 //! Multivariate polynomial
 //! See [these notes](https://hackmd.io/@dannywillems/SyHar7p5A) for more context.
 
-use std::ops::Add;
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Formatter, Result},
+    ops::{Add, Mul},
+};
 
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use num_integer::binomial;
+use o1_utils::FieldHelpers;
 
-use crate::utils::{naive_prime_factors, PrimeNumberGenerator};
+use crate::utils::{
+    compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
+};
 
 /// Represents a multivariate polynomial of degree `D` in `N` variables.
 /// The natural representation is the coefficients given in the monomial basis.
-pub struct MVPoly<F: Field, const N: usize, const D: usize> {
+pub struct MVPoly<F: PrimeField, const N: usize, const D: usize> {
     coeff: Vec<F>,
     // keeping track of the indices of the monomials that are normalized
     // to avoid recomputing them
     normalized_indices: Vec<usize>,
 }
 
-impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> {
     pub fn new() -> Self {
         let normalized_indices = Self::compute_normalized_indices();
         MVPoly {
@@ -100,14 +107,14 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
     }
 }
 
-impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
     fn default() -> Self {
         MVPoly::new()
     }
 }
 
 // Addition
-impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -119,7 +126,7 @@ impl<F: Field, const N: usize, const D: usize> Add for MVPoly<F, N, D> {
     }
 }
 
-impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for MVPoly<F, N, D> {
     type Output = MVPoly<F, N, D>;
 
     fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
@@ -131,7 +138,7 @@ impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for MVPoly<
     }
 }
 
-impl<F: Field, const N: usize, const D: usize> Add<MVPoly<F, N, D>> for &MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> Add<MVPoly<F, N, D>> for &MVPoly<F, N, D> {
     type Output = MVPoly<F, N, D>;
 
     fn add(self, other: MVPoly<F, N, D>) -> MVPoly<F, N, D> {
@@ -143,7 +150,7 @@ impl<F: Field, const N: usize, const D: usize> Add<MVPoly<F, N, D>> for &MVPoly<
     }
 }
 
-impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for &MVPoly<F, N, D> {
+impl<F: PrimeField, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for &MVPoly<F, N, D> {
     type Output = MVPoly<F, N, D>;
 
     fn add(self, other: &MVPoly<F, N, D>) -> MVPoly<F, N, D> {
@@ -154,4 +161,81 @@ impl<F: Field, const N: usize, const D: usize> Add<&MVPoly<F, N, D>> for &MVPoly
         result
     }
 }
+
+// Multiplication
+impl<F: PrimeField, const N: usize, const D: usize> Mul<MVPoly<F, N, D>> for MVPoly<F, N, D> {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        let mut acc = HashMap::new();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let mut result = vec![];
+        (0..self.coeff.len()).for_each(|i| {
+            let mut sum = F::zero();
+            let normalized_index = self.normalized_indices[i];
+            let two_factors_decomposition =
+                compute_all_two_factors_decomposition(normalized_index, &mut acc, &mut prime_gen);
+            two_factors_decomposition.iter().for_each(|(a, b)| {
+                // FIXME: we should keep the inverse normalized indices
+                let inv_a = self
+                    .normalized_indices
+                    .iter()
+                    .position(|&x| x == *a)
+                    .unwrap();
+                let inv_b = self
+                    .normalized_indices
+                    .iter()
+                    .position(|&x| x == *b)
+                    .unwrap();
+                let a_coeff = self.coeff[inv_a];
+                let b_coeff = other.coeff[inv_b];
+                let product = a_coeff * b_coeff;
+                sum += product;
+            });
+            result.push(sum);
+        });
+        Self::from_coeffs(result)
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> PartialEq for MVPoly<F, N, D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.coeff == other.coeff
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Eq for MVPoly<F, N, D> {}
+
+impl<F: PrimeField, const N: usize, const D: usize> Debug for MVPoly<F, N, D> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        self.coeff.iter().enumerate().for_each(|(i, c)| {
+            let normalized_idx = self.normalized_indices[i];
+            if normalized_idx == 1 {
+                write!(f, "{}", c.to_biguint()).unwrap();
+            } else {
+                let prime_decomposition = naive_prime_factors(normalized_idx, &mut prime_gen);
+                write!(f, "{}", c.to_biguint()).unwrap();
+                prime_decomposition.iter().for_each(|(p, d)| {
+                    // FIXME: not correct
+                    let inv_p = self
+                        .normalized_indices
+                        .iter()
+                        .position(|&x| x == *p)
+                        .unwrap();
+                    if *d > 1 {
+                        write!(f, "x_{}^{}", inv_p, d).unwrap();
+                    } else {
+                        write!(f, "x_{}", inv_p).unwrap();
+                    }
+                });
+            }
+            if i != self.coeff.len() - 1 {
+                write!(f, " + ").unwrap();
+            }
+        });
+        Ok(())
+    }
+}
+
 // TODO: implement From/To Expr<F, Column>

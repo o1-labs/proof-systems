@@ -117,3 +117,37 @@ fn test_is_not_homogeneous() {
     let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(!p.is_homogeneous());
 }
+
+#[test]
+fn test_mul() {
+    let coeff_p1 = vec![
+        Fp::zero(),
+        Fp::from(2_u32),
+        Fp::one(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+    ];
+    let coeff_p2 = vec![
+        Fp::from(3_u32),
+        Fp::zero(),
+        Fp::one(),
+        Fp::zero(),
+        Fp::zero(),
+        Fp::zero(),
+    ];
+    let coeff_p3 = vec![
+        Fp::zero(),
+        Fp::from(6_u32),
+        Fp::from(3_u32),
+        Fp::zero(),
+        Fp::from(2_u32),
+        Fp::one(),
+    ];
+
+    let p1 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p1);
+    let p2 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p2);
+    let exp_p3 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p3);
+    let p3 = p1 * p2;
+    assert_eq!(p3, exp_p3);
+}

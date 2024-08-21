@@ -2853,6 +2853,7 @@ dependencies = [
  "log",
  "mina-curves",
  "num-integer",
+ "o1-utils",
  "rand",
 ]
 
