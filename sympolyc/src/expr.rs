@@ -22,9 +22,22 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
         }
     }
 
+    pub fn from_coeffs(coeff: Vec<F>) -> Self {
+        MVPoly { coeff }
+    }
+
     pub fn len(&self) -> usize {
         self.coeff.len()
     }
+
+    pub fn number_of_variables(&self) -> usize {
+        N
+    }
+
+    pub fn maximum_degree(&self) -> usize {
+        D
+    }
+
 }
 
 impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
