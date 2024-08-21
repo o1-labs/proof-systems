@@ -6,6 +6,8 @@ use std::ops::Add;
 use ark_ff::Field;
 use num_integer::binomial;
 
+use crate::utils::{naive_prime_factors, PrimeNumberGenerator};
+
 pub fn dimension_of_multivariate_polynomial<const N: usize, const D: usize>() -> usize {
     binomial(N + D, D)
 }
@@ -42,6 +44,37 @@ impl<F: Field, const N: usize, const D: usize> MVPoly<F, N, D> {
         D
     }
 
+    /// Output example for N = 2 and D = 2:
+    /// ```text
+    /// - 0 -> 1
+    /// - 1 -> 2
+    /// - 2 -> 3
+    /// - 3 -> 4
+    /// - 4 -> 6
+    /// - 5 -> 9
+    /// ```
+    pub fn normalized_indices(&self) -> Vec<usize> {
+        let mut normalized_indices = vec![1; self.len()];
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let max_index = primes[N - 1].pow(D as u32);
+        let mut j = 0;
+        (1..=max_index).for_each(|i| {
+            let prime_decomposition_of_index = naive_prime_factors(i, &mut prime_gen);
+            let is_valid_decomposition = prime_decomposition_of_index
+                .iter()
+                .all(|(p, _)| primes.contains(p));
+            let monomial_degree = prime_decomposition_of_index
+                .iter()
+                .fold(0, |acc, (_, d)| acc + d);
+            let is_valid_decomposition = is_valid_decomposition && monomial_degree <= D;
+            if is_valid_decomposition {
+                normalized_indices[j] = i;
+                j += 1;
+            }
+        });
+        normalized_indices
+    }
 }
 
 impl<F: Field, const N: usize, const D: usize> Default for MVPoly<F, N, D> {
