@@ -163,14 +163,14 @@ impl<F: PrimeField, const N: usize, const D: usize> Mul<MVPoly<F, N, D>> for MVP
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        let mut acc = HashMap::new();
+        let mut cache = HashMap::new();
         let mut prime_gen = PrimeNumberGenerator::new();
         let mut result = vec![];
         (0..self.coeff.len()).for_each(|i| {
             let mut sum = F::zero();
             let normalized_index = self.normalized_indices[i];
             let two_factors_decomposition =
-                compute_all_two_factors_decomposition(normalized_index, &mut acc, &mut prime_gen);
+                compute_all_two_factors_decomposition(normalized_index, &mut cache, &mut prime_gen);
             two_factors_decomposition.iter().for_each(|(a, b)| {
                 // FIXME: we should keep the inverse normalized indices
                 let inv_a = self

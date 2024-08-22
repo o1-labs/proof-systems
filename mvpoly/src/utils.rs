@@ -36,7 +36,7 @@ pub fn is_prime(n: usize) -> bool {
 /// The output is a list of tuples, where the first element is the prime number
 /// and the second element is the multiplicity of the prime number in the
 /// factorization of n.
-// IMPROVEME: native algorithm, could be optimized. Use an accumulator to store
+// IMPROVEME: native algorithm, could be optimized. Use a cache to store
 // the prime factors of the previous numbers
 pub fn naive_prime_factors(n: usize, prime_gen: &mut PrimeNumberGenerator) -> Vec<(usize, usize)> {
     assert!(n > 0);
@@ -170,21 +170,21 @@ pub fn get_mapping_with_primes<const N: usize>() -> Vec<usize> {
 }
 
 /// Compute all the possible two factors decomposition of a number n.
-/// It uses an accumulator where previous values have been computed.
+/// It uses an cache where previous values have been computed.
 /// For instance, if n = 6, the function will return [(1, 6), (2, 3), (3, 2), (6, 1)].
-/// The accumulator might be used to store the results of previous computations.
-/// The accumulator is a hashmap where the key is the number and the value is the
+/// The cache might be used to store the results of previous computations.
+/// The cache is a hashmap where the key is the number and the value is the
 /// list of all the possible two factors decomposition.
 /// The hashmap is updated in place.
 /// The third parameter is a precomputed list of prime numbers. It is updated in
 /// place in case new prime numbers are generated.
 pub fn compute_all_two_factors_decomposition(
     n: usize,
-    acc: &mut HashMap<usize, Vec<(usize, usize)>>,
+    cache: &mut HashMap<usize, Vec<(usize, usize)>>,
     prime_numbers: &mut PrimeNumberGenerator,
 ) -> Vec<(usize, usize)> {
-    if acc.contains_key(&n) {
-        acc[&n].clone()
+    if cache.contains_key(&n) {
+        cache[&n].clone()
     } else {
         let mut factors = vec![];
         if n == 1 {
@@ -199,7 +199,7 @@ pub fn compute_all_two_factors_decomposition(
                 if n % p == 0 {
                     let res = n / p;
                     let res_factors =
-                        compute_all_two_factors_decomposition(res, acc, prime_numbers);
+                        compute_all_two_factors_decomposition(res, cache, prime_numbers);
                     for (a, b) in res_factors {
                         let x = (p * a, b);
                         if !factors.contains(&x) {
@@ -215,7 +215,7 @@ pub fn compute_all_two_factors_decomposition(
                 p = prime_numbers.get_nth_prime(i);
             }
         }
-        acc.insert(n, factors.clone());
+        cache.insert(n, factors.clone());
         factors
     }
 }
