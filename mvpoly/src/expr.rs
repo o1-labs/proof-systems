@@ -63,8 +63,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> {
     /// - 5 -> 9
     /// ```
     pub fn compute_normalized_indices() -> Vec<usize> {
-        let length = Self::dimension();
-        let mut normalized_indices = vec![1; length];
+        let mut normalized_indices = vec![1; Self::dimension()];
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
         let max_index = primes[N - 1].checked_pow(D as u32);
