@@ -4,7 +4,9 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter, Result},
+    hash::{Hash, Hasher},
     ops::{Add, Mul},
+    sync::Exclusive,
 };
 
 use ark_ff::PrimeField;
@@ -22,6 +24,46 @@ pub struct MVPoly<F: PrimeField, const N: usize, const D: usize> {
     // keeping track of the indices of the monomials that are normalized
     // to avoid recomputing them
     normalized_indices: Vec<usize>,
+}
+#[derive(PartialEq, Eq)]
+struct MyMap(HashMap<usize, usize>);
+
+impl Hash for MyMap {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for (k, v) in self.0.iter() {
+            k.hash(state);
+            v.hash(state);
+        }
+    }
+}
+
+pub struct MyMVPoly<F: PrimeField> {
+    coeff: HashMap<MyMap, F>,
+}
+
+fn add_monom(h1: HashMap<usize, usize>, h2: HashMap<usize, usize>) -> HashMap<usize, usize> {
+    let mut res = h2.clone();
+    for (var, deg) in h1.iter() {
+        let exisiting_deg = h2.get(var).unwrap_or_else(|| &0);
+        res.insert(*var, deg + exisiting_deg);
+    }
+    res
+}
+
+impl<F: PrimeField> MyMVPoly<F> {
+    fn mul(self, other: Self) -> Self {
+        let mut res = HashMap::new();
+        for (monom1, coef1) in self.coeff.iter() {
+            for (monom2, coef2) in other.coeff.iter() {
+                let new_monom = add_monom(monom1.0, monom2.0);
+                let exisiting_coeff = res
+                    .get(&MyMap(new_monom))
+                    .unwrap_or_else(|| &F::from(0 as u32));
+                res.insert(MyMap(new_monom), *coef1 * *coef2 + exisiting_coeff);
+            }
+        }
+        MyMVPoly { coeff: res }
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> {
