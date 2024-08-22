@@ -121,7 +121,10 @@ where
         self
     }
 
+    // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
+    #[must_use]
+    #[allow(dead_code)]
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
