@@ -122,7 +122,6 @@ where
     }
 
     /// creates the indexes
-    #[must_use]
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
