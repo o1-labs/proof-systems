@@ -15,7 +15,7 @@ use crate::utils::{
     compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
 };
 
-/// Represents a multivariate polynomial of degree `D` in `N` variables.
+/// Represents a multivariate polynomial of degree less than `D` in `N` variables.
 /// The natural representation is the coefficients given in the monomial basis.
 pub struct MVPoly<F: PrimeField, const N: usize, const D: usize> {
     coeff: Vec<F>,
