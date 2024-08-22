@@ -123,9 +123,10 @@ mod tests {
 
         let mut buf_written: Vec<u8> = vec![0; buf_expected.len()];
 
-        let srs_bytes = rmp_serde::to_vec(&data_expected).unwrap();
+        let serialized_bytes =
+            rmp_serde::to_vec(&data_expected).expect("TestStruct could not be serialized");
         (buf_written.as_mut_slice())
-            .write_all(&srs_bytes)
+            .write_all(&serialized_bytes)
             .expect("failed to write file");
         (buf_written.as_mut_slice())
             .flush()
@@ -137,7 +138,8 @@ mod tests {
         );
 
         let reader = BufReader::new(buf_expected.as_slice());
-        let data_read: TestStruct = rmp_serde::from_read(reader).unwrap();
+        let data_read: TestStruct =
+            rmp_serde::from_read(reader).expect("Could not deseralize TestStruct");
 
         assert!(
             data_read == data_expected,
