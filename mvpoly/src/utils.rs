@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// You can also use the structure PrimeNumberGenerator to check if a number is
 /// prime using
 /// ```rust
-/// use sympolyc::utils::PrimeNumberGenerator;
+/// use mvpoly::utils::PrimeNumberGenerator;
 /// let n = 5;
 /// let mut prime_gen = PrimeNumberGenerator::new();
 /// prime_gen.is_prime(n);

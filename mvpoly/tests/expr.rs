@@ -1,6 +1,6 @@
 use ark_ff::{One, Zero};
 use mina_curves::pasta::Fp;
-use sympolyc::expr::MVPoly;
+use mvpoly::expr::MVPoly;
 
 #[test]
 fn test_vector_space_dimension() {

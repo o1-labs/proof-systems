@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sympolyc::{
+use mvpoly::{
     constants::FIRST_FIFTY_PRIMES,
     utils::{
         compute_all_two_factors_decomposition, get_mapping_with_primes, is_prime,

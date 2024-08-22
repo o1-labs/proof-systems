@@ -1,5 +1,5 @@
 [package]
-name = "sympolyc"
+name = "mvpoly"
 version = "0.1.0"
 description = "Symbolic interpreter of multivariate polyomials"
 repository = "https://github.com/o1-labs/proof-systems"

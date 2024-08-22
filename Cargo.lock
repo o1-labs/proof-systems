@@ -1835,6 +1835,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mvpoly"
+version = "0.1.0"
+dependencies = [
+ "ark-ff",
+ "log",
+ "mina-curves",
+ "num-integer",
+ "o1-utils",
+ "rand",
+]
+
+[[package]]
 name = "net2"
 version = "0.2.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2843,18 +2855,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8b945e45b417b125a8ec51f1b7df2f8df7920367700d1f98aedd21e5735f8b2"
 dependencies = [
  "atty",
-]
-
-[[package]]
-name = "sympolyc"
-version = "0.1.0"
-dependencies = [
- "ark-ff",
- "log",
- "mina-curves",
- "num-integer",
- "o1-utils",
- "rand",
 ]
 
 [[package]]
