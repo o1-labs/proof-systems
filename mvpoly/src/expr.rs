@@ -97,7 +97,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> {
             .all(|(idx, c)| {
                 let decomposition_of_i = naive_prime_factors(*idx, &mut prime_gen);
                 let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
-                !(monomial_degree != D && c != F::zero())
+                monomial_degree == D || c == F::zero()
             });
         is_homogeneous
     }
