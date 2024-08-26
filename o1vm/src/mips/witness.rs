@@ -44,7 +44,8 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
+// MIPS (includes rangecheck64) + hash_counter + chunk_read + bytes_read + bytes_left + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 93 + (MAX_NB_MEM_ACC as usize) * 4;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -288,6 +289,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         x as u64
     }
 
+    fn constant64(x: u64) -> Self::Variable {
+        x
+    }
+
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,
@@ -295,9 +300,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
-        let res = res as u64;
         self.write_column(position, res);
         res
     }

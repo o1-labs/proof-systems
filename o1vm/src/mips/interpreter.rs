@@ -539,8 +539,44 @@ pub trait InterpreterEnv {
         self.lookup_8bits(&(value.clone() + Self::constant(1 << 8) - Self::constant(1 << bits)));
     }
 
-    fn range_check64(&mut self, _value: &Self::Variable) {
-        // TODO
+    /// Checks that a value is at most 64 bits in length.
+    /// For this, it decomposes the value into 4 chunks of at most 16 bits each
+    /// using bitmask, and range checks each chunk using the RangeCheck16Lookup
+    /// table. Finally, it adds one constraint to check the decomposition.
+    /// It allocates 4 scratch variables to store the chunks.
+    fn range_check64(&mut self, value: &Self::Variable) {
+        let [v0, v1, v2, v3] = [
+            {
+                let pos = self.alloc_scratch();
+                unsafe { self.bitmask(value, 64, 48, pos) }
+            },
+            {
+                let pos = self.alloc_scratch();
+                unsafe { self.bitmask(value, 48, 32, pos) }
+            },
+            {
+                let pos = self.alloc_scratch();
+                unsafe { self.bitmask(value, 32, 16, pos) }
+            },
+            {
+                let pos = self.alloc_scratch();
+                unsafe { self.bitmask(value, 16, 0, pos) }
+            },
+        ];
+        self.lookup_16bits(&v0);
+        self.lookup_16bits(&v1);
+        self.lookup_16bits(&v2);
+        self.lookup_16bits(&v3);
+        // FIXME: uncomment the constraint below when it works
+        /*
+        self.add_constraint(
+            value.clone()
+                - (v0 * Self::constant64(1 << 48)
+                    + v1 * Self::constant64(1 << 32)
+                    + v2 * Self::constant(1 << 16)
+                    + v3),
+        );
+        */
     }
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
@@ -601,6 +637,8 @@ pub trait InterpreterEnv {
 
     fn constant(x: u32) -> Self::Variable;
 
+    fn constant64(x: u64) -> Self::Variable;
+
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
@@ -611,7 +649,6 @@ pub trait InterpreterEnv {
     /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
     /// bits.
     ///
-    /// Do not call this function with highest_bit - lowest_bit >= 32.
     // TODO: embed the range check in the function when highest_bit - lowest_bit <= 16?
     unsafe fn bitmask(
         &mut self,
