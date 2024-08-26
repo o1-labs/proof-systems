@@ -547,7 +547,7 @@ pub trait InterpreterEnv {
         ));
     }
 
-    /// Range checks with 1 lookup to the AtMost4Lookup table that a value < 4.
+    /// Range checks with 1 lookup to the AtMost4Lookup table 0 <= value < 4
     fn range_check2(&mut self, value: &Self::Variable) {
         self.lookup_2bits(value);
     }
