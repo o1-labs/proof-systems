@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["expr","utils"]};
+window.SIDEBAR_ITEMS = {"mod":["prime","utils"]};
