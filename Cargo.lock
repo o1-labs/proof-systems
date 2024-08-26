@@ -1835,6 +1835,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mvpoly"
+version = "0.1.0"
+dependencies = [
+ "ark-ff",
+ "log",
+ "mina-curves",
+ "num-integer",
+ "o1-utils",
+ "rand",
+]
+
+[[package]]
 name = "net2"
 version = "0.2.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
