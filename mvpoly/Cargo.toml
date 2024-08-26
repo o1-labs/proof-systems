@@ -17,6 +17,7 @@ ark-ff.workspace = true
 log.workspace = true
 num-integer.workspace = true
 o1-utils.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
 mina-curves.workspace = true

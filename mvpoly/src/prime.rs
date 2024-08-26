@@ -150,6 +150,7 @@ use std::{
 use ark_ff::{One, PrimeField, Zero};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
+use rand::RngCore;
 
 use crate::utils::{
     compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
@@ -196,6 +197,18 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         let normalized_indices = Self::compute_normalized_indices();
         Dense {
             coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices,
+        }
+    }
+
+    pub fn random<RNG: RngCore>(rng: &mut RNG) -> Self {
+        let normalized_indices = Self::compute_normalized_indices();
+        let coeff = normalized_indices
+            .iter()
+            .map(|_| F::rand(rng))
+            .collect::<Vec<F>>();
+        Dense {
+            coeff,
             normalized_indices,
         }
     }
