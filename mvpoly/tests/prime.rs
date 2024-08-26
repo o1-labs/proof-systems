@@ -151,3 +151,36 @@ fn test_mul() {
     let p3 = p1 * p2;
     assert_eq!(p3, exp_p3);
 }
+
+#[test]
+fn test_mul_by_one() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 7, 2>::random(&mut rng);
+    let one = Dense::<Fp, 7, 2>::one();
+    let p2 = p1.clone() * one.clone();
+    assert_eq!(p1.clone(), p2);
+    let p3 = one * p1.clone();
+    assert_eq!(p1.clone(), p3);
+}
+
+#[test]
+fn test_mul_by_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 5, 4>::random(&mut rng);
+    let zero = Dense::<Fp, 5, 4>::zero();
+    let p2 = p1.clone() * zero.clone();
+    assert_eq!(zero, p2);
+    let p3 = zero.clone() * p1.clone();
+    assert_eq!(zero.clone(), p3);
+}
+
+#[test]
+fn test_add_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let zero = Dense::<Fp, 3, 4>::zero();
+    let p2 = p1.clone() + zero.clone();
+    assert_eq!(p1.clone(), p2);
+    let p3 = zero.clone() + p1.clone();
+    assert_eq!(p1.clone(), p3);
+}
