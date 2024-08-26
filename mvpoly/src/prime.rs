@@ -281,6 +281,14 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             });
         is_homogeneous
     }
+
+    pub fn double(&self) -> Self {
+        let mut result = Dense::zero();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = self.coeff[i].double();
+        }
+        result
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Default for Dense<F, N, D> {
