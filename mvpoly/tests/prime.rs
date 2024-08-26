@@ -1,24 +1,24 @@
 use ark_ff::{One, Zero};
 use mina_curves::pasta::Fp;
-use mvpoly::expr::MVPoly;
+use mvpoly::prime::Dense;
 
 #[test]
 fn test_vector_space_dimension() {
-    assert_eq!(MVPoly::<Fp, 2, 2>::dimension(), 6);
-    assert_eq!(MVPoly::<Fp, 3, 2>::dimension(), 10);
-    assert_eq!(MVPoly::<Fp, 1, 10>::dimension(), 11);
+    assert_eq!(Dense::<Fp, 2, 2>::dimension(), 6);
+    assert_eq!(Dense::<Fp, 3, 2>::dimension(), 10);
+    assert_eq!(Dense::<Fp, 1, 10>::dimension(), 11);
 }
 
 #[test]
 fn test_add() {
-    let p1 = MVPoly::<Fp, 2, 2>::new();
-    let p2 = MVPoly::<Fp, 2, 2>::new();
+    let p1 = Dense::<Fp, 2, 2>::new();
+    let p2 = Dense::<Fp, 2, 2>::new();
     let _p3 = p1 + p2;
 }
 
 #[test]
 pub fn test_normalized_indices() {
-    let indices = MVPoly::<Fp, 2, 2>::compute_normalized_indices();
+    let indices = Dense::<Fp, 2, 2>::compute_normalized_indices();
     assert_eq!(indices.len(), 6);
     assert_eq!(indices[0], 1);
     assert_eq!(indices[1], 2);
@@ -27,7 +27,7 @@ pub fn test_normalized_indices() {
     assert_eq!(indices[4], 6);
     assert_eq!(indices[5], 9);
 
-    let indices = MVPoly::<Fp, 3, 2>::compute_normalized_indices();
+    let indices = Dense::<Fp, 3, 2>::compute_normalized_indices();
     assert_eq!(indices.len(), 10);
     assert_eq!(indices[0], 1);
     assert_eq!(indices[1], 2);
@@ -52,7 +52,7 @@ fn test_is_homogeneous() {
         Fp::one(),
         Fp::one(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
     // X1 X2 + X1^2
@@ -64,7 +64,7 @@ fn test_is_homogeneous() {
         Fp::one(),
         Fp::zero(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
     // X1 X2 + X2^2
@@ -76,7 +76,7 @@ fn test_is_homogeneous() {
         Fp::zero(),
         Fp::one(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
     // X1 X2
@@ -88,7 +88,7 @@ fn test_is_homogeneous() {
         Fp::zero(),
         Fp::zero(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 }
 
@@ -103,7 +103,7 @@ fn test_is_not_homogeneous() {
         Fp::one(),
         Fp::one(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(!p.is_homogeneous());
 
     let coeffs: Vec<Fp> = vec![
@@ -114,7 +114,7 @@ fn test_is_not_homogeneous() {
         Fp::one(),
         Fp::zero(),
     ];
-    let p = MVPoly::<Fp, 2, 2>::from_coeffs(coeffs);
+    let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(!p.is_homogeneous());
 }
 
@@ -145,9 +145,9 @@ fn test_mul() {
         Fp::one(),
     ];
 
-    let p1 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p1);
-    let p2 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p2);
-    let exp_p3 = MVPoly::<Fp, 2, 2>::from_coeffs(coeff_p3);
+    let p1 = Dense::<Fp, 2, 2>::from_coeffs(coeff_p1);
+    let p2 = Dense::<Fp, 2, 2>::from_coeffs(coeff_p2);
+    let exp_p3 = Dense::<Fp, 2, 2>::from_coeffs(coeff_p3);
     let p3 = p1 * p2;
     assert_eq!(p3, exp_p3);
 }

@@ -1,2 +1,2 @@
-pub mod expr;
+pub mod prime;
 pub mod utils;
