@@ -1,12 +1,3 @@
-use crate::{
-    commitment::{
-        combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
-        Evaluation, PolyComm,
-    },
-    evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
-    srs::SRS,
-    SRS as _,
-};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
 use colored::Colorize;
@@ -16,6 +7,15 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge as _,
 };
 use o1_utils::{tests::make_test_rng, ExtendedDensePolynomial as _};
+use poly_commitment::{
+    commitment::{
+        combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
+        Evaluation, PolyComm,
+    },
+    evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
+    srs::SRS,
+    SRS as _,
+};
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 

@@ -30,26 +30,26 @@ pub fn constrain_ff_addition_row<
     let f: Env::Variable = Env::read_column(env, FFAColumn::ModulusF(limb_num));
     let r: Env::Variable = Env::read_column(env, FFAColumn::Remainder(limb_num));
     let q: Env::Variable = Env::read_column(env, FFAColumn::Quotient);
-    env.lookup(LookupTable::RangeCheck15, &a);
-    env.lookup(LookupTable::RangeCheck15, &b);
-    env.lookup(LookupTable::RangeCheck15, &f);
-    env.lookup(LookupTable::RangeCheck15, &r);
-    env.lookup(LookupTable::RangeCheck1BitSigned, &q);
+    env.lookup(LookupTable::RangeCheck15, vec![a.clone()]);
+    env.lookup(LookupTable::RangeCheck15, vec![b.clone()]);
+    env.lookup(LookupTable::RangeCheck15, vec![f.clone()]);
+    env.lookup(LookupTable::RangeCheck15, vec![r.clone()]);
+    env.lookup(LookupTable::RangeCheck1BitSigned, vec![q.clone()]);
     let constraint = if limb_num == 0 {
         let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
         let c0: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
-        env.lookup(LookupTable::RangeCheck1BitSigned, &c0);
+        env.lookup(LookupTable::RangeCheck1BitSigned, vec![c0.clone()]);
         a + b - q * f - r - c0 * limb_size
     } else if limb_num < N_LIMBS - 1 {
         let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
         let c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - 1));
         let c_cur: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
-        env.lookup(LookupTable::RangeCheck1BitSigned, &c_prev);
-        env.lookup(LookupTable::RangeCheck1BitSigned, &c_cur);
+        env.lookup(LookupTable::RangeCheck1BitSigned, vec![c_prev.clone()]);
+        env.lookup(LookupTable::RangeCheck1BitSigned, vec![c_cur.clone()]);
         a + b - q * f - r - c_cur * limb_size + c_prev
     } else {
         let c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - 1));
-        env.lookup(LookupTable::RangeCheck1BitSigned, &c_prev);
+        env.lookup(LookupTable::RangeCheck1BitSigned, vec![c_prev.clone()]);
         a + b - q * f - r + c_prev
     };
     env.assert_zero(constraint);

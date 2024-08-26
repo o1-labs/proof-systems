@@ -33,9 +33,13 @@ impl LookupTableID for DummyLookupTable {
         true
     }
 
-    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
-        if value == F::zero() {
-            0
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> Option<usize> {
+        if value[0] == F::zero() {
+            Some(0)
         } else {
             panic!("Invalid value for DummyLookupTable")
         }
@@ -92,7 +96,11 @@ impl LookupTableID for LookupTableIDs {
         true
     }
 
-    fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
+    fn runtime_create_column(&self) -> bool {
+        panic!("No runtime tables specified");
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
         todo!()
     }
 
@@ -115,7 +123,7 @@ pub type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
 // real production code.
 impl<F: FftField> LookupWitness<F> {
     /// Generate a random number of correct lookups in the table RangeCheck16
-    pub fn random(domain: EvaluationDomains<F>) -> Self {
+    pub fn random(domain: EvaluationDomains<F>) -> (LookupTableIDs, Self) {
         let mut rng = thread_rng();
         // TODO: generate more random f
         let table_size: u64 = rng.gen_range(1..domain.d1.size);
@@ -180,10 +188,12 @@ impl<F: FftField> LookupWitness<F> {
             table
         };
         let m = (0..domain.d1.size).map(|_| F::one()).collect();
-        LookupWitness {
-            f: vec![f_evals, t_evals],
-            m,
-            table_id: LookupTableIDs::Custom(table_id),
-        }
+        (
+            LookupTableIDs::Custom(table_id),
+            LookupWitness {
+                f: vec![f_evals, t_evals],
+                m: vec![m],
+            },
+        )
     }
 }

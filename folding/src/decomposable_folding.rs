@@ -8,7 +8,7 @@ use crate::{
     columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
     expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
-    instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
+    instance_witness::{RelaxableInstance, RelaxablePair, RelaxedInstance, RelaxedWitness},
     BaseField, FoldingConfig, FoldingOutput, FoldingScheme, ScalarField,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -152,6 +152,48 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
             relaxed_extended_right_instance,
             to_absorb,
         }
+    }
+
+    /// Fold two relaxable instances into a relaxed instance.
+    /// It is parametrized by two different types `A` and `B` that represent
+    /// "relaxable" instances to be able to fold a normal and "already relaxed"
+    /// instance.
+    pub fn fold_instance_pair<A, B, Sponge>(
+        &self,
+        a: A,
+        b: B,
+        error_commitments: [PolyComm<CF::Curve>; 2],
+        fq_sponge: &mut Sponge,
+    ) -> RelaxedInstance<CF::Curve, CF::Instance>
+    where
+        A: RelaxableInstance<CF::Curve, CF::Instance>,
+        B: RelaxableInstance<CF::Curve, CF::Instance>,
+        Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
+    {
+        let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax();
+        let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax();
+
+        // sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        assert_eq!(error_commitments[0].elems.len(), 1);
+        assert_eq!(error_commitments[1].elems.len(), 1);
+
+        let to_absorb = {
+            let mut left = a.to_absorb();
+            let right = b.to_absorb();
+            left.0.extend(right.0);
+            left.1.extend(right.1);
+            left.1
+                .extend([error_commitments[0].elems[0], error_commitments[1].elems[0]]);
+            left
+        };
+
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
+
+        let challenge = fq_sponge.challenge();
+
+        RelaxedInstance::combine_and_sub_cross_terms(a, b, challenge, &error_commitments)
     }
 }
 

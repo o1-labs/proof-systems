@@ -43,7 +43,7 @@ pub fn test_completeness_generic_no_lookups<
 {
     let proof_inputs = ProofInputs {
         evaluations,
-        logups: vec![],
+        logups: Default::default(),
     };
     test_completeness_generic::<N_WIT, N_REL, N_DSEL, N_FSEL, LookupTableIDs, _>(
         constraints,

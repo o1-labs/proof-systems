@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     /// Checks that poseidon circuit can be proven and verified. Big domain.
-    pub fn test_completeness() {
+    pub fn heavy_test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size: usize = 1 << 4;
 

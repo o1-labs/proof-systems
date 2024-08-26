@@ -26,6 +26,18 @@ impl<const N_WIT: usize, T: Zero + Clone> Default for Witness<N_WIT, T> {
     }
 }
 
+impl<const N_WIT: usize, T> TryFrom<Vec<T>> for Witness<N_WIT, T> {
+    type Error = String;
+
+    fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
+        let len = value.len();
+        let cols: Box<[T; N_WIT]> = value
+            .try_into()
+            .map_err(|_| format!("Size mismatch: Expected {N_WIT:?} got {len:?}"))?;
+        Ok(Witness { cols })
+    }
+}
+
 impl<const N_WIT: usize, T> Index<usize> for Witness<N_WIT, T> {
     type Output = T;
 

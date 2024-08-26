@@ -121,7 +121,7 @@ mod tests {
     #[test]
     /// Creates or checks the real full-sized SRS. Only overwrites
     /// with the ENV flag.
-    pub fn create_or_check_srs() {
+    pub fn heavy_test_create_or_check_srs() {
         let domain_size = DOMAIN_SIZE;
         create_and_store_srs_with_path(false, domain_size, get_bn254_srs_path());
     }

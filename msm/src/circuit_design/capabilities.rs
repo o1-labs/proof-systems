@@ -51,7 +51,11 @@ pub trait LookupCap<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
 where
     Self: ColAccessCap<F, CIx>,
 {
-    fn lookup(&mut self, lookup_id: LT, value: &Self::Variable);
+    /// Look up (read) value from a lookup table.
+    fn lookup(&mut self, lookup_id: LT, value: Vec<Self::Variable>);
+
+    /// Write a value into a runtime table. Panics if called on a fixed table.
+    fn lookup_runtime_write(&mut self, lookup_id: LT, value: Vec<Self::Variable>);
 }
 
 /// Capability for reading and moving forward in a multirow fashion.

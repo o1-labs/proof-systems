@@ -602,6 +602,80 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             _ => panic!("unsupported"),
         }
     }
+
+    /// Maps variable (column index) in expression using the `mapper`
+    /// function. Can be used to modify (remap) the indexing of
+    /// columns after the expression is built.
+    pub fn map_variable(
+        self,
+        mapper: &(dyn Fn(Variable<C::Column>) -> Variable<C::Column>),
+    ) -> FoldingCompatibleExpr<C> {
+        use FoldingCompatibleExpr::*;
+        match self {
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Cell(col) => {
+                    Atom(FoldingCompatibleExprInner::Cell((mapper)(col)))
+                }
+                atom => Atom(atom),
+            },
+            FoldingCompatibleExpr::Double(exp) => Double(Box::new(exp.map_variable(mapper))),
+            FoldingCompatibleExpr::Square(exp) => Square(Box::new(exp.map_variable(mapper))),
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.map_variable(mapper));
+                let e2 = Box::new(e2.map_variable(mapper));
+                Mul(e1, e2)
+            }
+            FoldingCompatibleExpr::Pow(e, p) => Pow(Box::new(e.map_variable(mapper)), p),
+        }
+    }
+
+    /// Map all quad columns into regular witness columns.
+    pub fn flatten_quad_columns(
+        self,
+        mapper: &(dyn Fn(usize) -> Variable<C::Column>),
+    ) -> FoldingCompatibleExpr<C> {
+        use FoldingCompatibleExpr::*;
+        match self {
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Extensions(ExpExtension::ExtendedWitness(i)) => {
+                    Atom(FoldingCompatibleExprInner::Cell((mapper)(i)))
+                }
+                atom => Atom(atom),
+            },
+            FoldingCompatibleExpr::Double(exp) => {
+                Double(Box::new(exp.flatten_quad_columns(mapper)))
+            }
+            FoldingCompatibleExpr::Square(exp) => {
+                Square(Box::new(exp.flatten_quad_columns(mapper)))
+            }
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.flatten_quad_columns(mapper));
+                let e2 = Box::new(e2.flatten_quad_columns(mapper));
+                Mul(e1, e2)
+            }
+            FoldingCompatibleExpr::Pow(e, p) => Pow(Box::new(e.flatten_quad_columns(mapper)), p),
+        }
+    }
 }
 
 impl<C: FoldingConfig> FoldingExp<C> {
@@ -898,6 +972,11 @@ pub fn folding_expression<C: FoldingConfig>(
     ) = quadraticize(simplified_expressions);
     let mut terms = vec![];
     let mut alpha = 0;
+    // Alpha is always increased, equal to the total number of
+    // expressions. We could optimise it and only assign increasing
+    // alphas in "blocks" that depend on selectors. This would make
+    // #alphas equal to the expressions in the biggest block (+ some
+    // columns common for all blocks of the circuit).
     for exp in expressions.into_iter() {
         terms.extend(extract_terms(exp).map(|term| (term, alpha)));
         alpha += 1;

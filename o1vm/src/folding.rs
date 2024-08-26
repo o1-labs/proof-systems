@@ -187,7 +187,7 @@ where
         }
     }
 
-    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &[ScalarField<C>] {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -204,7 +204,7 @@ where
         }
     }
 
-    fn selector(&self, s: &C::Selector, side: Side) -> &Vec<ScalarField<C>> {
+    fn selector(&self, s: &C::Selector, side: Side) -> &[ScalarField<C>] {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
     }
@@ -266,7 +266,7 @@ where
         }
     }
 
-    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &[ScalarField<C>] {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -283,7 +283,7 @@ where
         }
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
+    fn selector(&self, _s: &(), _side: Side) -> &[ScalarField<C>] {
         unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when there is only one instruction.")
     }
 }

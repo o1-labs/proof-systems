@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_ffa_completeness() {
+    pub fn heavy_test_ffa_completeness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
 
@@ -74,7 +74,14 @@ mod tests {
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::all_variants().into_iter() {
-            lookup_tables_data.insert(table_id, table_id.entries(domain_size as u64));
+            lookup_tables_data.insert(
+                table_id,
+                vec![table_id
+                    .entries(domain_size as u64)
+                    .into_iter()
+                    .map(|x| vec![x])
+                    .collect()],
+            );
         }
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 

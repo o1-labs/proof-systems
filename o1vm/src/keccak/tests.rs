@@ -652,7 +652,7 @@ type KeccakFoldingSide = (
 type KeccakFoldingPair = (Steps, KeccakFoldingSide, KeccakFoldingSide);
 
 #[test]
-fn test_keccak_folding() {
+fn heavy_test_keccak_folding() {
     use crate::{keccak::folding::KeccakConfig, trace::Foldable, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{checker::Checker, expressions::FoldingCompatibleExpr};

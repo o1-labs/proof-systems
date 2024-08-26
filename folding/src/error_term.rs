@@ -458,6 +458,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     ) -> (Vec<ScalarField<CF>>, Vec<CF::Curve>) {
         let mut left = self.instances[0].to_absorb();
         let right = self.instances[1].to_absorb();
+
         left.0.extend(right.0);
         left.1.extend(right.1);
         left.1.extend([t0, t1]);

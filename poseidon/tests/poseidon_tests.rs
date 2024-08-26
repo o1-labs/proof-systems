@@ -1,9 +1,9 @@
-use crate::{
+use mina_curves::pasta::Fp;
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
     pasta::{fp_kimchi as SpongeParametersKimchi, fp_legacy as SpongeParametersLegacy},
     poseidon::{ArithmeticSponge as Poseidon, Sponge as _},
 };
-use mina_curves::pasta::Fp;
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::{fs::File, path::PathBuf}; // needed for ::new() sponge
@@ -29,7 +29,7 @@ where
 {
     // read test vectors from given file
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("src/tests/test_vectors");
+    path.push("tests/test_vectors");
     path.push(test_vector_file);
     let file = File::open(&path).expect("couldn't open test vector file");
     let test_vectors: TestVectors =

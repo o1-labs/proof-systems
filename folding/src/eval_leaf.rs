@@ -1,22 +1,23 @@
 #[derive(Clone, Debug)]
-pub(crate) enum EvalLeaf<'a, F> {
+/// Result of a folding expression evaluation.
+pub enum EvalLeaf<'a, F> {
     Const(F),
-    Col(&'a Vec<F>),
+    Col(&'a [F]), // slice will suffice
     Result(Vec<F>),
 }
 
 impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let vec = match self {
+        let slice = match self {
             EvalLeaf::Const(c) => {
                 write!(f, "Const: {}", c)?;
                 return Ok(());
             }
             EvalLeaf::Col(a) => a,
-            EvalLeaf::Result(a) => a,
+            EvalLeaf::Result(a) => a.as_slice(),
         };
         writeln!(f, "[")?;
-        for e in vec.iter() {
+        for e in slice.iter() {
             writeln!(f, "{e}")?;
         }
         write!(f, "]")?;
@@ -113,7 +114,7 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
             }
             (Col(a), Result(mut b)) => {
                 for (a, b) in a.iter().zip(b.iter_mut()) {
-                    *b = f(b.clone(), a.clone())
+                    *b = f(a.clone(), b.clone())
                 }
                 Result(b)
             }

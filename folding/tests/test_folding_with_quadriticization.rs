@@ -53,7 +53,7 @@ impl FoldingColumnTrait for TestColumn {
 }
 
 /// The instance is the commitments to the polynomials and the challenges
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct TestInstance {
     // 3 from the normal witness + 2 from the dynamic selectors
     commitments: [Curve; 5],
@@ -159,7 +159,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
 
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
-    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
+    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &[Fp] {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -184,7 +184,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     // as clasic static selectors will be handle as normal structure columns in col()
     // the implementation of this if the same as col(), it is just separated as they
     // have different types to resolve
-    fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
+    fn selector(&self, s: &DynamicSelector, side: Side) -> &[Fp] {
         let wit = &self.curr_witnesses[side as usize];
         match s {
             DynamicSelector::SelecAdd => &wit.0[3].evals,
@@ -228,7 +228,6 @@ pub struct TestFoldingConfig;
 
 // Flag used as the challenges are never built.
 // FIXME: should we use unit?
-#[allow(dead_code)]
 // Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {
@@ -397,6 +396,21 @@ fn test_quadriticization() {
             folded_witness,
             ..
         } = folded;
+
+        {
+            let folded_instance_explicit = {
+                let mut fq_sponge_inst = BaseSponge::new(Curve::other_curve_sponge_params());
+                scheme.fold_instance_pair(
+                    folded.relaxed_extended_left_instance,
+                    folded.relaxed_extended_right_instance,
+                    [folded.t_0.clone(), folded.t_1.clone()],
+                    &mut fq_sponge_inst,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
+
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
         checker.check(&final_constraint, domain);
         let ExtendedProvider {
@@ -416,6 +430,8 @@ fn test_quadriticization() {
         let wit2 = mul_witness(a, b);
         let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
 
+        let mut fq_sponge_before_fold = fq_sponge.clone();
+
         let left = (instance1, witness1);
         let right = (instance2, witness2);
         let folded = scheme.fold_instance_witness_pair(
@@ -430,6 +446,19 @@ fn test_quadriticization() {
             ..
         } = folded;
 
+        {
+            let folded_instance_explicit = {
+                scheme.fold_instance_pair(
+                    folded.relaxed_extended_left_instance,
+                    folded.relaxed_extended_right_instance,
+                    [folded.t_0.clone(), folded.t_1.clone()],
+                    &mut fq_sponge_before_fold,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
+
         let checker = ExtendedProvider::new(folded_instance, folded_witness);
 
         checker.check(&final_constraint, domain);
@@ -442,6 +471,8 @@ fn test_quadriticization() {
     debug!("fold mixed");
 
     {
+        let mut fq_sponge_before_fold = fq_sponge.clone();
+
         // here we use already relaxed pairs, which have a trival x -> x implementation
         let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
         let FoldingOutput {
@@ -449,10 +480,23 @@ fn test_quadriticization() {
             folded_witness,
             t_0,
             t_1,
-            relaxed_extended_left_instance: _,
-            relaxed_extended_right_instance: _,
+            relaxed_extended_left_instance,
+            relaxed_extended_right_instance,
             to_absorb: _,
         } = folded;
+
+        {
+            let folded_instance_explicit = {
+                scheme.fold_instance_pair(
+                    relaxed_extended_left_instance,
+                    relaxed_extended_right_instance,
+                    [t_0.clone(), t_1.clone()],
+                    &mut fq_sponge_before_fold,
+                )
+            };
+
+            assert!(folded_instance == folded_instance_explicit);
+        }
 
         // Verifying that error terms are not points at infinity
         // It doesn't test that the computation happens correctly, but at least

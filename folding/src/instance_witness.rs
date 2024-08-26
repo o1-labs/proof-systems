@@ -101,6 +101,7 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 // -- Extended witness
 /// This structure represents a witness extended with extra columns that are
 /// added by quadraticization
+#[derive(Clone, Debug)]
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// This is the original witness, without quadraticization
     pub witness: W,
@@ -166,7 +167,7 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 /// described by a degree 3 polynomial, an additional column will be added, and
 /// `extended` will contain `1` commitment.
 // FIXME: We should forbid cloning, for memory footprint.
-#[derive(Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The original instance.
     pub instance: I,
@@ -233,7 +234,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
 /// slack/error term.
 /// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 // FIXME: We should forbid cloning, for memory footprint.
-#[derive(Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     /// The original instance, extended with the columns added by
     /// quadriticization
@@ -338,6 +339,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Foldable<G::ScalarField> for RelaxedIns
 }
 
 // -- Relaxed witnesses
+#[derive(Clone, Debug)]
 pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
     /// The original witness, extended with the columns added by
     /// quadriticization.

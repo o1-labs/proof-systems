@@ -45,7 +45,7 @@ pub mod decomposable_folding;
 
 mod error_term;
 
-mod eval_leaf;
+pub mod eval_leaf;
 pub mod expressions;
 pub mod instance_witness;
 pub mod quadraticization;
@@ -122,11 +122,11 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &[F];
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
-    fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
+    fn selector(&self, s: &Selector, side: Side) -> &[F];
 }
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
@@ -243,6 +243,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         // Absorbing the commitments into the sponge
         let to_absorb = env.to_absorb(t_0, t_1);
+
         fq_sponge.absorb_fr(&to_absorb.0);
         fq_sponge.absorb_g(&to_absorb.1);
 
@@ -302,12 +303,60 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].elems.len(), 1);
         assert_eq!(error_commitments[1].elems.len(), 1);
 
-        fq_sponge.absorb_g(&error_commitments[0].elems);
-        fq_sponge.absorb_g(&error_commitments[1].elems);
+        let to_absorb = {
+            let mut left = a.to_absorb();
+            let right = b.to_absorb();
+            left.0.extend(right.0);
+            left.1.extend(right.1);
+            left.1
+                .extend([error_commitments[0].elems[0], error_commitments[1].elems[0]]);
+            left
+        };
+
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
 
         let challenge = fq_sponge.challenge();
 
         RelaxedInstance::combine_and_sub_cross_terms(a, b, challenge, &error_commitments)
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// Verifier of the folding scheme; returns a new folded instance,
+    /// which can be then compared with the one claimed to be the real
+    /// one.
+    pub fn verify_fold<Sponge>(
+        &self,
+        left_instance: RelaxedInstance<CF::Curve, CF::Instance>,
+        right_instance: RelaxedInstance<CF::Curve, CF::Instance>,
+        t_0: PolyComm<CF::Curve>,
+        t_1: PolyComm<CF::Curve>,
+        fq_sponge: &mut Sponge,
+    ) -> RelaxedInstance<CF::Curve, CF::Instance>
+    where
+        Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
+    {
+        let to_absorb = {
+            let mut left = left_instance.to_absorb();
+            let right = right_instance.to_absorb();
+            left.0.extend(right.0);
+            left.1.extend(right.1);
+            left.1.extend([t_0.elems[0], t_1.elems[0]]);
+            left
+        };
+
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_g(&to_absorb.1);
+
+        let challenge = fq_sponge.challenge();
+
+        RelaxedInstance::combine_and_sub_cross_terms(
+            // FIXME: remove clone
+            left_instance.clone(),
+            right_instance.clone(),
+            challenge,
+            &[t_0, t_1],
+        )
     }
 }
 
@@ -360,6 +409,15 @@ pub enum Alphas<F: Field> {
     Combinations(Vec<F>),
 }
 
+impl<F: Field> PartialEq for Alphas<F> {
+    fn eq(&self, other: &Self) -> bool {
+        // Maybe there's a more efficient way
+        self.clone().powers() == other.clone().powers()
+    }
+}
+
+impl<F: Field> Eq for Alphas<F> {}
+
 impl<F: Field> Foldable<F> for Alphas<F> {
     fn combine(a: Self, b: Self, challenge: F) -> Self {
         let a = a.powers();
@@ -377,6 +435,10 @@ impl<F: Field> Foldable<F> for Alphas<F> {
 impl<F: Field> Alphas<F> {
     pub fn new(alpha: F) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+
+    pub fn new_sized(alpha: F, count: usize) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(count)))
     }
 
     pub fn get(&self, i: usize) -> Option<F> {

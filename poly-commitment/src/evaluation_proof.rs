@@ -1,3 +1,8 @@
+//! This module contains the implementation of the polynomial commitment scheme
+//! called the Inner Product Argument (IPA) as described in [Efficient
+//! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
+//! Setting](https://eprint.iacr.org/2016/263)
+
 use crate::{
     commitment::*,
     srs::{endos, SRS},
@@ -178,11 +183,6 @@ impl<G: CommitmentCurve> SRS<G> {
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
-
-        // @volhovm: FIXME: this duplicates the definition of rounds
-        // above. Either it should be removed, or it's a bug and it
-        // should use the local g, and not self.g.
-        let rounds = math::ceil_log2(self.g.len());
 
         // The initial evaluation vector for polynomial commitment b_init is not
         // just the powers of a single point as in the original IPA, but rather

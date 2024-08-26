@@ -12,7 +12,8 @@ use crate::{
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as R2D,
 };
 use kimchi::{
     circuits::{
@@ -259,6 +260,7 @@ where
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
+        let mut last_constraint_failed = None;
         // Only for debugging purposes
         for expr in constraints.iter() {
             let fail_q_division =
@@ -270,8 +272,16 @@ where
                 .divide_by_vanishing_poly(domain.d1)
                 .ok_or(fail_q_division.clone())?;
             if !res.is_zero() {
-                return Err(fail_q_division);
+                eprintln!("Unsatisfied expression: {}", expr);
+                //return Err(fail_q_division);
+                last_constraint_failed = Some(expr.clone());
             }
+        }
+        if let Some(expr) = last_constraint_failed {
+            return Err(ProverError::ConstraintNotSatisfied(format!(
+                "Unsatisfied expression: {:}",
+                expr
+            )));
         }
 
         // Compute ∑ α^i constraint_i as an expression
@@ -370,10 +380,18 @@ where
         m: lookup_env
             .lookup_counters_poly_d1
             .iter()
-            .map(|(id, poly)| {
-                let zeta = poly.evaluate(&zeta);
-                let zeta_omega = poly.evaluate(&zeta_omega);
-                (*id, PointEvaluations { zeta, zeta_omega })
+            .map(|(id, polys)| {
+                (
+                    *id,
+                    polys
+                        .iter()
+                        .map(|poly| {
+                            let zeta = poly.evaluate(&zeta);
+                            let zeta_omega = poly.evaluate(&zeta_omega);
+                            PointEvaluations { zeta, zeta_omega }
+                        })
+                        .collect(),
+                )
             })
             .collect(),
         h: lookup_env
@@ -446,9 +464,11 @@ where
         let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
-        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
+        // -Z_H = (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by -Z_H(ζ)
         // (the evaluation in ζ of the vanishing polynomial)
-        t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        t_chunked.scale(minus_vanishing_poly_at_zeta)
     };
 
     // We only evaluate at ζω as the verifier can compute the
@@ -498,7 +518,12 @@ where
             lookup_env
                 .lookup_counters_poly_d1
                 .values()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                .flat_map(|polys| {
+                    polys
+                        .iter()
+                        .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                        .collect::<Vec<_>>()
+                })
                 .collect::<Vec<_>>(),
         );
         // -- after that the partial sums

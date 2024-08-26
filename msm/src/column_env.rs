@@ -95,9 +95,9 @@ impl<
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(table_id) => {
+            Self::Column::LookupMultiplicity((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)][i])
                 } else {
                     panic!("No lookup provided")
                 }

@@ -2,8 +2,11 @@
 #![allow(clippy::boxed_local)]
 
 use crate::logup::LookupTableID;
-use ark_ff::{Field, One, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
+use ark_ff::{Field, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as R2D,
+};
 use rand::thread_rng;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -143,10 +146,17 @@ where
     let (joint_combiner, beta) = {
         if let Some(logup_comms) = &proof_comms.logup_comms {
             // First, we absorb the multiplicity polynomials
-            logup_comms
-                .m
-                .values()
-                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+            logup_comms.m.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(&mut fq_sponge, comm))
+            });
+
+            // FIXME @volhovm it seems that the verifier does not
+            // actually check that the fixed tables used in the proof
+            // are the fixed tables defined in the code. In other
+            // words, all the currently used "fixed" tables are
+            // runtime and can be chosen freely by the prover.
 
             // To generate the challenges
             let joint_combiner = fq_sponge.challenge();
@@ -256,7 +266,9 @@ where
         let chunked_t_comm = proof_comms
             .t_comm
             .chunk_commitment(evaluation_point_to_domain_size);
-        chunked_t_comm.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        // (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
     let challenges = Challenges {
@@ -274,6 +286,7 @@ where
 
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+    // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,

@@ -46,6 +46,7 @@ impl<F: Field> Default for Env<F> {
                 let mut t = HashMap::new();
                 t.insert(PadLookup, LookupTable::table_pad());
                 t.insert(RoundConstantsLookup, LookupTable::table_round_constants());
+                t.insert(AtMost4Lookup, LookupTable::table_at_most_4());
                 t.insert(ByteLookup, LookupTable::table_byte());
                 t.insert(RangeCheck16Lookup, LookupTable::table_range_check_16());
                 t.insert(SparseLookup, LookupTable::table_sparse());
@@ -56,6 +57,7 @@ impl<F: Field> Default for Env<F> {
                 let mut m = HashMap::new();
                 m.insert(PadLookup, vec![0; PadLookup.length()]);
                 m.insert(RoundConstantsLookup, vec![0; RoundConstantsLookup.length()]);
+                m.insert(AtMost4Lookup, vec![0; AtMost4Lookup.length()]);
                 m.insert(ByteLookup, vec![0; ByteLookup.length()]);
                 m.insert(RangeCheck16Lookup, vec![0; RangeCheck16Lookup.length()]);
                 m.insert(SparseLookup, vec![0; SparseLookup.length()]);

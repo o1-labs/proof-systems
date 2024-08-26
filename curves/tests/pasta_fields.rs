@@ -1,6 +1,6 @@
-use crate::pasta::*;
 use ark_algebra_test_templates::fields::{field_test, primefield_test, sqrt_field_test};
 use ark_std::test_rng;
+use mina_curves::pasta::{Fp, Fq};
 use rand::Rng;
 
 #[test]

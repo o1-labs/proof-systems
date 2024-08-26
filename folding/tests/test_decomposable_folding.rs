@@ -157,7 +157,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
 
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
-    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
+    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &[Fp] {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -182,7 +182,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     // as classic static selectors will be handled as normal structure columns in col().
     // The implementation of this if the same as col(), it is just separated as they
     // have different types to resolve
-    fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
+    fn selector(&self, s: &DynamicSelector, side: Side) -> &[Fp] {
         let wit = &self.curr_witnesses[side as usize];
         match s {
             DynamicSelector::SelecAdd => &wit.0[3].evals,
@@ -228,7 +228,6 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestFoldingConfig;
 
-#[allow(dead_code)]
 // Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {
