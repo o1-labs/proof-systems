@@ -302,7 +302,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         Self::from_coeffs(coeffs)
     }
 
-    pub fn mul_by_const(&self, c: F) -> Self {
+    pub fn mul_by_scalar(&self, c: F) -> Self {
         let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
         Self::from_coeffs(coeffs)
     }

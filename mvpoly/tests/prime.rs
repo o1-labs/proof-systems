@@ -239,33 +239,33 @@ fn test_neg_ref() {
 }
 
 #[test]
-fn test_mul_by_const() {
+fn test_mul_by_scalar() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
     let mut p2 = Dense::<Fp, 4, 5>::zero();
     let c = Fp::rand(&mut rng);
     p2[0] = c;
-    assert_eq!(p2 * p1.clone(), p1.clone().mul_by_const(c))
+    assert_eq!(p2 * p1.clone(), p1.clone().mul_by_scalar(c))
 }
 
 #[test]
-fn test_mul_by_const_with_zero() {
+fn test_mul_by_scalar_with_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
     let c = Fp::zero();
-    assert_eq!(p1.mul_by_const(c), Dense::<Fp, 4, 5>::zero())
+    assert_eq!(p1.mul_by_scalar(c), Dense::<Fp, 4, 5>::zero())
 }
 
 #[test]
-fn test_mul_by_const_with_one() {
+fn test_mul_by_scalar_with_one() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
     let c = Fp::one();
-    assert_eq!(p1.mul_by_const(c), p1)
+    assert_eq!(p1.mul_by_scalar(c), p1)
 }
 
 #[test]
-fn test_mul_by_const_with_from() {
+fn test_mul_by_scalar_with_from() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p = Dense::<Fp, 4, 5>::random(&mut rng);
     let c = Fp::rand(&mut rng);
@@ -273,8 +273,8 @@ fn test_mul_by_const_with_from() {
     // Create a constant polynomial from the field element
     let constant_poly = Dense::<Fp, 4, 5>::from(c);
 
-    // Multiply p by c using mul_by_const
-    let result1 = p.mul_by_const(c);
+    // Multiply p by c using mul_by_scalar
+    let result1 = p.mul_by_scalar(c);
 
     // Multiply p by the constant polynomial
     let result2 = p.clone() * constant_poly;
