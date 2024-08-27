@@ -414,6 +414,7 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -578,6 +579,7 @@
 /// of the coefficient corresponds to the index of the monomial.
 /// A mapping between the index and the prime decomposition of the monomial is
 /// stored in `normalized_indices`.
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>Dense&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt; {
     coeff: Vec&lt;F&gt;,
     <span class="comment">// keeping track of the indices of the monomials that are normalized
