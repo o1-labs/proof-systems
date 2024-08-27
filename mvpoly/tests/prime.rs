@@ -1,6 +1,6 @@
 use ark_ff::{One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
-use mvpoly::prime::Dense;
+use mvpoly::{prime::Dense, utils::PrimeNumberGenerator};
 
 #[test]
 fn test_vector_space_dimension() {
@@ -281,4 +281,75 @@ fn test_mul_by_const_with_from() {
 
     // Check that both methods produce the same result
     assert_eq!(result1, result2);
+}
+
+#[test]
+fn test_from_variable() {
+    // Test for y variable (index 2)
+    let y = Dense::<Fp, 4, 5>::from_variable(2_usize);
+    assert_eq!(y[1], Fp::one());
+    assert_eq!(y[0], Fp::zero());
+    assert_eq!(y[2], Fp::zero());
+    assert_eq!(y[3], Fp::zero());
+    assert_eq!(y[4], Fp::zero());
+    assert_eq!(y[5], Fp::zero());
+
+    // Test for z variable (index 3)
+    let z = Dense::<Fp, 4, 5>::from_variable(3_usize);
+    assert_eq!(z[0], Fp::zero());
+    assert_eq!(z[1], Fp::zero());
+    assert_eq!(z[2], Fp::one());
+    assert_eq!(z[3], Fp::zero());
+    assert_eq!(z[4], Fp::zero());
+
+    // Test for w variable (index 5)
+    let w = Dense::<Fp, 4, 5>::from_variable(5_usize);
+    assert_eq!(w[0], Fp::zero());
+    assert_eq!(w[1], Fp::zero());
+    assert_eq!(w[2], Fp::zero());
+    assert_eq!(w[3], Fp::zero());
+    assert_eq!(w[4], Fp::one());
+}
+
+#[test]
+fn test_from_variable_column() {
+    // Simulate a real usecase
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => {
+                    let mut prime_gen = PrimeNumberGenerator::new();
+                    prime_gen.get_nth_prime(i + 1)
+                }
+            }
+        }
+    }
+
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(0));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::one());
+    assert_eq!(p[2], Fp::zero());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::zero());
+    assert_eq!(p[5], Fp::zero());
+
+    // Test for z variable (index 3)
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(1));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::zero());
+    assert_eq!(p[2], Fp::one());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::zero());
+
+    // Test for w variable (index 5)
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(2));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::zero());
+    assert_eq!(p[2], Fp::zero());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::one());
 }
