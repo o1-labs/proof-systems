@@ -247,3 +247,19 @@ fn test_mul_by_const() {
     p2[0] = c;
     assert_eq!(p2 * p1.clone(), p1.clone().mul_by_const(c))
 }
+
+#[test]
+fn test_mul_by_const_with_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let c = Fp::zero();
+    assert_eq!(p1.mul_by_const(c), Dense::<Fp, 4, 5>::zero())
+}
+
+#[test]
+fn test_mul_by_const_with_one() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let c = Fp::one();
+    assert_eq!(p1.mul_by_const(c), p1)
+}
