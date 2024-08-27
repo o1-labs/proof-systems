@@ -147,7 +147,7 @@ use std::{
     ops::{Add, Mul},
 };
 
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField, Zero};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
 
@@ -168,6 +168,27 @@ pub struct Dense<F: PrimeField, const N: usize, const D: usize> {
     // FIXME: this should be stored somewhere else; we should not have it for
     // each polynomial
     normalized_indices: Vec<usize>,
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Zero for Dense<F, N, D> {
+    fn is_zero(&self) -> bool {
+        self.coeff.iter().all(|c| c.is_zero())
+    }
+
+    fn zero() -> Self {
+        Dense {
+            coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices: Self::compute_normalized_indices(),
+        }
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> One for Dense<F, N, D> {
+    fn one() -> Self {
+        let mut result = Dense::zero();
+        result.coeff[0] = F::one();
+        result
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
