@@ -144,7 +144,7 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter, Result},
-    ops::{Add, Mul, Sub},
+    ops::{Add, Mul, Neg, Sub},
 };
 
 use ark_ff::{One, PrimeField, Zero};
@@ -390,6 +390,31 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &De
         let mut result = Dense::new();
         for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] - other.coeff[i];
+        }
+        result
+    }
+}
+
+// Negation
+impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = -self.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Neg for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn neg(self) -> Self::Output {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = -self.coeff[i];
         }
         result
     }
