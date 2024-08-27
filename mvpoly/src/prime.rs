@@ -519,5 +519,4 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {}
 // TODO: implement From/To Expr<F, Column>
