@@ -193,3 +193,12 @@ fn test_double_is_add_twice() {
     let p3 = p1.clone().double();
     assert_eq!(p2, p3);
 }
+
+#[test]
+fn test_sub_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let zero = Dense::<Fp, 3, 4>::zero();
+    let p2 = p1.clone() - zero.clone();
+    assert_eq!(p1.clone(), p2);
+}

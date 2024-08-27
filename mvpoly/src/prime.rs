@@ -144,7 +144,7 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter, Result},
-    ops::{Add, Mul},
+    ops::{Add, Mul, Sub},
 };
 
 use ark_ff::{One, PrimeField, Zero};
@@ -346,6 +346,55 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for &De
     }
 }
 
+// Subtraction
+impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = self.coeff[i] - other.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = self.coeff[i] - other.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<Dense<F, N, D>> for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = self.coeff[i] - other.coeff[i];
+        }
+        result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
+        let mut result = Dense::new();
+        for i in 0..self.coeff.len() {
+            result.coeff[i] = self.coeff[i] - other.coeff[i];
+        }
+        result
+    }
+}
+
 // Multiplication
 impl<F: PrimeField, const N: usize, const D: usize> Mul<Dense<F, N, D>> for Dense<F, N, D> {
     type Output = Self;
@@ -422,4 +471,5 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     }
 }
 
+impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {}
 // TODO: implement From/To Expr<F, Column>
