@@ -202,3 +202,38 @@ fn test_sub_zero() {
     let p2 = p1.clone() - zero.clone();
     assert_eq!(p1.clone(), p2);
 }
+
+#[test]
+fn test_neg() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p2 = -p1.clone();
+
+    // Test that p1 + (-p1) = 0
+    let sum = p1.clone() + p2.clone();
+    assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
+
+    // Test that -(-p1) = p1
+    let p3 = -p2;
+    assert_eq!(p1, p3);
+
+    // Test negation of zero
+    let zero = Dense::<Fp, 3, 4>::zero();
+    let neg_zero = -zero.clone();
+    assert_eq!(zero, neg_zero);
+}
+
+#[test]
+fn test_neg_ref() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p2 = -&p1;
+
+    // Test that p1 + (-&p1) = 0
+    let sum = p1.clone() + p2.clone();
+    assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
+
+    // Test that -(-&p1) = p1
+    let p3 = -&p2;
+    assert_eq!(p1, p3);
+}
