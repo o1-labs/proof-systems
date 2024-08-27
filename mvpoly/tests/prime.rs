@@ -1,4 +1,4 @@
-use ark_ff::{One, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::prime::Dense;
 
@@ -236,4 +236,14 @@ fn test_neg_ref() {
     // Test that -(-&p1) = p1
     let p3 = -&p2;
     assert_eq!(p1, p3);
+}
+
+#[test]
+fn test_mul_by_const() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let mut p2 = Dense::<Fp, 4, 5>::zero();
+    let c = Fp::rand(&mut rng);
+    p2[0] = c;
+    assert_eq!(p2 * p1.clone(), p1.clone().mul_by_const(c))
 }
