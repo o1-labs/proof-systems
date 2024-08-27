@@ -406,8 +406,8 @@ fn test_eval_pbt_add() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = Dense::<Fp, 6, 4>::random(&mut rng);
-    let p2 = Dense::<Fp, 6, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
     let p3 = p1.clone() + p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
@@ -420,8 +420,8 @@ fn test_eval_pbt_sub() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = Dense::<Fp, 6, 4>::random(&mut rng);
-    let p2 = Dense::<Fp, 6, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
     let p3 = p1.clone() - p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
@@ -434,7 +434,7 @@ fn test_eval_pbt_mul_by_scalar() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = Dense::<Fp, 6, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
     let c = Fp::rand(&mut rng);
     let p2 = p1.clone() * Dense::<Fp, 6, 4>::from(c);
     let eval_p1 = p1.eval(&random_evaluation);
@@ -447,7 +447,7 @@ fn test_eval_pbt_neg() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = Dense::<Fp, 6, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
     let p2 = -p1.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
