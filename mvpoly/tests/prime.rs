@@ -354,3 +354,49 @@ fn test_from_variable_column() {
     assert_eq!(p[3], Fp::zero());
     assert_eq!(p[4], Fp::one());
 }
+
+#[test]
+fn test_evaluation_zero_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let zero = Dense::<Fp, 4, 5>::zero();
+    let evaluation = zero.eval(&random_evaluation);
+    assert_eq!(evaluation, Fp::zero());
+}
+
+#[test]
+fn test_evaluation_constant_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let cst = Fp::rand(&mut rng);
+    let zero = Dense::<Fp, 4, 5>::from(cst);
+    let evaluation = zero.eval(&random_evaluation);
+    assert_eq!(evaluation, cst);
+}
+
+#[test]
+fn test_evaluation_predefined_polynomial() {
+    // Evaluating at random points
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 2] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    // P(X1, X2) = 2 + 3X1 + 4X2 + 5X1^2 + 6X1 X2 + 7 X2^2
+    let p = Dense::<Fp, 2, 2>::from_coeffs(vec![
+        Fp::from(2_u32),
+        Fp::from(3_u32),
+        Fp::from(4_u32),
+        Fp::from(5_u32),
+        Fp::from(6_u32),
+        Fp::from(7_u32),
+    ]);
+    let exp_eval = Fp::from(2_u32)
+        + Fp::from(3_u32) * random_evaluation[0]
+        + Fp::from(4_u32) * random_evaluation[1]
+        + Fp::from(5_u32) * random_evaluation[0] * random_evaluation[0]
+        + Fp::from(6_u32) * random_evaluation[0] * random_evaluation[1]
+        + Fp::from(7_u32) * random_evaluation[1] * random_evaluation[1];
+    let evaluation = p.eval(&random_evaluation);
+    assert_eq!(evaluation, exp_eval);
+}

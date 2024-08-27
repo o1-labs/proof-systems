@@ -331,6 +331,37 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
         Self::from_coeffs(coeffs)
     }
+
+    /// Evaluate the polynomial at the vector point `x`.
+    ///
+    /// This is a dummy implementation. A cache can be used for the monomials to
+    /// speed up the computation.
+    pub fn eval(&self, x: &[F; N]) -> F {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        self.coeff
+            .iter()
+            .enumerate()
+            .fold(F::zero(), |acc, (i, c)| {
+                if i == 0 {
+                    acc + c
+                } else {
+                    let normalized_index = self.normalized_indices[i];
+                    // IMPROVEME: we should keep the prime decomposition somewhere.
+                    // It can be precomputed for a few multi-variate polynomials
+                    // vector space
+                    let prime_decomposition = naive_prime_factors(normalized_index, &mut prime_gen);
+                    let mut monomial = F::one();
+                    prime_decomposition.iter().for_each(|(p, d)| {
+                        // IMPROVEME: we should keep the inverse indices
+                        let inv_p = primes.iter().position(|&x| x == *p).unwrap();
+                        let x_p = x[inv_p].pow([*d as u64]);
+                        monomial *= x_p;
+                    });
+                    acc + *c * monomial
+                }
+            })
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Default for Dense<F, N, D> {
