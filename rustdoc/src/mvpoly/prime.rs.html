@@ -528,6 +528,23 @@
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -771,6 +788,21 @@
         }
     }
 
+    <span class="kw">pub fn </span>from_variable&lt;C: Into&lt;usize&gt;&gt;(var: C) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">Self</span>::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
+        <span class="kw">let </span>var_usize: usize = var.into();
+        <span class="macro">assert!</span>(primes.contains(<span class="kw-2">&amp;</span>var_usize), <span class="string">&quot;The usize representation of the variable must be a prime number, and unique for each variable&quot;</span>);
+        <span class="kw">let </span>inv_var = res
+            .normalized_indices
+            .iter()
+            .position(|<span class="kw-2">&amp;</span>x| x == var_usize)
+            .unwrap();
+        res[inv_var] = F::one();
+        res
+    }
+
     <span class="kw">pub fn </span>number_of_variables(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         N
     }
@@ -828,19 +860,13 @@
     }
 
     <span class="kw">pub fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::zero();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i].double();
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|c| c.double()).collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 
-    <span class="kw">pub fn </span>mul_by_const(<span class="kw-2">&amp;</span><span class="self">self</span>, c: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::zero();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] * c;
-        }
-        result
+    <span class="kw">pub fn </span>mul_by_scalar(<span class="kw-2">&amp;</span><span class="self">self</span>, c: F) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|coef| <span class="kw-2">*</span>coef * c).collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 }
 
@@ -855,11 +881,13 @@
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] + other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a + <span class="kw-2">*</span>b)
+            .collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 }
 
@@ -867,11 +895,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] + other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a + <span class="kw-2">*</span>b)
+            .collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 }
 
@@ -879,11 +909,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] + other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a + <span class="kw-2">*</span>b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -891,11 +923,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] + other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a + <span class="kw-2">*</span>b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -916,11 +950,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] - other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a - <span class="kw-2">*</span>b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -928,11 +964,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] - other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a - <span class="kw-2">*</span>b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -940,11 +978,13 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>Dense&lt;F, N, D&gt;) -&gt; Dense&lt;F, N, D&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = <span class="self">self</span>.coeff[i] - other.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self
+            </span>.coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a - <span class="kw-2">*</span>b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -953,11 +993,8 @@
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = -<span class="self">self</span>.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|c| -<span class="kw-2">*</span>c).collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 }
 
@@ -965,11 +1002,8 @@
     <span class="kw">type </span>Output = Dense&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
-            result.coeff[i] = -<span class="self">self</span>.coeff[i];
-        }
-        result
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|c| -<span class="kw-2">*</span>c).collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
