@@ -241,6 +241,21 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         }
     }
 
+    pub fn from_variable<C: Into<usize>>(var: C) -> Self {
+        let mut res = Self::zero();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let var_usize: usize = var.into();
+        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
+        let inv_var = res
+            .normalized_indices
+            .iter()
+            .position(|&x| x == var_usize)
+            .unwrap();
+        res[inv_var] = F::one();
+        res
+    }
+
     pub fn number_of_variables(&self) -> usize {
         N
     }
