@@ -545,6 +545,16 @@
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
 <a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -764,7 +774,17 @@
         }
     }
 
-    <span class="kw">pub fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Generate a random polynomial
+    ///
+    /// # Safety
+    ///
+    /// Marked as unsafe to warn the user to use it with caution and to not
+    /// necessarily rely on it for security/randomness in cryptographic
+    /// protocols. The user is responsible for providing its own secure
+    /// polynomial random generator, if needed.
+    ///
+    /// For now, the function is only used for testing.
+    </span><span class="kw">pub unsafe fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>normalized_indices = <span class="self">Self</span>::compute_normalized_indices();
         <span class="kw">let </span>coeff = normalized_indices
             .iter()
