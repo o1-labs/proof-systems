@@ -162,6 +162,7 @@ use crate::utils::{
 /// of the coefficient corresponds to the index of the monomial.
 /// A mapping between the index and the prime decomposition of the monomial is
 /// stored in `normalized_indices`.
+#[derive(Clone)]
 pub struct Dense<F: PrimeField, const N: usize, const D: usize> {
     coeff: Vec<F>,
     // keeping track of the indices of the monomials that are normalized
