@@ -151,6 +151,7 @@ use ark_ff::{One, PrimeField, Zero};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
 use rand::RngCore;
+use std::ops::{Index, IndexMut};
 
 use crate::utils::{
     compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
@@ -170,6 +171,20 @@ pub struct Dense<F: PrimeField, const N: usize, const D: usize> {
     // FIXME: this should be stored somewhere else; we should not have it for
     // each polynomial
     normalized_indices: Vec<usize>,
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Index<usize> for Dense<F, N, D> {
+    type Output = F;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.coeff[index]
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> IndexMut<usize> for Dense<F, N, D> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.coeff[index]
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Zero for Dense<F, N, D> {
