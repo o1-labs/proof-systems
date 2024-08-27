@@ -155,7 +155,7 @@ fn test_mul() {
 #[test]
 fn test_mul_by_one() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 7, 2>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 7, 2>::random(&mut rng) };
     let one = Dense::<Fp, 7, 2>::one();
     let p2 = p1.clone() * one.clone();
     assert_eq!(p1.clone(), p2);
@@ -166,7 +166,7 @@ fn test_mul_by_one() {
 #[test]
 fn test_mul_by_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 5, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 5, 4>::random(&mut rng) };
     let zero = Dense::<Fp, 5, 4>::zero();
     let p2 = p1.clone() * zero.clone();
     assert_eq!(zero, p2);
@@ -177,7 +177,8 @@ fn test_mul_by_zero() {
 #[test]
 fn test_add_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng) };
+
     let zero = Dense::<Fp, 3, 4>::zero();
     let p2 = p1.clone() + zero.clone();
     assert_eq!(p1.clone(), p2);
@@ -188,7 +189,7 @@ fn test_add_zero() {
 #[test]
 fn test_double_is_add_twice() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng) };
     let p2 = p1.clone() + p1.clone();
     let p3 = p1.clone().double();
     assert_eq!(p2, p3);
@@ -197,7 +198,7 @@ fn test_double_is_add_twice() {
 #[test]
 fn test_sub_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng) };
     let zero = Dense::<Fp, 3, 4>::zero();
     let p2 = p1.clone() - zero.clone();
     assert_eq!(p1.clone(), p2);
@@ -206,7 +207,7 @@ fn test_sub_zero() {
 #[test]
 fn test_neg() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng) };
     let p2 = -p1.clone();
 
     // Test that p1 + (-p1) = 0
@@ -226,7 +227,7 @@ fn test_neg() {
 #[test]
 fn test_neg_ref() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 3, 4>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng) };
     let p2 = -&p1;
 
     // Test that p1 + (-&p1) = 0
@@ -241,7 +242,7 @@ fn test_neg_ref() {
 #[test]
 fn test_mul_by_scalar() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng) };
     let mut p2 = Dense::<Fp, 4, 5>::zero();
     let c = Fp::rand(&mut rng);
     p2[0] = c;
@@ -251,7 +252,7 @@ fn test_mul_by_scalar() {
 #[test]
 fn test_mul_by_scalar_with_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng) };
     let c = Fp::zero();
     assert_eq!(p1.mul_by_scalar(c), Dense::<Fp, 4, 5>::zero())
 }
@@ -259,7 +260,7 @@ fn test_mul_by_scalar_with_zero() {
 #[test]
 fn test_mul_by_scalar_with_one() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 4, 5>::random(&mut rng);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng) };
     let c = Fp::one();
     assert_eq!(p1.mul_by_scalar(c), p1)
 }
@@ -267,7 +268,7 @@ fn test_mul_by_scalar_with_one() {
 #[test]
 fn test_mul_by_scalar_with_from() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p = Dense::<Fp, 4, 5>::random(&mut rng);
+    let p = unsafe { Dense::<Fp, 4, 5>::random(&mut rng) };
     let c = Fp::rand(&mut rng);
 
     // Create a constant polynomial from the field element

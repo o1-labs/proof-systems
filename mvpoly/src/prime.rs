@@ -217,7 +217,17 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         }
     }
 
-    pub fn random<RNG: RngCore>(rng: &mut RNG) -> Self {
+    /// Generate a random polynomial
+    ///
+    /// # Safety
+    ///
+    /// Marked as unsafe to warn the user to use it with caution and to not
+    /// necessarily rely on it for security/randomness in cryptographic
+    /// protocols. The user is responsible for providing its own secure
+    /// polynomial random generator, if needed.
+    ///
+    /// For now, the function is only used for testing.
+    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG) -> Self {
         let normalized_indices = Self::compute_normalized_indices();
         let coeff = normalized_indices
             .iter()
