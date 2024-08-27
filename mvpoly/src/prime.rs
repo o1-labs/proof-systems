@@ -298,19 +298,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     }
 
     pub fn double(&self) -> Self {
-        let mut result = Dense::zero();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i].double();
-        }
-        result
+        let coeffs = self.coeff.iter().map(|c| c.double()).collect();
+        Self::from_coeffs(coeffs)
     }
 
     pub fn mul_by_const(&self, c: F) -> Self {
-        let mut result = Dense::zero();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] * c;
-        }
-        result
+        let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -325,11 +319,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add for Dense<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -337,11 +333,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -349,11 +347,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -361,11 +361,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for &De
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -386,11 +388,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] - other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -398,11 +402,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] - other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -410,11 +416,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &De
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] - other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -423,11 +431,8 @@ impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = -self.coeff[i];
-        }
-        result
+        let coeffs = self.coeff.iter().map(|c| -*c).collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -435,11 +440,8 @@ impl<F: PrimeField, const N: usize, const D: usize> Neg for &Dense<F, N, D> {
     type Output = Dense<F, N, D>;
 
     fn neg(self) -> Self::Output {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = -self.coeff[i];
-        }
-        result
+        let coeffs = self.coeff.iter().map(|c| -*c).collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
