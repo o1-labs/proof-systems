@@ -519,4 +519,12 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     }
 }
 
+impl<F: PrimeField, const N: usize, const D: usize> From<F> for Dense<F, N, D> {
+    fn from(value: F) -> Self {
+        let mut result = Self::zero();
+        result.coeff[0] = value;
+        result
+    }
+}
+
 // TODO: implement From/To Expr<F, Column>

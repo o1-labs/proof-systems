@@ -263,3 +263,22 @@ fn test_mul_by_const_with_one() {
     let c = Fp::one();
     assert_eq!(p1.mul_by_const(c), p1)
 }
+
+#[test]
+fn test_mul_by_const_with_from() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p = Dense::<Fp, 4, 5>::random(&mut rng);
+    let c = Fp::rand(&mut rng);
+
+    // Create a constant polynomial from the field element
+    let constant_poly = Dense::<Fp, 4, 5>::from(c);
+
+    // Multiply p by c using mul_by_const
+    let result1 = p.mul_by_const(c);
+
+    // Multiply p by the constant polynomial
+    let result2 = p.clone() * constant_poly;
+
+    // Check that both methods produce the same result
+    assert_eq!(result1, result2);
+}
