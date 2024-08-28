@@ -620,3 +620,35 @@ fn test_from_expr_ec_addition() {
         assert_eq!(eval, exp_eval);
     }
 }
+
+#[test]
+pub fn test_prime_increase_degree() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Dense::<Fp, 6, 2>::random(&mut rng) };
+    {
+        let p1_prime = p1.increase_degree::<3>();
+        let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        assert_eq!(
+            p1.eval(&random_evaluation),
+            p1_prime.eval(&random_evaluation)
+        );
+    }
+    {
+        let p1_prime = p1.increase_degree::<4>();
+        let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        assert_eq!(
+            p1.eval(&random_evaluation),
+            p1_prime.eval(&random_evaluation)
+        );
+    }
+    {
+        let p1_prime = p1.increase_degree::<5>();
+        let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        assert_eq!(
+            p1.eval(&random_evaluation),
+            p1_prime.eval(&random_evaluation)
+        );
+    }
+    // When precompution of prime factor decomposition is done, increase degree
+    // in testing
+}

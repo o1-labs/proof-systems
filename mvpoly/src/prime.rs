@@ -369,6 +369,25 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
                 }
             })
     }
+
+    pub fn increase_degree<const D_PRIME: usize>(&self) -> Dense<F, N, D_PRIME> {
+        assert!(D <= D_PRIME, "The degree of the target polynomial must be greater or equal to the degree of the source polynomial");
+        let mut result: Dense<F, N, D_PRIME> = Dense::zero();
+        let dst_normalized_indices = Dense::<F, N, D_PRIME>::compute_normalized_indices();
+        let src_normalized_indices = Dense::<F, N, D>::compute_normalized_indices();
+        src_normalized_indices
+            .iter()
+            .enumerate()
+            .for_each(|(i, idx)| {
+                // IMPROVEME: should be computed once
+                let inv_idx = dst_normalized_indices
+                    .iter()
+                    .position(|&x| x == *idx)
+                    .unwrap();
+                result[inv_idx] = self[i];
+            });
+        result
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Default for Dense<F, N, D> {
