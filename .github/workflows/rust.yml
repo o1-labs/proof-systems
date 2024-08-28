@@ -171,6 +171,8 @@ jobs:
           make nextest-with-coverage
       - name: Use shared Codecov reporting steps
         uses: ./.github/actions/codecov-shared
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Run heavy tests
         if: ${{ matrix.rust_toolchain_version == '1.74' }}
@@ -180,6 +182,8 @@ jobs:
       - name: Use shared Codecov reporting steps
         if: ${{ matrix.rust_toolchain_version == '1.74' }}
         uses: ./.github/actions/codecov-shared
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Doc tests
         uses: actions-rs/cargo@v1

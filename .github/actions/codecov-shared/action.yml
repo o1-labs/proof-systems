@@ -1,6 +1,9 @@
 name: "Shared Codecov reporting steps"
 description: "Shared Codecov reporting steps"
 inputs:
+  token:
+    description: "Codecov token"
+    required: true
   files:
     description: "Files to upload to Codecov"
     required: false
@@ -19,7 +22,7 @@ runs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ inputs.token }}
         files: ${{ inputs.files }}
         flags: ${{ inputs.flags }}
         name: ${{ inputs.name }}
