@@ -1839,6 +1839,7 @@ name = "mvpoly"
 version = "0.1.0"
 dependencies = [
  "ark-ff",
+ "criterion 0.5.1",
  "kimchi",
  "log",
  "mina-curves",
