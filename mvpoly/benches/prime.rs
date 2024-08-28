@@ -20,7 +20,7 @@ fn bench_dense_mul(c: &mut Criterion) {
     let mut rng = o1_utils::tests::make_test_rng(None);
     c.bench_function("dense_mul", |b: &mut Bencher| {
         b.iter(|| {
-            // IMPROVEME: impleemnt mul on references and define the random
+            // IMPROVEME: implement mul on references and define the random
             // values before the benchmark
             let p1: Dense<Fp, 10, 3> = unsafe { Dense::random(&mut rng) };
             let p2: Dense<Fp, 10, 3> = unsafe { Dense::random(&mut rng) };
