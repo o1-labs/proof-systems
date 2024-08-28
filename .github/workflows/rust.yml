@@ -15,6 +15,67 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  run_mdbook:
+    name: Building MDBook
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["1.72"]
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4.1.1
+
+      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+
+      - name: Build the mdbook
+        run: |
+          cd book
+          make deps
+          make build
+
+  run_formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["nightly"]
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4.1.1
+
+      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+
+      - name: Run cargo fmt
+        run: |
+          make format
+
+  # We run only one of the matrix options on the toffee hetzner-1,
+  # and also only in this configuration we enable heavy tests.
+  run-checks-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runners: '{"1.71":"ubuntu-latest", "1.72": "ubuntu-latest", "1.73": "ubuntu-latest", "1.74": "hetzner-1"}'
+    steps:
+      - run: echo no-op
+
   run_checks:
     strategy:
       matrix:
@@ -37,16 +98,15 @@ jobs:
       # as action-rs does not seem to be maintained anymore, building from
       # scratch the environment using rustup
       - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run:
-          |
-            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-            chmod +x ./rustup-init
-            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-            rm ./rustup-init
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            # overwriting default rust-toolchain
-            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
       - name: Setup OCaml (because of ocaml-gen)
         run: |
@@ -83,47 +143,43 @@ jobs:
       # Coding guidelines
       #
 
-      - name: Enforce formating
-        run: |
-          cargo fmt -- --check
-
       - name: Lint (clippy)
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --tests --all-targets --offline -- -D warnings
-
-      - name: Run Clippy (beta)
-        uses: actions-rs/clippy-check@v1
-        continue-on-error: true
-        with:
-          name: Clippy (beta)
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets --offline -- -W clippy::all
+        run: |
+          eval $(opam env)
+          make lint
 
       #
       # Build
       #
 
       - name: Ensure that everything builds
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-targets --all-features --offline
+        run: |
+          eval $(opam env)
+          make all
 
       #
       # Tests
       #
 
-      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
+      - name: Install test dependencies
+        run: |
+          make install-test-deps
 
-      - name: Test with latest nextest release (faster than cargo test)
-        uses: actions-rs/cargo@v1
-        with:
-          command: nextest
-          args: run --all-features --release --offline
+      - name: Run non-heavy tests
+        run: |
+          eval $(opam env)
+          make nextest-with-coverage
+      - name: Use shared Codecov reporting steps
+        uses: ./.github/actions/codecov-shared
+
+      - name: Run heavy tests
+        if: ${{ matrix.rust_toolchain_version == '1.74' }}
+        run: |
+          eval $(opam env)
+          make nextest-heavy-with-coverage
+      - name: Use shared Codecov reporting steps
+        if: ${{ matrix.rust_toolchain_version == '1.74' }}
+        uses: ./.github/actions/codecov-shared
 
       - name: Doc tests
         uses: actions-rs/cargo@v1
