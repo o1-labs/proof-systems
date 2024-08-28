@@ -3,8 +3,8 @@ description: "Shared Codecov reporting steps"
 inputs:
   files:
     description: "Files to upload to Codecov"
-    required: true
-    default: "./target/coverage/lcov"
+    required: false
+    default: "./target/coverage/lcov.info"
   flags:
     description: "Flags to pass to Codecov"
     required: false
