@@ -92,9 +92,10 @@ generate-test-coverage-report:
 		@echo "Generating the test coverage report."
 		@echo ""
 		mkdir -p ./target/coverage
-		grcov ./target/profraw --binary-path ./target/release/deps/ -s . -t html,lcov --branch --ignore-not-existing --ignore "**/tests/**" -o ./target/coverage
+		grcov ./target/profraw --binary-path ./target/release/deps/ -s . -t html --branch --ignore-not-existing --ignore "**/tests/**" -o ./target/coverage
+		grcov ./target/profraw --binary-path ./target/release/deps/ -s . -t lcov --branch --ignore-not-existing --ignore "**/tests/**" -o ./target/coverage/lcov.info
 		@echo ""
-		@echo "Test coverage report is available at: ./target/coverage/html"
+		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
 .PHONY: install-test-deps all clean build release test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
