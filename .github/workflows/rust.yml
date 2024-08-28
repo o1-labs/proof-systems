@@ -25,16 +25,15 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run:
-          |
-            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-            chmod +x ./rustup-init
-            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-            rm ./rustup-init
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            # overwriting default rust-toolchain
-            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
       - name: Build the mdbook
         run: |
@@ -53,20 +52,19 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run:
-          |
-            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-            chmod +x ./rustup-init
-            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-            rm ./rustup-init
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            # overwriting default rust-toolchain
-            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
       - name: Run cargo fmt
         run: |
-          cargo fmt -- --check
+          make format
 
   # We run only one of the matrix options on the toffee hetzner-1,
   # and also only in this configuration we enable heavy tests.
@@ -76,7 +74,6 @@ jobs:
       runners: '{"1.71":"ubuntu-latest", "1.72": "ubuntu-latest", "1.73": "ubuntu-latest", "1.74": "hetzner-1"}'
     steps:
       - run: echo no-op
-
 
   run_checks:
     needs: [run-checks-setup]
@@ -102,16 +99,15 @@ jobs:
       # as action-rs does not seem to be maintained anymore, building from
       # scratch the environment using rustup
       - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run:
-          |
-            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-            chmod +x ./rustup-init
-            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-            rm ./rustup-init
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            # overwriting default rust-toolchain
-            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # overwriting default rust-toolchain
+          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
       - name: Setup OCaml ${{ matrix.ocaml_version }}
         uses: ocaml/setup-ocaml@v2
@@ -157,11 +153,10 @@ jobs:
       # Coding guidelines
       #
 
-
       - name: Lint (clippy)
         run: |
           eval $(opam env)
-          cargo clippy --all-features --all-targets --tests -- -W clippy::all -D warnings
+          make lint
 
       #
       # Build
@@ -170,30 +165,31 @@ jobs:
       - name: Ensure that everything builds
         run: |
           eval $(opam env)
-          cargo build --release --all-targets --all-features
+          make all
 
       #
       # Tests
       #
 
-      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-      - name: Install nextest 0.9.67
+      - name: Install test dependencies
         run: |
-          eval $(opam env)
-          # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
-          cargo install cargo-nextest@=0.9.67 --locked
+          make install-test-deps
 
       - name: Run non-heavy tests
         run: |
           eval $(opam env)
-          cargo nextest run --all-features --release --profile ci -E "not test(heavy)"
+          make nextest-with-coverage
+      - name: Use shared Codecov reporting steps
+        uses: ./.github/actions/codecov-shared
 
       - name: Run heavy tests
         if: ${{ matrix.rust_toolchain_version == '1.74' }}
         run: |
           eval $(opam env)
-          cargo nextest run --all-features --release --profile ci -E "test(heavy)"
-
+          make nextest-heavy-with-coverage
+      - name: Use shared Codecov reporting steps
+        if: ${{ matrix.rust_toolchain_version == '1.74' }}
+        uses: ./.github/actions/codecov-shared
 
       - name: Doc tests
         run: |

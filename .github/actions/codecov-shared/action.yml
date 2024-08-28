@@ -1,0 +1,28 @@
+name: "Shared Codecov reporting steps"
+description: "Shared Codecov reporting steps"
+inputs:
+  files:
+    description: "Files to upload to Codecov"
+    required: true
+    default: "./target/coverage/lcov"
+  flags:
+    description: "Flags to pass to Codecov"
+    required: false
+    default: "unittests"
+  name:
+    description: "The report name"
+    required: false
+    default: "proof-systems"
+runs:
+  using: "composite"
+  steps:
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ${{ inputs.files }}
+        flags: ${{ inputs.flags }}
+        name: ${{ inputs.name }}
+        verbose: true
+        handle_no_reports_found: true
+        fail_ci_if_error: false
