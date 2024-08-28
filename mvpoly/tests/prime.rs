@@ -607,7 +607,7 @@ fn test_from_expr_ec_addition() {
         assert_eq!(eval, exp_eval);
     }
     {
-        // - Constraint 3: Y3 - λ (X1 - X3) - Y1 = 0
+        // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
         let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
         let p = Dense::<Fp, 7, 2>::from(expr);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
