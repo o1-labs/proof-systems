@@ -81,3 +81,7 @@ The CI will build different targets.
   When CI passes on master, the documentation built from the rust code will be
   available [here](https://o1-labs.github.io/proof-systems/rustdoc) and the book
   will be available [here](https://o1-labs.github.io/proof-systems).
+
+## Nix for Dependencies (WIP)
+
+If you have `nix` installed and in particular, `flakes` enabled, you can install the dependencies for these projects using nix.  Simply `nix develop .` inside this directory to bring into scope `rustup`, `opam`, and `go` (along with a few other tools).  You will have to manage the toolchains yourself using `rustup` and `opam`, in the current iteration.
