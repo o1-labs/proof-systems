@@ -1,5 +1,7 @@
 # Variables
 COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
+# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
+GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
 
 # Install test dependencies
 install-test-deps:
@@ -92,8 +94,11 @@ generate-test-coverage-report:
 		@echo "Generating the test coverage report."
 		@echo ""
 		mkdir -p ./target/coverage
-		grcov ./target/profraw --binary-path ./target/release/deps/ -s . -t html --branch --ignore-not-existing --ignore "**/tests/**" -o ./target/coverage
-		grcov ./target/profraw --binary-path ./target/release/deps/ -s . -t lcov --branch --ignore-not-existing --ignore "**/tests/**" -o ./target/coverage/lcov.info
+		GRCOV_OUTPUT_TYPE=html GRCOV_OUTPUT_PATH=./target/coverage
+		$(eval GRCOV_HTML_CMD=$(GRCOV_CALL) -t html -o ./target/coverage)
+		$(GRCOV_HTML_CMD)
+		$(eval GRCOV_LCOV_CMD=$(GRCOV_CALL) -t lcov -o ./target/coverage/lcov.info)
+		$(GRCOV_LCOV_CMD)
 		@echo ""
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
