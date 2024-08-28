@@ -148,6 +148,13 @@ use std::{
 };
 
 use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::{
+    expr::{
+        ChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations,
+        Variable,
+    },
+    gate::CurrOrNext,
+};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
 use rand::RngCore;
@@ -330,6 +337,37 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     pub fn mul_by_scalar(&self, c: F) -> Self {
         let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
         Self::from_coeffs(coeffs)
+    }
+
+    /// Evaluate the polynomial at the vector point `x`.
+    ///
+    /// This is a dummy implementation. A cache can be used for the monomials to
+    /// speed up the computation.
+    pub fn eval(&self, x: &[F; N]) -> F {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        self.coeff
+            .iter()
+            .enumerate()
+            .fold(F::zero(), |acc, (i, c)| {
+                if i == 0 {
+                    acc + c
+                } else {
+                    let normalized_index = self.normalized_indices[i];
+                    // IMPROVEME: we should keep the prime decomposition somewhere.
+                    // It can be precomputed for a few multi-variate polynomials
+                    // vector space
+                    let prime_decomposition = naive_prime_factors(normalized_index, &mut prime_gen);
+                    let mut monomial = F::one();
+                    prime_decomposition.iter().for_each(|(p, d)| {
+                        // IMPROVEME: we should keep the inverse indices
+                        let inv_p = primes.iter().position(|&x| x == *p).unwrap();
+                        let x_p = x[inv_p].pow([*d as u64]);
+                        monomial *= x_p;
+                    });
+                    acc + *c * monomial
+                }
+            })
     }
 }
 
@@ -551,6 +589,140 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Dense<F, N, D> {
         let mut result = Self::zero();
         result.coeff[0] = value;
         result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> From<ConstantExprInner<F>> for Dense<F, N, D> {
+    fn from(expr: ConstantExprInner<F>) -> Self {
+        match expr {
+            // The unimplemented methods might be implemented in the future if
+            // we move to the challenge into the type of the constant
+            // terms/expressions
+            // Unrolling for visibility
+            ConstantExprInner::Challenge(ChallengeTerm::Alpha) => {
+                unimplemented!("The challenge alpha is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::Beta) => {
+                unimplemented!("The challenge beta is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::Gamma) => {
+                unimplemented!("The challenge gamma is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::JointCombiner) => {
+                unimplemented!(
+                    "The challenge joint combiner is not supposed to be used in this context"
+                )
+            }
+            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
+                unimplemented!(
+                    "The constant EndoCoefficient is not supposed to be used in this context"
+                )
+            }
+            ConstantExprInner::Constant(ConstantTerm::Mds {
+                row: _row,
+                col: _col,
+            }) => {
+                unimplemented!("The constant Mds is not supposed to be used in this context")
+            }
+            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Dense::from(c),
+        }
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> From<Operations<ConstantExprInner<F>>>
+    for Dense<F, N, D>
+{
+    fn from(op: Operations<ConstantExprInner<F>>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+        match op {
+            Atom(op_const) => Self::from(op_const),
+            Add(c1, c2) => Self::from(*c1) + Self::from(*c2),
+            Sub(c1, c2) => Self::from(*c1) - Self::from(*c2),
+            Mul(c1, c2) => Self::from(*c1) * Self::from(*c2),
+            Square(c) => Self::from(*c.clone()) * Self::from(*c),
+            Double(c1) => Self::from(*c1).double(),
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Dense::from(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
+}
+
+impl<Column: Into<usize>, F: PrimeField, const N: usize, const D: usize>
+    From<Expr<ConstantExpr<F>, Column>> for Dense<F, N, D>
+{
+    fn from(expr: Expr<ConstantExpr<F>, Column>) -> Self {
+        // This is a dummy implementation
+        // TODO: Implement the actual conversion logic
+        use kimchi::circuits::expr::Operations::*;
+
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from(c),
+                    ExprInner::Cell(Variable { col, row }) => {
+                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
+                        Self::from_variable(col)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Dense::from(*p);
+                p.double()
+            }
+            Square(p) => {
+                let p = Dense::from(*p);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Dense::from(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
     }
 }
 

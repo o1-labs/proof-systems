@@ -354,3 +354,102 @@ fn test_from_variable_column() {
     assert_eq!(p[3], Fp::zero());
     assert_eq!(p[4], Fp::one());
 }
+
+#[test]
+fn test_evaluation_zero_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let zero = Dense::<Fp, 4, 5>::zero();
+    let evaluation = zero.eval(&random_evaluation);
+    assert_eq!(evaluation, Fp::zero());
+}
+
+#[test]
+fn test_evaluation_constant_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let cst = Fp::rand(&mut rng);
+    let zero = Dense::<Fp, 4, 5>::from(cst);
+    let evaluation = zero.eval(&random_evaluation);
+    assert_eq!(evaluation, cst);
+}
+
+#[test]
+fn test_evaluation_predefined_polynomial() {
+    // Evaluating at random points
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 2] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    // P(X1, X2) = 2 + 3X1 + 4X2 + 5X1^2 + 6X1 X2 + 7 X2^2
+    let p = Dense::<Fp, 2, 2>::from_coeffs(vec![
+        Fp::from(2_u32),
+        Fp::from(3_u32),
+        Fp::from(4_u32),
+        Fp::from(5_u32),
+        Fp::from(6_u32),
+        Fp::from(7_u32),
+    ]);
+    let exp_eval = Fp::from(2_u32)
+        + Fp::from(3_u32) * random_evaluation[0]
+        + Fp::from(4_u32) * random_evaluation[1]
+        + Fp::from(5_u32) * random_evaluation[0] * random_evaluation[0]
+        + Fp::from(6_u32) * random_evaluation[0] * random_evaluation[1]
+        + Fp::from(7_u32) * random_evaluation[1] * random_evaluation[1];
+    let evaluation = p.eval(&random_evaluation);
+    assert_eq!(evaluation, exp_eval);
+}
+
+#[test]
+fn test_eval_pbt_add() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p3 = p1.clone() + p2.clone();
+    let eval_p1 = p1.eval(&random_evaluation);
+    let eval_p2 = p2.eval(&random_evaluation);
+    let eval_p3 = p3.eval(&random_evaluation);
+    assert_eq!(eval_p3, eval_p1 + eval_p2);
+}
+
+#[test]
+fn test_eval_pbt_sub() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p3 = p1.clone() - p2.clone();
+    let eval_p1 = p1.eval(&random_evaluation);
+    let eval_p2 = p2.eval(&random_evaluation);
+    let eval_p3 = p3.eval(&random_evaluation);
+    assert_eq!(eval_p3, eval_p1 - eval_p2);
+}
+
+#[test]
+fn test_eval_pbt_mul_by_scalar() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let c = Fp::rand(&mut rng);
+    let p2 = p1.clone() * Dense::<Fp, 6, 4>::from(c);
+    let eval_p1 = p1.eval(&random_evaluation);
+    let eval_p2 = p2.eval(&random_evaluation);
+    assert_eq!(eval_p2, eval_p1 * c);
+}
+
+#[test]
+fn test_eval_pbt_neg() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng) };
+    let p2 = -p1.clone();
+    let eval_p1 = p1.eval(&random_evaluation);
+    let eval_p2 = p2.eval(&random_evaluation);
+    assert_eq!(eval_p2, -eval_p1);
+}
