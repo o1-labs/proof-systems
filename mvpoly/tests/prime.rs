@@ -5,6 +5,7 @@ use kimchi::circuits::{
 };
 use mina_curves::pasta::Fp;
 use mvpoly::{prime::Dense, utils::PrimeNumberGenerator};
+use rand::Rng;
 
 #[test]
 fn test_vector_space_dimension() {
@@ -624,7 +625,7 @@ fn test_from_expr_ec_addition() {
 #[test]
 pub fn test_prime_increase_degree() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 6, 2>::random(&mut rng) };
+    let p1 = unsafe { Dense::<Fp, 6, 2>::random(&mut rng, None) };
     {
         let p1_prime = p1.increase_degree::<3>();
         let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
@@ -651,4 +652,46 @@ pub fn test_prime_increase_degree() {
     }
     // When precompution of prime factor decomposition is done, increase degree
     // in testing
+}
+
+#[test]
+fn test_degree_with_coeffs() {
+    let p = Dense::<Fp, 4, 5>::from_coeffs(vec![
+        Fp::from(2_u32),
+        Fp::from(3_u32),
+        Fp::from(4_u32),
+        Fp::from(5_u32),
+        Fp::from(6_u32),
+        Fp::from(7_u32),
+    ]);
+    let degree = unsafe { p.degree() };
+    assert_eq!(degree, 2);
+}
+
+#[test]
+fn test_degree_constant() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let c = Fp::rand(&mut rng);
+    let p = Dense::<Fp, 4, 5>::from(c);
+    let degree = unsafe { p.degree() };
+    assert_eq!(degree, 0);
+
+    let p = Dense::<Fp, 4, 5>::zero();
+    let degree = unsafe { p.degree() };
+    assert_eq!(degree, 0);
+}
+
+#[test]
+fn test_degree_random_degree() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let max_degree: usize = rng.gen_range(1..5);
+    let p: Dense<Fp, 4, 5> = unsafe { Dense::random(&mut rng, Some(max_degree)) };
+    let degree = unsafe { p.degree() };
+    assert!(degree <= max_degree);
+
+    let max_degree: usize = rng.gen_range(1..20);
+    // univariate
+    let p = unsafe { Dense::<Fp, 1, 20>::random(&mut rng, Some(max_degree)) };
+    let degree = unsafe { p.degree() };
+    assert!(degree <= max_degree);
 }
