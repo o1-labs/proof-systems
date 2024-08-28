@@ -224,7 +224,10 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         }
     }
 
-    /// Generate a random polynomial
+    /// Generate a random polynomial of maximum degree `max_degree`.
+    ///
+    /// If `None` is provided as the maximum degree, the polynomial will be
+    /// generated with a maximum degree of `D`.
     ///
     /// # Safety
     ///
@@ -234,12 +237,29 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     /// polynomial random generator, if needed.
     ///
     /// For now, the function is only used for testing.
-    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG) -> Self {
+
+    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
+        let mut prime_gen = PrimeNumberGenerator::new();
         let normalized_indices = Self::compute_normalized_indices();
-        let coeff = normalized_indices
-            .iter()
-            .map(|_| F::rand(rng))
-            .collect::<Vec<F>>();
+        // Different cases to avoid complexity in the case no maximum degree is
+        // provided
+        let coeff = if let Some(max_degree) = max_degree {
+            normalized_indices
+                .iter()
+                .map(|idx| {
+                    let degree = naive_prime_factors(*idx, &mut prime_gen)
+                        .iter()
+                        .fold(0, |acc, (_, d)| acc + d);
+                    if degree > max_degree {
+                        F::zero()
+                    } else {
+                        F::rand(rng)
+                    }
+                })
+                .collect::<Vec<F>>()
+        } else {
+            normalized_indices.iter().map(|_| F::rand(rng)).collect()
+        };
         Dense {
             coeff,
             normalized_indices,
