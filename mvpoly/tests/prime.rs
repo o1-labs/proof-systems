@@ -716,3 +716,66 @@ fn test_is_constant() {
     let p = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
     assert!(!p.is_constant());
 }
+
+#[test]
+fn test_mvpoly_add_degree_pbt() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let degree = rng.gen_range(1..5);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let p2 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let p3 = p1.clone() + p2.clone();
+    let degree_p1 = unsafe { p1.degree() };
+    let degree_p2 = unsafe { p2.degree() };
+    let degree_p3 = unsafe { p3.degree() };
+    assert!(degree_p3 <= std::cmp::max(degree_p1, degree_p2));
+}
+
+#[test]
+fn test_mvpoly_sub_degree_pbt() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let degree = rng.gen_range(1..5);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let p2 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let p3 = p1.clone() - p2.clone();
+    let degree_p1 = unsafe { p1.degree() };
+    let degree_p2 = unsafe { p2.degree() };
+    let degree_p3 = unsafe { p3.degree() };
+    assert!(degree_p3 <= std::cmp::max(degree_p1, degree_p2));
+}
+
+#[test]
+fn test_mvpoly_neg_degree_pbt() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let degree = rng.gen_range(1..5);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let p2 = -p1.clone();
+    let degree_p1 = unsafe { p1.degree() };
+    let degree_p2 = unsafe { p2.degree() };
+    assert_eq!(degree_p1, degree_p2);
+}
+
+#[test]
+fn test_mvpoly_mul_by_scalar_degree_pbt() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let degree = rng.gen_range(1..5);
+    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
+    let c = Fp::rand(&mut rng);
+    let p2 = p1.clone() * Dense::<Fp, 4, 5>::from(c);
+    let degree_p1 = unsafe { p1.degree() };
+    let degree_p2 = unsafe { p2.degree() };
+    assert!(degree_p2 <= degree_p1);
+}
+
+#[test]
+fn test_mvpoly_mul_degree_pbt() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    // half max degree
+    let degree = rng.gen_range(1..3);
+    let p1 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(degree)) };
+    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(degree)) };
+    let p3 = p1.clone() * p2.clone();
+    let degree_p1 = unsafe { p1.degree() };
+    let degree_p2 = unsafe { p2.degree() };
+    let degree_p3 = unsafe { p3.degree() };
+    assert!(degree_p3 <= degree_p1 + degree_p2);
+}
