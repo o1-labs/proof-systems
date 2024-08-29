@@ -2667,6 +2667,19 @@
 <a href="#2667" id="2667">2667</a>
 <a href="#2668" id="2668">2668</a>
 <a href="#2669" id="2669">2669</a>
+<a href="#2670" id="2670">2670</a>
+<a href="#2671" id="2671">2671</a>
+<a href="#2672" id="2672">2672</a>
+<a href="#2673" id="2673">2673</a>
+<a href="#2674" id="2674">2674</a>
+<a href="#2675" id="2675">2675</a>
+<a href="#2676" id="2676">2676</a>
+<a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3206,6 +3219,19 @@
         </span><span class="self">self</span>.lookup_8bits(value);
         <span class="comment">// Second, check upperbound: value + 2^8 - 2^bits &lt; 2^8
         </span><span class="self">self</span>.lookup_8bits(<span class="kw-2">&amp;</span>(value.clone() + <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>) - <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; bits)));
+    }
+
+    <span class="doccomment">/// Adds a lookup to the AtMost4Lookup table
+    </span><span class="kw">fn </span>lookup_2bits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTableIDs::AtMost4Lookup,
+            <span class="macro">vec!</span>[value.clone()],
+        ));
+    }
+
+    <span class="doccomment">/// Range checks with 1 lookup to the AtMost4Lookup table 0 &lt;= value &lt; 4
+    </span><span class="kw">fn </span>range_check2(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.lookup_2bits(value);
     }
 
     <span class="kw">fn </span>range_check64(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
@@ -3892,7 +3918,7 @@
                 <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>write_length, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
-            env.range_check8(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="number">2</span>);
+            env.range_check2(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register);
             <span class="kw">let </span>register_idx = {
                 <span class="kw">let </span>registers_left_to_write_after_this = {
                     <span class="kw">let </span>pos = env.alloc_scratch();
@@ -3961,7 +3987,7 @@
                         </span><span class="kw">let </span>pos = env.alloc_scratch();
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
                     };
-                    env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
+                    env.range_check2(<span class="kw-2">&amp;</span>byte_subaddr);
                     addr.clone() + Env::constant(<span class="number">4</span>) - byte_subaddr
                 };
                 <span class="kw">let </span>overwrite_0 = {
@@ -4900,7 +4926,7 @@
                 <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
-            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
+            env.range_check2(<span class="kw-2">&amp;</span>byte_subaddr);
 
             <span class="kw">let </span>overwrite_0 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
             <span class="kw">let </span>overwrite_1 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>)) + overwrite_0.clone();
@@ -5126,7 +5152,7 @@
                 </span><span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
-            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
+            env.range_check2(<span class="kw-2">&amp;</span>byte_subaddr);
 
             <span class="kw">let </span>overwrite_3 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">0</span>));
             <span class="kw">let </span>overwrite_2 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">1</span>)) + overwrite_3.clone();
@@ -5216,7 +5242,7 @@
                 <span class="kw">let </span>pos = env.alloc_scratch();
                 <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>addr, <span class="number">2</span>, <span class="number">0</span>, pos) }
             };
-            env.range_check8(<span class="kw-2">&amp;</span>byte_subaddr, <span class="number">2</span>);
+            env.range_check2(<span class="kw-2">&amp;</span>byte_subaddr);
 
             <span class="kw">let </span>overwrite_0 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
             <span class="kw">let </span>overwrite_1 = env.equal(<span class="kw-2">&amp;</span>byte_subaddr, <span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>)) + overwrite_0.clone();

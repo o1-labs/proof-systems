@@ -582,21 +582,6 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
@@ -1131,26 +1116,11 @@
 
         <span class="comment">// FIXED LOOKUPS
         // Check that 0 &lt;= preimage read &lt;= actual read &lt;= len &lt;= 4
-        </span><span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            <span class="macro">vec!</span>[len.clone()],
-        ));
-        <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            <span class="macro">vec!</span>[actual_read_bytes.clone()],
-        ));
-        <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            <span class="macro">vec!</span>[num_preimage_bytes_read.clone()],
-        ));
-        <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            <span class="macro">vec!</span>[len.clone() - actual_read_bytes.clone()],
-        ));
-        <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            <span class="macro">vec!</span>[actual_read_bytes.clone() - num_preimage_bytes_read.clone()],
-        ));
+        </span><span class="self">self</span>.lookup_2bits(len);
+        <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>actual_read_bytes);
+        <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>num_preimage_bytes_read);
+        <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>(len.clone() - actual_read_bytes.clone()));
+        <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>(actual_read_bytes.clone() - num_preimage_bytes_read.clone()));
 
         <span class="comment">// COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LEN {
