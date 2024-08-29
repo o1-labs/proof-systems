@@ -32,7 +32,7 @@ jobs:
         ocaml_version: ["4.14"]
         os: ["hetzner-1"]
     steps:
-      - name: Checkout PR
+      - name: Checkout repository
         uses: actions/checkout@v4.1.1
 
       - name: Use shared Rust toolchain setting up steps
