@@ -188,12 +188,7 @@ jobs:
         if: ${{ matrix.rust_toolchain_version == '1.74' }}
         run: |
           eval $(opam env)
-          make nextest-heavy-with-coverage
-      - name: Use shared Codecov reporting steps
-        if: ${{ matrix.rust_toolchain_version == '1.74' }}
-        uses: ./.github/actions/codecov-shared
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          make nextest-heavy
 
       - name: Doc tests
         run: |

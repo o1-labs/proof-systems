@@ -3,6 +3,9 @@ COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFIL
 # FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
 
+# Default target
+all: release
+
 # Install test dependencies
 install-test-deps:
 		@echo ""
@@ -17,9 +20,6 @@ install-test-deps:
 		@echo ""
 		@echo "Test dependencies installed."
 		@echo ""
-
-# Default target
-all: clean release
 
 # Clean the project
 clean:

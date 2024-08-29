@@ -11,7 +11,7 @@ inputs:
   flags:
     description: "Flags to pass to Codecov"
     required: false
-    default: "unittests"
+    default: ""
   name:
     description: "The report name"
     required: false
