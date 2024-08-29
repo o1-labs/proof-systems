@@ -21,7 +21,7 @@ jobs:
       matrix:
         rust_toolchain_version: ["1.72"]
     steps:
-      - name: Checkout PR
+      - name: Checkout repository
         uses: actions/checkout@v4.1.1
 
       - name: Use shared Rust toolchain setting up steps
@@ -42,7 +42,7 @@ jobs:
       matrix:
         rust_toolchain_version: ["nightly"]
     steps:
-      - name: Checkout PR
+      - name: Checkout repository
         uses: actions/checkout@v4.1.1
 
       - name: Use shared Rust toolchain setting up steps
@@ -68,7 +68,7 @@ jobs:
         ocaml_version: ["4.14"]
         os: ["ubuntu-latest"]
     steps:
-      - name: Checkout PR
+      - name: Checkout repo
         uses: actions/checkout@v4.1.1
 
       - name: Use shared Rust toolchain setting up steps
@@ -85,6 +85,19 @@ jobs:
         run: |
           # FIXME: 0.39.0 makes the CI fail
           npm install -g markdownlint-cli@0.38.0
+
+      # TODO: Remove debug logging
+      - name: Echo tollchain version and environment
+        run: |
+          echo rustc --version
+          echo ""
+          echo $GITHUB_PATH
+          echo ""
+          echo $PATH
+          echo ""
+          echo $CARGO_HOME
+          echo ""
+          env
 
       #
       # Doc & Spec
