@@ -24,16 +24,10 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
 
-      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-          chmod +x ./rustup-init
-          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-          rm ./rustup-init
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # overwriting default rust-toolchain
-          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
       - name: Build the mdbook
         run: |
@@ -51,33 +45,20 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
 
-      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-          chmod +x ./rustup-init
-          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-          rm ./rustup-init
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # overwriting default rust-toolchain
-          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
       - name: Run cargo fmt
         run: |
           make format
 
-  # We run only one of the matrix options on the toffee hetzner-1,
-  # and also only in this configuration we enable heavy tests.
-  run-checks-setup:
-    runs-on: ubuntu-latest
-    outputs:
-      runners: '{"1.71":"ubuntu-latest", "1.72": "ubuntu-latest", "1.73": "ubuntu-latest", "1.74": "hetzner-1"}'
-    steps:
-      - run: echo no-op
-
   run_checks:
-    needs: [run-checks-setup]
-
+    name: Run some basic checks and tests
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
         # FIXME: use the latest version of cargo nextest when we get rid of 1.71
@@ -87,34 +68,20 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
-
-    # See run-checks-setup
-    runs-on: ${{ fromJSON(needs.run-checks-setup.outputs.runners)[matrix.rust_toolchain_version] }}
-
-    name: Run some basic checks and tests
+        os: ["ubuntu-latest"]
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
 
-      # as action-rs does not seem to be maintained anymore, building from
-      # scratch the environment using rustup
-      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-          https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-          chmod +x ./rustup-init
-          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
-          rm ./rustup-init
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # overwriting default rust-toolchain
-          echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
-
-      - name: Setup OCaml ${{ matrix.ocaml_version }}
-        uses: ocaml/setup-ocaml@v2
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
         with:
-          ocaml-compiler: ${{ matrix.ocaml_version }}
-          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
-          # disable-cache: true
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
 
       - name: Install markdownlint
         run: |
@@ -165,7 +132,7 @@ jobs:
       - name: Ensure that everything builds
         run: |
           eval $(opam env)
-          make all
+          make
 
       #
       # Tests
@@ -175,20 +142,23 @@ jobs:
         run: |
           make install-test-deps
 
-      - name: Run non-heavy tests
+      - name: Run non-heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make nextest
+
+      - name: Run non-heavy tests with the code coverage
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest-with-coverage
+
       - name: Use shared Codecov reporting steps
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         uses: ./.github/actions/codecov-shared
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Run heavy tests
-        if: ${{ matrix.rust_toolchain_version == '1.74' }}
-        run: |
-          eval $(opam env)
-          make nextest-heavy
 
       - name: Doc tests
         run: |
