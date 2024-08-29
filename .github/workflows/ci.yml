@@ -91,13 +91,17 @@ jobs:
       # TODO: Remove debug logging
       - name: Echo tollchain version and environment
         run: |
-          echo rustc --version
+          rustc --version
+          echo ""
+          cargo --version
           echo ""
           echo $GITHUB_PATH
           echo ""
           echo $PATH
           echo ""
           echo $CARGO_HOME
+          echo ""
+          cat rust-toolchain
           echo ""
           env
 
