@@ -695,3 +695,24 @@ fn test_degree_random_degree() {
     let degree = unsafe { p.degree() };
     assert!(degree <= max_degree);
 }
+
+#[test]
+fn test_is_constant() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let c = Fp::rand(&mut rng);
+    let p = Dense::<Fp, 4, 5>::from(c);
+    assert!(p.is_constant());
+
+    let p = Dense::<Fp, 4, 5>::zero();
+    assert!(p.is_constant());
+
+    let p = Dense::<Fp, 4, 5>::from_variable(2_usize);
+    assert!(!p.is_constant());
+
+    let p = Dense::<Fp, 4, 5>::from_variable(3_usize);
+    assert!(!p.is_constant());
+
+    // This might be flaky
+    let p = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
+    assert!(!p.is_constant());
+}
