@@ -10,8 +10,8 @@ env:
   CARGO_INCREMENTAL: 1
   # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
   CARGO_TERM_COLOR: always
-  RUST_MIN_STACK: 31457280
   # 30 MB of stack for Keccak tests
+  RUST_MIN_STACK: 31457280
 
 jobs:
   run_mdbook:
@@ -22,7 +22,9 @@ jobs:
         rust_toolchain_version: ["1.72"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -43,7 +45,9 @@ jobs:
         rust_toolchain_version: ["nightly"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -68,8 +72,10 @@ jobs:
         ocaml_version: ["4.14"]
         os: ["ubuntu-latest"]
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4.1.1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -85,23 +91,6 @@ jobs:
         run: |
           # FIXME: 0.39.0 makes the CI fail
           npm install -g markdownlint-cli@0.38.0
-
-      # TODO: Remove debug logging
-      - name: Echo tollchain version and environment
-        run: |
-          rustc --version
-          echo ""
-          cargo --version
-          echo ""
-          echo $GITHUB_PATH
-          echo ""
-          echo $PATH
-          echo ""
-          echo $CARGO_HOME
-          echo ""
-          cat rust-toolchain
-          echo ""
-          env
 
       #
       # Doc & Spec

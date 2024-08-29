@@ -17,7 +17,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
