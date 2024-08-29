@@ -7,15 +7,15 @@ GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --
 all: release
 
 # Install test dependencies
+# https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+# FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
+# FIXME: latest 0.8.19+ requires rustc 1.74+
 install-test-deps:
 		@echo ""
 		@echo "Installing the test dependencies."
 		@echo ""
 		rustup component add llvm-tools-preview
-		# https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-		# FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
 		cargo install cargo-nextest@=0.9.67 --locked
-		# FIXME: latest 0.8.19+ requires rustc 1.74+
 		cargo install grcov@=0.8.13 --locked
 		@echo ""
 		@echo "Test dependencies installed."
