@@ -301,6 +301,37 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         D
     }
 
+    pub fn is_constant(&self) -> bool {
+        self.coeff.iter().skip(1).all(|c| c.is_zero())
+    }
+
+    /// Returns the degree of the polynomial.
+    ///
+    /// The degree of the polynomial is the maximum degree of the monomials
+    /// that have a non-zero coefficient.
+    ///
+    /// # Safety
+    ///
+    /// The zero polynomial as a degree equals to 0, as the degree of the
+    /// constant polynomials. We do use the `unsafe` keyword to warn the user
+    /// for this specific case.
+    pub unsafe fn degree(&self) -> usize {
+        if self.is_constant() {
+            return 0;
+        }
+        let mut prime_gen = PrimeNumberGenerator::new();
+        self.coeff.iter().enumerate().fold(1, |acc, (i, c)| {
+            if *c != F::zero() {
+                let decomposition_of_i =
+                    naive_prime_factors(self.normalized_indices[i], &mut prime_gen);
+                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
+                acc.max(monomial_degree)
+            } else {
+                acc
+            }
+        })
+    }
+
     /// Output example for N = 2 and D = 2:
     /// ```text
     /// - 0 -> 1
