@@ -61,8 +61,6 @@ jobs:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
-        # FIXME: use the latest version of cargo nextest when we get rid of 1.71
-        # and 1.72
         rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
