@@ -49,8 +49,7 @@ jobs:
         run: |
           make install-test-deps
 
-      - name: Run all tests
-        if: ${{ matrix.rust_toolchain_version == '1.74' }}
+      - name: Run all tests with the code coverage
         run: |
           eval $(opam env)
           make clean
