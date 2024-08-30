@@ -61,8 +61,6 @@ The project is organized in the following way:
 ## Contributing
 
 Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing to this project.
-<<<<<<< HEAD
-=======
 
 ## Generate rustdoc locally
 
@@ -82,10 +80,15 @@ You can visualize the documentation by opening the file `target/doc/index.html`.
 
 <!-- Please update this section if you add more workflows -->
 
-The CI will build different targets.
+- [CI](.github/workflows/ci.yml).  
+  This workflow ensures that the entire project builds correctly, adheres to guidelines, and passes all necessary tests.
+- [Nightly tests with code coverage](.github/workflows/ci-nightly.yml).  
+  This workflow runs all the tests nightly or on demand, generates and publishes the code coverage report.
+- [Benchmarks](.github/workflows/benches.yml).  
+  This workflow runs benchmarks when a pull request is labeled with "benchmark." It sets up the Rust and OCaml environments, installs necessary tools, and executes cargo criterion benchmarks on the kimchi crate. The benchmark results are then posted as a comment on the pull request for review.
+- [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).  
+  When CI passes on master, the documentation built from the rust code will be available by this [link](https://o1-labs.github.io/proof-systems/rustdoc) and the book will be available by this [link](https://o1-labs.github.io/proof-systems).
 
-- [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).
-  When CI passes on master, the documentation built from the rust code will be
-  available [here](https://o1-labs.github.io/proof-systems/rustdoc) and the book
-  will be available [here](https://o1-labs.github.io/proof-systems).
->>>>>>> 2fd953cd04 (Add the test coverage data gathering and reports generation.)
+## Nix for Dependencies (WIP)
+
+If you have `nix` installed and in particular, `flakes` enabled, you can install the dependencies for these projects using nix. Simply `nix develop .` inside this directory to bring into scope `rustup`, `opam`, and `go` (along with a few other tools). You will have to manage the toolchains yourself using `rustup` and `opam`, in the current iteration.

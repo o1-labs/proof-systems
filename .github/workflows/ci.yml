@@ -146,7 +146,6 @@ jobs:
         if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
-          make clean
           make nextest
 
       - name: Run non-heavy tests with the code coverage
