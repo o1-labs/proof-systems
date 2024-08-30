@@ -82,8 +82,8 @@ You can visualize the documentation by opening the file `target/doc/index.html`.
 
 - [CI](.github/workflows/ci.yml).  
   This workflow ensures that the entire project builds correctly, adheres to guidelines, and passes all necessary tests.
-- [Nightly tests with code coverage](.github/workflows/ci-nightly.yml).  
-  This workflow runs all the tests nightly or on demand, generates and publishes the code coverage report.
+- [On-demand tests with the code coverage](.github/workflows/ci-on-demand.yml).  
+  This workflow runs all the tests on demand, generates and attaches the code coverage report to job execution results.
 - [Benchmarks](.github/workflows/benches.yml).  
   This workflow runs benchmarks when a pull request is labeled with "benchmark." It sets up the Rust and OCaml environments, installs necessary tools, and executes cargo criterion benchmarks on the kimchi crate. The benchmark results are then posted as a comment on the pull request for review.
 - [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).  
