@@ -157,6 +157,7 @@ jobs:
           make install-test-deps
 
       - name: Run non-heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
