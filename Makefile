@@ -6,6 +6,16 @@ GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --
 # Default target
 all: release
 
+setup:
+		@echo ""
+		@echo "Syncing the Git submodules."
+		@echo ""
+		git submodule sync
+		git submodule update --init --recursive
+		@echo ""
+		@echo "Git submodules synced."
+		@echo ""
+
 # Install test dependencies
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
@@ -87,7 +97,7 @@ format:
 
 # Lint the code
 lint:
-		cargo clippy --all-features --all-targets --tests -- -W clippy::all -D warnings
+		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report:
 		@echo ""
@@ -103,4 +113,4 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-.PHONY: install-test-deps all clean build release test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
+.PHONY: all setup install-test-deps clean build release test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
