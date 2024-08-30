@@ -162,7 +162,7 @@ jobs:
           eval $(opam env)
           make nextest
 
-      - name: Run non-heavy tests with the code coverage
+      - name: Run heavy tests with the code coverage
         if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
