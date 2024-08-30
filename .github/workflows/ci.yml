@@ -62,7 +62,7 @@ jobs:
           make format
 
   run_checks:
-    name: Run some basic checks and tests
+    name: Run checks and tests
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
