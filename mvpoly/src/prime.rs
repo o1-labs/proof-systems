@@ -144,12 +144,21 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter, Result},
-    ops::{Add, Mul},
+    ops::{Add, Mul, Neg, Sub},
 };
 
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::{
+    expr::{
+        ChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations,
+        Variable,
+    },
+    gate::CurrOrNext,
+};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
+use rand::RngCore;
+use std::ops::{Index, IndexMut};
 
 use crate::utils::{
     compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
@@ -161,6 +170,7 @@ use crate::utils::{
 /// of the coefficient corresponds to the index of the monomial.
 /// A mapping between the index and the prime decomposition of the monomial is
 /// stored in `normalized_indices`.
+#[derive(Clone)]
 pub struct Dense<F: PrimeField, const N: usize, const D: usize> {
     coeff: Vec<F>,
     // keeping track of the indices of the monomials that are normalized
@@ -170,11 +180,88 @@ pub struct Dense<F: PrimeField, const N: usize, const D: usize> {
     normalized_indices: Vec<usize>,
 }
 
+impl<F: PrimeField, const N: usize, const D: usize> Index<usize> for Dense<F, N, D> {
+    type Output = F;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.coeff[index]
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> IndexMut<usize> for Dense<F, N, D> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.coeff[index]
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Zero for Dense<F, N, D> {
+    fn is_zero(&self) -> bool {
+        self.coeff.iter().all(|c| c.is_zero())
+    }
+
+    fn zero() -> Self {
+        Dense {
+            coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices: Self::compute_normalized_indices(),
+        }
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> One for Dense<F, N, D> {
+    fn one() -> Self {
+        let mut result = Dense::zero();
+        result.coeff[0] = F::one();
+        result
+    }
+}
+
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     pub fn new() -> Self {
         let normalized_indices = Self::compute_normalized_indices();
         Dense {
             coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices,
+        }
+    }
+
+    /// Generate a random polynomial of maximum degree `max_degree`.
+    ///
+    /// If `None` is provided as the maximum degree, the polynomial will be
+    /// generated with a maximum degree of `D`.
+    ///
+    /// # Safety
+    ///
+    /// Marked as unsafe to warn the user to use it with caution and to not
+    /// necessarily rely on it for security/randomness in cryptographic
+    /// protocols. The user is responsible for providing its own secure
+    /// polynomial random generator, if needed.
+    ///
+    /// For now, the function is only used for testing.
+
+    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let normalized_indices = Self::compute_normalized_indices();
+        // Different cases to avoid complexity in the case no maximum degree is
+        // provided
+        let coeff = if let Some(max_degree) = max_degree {
+            normalized_indices
+                .iter()
+                .map(|idx| {
+                    let degree = naive_prime_factors(*idx, &mut prime_gen)
+                        .iter()
+                        .fold(0, |acc, (_, d)| acc + d);
+                    if degree > max_degree {
+                        F::zero()
+                    } else {
+                        F::rand(rng)
+                    }
+                })
+                .collect::<Vec<F>>()
+        } else {
+            normalized_indices.iter().map(|_| F::rand(rng)).collect()
+        };
+        Dense {
+            coeff,
             normalized_indices,
         }
     }
@@ -191,12 +278,58 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         }
     }
 
+    pub fn from_variable<C: Into<usize>>(var: C) -> Self {
+        let mut res = Self::zero();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let var_usize: usize = var.into();
+        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
+        let inv_var = res
+            .normalized_indices
+            .iter()
+            .position(|&x| x == var_usize)
+            .unwrap();
+        res[inv_var] = F::one();
+        res
+    }
+
     pub fn number_of_variables(&self) -> usize {
         N
     }
 
     pub fn maximum_degree(&self) -> usize {
         D
+    }
+
+    pub fn is_constant(&self) -> bool {
+        self.coeff.iter().skip(1).all(|c| c.is_zero())
+    }
+
+    /// Returns the degree of the polynomial.
+    ///
+    /// The degree of the polynomial is the maximum degree of the monomials
+    /// that have a non-zero coefficient.
+    ///
+    /// # Safety
+    ///
+    /// The zero polynomial as a degree equals to 0, as the degree of the
+    /// constant polynomials. We do use the `unsafe` keyword to warn the user
+    /// for this specific case.
+    pub unsafe fn degree(&self) -> usize {
+        if self.is_constant() {
+            return 0;
+        }
+        let mut prime_gen = PrimeNumberGenerator::new();
+        self.coeff.iter().enumerate().fold(1, |acc, (i, c)| {
+            if *c != F::zero() {
+                let decomposition_of_i =
+                    naive_prime_factors(self.normalized_indices[i], &mut prime_gen);
+                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
+                acc.max(monomial_degree)
+            } else {
+                acc
+            }
+        })
     }
 
     /// Output example for N = 2 and D = 2:
@@ -246,6 +379,66 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             });
         is_homogeneous
     }
+
+    pub fn double(&self) -> Self {
+        let coeffs = self.coeff.iter().map(|c| c.double()).collect();
+        Self::from_coeffs(coeffs)
+    }
+
+    pub fn mul_by_scalar(&self, c: F) -> Self {
+        let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
+        Self::from_coeffs(coeffs)
+    }
+
+    /// Evaluate the polynomial at the vector point `x`.
+    ///
+    /// This is a dummy implementation. A cache can be used for the monomials to
+    /// speed up the computation.
+    pub fn eval(&self, x: &[F; N]) -> F {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        self.coeff
+            .iter()
+            .enumerate()
+            .fold(F::zero(), |acc, (i, c)| {
+                if i == 0 {
+                    acc + c
+                } else {
+                    let normalized_index = self.normalized_indices[i];
+                    // IMPROVEME: we should keep the prime decomposition somewhere.
+                    // It can be precomputed for a few multi-variate polynomials
+                    // vector space
+                    let prime_decomposition = naive_prime_factors(normalized_index, &mut prime_gen);
+                    let mut monomial = F::one();
+                    prime_decomposition.iter().for_each(|(p, d)| {
+                        // IMPROVEME: we should keep the inverse indices
+                        let inv_p = primes.iter().position(|&x| x == *p).unwrap();
+                        let x_p = x[inv_p].pow([*d as u64]);
+                        monomial *= x_p;
+                    });
+                    acc + *c * monomial
+                }
+            })
+    }
+
+    pub fn increase_degree<const D_PRIME: usize>(&self) -> Dense<F, N, D_PRIME> {
+        assert!(D <= D_PRIME, "The degree of the target polynomial must be greater or equal to the degree of the source polynomial");
+        let mut result: Dense<F, N, D_PRIME> = Dense::zero();
+        let dst_normalized_indices = Dense::<F, N, D_PRIME>::compute_normalized_indices();
+        let src_normalized_indices = Dense::<F, N, D>::compute_normalized_indices();
+        src_normalized_indices
+            .iter()
+            .enumerate()
+            .for_each(|(i, idx)| {
+                // IMPROVEME: should be computed once
+                let inv_idx = dst_normalized_indices
+                    .iter()
+                    .position(|&x| x == *idx)
+                    .unwrap();
+                result[inv_idx] = self[i];
+            });
+        result
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Default for Dense<F, N, D> {
@@ -259,11 +452,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add for Dense<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -271,11 +466,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -283,11 +480,13 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
-        }
-        result
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -295,11 +494,87 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for &De
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a + *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
+    }
+}
+
+// Subtraction
+impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
         let mut result = Dense::new();
         for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] + other.coeff[i];
+            result.coeff[i] = self.coeff[i] - other.coeff[i];
         }
         result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<Dense<F, N, D>> for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
+        let coeffs = self
+            .coeff
+            .iter()
+            .zip(other.coeff.iter())
+            .map(|(a, b)| *a - *b)
+            .collect();
+        Dense::from_coeffs(coeffs)
+    }
+}
+
+// Negation
+impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let coeffs = self.coeff.iter().map(|c| -*c).collect();
+        Self::from_coeffs(coeffs)
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Neg for &Dense<F, N, D> {
+    type Output = Dense<F, N, D>;
+
+    fn neg(self) -> Self::Output {
+        let coeffs = self.coeff.iter().map(|c| -*c).collect();
+        Dense::from_coeffs(coeffs)
     }
 }
 
@@ -376,6 +651,148 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
             }
         });
         Ok(())
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> From<F> for Dense<F, N, D> {
+    fn from(value: F) -> Self {
+        let mut result = Self::zero();
+        result.coeff[0] = value;
+        result
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> From<ConstantExprInner<F>> for Dense<F, N, D> {
+    fn from(expr: ConstantExprInner<F>) -> Self {
+        match expr {
+            // The unimplemented methods might be implemented in the future if
+            // we move to the challenge into the type of the constant
+            // terms/expressions
+            // Unrolling for visibility
+            ConstantExprInner::Challenge(ChallengeTerm::Alpha) => {
+                unimplemented!("The challenge alpha is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::Beta) => {
+                unimplemented!("The challenge beta is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::Gamma) => {
+                unimplemented!("The challenge gamma is not supposed to be used in this context")
+            }
+            ConstantExprInner::Challenge(ChallengeTerm::JointCombiner) => {
+                unimplemented!(
+                    "The challenge joint combiner is not supposed to be used in this context"
+                )
+            }
+            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
+                unimplemented!(
+                    "The constant EndoCoefficient is not supposed to be used in this context"
+                )
+            }
+            ConstantExprInner::Constant(ConstantTerm::Mds {
+                row: _row,
+                col: _col,
+            }) => {
+                unimplemented!("The constant Mds is not supposed to be used in this context")
+            }
+            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Dense::from(c),
+        }
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> From<Operations<ConstantExprInner<F>>>
+    for Dense<F, N, D>
+{
+    fn from(op: Operations<ConstantExprInner<F>>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+        match op {
+            Atom(op_const) => Self::from(op_const),
+            Add(c1, c2) => Self::from(*c1) + Self::from(*c2),
+            Sub(c1, c2) => Self::from(*c1) - Self::from(*c2),
+            Mul(c1, c2) => Self::from(*c1) * Self::from(*c2),
+            Square(c) => Self::from(*c.clone()) * Self::from(*c),
+            Double(c1) => Self::from(*c1).double(),
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Dense::from(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
+}
+
+impl<Column: Into<usize>, F: PrimeField, const N: usize, const D: usize>
+    From<Expr<ConstantExpr<F>, Column>> for Dense<F, N, D>
+{
+    fn from(expr: Expr<ConstantExpr<F>, Column>) -> Self {
+        // This is a dummy implementation
+        // TODO: Implement the actual conversion logic
+        use kimchi::circuits::expr::Operations::*;
+
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from(c),
+                    ExprInner::Cell(Variable { col, row }) => {
+                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
+                        Self::from_variable(col)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Dense::from(*e1);
+                let p2 = Dense::from(*e2);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Dense::from(*p);
+                p.double()
+            }
+            Square(p) => {
+                let p = Dense::from(*p);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Dense::from(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
     }
 }
 

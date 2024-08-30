@@ -14,10 +14,17 @@ path = "src/lib.rs"
 
 [dependencies]
 ark-ff.workspace = true
+kimchi.workspace = true
 log.workspace = true
 num-integer.workspace = true
 o1-utils.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
 mina-curves.workspace = true
 rand.workspace = true
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "prime"
+harness = false

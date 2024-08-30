@@ -539,6 +539,19 @@ pub trait InterpreterEnv {
         self.lookup_8bits(&(value.clone() + Self::constant(1 << 8) - Self::constant(1 << bits)));
     }
 
+    /// Adds a lookup to the AtMost4Lookup table
+    fn lookup_2bits(&mut self, value: &Self::Variable) {
+        self.add_lookup(Lookup::read_one(
+            LookupTableIDs::AtMost4Lookup,
+            vec![value.clone()],
+        ));
+    }
+
+    /// Range checks with 1 lookup to the AtMost4Lookup table 0 <= value < 4
+    fn range_check2(&mut self, value: &Self::Variable) {
+        self.lookup_2bits(value);
+    }
+
     fn range_check64(&mut self, _value: &Self::Variable) {
         // TODO
     }
@@ -1223,7 +1236,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&write_length, 2, 0, pos) }
             };
-            env.range_check8(&bytes_to_preserve_in_register, 2);
+            env.range_check2(&bytes_to_preserve_in_register);
             let register_idx = {
                 let registers_left_to_write_after_this = {
                     let pos = env.alloc_scratch();
@@ -1292,7 +1305,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                         let pos = env.alloc_scratch();
                         unsafe { env.bitmask(&addr, 2, 0, pos) }
                     };
-                    env.range_check8(&byte_subaddr, 2);
+                    env.range_check2(&byte_subaddr);
                     addr.clone() + Env::constant(4) - byte_subaddr
                 };
                 let overwrite_0 = {
@@ -2231,7 +2244,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check8(&byte_subaddr, 2);
+            env.range_check2(&byte_subaddr);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
@@ -2457,7 +2470,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check8(&byte_subaddr, 2);
+            env.range_check2(&byte_subaddr);
 
             let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
             let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
@@ -2547,7 +2560,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&addr, 2, 0, pos) }
             };
-            env.range_check8(&byte_subaddr, 2);
+            env.range_check2(&byte_subaddr);
 
             let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
             let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
