@@ -262,10 +262,6 @@ pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usi
                     k
                 })
                 .collect();
-            assert!(
-                div == n,
-                "The division must be equal to the number of terms at the end"
-            );
             indices
         })
         .collect()
