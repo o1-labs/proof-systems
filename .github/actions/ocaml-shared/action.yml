@@ -1,0 +1,15 @@
+name: "Shared OCaml setting up steps"
+description: "Shared OCaml setting up steps"
+inputs:
+  ocaml_version:
+    description: "OCaml version"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup OCaml ${{ inputs.ocaml_version }}
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: ${{ inputs.ocaml_version }}
+        # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
+        # disable-cache: true
