@@ -58,19 +58,11 @@ jobs:
         run: |
           make format
 
-  # We run only one of the matrix options on the toffee hetzner-1 self-hosted GitHub runner.
-  # Only in this configuration we enable heavy tests with the code coverage data gathering.
-  run_checks_setup:
-    runs-on: ubuntu-latest
-    outputs:
-      runners: '{"1.71":"ubuntu-latest", "1.72": "ubuntu-latest", "1.73": "ubuntu-latest", "1.74": "hetzner-1"}'
-    steps:
-      - run: echo no-op
-
   run_checks:
-    needs: [run_checks_setup]
     name: Run checks and tests
-    runs-on: ${{ fromJSON(needs.run_checks_setup.outputs.runners)[matrix.rust_toolchain_version] }}
+    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
+    # Only in this configuration we enable heavy tests with the code coverage data gathering.
+    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
