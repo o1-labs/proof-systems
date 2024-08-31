@@ -64,7 +64,7 @@ jobs:
   run_checks:
     name: Run checks and tests
     # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
-    # Only in this configuration we enable heavy tests with the code coverage data gathering.
+    # Only in this configuration we enable tests with the code coverage data gathering.
     runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
