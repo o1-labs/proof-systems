@@ -164,6 +164,10 @@ jobs:
           eval $(opam env)
           make nextest-with-coverage
 
+      - name: Use shared code coverage summary
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        uses: ./.github/actions/coverage-summary-shared
+
       - name: Use shared Codecov reporting steps
         if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         uses: ./.github/actions/codecov-shared
