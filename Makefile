@@ -99,7 +99,7 @@ nextest-all-with-coverage:
 
 # Format the code
 format:
-		cargo fmt -- --check
+		cargo +nightly fmt -- --check
 
 # Lint the code
 lint:
