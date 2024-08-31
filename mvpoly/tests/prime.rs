@@ -802,3 +802,30 @@ fn test_mvpoly_mul_pbt() {
     let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
     assert_eq!(p1.clone() * p2.clone(), p2.clone() * p1.clone());
 }
+
+#[test]
+fn test_mvpoly_compute_cross_terms_eval_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Dense::<Fp, 4, 2>::random(&mut rng, None) };
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let eval: [Fp; 4] = [Fp::zero(); 4];
+    let res = p1.compute_cross_terms(&eval, &eval, u1, u2);
+    res.iter()
+        .for_each(|(_power, cross_term)| assert_eq!(*cross_term, Fp::zero()));
+}
+
+// FIXME
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_two() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Dense::<Fp, 4, 2>::random(&mut rng, None) };
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let res = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    // We only have one cross-term in this case
+    assert_eq!(res.len(), 1);
+    println!("{:?}", res);
+}
