@@ -164,8 +164,9 @@ jobs:
         if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
-          make test-doc-with-coverage
           make nextest-with-coverage
+          make test-doc-with-coverage
+          make generate-test-coverage-report
 
       - name: Use shared code coverage summary
         if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
