@@ -43,6 +43,13 @@ build:
 release:
 		cargo build --release --all-targets --all-features
 
+# Test the project's docs comments
+test-doc:
+		cargo test --all-features --release --doc
+
+test-doc-with-coverage:
+		$(COVERAGE_ENV) $(MAKE) test-doc
+
 # Test the project with non-heavy tests and using native cargo test runner
 test:
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
@@ -113,4 +120,4 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-.PHONY: all setup install-test-deps clean build release test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
