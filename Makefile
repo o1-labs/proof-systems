@@ -1,5 +1,8 @@
 # Variables
-COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
+# Known coverage limitations and issues:
+# - https://github.com/rust-lang/rust/issues/79417
+# - https://github.com/nextest-rs/nextest/issues/16
+COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' RUSTDOCFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
 # FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
 
@@ -56,7 +59,6 @@ test:
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
-		$(MAKE) generate-test-coverage-report
 
 # Test the project with heavy tests and using native cargo test runner
 test-heavy:
@@ -64,7 +66,6 @@ test-heavy:
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
-		$(MAKE) generate-test-coverage-report
 
 # Test the project with all tests and using native cargo test runner
 test-all:
@@ -72,7 +73,6 @@ test-all:
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
-		$(MAKE) generate-test-coverage-report
 
 # Test the project with non-heavy tests and using nextest test runner
 nextest:
@@ -80,7 +80,6 @@ nextest:
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
-		$(MAKE) generate-test-coverage-report
 
 # Test the project with heavy tests and using nextest test runner
 nextest-heavy:
@@ -88,7 +87,6 @@ nextest-heavy:
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
-		$(MAKE) generate-test-coverage-report
 
 # Test the project with all tests and using nextest test runner
 nextest-all:
@@ -96,7 +94,6 @@ nextest-all:
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
-		$(MAKE) generate-test-coverage-report
 
 # Format the code
 format:
