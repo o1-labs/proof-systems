@@ -148,6 +148,12 @@ jobs:
         run: |
           make install-test-deps
 
+      - name: Doc tests
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make test-doc
+
       - name: Run non-heavy tests without the code coverage
         if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
@@ -158,6 +164,7 @@ jobs:
         if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
+          make test-doc-with-coverage
           make nextest-with-coverage
 
       - name: Use shared code coverage summary
@@ -169,8 +176,3 @@ jobs:
         uses: ./.github/actions/codecov-shared
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Doc tests
-        run: |
-          eval $(opam env)
-          cargo test --all-features --release --doc
