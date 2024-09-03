@@ -28,3 +28,7 @@ criterion = { version = "0.5.1", features = ["html_reports"] }
 [[bench]]
 name = "prime"
 harness = false
+
+[[bench]]
+name = "monomials"
+harness = false

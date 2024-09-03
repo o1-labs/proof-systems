@@ -224,6 +224,10 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
         }
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
+        self.coeff.iter()
+    }
+
     /// Generate a random polynomial of maximum degree `max_degree`.
     ///
     /// If `None` is provided as the maximum degree, the polynomial will be
@@ -237,7 +241,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     /// polynomial random generator, if needed.
     ///
     /// For now, the function is only used for testing.
-
     pub unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let mut prime_gen = PrimeNumberGenerator::new();
         let normalized_indices = Self::compute_normalized_indices();
