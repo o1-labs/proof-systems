@@ -30,3 +30,15 @@ multiplications can also be avoided.
 The contiguous array is passed as a parameter on the stack to the function. The
 CPU cache should be big enough to handle for low-degree folding schemes (like 5
 or 6).
+
+### Next steps
+
+- [x] Method to compute cross-terms (2502)
+- [ ] Change EC scalar multiplication to use the permutation argument later.
+  -> 1 day
+- [ ] Permutation argument -> 2-3 days
+  - We don't necessarily need it in folding because it is linear.
+- [ ] Coining challenges + verification en circuit
+- [ ] Compute cross-terms with the existing expressions and commit to it + pass
+      as public input
+- [ ] Compute challenge r
