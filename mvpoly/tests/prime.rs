@@ -802,3 +802,20 @@ fn test_mvpoly_mul_pbt() {
     let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
     assert_eq!(p1.clone() * p2.clone(), p2.clone() * p1.clone());
 }
+
+#[test]
+fn test_can_be_printed_with_debug() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Dense::<Fp, 2, 2>::random(&mut rng, None) };
+    println!("{:?}", p1);
+}
+
+#[test]
+fn test_is_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Dense::<Fp, 4, 6>::zero();
+    assert!(p1.is_zero());
+
+    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, None) };
+    assert!(!p2.is_zero());
+}
