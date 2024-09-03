@@ -4,7 +4,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 use mina_curves::pasta::Fp;
-use mvpoly::{prime::Dense, utils::PrimeNumberGenerator};
+use mvpoly::{prime::Dense, utils::PrimeNumberGenerator, MVPoly};
 use rand::Rng;
 
 #[test]

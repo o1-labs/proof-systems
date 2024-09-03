@@ -160,8 +160,9 @@ use o1_utils::FieldHelpers;
 use rand::RngCore;
 use std::ops::{Index, IndexMut};
 
-use crate::utils::{
-    compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
+use crate::{
+    utils::{compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator},
+    MVPoly,
 };
 
 /// Represents a multivariate polynomial of degree less than `D` in `N` variables.
@@ -215,19 +216,7 @@ impl<F: PrimeField, const N: usize, const D: usize> One for Dense<F, N, D> {
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
-    pub fn new() -> Self {
-        let normalized_indices = Self::compute_normalized_indices();
-        Dense {
-            coeff: vec![F::zero(); Self::dimension()],
-            normalized_indices,
-        }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &F> {
-        self.coeff.iter()
-    }
-
+impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F, N, D> {
     /// Generate a random polynomial of maximum degree `max_degree`.
     ///
     /// If `None` is provided as the maximum degree, the polynomial will be
@@ -241,7 +230,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     /// polynomial random generator, if needed.
     ///
     /// For now, the function is only used for testing.
-    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
+    unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let mut prime_gen = PrimeNumberGenerator::new();
         let normalized_indices = Self::compute_normalized_indices();
         // Different cases to avoid complexity in the case no maximum degree is
@@ -267,6 +256,91 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             coeff,
             normalized_indices,
         }
+    }
+
+    fn is_constant(&self) -> bool {
+        self.coeff.iter().skip(1).all(|c| c.is_zero())
+    }
+
+    /// Returns the degree of the polynomial.
+    ///
+    /// The degree of the polynomial is the maximum degree of the monomials
+    /// that have a non-zero coefficient.
+    ///
+    /// # Safety
+    ///
+    /// The zero polynomial as a degree equals to 0, as the degree of the
+    /// constant polynomials. We do use the `unsafe` keyword to warn the user
+    /// for this specific case.
+    unsafe fn degree(&self) -> usize {
+        if self.is_constant() {
+            return 0;
+        }
+        let mut prime_gen = PrimeNumberGenerator::new();
+        self.coeff.iter().enumerate().fold(1, |acc, (i, c)| {
+            if *c != F::zero() {
+                let decomposition_of_i =
+                    naive_prime_factors(self.normalized_indices[i], &mut prime_gen);
+                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
+                acc.max(monomial_degree)
+            } else {
+                acc
+            }
+        })
+    }
+
+    fn double(&self) -> Self {
+        let coeffs = self.coeff.iter().map(|c| c.double()).collect();
+        Self::from_coeffs(coeffs)
+    }
+
+    fn mul_by_scalar(&self, c: F) -> Self {
+        let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
+        Self::from_coeffs(coeffs)
+    }
+
+    /// Evaluate the polynomial at the vector point `x`.
+    ///
+    /// This is a dummy implementation. A cache can be used for the monomials to
+    /// speed up the computation.
+    fn eval(&self, x: &[F; N]) -> F {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        self.coeff
+            .iter()
+            .enumerate()
+            .fold(F::zero(), |acc, (i, c)| {
+                if i == 0 {
+                    acc + c
+                } else {
+                    let normalized_index = self.normalized_indices[i];
+                    // IMPROVEME: we should keep the prime decomposition somewhere.
+                    // It can be precomputed for a few multi-variate polynomials
+                    // vector space
+                    let prime_decomposition = naive_prime_factors(normalized_index, &mut prime_gen);
+                    let mut monomial = F::one();
+                    prime_decomposition.iter().for_each(|(p, d)| {
+                        // IMPROVEME: we should keep the inverse indices
+                        let inv_p = primes.iter().position(|&x| x == *p).unwrap();
+                        let x_p = x[inv_p].pow([*d as u64]);
+                        monomial *= x_p;
+                    });
+                    acc + *c * monomial
+                }
+            })
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
+    pub fn new() -> Self {
+        let normalized_indices = Self::compute_normalized_indices();
+        Dense {
+            coeff: vec![F::zero(); Self::dimension()],
+            normalized_indices,
+        }
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
+        self.coeff.iter()
     }
 
     pub fn dimension() -> usize {
@@ -302,37 +376,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
 
     pub fn maximum_degree(&self) -> usize {
         D
-    }
-
-    pub fn is_constant(&self) -> bool {
-        self.coeff.iter().skip(1).all(|c| c.is_zero())
-    }
-
-    /// Returns the degree of the polynomial.
-    ///
-    /// The degree of the polynomial is the maximum degree of the monomials
-    /// that have a non-zero coefficient.
-    ///
-    /// # Safety
-    ///
-    /// The zero polynomial as a degree equals to 0, as the degree of the
-    /// constant polynomials. We do use the `unsafe` keyword to warn the user
-    /// for this specific case.
-    pub unsafe fn degree(&self) -> usize {
-        if self.is_constant() {
-            return 0;
-        }
-        let mut prime_gen = PrimeNumberGenerator::new();
-        self.coeff.iter().enumerate().fold(1, |acc, (i, c)| {
-            if *c != F::zero() {
-                let decomposition_of_i =
-                    naive_prime_factors(self.normalized_indices[i], &mut prime_gen);
-                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
-                acc.max(monomial_degree)
-            } else {
-                acc
-            }
-        })
     }
 
     /// Output example for N = 2 and D = 2:
@@ -381,47 +424,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
                 monomial_degree == D || c == F::zero()
             });
         is_homogeneous
-    }
-
-    pub fn double(&self) -> Self {
-        let coeffs = self.coeff.iter().map(|c| c.double()).collect();
-        Self::from_coeffs(coeffs)
-    }
-
-    pub fn mul_by_scalar(&self, c: F) -> Self {
-        let coeffs = self.coeff.iter().map(|coef| *coef * c).collect();
-        Self::from_coeffs(coeffs)
-    }
-
-    /// Evaluate the polynomial at the vector point `x`.
-    ///
-    /// This is a dummy implementation. A cache can be used for the monomials to
-    /// speed up the computation.
-    pub fn eval(&self, x: &[F; N]) -> F {
-        let mut prime_gen = PrimeNumberGenerator::new();
-        let primes = prime_gen.get_first_nth_primes(N);
-        self.coeff
-            .iter()
-            .enumerate()
-            .fold(F::zero(), |acc, (i, c)| {
-                if i == 0 {
-                    acc + c
-                } else {
-                    let normalized_index = self.normalized_indices[i];
-                    // IMPROVEME: we should keep the prime decomposition somewhere.
-                    // It can be precomputed for a few multi-variate polynomials
-                    // vector space
-                    let prime_decomposition = naive_prime_factors(normalized_index, &mut prime_gen);
-                    let mut monomial = F::one();
-                    prime_decomposition.iter().for_each(|(p, d)| {
-                        // IMPROVEME: we should keep the inverse indices
-                        let inv_p = primes.iter().position(|&x| x == *p).unwrap();
-                        let x_p = x[inv_p].pow([*d as u64]);
-                        monomial *= x_p;
-                    });
-                    acc + *c * monomial
-                }
-            })
     }
 
     pub fn increase_degree<const D_PRIME: usize>(&self) -> Dense<F, N, D_PRIME> {
