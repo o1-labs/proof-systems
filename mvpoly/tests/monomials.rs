@@ -76,6 +76,21 @@ fn test_neg() {
 }
 
 #[test]
+fn test_neg_ref() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 3, 4>::random(&mut rng, None) };
+    let p2 = -&p1;
+
+    // Test that p1 + (-&p1) = 0
+    let sum = p1.clone() + p2.clone();
+    assert_eq!(sum, Sparse::<Fp, 3, 4>::zero());
+
+    // Test that -(-&p1) = p1
+    let p3 = -&p2;
+    assert_eq!(p1, p3);
+}
+
+#[test]
 fn test_mul_by_scalar() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p1 = unsafe { Sparse::<Fp, 4, 5>::random(&mut rng, None) };
@@ -129,11 +144,29 @@ fn test_eval_pbt_add() {
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
     let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
     let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p3 = p1.clone() + p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 + eval_p2);
+    {
+        let p3 = p1.clone() + p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    // For code coverage, using ref
+    {
+        let p3 = &p1 + p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    {
+        let p3 = &p1 + &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    {
+        let p3 = p1 + &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
 }
 
 #[test]
@@ -143,11 +176,28 @@ fn test_eval_pbt_sub() {
     let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
     let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
     let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p3 = p1.clone() - p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 - eval_p2);
+    {
+        let p3 = p1.clone() - p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = &p1 - p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = p1.clone() - &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = &p1 - &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
 }
 
 #[test]
@@ -302,4 +352,21 @@ fn test_mvpoly_mul_pbt() {
     let p1 = unsafe { Sparse::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
     let p2 = unsafe { Sparse::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
     assert_eq!(p1.clone() * p2.clone(), p2.clone() * p1.clone());
+}
+
+#[test]
+fn test_can_be_printed_with_debug() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 2, 2>::random(&mut rng, None) };
+    println!("{:?}", p1);
+}
+
+#[test]
+fn test_is_zero() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Sparse::<Fp, 4, 6>::zero();
+    assert!(p1.is_zero());
+
+    let p2 = unsafe { Sparse::<Fp, 4, 6>::random(&mut rng, None) };
+    assert!(!p2.is_zero());
 }
