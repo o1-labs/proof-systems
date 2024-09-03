@@ -585,7 +585,7 @@ fn test_from_expr_ec_addition() {
         // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
         let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
 
-        let p = Dense::<Fp, 7, 2>::from(expression);
+        let p = Dense::<Fp, 7, 2>::from_expr(expression);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -598,7 +598,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
         let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
-        let p = Dense::<Fp, 7, 2>::from(expr);
+        let p = Dense::<Fp, 7, 2>::from_expr(expr);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -610,7 +610,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
         let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
-        let p = Dense::<Fp, 7, 2>::from(expr);
+        let p = Dense::<Fp, 7, 2>::from_expr(expr);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {

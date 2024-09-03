@@ -329,6 +329,66 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 }
             })
     }
+
+    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from(c),
+                    ExprInner::Cell(Variable { col, row }) => {
+                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
+                        Self::from_variable(col)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Dense::from_expr(*e1);
+                let p2 = Dense::from_expr(*e2);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Dense::from_expr(*e1);
+                let p2 = Dense::from_expr(*e2);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Dense::from_expr(*e1);
+                let p2 = Dense::from_expr(*e2);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Dense::from_expr(*p);
+                p.double()
+            }
+            Square(p) => {
+                let p = Dense::from_expr(*p);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Dense::from_expr(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
@@ -716,72 +776,6 @@ impl<F: PrimeField, const N: usize, const D: usize> From<Operations<ConstantExpr
             Mul(c1, c2) => Self::from(*c1) * Self::from(*c2),
             Square(c) => Self::from(*c.clone()) * Self::from(*c),
             Double(c1) => Self::from(*c1).double(),
-            Pow(c, e) => {
-                // FIXME: dummy implementation
-                let p = Dense::from(*c);
-                let mut result = p.clone();
-                for _ in 0..e {
-                    result = result.clone() * p.clone();
-                }
-                result
-            }
-            Cache(_c, _) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
-            IfFeature(_c, _t, _f) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
-        }
-    }
-}
-
-impl<Column: Into<usize>, F: PrimeField, const N: usize, const D: usize>
-    From<Expr<ConstantExpr<F>, Column>> for Dense<F, N, D>
-{
-    fn from(expr: Expr<ConstantExpr<F>, Column>) -> Self {
-        // This is a dummy implementation
-        // TODO: Implement the actual conversion logic
-        use kimchi::circuits::expr::Operations::*;
-
-        match expr {
-            Atom(op_const) => {
-                match op_const {
-                    ExprInner::UnnormalizedLagrangeBasis(_) => {
-                        unimplemented!("Not used in this context")
-                    }
-                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
-                        unimplemented!("Not used in this context")
-                    }
-                    ExprInner::Constant(c) => Self::from(c),
-                    ExprInner::Cell(Variable { col, row }) => {
-                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
-                        Self::from_variable(col)
-                    }
-                }
-            }
-            Add(e1, e2) => {
-                let p1 = Dense::from(*e1);
-                let p2 = Dense::from(*e2);
-                p1 + p2
-            }
-            Sub(e1, e2) => {
-                let p1 = Dense::from(*e1);
-                let p2 = Dense::from(*e2);
-                p1 - p2
-            }
-            Mul(e1, e2) => {
-                let p1 = Dense::from(*e1);
-                let p2 = Dense::from(*e2);
-                p1 * p2
-            }
-            Double(p) => {
-                let p = Dense::from(*p);
-                p.double()
-            }
-            Square(p) => {
-                let p = Dense::from(*p);
-                p.clone() * p.clone()
-            }
             Pow(c, e) => {
                 // FIXME: dummy implementation
                 let p = Dense::from(*c);
