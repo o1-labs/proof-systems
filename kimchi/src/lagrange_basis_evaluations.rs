@@ -101,6 +101,9 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// Given the evaluations form of a polynomial, directly evaluate that
     /// polynomial at a point, assuming that the given evaluations are either `0`
     /// or `1` at every point of the domain.
+    ///
+    /// This method can particularly be useful when the polynomials represent
+    /// (boolean) selectors in a circuit.
     pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         assert_eq!(p.evals.len() % self.domain_size(), 0);
         let stride = p.evals.len() / self.domain_size();
