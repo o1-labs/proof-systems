@@ -34,6 +34,14 @@ pub struct LagrangeBasisEvaluations<F> {
 }
 
 impl<F: FftField> LagrangeBasisEvaluations<F> {
+    /// Return the domain size of the individual evaluations.
+    ///
+    /// Note that there is an invariant that all individual evaluation chunks
+    /// have the same size. It is enforced by each constructor.
+    pub fn domain_size(&self) -> usize {
+        self.evals[0].len()
+    }
+
     /// Given the evaluations form of a polynomial, directly evaluate that
     /// polynomial at a point.
     ///
@@ -60,9 +68,9 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         // The domain size must be a multiple of the number of evaluations so
         // that the degree of the polynomial can be split into chunks of equal size.
-        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
+        assert_eq!(p.evals.len() % self.domain_size(), 0);
         // The number of chunks c
-        let stride = p.evals.len() / self.evals[0].len();
+        let stride = p.evals.len() / self.domain_size();
         let p_evals = &p.evals;
 
         // Performs the operation
@@ -90,11 +98,12 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
             .collect()
     }
 
-    /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
-    /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
+    /// Given the evaluations form of a polynomial, directly evaluate that
+    /// polynomial at a point, assuming that the given evaluations are either `0`
+    /// or `1` at every point of the domain.
     pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
-        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
-        let stride = p.evals.len() / self.evals[0].len();
+        assert_eq!(p.evals.len() % self.domain_size(), 0);
+        let stride = p.evals.len() / self.domain_size();
         self.evals
             .iter()
             .map(|evals| {
