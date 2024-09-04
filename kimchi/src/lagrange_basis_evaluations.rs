@@ -2,18 +2,85 @@ use ark_ff::{batch_inversion_and_mul, FftField};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use rayon::prelude::*;
 
-/// The evaluations of all normalized lagrange basis polynomials at a given
-/// point. Can be used to evaluate an `Evaluations` form polynomial at that point.
+/// Evaluations of all normalized lagrange basis polynomials at a given point.
+/// Can be used to evaluate an `Evaluations` form polynomial at that point.
+///
+/// The Lagrange basis for polynomials of degree <= d over a domain
+/// {ω_0,...,ω_d} is the set of (d+1) polynomials ${l_0,...,l_d}$ of degree d
+/// that equal 1 at ω_i and 0 in the rest of the domain terms. They can be used
+/// to evaluate polynomials in evaluation form efficiently in O(d) time.
+///
+/// When chunking is in place, the domain size is larger than the maximum
+/// polynomial degree allowed. In particular, the SRS is not long enough to
+/// support higher degrees. Thus, we cannot obtain a polynomial f with degree
+/// c·n (with domain size n and number of chunks c) as usual with the equation:
+///
+/// f(X) = x_0 · l_0(X) + ... + x_n · l_n(X) + ... + x_{c*n} · l_{c*n}(X)
+///
+/// Instead, this struct will contain the (c*n+1) coefficients of the polynomial
+/// that is equal to the powers of the point x in the positions corresponding to
+/// the chunk, and 0 elsewhere in the domain. This is useful to evaluate the
+/// chunks of polynomials of degree c·n given in evaluation form at the point.
+///
 pub struct LagrangeBasisEvaluations<F> {
+    /// If no chunking:
+    /// - evals is a vector of length 1 containing a vector of size n
+    ///   corresponding to the evaluations of the Lagrange polynomials, which
+    ///   are the polynomials that equal 1 at ω_i and 0 elsewhere in the domain.
+    /// If chunking (a vector of size c * N )
+    /// - the first index refers to the chunks
+    /// - the second index refers j-th coefficient of the i-th chunk of the
+    ///   polynomial that equals the powers of the point and 0 elsewhere.
+    ///
     evals: Vec<Vec<F>>,
 }
 
 impl<F: FftField> LagrangeBasisEvaluations<F> {
-    /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point.
+    /// Given the evaluations form of a polynomial, directly evaluate that
+    /// polynomial at a point.
+    ///
+    /// The Lagrange basis evaluations can be used to evaluate a polynomial of
+    /// given in evaluation form efficiently in O(n) time, of degree d <= n
+    /// where n is the domain size, without the need of interpolating it first.
+    ///
+    /// Recall that a polynomial can be represented as the sum of the scaled
+    /// Lagrange polynomials using its evaluations on the domain:
+    /// $ f(x) = x_0 · l_0(x) + ... + x_n · l_n(x) $
+    ///
+    /// Recall that when chunking is in place, we want to evaluate a
+    /// polynomial f of degree c · m at point z, expressed as
+    ///
+    /// f(z) = a_0·z^0 + ... + a_{n-1}·z^{n-1} + ... + a_{c*n-1}·z^{c*n-1}
+    ///      = z^0 · f_0(z) + z^n · f_1(z) + ... + z^{(c-1)n} · f_{c-1}(z)
+    ///
+    /// where f_i(X) is the i-th chunked polynomial of degree m of f:
+    /// f_i(x) = a_{i*n} · x^0 + ... + a_{(i+1)n-1} · x^{n-1}
+    ///
+    /// Returns the evaluation of each chunk of the polynomial at the point
+    /// (when there is no chunking, the result is a vector of length 1). They
+    /// correspond to the f_i(z) in the equation above.
+    ///
     pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
+        // The domain size must be a multiple of the number of evaluations so
+        // that the degree of the polynomial can be split into chunks of equal size.
         assert_eq!(p.evals.len() % self.evals[0].len(), 0);
+        // The number of chunks c
         let stride = p.evals.len() / self.evals[0].len();
         let p_evals = &p.evals;
+
+        // Performs the operation
+        //                         n-1
+        // j ∈ [0, c) : eval_{j} =  Σ   p_{i · c} · l_{j,i}
+        //                         i=0
+        //
+        // Note that in the chunking case, the Lagrange basis contains the
+        // coefficient form of the polynomial that evaluates to the powers of z
+        // in the chunk positions and zero elsewhere.
+        //
+        // Then, the evaluation of f on z can be computed as the sum of the
+        // products of the evaluations of f in the domain and the Lagrange
+        // evaluations.
+
         (&self.evals)
             .into_par_iter()
             .map(|evals| {
@@ -45,43 +112,43 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
             .collect()
     }
 
-    /// Compute all evaluations of the normalized lagrange basis polynomials of the
-    /// given domain at the given point. Runs in time O(domain size).
+    /// Compute all evaluations of the normalized lagrange basis polynomials of
+    /// the given domain at the given point. Runs in time O(domain size).
     fn new_with_segment_size_1(domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
         let n = domain.size();
         // We want to compute for all i
         // s_i = 1 / t_i
         // where
-        // t_i = prod_{j != i} (omega^i - omega^j)
+        // t_i = ∏_{j ≠ i} (ω^i - ω^j)
         //
-        // Suppose we have t_0 = prod_{j = 1}^{n-1} (1 - omega^j).
-        // This is a product with n-1 terms. We want to shift each term over by omega
-        // so we multiply by omega^{n-1}:
+        // Suppose we have t_0 = ∏_{j = 1}^{n-1} (1 - ω^j).
+        // This is a product with n-1 terms. We want to shift each term over by
+        // ω so we multiply by ω^{n-1}:
         //
-        // omega^{n-1} * t_0
-        // = prod_{j = 1}^{n-1} omega (1 - omega^j).
-        // = prod_{j = 1}^{n-1} (omega - omega^{j+1)).
-        // = (omega - omega^2) (omega - omega^3) ... (omega - omega^{n-1+1})
-        // = (omega - omega^2) (omega - omega^3) ... (omega - omega^0)
+        // ω^{n-1} * t_0
+        // = ∏_{j = 1}^{n-1} ω (1 - ω^j).
+        // = ∏_{j = 1}^{n-1} (ω - ω^{j+1)).
+        // = (ω - ω^2) (ω - ω^3) ... (ω - ω^{n-1+1})
+        // = (ω - ω^2) (ω - ω^3) ... (ω - ω^0)
         // = t_1
         //
         // And generally
-        // omega^{n-1} * t_i
-        // = prod_{j != i} omega (omega^i - omega^j)
-        // = prod_{j != i} (omega^{i + 1} - omega^{j + 1})
-        // = prod_{j + 1 != i + 1} (omega^{i + 1} - omega^{j + 1})
-        // = prod_{j' != i + 1} (omega^{i + 1} - omega^{j'})
+        // ω^{n-1} * t_i
+        // = ∏_{j ≠ i} ω (ω^i - ω^j)
+        // = ∏_{j ≠ i} (ω^{i + 1} - ω^{j + 1})
+        // = ∏_{j + 1 ≠ i + 1} (ω^{i + 1} - ω^{j + 1})
+        // = ∏_{j' ≠ i + 1} (ω^{i + 1} - ω^{j'})
         // = t_{i + 1}
         //
-        // Since omega^{n-1} = omega^{-1}, we write this as
-        // omega{-1} t_i = t_{i + 1}
+        // Since ω^{n-1} = ω^{-1}, we write this as
+        // ω^{-1} t_i = t_{i + 1}
         // and then by induction,
-        // omega^{-i} t_0 = t_i
+        // ω^{-i} t_0 = t_i
 
-        // Now, the ith lagrange evaluation at x is
-        // (1 / prod_{j != i} (omega^i - omega^j)) (x^n - 1) / (x - omega^i)
-        // = (x^n - 1) / [t_i (x - omega^i)]
-        // = (x^n - 1) / [omega^{-i} * t_0 * (x - omega^i)]
+        // Now, the ith Lagrange evaluation at x is
+        // (1 / ∏_{j ≠ i} (ω^i - ω^j)) (x^n - 1) / (x - ω^i)
+        // = (x^n - 1) / [t_i (x - ω^i)]
+        // = (x^n - 1) / [ω^{-i} * t_0 * (x - ω^i)]
         //
         // We compute this using the [batch_inversion_and_mul] function.
 
@@ -106,19 +173,35 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
 
         batch_inversion_and_mul(&mut denominators[..], &numerator);
 
-        // Denominators now contains the desired result.
+        // Denominators now contain the desired result.
         LagrangeBasisEvaluations {
             evals: vec![denominators],
         }
     }
 
-    /// Compute all evaluations of the normalized lagrange basis polynomials of the
-    /// given domain at the given point. Runs in time O(n log(n)) for n = domain size.
+    /// Compute all evaluations of the normalized Lagrange basis polynomials of
+    /// the given domain at the given point `x`. Runs in time O(n log(n)) where
+    /// n is the domain size.
     fn new_with_chunked_segments(
         max_poly_size: usize,
         domain: D<F>,
         x: F,
     ) -> LagrangeBasisEvaluations<F> {
+        // For each chunk, this loop obtains the coefficient form of the
+        // polynomial that equals the powers of `x` in the positions
+        // corresponding to the chunk, and 0 elsewhere in the domain, using an
+        // iFFT operation of length n, resulting in an algorithm that runs in
+        // O(c n log n).
+        //
+        // Example:
+        //                                  i-th chunk
+        //                          -----------------------
+        //   chunked: [ 0, ..., 0,  1, x, x^2, ..., x^{m-1}, 0, ..., 0 ]
+        //   indices:   0    i·m-1  i·m            (i+1)m-1  (i+1)m  cm-1=n-1
+        //
+        // A total of n coefficients are returned. These will be helpful to
+        // evaluate the chunks of polynomials of degree c·n at the point x.
+        //
         let n = domain.size();
         let num_chunks = n / max_poly_size;
         let mut evals = Vec::with_capacity(num_chunks);
@@ -129,8 +212,8 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
                 chunked_evals[i * max_poly_size + j] = x_pow;
                 x_pow *= x;
             }
-            // This uses the same trick as `poly_commitment::srs::SRS::add_lagrange_basis`, but
-            // applied to field elements instead of group elements.
+            // This uses the same trick as `poly_commitment::srs::SRS::add_lagrange_basis`,
+            // but applied to field elements instead of group elements.
             domain.ifft_in_place(&mut chunked_evals);
             evals.push(chunked_evals);
         }
