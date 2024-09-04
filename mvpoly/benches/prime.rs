@@ -1,7 +1,7 @@
 use ark_ff::UniformRand;
 use criterion::{black_box, criterion_group, criterion_main, Bencher, Criterion};
 use mina_curves::pasta::Fp;
-use mvpoly::prime::Dense;
+use mvpoly::{prime::Dense, MVPoly};
 
 // Using 10 variables, with max degree 3
 // Should roughly cover the cases we care about

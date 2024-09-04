@@ -9,6 +9,7 @@ use std::{
 use crate::{
     prime,
     utils::{naive_prime_factors, PrimeNumberGenerator},
+    MVPoly,
 };
 
 /// Represents a multivariate polynomial in `N` variables with coefficients in
@@ -343,8 +344,6 @@ impl<const N: usize, const D: usize, F: PrimeField> Zero for Sparse<F, N, D> {
     }
 }
 
-// Methods that are independent from the generic trait MVPoly we might want to
-// add in the future
 impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
     pub fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
         self.monomials
@@ -361,9 +360,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
     }
 }
 
-// Methods that should be moved into a trait MVPoly we might want to add in the
-// future
-impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
+impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F, N, D> {
     /// Returns the degree of the polynomial.
     ///
     /// The degree of the polynomial is the maximum degree of the monomials
@@ -374,7 +371,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
     /// The zero polynomial as a degree equals to 0, as the degree of the
     /// constant polynomials. We do use the `unsafe` keyword to warn the user
     /// for this specific case.
-    pub unsafe fn degree(&self) -> usize {
+    unsafe fn degree(&self) -> usize {
         self.monomials
             .keys()
             .map(|exponents| exponents.iter().sum())
@@ -386,7 +383,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
     ///
     /// This is a dummy implementation. A cache can be used for the monomials to
     /// speed up the computation.
-    pub fn eval(&self, x: &[F; N]) -> F {
+    fn eval(&self, x: &[F; N]) -> F {
         self.monomials
             .iter()
             .map(|(exponents, coeff)| {
@@ -399,11 +396,11 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
             .sum()
     }
 
-    pub fn is_constant(&self) -> bool {
+    fn is_constant(&self) -> bool {
         self.monomials.len() == 1 && self.monomials.contains_key(&[0; N])
     }
 
-    pub fn double(&self) -> Self {
+    fn double(&self) -> Self {
         let monomials: HashMap<[usize; N], F> = self
             .monomials
             .iter()
@@ -412,7 +409,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
         Self { monomials }
     }
 
-    pub fn mul_by_scalar(&self, scalar: F) -> Self {
+    fn mul_by_scalar(&self, scalar: F) -> Self {
         if scalar.is_zero() {
             Self::zero()
         } else {
@@ -438,7 +435,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
     /// polynomial random generator, if needed.
     ///
     /// For now, the function is only used for testing.
-    pub unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
+    unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         // IMPROVEME: using prime::Dense::random to ease the implementaiton.
         // Feel free to change
         prime::Dense::random(rng, max_degree).into()

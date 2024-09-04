@@ -1,6 +1,6 @@
 use ark_ff::{One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
-use mvpoly::monomials::Sparse;
+use mvpoly::{monomials::Sparse, MVPoly};
 use rand::Rng;
 
 #[test]
