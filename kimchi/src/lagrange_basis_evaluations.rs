@@ -102,21 +102,34 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// polynomial at a point, assuming that the given evaluations are either `0`
     /// or `1` at every point of the domain.
     ///
+    /// A slight optimisation is performed here, where we only use addition on
+    /// integers (usize) instead of the addition on field elements. We convert
+    /// only at the end into a field element.
+    ///
     /// This method can particularly be useful when the polynomials represent
     /// (boolean) selectors in a circuit.
-    pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
+    ///
+    /// # Safety
+    ///
+    /// There is no check on the input, i.e. we do not verify the assumptions
+    /// that all evaluation points are `1` or `0`.
+    ///
+    /// There is also an additional assumption that the number of evaluation
+    /// points is not greater than 2^64 - 1 (i.e. the machine word size on
+    /// 64bits machine).
+    pub unsafe fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         assert_eq!(p.evals.len() % self.domain_size(), 0);
         let stride = p.evals.len() / self.domain_size();
         self.evals
             .iter()
             .map(|evals| {
-                let mut result = F::zero();
-                for (i, e) in evals.iter().enumerate() {
+                let mut result: usize = 0;
+                for (i, _e) in evals.iter().enumerate() {
                     if !p.evals[stride * i].is_zero() {
-                        result += e;
+                        result += 1;
                     }
                 }
-                result
+                F::from(result as u64)
             })
             .collect()
     }
@@ -341,7 +354,7 @@ mod tests {
 
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
-        let y = evaluator.evaluate_boolean(&evals);
+        let y = unsafe { evaluator.evaluate_boolean(&evals) };
         let expected = vec![evals.interpolate().evaluate(&x)];
         assert_eq!(y, expected)
     }
