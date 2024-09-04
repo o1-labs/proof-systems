@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ark_ff::PrimeField;
 use rand::RngCore;
 
@@ -75,4 +77,25 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// For instance, to add the monomial `3 * x_1^2 * x_2^3` to the polynomial,
     /// one would call `add_monomial([2, 3], 3)`.
     fn add_monomial(&mut self, exponents: [usize; N], coeff: F);
+
+    /// Compute the cross-terms as described in [Behind Nova: cross-terms
+    /// computation for high degree
+    /// gates](https://hackmd.io/@dannywillems/Syo5MBq90)
+    ///
+    /// The polynomial must not necessarily be homogeneous. For this reason, the
+    /// values `u1` and `u2` represents the extra variable that is used to make
+    /// the polynomial homogeneous.
+    ///
+    /// The homogeneous degree is supposed to be the one defined by the type of
+    /// the polynomial, i.e. `D`.
+    ///
+    /// The output is a map of `D - 1` values that represents the cross-terms
+    /// for each power of `r`.
+    fn compute_cross_terms(
+        &self,
+        eval1: &[F; N],
+        eval2: &[F; N],
+        u1: F,
+        u2: F,
+    ) -> HashMap<usize, F>;
 }
