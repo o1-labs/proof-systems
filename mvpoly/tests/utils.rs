@@ -295,4 +295,35 @@ pub fn test_compute_indices_nested_loop() {
     let mut comp_indices = compute_indices_nested_loop(nested_loops);
     comp_indices.sort();
     assert_eq!(exp_indices, comp_indices);
+
+    // Simple and single loop
+    let nested_loops = vec![3];
+    let exp_indices = vec![vec![0], vec![1], vec![2]];
+    let mut comp_indices = compute_indices_nested_loop(nested_loops);
+    comp_indices.sort();
+    assert_eq!(exp_indices, comp_indices);
+
+    // relatively large loops
+    let nested_loops = vec![10, 10];
+    let comp_indices = compute_indices_nested_loop(nested_loops);
+    // Only checking the length as it would take too long to unroll the result
+    assert_eq!(comp_indices.len(), 100);
+
+    // Non-uniform loop sizes, relatively large
+    let nested_loops = vec![5, 7, 3];
+    let comp_indices = compute_indices_nested_loop(nested_loops);
+    assert_eq!(comp_indices.len(), 5 * 7 * 3);
+}
+
+#[test]
+fn test_compute_indices_nested_loop_edge_cases() {
+    let nested_loops = vec![];
+    let comp_indices: Vec<Vec<usize>> = compute_indices_nested_loop(nested_loops);
+    let exp_output: Vec<Vec<usize>> = vec![vec![]];
+    assert_eq!(comp_indices, exp_output);
+
+    // With one empty loop. Should match the documentation
+    let nested_loops = vec![3, 0, 2];
+    let comp_indices = compute_indices_nested_loop(nested_loops);
+    assert_eq!(comp_indices.len(), 0);
 }
