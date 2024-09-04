@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use mvpoly::utils::{
-    compute_all_two_factors_decomposition, get_mapping_with_primes, is_prime, naive_prime_factors,
-    PrimeNumberGenerator,
+    compute_all_two_factors_decomposition, compute_indices_nested_loop, get_mapping_with_primes,
+    is_prime, naive_prime_factors, PrimeNumberGenerator,
 };
 
 pub const FIRST_FIFTY_PRIMES: [usize; 50] = [
@@ -224,4 +224,75 @@ pub fn test_compute_all_two_factors_decomposition_with_multiplicity() {
         ]
         .to_vec()
     );
+}
+
+#[test]
+pub fn test_compute_indices_nested_loop() {
+    let nested_loops = vec![2, 2];
+    // sorting to get the same order
+    let mut exp_indices = vec![vec![0, 0], vec![0, 1], vec![1, 0], vec![1, 1]];
+    exp_indices.sort();
+    let mut comp_indices = compute_indices_nested_loop(nested_loops);
+    comp_indices.sort();
+    assert_eq!(exp_indices, comp_indices);
+
+    let nested_loops = vec![3, 2];
+    // sorting to get the same order
+    let mut exp_indices = vec![
+        vec![0, 0],
+        vec![0, 1],
+        vec![1, 0],
+        vec![1, 1],
+        vec![2, 0],
+        vec![2, 1],
+    ];
+    exp_indices.sort();
+    let mut comp_indices = compute_indices_nested_loop(nested_loops);
+    comp_indices.sort();
+    assert_eq!(exp_indices, comp_indices);
+
+    let nested_loops = vec![3, 3, 2, 2];
+    // sorting to get the same order
+    let mut exp_indices = vec![
+        vec![0, 0, 0, 0],
+        vec![0, 0, 0, 1],
+        vec![0, 0, 1, 0],
+        vec![0, 0, 1, 1],
+        vec![0, 1, 0, 0],
+        vec![0, 1, 0, 1],
+        vec![0, 1, 1, 0],
+        vec![0, 1, 1, 1],
+        vec![0, 2, 0, 0],
+        vec![0, 2, 0, 1],
+        vec![0, 2, 1, 0],
+        vec![0, 2, 1, 1],
+        vec![1, 0, 0, 0],
+        vec![1, 0, 0, 1],
+        vec![1, 0, 1, 0],
+        vec![1, 0, 1, 1],
+        vec![1, 1, 0, 0],
+        vec![1, 1, 0, 1],
+        vec![1, 1, 1, 0],
+        vec![1, 1, 1, 1],
+        vec![1, 2, 0, 0],
+        vec![1, 2, 0, 1],
+        vec![1, 2, 1, 0],
+        vec![1, 2, 1, 1],
+        vec![2, 0, 0, 0],
+        vec![2, 0, 0, 1],
+        vec![2, 0, 1, 0],
+        vec![2, 0, 1, 1],
+        vec![2, 1, 0, 0],
+        vec![2, 1, 0, 1],
+        vec![2, 1, 1, 0],
+        vec![2, 1, 1, 1],
+        vec![2, 2, 0, 0],
+        vec![2, 2, 0, 1],
+        vec![2, 2, 1, 0],
+        vec![2, 2, 1, 1],
+    ];
+    exp_indices.sort();
+    let mut comp_indices = compute_indices_nested_loop(nested_loops);
+    comp_indices.sort();
+    assert_eq!(exp_indices, comp_indices);
 }

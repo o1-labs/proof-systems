@@ -219,3 +219,50 @@ pub fn compute_all_two_factors_decomposition(
         factors
     }
 }
+
+/// Compute the list of indices to perform N nested loops of different size each.
+/// In other words, if we have to perform the 3 nested loops:
+/// ```rust
+/// let n1 = 3;
+/// let n2 = 3;
+/// let n3 = 5;
+/// for i in 0..n1 {
+///   for j in 0..n2 {
+///     for k in 0..n3 {
+///     }
+///   }
+/// }
+/// ```
+/// the output will be all the possible values of `i`, `j`, and `k`.
+/// The algorithm is as follows:
+/// ```rust
+/// let n1 = 3;
+/// let n2 = 3;
+/// let n3 = 5;
+/// (0..(n1 * n2 * n3)).map(|l| {
+///   let i = l               % n1;
+///   let j = (l / n1)        % n2;
+///   let k = (l / (n1 * n2)) % n3;
+///   (i, j, k)
+/// });
+/// ```
+/// For N nested loops, the algorithm is the same, with the division increasing
+/// by the factor `N_k` for the index `i_(k + 1)`
+pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usize>> {
+    let n = nested_loop_sizes.iter().product();
+    (0..n)
+        .map(|i| {
+            let mut div = 1;
+            // Compute indices for the loop, step i
+            let indices: Vec<usize> = nested_loop_sizes
+                .iter()
+                .map(|n_i| {
+                    let k = (i / div) % n_i;
+                    div *= n_i;
+                    k
+                })
+                .collect();
+            indices
+        })
+        .collect()
+}

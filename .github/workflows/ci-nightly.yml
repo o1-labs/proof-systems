@@ -57,6 +57,8 @@ jobs:
           eval $(opam env)
           make clean
           make nextest-all-with-coverage
+          make test-doc-with-coverage
+          make generate-test-coverage-report
 
       - name: Use shared code coverage summary
         uses: ./.github/actions/coverage-summary-shared
