@@ -21,7 +21,6 @@ use rayon::prelude::*;
 /// that is equal to the powers of the point x in the positions corresponding to
 /// the chunk, and 0 elsewhere in the domain. This is useful to evaluate the
 /// chunks of polynomials of degree c·n given in evaluation form at the point.
-///
 pub struct LagrangeBasisEvaluations<F> {
     /// If no chunking:
     /// - evals is a vector of length 1 containing a vector of size n
@@ -31,7 +30,6 @@ pub struct LagrangeBasisEvaluations<F> {
     /// - the first index refers to the chunks
     /// - the second index refers j-th coefficient of the i-th chunk of the
     ///   polynomial that equals the powers of the point and 0 elsewhere.
-    ///
     evals: Vec<Vec<F>>,
 }
 
@@ -59,7 +57,6 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// Returns the evaluation of each chunk of the polynomial at the point
     /// (when there is no chunking, the result is a vector of length 1). They
     /// correspond to the f_i(z) in the equation above.
-    ///
     pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         // The domain size must be a multiple of the number of evaluations so
         // that the degree of the polynomial can be split into chunks of equal size.
