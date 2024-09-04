@@ -240,7 +240,6 @@ mod tests {
                     Fp::zero()
                 });
             }
-            e = vec![Fp::zero(), Fp::one()];
             Evaluations::from_vec_and_domain(e, domain)
         };
 
