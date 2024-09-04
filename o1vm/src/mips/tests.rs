@@ -542,6 +542,8 @@ mod unit {
 }
 
 mod folding {
+    use std::collections::BTreeMap;
+
     use super::{
         unit::{dummy_env, write_instruction},
         Fp,
@@ -707,6 +709,7 @@ mod folding {
             witness: witness_one.clone(),
             constraints: constraints.clone(),
             lookups: vec![],
+            delayed_columns: BTreeMap::new(),
         };
 
         impl FoldingConfig for MIPSFoldingConfig {
