@@ -100,8 +100,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         let stride = p.evals.len() / self.evals[0].len();
         self.evals
             .iter()
-            .enumerate()
-            .map(|(j, evals)| {
+            .map(|evals| {
                 let mut result = F::zero();
                 for (i, e) in evals.iter().enumerate() {
                     if !p.evals[stride * i].is_zero() {
