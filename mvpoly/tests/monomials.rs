@@ -1,4 +1,4 @@
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
 use rand::Rng;
@@ -468,4 +468,198 @@ fn test_add_monomial() {
     let exp_eval_p4 =
         random_c1 * random_eval[0] * random_eval[0] + random_c2 * random_eval[1] * random_eval[1];
     assert_eq!(eval_p4, exp_eval_p4);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_two_unit_test() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    {
+        // Homogeneous form is Y^2
+        let p1 = Sparse::<Fp, 4, 2>::from(Fp::from(1));
+
+        let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let u1 = Fp::rand(&mut rng);
+        let u2 = Fp::rand(&mut rng);
+        let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+        // We only have one cross-term in this case as degree 2
+        assert_eq!(cross_terms.len(), 1);
+        // Cross term of constant is r * (2 u1 u2)
+        assert_eq!(cross_terms[&1], (u1 * u2).double());
+    }
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_two() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    // We only have one cross-term in this case
+    assert_eq!(cross_terms.len(), 1);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 4] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        eval1_hom + r * r * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_three() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 3>::random(&mut rng, None) };
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    assert_eq!(cross_terms.len(), 2);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 4] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        let r_cube = r.pow([3]);
+        eval1_hom + r_cube * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_four() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
+    let random_eval1: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    assert_eq!(cross_terms.len(), 3);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 6] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        let r_four = r.pow([4]);
+        eval1_hom + r_four * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_five() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 3, 5>::random(&mut rng, None) };
+    let random_eval1: [Fp; 3] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 3] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    assert_eq!(cross_terms.len(), 4);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 3] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        let r_five = r.pow([5]);
+        eval1_hom + r_five * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_six() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 6>::random(&mut rng, None) };
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    assert_eq!(cross_terms.len(), 5);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 4] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        let r_six = r.pow([6]);
+        eval1_hom + r_six * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_mvpoly_compute_cross_terms_degree_seven() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 7>::random(&mut rng, None) };
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    assert_eq!(cross_terms.len(), 6);
+
+    let r = Fp::rand(&mut rng);
+    let random_lincomb: [Fp; 4] = std::array::from_fn(|i| random_eval1[i] + r * random_eval2[i]);
+
+    let lhs = p1.homogeneous_eval(&random_lincomb, u1 + r * u2);
+
+    let rhs = {
+        let eval1_hom = p1.homogeneous_eval(&random_eval1, u1);
+        let eval2_hom = p1.homogeneous_eval(&random_eval2, u2);
+        let cross_terms_eval = cross_terms.iter().fold(Fp::zero(), |acc, (power, term)| {
+            acc + r.pow([*power as u64]) * term
+        });
+        let r_seven = r.pow([7]);
+        eval1_hom + r_seven * eval2_hom + cross_terms_eval
+    };
+    assert_eq!(lhs, rhs);
 }
