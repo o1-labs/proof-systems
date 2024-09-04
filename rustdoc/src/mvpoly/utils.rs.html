@@ -266,6 +266,12 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains functions to work with prime numbers and to compute
 //! dimension of multivariate spaces
 
@@ -516,6 +522,12 @@
 /// ```
 /// For N nested loops, the algorithm is the same, with the division increasing
 /// by the factor `N_k` for the index `i_(k + 1)`
+///
+/// In the case of an empty list, the function will return a list containing a
+/// single element which is the empty list.
+///
+/// In the case of an empty loop (i.e. one value in the input list is 0), the
+/// expected output is the empty list.
 </span><span class="kw">pub fn </span>compute_indices_nested_loop(nested_loop_sizes: Vec&lt;usize&gt;) -&gt; Vec&lt;Vec&lt;usize&gt;&gt; {
     <span class="kw">let </span>n = nested_loop_sizes.iter().product();
     (<span class="number">0</span>..n)
