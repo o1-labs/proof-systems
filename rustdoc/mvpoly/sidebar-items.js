@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["prime","utils"]};
+window.SIDEBAR_ITEMS = {"mod":["monomials","prime","utils"]};
