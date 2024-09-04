@@ -248,6 +248,12 @@ pub fn compute_all_two_factors_decomposition(
 /// ```
 /// For N nested loops, the algorithm is the same, with the division increasing
 /// by the factor `N_k` for the index `i_(k + 1)`
+///
+/// In the case of an empty list, the function will return a list containing a
+/// single element which is the empty list.
+///
+/// In the case of an empty loop (i.e. one value in the input list is 0), the
+/// expected output is the empty list.
 pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usize>> {
     let n = nested_loop_sizes.iter().product();
     (0..n)
