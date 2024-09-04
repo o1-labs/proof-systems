@@ -800,6 +800,8 @@
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -962,8 +964,9 @@
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="kw">use </span><span class="kw">crate</span>::utils::{
-    compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator,
+<span class="kw">use crate</span>::{
+    utils::{compute_all_two_factors_decomposition, naive_prime_factors, PrimeNumberGenerator},
+    MVPoly,
 };
 
 <span class="doccomment">/// Represents a multivariate polynomial of degree less than `D` in `N` variables.
@@ -1017,19 +1020,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt; Dense&lt;F, N, D&gt; {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>normalized_indices = <span class="self">Self</span>::compute_normalized_indices();
-        Dense {
-            coeff: <span class="macro">vec!</span>[F::zero(); <span class="self">Self</span>::dimension()],
-            normalized_indices,
-        }
-    }
-
-    <span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>F&gt; {
-        <span class="self">self</span>.coeff.iter()
-    }
-
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt; MVPoly&lt;F, N, D&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt; {
     <span class="doccomment">/// Generate a random polynomial of maximum degree `max_degree`.
     ///
     /// If `None` is provided as the maximum degree, the polynomial will be
@@ -1043,7 +1034,7 @@
     /// polynomial random generator, if needed.
     ///
     /// For now, the function is only used for testing.
-    </span><span class="kw">pub unsafe fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG, max_degree: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">unsafe fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG, max_degree: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
         <span class="kw">let </span>normalized_indices = <span class="self">Self</span>::compute_normalized_indices();
         <span class="comment">// Different cases to avoid complexity in the case no maximum degree is
@@ -1069,6 +1060,91 @@
             coeff,
             normalized_indices,
         }
+    }
+
+    <span class="kw">fn </span>is_constant(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.coeff.iter().skip(<span class="number">1</span>).all(|c| c.is_zero())
+    }
+
+    <span class="doccomment">/// Returns the degree of the polynomial.
+    ///
+    /// The degree of the polynomial is the maximum degree of the monomials
+    /// that have a non-zero coefficient.
+    ///
+    /// # Safety
+    ///
+    /// The zero polynomial as a degree equals to 0, as the degree of the
+    /// constant polynomials. We do use the `unsafe` keyword to warn the user
+    /// for this specific case.
+    </span><span class="kw">unsafe fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">if </span><span class="self">self</span>.is_constant() {
+            <span class="kw">return </span><span class="number">0</span>;
+        }
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        <span class="self">self</span>.coeff.iter().enumerate().fold(<span class="number">1</span>, |acc, (i, c)| {
+            <span class="kw">if </span><span class="kw-2">*</span>c != F::zero() {
+                <span class="kw">let </span>decomposition_of_i =
+                    naive_prime_factors(<span class="self">self</span>.normalized_indices[i], <span class="kw-2">&amp;mut </span>prime_gen);
+                <span class="kw">let </span>monomial_degree = decomposition_of_i.iter().fold(<span class="number">0</span>, |acc, (<span class="kw">_</span>, d)| acc + d);
+                acc.max(monomial_degree)
+            } <span class="kw">else </span>{
+                acc
+            }
+        })
+    }
+
+    <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|c| c.double()).collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
+    }
+
+    <span class="kw">fn </span>mul_by_scalar(<span class="kw-2">&amp;</span><span class="self">self</span>, c: F) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|coef| <span class="kw-2">*</span>coef * c).collect();
+        <span class="self">Self</span>::from_coeffs(coeffs)
+    }
+
+    <span class="doccomment">/// Evaluate the polynomial at the vector point `x`.
+    ///
+    /// This is a dummy implementation. A cache can be used for the monomials to
+    /// speed up the computation.
+    </span><span class="kw">fn </span>eval(<span class="kw-2">&amp;</span><span class="self">self</span>, x: <span class="kw-2">&amp;</span>[F; N]) -&gt; F {
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
+        <span class="self">self</span>.coeff
+            .iter()
+            .enumerate()
+            .fold(F::zero(), |acc, (i, c)| {
+                <span class="kw">if </span>i == <span class="number">0 </span>{
+                    acc + c
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>normalized_index = <span class="self">self</span>.normalized_indices[i];
+                    <span class="comment">// IMPROVEME: we should keep the prime decomposition somewhere.
+                    // It can be precomputed for a few multi-variate polynomials
+                    // vector space
+                    </span><span class="kw">let </span>prime_decomposition = naive_prime_factors(normalized_index, <span class="kw-2">&amp;mut </span>prime_gen);
+                    <span class="kw">let </span><span class="kw-2">mut </span>monomial = F::one();
+                    prime_decomposition.iter().for_each(|(p, d)| {
+                        <span class="comment">// IMPROVEME: we should keep the inverse indices
+                        </span><span class="kw">let </span>inv_p = primes.iter().position(|<span class="kw-2">&amp;</span>x| x == <span class="kw-2">*</span>p).unwrap();
+                        <span class="kw">let </span>x_p = x[inv_p].pow([<span class="kw-2">*</span>d <span class="kw">as </span>u64]);
+                        monomial <span class="kw-2">*</span>= x_p;
+                    });
+                    acc + <span class="kw-2">*</span>c * monomial
+                }
+            })
+    }
+}
+
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt; Dense&lt;F, N, D&gt; {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>normalized_indices = <span class="self">Self</span>::compute_normalized_indices();
+        Dense {
+            coeff: <span class="macro">vec!</span>[F::zero(); <span class="self">Self</span>::dimension()],
+            normalized_indices,
+        }
+    }
+    <span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>F&gt; {
+        <span class="self">self</span>.coeff.iter()
     }
 
     <span class="kw">pub fn </span>dimension() -&gt; usize {
@@ -1104,37 +1180,6 @@
 
     <span class="kw">pub fn </span>maximum_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         D
-    }
-
-    <span class="kw">pub fn </span>is_constant(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.coeff.iter().skip(<span class="number">1</span>).all(|c| c.is_zero())
-    }
-
-    <span class="doccomment">/// Returns the degree of the polynomial.
-    ///
-    /// The degree of the polynomial is the maximum degree of the monomials
-    /// that have a non-zero coefficient.
-    ///
-    /// # Safety
-    ///
-    /// The zero polynomial as a degree equals to 0, as the degree of the
-    /// constant polynomials. We do use the `unsafe` keyword to warn the user
-    /// for this specific case.
-    </span><span class="kw">pub unsafe fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">if </span><span class="self">self</span>.is_constant() {
-            <span class="kw">return </span><span class="number">0</span>;
-        }
-        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
-        <span class="self">self</span>.coeff.iter().enumerate().fold(<span class="number">1</span>, |acc, (i, c)| {
-            <span class="kw">if </span><span class="kw-2">*</span>c != F::zero() {
-                <span class="kw">let </span>decomposition_of_i =
-                    naive_prime_factors(<span class="self">self</span>.normalized_indices[i], <span class="kw-2">&amp;mut </span>prime_gen);
-                <span class="kw">let </span>monomial_degree = decomposition_of_i.iter().fold(<span class="number">0</span>, |acc, (<span class="kw">_</span>, d)| acc + d);
-                acc.max(monomial_degree)
-            } <span class="kw">else </span>{
-                acc
-            }
-        })
     }
 
     <span class="doccomment">/// Output example for N = 2 and D = 2:
@@ -1183,47 +1228,6 @@
                 monomial_degree == D || c == F::zero()
             });
         is_homogeneous
-    }
-
-    <span class="kw">pub fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|c| c.double()).collect();
-        <span class="self">Self</span>::from_coeffs(coeffs)
-    }
-
-    <span class="kw">pub fn </span>mul_by_scalar(<span class="kw-2">&amp;</span><span class="self">self</span>, c: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>coeffs = <span class="self">self</span>.coeff.iter().map(|coef| <span class="kw-2">*</span>coef * c).collect();
-        <span class="self">Self</span>::from_coeffs(coeffs)
-    }
-
-    <span class="doccomment">/// Evaluate the polynomial at the vector point `x`.
-    ///
-    /// This is a dummy implementation. A cache can be used for the monomials to
-    /// speed up the computation.
-    </span><span class="kw">pub fn </span>eval(<span class="kw-2">&amp;</span><span class="self">self</span>, x: <span class="kw-2">&amp;</span>[F; N]) -&gt; F {
-        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
-        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
-        <span class="self">self</span>.coeff
-            .iter()
-            .enumerate()
-            .fold(F::zero(), |acc, (i, c)| {
-                <span class="kw">if </span>i == <span class="number">0 </span>{
-                    acc + c
-                } <span class="kw">else </span>{
-                    <span class="kw">let </span>normalized_index = <span class="self">self</span>.normalized_indices[i];
-                    <span class="comment">// IMPROVEME: we should keep the prime decomposition somewhere.
-                    // It can be precomputed for a few multi-variate polynomials
-                    // vector space
-                    </span><span class="kw">let </span>prime_decomposition = naive_prime_factors(normalized_index, <span class="kw-2">&amp;mut </span>prime_gen);
-                    <span class="kw">let </span><span class="kw-2">mut </span>monomial = F::one();
-                    prime_decomposition.iter().for_each(|(p, d)| {
-                        <span class="comment">// IMPROVEME: we should keep the inverse indices
-                        </span><span class="kw">let </span>inv_p = primes.iter().position(|<span class="kw-2">&amp;</span>x| x == <span class="kw-2">*</span>p).unwrap();
-                        <span class="kw">let </span>x_p = x[inv_p].pow([<span class="kw-2">*</span>d <span class="kw">as </span>u64]);
-                        monomial <span class="kw-2">*</span>= x_p;
-                    });
-                    acc + <span class="kw-2">*</span>c * monomial
-                }
-            })
     }
 
     <span class="kw">pub fn </span>increase_degree&lt;<span class="kw">const </span>D_PRIME: usize&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Dense&lt;F, N, D_PRIME&gt; {
