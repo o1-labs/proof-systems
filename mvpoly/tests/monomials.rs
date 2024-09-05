@@ -1,6 +1,7 @@
 use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
+use rand::{seq::SliceRandom, Rng};
 
 #[test]
 fn test_mul_by_one() {
@@ -497,4 +498,39 @@ fn test_mvpoly_compute_cross_terms_degree_seven() {
         eval1_hom + r_seven * eval2_hom + cross_terms_eval
     };
     assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_is_multilinear() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = Sparse::<Fp, 6, 2>::zero();
+    assert!(p1.is_multilinear());
+
+    let c = Fp::rand(&mut rng);
+    let p2 = Sparse::<Fp, 6, 2>::from(c);
+    assert!(p2.is_multilinear());
+
+    {
+        let mut p = Sparse::<Fp, 6, 3>::zero();
+        let c = Fp::rand(&mut rng);
+        let idx = rng.gen_range(0..6);
+        let monomials_exponents = std::array::from_fn(|i| if i == idx { 1 } else { 0 });
+        p.add_monomial(monomials_exponents, c);
+        assert!(p.is_multilinear());
+    }
+
+    {
+        let mut p = Sparse::<Fp, 6, 4>::zero();
+        let c = Fp::rand(&mut rng);
+        let nb_var = rng.gen_range(0..4);
+        let mut monomials_exponents: [usize; 6] =
+            std::array::from_fn(|i| if i <= nb_var { 1 } else { 0 });
+        monomials_exponents.shuffle(&mut rng);
+        p.add_monomial(monomials_exponents, c);
+        assert!(p.is_multilinear());
+    }
+
+    // Very unlikely to have a random polynomial being multilinear
+    let p3 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
+    assert!(!p3.is_multilinear());
 }
