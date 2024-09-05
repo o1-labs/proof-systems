@@ -582,15 +582,35 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_END_OF_PREIMAGE_OFF,
-            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
-            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
+            MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
+            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
+            MIPS_PREIMAGE_CHUNK_OFF,
         },
-        interpreter::{InterpreterEnv, MIPS_CHUNK_BYTES_LEN},
+        interpreter::InterpreterEnv,
         registers::REGISTER_PREIMAGE_KEY_START,
     },
     E,
@@ -994,6 +1014,11 @@
             <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
         });
 
+        <span class="comment">// The (at most) 4 bytes that are being read from the bytelength
+        </span><span class="kw">let </span>length_bytes: [<span class="kw">_</span>; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(MIPS_LENGTH_BYTES_OFF + i))
+        });
+
         <span class="comment">// Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
         // It will be all zero when the syscall reads the bytelength prefix.
         </span><span class="kw">let </span>has_n_bytes: [<span class="kw">_</span>; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
@@ -1115,7 +1140,24 @@
         }
 
         <span class="comment">// FIXED LOOKUPS
-        // Check that 0 &lt;= preimage read &lt;= actual read &lt;= len &lt;= 4
+
+        // Byte checks with lookups: both preimage and length bytes are checked
+        // TODO: think of a way to merge these together to perform 4 lookups
+        // instead of 8 per row
+        </span><span class="kw">for </span>byte <span class="kw">in </span>bytes.iter() {
+            <span class="self">self</span>.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                <span class="macro">vec!</span>[byte.clone()],
+            ));
+        }
+        <span class="kw">for </span>b <span class="kw">in </span>length_bytes.iter() {
+            <span class="self">self</span>.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                <span class="macro">vec!</span>[b.clone()],
+            ));
+        }
+
+        <span class="comment">// Check that 0 &lt;= preimage read &lt;= actual read &lt;= len &lt;= 4
         </span><span class="self">self</span>.lookup_2bits(len);
         <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>actual_read_bytes);
         <span class="self">self</span>.lookup_2bits(<span class="kw-2">&amp;</span>num_preimage_bytes_read);
@@ -1134,16 +1176,16 @@
                 ],
             ));
         }
+
         <span class="comment">// COMMUNICATION CHANNEL: Read hash output
         // FIXME: check if the most significant byte is zero or 0x02
-        //       so we know what exactly needs to be passed to the lookup
+        //        so we know what exactly needs to be passed to the lookup
         </span><span class="kw">let </span>preimage_key = (<span class="number">0</span>..<span class="number">8</span>).fold(Expr::from(<span class="number">0</span>), |acc, i| {
             acc * Expr::from(<span class="number">2u64</span>.pow(<span class="number">32</span>))
                 + <span class="self">self</span>.variable(<span class="self">Self</span>::Position::ScratchState(
                     REGISTER_PREIMAGE_KEY_START + i,
                 ))
         });
-
         <span class="comment">// If no more bytes left to be read, then the end of the preimage is
         // true.
         // TODO: keep track of counter to diminish the number of bytes at
@@ -1151,14 +1193,10 @@
         </span><span class="self">self</span>.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
-            <span class="macro">vec!</span>[hash_counter, preimage_key],
+            <span class="macro">vec!</span>[hash_counter.clone(), preimage_key],
         ));
 
-        <span class="comment">// Byte checks with lookups: The preimage bytes are checked to be 8-bits
-        // on the Keccak side.
-        // TODO: do we want to check byte-ness of the bytelength bytes as well?
-
-        // Return actual length read as variable, stored in `pos`
+        <span class="comment">// Return actual length read as variable, stored in `pos`
         </span>actual_read_bytes
     }
 

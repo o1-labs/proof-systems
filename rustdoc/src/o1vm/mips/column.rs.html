@@ -154,6 +154,9 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{<span class="self">self</span>, IType, JType, RType},
@@ -181,9 +184,12 @@
 <span class="doccomment">/// The at most 4-bytes of the preimage that are currently being processed
 /// Consists of 4 field elements of at most 1 byte each.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_BYTES_OFF: usize = <span class="number">85</span>;
-<span class="doccomment">/// Flags indicating whether at least N bytes have been processed in this step.
-/// Contains 4 field elements of boolean type each.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = <span class="number">89</span>;
+<span class="doccomment">/// The at most 4-bytes of the length that are currently being processed
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_LENGTH_BYTES_OFF: usize = <span class="number">89</span>;
+<span class="doccomment">/// Flags indicating whether at least N bytes have been processed in this step
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = <span class="number">93</span>;
+<span class="doccomment">/// The maximum size of a chunk (4 bytes)
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LEN: usize = <span class="number">4</span>;
 
 <span class="doccomment">/// The number of columns used for relation witness in the MIPS circuit
 </span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + <span class="number">2</span>;

@@ -1091,6 +1091,13 @@
 <a href="#1091" id="1091">1091</a>
 <a href="#1092" id="1092">1092</a>
 <a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
@@ -1509,22 +1516,23 @@
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    </span><span class="doccomment">/// Creates all possible 2361 lookups to the Keccak constraints environment:
-    /// - 2222 lookups for the step row
+    </span><span class="doccomment">/// Creates all possible lookups to the Keccak constraints environment:
+    /// - 2225 lookups for the step row
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
     /// Of which:
-    /// - 1623 lookups if Step::Round          (1741 + 2)
-    /// - 737  lookups if Step::Absorb::First  (600 + 1 + 136)
-    /// - 738  lookups if Step::Absorb::Middle (600 + 2 + 136)
-    /// - 739  lookups if Step::Absorb::Last   (601 + 2 + 136)
-    /// - 738  lookups if Step::Absorb::Only   (601 + 1 + 136)
-    /// - 602 lookups if Step::Squeeze         (600 + 1 + 1)
+    /// - 1623 lookups if Step::Round          (1621 + 2)
+    /// - 537  lookups if Step::Absorb::First  (400 + 1 + 136)
+    /// - 538  lookups if Step::Absorb::Middle (400 + 2 + 136)
+    /// - 539  lookups if Step::Absorb::Last   (401 + 2 + 136)
+    /// - 538  lookups if Step::Absorb::Only   (401 + 1 + 136)
+    /// - 602  lookups if Step::Squeeze        (600 + 1 + 1)
     </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
         <span class="comment">// SPONGE LOOKUPS
-        // -&gt; adds 600 lookups if is_sponge
-        // -&gt; adds 601 lookups if is_pad
+        // -&gt; adds  400 lookups if is_sponge
+        // -&gt; adds +200 lookups if is_squeeze
+        // -&gt; adds +1   lookups if is_pad
         </span><span class="self">self</span>.lookups_sponge(step);
 
         <span class="comment">// ROUND LOOKUPS
@@ -1603,7 +1611,8 @@
     }
 
     <span class="doccomment">/// Adds the 601 lookups required for the sponge
-    /// - 600 lookups if is_sponge()
+    /// - 400 lookups if is_sponge()
+    /// - 200 extra lookups if is_squeeze()
     /// - 1 extra lookup if is_pad()
     </span><span class="kw">fn </span>lookups_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
         <span class="comment">// PADDING LOOKUPS
@@ -1622,9 +1631,14 @@
             ],
         );
         <span class="comment">// BYTES LOOKUPS
+        // Checking the 200 bytes of the absorb phase together with the length
+        // bytes is performed in the SyscallReadPreimage rows (4 byte lookups
+        // per row).
+        // Here, this only checks the 200 bytes of the squeeze phase (digest)
+        // TODO: could this be just 32 and we check the shifts only for those?
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
             <span class="comment">// Bytes are &lt;2^8
-            </span><span class="self">self</span>.lookup_byte(<span class="self">self</span>.is_sponge(step), <span class="self">self</span>.sponge_byte(i));
+            </span><span class="self">self</span>.lookup_byte(<span class="self">self</span>.is_squeeze(step), <span class="self">self</span>.sponge_byte(i));
         }
         <span class="comment">// SHIFTS LOOKUPS
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
@@ -1632,7 +1646,7 @@
             </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_sponge(step), <span class="self">self</span>.sponge_shifts(i));
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-            <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
+            <span class="comment">// Shifts0 together with Bytes composition by pairs are in the Reset table
             </span><span class="kw">let </span>dense = <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>);
             <span class="self">self</span>.lookup_reset(<span class="self">self</span>.is_sponge(step), dense, <span class="self">self</span>.sponge_shifts(i));
         }

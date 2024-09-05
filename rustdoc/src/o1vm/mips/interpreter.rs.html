@@ -2677,9 +2677,6 @@
 <a href="#2677" id="2677">2677</a>
 <a href="#2678" id="2678">2678</a>
 <a href="#2679" id="2679">2679</a>
-<a href="#2680" id="2680">2680</a>
-<a href="#2681" id="2681">2681</a>
-<a href="#2682" id="2682">2682</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -2707,9 +2704,6 @@
 <span class="kw">pub const </span>SYSCALL_READ: u32 = <span class="number">4003</span>;
 <span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
 <span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
-
-<span class="doccomment">/// The maximum size of a preimage chunk (4 bytes)
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LEN: usize = <span class="number">4</span>;
 
 <span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>Instruction {
