@@ -26,9 +26,6 @@ pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
 
-/// The maximum size of a preimage chunk (4 bytes)
-pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
 pub enum Instruction {
     RType(RTypeInstruction),
