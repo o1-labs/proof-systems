@@ -118,7 +118,7 @@ fn test_generic_gate_kzg() {
     .witness(witness)
     .public_inputs(public)
     .setup_with_custom_srs(|d1, usize| {
-        let mut srs = poly_commitment::kzg::PairingSRS::create(x, usize);
+        let mut srs = unsafe { poly_commitment::kzg::PairingSRS::create(x, usize) };
         srs.full_srs.add_lagrange_basis(d1);
         srs
     })

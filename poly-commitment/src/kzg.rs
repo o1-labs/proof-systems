@@ -2,6 +2,12 @@
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
 //! by Kate, Zaverucha and Goldberg, often referred to as the KZG10 paper.
+//!
+//! The protocol requires a structured reference string (SRS) that contains
+//! powers of a generator of a group, and a pairing friendly curve.
+//!
+//! The pairing friendly curve requirement is hidden in the PairingEngine trait
+//! parameter.
 
 use crate::{
     commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
@@ -51,6 +57,11 @@ impl<Pair: PairingEngine> Clone for KZGProof<Pair> {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Define a structured reference string (i.e. SRS) for the KZG protocol.
+/// The SRS consists of powers of an element `g^x` for some toxic waste `x`.
+///
+/// The SRS is formed using what we call a "trusted setup". For now, the setup
+/// is created using the method `create_trusted_setup`.
 pub struct PairingSRS<Pair: PairingEngine> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
     /// key"/"secret key"
@@ -85,10 +96,17 @@ impl<
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
     > PairingSRS<Pair>
 {
-    pub fn create(x: F, n: usize) -> Self {
+    /// Create a new SRS for the KZG protocol.
+    ///
+    /// # Safety
+    ///
+    /// The method is annotated as unsafe because it does use a method
+    /// generating the toxic waste. A safe method would be to load an existing
+    /// SRS where it is broadly accepted that the trapdoor is not recoverable.
+    pub unsafe fn create(x: F, n: usize) -> Self {
         PairingSRS {
-            full_srs: SRS::create_trusted_setup(x, n),
-            verifier_srs: SRS::create_trusted_setup(x, 3),
+            full_srs: unsafe { SRS::create_trusted_setup(x, n) },
+            verifier_srs: unsafe { SRS::create_trusted_setup(x, 3) },
         }
     }
 }
@@ -305,12 +323,13 @@ impl<
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
     > KZGProof<Pair>
 {
-    /// Create a pairing proof.
+    /// Create a KZG proof.
     /// Parameters:
     /// - `srs`: the structured reference string
     /// - `plnms`: vector of polynomials with optional degree bound and
     /// commitment randomness
-    /// - `elm`: vector of evaluation points
+    /// - `elm`: vector of evaluation points. Note that it only works for two
+    /// elements for now, i.e. elm must be of size 2.
     /// - `polyscale`: scaling factor
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
@@ -343,6 +362,9 @@ impl<
         })
     }
 
+    /// Verify a proof. Note that it only works for two elements for now, i.e.
+    /// elm must be of size 2.
+    /// Also, chunking is not supported.
     pub fn verify(
         &self,
         srs: &PairingSRS<Pair>,           // SRS
@@ -369,10 +391,12 @@ impl<
         // same comment in combine_evaluations
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
+        // Taking the first element of the commitment, i.e. no support for chunking.
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
             .elems[0];
+        // Taking the first element of the commitment, i.e. no support for chunking.
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)

@@ -22,8 +22,8 @@ fn test_kzg_proof() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let x = ScalarField::rand(&mut rng);
 
-    let mut srs = SRS::<G1>::create_trusted_setup(x, n);
-    let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
+    let mut srs = unsafe { SRS::<G1>::create_trusted_setup(x, n) };
+    let verifier_srs = unsafe { SRS::<G2>::create_trusted_setup(x, 3) };
     srs.add_lagrange_basis(domain);
 
     let srs = PairingSRS {
@@ -96,7 +96,7 @@ fn check_srs_g2_valid_and_serializes() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let x = Fp::rand(&mut rng);
-    let srs: PairingSRS<BN254> = PairingSRS::create(x, 1 << 5);
+    let srs: PairingSRS<BN254> = unsafe { PairingSRS::create(x, 1 << 5) };
 
     let mut vec: Vec<u8> = vec![0u8; 1024];
 
