@@ -12,9 +12,8 @@ use rayon::prelude::*;
 /// efficiently in `O(d)` time.
 ///
 /// When chunking is in place, the domain size `n` is larger than the maximum
-/// polynomial degree allowed `m`. In particular, the SRS is not long enough to
-/// support higher degrees. Thus, on input `n = c·m` evaluations for `c` chunks,
-/// we cannot obtain a polynomial `f` with degree `c·m-1` with the equation:
+/// polynomial degree allowed `m`. Thus, on input `n = c·m` evaluations for `c`
+/// chunks, we cannot obtain a polynomial `f` with degree `c·m-1` with the equation:
 ///
 /// `f(X) = x_0 · l_0(X) + ... + x_{c·m-1} · l_{c·m-1}(X)`
 ///
