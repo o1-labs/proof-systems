@@ -70,10 +70,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
     let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
     let mut plnm_evals_part = {
-        // For now just check that all the evaluation polynomials are the same degree so that we
-        // can do just a single FFT.
-        // Furthermore we check they have size less than the SRS size so we don't have to do chunking.
-        // If/when we change this, we can add more complicated code to handle different degrees.
+        // For now just check that all the evaluation polynomials are the same
+        // degree so that we can do just a single FFT.
+        // Furthermore we check they have size less than the SRS size so we
+        // don't have to do chunking.
+        // If/when we change this, we can add more complicated code to handle
+        // different degrees.
         let degree = plnms
             .iter()
             .fold(None, |acc, (p, _)| match p {
@@ -146,12 +148,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
 
 impl<G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
-    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
-    ///     elm: evaluation point vector to open the commitments at
-    ///     polyscale: polynomial scaling factor for opening commitments in batch
-    ///     evalscale: eval scaling factor for opening commitments in batch
-    ///     oracle_params: parameters for the random oracle argument
-    ///     RETURN: commitment opening proof
+    /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    /// - elm: evaluation point vector to open the commitments at
+    /// - polyscale: polynomial scaling factor for opening commitments in batch
+    /// - evalscale: eval scaling factor for opening commitments in batch
+    /// - oracle_params: parameters for the random oracle argument
+    /// RETURN: commitment opening proof
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
@@ -159,11 +161,11 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
-        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with commitment randomness
-        elm: &[G::ScalarField],            // vector of evaluation points
-        polyscale: G::ScalarField,         // scaling factor for polynoms
-        evalscale: G::ScalarField,         // scaling factor for evaluation point powers
-        mut sponge: EFqSponge,             // sponge
+        plnms: PolynomialsToCombine<G, D>,
+        elm: &[G::ScalarField],
+        polyscale: G::ScalarField,
+        evalscale: G::ScalarField,
+        mut sponge: EFqSponge,
         rng: &mut RNG,
     ) -> OpeningProof<G>
     where
