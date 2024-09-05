@@ -555,26 +555,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         // Check that 0 <= preimage read <= actual read <= len <= 4
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![len.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![actual_read_bytes.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![num_preimage_bytes_read.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![len.clone() - actual_read_bytes.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![actual_read_bytes.clone() - num_preimage_bytes_read.clone()],
-        ));
+        self.lookup_2bits(len);
+        self.lookup_2bits(&actual_read_bytes);
+        self.lookup_2bits(&num_preimage_bytes_read);
+        self.lookup_2bits(&(len.clone() - actual_read_bytes.clone()));
+        self.lookup_2bits(&(actual_read_bytes.clone() - num_preimage_bytes_read.clone()));
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LEN {

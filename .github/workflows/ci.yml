@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  pull_request:
+
+env:
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#release
+  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
+  CARGO_INCREMENTAL: 1
+  # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+  CARGO_TERM_COLOR: always
+  # 30 MB of stack for Keccak tests
+  RUST_MIN_STACK: 31457280
+
+jobs:
+  run_mdbook:
+    name: Building MDBook
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["1.72"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Build the mdbook
+        run: |
+          cd book
+          make deps
+          make build
+
+  run_formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["nightly"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Run cargo fmt
+        run: |
+          make format
+
+  run_checks:
+    name: Run checks and tests
+    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
+    # Only in this configuration we enable tests with the code coverage data gathering.
+    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
+    env:
+      RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
+    strategy:
+      matrix:
+        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
+        # FIXME: currently not available for 5.0.0.
+        # It might be related to boxroot dependency, and we would need to bump
+        # up the ocaml-rs dependency
+        ocaml_version: ["4.14"]
+        os: ["ubuntu-latest"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
+      - name: Install markdownlint
+        run: |
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
+
+      #
+      # Doc & Spec
+      #
+
+      - name: Install cargo-spec for specifications
+        run: |
+          eval $(opam env)
+          cargo install --locked cargo-spec
+
+      - name: Build the kimchi specification
+        run: |
+          cd book/specifications/kimchi
+          make build
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications/poly-commitment
+          make build
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code ":(exclude)rust-toolchain"
+
+      - name: Build cargo docs
+        run: |
+          eval $(opam env)
+          RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
+
+      #
+      # Coding guidelines
+      #
+
+      - name: Lint (clippy)
+        run: |
+          eval $(opam env)
+          make lint
+
+      #
+      # Build
+      #
+
+      - name: Ensure that everything builds
+        run: |
+          eval $(opam env)
+          make
+
+      #
+      # Tests
+      #
+
+      - name: Install test dependencies
+        run: |
+          make install-test-deps
+
+      - name: Doc tests
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make test-doc
+
+      - name: Run non-heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make nextest
+
+      - name: Run non-heavy tests with the code coverage
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make nextest-with-coverage
+          make test-doc-with-coverage
+          make generate-test-coverage-report
+
+      - name: Use shared code coverage summary
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        uses: ./.github/actions/coverage-summary-shared
+
+      - name: Use shared Codecov reporting steps
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        uses: ./.github/actions/codecov-shared
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
