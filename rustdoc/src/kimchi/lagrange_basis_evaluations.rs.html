@@ -336,6 +336,15 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{batch_inversion_and_mul, FftField};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
@@ -359,7 +368,6 @@
 /// that is equal to the powers of the point x in the positions corresponding to
 /// the chunk, and 0 elsewhere in the domain. This is useful to evaluate the
 /// chunks of polynomials of degree c·n given in evaluation form at the point.
-///
 </span><span class="kw">pub struct </span>LagrangeBasisEvaluations&lt;F&gt; {
     <span class="doccomment">/// If no chunking:
     /// - evals is a vector of length 1 containing a vector of size n
@@ -369,11 +377,18 @@
     /// - the first index refers to the chunks
     /// - the second index refers j-th coefficient of the i-th chunk of the
     ///   polynomial that equals the powers of the point and 0 elsewhere.
-    ///
     </span>evals: Vec&lt;Vec&lt;F&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: FftField&gt; LagrangeBasisEvaluations&lt;F&gt; {
+    <span class="doccomment">/// Return the domain size of the individual evaluations.
+    ///
+    /// Note that there is an invariant that all individual evaluation chunks
+    /// have the same size. It is enforced by each constructor.
+    </span><span class="kw">pub fn </span>domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.evals[<span class="number">0</span>].len()
+    }
+
     <span class="doccomment">/// Given the evaluations form of a polynomial, directly evaluate that
     /// polynomial at a point.
     ///
@@ -397,13 +412,12 @@
     /// Returns the evaluation of each chunk of the polynomial at the point
     /// (when there is no chunking, the result is a vector of length 1). They
     /// correspond to the f_i(z) in the equation above.
-    ///
     </span><span class="kw">pub fn </span>evaluate&lt;D: EvaluationDomain&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, p: <span class="kw-2">&amp;</span>Evaluations&lt;F, D&gt;) -&gt; Vec&lt;F&gt; {
         <span class="comment">// The domain size must be a multiple of the number of evaluations so
         // that the degree of the polynomial can be split into chunks of equal size.
-        </span><span class="macro">assert_eq!</span>(p.evals.len() % <span class="self">self</span>.evals[<span class="number">0</span>].len(), <span class="number">0</span>);
+        </span><span class="macro">assert_eq!</span>(p.evals.len() % <span class="self">self</span>.domain_size(), <span class="number">0</span>);
         <span class="comment">// The number of chunks c
-        </span><span class="kw">let </span>stride = p.evals.len() / <span class="self">self</span>.evals[<span class="number">0</span>].len();
+        </span><span class="kw">let </span>stride = p.evals.len() / <span class="self">self</span>.domain_size();
         <span class="kw">let </span>p_evals = <span class="kw-2">&amp;</span>p.evals;
 
         <span class="comment">// Performs the operation
@@ -431,11 +445,15 @@
             .collect()
     }
 
-    <span class="doccomment">/// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
-    /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
+    <span class="doccomment">/// Given the evaluations form of a polynomial, directly evaluate that
+    /// polynomial at a point, assuming that the given evaluations are either `0`
+    /// or `1` at every point of the domain.
+    ///
+    /// This method can particularly be useful when the polynomials represent
+    /// (boolean) selectors in a circuit.
     </span><span class="kw">pub fn </span>evaluate_boolean&lt;D: EvaluationDomain&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, p: <span class="kw-2">&amp;</span>Evaluations&lt;F, D&gt;) -&gt; Vec&lt;F&gt; {
-        <span class="macro">assert_eq!</span>(p.evals.len() % <span class="self">self</span>.evals[<span class="number">0</span>].len(), <span class="number">0</span>);
-        <span class="kw">let </span>stride = p.evals.len() / <span class="self">self</span>.evals[<span class="number">0</span>].len();
+        <span class="macro">assert_eq!</span>(p.evals.len() % <span class="self">self</span>.domain_size(), <span class="number">0</span>);
+        <span class="kw">let </span>stride = p.evals.len() / <span class="self">self</span>.domain_size();
         <span class="self">self</span>.evals
             .iter()
             .map(|evals| {
