@@ -829,6 +829,55 @@ fn test_homogeneous_eval() {
     let p1 = Dense::<Fp, 4, 2>::one();
     let homogenous_eval = p1.homogeneous_eval(&random_eval, u);
     assert_eq!(homogenous_eval, u * u);
+
+    let mut p2 = Dense::<Fp, 4, 2>::zero();
+    // X1
+    p2.add_monomial([1, 0, 0, 0], Fp::one());
+    let homogenous_eval = p2.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * u);
+
+    let mut p3 = Dense::<Fp, 4, 2>::zero();
+    // X2
+    p3.add_monomial([0, 1, 0, 0], Fp::one());
+    let homogenous_eval = p3.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[1] * u);
+
+    let mut p4 = Dense::<Fp, 4, 2>::zero();
+    // X1 * X2
+    p4.add_monomial([1, 1, 0, 0], Fp::one());
+    let homogenous_eval = p4.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * random_eval[1]);
+
+    let mut p5 = Dense::<Fp, 4, 2>::zero();
+    // X1^2
+    p5.add_monomial([2, 0, 0, 0], Fp::one());
+    let homogenous_eval = p5.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * random_eval[0]);
+
+    let mut p6 = Dense::<Fp, 4, 2>::zero();
+    // X2^2 + X1^2
+    p6.add_monomial([0, 2, 0, 0], Fp::one());
+    p6.add_monomial([2, 0, 0, 0], Fp::one());
+    let homogenous_eval = p6.homogeneous_eval(&random_eval, u);
+    assert_eq!(
+        homogenous_eval,
+        random_eval[1] * random_eval[1] + random_eval[0] * random_eval[0]
+    );
+
+    let mut p7 = Dense::<Fp, 4, 2>::zero();
+    // X2^2 + X1^2 + X1 + 42
+    p7.add_monomial([0, 2, 0, 0], Fp::one());
+    p7.add_monomial([2, 0, 0, 0], Fp::one());
+    p7.add_monomial([1, 0, 0, 0], Fp::one());
+    p7.add_monomial([0, 0, 0, 0], Fp::from(42));
+    let homogenous_eval = p7.homogeneous_eval(&random_eval, u);
+    assert_eq!(
+        homogenous_eval,
+        random_eval[1] * random_eval[1]
+            + random_eval[0] * random_eval[0]
+            + u * random_eval[0]
+            + u * u * Fp::from(42)
+    );
 }
 
 #[test]
