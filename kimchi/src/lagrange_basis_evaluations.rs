@@ -252,12 +252,14 @@ mod tests {
     use ark_ff::{One, UniformRand, Zero};
     use ark_poly::{Polynomial, Radix2EvaluationDomain};
     use mina_curves::pasta::Fp;
+    use rand::Rng;
 
     #[test]
     fn test_lagrange_evaluations() {
-        let n = 1 << 4;
-        let domain = Radix2EvaluationDomain::new(n).unwrap();
         let mut rng = o1_utils::tests::make_test_rng(None);
+        let domain_log_size = rng.gen_range(1..10);
+        let n = 1 << domain_log_size;
+        let domain = Radix2EvaluationDomain::new(n).unwrap();
         let x = Fp::rand(&mut rng);
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
@@ -280,9 +282,10 @@ mod tests {
 
     #[test]
     fn test_new_with_chunked_segments() {
-        let n = 1 << 4;
-        let domain = Radix2EvaluationDomain::new(n).unwrap();
         let mut rng = o1_utils::tests::make_test_rng(None);
+        let domain_log_size = rng.gen_range(1..10);
+        let n = 1 << domain_log_size;
+        let domain = Radix2EvaluationDomain::new(n).unwrap();
         let x = Fp::rand(&mut rng);
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
         let evaluator_chunked =
@@ -304,7 +307,8 @@ mod tests {
     #[test]
     fn test_evaluation() {
         let mut rng = o1_utils::tests::make_test_rng(None);
-        let n = 1 << 10;
+        let domain_log_size = rng.gen_range(1..10);
+        let n = 1 << domain_log_size;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
 
         let evals = {
@@ -327,7 +331,8 @@ mod tests {
     #[test]
     fn test_evaluation_boolean() {
         let mut rng = o1_utils::tests::make_test_rng(None);
-        let n = 1 << 1;
+        let domain_log_size = rng.gen_range(1..10);
+        let n = 1 << domain_log_size;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
 
         let evals = {
@@ -339,7 +344,6 @@ mod tests {
                     Fp::zero()
                 });
             }
-            e = vec![Fp::zero(), Fp::one()];
             Evaluations::from_vec_and_domain(e, domain)
         };
 
