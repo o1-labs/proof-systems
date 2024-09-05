@@ -103,4 +103,18 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// Return true if the multi-variate polynomial is multilinear, i.e. if each
     /// variable in each monomial is of maximum degree 1.
     fn is_multilinear(&self) -> bool;
+
+    /// Generate a random multilinear polynomial
+    ///
+    /// # Safety
+    ///
+    /// Marked as unsafe to warn the user to use it with caution and to not
+    /// necessarily rely on it for security/randomness in cryptographic
+    /// protocols. The user is responsible for providing its own secure
+    /// polynomial random generator, if needed.
+    ///
+    /// For now, the function is only used for testing.
+    unsafe fn random_multilinear<RNG: RngCore>(_rng: &mut RNG) -> Self {
+        unimplemented!("TODO: use add_monomial")
+    }
 }
