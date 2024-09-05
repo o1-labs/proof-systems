@@ -226,6 +226,13 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
             domain.ifft_in_place(&mut chunked_evals);
             evals.push(chunked_evals);
         }
+        // Sanity check
+        assert_eq!(
+            evals.len(),
+            num_chunks,
+            "The number of expected chunks is {num_chunks} but only {} has/have been computed",
+            evals.len()
+        );
         LagrangeBasisEvaluations { evals }
     }
 
