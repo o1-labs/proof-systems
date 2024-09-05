@@ -21,7 +21,6 @@ use rayon::prelude::*;
 /// that is equal to the powers of the point x in the positions corresponding to
 /// the chunk, and 0 elsewhere in the domain. This is useful to evaluate the
 /// chunks of polynomials of degree c·n given in evaluation form at the point.
-///
 pub struct LagrangeBasisEvaluations<F> {
     /// If no chunking:
     /// - evals is a vector of length 1 containing a vector of size n
@@ -31,11 +30,18 @@ pub struct LagrangeBasisEvaluations<F> {
     /// - the first index refers to the chunks
     /// - the second index refers j-th coefficient of the i-th chunk of the
     ///   polynomial that equals the powers of the point and 0 elsewhere.
-    ///
     evals: Vec<Vec<F>>,
 }
 
 impl<F: FftField> LagrangeBasisEvaluations<F> {
+    /// Return the domain size of the individual evaluations.
+    ///
+    /// Note that there is an invariant that all individual evaluation chunks
+    /// have the same size. It is enforced by each constructor.
+    pub fn domain_size(&self) -> usize {
+        self.evals[0].len()
+    }
+
     /// Given the evaluations form of a polynomial, directly evaluate that
     /// polynomial at a point.
     ///
@@ -59,13 +65,12 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// Returns the evaluation of each chunk of the polynomial at the point
     /// (when there is no chunking, the result is a vector of length 1). They
     /// correspond to the f_i(z) in the equation above.
-    ///
     pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         // The domain size must be a multiple of the number of evaluations so
         // that the degree of the polynomial can be split into chunks of equal size.
-        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
+        assert_eq!(p.evals.len() % self.domain_size(), 0);
         // The number of chunks c
-        let stride = p.evals.len() / self.evals[0].len();
+        let stride = p.evals.len() / self.domain_size();
         let p_evals = &p.evals;
 
         // Performs the operation
@@ -93,11 +98,15 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
             .collect()
     }
 
-    /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
-    /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
+    /// Given the evaluations form of a polynomial, directly evaluate that
+    /// polynomial at a point, assuming that the given evaluations are either `0`
+    /// or `1` at every point of the domain.
+    ///
+    /// This method can particularly be useful when the polynomials represent
+    /// (boolean) selectors in a circuit.
     pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
-        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
-        let stride = p.evals.len() / self.evals[0].len();
+        assert_eq!(p.evals.len() % self.domain_size(), 0);
+        let stride = p.evals.len() / self.domain_size();
         self.evals
             .iter()
             .map(|evals| {
