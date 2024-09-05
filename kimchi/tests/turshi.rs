@@ -1,4 +1,4 @@
-use crate::circuits::{
+use kimchi::circuits::{
     gate::CircuitGate,
     polynomials::turshi::{testing::*, witness::*},
 };
