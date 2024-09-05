@@ -1,3 +1,4 @@
+// IMPROVEME: move all tests in top-level directory tests
 mod and;
 mod chunked;
 mod ec;
@@ -15,6 +16,5 @@ mod range_check;
 mod recursion;
 mod rot;
 mod serde;
-mod turshi;
 mod varbasemul;
 mod xor;
