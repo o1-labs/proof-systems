@@ -157,6 +157,8 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{<span class="self">self</span>, IType, JType, RType},
@@ -190,6 +192,8 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = <span class="number">93</span>;
 <span class="doccomment">/// The maximum size of a chunk (4 bytes)
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LEN: usize = <span class="number">4</span>;
+<span class="doccomment">/// The location of the preimage key as a field element of 248bits
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_KEY: usize = <span class="number">97</span>;
 
 <span class="doccomment">/// The number of columns used for relation witness in the MIPS circuit
 </span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + <span class="number">2</span>;

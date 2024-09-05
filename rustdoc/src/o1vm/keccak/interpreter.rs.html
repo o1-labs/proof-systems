@@ -1098,6 +1098,9 @@
 <a href="#1098" id="1098">1098</a>
 <a href="#1099" id="1099">1099</a>
 <a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
@@ -1582,9 +1585,12 @@
         }
     }
 
-    <span class="doccomment">/// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    <span class="doccomment">/// When in Squeeze mode, writes a Lookup containing the 31byte output of
+    /// the hash (excludes the MSB)
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
+    /// NOTE: this is excluding the MSB (which is then substituted with the
+    ///       file descriptor).
     </span><span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
         <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
             acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
