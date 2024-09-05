@@ -447,6 +447,12 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
     fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self {
         prime::Dense::from_expr(expr).into()
     }
+
+    fn is_homogeneous(&self) -> bool {
+        self.monomials
+            .iter()
+            .all(|(exponents, _)| exponents.iter().sum::<usize>() == D)
+    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> From<prime::Dense<F, N, D>>

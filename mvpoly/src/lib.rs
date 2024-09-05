@@ -67,4 +67,9 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// In the near future, the "expression framework" should be moved also into
     /// this library.
     fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self;
+
+    /// Returns true if the polynomial is homogeneous (of degree `D`).
+    /// As a reminder, a polynomial is homogeneous if all its monomials have the
+    /// same degree.
+    fn is_homogeneous(&self) -> bool;
 }
