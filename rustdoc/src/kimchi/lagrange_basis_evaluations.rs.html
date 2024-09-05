@@ -352,6 +352,10 @@
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{batch_inversion_and_mul, FftField};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
@@ -606,12 +610,14 @@
     <span class="kw">use </span>ark_ff::{One, UniformRand, Zero};
     <span class="kw">use </span>ark_poly::{Polynomial, Radix2EvaluationDomain};
     <span class="kw">use </span>mina_curves::pasta::Fp;
+    <span class="kw">use </span>rand::Rng;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_lagrange_evaluations() {
-        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; <span class="number">4</span>;
-        <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
+        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
+        <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
         <span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
@@ -634,9 +640,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_new_with_chunked_segments() {
-        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; <span class="number">4</span>;
-        <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
+        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
+        <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
         <span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
         <span class="kw">let </span>evaluator_chunked =
@@ -658,7 +665,8 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_evaluation() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; <span class="number">10</span>;
+        <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
+        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
         <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
 
         <span class="kw">let </span>evals = {
@@ -681,7 +689,8 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_evaluation_boolean() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; <span class="number">1</span>;
+        <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
+        <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
         <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
 
         <span class="kw">let </span>evals = {
@@ -693,7 +702,6 @@
                     Fp::zero()
                 });
             }
-            e = <span class="macro">vec!</span>[Fp::zero(), Fp::one()];
             Evaluations::from_vec_and_domain(e, domain)
         };
 
