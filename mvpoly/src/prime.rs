@@ -329,6 +329,20 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 }
             })
     }
+
+    fn is_homogeneous(&self) -> bool {
+        let normalized_indices = self.normalized_indices.clone();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let is_homogeneous = normalized_indices
+            .iter()
+            .zip(self.coeff.clone())
+            .all(|(idx, c)| {
+                let decomposition_of_i = naive_prime_factors(*idx, &mut prime_gen);
+                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
+                monomial_degree == D || c == F::zero()
+            });
+        is_homogeneous
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
@@ -409,21 +423,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             }
         });
         normalized_indices
-    }
-
-    /// Returns `true` if the polynomial is homoegenous of degree `d`
-    pub fn is_homogeneous(&self) -> bool {
-        let normalized_indices = self.normalized_indices.clone();
-        let mut prime_gen = PrimeNumberGenerator::new();
-        let is_homogeneous = normalized_indices
-            .iter()
-            .zip(self.coeff.clone())
-            .all(|(idx, c)| {
-                let decomposition_of_i = naive_prime_factors(*idx, &mut prime_gen);
-                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
-                monomial_degree == D || c == F::zero()
-            });
-        is_homogeneous
     }
 
     pub fn increase_degree<const D_PRIME: usize>(&self) -> Dense<F, N, D_PRIME> {

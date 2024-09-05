@@ -440,6 +440,12 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         // Feel free to change
         prime::Dense::random(rng, max_degree).into()
     }
+
+    fn is_homogeneous(&self) -> bool {
+        self.monomials
+            .iter()
+            .all(|(exponents, _)| exponents.iter().sum::<usize>() == D)
+    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> From<prime::Dense<F, N, D>>

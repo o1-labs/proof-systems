@@ -59,4 +59,9 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// This is a dummy implementation. A cache can be used for the monomials to
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
+
+    /// Returns true if the polynomial is homogeneous (of degree `D`).
+    /// As a reminder, a polynomial is homogeneous if all its monomials have the
+    /// same degree.
+    fn is_homogeneous(&self) -> bool;
 }
