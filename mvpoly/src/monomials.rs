@@ -557,6 +557,12 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         });
         cross_terms_by_powers_of_r
     }
+
+    fn is_multilinear(&self) -> bool {
+        self.monomials
+            .iter()
+            .all(|(exponents, _)| exponents.iter().all(|&d| d <= 1))
+    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> From<prime::Dense<F, N, D>>

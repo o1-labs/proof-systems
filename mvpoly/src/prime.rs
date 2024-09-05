@@ -388,6 +388,26 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
     ) -> HashMap<usize, F> {
         unimplemented!()
     }
+
+    fn is_multilinear(&self) -> bool {
+        if self.is_zero() {
+            return true;
+        }
+        let normalized_indices = self.normalized_indices.clone();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        normalized_indices
+            .iter()
+            .zip(self.coeff.iter())
+            .all(|(idx, c)| {
+                if c.is_zero() {
+                    true
+                } else {
+                    let decomposition_of_i = naive_prime_factors(*idx, &mut prime_gen);
+                    // Each prime number/variable should appear at most once
+                    decomposition_of_i.iter().all(|(_p, d)| *d <= 1)
+                }
+            })
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
