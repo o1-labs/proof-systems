@@ -446,6 +446,21 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
             .iter()
             .all(|(exponents, _)| exponents.iter().sum::<usize>() == D)
     }
+
+    // IMPROVEME: powers can be cached
+    fn homogeneous_eval(&self, x: &[F; N], u: F) -> F {
+        self.monomials
+            .iter()
+            .map(|(exponents, coeff)| {
+                let mut term = F::one();
+                for (exp, point) in exponents.iter().zip(x.iter()) {
+                    term *= point.pow([*exp as u64]);
+                }
+                term *= u.pow([D as u64 - exponents.iter().sum::<usize>() as u64]);
+                term * coeff
+            })
+            .sum()
+    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> From<prime::Dense<F, N, D>>

@@ -819,3 +819,14 @@ fn test_is_zero() {
     let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, None) };
     assert!(!p2.is_zero());
 }
+
+#[test]
+fn test_homogeneous_eval() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let random_eval = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u = Fp::rand(&mut rng);
+    // Homogeneous form is u^2
+    let p1 = Dense::<Fp, 4, 2>::one();
+    let homogenous_eval = p1.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, u * u);
+}

@@ -64,4 +64,8 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// As a reminder, a polynomial is homogeneous if all its monomials have the
     /// same degree.
     fn is_homogeneous(&self) -> bool;
+
+    /// Evaluate the polynomial at the vector point `x` and the extra variable
+    /// `u` using its homogeneous form of degree D.
+    fn homogeneous_eval(&self, x: &[F; N], u: F) -> F;
 }
