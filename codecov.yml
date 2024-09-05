@@ -3,5 +3,8 @@
 #        - https://github.com/rust-lang/rust/issues/79417
 #        - https://github.com/nextest-rs/nextest/issues/16
 coverage:
+  ignore:
+    # Ignore lines that start with Rust doc comments (///)
+    - "///.*"
   status:
     patch: off
