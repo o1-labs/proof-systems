@@ -5,31 +5,31 @@ use rayon::prelude::*;
 /// Evaluations of all normalized lagrange basis polynomials at a given point.
 /// Can be used to evaluate an `Evaluations` form polynomial at that point.
 ///
-/// The Lagrange basis for polynomials of degree <= d over a domain
-/// {ω_0,...,ω_d} is the set of (d+1) polynomials ${l_0,...,l_d}$ of degree d
-/// that equal 1 at ω_i and 0 in the rest of the domain terms. They can be used
-/// to evaluate polynomials in evaluation form efficiently in O(d) time.
+/// The Lagrange basis for polynomials of degree `<= d` over a domain
+/// `{ω_0,...,ω_d}` is the set of `(d+1)` polynomials `{l_0,...,l_d}` of degree
+/// `d` that equal 1 at ω_i and 0 in the rest of the domain terms. They can be
+/// used to evaluate polynomials in evaluation form efficiently in O(d) time.
 ///
 /// When chunking is in place, the domain size is larger than the maximum
 /// polynomial degree allowed. In particular, the SRS is not long enough to
 /// support higher degrees. Thus, we cannot obtain a polynomial f with degree
-/// c·n (with domain size n and number of chunks c) as usual with the equation:
+/// `c·n` (with domain size `n` and number of chunks `c`) with the equation:
 ///
-/// f(X) = x_0 · l_0(X) + ... + x_n · l_n(X) + ... + x_{c*n} · l_{c*n}(X)
+/// `f(X) = x_0 · l_0(X) + ... + x_n · l_n(X) + ... + x_{c*n} · l_{c·n}(X)`
 ///
-/// Instead, this struct will contain the (c*n+1) coefficients of the polynomial
-/// that is equal to the powers of the point x in the positions corresponding to
-/// the chunk, and 0 elsewhere in the domain. This is useful to evaluate the
+/// Instead, this struct will contain the `(c·n+1)` coefficients of the polynomial
+/// that is equal to the powers of the point `x` in the positions corresponding to
+/// the chunk, and `0` elsewhere in the domain. This is useful to evaluate the
 /// chunks of polynomials of degree c·n given in evaluation form at the point.
 pub struct LagrangeBasisEvaluations<F> {
     /// If no chunking:
-    /// - evals is a vector of length 1 containing a vector of size n
+    /// - evals is a vector of length 1 containing a vector of size `n`
     ///   corresponding to the evaluations of the Lagrange polynomials, which
-    ///   are the polynomials that equal 1 at ω_i and 0 elsewhere in the domain.
-    /// If chunking (a vector of size c * N )
+    ///   are the polynomials that equal `1` at `ω_i` and `0` elsewhere in the domain.
+    /// If chunking (a vector of size `c · N`)
     /// - the first index refers to the chunks
     /// - the second index refers j-th coefficient of the i-th chunk of the
-    ///   polynomial that equals the powers of the point and 0 elsewhere.
+    ///   polynomial that equals the powers of the point and `0` elsewhere.
     evals: Vec<Vec<F>>,
 }
 
@@ -45,26 +45,27 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// Given the evaluations form of a polynomial, directly evaluate that
     /// polynomial at a point.
     ///
-    /// The Lagrange basis evaluations can be used to evaluate a polynomial of
-    /// given in evaluation form efficiently in O(n) time, of degree d <= n
-    /// where n is the domain size, without the need of interpolating it first.
+    /// The Lagrange basis evaluations can be used to evaluate a polynomial
+    /// given in evaluation form efficiently in `O(n)` time, of degree `d <= n`
+    /// where `n` is the domain size, without the need of interpolating it first.
     ///
     /// Recall that a polynomial can be represented as the sum of the scaled
     /// Lagrange polynomials using its evaluations on the domain:
-    /// $ f(x) = x_0 · l_0(x) + ... + x_n · l_n(x) $
+    /// `f(x) = x_0 · l_0(x) + ... + x_n · l_n(x)`
     ///
     /// Recall that when chunking is in place, we want to evaluate a
-    /// polynomial f of degree c · m at point z, expressed as
-    ///
-    /// f(z) = a_0·z^0 + ... + a_{n-1}·z^{n-1} + ... + a_{c*n-1}·z^{c*n-1}
+    /// polynomial `f` of degree `c · n` at point `z`, expressed as
+    /// ```
+    /// f(z) = a_0·z^0 + ... + a_{n-1}·z^{n-1} + ... + a_{c*n-1}·z^{c·n-1}
     ///      = z^0 · f_0(z) + z^n · f_1(z) + ... + z^{(c-1)n} · f_{c-1}(z)
+    /// ```
     ///
-    /// where f_i(X) is the i-th chunked polynomial of degree m of f:
-    /// f_i(x) = a_{i*n} · x^0 + ... + a_{(i+1)n-1} · x^{n-1}
+    /// where `f_i(X)` is the i-th chunked polynomial of degree `n-1` of `f`:
+    /// `f_i(x) = a_{i·n} · x^0 + ... + a_{(i+1)n-1} · x^{n-1}`
     ///
     /// Returns the evaluation of each chunk of the polynomial at the point
     /// (when there is no chunking, the result is a vector of length 1). They
-    /// correspond to the f_i(z) in the equation above.
+    /// correspond to the `f_i(z)` in the equation above.
     pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         // The domain size must be a multiple of the number of evaluations so
         // that the degree of the polynomial can be split into chunks of equal size.
@@ -74,16 +75,17 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         let p_evals = &p.evals;
 
         // Performs the operation
+        // ```
         //                         n-1
         // j ∈ [0, c) : eval_{j} =  Σ   p_{i · c} · l_{j,i}
         //                         i=0
-        //
+        // ```
         // Note that in the chunking case, the Lagrange basis contains the
-        // coefficient form of the polynomial that evaluates to the powers of z
-        // in the chunk positions and zero elsewhere.
+        // coefficient form of the polynomial that evaluates to the powers of
+        // `z` in the chunk positions and `0` elsewhere.
         //
-        // Then, the evaluation of f on z can be computed as the sum of the
-        // products of the evaluations of f in the domain and the Lagrange
+        // Then, the evaluation of `f` on `z` can be computed as the sum of the
+        // products of the evaluations of `f` in the domain and the Lagrange
         // evaluations.
 
         (&self.evals)
@@ -99,8 +101,8 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     }
 
     /// Given the evaluations form of a polynomial, directly evaluate that
-    /// polynomial at a point, assuming that the given evaluations are either `0`
-    /// or `1` at every point of the domain.
+    /// polynomial at a point, assuming that the given evaluations are either
+    /// `0` or `1` at every point of the domain.
     ///
     /// This method can particularly be useful when the polynomials represent
     /// (boolean) selectors in a circuit.
@@ -200,18 +202,20 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         // polynomial that equals the powers of `x` in the positions
         // corresponding to the chunk, and 0 elsewhere in the domain, using an
         // iFFT operation of length n, resulting in an algorithm that runs in
-        // O(c n log n).
+        // `O(c n log n)`.
         //
         // Example:
+        // ```
         //                                  i-th chunk
         //                          -----------------------
         //   chunked: [ 0, ..., 0,  1, x, x^2, ..., x^{m-1}, 0, ..., 0 ]
         //   indices:   0    i·m-1  i·m            (i+1)m-1  (i+1)m  cm-1=n-1
-        //
-        // A total of n coefficients are returned. These will be helpful to
-        // evaluate the chunks of polynomials of degree c·n at the point x.
+        // ```
+        // A total of `n` coefficients are returned. These will be helpful to
+        // evaluate the chunks of polynomials of degree `c·n` at the point `x`.
         //
         let n = domain.size();
+        assert_eq!(n % max_poly_size, 0);
         let num_chunks = n / max_poly_size;
         let mut evals = Vec::with_capacity(num_chunks);
         for i in 0..num_chunks {
@@ -290,12 +294,15 @@ mod tests {
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
         let evaluator_chunked =
             LagrangeBasisEvaluations::new_with_chunked_segments(domain.size(), domain, x);
+        let chunk_length = evaluator_chunked.domain_size();
         for (i, (evals, evals_chunked)) in evaluator
             .evals
             .iter()
             .zip(evaluator_chunked.evals.iter())
             .enumerate()
         {
+            // Check all chunks have the same length
+            assert_eq!(evals_chunked.len(), chunk_length);
             for (j, (evals, evals_chunked)) in evals.iter().zip(evals_chunked.iter()).enumerate() {
                 if evals != evals_chunked {
                     panic!("{}, {}, {}: {} != {}", line!(), i, j, evals, evals_chunked);
