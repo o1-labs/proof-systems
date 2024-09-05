@@ -68,4 +68,11 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// Evaluate the polynomial at the vector point `x` and the extra variable
     /// `u` using its homogeneous form of degree D.
     fn homogeneous_eval(&self, x: &[F; N], u: F) -> F;
+
+    /// Add the monomial `coeff * x_1^{e_1} * ... * x_N^{e_N}` to the
+    /// polynomial, where `e_i` are the values given by the array `exponents`.
+    ///
+    /// For instance, to add the monomial `3 * x_1^2 * x_2^3` to the polynomial,
+    /// one would call `add_monomial([2, 3], 3)`.
+    fn add_monomial(&mut self, exponents: [usize; N], coeff: F);
 }

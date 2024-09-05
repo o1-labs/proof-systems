@@ -351,13 +351,6 @@ impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
             .and_modify(|c| *c = coeff)
             .or_insert(coeff);
     }
-
-    pub fn add_monomial(&mut self, exponents: [usize; N], coeff: F) {
-        self.monomials
-            .entry(exponents)
-            .and_modify(|c| *c += coeff)
-            .or_insert(coeff);
-    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F, N, D> {
@@ -460,6 +453,13 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
                 term * coeff
             })
             .sum()
+    }
+
+    fn add_monomial(&mut self, exponents: [usize; N], coeff: F) {
+        self.monomials
+            .entry(exponents)
+            .and_modify(|c| *c += coeff)
+            .or_insert(coeff);
     }
 }
 
