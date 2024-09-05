@@ -3,7 +3,7 @@ mod combine;
 pub mod commitment;
 pub mod error;
 pub mod evaluation_proof;
-pub mod pairing_proof;
+pub mod kzg;
 pub mod srs;
 
 pub use commitment::PolyComm;

@@ -1,3 +1,8 @@
+//! This module implements the KZG protocol described in the paper
+//! [Constant-Size Commitments to Polynomials and Their
+//! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
+//! by Kate, Zaverucha and Goldberg, often referred to as the KZG10 paper.
+
 use crate::{
     commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
     PolynomialsToCombine, SRS as SRSTrait,
@@ -19,14 +24,15 @@ use serde_with::serde_as;
 #[serde(
     bound = "Pair::G1Affine: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"
 )]
-pub struct PairingProof<Pair: PairingEngine> {
+pub struct KZGProof<Pair: PairingEngine> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub quotient: Pair::G1Affine,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    /// A blinding factor used to hide the polynomial, if necessary
     pub blinding: <Pair::G1Affine as AffineCurve>::ScalarField,
 }
 
-impl<Pair: PairingEngine> Default for PairingProof<Pair> {
+impl<Pair: PairingEngine> Default for KZGProof<Pair> {
     fn default() -> Self {
         Self {
             quotient: Pair::G1Affine::prime_subgroup_generator(),
@@ -35,7 +41,7 @@ impl<Pair: PairingEngine> Default for PairingProof<Pair> {
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
+impl<Pair: PairingEngine> Clone for KZGProof<Pair> {
     fn clone(&self) -> Self {
         Self {
             quotient: self.quotient,
@@ -92,7 +98,7 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
-    > crate::OpenProof<G> for PairingProof<Pair>
+    > crate::OpenProof<G> for KZGProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
 
@@ -118,7 +124,7 @@ impl<
         EFqSponge: Clone + FqSponge<<G as AffineCurve>::BaseField, G, F>,
         RNG: RngCore + CryptoRng,
     {
-        PairingProof::create(srs, plnms, elm, polyscale).unwrap()
+        KZGProof::create(srs, plnms, elm, polyscale).unwrap()
     }
 
     fn verify<EFqSponge, RNG>(
@@ -251,6 +257,9 @@ impl<
 }
 
 /// The polynomial that evaluates to each of `evals` for the respective `elm`s.
+/// For now, only works for 2 evaluations points.
+/// `elm` is the vector of evaluation points and `evals` is the vector of
+/// evaluations at those points.
 fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> {
     assert_eq!(elm.len(), evals.len());
     let (zeta, zeta_omega) = if elm.len() == 2 {
@@ -294,7 +303,7 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
-    > PairingProof<Pair>
+    > KZGProof<Pair>
 {
     /// Create a pairing proof.
     /// Parameters:
@@ -328,7 +337,7 @@ impl<
 
         let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).elems[0];
 
-        Some(PairingProof {
+        Some(KZGProof {
             quotient,
             blinding: blinding_factor,
         })

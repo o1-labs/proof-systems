@@ -2,7 +2,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::pairing_proof::PairingProof;
+use poly_commitment::kzg::KZGProof;
 
 pub use logup::{
     Logup, LogupWitness, LookupProof as LogupProof, LookupTable as LogupTable,
@@ -58,4 +58,4 @@ pub type Ff2 = mina_curves::pasta::Fq;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-pub type OpeningProof = PairingProof<BN254>;
+pub type OpeningProof = KZGProof<BN254>;

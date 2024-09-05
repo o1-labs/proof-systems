@@ -70,7 +70,7 @@ pub fn main() -> ExitCode {
         // Trusted setup toxic waste
         let x = Fp::rand(&mut rand::rngs::OsRng);
 
-        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
+        let mut srs = poly_commitment::kzg::PairingSRS::create(x, DOMAIN_SIZE);
         srs.full_srs.add_lagrange_basis(domain.d1);
         srs
     };

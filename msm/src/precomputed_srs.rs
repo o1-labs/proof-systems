@@ -5,7 +5,7 @@ use ark_ec::PairingEngine;
 use ark_ff::UniformRand;
 use ark_serialize::Write;
 use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
-use poly_commitment::pairing_proof::PairingSRS;
+use poly_commitment::kzg::PairingSRS;
 use rand::{prelude::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::BufReader, path::PathBuf};

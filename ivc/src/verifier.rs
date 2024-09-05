@@ -22,7 +22,7 @@ use poly_commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
         Evaluation, PolyComm,
     },
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     OpenProof, SRS,
 };
 use rand::thread_rng;
@@ -51,7 +51,7 @@ pub fn verify<
     srs: &PairingSRS<Pairing>,
     combined_expr: &FoldingCompatibleExpr<FC>,
     fixed_selectors: Box<[Evaluations<Fp, R2D<Fp>>; N_FSEL]>,
-    proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof<Pairing>>,
+    proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, KZGProof<Pairing>>,
 ) -> bool {
     assert!(N_WIT == N_REL + N_DSEL);
 

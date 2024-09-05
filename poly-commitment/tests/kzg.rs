@@ -9,13 +9,13 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use poly_commitment::{
     commitment::Evaluation,
     evaluation_proof::DensePolynomialOrEvaluations,
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     srs::SRS,
     SRS as _,
 };
 
 #[test]
-fn test_pairing_proof() {
+fn test_kzg_proof() {
     let n = 64;
     let domain = D::<ScalarField>::new(n).unwrap();
 
@@ -74,7 +74,7 @@ fn test_pairing_proof() {
 
     let polyscale = ScalarField::rand(&mut rng);
 
-    let pairing_proof = PairingProof::<Bn<Parameters>>::create(
+    let kzg_proof = KZGProof::<Bn<Parameters>>::create(
         &srs,
         polynomials_and_blinders.as_slice(),
         &evaluation_points,
@@ -82,7 +82,7 @@ fn test_pairing_proof() {
     )
     .unwrap();
 
-    let res = pairing_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
+    let res = kzg_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
     assert!(res);
 }
 
