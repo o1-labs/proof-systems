@@ -55,7 +55,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     ///
     /// Recall that when chunking is in place, we want to evaluate a
     /// polynomial `f` of degree `c · n` at point `z`, expressed as
-    /// ```
+    /// ```text
     /// f(z) = a_0·z^0 + ... + a_{n-1}·z^{n-1} + ... + a_{c*n-1}·z^{c·n-1}
     ///      = z^0 · f_0(z) + z^n · f_1(z) + ... + z^{(c-1)n} · f_{c-1}(z)
     /// ```
@@ -75,7 +75,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         let p_evals = &p.evals;
 
         // Performs the operation
-        // ```
+        // ```text
         //                         n-1
         // j ∈ [0, c) : eval_{j} =  Σ   p_{i · c} · l_{j,i}
         //                         i=0
@@ -205,7 +205,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         // `O(c n log n)`.
         //
         // Example:
-        // ```
+        // ```text
         //                                  i-th chunk
         //                          -----------------------
         //   chunked: [ 0, ..., 0,  1, x, x^2, ..., x^{m-1}, 0, ..., 0 ]
