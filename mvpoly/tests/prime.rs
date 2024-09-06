@@ -295,7 +295,7 @@ fn test_mul_by_scalar_with_one() {
 #[test]
 fn test_mul_by_scalar_with_from() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let p = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
+    let p = Fp::random_dense::<4, 5>(&mut rng, None);
     let c = Fp::rand(&mut rng);
 
     // Create a constant polynomial from the field element
@@ -405,8 +405,7 @@ fn test_evaluation_constant_polynomial() {
 fn test_evaluation_predefined_polynomial() {
     // Evaluating at random points
     let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 2] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_evaluation = Fp::random_evaluation::<2>(&mut rng);
     // P(X1, X2) = 2 + 3X1 + 4X2 + 5X1^2 + 6X1 X2 + 7 X2^2
     let p = Dense::<Fp, 2, 2>::from_coeffs(vec![
         Fp::from(2_u32),
@@ -602,7 +601,7 @@ fn test_from_expr_ec_addition() {
         let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
 
         let p = Dense::<Fp, 7, 2>::from(expression);
-        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let random_evaluation = Fp::random_evaluation::<7>(&mut rng);
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
             random_evaluation[0] * (random_evaluation[1] - random_evaluation[2])
@@ -615,7 +614,7 @@ fn test_from_expr_ec_addition() {
         // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
         let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
         let p = Dense::<Fp, 7, 2>::from(expr);
-        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let random_evaluation = Fp::random_evaluation::<7>(&mut rng);
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
             random_evaluation[5] + random_evaluation[1] + random_evaluation[2]
@@ -627,7 +626,7 @@ fn test_from_expr_ec_addition() {
         // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
         let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
         let p = Dense::<Fp, 7, 2>::from(expr);
-        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let random_evaluation = Fp::random_evaluation::<7>(&mut rng);
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
             random_evaluation[6]
