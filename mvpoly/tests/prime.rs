@@ -69,6 +69,7 @@ pub fn test_normalized_indices() {
 
 #[test]
 fn test_is_homogeneous() {
+    // X1 X2 + X1^2 + X1^2
     let coeffs: Vec<Fp> = vec![
         Fp::zero(),
         Fp::zero(),
@@ -80,6 +81,7 @@ fn test_is_homogeneous() {
     let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
+    // X1 X2 + X1^2
     let coeffs: Vec<Fp> = vec![
         Fp::zero(),
         Fp::zero(),
@@ -91,6 +93,7 @@ fn test_is_homogeneous() {
     let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
+    // X1 X2 + X2^2
     let coeffs: Vec<Fp> = vec![
         Fp::zero(),
         Fp::zero(),
@@ -102,6 +105,7 @@ fn test_is_homogeneous() {
     let p = Dense::<Fp, 2, 2>::from_coeffs(coeffs);
     assert!(p.is_homogeneous());
 
+    // X1 X2
     let coeffs: Vec<Fp> = vec![
         Fp::zero(),
         Fp::zero(),
@@ -116,6 +120,7 @@ fn test_is_homogeneous() {
 
 #[test]
 fn test_is_not_homogeneous() {
+    // 1 + X1 X2 + X1^2 + X2^2
     let coeffs: Vec<Fp> = vec![
         Fp::from(42_u32),
         Fp::zero(),
@@ -200,6 +205,7 @@ fn test_add_zero() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let p1 = Fp::random_dense::<3, 4>(&mut rng, None);
 
+    // Test negation of zero
     let zero = Dense::<Fp, 3, 4>::zero();
     let p2 = p1.clone() + zero.clone();
     assert_eq!(p1.clone(), p2);
@@ -231,12 +237,15 @@ fn test_neg() {
     let p1 = Fp::random_dense::<3, 4>(&mut rng, None);
     let p2 = -p1.clone();
 
+    // Test that p1 + (-p1) = 0
     let sum = p1.clone() + p2.clone();
     assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
 
+    // Test that -(-p1) = p1
     let p3 = -p2;
     assert_eq!(p1, p3);
 
+    // Test negation of zero
     let zero = Dense::<Fp, 3, 4>::zero();
     let neg_zero = -zero.clone();
     assert_eq!(zero, neg_zero);
@@ -248,9 +257,11 @@ fn test_neg_ref() {
     let p1 = Fp::random_dense::<3, 4>(&mut rng, None);
     let p2 = -&p1;
 
+    // Test that p1 + (-&p1) = 0
     let sum = p1.clone() + p2.clone();
     assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
 
+    // Test that -(-&p1) = p1
     let p3 = -&p2;
     assert_eq!(p1, p3);
 }
@@ -282,6 +293,96 @@ fn test_mul_by_scalar_with_one() {
 }
 
 #[test]
+fn test_mul_by_scalar_with_from() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
+    let c = Fp::rand(&mut rng);
+
+    // Create a constant polynomial from the field element
+    let constant_poly = Dense::<Fp, 4, 5>::from(c);
+
+    // Multiply p by c using mul_by_scalar
+    let result1 = p.mul_by_scalar(c);
+
+    // Multiply p by the constant polynomial
+    let result2 = p.clone() * constant_poly;
+
+    // Check that both methods produce the same result
+    assert_eq!(result1, result2);
+}
+
+#[test]
+fn test_from_variable() {
+    // Test for y variable (index 2)
+    let y = Dense::<Fp, 4, 5>::from_variable(2_usize);
+    assert_eq!(y[1], Fp::one());
+    assert_eq!(y[0], Fp::zero());
+    assert_eq!(y[2], Fp::zero());
+    assert_eq!(y[3], Fp::zero());
+    assert_eq!(y[4], Fp::zero());
+    assert_eq!(y[5], Fp::zero());
+
+    // Test for z variable (index 3)
+    let z = Dense::<Fp, 4, 5>::from_variable(3_usize);
+    assert_eq!(z[0], Fp::zero());
+    assert_eq!(z[1], Fp::zero());
+    assert_eq!(z[2], Fp::one());
+    assert_eq!(z[3], Fp::zero());
+    assert_eq!(z[4], Fp::zero());
+
+    // Test for w variable (index 5)
+    let w = Dense::<Fp, 4, 5>::from_variable(5_usize);
+    assert_eq!(w[0], Fp::zero());
+    assert_eq!(w[1], Fp::zero());
+    assert_eq!(w[2], Fp::zero());
+    assert_eq!(w[3], Fp::zero());
+    assert_eq!(w[4], Fp::one());
+}
+
+#[test]
+fn test_from_variable_column() {
+    // Simulate a real usecase
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => {
+                    let mut prime_gen = PrimeNumberGenerator::new();
+                    prime_gen.get_nth_prime(i + 1)
+                }
+            }
+        }
+    }
+
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(0));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::one());
+    assert_eq!(p[2], Fp::zero());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::zero());
+    assert_eq!(p[5], Fp::zero());
+
+    // Test for z variable (index 3)
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(1));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::zero());
+    assert_eq!(p[2], Fp::one());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::zero());
+
+    // Test for w variable (index 5)
+    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(2));
+    assert_eq!(p[0], Fp::zero());
+    assert_eq!(p[1], Fp::zero());
+    assert_eq!(p[2], Fp::zero());
+    assert_eq!(p[3], Fp::zero());
+    assert_eq!(p[4], Fp::one());
+}
+
+#[test]
 fn test_evaluation_zero_polynomial() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_evaluation = Fp::random_evaluation::<4>(&mut rng);
@@ -298,6 +399,31 @@ fn test_evaluation_constant_polynomial() {
     let zero = Dense::<Fp, 4, 5>::from(cst);
     let evaluation = zero.eval(&random_evaluation);
     assert_eq!(evaluation, cst);
+}
+
+#[test]
+fn test_evaluation_predefined_polynomial() {
+    // Evaluating at random points
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_evaluation: [Fp; 2] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    // P(X1, X2) = 2 + 3X1 + 4X2 + 5X1^2 + 6X1 X2 + 7 X2^2
+    let p = Dense::<Fp, 2, 2>::from_coeffs(vec![
+        Fp::from(2_u32),
+        Fp::from(3_u32),
+        Fp::from(4_u32),
+        Fp::from(5_u32),
+        Fp::from(6_u32),
+        Fp::from(7_u32),
+    ]);
+    let exp_eval = Fp::from(2_u32)
+        + Fp::from(3_u32) * random_evaluation[0]
+        + Fp::from(4_u32) * random_evaluation[1]
+        + Fp::from(5_u32) * random_evaluation[0] * random_evaluation[0]
+        + Fp::from(6_u32) * random_evaluation[0] * random_evaluation[1]
+        + Fp::from(7_u32) * random_evaluation[1] * random_evaluation[1];
+    let evaluation = p.eval(&random_evaluation);
+    assert_eq!(evaluation, exp_eval);
 }
 
 #[test]
@@ -349,6 +475,169 @@ fn test_eval_pbt_neg() {
     assert_eq!(eval_p2, -eval_p1);
 }
 
+/// As a reminder, here are the equations to compute the addition of two
+/// different points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let `P3 = (X3,
+/// Y3) = P1 + P2`.
+///
+/// ```text
+/// - λ = (Y1 - Y2) / (X1 - X2)
+/// - X3 = λ^2 - X1 - X2
+/// - Y3 = λ (X1 - X3) - Y1
+/// ```
+///
+/// Therefore, the addition of elliptic curve points can be computed using the
+/// following degree-2 constraints
+///
+/// ```text
+/// - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+/// - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+/// - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+/// ```
+#[test]
+fn test_from_expr_ec_addition() {
+    // Simulate a real usecase
+    // The following lines/design look similar to the ones we use in
+    // o1vm/arrabiata
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => {
+                    let mut prime_gen = PrimeNumberGenerator::new();
+                    prime_gen.get_nth_prime(i + 1)
+                }
+            }
+        }
+    }
+
+    struct Constraint {
+        idx: usize,
+    }
+
+    trait Interpreter {
+        type Position: Clone + Copy;
+
+        type Variable: Clone
+            + std::ops::Add<Self::Variable, Output = Self::Variable>
+            + std::ops::Sub<Self::Variable, Output = Self::Variable>
+            + std::ops::Mul<Self::Variable, Output = Self::Variable>;
+
+        fn allocate(&mut self) -> Self::Position;
+
+        // Simulate fetching/reading a value from outside
+        // In the case of the witness, it will be getting a value from the
+        // environment
+        fn fetch(&self, pos: Self::Position) -> Self::Variable;
+    }
+
+    impl Interpreter for Constraint {
+        type Position = Column;
+
+        type Variable = Expr<ConstantExpr<Fp>, Column>;
+
+        fn allocate(&mut self) -> Self::Position {
+            let col = Column::X(self.idx);
+            self.idx += 1;
+            col
+        }
+
+        fn fetch(&self, col: Self::Position) -> Self::Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        }
+    }
+
+    impl Constraint {
+        fn new() -> Self {
+            Self { idx: 0 }
+        }
+    }
+
+    let mut interpreter = Constraint::new();
+    // Constraints for elliptic curve addition, without handling the case of the
+    // point at infinity or double
+    let lambda = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let y1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let x3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    // Check we can convert into a Dense polynomial using prime representation
+    // We have 7 variables, maximum degree 2
+    // We test by evaluating at a random point.
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    {
+        // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+        let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
+
+        let p = Dense::<Fp, 7, 2>::from(expression);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[0] * (random_evaluation[1] - random_evaluation[2])
+                - (random_evaluation[3] - random_evaluation[4])
+        };
+        assert_eq!(eval, exp_eval);
+    }
+
+    {
+        // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+        let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
+        let p = Dense::<Fp, 7, 2>::from(expr);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[5] + random_evaluation[1] + random_evaluation[2]
+                - random_evaluation[0] * random_evaluation[0]
+        };
+        assert_eq!(eval, exp_eval);
+    }
+    {
+        // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+        let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
+        let p = Dense::<Fp, 7, 2>::from(expr);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[6]
+                - random_evaluation[0] * (random_evaluation[1] - random_evaluation[5])
+                + random_evaluation[3]
+        };
+        assert_eq!(eval, exp_eval);
+    }
+}
+
 #[test]
 fn test_prime_increase_degree() {
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -377,6 +666,22 @@ fn test_prime_increase_degree() {
             p1_prime.eval(&random_evaluation)
         );
     }
+    // When precomputing of prime factor decomposition is done, increase degree
+    // in testing
+}
+
+#[test]
+fn test_degree_with_coeffs() {
+    let p = Dense::<Fp, 4, 5>::from_coeffs(vec![
+        Fp::from(2_u32),
+        Fp::from(3_u32),
+        Fp::from(4_u32),
+        Fp::from(5_u32),
+        Fp::from(6_u32),
+        Fp::from(7_u32),
+    ]);
+    let degree = unsafe { p.degree() };
+    assert_eq!(degree, 2);
 }
 
 #[test]
@@ -401,6 +706,7 @@ fn test_degree_random_degree() {
     assert!(degree <= max_degree);
 
     let max_degree: usize = rng.gen_range(1..20);
+    // univariate
     let p = Fp::random_dense::<1, 20>(&mut rng, Some(max_degree));
     let degree = unsafe { p.degree() };
     assert!(degree <= max_degree);
@@ -422,6 +728,7 @@ fn test_is_constant() {
     let p = Dense::<Fp, 4, 5>::from_variable(3_usize);
     assert!(!p.is_constant());
 
+    // This might be flaky
     let p = Fp::random_dense::<4, 5>(&mut rng, None);
     assert!(!p.is_constant());
 }

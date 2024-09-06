@@ -81,12 +81,15 @@ fn test_neg() {
     let p1 = Fp::random_sparse::<3, 4>(&mut rng, None);
     let p2 = -p1.clone();
 
+    // Test that p1 + (-p1) = 0
     let sum = p1.clone() + p2.clone();
     assert_eq!(sum, Sparse::<Fp, 3, 4>::zero());
 
+    // Test that -(-p1) = p1
     let p3 = -p2;
     assert_eq!(p1, p3);
 
+    // Test negation of zero
     let zero = Sparse::<Fp, 3, 4>::zero();
     let neg_zero = -zero.clone();
     assert_eq!(zero, neg_zero);
@@ -98,9 +101,11 @@ fn test_neg_ref() {
     let p1 = Fp::random_sparse::<3, 4>(&mut rng, None);
     let p2 = -&p1;
 
+    // Test that p1 + (-&p1) = 0
     let sum = p1.clone() + p2.clone();
     assert_eq!(sum, Sparse::<Fp, 3, 4>::zero());
 
+    // Test that -(-&p1) = p1
     let p3 = -&p2;
     assert_eq!(p1, p3);
 }
@@ -163,6 +168,7 @@ fn test_eval_pbt_add() {
         let eval_p3 = p3.eval(&random_evaluation);
         assert_eq!(eval_p3, eval_p1 + eval_p2);
     }
+    // For code coverage, using ref
     {
         let p3 = &p1 + p2.clone();
         let eval_p3 = p3.eval(&random_evaluation);
@@ -250,6 +256,7 @@ fn test_degree_constant() {
 fn test_degree_random_degree() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let max_degree: usize = rng.gen_range(1..5);
+    // univariate
     let p = Fp::random_sparse::<4, 5>(&mut rng, Some(max_degree));
     let degree = unsafe { p.degree() };
     assert!(degree <= max_degree);
@@ -270,6 +277,7 @@ fn test_is_constant() {
     let p = Sparse::<Fp, 4, 5>::zero();
     assert!(p.is_constant());
 
+    // This might be flaky
     let p = Fp::random_sparse::<4, 5>(&mut rng, None);
     assert!(!p.is_constant());
 }
