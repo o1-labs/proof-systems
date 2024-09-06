@@ -31,6 +31,8 @@ pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = 89;
 pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 93;
 /// The maximum size of a chunk (4 bytes)
 pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
+/// The location of the preimage key as a field element of 248bits
+pub(crate) const MIPS_PREIMAGE_KEY: usize = 97;
 
 /// The number of columns used for relation witness in the MIPS circuit
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;

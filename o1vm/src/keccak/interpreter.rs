@@ -482,9 +482,12 @@ where
         }
     }
 
-    /// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    /// When in Squeeze mode, writes a Lookup containing the 31byte output of
+    /// the hash (excludes the MSB)
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
+    /// NOTE: this is excluding the MSB (which is then substituted with the
+    ///       file descriptor).
     fn lookup_syscall_hash(&mut self, step: Steps) {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
