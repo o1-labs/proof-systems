@@ -2,6 +2,7 @@ use ark_ff::PrimeField;
 use rand::RngCore;
 
 pub mod monomials;
+pub mod pbt;
 pub mod prime;
 pub mod utils;
 
@@ -14,6 +15,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     + ark_ff::One
     + ark_ff::Zero
     + std::fmt::Debug
+    + Clone
     // Comparison operators
     + PartialEq
     + Eq

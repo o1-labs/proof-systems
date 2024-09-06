@@ -5,13 +5,8 @@ use rand::Rng;
 
 #[test]
 fn test_mul_by_one() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Sparse::<Fp, 7, 2>::random(&mut rng, None) };
-    let one = Sparse::<Fp, 7, 2>::one();
-    let p2 = p1.clone() * one.clone();
-    assert_eq!(p1.clone(), p2);
-    let p3 = one * p1.clone();
-    assert_eq!(p1.clone(), p3);
+    mvpoly::pbt::test_mul_by_one::<Fp, 2, 2, Sparse<Fp, 2, 2>>();
+    mvpoly::pbt::test_mul_by_one::<Fp, 4, 2, Sparse<Fp, 4, 2>>();
 }
 
 #[test]

@@ -159,13 +159,8 @@ fn test_mul() {
 
 #[test]
 fn test_mul_by_one() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 7, 2>::random(&mut rng, None) };
-    let one = Dense::<Fp, 7, 2>::one();
-    let p2 = p1.clone() * one.clone();
-    assert_eq!(p1.clone(), p2);
-    let p3 = one * p1.clone();
-    assert_eq!(p1.clone(), p3);
+    mvpoly::pbt::test_mul_by_one::<Fp, 2, 2, Dense<Fp, 2, 2>>();
+    mvpoly::pbt::test_mul_by_one::<Fp, 4, 2, Dense<Fp, 4, 2>>();
 }
 
 #[test]
