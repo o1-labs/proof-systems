@@ -785,6 +785,7 @@ fn test_mvpoly_mul_by_scalar_degree_pbt() {
 #[test]
 fn test_mvpoly_mul_degree_pbt() {
     let mut rng = o1_utils::tests::make_test_rng(None);
+    // half max degree
     let degree = rng.gen_range(1..3);
     let p1 = Fp::random_dense::<4, 6>(&mut rng, Some(degree));
     let p2 = Fp::random_dense::<4, 6>(&mut rng, Some(degree));
