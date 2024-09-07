@@ -475,7 +475,15 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
+<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>std::{
     collections::HashMap,
@@ -916,6 +924,12 @@
         <span class="comment">// IMPROVEME: using prime::Dense::random to ease the implementaiton.
         // Feel free to change
         </span>prime::Dense::random(rng, max_degree).into()
+    }
+
+    <span class="comment">// FIXME: use a better implementation, this is a temporary (working but not
+    // efficient) solution
+    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(expr: Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;) -&gt; <span class="self">Self </span>{
+        prime::Dense::from_expr(expr).into()
     }
 }
 
