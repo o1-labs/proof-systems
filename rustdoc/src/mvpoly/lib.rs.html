@@ -77,6 +77,13 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>rand::RngCore;
@@ -155,5 +162,12 @@
     <span class="doccomment">/// Evaluate the polynomial at the vector point `x` and the extra variable
     /// `u` using its homogeneous form of degree D.
     </span><span class="kw">fn </span>homogeneous_eval(<span class="kw-2">&amp;</span><span class="self">self</span>, x: <span class="kw-2">&amp;</span>[F; N], u: F) -&gt; F;
+
+    <span class="doccomment">/// Add the monomial `coeff * x_1^{e_1} * ... * x_N^{e_N}` to the
+    /// polynomial, where `e_i` are the values given by the array `exponents`.
+    ///
+    /// For instance, to add the monomial `3 * x_1^2 * x_2^3` to the polynomial,
+    /// one would call `add_monomial([2, 3], 3)`.
+    </span><span class="kw">fn </span>add_monomial(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exponents: [usize; N], coeff: F);
 }
 </code></pre></div></section></main></body></html>

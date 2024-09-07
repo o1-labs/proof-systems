@@ -857,13 +857,6 @@
             .and_modify(|c| <span class="kw-2">*</span>c = coeff)
             .or_insert(coeff);
     }
-
-    <span class="kw">pub fn </span>add_monomial(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exponents: [usize; N], coeff: F) {
-        <span class="self">self</span>.monomials
-            .entry(exponents)
-            .and_modify(|c| <span class="kw-2">*</span>c += coeff)
-            .or_insert(coeff);
-    }
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, F: PrimeField&gt; MVPoly&lt;F, N, D&gt; <span class="kw">for </span>Sparse&lt;F, N, D&gt; {
@@ -972,6 +965,13 @@
                 term * coeff
             })
             .sum()
+    }
+
+    <span class="kw">fn </span>add_monomial(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exponents: [usize; N], coeff: F) {
+        <span class="self">self</span>.monomials
+            .entry(exponents)
+            .and_modify(|c| <span class="kw-2">*</span>c += coeff)
+            .or_insert(coeff);
     }
 }
 
