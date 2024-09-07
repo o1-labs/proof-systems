@@ -403,6 +403,26 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             });
         is_homogeneous
     }
+
+    fn homogeneous_eval(&self, x: &[F; N], u: F) -> F {
+        let normalized_indices = self.normalized_indices.clone();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        normalized_indices
+            .iter()
+            .zip(self.coeff.clone())
+            .fold(F::zero(), |acc, (idx, c)| {
+                let decomposition_of_i = naive_prime_factors(*idx, &mut prime_gen);
+                let monomial_degree = decomposition_of_i.iter().fold(0, |acc, (_, d)| acc + d);
+                let u_power = D - monomial_degree;
+                let monomial = decomposition_of_i.iter().fold(F::one(), |acc, (p, d)| {
+                    let inv_p = primes.iter().position(|&x| x == *p).unwrap();
+                    let x_p = x[inv_p].pow([*d as u64]);
+                    acc * x_p
+                });
+                acc + c * monomial * u.pow([u_power as u64])
+            })
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
