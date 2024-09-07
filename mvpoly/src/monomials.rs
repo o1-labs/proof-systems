@@ -1,4 +1,5 @@
 use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 use rand::RngCore;
 use std::{
     collections::HashMap,
@@ -439,6 +440,12 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         // IMPROVEME: using prime::Dense::random to ease the implementaiton.
         // Feel free to change
         prime::Dense::random(rng, max_degree).into()
+    }
+
+    // FIXME: use a better implementation, this is a temporary (working but not
+    // efficient) solution
+    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self {
+        prime::Dense::from_expr(expr).into()
     }
 }
 

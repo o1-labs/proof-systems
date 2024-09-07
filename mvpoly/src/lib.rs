@@ -1,4 +1,5 @@
 use ark_ff::PrimeField;
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 use rand::RngCore;
 
 pub mod monomials;
@@ -59,4 +60,11 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// This is a dummy implementation. A cache can be used for the monomials to
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
+
+    /// Build a value from an expression.
+    /// This method aims to be used to be retro-compatible with what we call
+    /// "the expression framework".
+    /// In the near future, the "expression framework" should be moved also into
+    /// this library.
+    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self;
 }
