@@ -423,6 +423,21 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 acc + c * monomial * u.pow([u_power as u64])
             })
     }
+
+    fn add_monomial(&mut self, exponents: [usize; N], coeff: F) {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let normalized_index = exponents
+            .iter()
+            .zip(primes.iter())
+            .fold(1, |acc, (d, p)| acc * p.pow(*d as u32));
+        let inv_idx = self
+            .normalized_indices
+            .iter()
+            .position(|&x| x == normalized_index)
+            .unwrap();
+        self.coeff[inv_idx] += coeff;
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
