@@ -1,5 +1,6 @@
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::expr::{ConstantExpr, Expr};
+use num_integer::binomial;
 use rand::RngCore;
 use std::{
     collections::HashMap,
@@ -9,7 +10,7 @@ use std::{
 
 use crate::{
     prime,
-    utils::{naive_prime_factors, PrimeNumberGenerator},
+    utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
     MVPoly,
 };
 
@@ -467,6 +468,101 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
             .entry(exponents)
             .and_modify(|c| *c += coeff)
             .or_insert(coeff);
+    }
+
+    fn compute_cross_terms(
+        &self,
+        eval1: &[F; N],
+        eval2: &[F; N],
+        u1: F,
+        u2: F,
+    ) -> HashMap<usize, F> {
+        assert!(
+            D >= 2,
+            "The degree of the polynomial must be greater than 2"
+        );
+        let mut cross_terms_by_powers_of_r: HashMap<usize, F> = HashMap::new();
+        // We iterate over each monomial with their respective coefficient
+        // i.e. we do have something like coeff * x_1^d_1 * x_2^d_2 * ... * x_N^d_N
+        self.monomials.iter().for_each(|(exponents, coeff)| {
+            // "Exponents" contains all powers, even the ones that are 0. We must
+            // get rid of them and keep the index to fetch the correct
+            // evaluation later
+            let non_zero_exponents_with_index: Vec<(usize, &usize)> = exponents
+                .iter()
+                .enumerate()
+                .filter(|(_, &d)| d != 0)
+                .collect();
+            // coeff = 0 should not happen as we suppose we have a sparse polynomial
+            // Therefore, skipping a check
+            let non_zero_exponents: Vec<usize> = non_zero_exponents_with_index
+                .iter()
+                .map(|(_, d)| *d)
+                .copied()
+                .collect::<Vec<usize>>();
+            let monomial_degree = non_zero_exponents.iter().sum::<usize>();
+            let u_degree: usize = D - monomial_degree;
+            // Will be used to compute the nested sums
+            // It returns all the indices i_1, ..., i_k for the sums:
+            // Σ_{i_1 = 0}^{n_1} Σ_{i_2 = 0}^{n_2} ... Σ_{i_k = 0}^{n_k}
+            let indices =
+                compute_indices_nested_loop(non_zero_exponents.iter().map(|d| *d + 1).collect());
+            for i in 0..=u_degree {
+                // Add the binomial from the homogeneisation
+                // i.e (u_degree choose i)
+                let u_binomial_term = binomial(u_degree, i);
+                // Now, we iterate over all the indices i_1, ..., i_k, i.e. we
+                // do over the whole sum, and we populate the map depending on
+                // the power of r
+                indices.iter().for_each(|indices| {
+                    let sum_indices = indices.iter().sum::<usize>() + i;
+                    // power of r is Σ (n_k - i_k)
+                    let power_r: usize = D - sum_indices;
+
+                    // If the sum of the indices is 0 or D, we skip the
+                    // computation as the contribution would go in the
+                    // evaluation of the polynomial at each evaluation
+                    // vectors eval1 and eval2
+                    if sum_indices == 0 || sum_indices == D {
+                        return;
+                    }
+                    // Compute
+                    // (n_1 choose i_1) * (n_2 choose i_2) * ... * (n_k choose i_k)
+                    let binomial_term = indices
+                        .iter()
+                        .zip(non_zero_exponents.iter())
+                        .fold(u_binomial_term, |acc, (i, &d)| acc * binomial(d, *i));
+                    let binomial_term = F::from(binomial_term as u64);
+                    // Compute the product x_k^i_k
+                    // We ignore the power as it comes into account for the
+                    // right evaluation.
+                    // NB: we could merge both loops, but we keep them separate
+                    // for readability
+                    let eval_left = indices
+                        .iter()
+                        .zip(non_zero_exponents_with_index.iter())
+                        .fold(F::one(), |acc, (i, (idx, _d))| {
+                            acc * eval1[*idx].pow([*i as u64])
+                        });
+                    // Compute the product x'_k^(n_k - i_k)
+                    let eval_right = indices
+                        .iter()
+                        .zip(non_zero_exponents_with_index.iter())
+                        .fold(F::one(), |acc, (i, (idx, d))| {
+                            acc * eval2[*idx].pow([(*d - *i) as u64])
+                        });
+                    // u1^i * u2^(u_degree - i)
+                    let u = u1.pow([i as u64]) * u2.pow([(u_degree - i) as u64]);
+                    let res = binomial_term * eval_left * eval_right * u;
+                    let res = *coeff * res;
+                    cross_terms_by_powers_of_r
+                        .entry(power_r)
+                        .and_modify(|e| *e += res)
+                        .or_insert(res);
+                })
+            }
+        });
+        cross_terms_by_powers_of_r
     }
 }
 

@@ -438,6 +438,16 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             .unwrap();
         self.coeff[inv_idx] += coeff;
     }
+
+    fn compute_cross_terms(
+        &self,
+        _eval1: &[F; N],
+        _eval2: &[F; N],
+        _u1: F,
+        _u2: F,
+    ) -> HashMap<usize, F> {
+        unimplemented!()
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
