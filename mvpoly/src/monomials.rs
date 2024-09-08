@@ -564,6 +564,10 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         });
         cross_terms_by_powers_of_r
     }
+
+    fn modify_monomial_with_scalar(&mut self, scalar: F) {
+        self.modify_monomial([0; N], scalar);
+    }
 }
 
 impl<const N: usize, const D: usize, F: PrimeField> From<prime::Dense<F, N, D>>
