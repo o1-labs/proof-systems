@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["monomials","prime","utils"],"trait":["MVPoly"]};
+window.SIDEBAR_ITEMS = {"mod":["monomials","pbt","prime","utils"],"trait":["MVPoly"]};

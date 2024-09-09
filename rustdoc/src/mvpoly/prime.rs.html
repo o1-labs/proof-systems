@@ -830,6 +830,20 @@
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1269,6 +1283,20 @@
             .position(|<span class="kw-2">&amp;</span>x| x == normalized_index)
             .unwrap();
         <span class="self">self</span>.coeff[inv_idx] += coeff;
+    }
+
+    <span class="kw">fn </span>compute_cross_terms(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        _eval1: <span class="kw-2">&amp;</span>[F; N],
+        _eval2: <span class="kw-2">&amp;</span>[F; N],
+        _u1: F,
+        _u2: F,
+    ) -&gt; HashMap&lt;usize, F&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>modify_monomial_with_scalar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scalar: F) {
+        <span class="self">self</span>[<span class="number">0</span>] = scalar;
     }
 }
 
