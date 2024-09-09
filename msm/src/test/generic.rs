@@ -5,7 +5,7 @@ use crate::{
 };
 use ark_ff::Zero;
 use kimchi::circuits::domains::EvaluationDomains;
-use poly_commitment::pairing_proof::PairingSRS;
+use poly_commitment::kzg::PairingSRS;
 use rand::{CryptoRng, RngCore};
 
 /// No lookups, no selectors, only witness column. `N_WIT == N_REL`.

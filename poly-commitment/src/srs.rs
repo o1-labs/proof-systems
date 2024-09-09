@@ -210,7 +210,12 @@ impl<G: CommitmentCurve> SRS<G> {
 
     /// This function creates a trusted-setup SRS instance for circuits with
     /// number of rows up to `depth`.
-    pub fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it creates a trusted setup and the toxic
+    /// waste is passed as a parameter.
+    pub unsafe fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
         let m = G::Map::setup();
 
         let mut x_pow = G::ScalarField::one();
