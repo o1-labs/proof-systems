@@ -1,7 +1,7 @@
 [package]
 name = "poly-commitment"
 version = "0.1.0"
-description = "An implementation of an inner-product argument polynomial commitment scheme, as used in kimchi"
+description = "Library implementing different polynomial commitments schemes, like IPA and KZG10"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
