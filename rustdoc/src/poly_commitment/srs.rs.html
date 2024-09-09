@@ -308,6 +308,11 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements structures and methods to handle Structure Reference
 //! String (SRS).
 
@@ -520,7 +525,12 @@
 
     <span class="doccomment">/// This function creates a trusted-setup SRS instance for circuits with
     /// number of rows up to `depth`.
-    </span><span class="kw">pub fn </span>create_trusted_setup(x: G::ScalarField, depth: usize) -&gt; <span class="self">Self </span>{
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it creates a trusted setup and the toxic
+    /// waste is passed as a parameter.
+    </span><span class="kw">pub unsafe fn </span>create_trusted_setup(x: G::ScalarField, depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();
 
         <span class="kw">let </span><span class="kw-2">mut </span>x_pow = G::ScalarField::one();

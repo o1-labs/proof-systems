@@ -272,7 +272,7 @@
         absorb_commitment, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
         Evaluation, PolyComm,
     },
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     OpenProof, SRS,
 };
 <span class="kw">use </span>rand::thread_rng;
@@ -301,7 +301,7 @@
     srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pairing&gt;,
     combined_expr: <span class="kw-2">&amp;</span>FoldingCompatibleExpr&lt;FC&gt;,
     fixed_selectors: Box&lt;[Evaluations&lt;Fp, R2D&lt;Fp&gt;&gt;; N_FSEL]&gt;,
-    proof: <span class="kw-2">&amp;</span>Proof&lt;N_WIT, N_REL, N_DSEL, N_FSEL, G, PairingProof&lt;Pairing&gt;&gt;,
+    proof: <span class="kw-2">&amp;</span>Proof&lt;N_WIT, N_REL, N_DSEL, N_FSEL, G, KZGProof&lt;Pairing&gt;&gt;,
 ) -&gt; bool {
     <span class="macro">assert!</span>(N_WIT == N_REL + N_DSEL);
 

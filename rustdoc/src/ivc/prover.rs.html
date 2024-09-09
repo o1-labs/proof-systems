@@ -532,7 +532,7 @@
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     OpenProof, SRS,
 };
 <span class="kw">use </span>rand::{CryptoRng, RngCore};
@@ -662,7 +662,7 @@
     folded_instance: RelaxedInstance&lt;G, PlonkishInstance&lt;G, N_WIT, <span class="number">3</span>, N_ALPHAS&gt;&gt;,
     folded_witness: RelaxedWitness&lt;G, PlonkishWitness&lt;N_WIT, N_FSEL, Fp&gt;&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, G, PairingProof&lt;Pairing&gt;&gt;, ProverError&gt;
+) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, G, KZGProof&lt;Pairing&gt;&gt;, ProverError&gt;
 <span class="kw">where
     </span>RNG: RngCore + CryptoRng,
 {

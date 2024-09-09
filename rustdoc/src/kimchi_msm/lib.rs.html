@@ -63,7 +63,7 @@
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-<span class="kw">use </span>poly_commitment::pairing_proof::PairingProof;
+<span class="kw">use </span>poly_commitment::kzg::KZGProof;
 
 <span class="kw">pub use </span>logup::{
     Logup, LogupWitness, LookupProof <span class="kw">as </span>LogupProof, LookupTable <span class="kw">as </span>LogupTable,
@@ -119,5 +119,5 @@
 <span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
 <span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;
 <span class="kw">pub type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
-<span class="kw">pub type </span>OpeningProof = PairingProof&lt;BN254&gt;;
+<span class="kw">pub type </span>OpeningProof = KZGProof&lt;BN254&gt;;
 </code></pre></div></section></main></body></html>

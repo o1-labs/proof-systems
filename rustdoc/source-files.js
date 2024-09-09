@@ -16,7 +16,7 @@ var sourcesIndex = JSON.parse('{\
 "mvpoly":["",[],["lib.rs","monomials.rs","pbt.rs","prime.rs","utils.rs"]],\
 "o1_utils":["",[],["adjacent_pairs.rs","array.rs","biguint_helpers.rs","bitwise_operations.rs","chunked_evaluations.rs","chunked_polynomial.rs","dense_polynomial.rs","evaluations.rs","field_helpers.rs","foreign_field.rs","hasher.rs","lib.rs","math.rs","serialization.rs"]],\
 "o1vm":["",[["keccak",[],["column.rs","constraints.rs","environment.rs","folding.rs","helpers.rs","interpreter.rs","mod.rs","trace.rs","witness.rs"]],["mips",[],["column.rs","constraints.rs","folding.rs","interpreter.rs","mod.rs","registers.rs","trace.rs","witness.rs"]]],["cannon.rs","cannon_cli.rs","folding.rs","lib.rs","lookups.rs","preimage_oracle.rs","proof.rs","ramlookup.rs","trace.rs"]],\
-"poly_commitment":["",[],["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","lib.rs","pairing_proof.rs","srs.rs"]],\
+"poly_commitment":["",[],["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","kzg.rs","lib.rs","srs.rs"]],\
 "snarky_deriver":["",[],["lib.rs"]],\
 "test_optimism_preimage_read":["",[],["test_preimage_read.rs"]],\
 "turshi":["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]\
