@@ -110,4 +110,8 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     ) -> HashMap<usize, F>;
 
     fn modify_monomial_with_scalar(&mut self, scalar: F);
+
+    /// Return true if the multi-variate polynomial is multilinear, i.e. if each
+    /// variable in each monomial is of maximum degree 1.
+    fn is_multilinear(&self) -> bool;
 }
