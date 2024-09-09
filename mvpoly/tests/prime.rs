@@ -5,7 +5,6 @@ use kimchi::circuits::{
 };
 use mina_curves::pasta::Fp;
 use mvpoly::{prime::Dense, utils::PrimeNumberGenerator, MVPoly};
-use rand::Rng;
 
 #[test]
 fn test_vector_space_dimension() {
@@ -159,115 +158,72 @@ fn test_mul() {
 
 #[test]
 fn test_mul_by_one() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 7, 2>::random(&mut rng, None) };
-    let one = Dense::<Fp, 7, 2>::one();
-    let p2 = p1.clone() * one.clone();
-    assert_eq!(p1.clone(), p2);
-    let p3 = one * p1.clone();
-    assert_eq!(p1.clone(), p3);
+    mvpoly::pbt::test_mul_by_one::<Fp, 7, 2, Dense<Fp, 7, 2>>();
 }
 
 #[test]
 fn test_mul_by_zero() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 5, 4>::random(&mut rng, None) };
-    let zero = Dense::<Fp, 5, 4>::zero();
-    let p2 = p1.clone() * zero.clone();
-    assert_eq!(zero, p2);
-    let p3 = zero.clone() * p1.clone();
-    assert_eq!(zero.clone(), p3);
+    mvpoly::pbt::test_mul_by_zero::<Fp, 5, 4, Dense<Fp, 5, 4>>();
 }
 
 #[test]
 fn test_add_zero() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng, None) };
-
-    let zero = Dense::<Fp, 3, 4>::zero();
-    let p2 = p1.clone() + zero.clone();
-    assert_eq!(p1.clone(), p2);
-    let p3 = zero.clone() + p1.clone();
-    assert_eq!(p1.clone(), p3);
+    mvpoly::pbt::test_add_zero::<Fp, 3, 4, Dense<Fp, 3, 4>>();
 }
 
 #[test]
 fn test_double_is_add_twice() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng, None) };
-    let p2 = p1.clone() + p1.clone();
-    let p3 = p1.clone().double();
-    assert_eq!(p2, p3);
+    mvpoly::pbt::test_double_is_add_twice::<Fp, 3, 4, Dense<Fp, 3, 4>>();
 }
 
 #[test]
 fn test_sub_zero() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng, None) };
-    let zero = Dense::<Fp, 3, 4>::zero();
-    let p2 = p1.clone() - zero.clone();
-    assert_eq!(p1.clone(), p2);
+    mvpoly::pbt::test_sub_zero::<Fp, 3, 4, Dense<Fp, 3, 4>>();
 }
 
 #[test]
 fn test_neg() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng, None) };
-    let p2 = -p1.clone();
+    mvpoly::pbt::test_neg::<Fp, 3, 4, Dense<Fp, 3, 4>>();
+}
 
-    // Test that p1 + (-p1) = 0
-    let sum = p1.clone() + p2.clone();
-    assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
+#[test]
+fn test_eval_pbt_add() {
+    mvpoly::pbt::test_eval_pbt_add::<Fp, 6, 4, Dense<Fp, 6, 4>>();
+}
 
-    // Test that -(-p1) = p1
-    let p3 = -p2;
-    assert_eq!(p1, p3);
+#[test]
+fn test_eval_pbt_sub() {
+    mvpoly::pbt::test_eval_pbt_sub::<Fp, 6, 4, Dense<Fp, 6, 4>>();
+}
 
-    // Test negation of zero
-    let zero = Dense::<Fp, 3, 4>::zero();
-    let neg_zero = -zero.clone();
-    assert_eq!(zero, neg_zero);
+#[test]
+fn test_eval_pbt_mul_by_scalar() {
+    mvpoly::pbt::test_eval_pbt_mul_by_scalar::<Fp, 6, 4, Dense<Fp, 6, 4>>();
+}
+
+#[test]
+fn test_eval_pbt_neg() {
+    mvpoly::pbt::test_eval_pbt_neg::<Fp, 6, 4, Dense<Fp, 6, 4>>();
 }
 
 #[test]
 fn test_neg_ref() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 3, 4>::random(&mut rng, None) };
-    let p2 = -&p1;
-
-    // Test that p1 + (-&p1) = 0
-    let sum = p1.clone() + p2.clone();
-    assert_eq!(sum, Dense::<Fp, 3, 4>::zero());
-
-    // Test that -(-&p1) = p1
-    let p3 = -&p2;
-    assert_eq!(p1, p3);
+    mvpoly::pbt::test_neg_ref::<Fp, 3, 4, Dense<Fp, 3, 4>>();
 }
 
 #[test]
 fn test_mul_by_scalar() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
-    let mut p2 = Dense::<Fp, 4, 5>::zero();
-    let c = Fp::rand(&mut rng);
-    p2[0] = c;
-    assert_eq!(p2 * p1.clone(), p1.clone().mul_by_scalar(c))
+    mvpoly::pbt::test_mul_by_scalar::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mul_by_scalar_with_zero() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
-    let c = Fp::zero();
-    assert_eq!(p1.mul_by_scalar(c), Dense::<Fp, 4, 5>::zero())
+    mvpoly::pbt::test_mul_by_scalar_with_zero::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mul_by_scalar_with_one() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, None) };
-    let c = Fp::one();
-    assert_eq!(p1.mul_by_scalar(c), p1)
+    mvpoly::pbt::test_mul_by_scalar_with_one::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
@@ -362,23 +318,12 @@ fn test_from_variable_column() {
 
 #[test]
 fn test_evaluation_zero_polynomial() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let zero = Dense::<Fp, 4, 5>::zero();
-    let evaluation = zero.eval(&random_evaluation);
-    assert_eq!(evaluation, Fp::zero());
+    mvpoly::pbt::test_evaluation_zero_polynomial::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_evaluation_constant_polynomial() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let cst = Fp::rand(&mut rng);
-    let zero = Dense::<Fp, 4, 5>::from(cst);
-    let evaluation = zero.eval(&random_evaluation);
-    assert_eq!(evaluation, cst);
+    mvpoly::pbt::test_evaluation_constant_polynomial::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
@@ -404,59 +349,6 @@ fn test_evaluation_predefined_polynomial() {
         + Fp::from(7_u32) * random_evaluation[1] * random_evaluation[1];
     let evaluation = p.eval(&random_evaluation);
     assert_eq!(evaluation, exp_eval);
-}
-
-#[test]
-fn test_eval_pbt_add() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let p3 = p1.clone() + p2.clone();
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 + eval_p2);
-}
-
-#[test]
-fn test_eval_pbt_sub() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let p3 = p1.clone() - p2.clone();
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 - eval_p2);
-}
-
-#[test]
-fn test_eval_pbt_mul_by_scalar() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let c = Fp::rand(&mut rng);
-    let p2 = p1.clone() * Dense::<Fp, 6, 4>::from(c);
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    assert_eq!(eval_p2, eval_p1 * c);
-}
-
-#[test]
-fn test_eval_pbt_neg() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Dense::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = -p1.clone();
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    assert_eq!(eval_p2, -eval_p1);
 }
 
 /// As a reminder, here are the equations to compute the addition of two
@@ -670,30 +562,13 @@ fn test_degree_with_coeffs() {
 
 #[test]
 fn test_degree_constant() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let c = Fp::rand(&mut rng);
-    let p = Dense::<Fp, 4, 5>::from(c);
-    let degree = unsafe { p.degree() };
-    assert_eq!(degree, 0);
-
-    let p = Dense::<Fp, 4, 5>::zero();
-    let degree = unsafe { p.degree() };
-    assert_eq!(degree, 0);
+    mvpoly::pbt::test_degree_constant::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_degree_random_degree() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let max_degree: usize = rng.gen_range(1..5);
-    let p: Dense<Fp, 4, 5> = unsafe { Dense::random(&mut rng, Some(max_degree)) };
-    let degree = unsafe { p.degree() };
-    assert!(degree <= max_degree);
-
-    let max_degree: usize = rng.gen_range(1..20);
-    // univariate
-    let p = unsafe { Dense::<Fp, 1, 20>::random(&mut rng, Some(max_degree)) };
-    let degree = unsafe { p.degree() };
-    assert!(degree <= max_degree);
+    mvpoly::pbt::test_degree_random_degree::<Fp, 4, 5, Dense<Fp, 4, 5>>();
+    mvpoly::pbt::test_degree_random_degree::<Fp, 1, 20, Dense<Fp, 1, 20>>();
 }
 
 #[test]
@@ -719,105 +594,47 @@ fn test_is_constant() {
 
 #[test]
 fn test_mvpoly_add_degree_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let p2 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let p3 = p1.clone() + p2.clone();
-    let degree_p1 = unsafe { p1.degree() };
-    let degree_p2 = unsafe { p2.degree() };
-    let degree_p3 = unsafe { p3.degree() };
-    assert!(degree_p3 <= std::cmp::max(degree_p1, degree_p2));
+    mvpoly::pbt::test_mvpoly_add_degree_pbt::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mvpoly_sub_degree_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let p2 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let p3 = p1.clone() - p2.clone();
-    let degree_p1 = unsafe { p1.degree() };
-    let degree_p2 = unsafe { p2.degree() };
-    let degree_p3 = unsafe { p3.degree() };
-    assert!(degree_p3 <= std::cmp::max(degree_p1, degree_p2));
+    mvpoly::pbt::test_mvpoly_sub_degree_pbt::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mvpoly_neg_degree_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let p2 = -p1.clone();
-    let degree_p1 = unsafe { p1.degree() };
-    let degree_p2 = unsafe { p2.degree() };
-    assert_eq!(degree_p1, degree_p2);
+    mvpoly::pbt::test_mvpoly_neg_degree_pbt::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mvpoly_mul_by_scalar_degree_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
-    let p1 = unsafe { Dense::<Fp, 4, 5>::random(&mut rng, Some(degree)) };
-    let c = Fp::rand(&mut rng);
-    let p2 = p1.clone() * Dense::<Fp, 4, 5>::from(c);
-    let degree_p1 = unsafe { p1.degree() };
-    let degree_p2 = unsafe { p2.degree() };
-    assert!(degree_p2 <= degree_p1);
+    mvpoly::pbt::test_mvpoly_mul_by_scalar_degree_pbt::<Fp, 4, 5, Dense<Fp, 4, 5>>();
 }
 
 #[test]
 fn test_mvpoly_mul_degree_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    // half max degree
-    let degree = rng.gen_range(1..3);
-    let p1 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(degree)) };
-    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(degree)) };
-    let p3 = p1.clone() * p2.clone();
-    let degree_p1 = unsafe { p1.degree() };
-    let degree_p2 = unsafe { p2.degree() };
-    let degree_p3 = unsafe { p3.degree() };
-    assert!(degree_p3 <= degree_p1 + degree_p2);
+    mvpoly::pbt::test_mvpoly_mul_degree_pbt::<Fp, 4, 6, Dense<Fp, 4, 6>>();
 }
 
 #[test]
 fn test_mvpoly_mul_eval_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let max_degree = rng.gen_range(1..3);
-    let p1 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
-    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
-    let p3 = p1.clone() * p2.clone();
-    let random_evaluation: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 * eval_p2);
+    mvpoly::pbt::test_mvpoly_mul_eval_pbt::<Fp, 4, 6, Dense<Fp, 4, 6>>();
 }
 
 #[test]
 fn test_mvpoly_mul_pbt() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let max_degree = rng.gen_range(1..3);
-    let p1 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
-    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, Some(max_degree)) };
-    assert_eq!(p1.clone() * p2.clone(), p2.clone() * p1.clone());
+    mvpoly::pbt::test_mvpoly_mul_pbt::<Fp, 4, 6, Dense<Fp, 4, 6>>();
 }
 
 #[test]
 fn test_can_be_printed_with_debug() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = unsafe { Dense::<Fp, 2, 2>::random(&mut rng, None) };
-    println!("{:?}", p1);
+    mvpoly::pbt::test_can_be_printed_with_debug::<Fp, 2, 2, Dense<Fp, 2, 2>>();
 }
 
 #[test]
 fn test_is_zero() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let p1 = Dense::<Fp, 4, 6>::zero();
-    assert!(p1.is_zero());
-
-    let p2 = unsafe { Dense::<Fp, 4, 6>::random(&mut rng, None) };
-    assert!(!p2.is_zero());
+    mvpoly::pbt::test_is_zero::<Fp, 4, 6, Dense<Fp, 4, 6>>();
 }
 
 #[test]

@@ -448,6 +448,10 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
     ) -> HashMap<usize, F> {
         unimplemented!()
     }
+
+    fn modify_monomial_with_scalar(&mut self, scalar: F) {
+        self[0] = scalar;
+    }
 }
 
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {

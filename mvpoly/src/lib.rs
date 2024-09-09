@@ -5,6 +5,7 @@ use kimchi::circuits::expr::{ConstantExpr, Expr};
 use rand::RngCore;
 
 pub mod monomials;
+pub mod pbt;
 pub mod prime;
 pub mod utils;
 
@@ -17,6 +18,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     + ark_ff::One
     + ark_ff::Zero
     + std::fmt::Debug
+    + Clone
     // Comparison operators
     + PartialEq
     + Eq
@@ -106,4 +108,6 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
         u1: F,
         u2: F,
     ) -> HashMap<usize, F>;
+
+    fn modify_monomial_with_scalar(&mut self, scalar: F);
 }
