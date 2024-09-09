@@ -844,6 +844,26 @@
 <a href="#844" id="844">844</a>
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1297,6 +1317,26 @@
 
     <span class="kw">fn </span>modify_monomial_with_scalar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scalar: F) {
         <span class="self">self</span>[<span class="number">0</span>] = scalar;
+    }
+
+    <span class="kw">fn </span>is_multilinear(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">if </span><span class="self">self</span>.is_zero() {
+            <span class="kw">return </span><span class="bool-val">true</span>;
+        }
+        <span class="kw">let </span>normalized_indices = <span class="self">self</span>.normalized_indices.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        normalized_indices
+            .iter()
+            .zip(<span class="self">self</span>.coeff.iter())
+            .all(|(idx, c)| {
+                <span class="kw">if </span>c.is_zero() {
+                    <span class="bool-val">true
+                </span>} <span class="kw">else </span>{
+                    <span class="kw">let </span>decomposition_of_i = naive_prime_factors(<span class="kw-2">*</span>idx, <span class="kw-2">&amp;mut </span>prime_gen);
+                    <span class="comment">// Each prime number/variable should appear at most once
+                    </span>decomposition_of_i.iter().all(|(_p, d)| <span class="kw-2">*</span>d &lt;= <span class="number">1</span>)
+                }
+            })
     }
 }
 

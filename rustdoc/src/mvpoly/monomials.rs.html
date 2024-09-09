@@ -603,6 +603,12 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>num_integer::binomial;
@@ -1172,6 +1178,12 @@
 
     <span class="kw">fn </span>modify_monomial_with_scalar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scalar: F) {
         <span class="self">self</span>.modify_monomial([<span class="number">0</span>; N], scalar);
+    }
+
+    <span class="kw">fn </span>is_multilinear(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.monomials
+            .iter()
+            .all(|(exponents, <span class="kw">_</span>)| exponents.iter().all(|<span class="kw-2">&amp;</span>d| d &lt;= <span class="number">1</span>))
     }
 }
 

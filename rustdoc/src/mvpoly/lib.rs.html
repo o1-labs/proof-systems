@@ -111,6 +111,10 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>ark_ff::PrimeField;
@@ -223,5 +227,9 @@
     ) -&gt; HashMap&lt;usize, F&gt;;
 
     <span class="kw">fn </span>modify_monomial_with_scalar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scalar: F);
+
+    <span class="doccomment">/// Return true if the multi-variate polynomial is multilinear, i.e. if each
+    /// variable in each monomial is of maximum degree 1.
+    </span><span class="kw">fn </span>is_multilinear(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
 }
 </code></pre></div></section></main></body></html>
