@@ -609,3 +609,20 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Sparse<F, N, D> 
         result
     }
 }
+
+impl<F: PrimeField, const N: usize, const D: usize, const M: usize> From<Sparse<F, N, D>>
+    for Result<Sparse<F, M, D>, String>
+{
+    fn from(poly: Sparse<F, N, D>) -> Result<Sparse<F, M, D>, String> {
+        if M < N {
+            return Err("The number of variables must be greater than N".to_string());
+        }
+        let mut monomials = HashMap::new();
+        poly.monomials.iter().for_each(|(exponents, coeff)| {
+            let mut new_exponents = [0; M];
+            new_exponents[0..N].copy_from_slice(&exponents[0..N]);
+            monomials.insert(new_exponents, *coeff);
+        });
+        Ok(Sparse { monomials })
+    }
+}
