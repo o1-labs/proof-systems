@@ -1120,12 +1120,14 @@
 <a href="#1120" id="1120">1120</a>
 <a href="#1121" id="1121">1121</a>
 <a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
-//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-//!     producing the batched opening proof
+//! 2. Open polynomial commitment batch at the given evaluation point and
+//! scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
 </span><span class="kw">use crate</span>::{
@@ -1167,7 +1169,8 @@
     </span><span class="kw">pub </span>elems: Vec&lt;C&gt;,
 }
 
-<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
+<span class="doccomment">/// A commitment to a polynomial with some blinding factors.
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>BlindedCommitment&lt;G&gt;
 <span class="kw">where
     </span>G: CommitmentCurve,
@@ -1266,7 +1269,8 @@
 }
 
 <span class="kw">impl</span>&lt;A: Copy + CanonicalDeserialize + CanonicalSerialize&gt; PolyComm&lt;A&gt; {
-    <span class="comment">// TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
+    <span class="comment">// TODO: if all callers end up calling unwrap, just call this zip_eq and
+    // panic here (and document the panic)
     </span><span class="kw">pub fn </span>zip&lt;B: Copy + CanonicalDeserialize + CanonicalSerialize&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>PolyComm&lt;B&gt;,

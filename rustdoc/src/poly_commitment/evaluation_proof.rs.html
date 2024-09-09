@@ -498,6 +498,8 @@
 <a href="#498" id="498">498</a>
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the polynomial commitment scheme
 //! called the Inner Product Argument (IPA) as described in [Efficient
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
@@ -570,10 +572,12 @@
 ) -&gt; (DensePolynomial&lt;G::ScalarField&gt;, G::ScalarField) {
     <span class="kw">let </span><span class="kw-2">mut </span>plnm = ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
     <span class="kw">let </span><span class="kw-2">mut </span>plnm_evals_part = {
-        <span class="comment">// For now just check that all the evaluation polynomials are the same degree so that we
-        // can do just a single FFT.
-        // Furthermore we check they have size less than the SRS size so we don&#39;t have to do chunking.
-        // If/when we change this, we can add more complicated code to handle different degrees.
+        <span class="comment">// For now just check that all the evaluation polynomials are the same
+        // degree so that we can do just a single FFT.
+        // Furthermore we check they have size less than the SRS size so we
+        // don&#39;t have to do chunking.
+        // If/when we change this, we can add more complicated code to handle
+        // different degrees.
         </span><span class="kw">let </span>degree = plnms
             .iter()
             .fold(<span class="prelude-val">None</span>, |acc, (p, <span class="kw">_</span>)| <span class="kw">match </span>p {
@@ -646,12 +650,12 @@
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
     <span class="doccomment">/// This function opens polynomial commitments in batch
-    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
-    ///     elm: evaluation point vector to open the commitments at
-    ///     polyscale: polynomial scaling factor for opening commitments in batch
-    ///     evalscale: eval scaling factor for opening commitments in batch
-    ///     oracle_params: parameters for the random oracle argument
-    ///     RETURN: commitment opening proof
+    /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    /// - elm: evaluation point vector to open the commitments at
+    /// - polyscale: polynomial scaling factor for opening commitments in batch
+    /// - evalscale: eval scaling factor for opening commitments in batch
+    /// - oracle_params: parameters for the random oracle argument
+    /// RETURN: commitment opening proof
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
@@ -659,12 +663,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         group_map: <span class="kw-2">&amp;</span>G::Map,
         <span class="comment">// TODO(mimoo): create a type for that entry
-        </span>plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with commitment randomness
-        </span>elm: <span class="kw-2">&amp;</span>[G::ScalarField],            <span class="comment">// vector of evaluation points
-        </span>polyscale: G::ScalarField,         <span class="comment">// scaling factor for polynoms
-        </span>evalscale: G::ScalarField,         <span class="comment">// scaling factor for evaluation point powers
-        </span><span class="kw-2">mut </span>sponge: EFqSponge,             <span class="comment">// sponge
-        </span>rng: <span class="kw-2">&amp;mut </span>RNG,
+        </span>plnms: PolynomialsToCombine&lt;G, D&gt;,
+        elm: <span class="kw-2">&amp;</span>[G::ScalarField],
+        polyscale: G::ScalarField,
+        evalscale: G::ScalarField,
+        <span class="kw-2">mut </span>sponge: EFqSponge,
+        rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; OpeningProof&lt;G&gt;
     <span class="kw">where
         </span>EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
