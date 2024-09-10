@@ -2,7 +2,6 @@ use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
 
-
 #[test]
 fn test_mul_by_one() {
     mvpoly::pbt::test_mul_by_one::<Fp, 7, 2, Sparse<Fp, 7, 2>>();
