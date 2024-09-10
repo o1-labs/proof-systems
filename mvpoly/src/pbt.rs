@@ -18,7 +18,7 @@
 
 use crate::MVPoly;
 use ark_ff::PrimeField;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use std::ops::Neg;
 
 pub fn test_mul_by_one<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
@@ -368,4 +368,45 @@ pub fn test_is_zero<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, 
     assert!(p1.is_zero());
     let p2 = unsafe { T::random(&mut rng, None) };
     assert!(!p2.is_zero());
+}
+
+pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    // Test with zero polynomial
+    let p1 = T::zero();
+    assert!(p1.is_multilinear());
+
+    // Test with a constant polynomial
+    let c = F::rand(&mut rng);
+    let p2 = T::from(c);
+    assert!(p2.is_multilinear());
+
+    // Test with a polynomial with one variable having a linear monomial
+    {
+        let mut p = T::zero();
+        let c = F::rand(&mut rng);
+        let idx = rng.gen_range(0..N);
+        let monomials_exponents = std::array::from_fn(|i| if i == idx { 1 } else { 0 });
+        p.add_monomial(monomials_exponents, c);
+        assert!(p.is_multilinear());
+    }
+
+    // Test with a multilinear polynomial with random variables
+    {
+        let mut p = T::zero();
+        let c = F::rand(&mut rng);
+        let nb_var = rng.gen_range(0..D);
+        let mut monomials_exponents: [usize; N] =
+            std::array::from_fn(|i| if i <= nb_var { 1 } else { 0 });
+        monomials_exponents.shuffle(&mut rng);
+        p.add_monomial(monomials_exponents, c);
+        assert!(p.is_multilinear());
+    }
+
+    // Test with a random polynomial (very unlikely to be multilinear)
+    {
+        let p = unsafe { T::random(&mut rng, None) };
+        assert!(!p.is_multilinear());
+    }
 }
