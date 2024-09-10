@@ -158,7 +158,7 @@ pub fn test_mul_by_scalar<F: PrimeField, const N: usize, const D: usize, T: MVPo
     let p1 = unsafe { T::random(&mut rng, None) };
     let mut p2 = T::zero();
     let c = F::rand(&mut rng);
-    p2.modify_monomial_with_scalar(c);
+    p2.modify_monomial([0; N], c);
     assert_eq!(p2 * p1.clone(), p1.clone().mul_by_scalar(c));
 }
 

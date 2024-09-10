@@ -449,8 +449,9 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
         unimplemented!()
     }
 
-    fn modify_monomial_with_scalar(&mut self, scalar: F) {
-        self[0] = scalar;
+    fn modify_monomial(&mut self, _exponents: [usize; N], coeff: F) {
+        // Directly modify the coefficient at index 0
+        self[0] = coeff;
     }
 
     fn is_multilinear(&self) -> bool {
