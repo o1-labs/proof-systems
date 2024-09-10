@@ -370,6 +370,125 @@ pub fn test_is_zero<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, 
     assert!(!p2.is_zero());
 }
 
+pub fn test_homogeneous_eval<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let random_eval = std::array::from_fn(|_| F::rand(&mut rng));
+    let u = F::rand(&mut rng);
+
+    // Homogeneous form is u^2
+    let p1 = T::one();
+    let homogenous_eval = p1.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, u * u);
+
+    let mut p2 = T::zero();
+    let mut exp1 = [0; N];
+    exp1[0] = 1;
+    p2.add_monomial(exp1, F::one());
+    let homogenous_eval = p2.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * u);
+
+    let mut p3 = T::zero();
+    let mut exp2 = [0; N];
+    exp2[1] = 1;
+    p3.add_monomial(exp2, F::one());
+    let homogenous_eval = p3.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[1] * u);
+
+    let mut p4 = T::zero();
+    let mut exp3 = [0; N];
+    exp3[0] = 1;
+    exp3[1] = 1;
+    p4.add_monomial(exp3, F::one());
+    let homogenous_eval = p4.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * random_eval[1]);
+
+    let mut p5 = T::zero();
+    let mut exp4 = [0; N];
+    exp4[0] = 2;
+    p5.add_monomial(exp4, F::one());
+    let homogenous_eval = p5.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogenous_eval, random_eval[0] * random_eval[0]);
+
+    let mut p6 = T::zero();
+    let mut exp5a = [0; N];
+    let mut exp5b = [0; N];
+    exp5a[1] = 2;
+    exp5b[0] = 2;
+    p6.add_monomial(exp5a, F::one());
+    p6.add_monomial(exp5b, F::one());
+    let homogenous_eval = p6.homogeneous_eval(&random_eval, u);
+    assert_eq!(
+        homogenous_eval,
+        random_eval[1] * random_eval[1] + random_eval[0] * random_eval[0]
+    );
+
+    let mut p7 = T::zero();
+    let mut exp6a = [0; N];
+    let mut exp6b = [0; N];
+    let mut exp6c = [0; N];
+    exp6a[1] = 2;
+    exp6b[0] = 2;
+    exp6c[0] = 1;
+    p7.add_monomial(exp6a, F::one());
+    p7.add_monomial(exp6b, F::one());
+    p7.add_monomial(exp6c, F::one());
+    p7.add_monomial([0; N], F::from(42u32));
+    let homogenous_eval = p7.homogeneous_eval(&random_eval, u);
+    assert_eq!(
+        homogenous_eval,
+        random_eval[1] * random_eval[1]
+            + random_eval[0] * random_eval[0]
+            + u * random_eval[0]
+            + u * u * F::from(42u32)
+    );
+}
+
+pub fn test_add_monomial<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    // Adding constant monomial one to zero
+    let mut p1 = T::zero();
+    p1.add_monomial([0; N], F::one());
+    assert_eq!(p1, T::one());
+
+    // Adding random constant monomial one to zero
+    let mut p2 = T::zero();
+    let random_c = F::rand(&mut rng);
+    p2.add_monomial([0; N], random_c);
+    assert_eq!(p2, T::from(random_c));
+
+    let mut p3 = T::zero();
+    let random_c1 = F::rand(&mut rng);
+    let random_c2 = F::rand(&mut rng);
+    // X1 + X2
+    let mut exp1 = [0; N];
+    let mut exp2 = [0; N];
+    exp1[0] = 1;
+    exp2[1] = 1;
+    p3.add_monomial(exp1, random_c1);
+    p3.add_monomial(exp2, random_c2);
+
+    let random_eval = std::array::from_fn(|_| F::rand(&mut rng));
+    let eval_p3 = p3.eval(&random_eval);
+    let exp_eval_p3 = random_c1 * random_eval[0] + random_c2 * random_eval[1];
+    assert_eq!(eval_p3, exp_eval_p3);
+
+    let mut p4 = T::zero();
+    let random_c1 = F::rand(&mut rng);
+    let random_c2 = F::rand(&mut rng);
+    // X1^2 + X2^2
+    let mut exp1 = [0; N];
+    let mut exp2 = [0; N];
+    exp1[0] = 2;
+    exp2[1] = 2;
+    p4.add_monomial(exp1, random_c1);
+    p4.add_monomial(exp2, random_c2);
+    let eval_p4 = p4.eval(&random_eval);
+    let exp_eval_p4 =
+        random_c1 * random_eval[0] * random_eval[0] + random_c2 * random_eval[1] * random_eval[1];
+    assert_eq!(eval_p4, exp_eval_p4);
+}
+
 pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 

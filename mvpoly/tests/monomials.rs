@@ -1,4 +1,4 @@
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{Field, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
 
@@ -208,101 +208,12 @@ fn test_is_zero() {
 
 #[test]
 fn test_homogeneous_eval() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let random_eval = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let u = Fp::rand(&mut rng);
-    // Homogeneous form is u^2
-    let p1 = Sparse::<Fp, 4, 2>::one();
-    let homogenous_eval = p1.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, u * u);
-
-    let mut p2 = Sparse::<Fp, 4, 2>::zero();
-    // X1
-    p2.add_monomial([1, 0, 0, 0], Fp::one());
-    let homogenous_eval = p2.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * u);
-
-    let mut p3 = Sparse::<Fp, 4, 2>::zero();
-    // X2
-    p3.add_monomial([0, 1, 0, 0], Fp::one());
-    let homogenous_eval = p3.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[1] * u);
-
-    let mut p4 = Sparse::<Fp, 4, 2>::zero();
-    // X1 * X2
-    p4.add_monomial([1, 1, 0, 0], Fp::one());
-    let homogenous_eval = p4.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * random_eval[1]);
-
-    let mut p5 = Sparse::<Fp, 4, 2>::zero();
-    // X1^2
-    p5.add_monomial([2, 0, 0, 0], Fp::one());
-    let homogenous_eval = p5.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * random_eval[0]);
-
-    let mut p6 = Sparse::<Fp, 4, 2>::zero();
-    // X2^2 + X1^2
-    p6.add_monomial([0, 2, 0, 0], Fp::one());
-    p6.add_monomial([2, 0, 0, 0], Fp::one());
-    let homogenous_eval = p6.homogeneous_eval(&random_eval, u);
-    assert_eq!(
-        homogenous_eval,
-        random_eval[1] * random_eval[1] + random_eval[0] * random_eval[0]
-    );
-
-    let mut p7 = Sparse::<Fp, 4, 2>::zero();
-    // X2^2 + X1^2 + X1 + 42
-    p7.add_monomial([0, 2, 0, 0], Fp::one());
-    p7.add_monomial([2, 0, 0, 0], Fp::one());
-    p7.add_monomial([1, 0, 0, 0], Fp::one());
-    p7.add_monomial([0, 0, 0, 0], Fp::from(42));
-    let homogenous_eval = p7.homogeneous_eval(&random_eval, u);
-    assert_eq!(
-        homogenous_eval,
-        random_eval[1] * random_eval[1]
-            + random_eval[0] * random_eval[0]
-            + u * random_eval[0]
-            + u * u * Fp::from(42)
-    );
+    mvpoly::pbt::test_homogeneous_eval::<Fp, 4, 2, Sparse<Fp, 4, 2>>();
 }
 
 #[test]
 fn test_add_monomial() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    // Adding constant monomial one to zero
-    let mut p1 = Sparse::<Fp, 4, 2>::zero();
-    p1.add_monomial([0, 0, 0, 0], Fp::one());
-    assert_eq!(p1, Sparse::<Fp, 4, 2>::one());
-
-    // Adding random constant monomial one to zero
-    let mut p2 = Sparse::<Fp, 4, 2>::zero();
-    let random_c = Fp::rand(&mut rng);
-    p2.add_monomial([0, 0, 0, 0], random_c);
-    assert_eq!(p2, Sparse::<Fp, 4, 2>::from(random_c));
-
-    let mut p3 = Sparse::<Fp, 4, 2>::zero();
-    let random_c1 = Fp::rand(&mut rng);
-    let random_c2 = Fp::rand(&mut rng);
-    // X1 + X2
-    p3.add_monomial([1, 0, 0, 0], random_c1);
-    p3.add_monomial([0, 1, 0, 0], random_c2);
-    let random_eval = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let eval_p3 = p3.eval(&random_eval);
-    let exp_eval_p3 = random_c1 * random_eval[0] + random_c2 * random_eval[1];
-    assert_eq!(eval_p3, exp_eval_p3);
-
-    let mut p4 = Sparse::<Fp, 4, 2>::zero();
-    let random_c1 = Fp::rand(&mut rng);
-    let random_c2 = Fp::rand(&mut rng);
-    // X1^2 + X2^2
-    p4.add_monomial([2, 0, 0, 0], random_c1);
-    p4.add_monomial([0, 2, 0, 0], random_c2);
-    let random_eval = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let eval_p4 = p4.eval(&random_eval);
-    let exp_eval_p4 =
-        random_c1 * random_eval[0] * random_eval[0] + random_c2 * random_eval[1] * random_eval[1];
-    assert_eq!(eval_p4, exp_eval_p4);
+    mvpoly::pbt::test_add_monomial::<Fp, 4, 2, Sparse<Fp, 4, 2>>();
 }
 
 #[test]
