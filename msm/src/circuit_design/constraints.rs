@@ -1,6 +1,6 @@
 use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 use std::collections::BTreeMap;
@@ -14,7 +14,7 @@ use crate::{
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
-    pub constraints: Vec<Expr<ConstantExpr<F>, Column>>,
+    pub constraints: Vec<Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>>,
     /// Aggregated lookups or "reads".
     pub lookup_reads: BTreeMap<LT, Vec<Vec<E<F>>>>,
     /// Aggregated "write" lookups, for runtime tables.

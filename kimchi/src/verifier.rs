@@ -5,7 +5,7 @@ use crate::{
         argument::ArgumentType,
         berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Challenges, Constants, PolishToken},
+        expr::{BerkeleyChallenges, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -448,11 +448,14 @@ where
                 mds: &G::sponge_params().mds,
                 zk_rows,
             };
-            let challenges = Challenges {
+            let challenges = BerkeleyChallenges {
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
+                joint_combiner: joint_combiner
+                    .as_ref()
+                    .map(|j| j.1)
+                    .unwrap_or(G::ScalarField::zero()),
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -886,11 +889,15 @@ where
                 mds: &G::sponge_params().mds,
                 zk_rows,
             };
-            let challenges = Challenges {
+            let challenges = BerkeleyChallenges {
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
+                joint_combiner: oracles
+                    .joint_combiner
+                    .as_ref()
+                    .map(|j| j.1)
+                    .unwrap_or(G::ScalarField::zero()),
             };
 
             for (col, tokens) in &verifier_index.linearization.index_terms {

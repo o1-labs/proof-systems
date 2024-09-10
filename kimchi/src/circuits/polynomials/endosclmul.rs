@@ -9,7 +9,7 @@ use crate::{
         expr::{
             self,
             constraints::{boolean, ExprOps},
-            Cache,
+            BerkeleyChallengeTerm, Cache,
         },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
@@ -143,11 +143,11 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
             zk_rows: cs.zk_rows,
         };
-        let challenges = expr::Challenges {
+        let challenges = expr::BerkeleyChallenges {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
-            joint_combiner: None,
+            joint_combiner: F::zero(),
         };
 
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
@@ -188,7 +188,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);

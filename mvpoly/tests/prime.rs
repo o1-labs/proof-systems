@@ -1,6 +1,6 @@
 use ark_ff::{One, UniformRand, Zero};
 use kimchi::circuits::{
-    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    expr::{BerkeleyChallengeTerm, ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 use mina_curves::pasta::Fp;
@@ -414,7 +414,7 @@ fn test_from_expr_ec_addition() {
     impl Interpreter for Constraint {
         type Position = Column;
 
-        type Variable = Expr<ConstantExpr<Fp>, Column>;
+        type Variable = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
 
         fn allocate(&mut self) -> Self::Position {
             let col = Column::X(self.idx);

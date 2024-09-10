@@ -14,7 +14,7 @@ use ark_ff::{One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig};
 use itertools::Itertools;
-use kimchi::circuits::expr::ChallengeTerm;
+use kimchi::circuits::expr::BerkeleyChallengeTerm;
 use kimchi_msm::{columns::Column, witness::Witness};
 use mina_poseidon::sponge::FqSponge;
 use poly_commitment::{commitment::absorb_commitment, PolyComm, SRS as _};
@@ -145,7 +145,7 @@ impl<const N: usize, C: FoldingConfig<Column = Column>, Sponge> Foldable<N, C, S
 where
     C::Selector: Into<usize>,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
-    <C as FoldingConfig>::Challenge: From<ChallengeTerm>,
+    <C as FoldingConfig>::Challenge: From<BerkeleyChallengeTerm>,
 {
     fn to_folding_pair(
         &self,

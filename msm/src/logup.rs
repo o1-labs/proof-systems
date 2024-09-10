@@ -141,7 +141,7 @@
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
 
-use kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
+use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
 
 use crate::{
     columns::Column,
@@ -351,11 +351,11 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
     lookups: Vec<Logup<E<F>, ID>>,
 ) -> E<F> {
     let joint_combiner = {
-        let joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
+        let joint_combiner = ConstantExpr::from(BerkeleyChallengeTerm::JointCombiner);
         E::Atom(ExprInner::Constant(joint_combiner))
     };
     let beta = {
-        let beta = ConstantExpr::from(ChallengeTerm::Beta);
+        let beta = ConstantExpr::from(BerkeleyChallengeTerm::Beta);
         E::Atom(ExprInner::Constant(beta))
     };
 

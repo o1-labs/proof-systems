@@ -4,7 +4,7 @@ use folding::{
     FoldingScheme, Instance, Side, Witness,
 };
 use ivc::ivc::{constraints::constrain_ivc, lookups::IVCLookupTable, N_ADDITIONAL_WIT_COL_QUAD};
-use kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
+use kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::{circuit_design::ConstraintBuilderEnv, columns::Column, Ff1};
 use poly_commitment::srs::SRS;
 
@@ -24,13 +24,13 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
         JointCombiner,
     }
 
-    impl From<ChallengeTerm> for Challenge {
-        fn from(chal: ChallengeTerm) -> Self {
+    impl From<BerkeleyChallengeTerm> for Challenge {
+        fn from(chal: BerkeleyChallengeTerm) -> Self {
             match chal {
-                ChallengeTerm::Beta => Challenge::Beta,
-                ChallengeTerm::Gamma => Challenge::Gamma,
-                ChallengeTerm::JointCombiner => Challenge::JointCombiner,
-                ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+                BerkeleyChallengeTerm::Beta => Challenge::Beta,
+                BerkeleyChallengeTerm::Gamma => Challenge::Gamma,
+                BerkeleyChallengeTerm::JointCombiner => Challenge::JointCombiner,
+                BerkeleyChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
             }
         }
     }

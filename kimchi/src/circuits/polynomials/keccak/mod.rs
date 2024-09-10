@@ -8,6 +8,7 @@ use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
 use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};
+use super::super::expr::BerkeleyChallengeTerm;
 
 #[macro_export]
 macro_rules! grid {
@@ -101,7 +102,7 @@ impl Keccak {
     }
 
     /// Expands a u64 word into a vector of 4 sparse u64 quarters
-    pub fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
+    pub fn expand_word<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(word: u64) -> Vec<T> {
         Self::decompose(word)
             .iter()
             .map(|q| T::literal(F::from(Self::expand(*q))))
