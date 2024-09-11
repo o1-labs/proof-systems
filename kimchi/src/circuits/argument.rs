@@ -11,8 +11,12 @@ use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
+//TODO use generic challenge
 use super::{
-    expr::{constraints::ExprOps, Cache, Challenges, ConstantExpr, ConstantTerm, Constants},
+    expr::{
+        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, Cache, ConstantExpr,
+        ConstantTerm, Constants,
+    },
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -53,14 +57,14 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
+impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
     pub fn create(
         witness: ArgumentWitness<F>,
         coeffs: Vec<F>,
         constants: Constants<F>,
-        challenges: Challenges<F>,
+        challenges: BerkeleyChallenges<F>,
     ) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
@@ -121,7 +125,7 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     }
 
     /// Constant value (see [ConstantExpr] for supported constants)
-    pub fn constant(&self, expr: ConstantExpr<F>) -> T {
+    pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> T {
         T::constant(expr, self.data.as_ref())
     }
 
@@ -150,7 +154,7 @@ pub struct ArgumentData<F: 'static> {
     pub coeffs: Vec<F>,
     /// Constants
     pub constants: Constants<F>,
-    pub challenges: Challenges<F>,
+    pub challenges: BerkeleyChallenges<F>,
 }
 
 /// Witness data for a argument
@@ -183,7 +187,10 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn constraints(cache: &mut Cache) -> Vec<E<F>> {
