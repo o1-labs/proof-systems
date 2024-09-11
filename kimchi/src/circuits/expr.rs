@@ -275,12 +275,12 @@ impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExprInner<F, ChallengeTer
     }
 }
 
-impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
+/* impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::Constant(x)
     }
 }
-
+ */
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
     Atom(T),
@@ -356,12 +356,12 @@ impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> 
     }
 }
 
-impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExpr<F, ChallengeTerm> {
+/* impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
-
+ */
 pub trait ToPolish<F, Column, ChallengeTerm> {
     fn to_polish(
         &self,
@@ -647,14 +647,14 @@ impl<F, Column, ChallengeTerm> From<ConstantTerm<F>>
     }
 }
 
-impl<F, Column, ChallengeTerm> From<ChallengeTerm>
+/* impl<F, Column, ChallengeTerm> From<ChallengeTerm>
     for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
     fn from(x: ChallengeTerm) -> Self {
         ConstantExpr::from(x).into()
     }
-}
-
+ }
+*/
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
     fn literal(x: Self::F) -> Self {
