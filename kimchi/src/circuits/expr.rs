@@ -1798,10 +1798,14 @@ impl<F: FftField, Column: Copy, BerkeleyChallengeTerm>
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm, Challenge>
+impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
-    fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
+    fn evaluate_constants_(
+        &self,
+        c: &Constants<F>,
+        chals: &BerkeleyChallenges<F>,
+    ) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
         // TODO: Use cache
@@ -1831,7 +1835,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm, Challenge>
     pub fn evaluate<
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Challenges<F>, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1849,7 +1853,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm, Challenge>
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
-        chals: &Challenges<F>,
+        chals: &BerkeleyChallenges<F>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
         use Operations::*;
@@ -1899,8 +1903,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm, Challenge>
     /// Evaluate the constant expressions in this expression down into field elements.
     pub fn evaluate_constants<
         'a,
-        Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1916,8 +1919,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm, Challenge>
     /// `evaluations`.
     pub fn evaluations<
         'a,
-        Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
     >(
         &self,
         env: &Environment,
