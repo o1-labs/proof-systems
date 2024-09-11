@@ -241,7 +241,7 @@ pub enum ConstantExprInner<F, ChallengeTerm> {
     Constant(ConstantTerm<F>),
 }
 
-impl<F: Clone, ChallengeTerm> Literal for ConstantExprInner<F, ChallengeTerm> {
+impl<F: Clone, ChallengeTerm: Clone> Literal for ConstantExprInner<F, ChallengeTerm> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(ConstantTerm::literal(x))
