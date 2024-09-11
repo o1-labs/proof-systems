@@ -5,7 +5,7 @@ use crate::{
         argument::ArgumentType,
         berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Challenges, Constants, PolishToken},
+        expr::{BerkeleyChallenges, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -448,7 +448,7 @@ where
                 mds: &G::sponge_params().mds,
                 zk_rows,
             };
-            let challenges = Challenges {
+            let challenges = BerkeleyChallenges {
                 alpha,
                 beta,
                 gamma,
@@ -886,7 +886,7 @@ where
                 mds: &G::sponge_params().mds,
                 zk_rows,
             };
-            let challenges = Challenges {
+            let challenges = BerkeleyChallenges {
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,

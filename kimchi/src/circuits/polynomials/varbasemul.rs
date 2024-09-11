@@ -13,7 +13,7 @@
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     berkeley_columns::Column,
-    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
+    expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -171,7 +171,10 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+    pub fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+        &self,
+        env: &ArgumentEnv<F, T>,
+    ) -> Point<T> {
         Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
@@ -221,7 +224,7 @@ fn single_bit_witness<F: FftField>(
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField, T: ExprOps<F>>(
+fn single_bit<F: FftField, T: ExprOps<F, BerkeleyChallengeTerm>>(
     cache: &mut Cache,
     b: &T,
     base: Point<T>,
@@ -288,7 +291,7 @@ where
 impl<F, T> FromWitness<F, T> for Variable
 where
     F: PrimeField,
-    T: ExprOps<F>,
+    T: ExprOps<F, BerkeleyChallengeTerm>,
 {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
@@ -326,7 +329,10 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+        &self,
+        env: &ArgumentEnv<F, T>,
+    ) -> Layout<T> {
         Layout {
             accs: self.accs.map(|point| point.new_from_env(env)),
             bits: self.bits.map(|var| var.new_from_env(env)),
@@ -409,7 +415,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let Layout {
             base,
             accs,
