@@ -24,7 +24,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Debug},
     iter::FromIterator,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
@@ -68,7 +68,7 @@ enum ChallengeOutput<F> {
     Optional { val: Option<F> },
 }
 
-impl<F> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
+impl<F> Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
     type Output = ChallengeOutput<F>;
 
     fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
@@ -3246,12 +3246,12 @@ pub mod constraints {
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
     pub trait ExprOps<F, ChallengeTerm>:
-        std::ops::Add<Output = Self>
-        + std::ops::Sub<Output = Self>
-        + std::ops::Neg<Output = Self>
-        + std::ops::Mul<Output = Self>
-        + std::ops::AddAssign<Self>
-        + std::ops::MulAssign<Self>
+        Add<Output = Self>
+        + Sub<Output = Self>
+        + Neg<Output = Self>
+        + Mul<Output = Self>
+        + AddAssign<Self>
+        + MulAssign<Self>
         + Clone
         + Zero
         + One
