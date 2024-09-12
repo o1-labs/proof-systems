@@ -506,18 +506,22 @@ where
     }
 }
 
-impl<F: Field> ConstantExpr<F, BerkeleyChallengeTerm> {
+impl<F: Field, ChallengeTerm> ConstantExpr<F, ChallengeTerm> {
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>, chals: &BerkeleyChallenges<F>) -> F {
+    pub fn value(
+        &self,
+        c: &Constants<F>,
+        chals: &dyn Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+    ) -> F {
         use ConstantExprInner::*;
         use Operations::*;
         match self {
-            Atom(Challenge(BerkeleyChallengeTerm::Alpha)) => chals.alpha,
-            Atom(Challenge(BerkeleyChallengeTerm::Beta)) => chals.beta,
-            Atom(Challenge(BerkeleyChallengeTerm::Gamma)) => chals.gamma,
-            Atom(Challenge(BerkeleyChallengeTerm::JointCombiner)) => {
-                chals.joint_combiner.expect("joint lookup was not expected")
-            }
+            Atom(Challenge(challenge_term)) => match challenge_term[chals] {
+                ChallengeOutput::Mandatory { val: x } => x,
+                ChallengeOutput::Optional { val: x } => {
+                    x.expect("Optional challenge was expected to be provided")
+                }
+            },
             Atom(Constant(ConstantTerm::EndoCoefficient)) => c.endo_coefficient,
             Atom(Constant(ConstantTerm::Mds { row, col })) => c.mds[*row][*col],
             Atom(Constant(ConstantTerm::Literal(x))) => *x,
