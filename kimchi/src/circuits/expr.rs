@@ -63,6 +63,26 @@ pub struct BerkeleyChallenges<F> {
     pub joint_combiner: Option<F>,
 }
 
+enum ChallengeOutput<F> {
+    Mandatory { val: F },
+    Optional { val: Option<F> },
+}
+
+impl<F> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
+    type Output = ChallengeOutput<F>;
+
+    fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
+        match challenge_term {
+            BerkeleyChallengeTerm::Alpha => &ChallengeOutput::<F>::Mandatory { val: &self.alpha },
+            BerkeleyChallengeTerm::Beta => &ChallengeOutput::<F>::Mandatory { val: &self.beta },
+            BerkeleyChallengeTerm::Gamma => &ChallengeOutput::<F>::Mandatory { val: &self.gamma },
+            BerkeleyChallengeTerm::JointCombiner => &ChallengeOutput::<F>::Optional {
+                val: &self.joint_combiner,
+            },
+        }
+    }
+}
+
 /// The collection of constants required to evaluate an `Expr`.
 #[derive(Clone)]
 pub struct Constants<F: 'static> {
