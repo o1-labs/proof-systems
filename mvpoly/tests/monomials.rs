@@ -414,3 +414,64 @@ fn test_mvpoly_compute_cross_terms_degree_seven() {
 fn test_is_multilinear() {
     mvpoly::pbt::test_is_multilinear::<Fp, 6, 2, Sparse<Fp, 6, 2>>();
 }
+
+#[test]
+fn test_increase_number_of_variables() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1: Sparse<Fp, 4, 2> = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+
+    let p2: Result<Sparse<Fp, 5, 2>, String> = p1.into();
+    p2.unwrap();
+}
+
+#[test]
+fn test_pbt_increase_number_of_variables_with_addition() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1: Sparse<Fp, 4, 2> = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+    let p2: Sparse<Fp, 4, 2> = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+
+    let lhs: Sparse<Fp, 5, 2> = {
+        let p: Result<Sparse<Fp, 5, 2>, String> = (p1.clone() + p2.clone()).into();
+        p.unwrap()
+    };
+
+    let rhs: Sparse<Fp, 5, 2> = {
+        let p1: Result<Sparse<Fp, 5, 2>, String> = p1.clone().into();
+        let p2: Result<Sparse<Fp, 5, 2>, String> = p2.clone().into();
+        p1.unwrap() + p2.unwrap()
+    };
+
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn test_pbt_increase_number_of_variables_zero_one_cst() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    {
+        let lhs_zero: Sparse<Fp, 5, 2> = {
+            let p: Result<Sparse<Fp, 5, 2>, String> = Sparse::<Fp, 4, 2>::zero().into();
+            p.unwrap()
+        };
+        let rhs_zero: Sparse<Fp, 5, 2> = Sparse::<Fp, 5, 2>::zero();
+        assert_eq!(lhs_zero, rhs_zero);
+    }
+
+    {
+        let lhs_one: Sparse<Fp, 5, 2> = {
+            let p: Result<Sparse<Fp, 5, 2>, String> = Sparse::<Fp, 4, 2>::one().into();
+            p.unwrap()
+        };
+        let rhs_one: Sparse<Fp, 5, 2> = Sparse::<Fp, 5, 2>::one();
+        assert_eq!(lhs_one, rhs_one);
+    }
+
+    {
+        let c = Fp::rand(&mut rng);
+        let lhs: Sparse<Fp, 5, 2> = {
+            let p: Result<Sparse<Fp, 5, 2>, String> = Sparse::<Fp, 4, 2>::from(c).into();
+            p.unwrap()
+        };
+        let rhs: Sparse<Fp, 5, 2> = Sparse::<Fp, 5, 2>::from(c);
+        assert_eq!(lhs, rhs);
+    }
+}
