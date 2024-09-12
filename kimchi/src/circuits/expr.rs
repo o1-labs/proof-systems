@@ -904,15 +904,15 @@ impl<Column: FormattedOutput + Debug> Variable<Column> {
     }
 }
 
-impl<F: FftField, Column: Copy> PolishToken<F, Column, BerkeleyChallengeTerm> {
+impl<F: FftField, Column: Copy, ChallengeTerm> PolishToken<F, Column, ChallengeTerm> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
-        toks: &[PolishToken<F, Column, BerkeleyChallengeTerm>],
+        toks: &[PolishToken<F, Column, ChallengeTerm>],
         d: D<F>,
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
-        chals: &BerkeleyChallenges<F>,
+        chals: &dyn Index<ChallengeTerm, Output = ChallengeOutput<F>>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
@@ -924,16 +924,17 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column, BerkeleyChallengeTerm> {
                 skip_count -= 1;
                 continue;
             }
-            use BerkeleyChallengeTerm::*;
+
             use ConstantTerm::*;
             use PolishToken::*;
             match t {
-                Challenge(Alpha) => stack.push(chals.alpha),
-                Challenge(Beta) => stack.push(chals.beta),
-                Challenge(Gamma) => stack.push(chals.gamma),
-                Challenge(JointCombiner) => {
-                    stack.push(chals.joint_combiner.expect("no joint lookup was expected"))
-                }
+                Challenge(challenge_term) => match challenge_term[chals] {
+                    ChallengeOutput::Mandatory { val: x } => stack.push(x),
+                    ChallengeOutput::Optional { val: x } => {
+                        stack.push(x.expect("An optional challenge was expected but not provided"))
+                    }
+                },
+
                 Constant(EndoCoefficient) => stack.push(c.endo_coefficient),
                 Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
