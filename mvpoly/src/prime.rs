@@ -449,9 +449,18 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
         unimplemented!()
     }
 
-    fn modify_monomial(&mut self, _exponents: [usize; N], coeff: F) {
-        // Directly modify the coefficient at index 0
-        self[0] = coeff;
+    fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let index = exponents
+            .iter()
+            .zip(primes.iter())
+            .fold(1, |acc, (exp, &prime)| acc * prime.pow(*exp as u32));
+        if let Some(pos) = self.normalized_indices.iter().position(|&x| x == index) {
+            self.coeff[pos] = coeff;
+        } else {
+            panic!("Exponent combination out of bounds for the given polynomial degree and number of variables.");
+        }
     }
 
     fn is_multilinear(&self) -> bool {
