@@ -370,18 +370,18 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 
 pub type ConstantExpr<F, ChallengeTerm> = Operations<ConstantExprInner<F, ChallengeTerm>>;
 
-impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
+/* impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
-
-/* impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExpr<F, ChallengeTerm> {
+ */
+impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
- */
+
 pub trait ToPolish<F, Column, ChallengeTerm> {
     fn to_polish(
         &self,
