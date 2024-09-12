@@ -1,4 +1,4 @@
-use ark_ff::{Field, UniformRand, Zero};
+use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
 
