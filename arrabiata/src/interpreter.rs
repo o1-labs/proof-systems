@@ -291,7 +291,8 @@
 //! This computation depends on the constraints, and in particular on the
 //! monomials describing the constraints.
 //! The computation of the cross-terms and the error terms happen after the
-//! witness has been built. Therefore, the interpreter must provide a method to
+//! witness has been built and the different arguments like the permutation or
+//! lookup have been done. Therefore, the interpreter must provide a method to
 //! compute it, and the constraints should be passed as an argument.
 //!
 //! When computing the cross-terms, we must compute the contribution of each
@@ -303,14 +304,11 @@
 //! homogeneizing to degree `d'`.
 //! - Sum all the contributions.
 //!
-//! When a variable is unused (or in other terms, equal to zero), the
-//! contribution is null.
-//!
-//! Note that the cross-terms computations result in computation of
-//! [multi-binomials](https://en.wikipedia.org/wiki/Binomial_theorem#Multi-binomial_theorem).
-//!
-//! TBD/FIXME: note that there is a contribution with the α when combining the
-//! constraints.
+//! The library [mvpoly](mvpoly) can be used to compute the cross-terms and to
+//! homogenize the constraints. The constraints can be converted into a type
+//! implementing the trait [MVPoly](mvpoly::MVPoly) and the method
+//! [compute_cross_terms](mvpoly::MVPoly::compute_cross_terms) can be used from
+//! there.
 
 use crate::{
     columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
