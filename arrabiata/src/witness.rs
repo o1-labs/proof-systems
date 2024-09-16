@@ -370,6 +370,10 @@ where
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
+        assert!(
+            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
+            "The permutation argument should be activated"
+        );
         let state = if self.current_iteration % 2 == 0 {
             self.sponge_e1[i].clone()
         } else {
@@ -409,6 +413,10 @@ where
     }
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
+        assert!(
+            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
+            "The permutation argument should be activated"
+        );
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = Fp::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
@@ -481,6 +489,10 @@ where
         pos_y: Self::Position,
         side: Side,
     ) -> (Self::Variable, Self::Variable) {
+        assert!(
+            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
+            "The permutation argument should be activated"
+        );
         match self.current_instruction {
             Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // If we're processing the leftmost bit (i.e. bit == 0), we must load
@@ -598,6 +610,10 @@ where
         y: Self::Variable,
         side: Side,
     ) {
+        assert!(
+            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
+            "The permutation argument should be activated"
+        );
         match side {
             Side::Left => {
                 self.temporary_accumulators.0 = (x, y);

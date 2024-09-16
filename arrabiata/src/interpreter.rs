@@ -254,6 +254,11 @@
 //! The permutation argument also generates constraints that will be
 //! homogeneized with the gadget constraints.
 //!
+//! Note all rows might require to use the permutation argument. Therefore, a
+//! selector will be added to activate/deactivate the permutation argument.
+//! When a method calls `save` or `load`, the selector will be activated. By
+//! default, the selector will be deactivated.
+//!
 //! TBD:
 //! - number of columns
 //! - accumulator column
@@ -750,6 +755,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
+            env.activate_gadget(Gadget::PermutationArgument);
             env.activate_gadget(Gadget::EllipticCurveScaling);
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
@@ -846,6 +852,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
+            env.activate_gadget(Gadget::PermutationArgument);
             env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
@@ -889,6 +896,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::Poseidon(curr_round) => {
+            env.activate_gadget(Gadget::PermutationArgument);
             env.activate_gadget(Gadget::Poseidon);
             debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
