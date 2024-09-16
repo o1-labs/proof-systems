@@ -346,15 +346,6 @@ impl<const N: usize, const D: usize, F: PrimeField> Zero for Sparse<F, N, D> {
     }
 }
 
-impl<const N: usize, const D: usize, F: PrimeField> Sparse<F, N, D> {
-    pub fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
-        self.monomials
-            .entry(exponents)
-            .and_modify(|c| *c = coeff)
-            .or_insert(coeff);
-    }
-}
-
 impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F, N, D> {
     /// Returns the degree of the polynomial.
     ///
@@ -565,8 +556,11 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         cross_terms_by_powers_of_r
     }
 
-    fn modify_monomial_with_scalar(&mut self, scalar: F) {
-        self.modify_monomial([0; N], scalar);
+    fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
+        self.monomials
+            .entry(exponents)
+            .and_modify(|c| *c = coeff)
+            .or_insert(coeff);
     }
 
     fn is_multilinear(&self) -> bool {
