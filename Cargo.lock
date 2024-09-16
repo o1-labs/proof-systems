@@ -274,6 +274,7 @@ dependencies = [
  "log",
  "mina-curves",
  "mina-poseidon",
+ "mvpoly",
  "num-bigint",
  "num-integer",
  "o1-utils",
