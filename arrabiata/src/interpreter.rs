@@ -234,7 +234,7 @@
 //!
 //! And from this, we build an accumulator, like for Plookup.
 //! The accumulator requires to coin two challenges, β and γ, and it must be
-//! done after the columns to the columns have been absorbed.
+//! done after the commitments to the columns have been absorbed.
 //! The verifier at the next step will verify that the challenges have been
 //! correctly computed.
 //! In the implementation, the accumulator will be computed after the challenges
