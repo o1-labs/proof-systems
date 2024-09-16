@@ -864,6 +864,16 @@
 <a href="#864" id="864">864</a>
 <a href="#865" id="865">865</a>
 <a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1315,8 +1325,18 @@
         <span class="macro">unimplemented!</span>()
     }
 
-    <span class="kw">fn </span>modify_monomial_with_scalar(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scalar: F) {
-        <span class="self">self</span>[<span class="number">0</span>] = scalar;
+    <span class="kw">fn </span>modify_monomial(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exponents: [usize; N], coeff: F) {
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
+        <span class="kw">let </span>index = exponents
+            .iter()
+            .zip(primes.iter())
+            .fold(<span class="number">1</span>, |acc, (exp, <span class="kw-2">&amp;</span>prime)| acc * prime.pow(<span class="kw-2">*</span>exp <span class="kw">as </span>u32));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = <span class="self">self</span>.normalized_indices.iter().position(|<span class="kw-2">&amp;</span>x| x == index) {
+            <span class="self">self</span>.coeff[pos] = coeff;
+        } <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;Exponent combination out of bounds for the given polynomial degree and number of variables.&quot;</span>);
+        }
     }
 
     <span class="kw">fn </span>is_multilinear(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
