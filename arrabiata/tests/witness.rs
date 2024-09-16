@@ -1,7 +1,7 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ProjectiveCurve, SWModelParameters};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
-    interpreter::{self, Instruction, InterpreterEnv, Side},
+    interpreter::{self, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
     witness::Env,
     MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
@@ -246,10 +246,10 @@ where
     });
 
     let (res_x, res_y) = {
-        let pos_x = env.allocate();
-        let pos_y = env.allocate();
-        let side = Side::Right;
-        unsafe { env.load_temporary_accumulators(pos_x, pos_y, side) }
+        (
+            env.temporary_accumulators.1 .0.clone(),
+            env.temporary_accumulators.1 .1.clone(),
+        )
     };
 
     let p1_proj: ProjectivePallas = p1.into();
