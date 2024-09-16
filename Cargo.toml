@@ -14,6 +14,7 @@ members = [
     "poseidon/export_test_vectors",
     "poly-commitment",
     "signer",
+    "mvpoly",
     "tools/kimchi-visu",
     "utils",
     "internal-tracing",

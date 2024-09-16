@@ -2,12 +2,12 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_END_OF_PREIMAGE_OFF,
-            MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF,
-            MIPS_PREIMAGE_BYTES_OFF, MIPS_PREIMAGE_CHUNK_OFF,
+            ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
+            MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
+            MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
+            MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY,
         },
-        interpreter::{InterpreterEnv, MIPS_CHUNK_BYTES_LEN},
-        registers::REGISTER_PREIMAGE_KEY_START,
+        interpreter::InterpreterEnv,
     },
     E,
 };
@@ -405,9 +405,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // preimage in this instruction
         let this_chunk = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_CHUNK_OFF));
 
+        // The preimage key composed of 248 bits
+        let preimage_key = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_KEY));
+
         // The (at most) 4 bytes that are being processed from the preimage
         let bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
             self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFF + i))
+        });
+
+        // The (at most) 4 bytes that are being read from the bytelength
+        let length_bytes: [_; MIPS_CHUNK_BYTES_LEN] = array::from_fn(|i| {
+            self.variable(Self::Position::ScratchState(MIPS_LENGTH_BYTES_OFF + i))
         });
 
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4).
@@ -531,27 +539,34 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
 
         // FIXED LOOKUPS
+
+        // Byte checks with lookups: both preimage and length bytes are checked
+        // TODO: think of a way to merge these together to perform 4 lookups
+        // instead of 8 per row
+        // FIXME: understand if length bytes can ever be read together with
+        // preimage bytes. If not, then we can merge the lookups and just run
+        // 4 lookups per row for the byte checks. AKA: does the oracle always
+        // read the length bytes first and then the preimage bytes, with no
+        // overlapping?
+        for byte in bytes.iter() {
+            self.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                vec![byte.clone()],
+            ));
+        }
+        for b in length_bytes.iter() {
+            self.add_lookup(Lookup::read_one(
+                LookupTableIDs::ByteLookup,
+                vec![b.clone()],
+            ));
+        }
+
         // Check that 0 <= preimage read <= actual read <= len <= 4
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![len.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![actual_read_bytes.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![num_preimage_bytes_read.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![len.clone() - actual_read_bytes.clone()],
-        ));
-        self.add_lookup(Lookup::write_one(
-            LookupTableIDs::AtMost4Lookup,
-            vec![actual_read_bytes.clone() - num_preimage_bytes_read.clone()],
-        ));
+        self.lookup_2bits(len);
+        self.lookup_2bits(&actual_read_bytes);
+        self.lookup_2bits(&num_preimage_bytes_read);
+        self.lookup_2bits(&(len.clone() - actual_read_bytes.clone()));
+        self.lookup_2bits(&(actual_read_bytes.clone() - num_preimage_bytes_read.clone()));
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LEN {
@@ -565,16 +580,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ],
             ));
         }
-        // COMMUNICATION CHANNEL: Read hash output
-        // FIXME: check if the most significant byte is zero or 0x02
-        //       so we know what exactly needs to be passed to the lookup
-        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
-            acc * Expr::from(2u64.pow(32))
-                + self.variable(Self::Position::ScratchState(
-                    REGISTER_PREIMAGE_KEY_START + i,
-                ))
-        });
 
+        // COMMUNICATION CHANNEL: Read hash output
         // If no more bytes left to be read, then the end of the preimage is
         // true.
         // TODO: keep track of counter to diminish the number of bytes at
@@ -582,12 +589,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
-            vec![hash_counter, preimage_key],
+            vec![hash_counter.clone(), preimage_key],
         ));
-
-        // Byte checks with lookups: The preimage bytes are checked to be 8-bits
-        // on the Keccak side.
-        // TODO: do we want to check byte-ness of the bytelength bytes as well?
 
         // Return actual length read as variable, stored in `pos`
         actual_read_bytes

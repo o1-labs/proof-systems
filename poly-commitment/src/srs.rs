@@ -26,7 +26,8 @@ pub struct SRS<G> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub h: G,
 
-    // TODO: the following field should be separated, as they are optimization values
+    // TODO: the following field should be separated, as they are optimization
+    // values
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
@@ -96,8 +97,8 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
-    /// Compute commitments to the lagrange basis corresponding to the given domain and
-    /// cache them in the SRS
+    /// Compute commitments to the lagrange basis corresponding to the given
+    /// domain and cache them in the SRS
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
         let n = domain.size();
 
@@ -133,8 +134,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
         // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
         //
-        // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
-        // can see more easily.
+        // Consider the rows of M(w) * v. Let me write out the matrix and vector
+        // so you can see more easily.
         //
         //   | 1 1       1           ... 1               |   | L_0     |
         //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
@@ -153,13 +154,14 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
         //
-        // Therefore, the IFFT algorithm, when applied to the vector u (the standard
-        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        // Therefore, the IFFT algorithm, when applied to the vector u (the
+        // standard monomial basis) will yield the vector v of the (normalized)
+        // Lagrange polynomials.
         //
-        // Now, because the polynomial commitment scheme is additively homomorphic, and
-        // because the commitment to the polynomial x^i is just self.g[i], we can obtain
-        // commitments to the normalized Lagrange polynomials by applying IFFT to the
-        // vector self.g[0..n].
+        // Now, because the polynomial commitment scheme is additively
+        // homomorphic, and because the commitment to the polynomial x^i is just
+        // self.g[i], we can obtain commitments to the normalized Lagrange
+        // polynomials by applying IFFT to the vector self.g[0..n].
         //
         //
         // Further still, we can do the same trick for 'chunked' polynomials.
@@ -169,15 +171,18 @@ impl<G: CommitmentCurve> SRS<G> {
         // where each f_i has degree n-1.
         //
         // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
-        // then we effectively 'zero out' any polynomial terms higher than x^{n-1}, leaving
-        // us with the 'partial Lagrange polynomials' that contribute to f_0.
+        // then we effectively 'zero out' any polynomial terms higher than
+        // x^{n-1}, leaving us with the 'partial Lagrange polynomials' that
+        // contribute to f_0.
         //
-        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n leading
-        // zeros 'zeroes out' all terms except the 'partial Lagrange polynomials' that
-        // contribute to f_1, and likewise for each f_i.
+        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0]
+        // with n leading zeros 'zeroes out' all terms except the 'partial
+        // Lagrange polynomials' that contribute to f_1, and likewise for each
+        // f_i.
         //
-        // By computing each of these, and recollecting the terms as a vector of polynomial
-        // commitments, we obtain a chunked commitment to the L_i polynomials.
+        // By computing each of these, and recollecting the terms as a vector of
+        // polynomial commitments, we obtain a chunked commitment to the L_i
+        // polynomials.
         let srs_size = self.g.len();
         let num_elems = (n + srs_size - 1) / srs_size;
         let mut elems = Vec::with_capacity(num_elems);
@@ -210,7 +215,12 @@ impl<G: CommitmentCurve> SRS<G> {
 
     /// This function creates a trusted-setup SRS instance for circuits with
     /// number of rows up to `depth`.
-    pub fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it creates a trusted setup and the toxic
+    /// waste is passed as a parameter.
+    pub unsafe fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
         let m = G::Map::setup();
 
         let mut x_pow = G::ScalarField::one();

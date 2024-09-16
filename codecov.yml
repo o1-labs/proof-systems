@@ -1,0 +1,12 @@
+# FIXME: Remove this file to enable the `patch` coverage report and the corresponding PR check,
+#        once situation with the Rust's Doctests will be improved.
+#        - https://github.com/rust-lang/rust/issues/79417
+#        - https://github.com/nextest-rs/nextest/issues/16
+coverage:
+  ignore:
+    - "///.*" # Ignore outer line doc comments (///)
+    - "/\\*\\*.*\\*/" # Ignore outer block doc comments (/** ... */)
+    - "/\\*!.*\\*/" # Ignore inner block doc comments (/*! ... */)
+    - "//!.*" # Ignore inner line doc comments (//!)
+  status:
+    patch: off

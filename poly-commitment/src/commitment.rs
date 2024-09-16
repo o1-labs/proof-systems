@@ -2,8 +2,8 @@
 //! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
-//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-//!     producing the batched opening proof
+//! 2. Open polynomial commitment batch at the given evaluation point and
+//! scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
 use crate::{
@@ -45,6 +45,7 @@ pub struct PolyComm<C> {
     pub elems: Vec<C>,
 }
 
+/// A commitment to a polynomial with some blinding factors.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlindedCommitment<G>
 where
@@ -144,7 +145,8 @@ where
 }
 
 impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
-    // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
+    // TODO: if all callers end up calling unwrap, just call this zip_eq and
+    // panic here (and document the panic)
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
         &self,
         other: &PolyComm<B>,

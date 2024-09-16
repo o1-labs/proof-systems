@@ -32,7 +32,7 @@ use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};
@@ -162,7 +162,7 @@ pub fn prove<
     folded_instance: RelaxedInstance<G, PlonkishInstance<G, N_WIT, 3, N_ALPHAS>>,
     folded_witness: RelaxedWitness<G, PlonkishWitness<N_WIT, N_FSEL, Fp>>,
     rng: &mut RNG,
-) -> Result<Proof<N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, G, PairingProof<Pairing>>, ProverError>
+) -> Result<Proof<N_WIT_QUAD, N_WIT_QUAD, N_DSEL, N_FSEL, G, KZGProof<Pairing>>, ProverError>
 where
     RNG: RngCore + CryptoRng,
 {

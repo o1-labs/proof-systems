@@ -91,7 +91,7 @@ fn test_generic_gate_pub_empty() {
 
 #[cfg(feature = "bn254")]
 #[test]
-fn test_generic_gate_pairing() {
+fn test_generic_gate_kzg() {
     type Fp = ark_bn254::Fr;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
@@ -112,13 +112,13 @@ fn test_generic_gate_pairing() {
     // create and verify proof based on the witness
     <TestFramework<
         _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        poly_commitment::kzg::KZGProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
     > as Default>::default()
     .gates(gates)
     .witness(witness)
     .public_inputs(public)
     .setup_with_custom_srs(|d1, usize| {
-        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, usize);
+        let mut srs = unsafe { poly_commitment::kzg::PairingSRS::create(x, usize) };
         srs.full_srs.add_lagrange_basis(d1);
         srs
     })

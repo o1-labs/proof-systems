@@ -42,7 +42,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::pairing_proof::PairingProof;
+use poly_commitment::kzg::KZGProof;
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 
 /// Type to represent a constraint on the individual columns of the execution
@@ -68,4 +68,4 @@ pub type Curve = ark_bn254::G1Affine;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
+pub type OpeningProof = KZGProof<Bn<ark_bn254::Parameters>>;

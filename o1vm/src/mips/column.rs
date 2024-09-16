@@ -25,9 +25,14 @@ pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 84;
 /// The at most 4-bytes of the preimage that are currently being processed
 /// Consists of 4 field elements of at most 1 byte each.
 pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 85;
-/// Flags indicating whether at least N bytes have been processed in this step.
-/// Contains 4 field elements of boolean type each.
-pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 89;
+/// The at most 4-bytes of the length that are currently being processed
+pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = 89;
+/// Flags indicating whether at least N bytes have been processed in this step
+pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 93;
+/// The maximum size of a chunk (4 bytes)
+pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
+/// The location of the preimage key as a field element of 248bits
+pub(crate) const MIPS_PREIMAGE_KEY: usize = 97;
 
 /// The number of columns used for relation witness in the MIPS circuit
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;

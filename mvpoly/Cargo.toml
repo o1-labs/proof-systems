@@ -1,0 +1,34 @@
+[package]
+name = "mvpoly"
+version = "0.1.0"
+description = "Symbolic interpreter of multivariate polyomials"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ark-ff.workspace = true
+kimchi.workspace = true
+log.workspace = true
+num-integer.workspace = true
+o1-utils.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+mina-curves.workspace = true
+rand.workspace = true
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "prime"
+harness = false
+
+[[bench]]
+name = "monomials"
+harness = false

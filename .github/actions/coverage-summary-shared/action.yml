@@ -1,0 +1,32 @@
+name: "Shared code coverage summary"
+description: "Shared code coverage summary"
+inputs:
+  html_file:
+    description: "HTML file with the coverage report"
+    required: false
+    default: "target/coverage/index.html"
+  shell:
+    description: "Shell to use"
+    required: false
+    default: "bash"
+runs:
+  using: "composite"
+  steps:
+    - name: Add test coverage summary
+      run: |
+        echo "### Test coverage summary" >> $GITHUB_STEP_SUMMARY
+        # Define the HTML file
+        html_file="${{ inputs.html_file }}"
+        # Extract data for Lines, Functions, and Branches using `sed`
+        lines=$(sed -n '/heading">Lines/{n;n;s/.*<abbr [^>]*>\(.*%\)<\/abbr>.*/\1/p;}' "$html_file")
+        functions=$(sed -n '/heading">Functions/{n;n;s/.*<abbr [^>]*>\(.*%\)<\/abbr>.*/\1/p;}' "$html_file")
+        branches=$(sed -n '/heading">Branches/{n;n;s/.*<abbr [^>]*>\(.*%\)<\/abbr>.*/\1/p;}' "$html_file")
+        # Compose Markdown summary table
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric    | Coverage |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Lines     | $lines |" >> $GITHUB_STEP_SUMMARY
+        echo "| Functions | $functions |" >> $GITHUB_STEP_SUMMARY
+        echo "| Branches  | $branches |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+      shell: ${{ inputs.shell }}

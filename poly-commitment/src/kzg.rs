@@ -1,3 +1,14 @@
+//! This module implements the KZG protocol described in the paper
+//! [Constant-Size Commitments to Polynomials and Their
+//! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
+//! by Kate, Zaverucha and Goldberg, often referred to as the KZG10 paper.
+//!
+//! The protocol requires a structured reference string (SRS) that contains
+//! powers of a generator of a group, and a pairing friendly curve.
+//!
+//! The pairing friendly curve requirement is hidden in the PairingEngine trait
+//! parameter.
+
 use crate::{
     commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
     PolynomialsToCombine, SRS as SRSTrait,
@@ -19,14 +30,15 @@ use serde_with::serde_as;
 #[serde(
     bound = "Pair::G1Affine: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"
 )]
-pub struct PairingProof<Pair: PairingEngine> {
+pub struct KZGProof<Pair: PairingEngine> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub quotient: Pair::G1Affine,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    /// A blinding factor used to hide the polynomial, if necessary
     pub blinding: <Pair::G1Affine as AffineCurve>::ScalarField,
 }
 
-impl<Pair: PairingEngine> Default for PairingProof<Pair> {
+impl<Pair: PairingEngine> Default for KZGProof<Pair> {
     fn default() -> Self {
         Self {
             quotient: Pair::G1Affine::prime_subgroup_generator(),
@@ -35,7 +47,7 @@ impl<Pair: PairingEngine> Default for PairingProof<Pair> {
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
+impl<Pair: PairingEngine> Clone for KZGProof<Pair> {
     fn clone(&self) -> Self {
         Self {
             quotient: self.quotient,
@@ -45,6 +57,11 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Define a structured reference string (i.e. SRS) for the KZG protocol.
+/// The SRS consists of powers of an element `g^x` for some toxic waste `x`.
+///
+/// The SRS is formed using what we call a "trusted setup". For now, the setup
+/// is created using the method `create_trusted_setup`.
 pub struct PairingSRS<Pair: PairingEngine> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
     /// key"/"secret key"
@@ -79,10 +96,17 @@ impl<
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
     > PairingSRS<Pair>
 {
-    pub fn create(x: F, n: usize) -> Self {
+    /// Create a new SRS for the KZG protocol.
+    ///
+    /// # Safety
+    ///
+    /// The method is annotated as unsafe because it does use a method
+    /// generating the toxic waste. A safe method would be to load an existing
+    /// SRS where it is broadly accepted that the trapdoor is not recoverable.
+    pub unsafe fn create(x: F, n: usize) -> Self {
         PairingSRS {
-            full_srs: SRS::create_trusted_setup(x, n),
-            verifier_srs: SRS::create_trusted_setup(x, 3),
+            full_srs: unsafe { SRS::create_trusted_setup(x, n) },
+            verifier_srs: unsafe { SRS::create_trusted_setup(x, 3) },
         }
     }
 }
@@ -92,7 +116,7 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
-    > crate::OpenProof<G> for PairingProof<Pair>
+    > crate::OpenProof<G> for KZGProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
 
@@ -118,7 +142,7 @@ impl<
         EFqSponge: Clone + FqSponge<<G as AffineCurve>::BaseField, G, F>,
         RNG: RngCore + CryptoRng,
     {
-        PairingProof::create(srs, plnms, elm, polyscale).unwrap()
+        KZGProof::create(srs, plnms, elm, polyscale).unwrap()
     }
 
     fn verify<EFqSponge, RNG>(
@@ -251,6 +275,9 @@ impl<
 }
 
 /// The polynomial that evaluates to each of `evals` for the respective `elm`s.
+/// For now, only works for 2 evaluations points.
+/// `elm` is the vector of evaluation points and `evals` is the vector of
+/// evaluations at those points.
 fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> {
     assert_eq!(elm.len(), evals.len());
     let (zeta, zeta_omega) = if elm.len() == 2 {
@@ -294,14 +321,15 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
-    > PairingProof<Pair>
+    > KZGProof<Pair>
 {
-    /// Create a pairing proof.
+    /// Create a KZG proof.
     /// Parameters:
     /// - `srs`: the structured reference string
     /// - `plnms`: vector of polynomials with optional degree bound and
     /// commitment randomness
-    /// - `elm`: vector of evaluation points
+    /// - `elm`: vector of evaluation points. Note that it only works for two
+    /// elements for now, i.e. elm must be of size 2.
     /// - `polyscale`: scaling factor
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
@@ -328,12 +356,15 @@ impl<
 
         let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).elems[0];
 
-        Some(PairingProof {
+        Some(KZGProof {
             quotient,
             blinding: blinding_factor,
         })
     }
 
+    /// Verify a proof. Note that it only works for two elements for now, i.e.
+    /// elm must be of size 2.
+    /// Also, chunking is not supported.
     pub fn verify(
         &self,
         srs: &PairingSRS<Pair>,           // SRS
@@ -360,10 +391,12 @@ impl<
         // same comment in combine_evaluations
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
+        // Taking the first element of the commitment, i.e. no support for chunking.
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
             .elems[0];
+        // Taking the first element of the commitment, i.e. no support for chunking.
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)

@@ -47,7 +47,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
         }
     }
 
-    /// All tables are fixed tables.
     fn is_fixed(&self) -> bool {
         match self {
             Self::RangeCheck15 => true,
@@ -56,6 +55,13 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             Self::RangeCheck9Abs => true,
             Self::RangeCheckFfHighest(_) => true,
             Self::MultiplicationBus => false,
+        }
+    }
+
+    fn runtime_create_column(&self) -> bool {
+        match self {
+            Self::MultiplicationBus => false,
+            _ => panic!("runtime_create_column was called on a non-runtime table"),
         }
     }
 
@@ -102,7 +108,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                     )
                 }
             }
-
             Self::RangeCheckFfHighest(_) => Some(TryFrom::try_from(value.to_biguint()).unwrap()),
             Self::MultiplicationBus => None,
         }
@@ -111,9 +116,9 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
     fn all_variants() -> Vec<Self> {
         vec![
             Self::RangeCheck15,
+            Self::RangeCheck4,
             Self::RangeCheck14Abs,
             Self::RangeCheck9Abs,
-            Self::RangeCheck4,
             Self::RangeCheckFfHighest(PhantomData),
             Self::MultiplicationBus,
         ]

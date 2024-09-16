@@ -10,7 +10,7 @@ mod tests {
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::pairing_proof::PairingSRS;
+    use poly_commitment::kzg::PairingSRS;
 
     // Number of columns
     const LOOKUP_TEST_N_COL: usize = 10;
@@ -24,16 +24,17 @@ mod tests {
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-        // Trusted setup toxic waste
-        let x = Fp::rand(&mut rng);
-
-        let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
+        let mut srs: PairingSRS<BN254> = {
+            let toxic_waste = Fp::rand(&mut rng);
+            unsafe { PairingSRS::create(toxic_waste, domain.d1.size as usize) }
+        };
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
-        let looked_up_values = inputs.logups[0].f[0].clone();
+        let test_table_id = *inputs.logups.first_key_value().unwrap().0;
+        let looked_up_values = inputs.logups.get_mut(&test_table_id).unwrap().f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
         let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
@@ -41,7 +42,7 @@ mod tests {
             value: vec![Fp::rand(&mut rng)],
         };
         // Overwriting the first looked up value
-        inputs.logups[0].f[0][0] = wrong_looked_up_value;
+        inputs.logups.get_mut(&test_table_id).unwrap().f[0][0] = wrong_looked_up_value;
         // generate the proof
         let proof = prove::<
             _,

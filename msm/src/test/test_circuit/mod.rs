@@ -1,16 +1,17 @@
 pub mod columns;
 pub mod interpreter;
+pub mod lookups;
 
 #[cfg(test)]
 mod tests {
     use crate::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::ColumnIndexer,
         logup::LookupTableID,
         lookups::DummyLookupTable,
         test::test_circuit::{
-            columns::{TestColumn, TEST_N_COLUMNS},
+            columns::{TestColumn, N_COL_TEST, N_FSEL_TEST},
             interpreter as test_interpreter,
+            lookups::LookupTable as TestLookupTable,
         },
         Ff1, Fp,
     };
@@ -21,10 +22,10 @@ mod tests {
     type TestWitnessBuilderEnv<LT> = WitnessBuilderEnv<
         Fp,
         TestColumn,
-        { <TestColumn as ColumnIndexer>::N_COL - 1 },
-        { <TestColumn as ColumnIndexer>::N_COL - 1 },
+        { N_COL_TEST - N_FSEL_TEST },
+        { N_COL_TEST - N_FSEL_TEST },
         0,
-        1,
+        N_FSEL_TEST,
         LT,
     >;
 
@@ -75,10 +76,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -96,7 +97,7 @@ mod tests {
         let mut witness_env = WitnessBuilderEnv::create();
 
         let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
@@ -130,10 +131,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -154,7 +155,7 @@ mod tests {
         let mut witness_env = WitnessBuilderEnv::create();
 
         let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
@@ -192,10 +193,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -215,9 +216,8 @@ mod tests {
     ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
-        // NB: Non-standard fixed selectors.
-        let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
 
         for row_i in 0..domain_size {
             let a: Fp = <Fp as UniformRand>::rand(rng);
@@ -239,9 +239,7 @@ mod tests {
         // includes all arguments
         let domain_size = 1 << 8;
 
-        // NB: Non-standard fixed selectors.
-        let fixed_selectors: Box<[Vec<Fp>; 1]> =
-            Box::new([(0..domain_size).map(|i| Fp::from((i + 1) as u64)).collect()]);
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
         test_interpreter::constrain_test_fixed_sel_degree_7_mul_witness::<Fp, _>(
@@ -257,10 +255,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -317,10 +315,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -341,7 +339,7 @@ mod tests {
         //let row_num = rng.gen_range(0..domain_size);
 
         let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         let constant: Fp = <Fp as UniformRand>::rand(rng);
         for row_i in 0..domain_size {
@@ -383,10 +381,10 @@ mod tests {
         let constraints = constraint_env.get_relation_constraints();
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -407,7 +405,7 @@ mod tests {
         //let row_num = rng.gen_range(0..domain_size);
 
         let fixed_sel: Vec<Fp> = (0..domain_size).map(|i| Fp::from(i as u64)).collect();
-        witness_env.set_fixed_selector_cix(TestColumn::FixedE, fixed_sel);
+        witness_env.set_fixed_selector_cix(TestColumn::FixedSel1, fixed_sel);
 
         let row_num = 10;
         for row_i in 0..row_num {
@@ -430,6 +428,62 @@ mod tests {
     }
 
     #[test]
+    fn test_completeness_lookups() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        // Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        let domain_size = 1 << 15;
+
+        let fixed_selectors = test_interpreter::build_fixed_selectors(domain_size);
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, TestLookupTable>::create();
+        test_interpreter::constrain_lookups::<Fp, _>(&mut constraint_env);
+        let constraints = constraint_env.get_relation_constraints();
+
+        let mut witness_env: TestWitnessBuilderEnv<TestLookupTable> = WitnessBuilderEnv::create();
+        witness_env.set_fixed_selectors(fixed_selectors.to_vec());
+        test_interpreter::lookups_circuit(&mut witness_env, domain_size);
+        let runtime_tables: BTreeMap<_, Vec<Vec<Vec<_>>>> =
+            witness_env.get_runtime_tables(domain_size);
+
+        let mut lookup_tables_data: BTreeMap<TestLookupTable, Vec<Vec<Vec<Fp>>>> = BTreeMap::new();
+        for table_id in TestLookupTable::all_variants().into_iter() {
+            if table_id.is_fixed() {
+                lookup_tables_data.insert(
+                    table_id,
+                    vec![table_id
+                        .entries(domain_size as u64)
+                        .unwrap()
+                        .into_iter()
+                        .map(|x| vec![x])
+                        .collect()],
+                );
+            }
+        }
+        for (table_id, runtime_table) in runtime_tables.into_iter() {
+            lookup_tables_data.insert(table_id, runtime_table);
+        }
+
+        let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
+
+        crate::test::test_completeness_generic::<
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
+            0,
+            N_FSEL_TEST,
+            TestLookupTable,
+            _,
+        >(
+            constraints,
+            fixed_selectors,
+            proof_inputs,
+            domain_size,
+            &mut rng,
+        );
+    }
+
+    #[test]
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
@@ -448,10 +502,10 @@ mod tests {
         let relation_witness = witness_env.get_relation_witness(domain_size);
 
         crate::test::test_completeness_generic_no_lookups::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             _,
         >(
             constraints,
@@ -479,19 +533,19 @@ mod tests {
         let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs =
             witness_env.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs.logups = vec![];
+        proof_inputs.logups = Default::default();
 
         let witness_env_prime =
             build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs_prime =
             witness_env_prime.get_proof_inputs(domain_size, lookup_tables_data.clone());
-        proof_inputs_prime.logups = vec![];
+        proof_inputs_prime.logups = Default::default();
 
         crate::test::test_soundness_generic::<
-            { TEST_N_COLUMNS - 1 },
-            { TEST_N_COLUMNS - 1 },
+            { N_COL_TEST - N_FSEL_TEST },
+            { N_COL_TEST - N_FSEL_TEST },
             0,
-            1,
+            N_FSEL_TEST,
             DummyLookupTable,
             _,
         >(

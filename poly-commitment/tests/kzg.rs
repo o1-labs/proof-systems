@@ -9,21 +9,21 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use poly_commitment::{
     commitment::Evaluation,
     evaluation_proof::DensePolynomialOrEvaluations,
-    pairing_proof::{PairingProof, PairingSRS},
+    kzg::{KZGProof, PairingSRS},
     srs::SRS,
     SRS as _,
 };
 
 #[test]
-fn test_pairing_proof() {
+fn test_kzg_proof() {
     let n = 64;
     let domain = D::<ScalarField>::new(n).unwrap();
 
     let mut rng = o1_utils::tests::make_test_rng(None);
     let x = ScalarField::rand(&mut rng);
 
-    let mut srs = SRS::<G1>::create_trusted_setup(x, n);
-    let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
+    let mut srs = unsafe { SRS::<G1>::create_trusted_setup(x, n) };
+    let verifier_srs = unsafe { SRS::<G2>::create_trusted_setup(x, 3) };
     srs.add_lagrange_basis(domain);
 
     let srs = PairingSRS {
@@ -74,7 +74,7 @@ fn test_pairing_proof() {
 
     let polyscale = ScalarField::rand(&mut rng);
 
-    let pairing_proof = PairingProof::<Bn<Parameters>>::create(
+    let kzg_proof = KZGProof::<Bn<Parameters>>::create(
         &srs,
         polynomials_and_blinders.as_slice(),
         &evaluation_points,
@@ -82,7 +82,7 @@ fn test_pairing_proof() {
     )
     .unwrap();
 
-    let res = pairing_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
+    let res = kzg_proof.verify(&srs, &evaluations, polyscale, &evaluation_points);
     assert!(res);
 }
 
@@ -96,7 +96,7 @@ fn check_srs_g2_valid_and_serializes() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let x = Fp::rand(&mut rng);
-    let srs: PairingSRS<BN254> = PairingSRS::create(x, 1 << 5);
+    let srs: PairingSRS<BN254> = unsafe { PairingSRS::create(x, 1 << 5) };
 
     let mut vec: Vec<u8> = vec![0u8; 1024];
 

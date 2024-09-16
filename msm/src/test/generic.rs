@@ -5,7 +5,7 @@ use crate::{
 };
 use ark_ff::Zero;
 use kimchi::circuits::domains::EvaluationDomains;
-use poly_commitment::pairing_proof::PairingSRS;
+use poly_commitment::kzg::PairingSRS;
 use rand::{CryptoRng, RngCore};
 
 /// No lookups, no selectors, only witness column. `N_WIT == N_REL`.
@@ -43,7 +43,7 @@ pub fn test_completeness_generic_no_lookups<
 {
     let proof_inputs = ProofInputs {
         evaluations,
-        logups: vec![],
+        logups: Default::default(),
     };
     test_completeness_generic::<N_WIT, N_REL, N_DSEL, N_FSEL, LookupTableIDs, _>(
         constraints,
