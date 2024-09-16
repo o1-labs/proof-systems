@@ -309,7 +309,7 @@
 //! homogeneizing to degree `d'`.
 //! - Sum all the contributions.
 //!
-//! The library [mvpoly](mvpoly) can be used to compute the cross-terms and to
+//! The library [mvpoly] can be used to compute the cross-terms and to
 //! homogenize the constraints. The constraints can be converted into a type
 //! implementing the trait [MVPoly](mvpoly::MVPoly) and the method
 //! [compute_cross_terms](mvpoly::MVPoly::compute_cross_terms) can be used from
