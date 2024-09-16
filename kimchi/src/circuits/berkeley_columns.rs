@@ -150,7 +150,9 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
     }
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallenges<F>> for Environment<'a, F> {
+impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallenges<F>, BerkeleyChallengeTerm>
+    for Environment<'a, F>
+{
     type Column = Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {

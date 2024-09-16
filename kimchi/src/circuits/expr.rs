@@ -102,7 +102,13 @@ pub struct Constants<F: 'static> {
     pub zk_rows: u64,
 }
 
-pub trait ColumnEnvironment<'a, F: FftField, Challenges> {
+pub trait ColumnEnvironment<
+    'a,
+    F: FftField,
+    ChallengeTerm,
+    Challenges: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+>
+{
     /// The generic type of column the environment can use.
     /// In other words, with the multi-variate polynomial analogy, it is the
     /// variables the multi-variate polynomials are defined upon.
@@ -1153,7 +1159,8 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 fn unnormalized_lagrange_evals<
     'a,
     F: FftField,
-    Environment: ColumnEnvironment<'a, F, Challenges<F>>,
+    ChallengeTerm,
+    Environment: ColumnEnvironment<'a, F, Challenges<F>, ChallengeTerm>,
 >(
     l0_1: F,
     i: i32,
@@ -1878,7 +1885,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     pub fn evaluate<
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1946,7 +1953,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     /// Evaluate the constant expressions in this expression down into field elements.
     pub fn evaluate_constants<
         'a,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1962,7 +1969,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     /// `evaluations`.
     pub fn evaluations<
         'a,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1979,7 +1986,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField, Column: Copy> Expr<F, Column> {
+impl<F: FftField, Column: Copy, ChallengeTerm> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
@@ -2037,7 +2044,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     pub fn evaluations<
         'a,
         Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2091,7 +2098,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'a,
         'b,
         Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
@@ -2294,7 +2301,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     pub fn evaluate_constants<
         'a,
         Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2312,7 +2319,7 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm>
         'a,
         Challenges,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2351,7 +2358,7 @@ impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm>
         'a,
         Challenges,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Challenges, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
     >(
         &self,
         env: &Environment,
