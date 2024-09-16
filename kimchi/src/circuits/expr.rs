@@ -1160,7 +1160,8 @@ fn unnormalized_lagrange_evals<
     'a,
     F: FftField,
     ChallengeTerm,
-    Environment: ColumnEnvironment<'a, F, Challenges<F>, ChallengeTerm>,
+    Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
 >(
     l0_1: F,
     i: i32,
@@ -1854,7 +1855,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     fn evaluate_constants_(
         &self,
         c: &Constants<F>,
-        chals: &BerkeleyChallenges<F>,
+        chals: &dyn Index<ChallengeTerm, Output = ChallengeOutput<F>>,
     ) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
@@ -1885,7 +1886,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     pub fn evaluate<
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1903,7 +1905,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
-        chals: &BerkeleyChallenges<F>,
+        chals: &dyn Index<ChallengeTerm, Output = ChallengeOutput<F>>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
         use Operations::*;
@@ -1953,7 +1955,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     /// Evaluate the constant expressions in this expression down into field elements.
     pub fn evaluate_constants<
         'a,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1969,7 +1972,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     /// `evaluations`.
     pub fn evaluations<
         'a,
-        Environment: ColumnEnvironment<'a, F, BerkeleyChallenges<F>, ChallengeTerm, Column = Column>,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1986,7 +1990,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField, Column: Copy, ChallengeTerm> Expr<F, Column> {
+impl<F: FftField, Column: Copy> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
@@ -2043,8 +2047,9 @@ impl<F: FftField, Column: Copy, ChallengeTerm> Expr<F, Column> {
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<
         'a,
-        Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2097,8 +2102,9 @@ impl<F: FftField, Column: Copy, ChallengeTerm> Expr<F, Column> {
     fn evaluations_helper<
         'a,
         'b,
-        Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
@@ -2300,8 +2306,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm>
     /// to literal field elements.
     pub fn evaluate_constants<
         'a,
-        Challenges,
-        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2317,9 +2323,9 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm>
     /// linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
-        Challenges,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2356,9 +2362,9 @@ impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm>
     /// linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
-        Challenges,
+        Challenge: Index<ChallengeTerm, Output = ChallengeOutput<F>>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Challenges, ChallengeTerm, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
