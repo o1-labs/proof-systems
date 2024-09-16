@@ -11,7 +11,7 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
@@ -29,7 +29,7 @@ use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;

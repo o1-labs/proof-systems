@@ -23,7 +23,7 @@ pub mod ser {
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_compressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         Bytes::serialize_as(&bytes, serializer)
@@ -37,7 +37,7 @@ pub mod ser {
         D: serde::Deserializer<'de>,
     {
         let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_compressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
 
@@ -60,7 +60,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_compressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -84,16 +84,17 @@ where
         } else {
             Bytes::deserialize_as(deserializer)?
         };
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_compressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use ark_ec::AffineCurve;
+    use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_serialize::Write;
     use mina_curves::pasta::{Pallas, Vesta};
+    use mina_curves::pasta::{PallasParameters, VestaParameters};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
     use std::io::BufReader;
@@ -110,8 +111,8 @@ mod tests {
         }
 
         let data_expected = TestStruct {
-            pallas: Pallas::prime_subgroup_generator(),
-            vesta: Vesta::prime_subgroup_generator(),
+            pallas: PallasParameters::GENERATOR,
+            vesta: VestaParameters::GENERATOR,
         };
 
         // reference serialized value
