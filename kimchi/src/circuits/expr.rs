@@ -83,6 +83,14 @@ impl<F> Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
     }
 }
 
+/// The Challenge term that contains an alpha.
+/// Is used to make a random linear combination of constraints
+pub trait AlphaChallengeTerm<'a>:
+    Copy + Clone + Debug + PartialEq + Eq + Serialize + Deserialize<'a>
+{
+    const ALPHA: Self;
+}
+
 /// The collection of constants required to evaluate an `Expr`.
 #[derive(Clone)]
 pub struct Constants<F: 'static> {
@@ -182,6 +190,10 @@ pub enum BerkeleyChallengeTerm {
     JointCombiner,
 }
 
+impl<'a> AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
+    const ALPHA: Self = Self::Alpha;
+}
+
 /// Define the constant terms an expression can use.
 /// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
 /// permutation used by Poseidon for instance), or endomorphism coefficients
@@ -261,7 +273,9 @@ pub enum ConstantExprInner<F, ChallengeTerm> {
     Constant(ConstantTerm<F>),
 }
 
-impl<F: Clone, ChallengeTerm: Clone> Literal for ConstantExprInner<F, ChallengeTerm> {
+impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
+    for ConstantExprInner<F, ChallengeTerm>
+{
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(ConstantTerm::literal(x))
@@ -289,18 +303,20 @@ impl<F: Clone, ChallengeTerm: Clone> Literal for ConstantExprInner<F, ChallengeT
     }
 }
 
-impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExprInner<F, ChallengeTerm> {
+impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
+    for ConstantExprInner<F, ChallengeTerm>
+{
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::Challenge(x)
     }
 }
 
-/* impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
+impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::Constant(x)
     }
 }
- */
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
     Atom(T),
@@ -370,13 +386,15 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 
 pub type ConstantExpr<F, ChallengeTerm> = Operations<ConstantExprInner<F, ChallengeTerm>>;
 
-/* impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
+impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
- */
-impl<F, ChallengeTerm> From<ChallengeTerm> for ConstantExpr<F, ChallengeTerm> {
+
+impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
+    for ConstantExpr<F, ChallengeTerm>
+{
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::from(x).into()
     }
@@ -1690,8 +1708,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-impl<F: Field, Column: PartialEq + Copy, BerkeleyChallengeTerm>
-    Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>
+impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'a>>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
     /// Convenience function for constructing expressions from literal
     /// field elements.
@@ -1707,7 +1725,7 @@ impl<F: Field, Column: PartialEq + Copy, BerkeleyChallengeTerm>
             .zip_eq(alphas)
             .map(|(c, i)| {
                 Expr::from(ConstantExpr::pow(
-                    BerkeleyChallengeTerm::Alpha.into(),
+                    BerkeleyChallengeTerm::ALPHA.into(),
                     i as u64,
                 )) * c
             })
@@ -3310,30 +3328,35 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F, ChallengeTerm> ExprOps<F, ChallengeTerm>
+    impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> ExprOps<F, ChallengeTerm>
         for Expr<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>
     where
         F: PrimeField,
+        // TODO remove
         Expr<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>: std::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as Two<F>>::two_pow(pow))
+            Expr::<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>::literal(<F as Two<
+                F,
+            >>::two_pow(
+                pow
+            ))
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_limb(),
             )
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_2limb(),
             )
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, ChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_3limb(),
             )
         }
