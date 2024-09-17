@@ -85,6 +85,9 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
     assert_eq!(env.sponge_e1.to_vec(), exp_output);
     // Check the other sponge hasn't been modified
     assert_eq!(env.sponge_e2, sponge.clone());
+
+    // Number of rows used by one full hash
+    assert_eq!(env.current_row, 13);
 }
 
 #[test]
