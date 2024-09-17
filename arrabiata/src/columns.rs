@@ -23,6 +23,7 @@ pub enum Gadget {
     EllipticCurveAddition,
     EllipticCurveScaling,
     Poseidon,
+    PoseidonNextRow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -47,6 +48,7 @@ impl FormattedOutput for Column {
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -64,6 +66,7 @@ impl FormattedOutput for Column {
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),

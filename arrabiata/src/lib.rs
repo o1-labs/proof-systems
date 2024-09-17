@@ -29,8 +29,9 @@ pub const NUMBER_OF_COLUMNS: usize = 17;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [Gadget::PoseidonNextRow]. In addition to the 12 public
-/// inputs required for the rounds, we add 2 more for the values to absorb.
+/// using the gadget [crate::columns::Gadget::PoseidonNextRow]. In addition to
+/// the 12 public inputs required for the rounds, we add 2 more for the values
+/// to absorb.
 pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
 
 /// The low-exponentiation value used by the Poseidon hash function for the
