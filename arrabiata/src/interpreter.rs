@@ -345,8 +345,20 @@ pub enum Instruction {
     /// This gadget decomposes a 255 bits value into bits using 17 lines and 17
     /// columns. The constructor parameter is the line number.
     BitDecomposition(usize),
+    /// Decompose a 255 bits scalar into 16 chunks of 16 bits.
+    // FIXME: use the permutation argument, the "next row" or deprecate it.
+    // For now, the gadget is deprecated and should not be used.
     SixteenBitsDecomposition,
+    /// Decompose a 16bits chunk into individual bits. The constructor parameter
+    /// is the index of the chunk (it is supposed to be less than 16, as there
+    /// are 16 chunks of 16 bits for a 255 bits scalar).
+    // FIXME: use the permutation argument, the "next row" or deprecate it.
+    // For now, the gadget is deprecated and should not be used.
     BitDecompositionFrom16Bits(usize),
+    /// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. The implementation does not use the "next row"
+    /// and is unsafe at the moment as no permutation argument is implemented.
+    // FIXME: use the permutation argument or deprecate it.
     Poseidon(usize),
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
