@@ -212,7 +212,7 @@ where
         let Column::X(idx) = pos else {
             unimplemented!("Only works for private inputs")
         };
-        self.witness[idx][self.current_row + 1].clone()
+        self.next_state[idx].clone()
     }
 
     fn allocate_public_input(&mut self) -> Self::Position {
