@@ -215,6 +215,13 @@ where
         self.next_state[idx].clone()
     }
 
+    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
+        let Column::X(idx) = pos else {
+            unimplemented!("Only works for private inputs")
+        };
+        self.state[idx].clone()
+    }
+
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);

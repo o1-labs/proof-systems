@@ -401,6 +401,10 @@ pub trait InterpreterEnv {
     /// Return the corresponding variable at the given position, for the next row.
     fn access_next_row(&self, pos: Self::Position) -> Self::Variable;
 
+    /// Return the corresponding variable at the given position, for the current
+    /// row.
+    fn access_current_row(&self, pos: Self::Position) -> Self::Variable;
+
     fn allocate_public_input(&mut self) -> Self::Position;
 
     /// Set the value of the variable at the given position for the current row
