@@ -39,7 +39,7 @@ elf = "0.7.2"
 env_logger = "0.11.1"
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
-itertools = "0.12.1"
+itertools = "0.10.5"
 libc = "0.2.62"
 libflate = "2"
 log = "0.4.20"
