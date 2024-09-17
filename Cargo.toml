@@ -34,7 +34,7 @@ clap = "4.4.6"
 colored = "2.0.0"
 command-fds = "0.3"
 convert_case = "0.6.0"
-criterion = "0.5"
+criterion = "0.3.6"
 elf = "0.7.2"
 env_logger = "0.11.1"
 hex = { version = "0.4", features = ["serde"] }
