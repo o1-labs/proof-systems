@@ -1,1 +1,1 @@
-//! A verifier for the Nova recursive SNARK.
+//! A verifier for the folding/accumulation scheme

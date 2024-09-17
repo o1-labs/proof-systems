@@ -1,4 +1,4 @@
-//! A prover for the Nova recursive SNARK.
+//! A prover for the folding/accumulation scheme
 
 use crate::proof::Proof;
 use ark_ec::AffineCurve;

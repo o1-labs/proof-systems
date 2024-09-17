@@ -15,14 +15,26 @@ pub enum Gadget {
     // Permutation argument
     PermutationArgument,
     // Two old gadgets
+    /// Decompose a 255 bits scalar into 16 chunks of 16 bits.
     SixteenBitsDecomposition,
+    /// Decompose a 16bits chunk into individual bits.
     BitDecompositionFrom16Bits,
-    // Use this one instead to decompose scalar
+    /// This gadget decomposes a 255 bits value into bits using 17 lines and 17
+    /// columns.
     BitDecomposition,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
     EllipticCurveScaling,
+    /// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. The implementation does not use the "next row"
+    /// and is unsafe at the moment as no permutation argument is implemented.
     Poseidon,
+    /// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. Compared to the previous one (that might be
+    /// deprecated in the future), this implementation does use the "next row"
+    /// to allow the computation of one additional round per row. In the current
+    /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
+    /// rounds per row.
     PoseidonNextRow,
 }
 
