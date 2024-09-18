@@ -307,7 +307,7 @@ where
 }
 
 #[test]
-fn test_witness_elliptic_curve_scalar_multiplication_doubling() {
+fn test_witness_elliptic_curve_scalar_multiplication() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // We start with doubling
