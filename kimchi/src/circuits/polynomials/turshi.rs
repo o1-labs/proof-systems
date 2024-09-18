@@ -9,15 +9,15 @@
 //! · \[reg0 + off_op0\] +|* val
 //! · \[\[reg0 + off_op0\] + off_op1\]
 //! - Jumps
-//! · jmp abs <address>     // unconditional absolute jump
-//! · jmp rel <offset>      // unconditional relative jump
-//! · jmp rel <offset> if <op> != 0    // conditional jump
+//! · jmp abs <`address`>     // unconditional absolute jump
+//! · jmp rel <`offset`>      // unconditional relative jump
+//! · jmp rel <`offset`> if <`op`> != 0    // conditional jump
 //! - Functions
-//! · call abs <address>    // calls a function (absolute location)
-//! · call rel <offset>     // calls a function (relative location)
+//! · call abs <`address`>    // calls a function (absolute location)
+//! · call rel <`offset`>     // calls a function (relative location)
 //! · ret                   // returns to execution after the call
 //! - Increments
-//! · ap += <op>
+//! · ap += <`op`>
 //! · ap++
 //!
 //! A Cairo program runs accross a number of state transitions.
@@ -63,7 +63,7 @@
 //!  · 4 = conditional jump (jnz) with step in op1 = `fPC_JNZ` = 1
 //! - `ap_update` \[10..11\]: defines the type of update for the ap
 //!  · 0: means the new ap is the same, same free position
-//!  · 1: means there is an ap+=<op> instruction = `fAP_INC` = 1
+//!  · 1: means there is an ap+=<`op`> instruction = `fAP_INC` = 1
 //!  · 2: means there is an ap++ instruction = `fAP_ADD1` = 1
 //! - opcode \[12..14\]: encodes type of assembly instruction
 //!  · 0: jumps or increments instruction

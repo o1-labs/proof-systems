@@ -329,7 +329,7 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-Refer to the [lookup RFC](../kimchi/lookup.md) for an overview of the lookup feature.
+Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
@@ -908,10 +908,10 @@ v_1$ and $v_2$) of up to 88 bits each.
 
 Values can be copied as inputs to the multi range check gadget in two ways:
 
-* (Standard mode) With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+* [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
     cells of the first 3 rows of the gadget.  In this mode the first gate
     coefficient is set to `0`.
-* (Compact mode) With 2 copies, by copying $v_2$ to the first cell of the first
+* [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
     row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
     In this mode the first gate coefficient is set to `1`.
 
@@ -1097,7 +1097,7 @@ left_input +/- right_input = field_overflow * foreign_modulus + result
 
 ##### Documentation
 
- For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
+ For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
 
 ##### Mapping
 
@@ -1218,8 +1218,7 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_add.md)
-chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
+For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
 
 ##### Notations
 
@@ -2338,7 +2337,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    unless a polynomial has its evaluation provided by the proof
    in which case the evaluation should be used in place of the commitment.
 1. Compute the (chuncked) commitment of $ft$
-   (see [Maller's optimization](../kimchi/maller_15.md)).
+   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
 	* recursion
