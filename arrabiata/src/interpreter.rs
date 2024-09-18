@@ -137,10 +137,10 @@
 //! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
 //! output, and the other values are intermediary values. And we have the following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (o1, o2, o3) = PoseidonPerm(c1, c2, c3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (o1, o2, o3) = PoseidonRound(c1, c2, c3)
 //! ```
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
@@ -154,11 +154,11 @@
 //! output, and the other values are intermediary values. And we have the
 //! following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (d1, d2, d3) = PoseidonPerm(c1, c2, c3)
-//! (o1, o2, o3) = PoseidonPerm(d1, d2, d3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (d1, d2, d3) = PoseidonRound(c1, c2, c3)
+//! (o1, o2, o3) = PoseidonRound(d1, d2, d3)
 //! ```
 //!
 //! For both implementations, round constants are passed as public inputs. As a
