@@ -784,7 +784,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let x0 = unsafe {
                 env.bitmask_be(
                     &r,
-                    255,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * i)
                         .try_into()
                         .unwrap(),
@@ -795,7 +795,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let x1 = unsafe {
                 env.bitmask_be(
                     &r,
-                    255,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * (i + 1))
                         .try_into()
                         .unwrap(),
