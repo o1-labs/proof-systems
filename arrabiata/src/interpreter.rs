@@ -199,9 +199,9 @@
 //! We have the following layout:
 //!
 //! ```text
-//! | C1   |   C2   |      C3       |      C4       |    C5     | C6 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
+//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
 //! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- | --- | --- |
-//! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | b  | res_plus_tmp_x | res_plus_tmp_y | λ' |  λ  |
+//! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ' |  b  |
 //! | o'_x |  o'_y  | double_tmp'_x | double_tmp'_y |  r_(i+1)  |
 //! ```
 //!
