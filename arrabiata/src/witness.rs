@@ -597,20 +597,7 @@ where
                         }
                     }
                 } else {
-                    // If it is not first call, we simply load from the CPU cache (i.e.
-                    // the temporary accumulators)
-                    match side {
-                        Side::Left => {
-                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.0 .0.clone());
-                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.0 .1.clone());
-                            (pt_x, pt_y)
-                        }
-                        Side::Right => {
-                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.1 .0.clone());
-                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.1 .1.clone());
-                            (pt_x, pt_y)
-                        }
-                    }
+                    panic!("We should not load the temporary accumulators for the bits different than 0 when using the elliptic curve scaling. It has been deactivated since we use the 'next row'");
                 }
             }
             Instruction::EllipticCurveAddition(i_comm) => {
