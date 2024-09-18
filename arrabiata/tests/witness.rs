@@ -267,7 +267,7 @@ where
     RNG: RngCore + CryptoRng,
 {
     let srs_log2_size = 10;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| r.clone());
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),
@@ -279,8 +279,6 @@ where
     let p1: Pallas = helper_generate_random_elliptic_curve_point(rng);
     env.previous_commitments_e2[0] = PolyComm::new(vec![p1]);
 
-    env.r = r.clone();
-
     // We only go up to the maximum bit field size.
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
         let instr = Instruction::EllipticCurveScaling(i_comm, bit_idx);
@@ -289,12 +287,8 @@ where
         env.reset();
     });
 
-    let (res_x, res_y) = {
-        (
-            env.temporary_accumulators.1 .0.clone(),
-            env.temporary_accumulators.1 .1.clone(),
-        )
-    };
+    let res_x: BigInt = env.state[0].clone();
+    let res_y: BigInt = env.state[1].clone();
 
     let p1_proj: ProjectivePallas = p1.into();
     let p1_r: Pallas = p1_proj.mul(r.clone().to_u64_digits().1).into();
