@@ -85,8 +85,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
 
     /// Return the corresponding expression regarding the selected public input
     fn write_public_input(&mut self, pos: Self::Position, _v: BigInt) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     /// Return the corresponding expression regarding the selected column
@@ -128,16 +127,14 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _lowest_bit: u32,
         pos: Self::Position,
     ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     // FIXME
     fn range_check16(&mut self, _x: Self::Position) {}
 
     fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
-        let (col, row) = pos;
-        let v = Expr::Atom(ExprInner::Cell(Variable { col, row }));
+        let v = self.read_position(pos);
         let x = x.square();
         self.add_constraint(x - v.clone());
         v
@@ -146,8 +143,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     // This is witness-only. We simply return the corresponding expression to
     // use later in constraints
     fn fetch_input(&mut self, pos: Self::Position) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     fn reset(&mut self) {
@@ -157,8 +153,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     unsafe fn read_sixteen_bits_chunks_folding_combiner(
@@ -175,13 +170,11 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
         _i: u64,
     ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     // Witness-only
@@ -212,8 +205,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
         _curr_round: usize,
     ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     unsafe fn load_temporary_accumulators(
@@ -222,10 +214,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos_y: Self::Position,
         _side: Side,
     ) -> (Self::Variable, Self::Variable) {
-        let (col, row) = pos_x;
-        let x = Expr::Atom(ExprInner::Cell(Variable { col, row }));
-        let (col, row) = pos_y;
-        let y = Expr::Atom(ExprInner::Cell(Variable { col, row }));
+        let x = self.read_position(pos_x);
+        let y = self.read_position(pos_y);
         (x, y)
     }
 
@@ -244,8 +234,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     ///
     /// Zero is not allowed as an input.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
-        let (col, row) = pos;
-        let v = Expr::Atom(ExprInner::Cell(Variable { col, row }));
+        let v = self.read_position(pos);
         let res = v.clone() * x.clone();
         self.assert_equal(res.clone(), self.one());
         v
@@ -259,8 +248,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _x2: Self::Variable,
         _y2: Self::Variable,
     ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+        self.read_position(pos)
     }
 
     fn zero(&self) -> Self::Variable {
@@ -282,13 +270,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     ) -> (Self::Variable, Self::Variable) {
         let lambda = {
             let pos = self.allocate();
-            let (col, row) = pos;
-            Expr::Atom(ExprInner::Cell(Variable { col, row }))
+            self.read_position(pos)
         };
-        let (col, row) = pos_x;
-        let x3 = Expr::Atom(ExprInner::Cell(Variable { col, row }));
-        let (col, row) = pos_y;
-        let y3 = Expr::Atom(ExprInner::Cell(Variable { col, row }));
+        let x3 = self.read_position(pos_x);
+        let y3 = self.read_position(pos_y);
 
         // λ 2y1 = 3x1^2 + a
         let x1_square = x1.clone() * x1.clone();
@@ -319,8 +304,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         x2: Self::Variable,
         y2: Self::Variable,
     ) -> Self::Variable {
-        let (col, row) = pos;
-        let lambda = Expr::Atom(ExprInner::Cell(Variable { col, row }));
+        let lambda = self.read_position(pos);
         let lhs = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
         let rhs = {
             let x1_square = x1.clone() * x1.clone();
