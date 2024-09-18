@@ -1,6 +1,5 @@
 use crate::{
-    lookups::{Lookup, LookupTableIDs},
-    mips::{
+    interpreters::mips::{
         column::{
             ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
@@ -9,6 +8,7 @@ use crate::{
         },
         interpreter::InterpreterEnv,
     },
+    lookups::{Lookup, LookupTableIDs},
     E,
 };
 use ark_ff::Field;

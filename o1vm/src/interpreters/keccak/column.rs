@@ -1,7 +1,7 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 use self::{Absorbs::*, Sponges::*, Steps::*};
-use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
+use crate::interpreters::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,

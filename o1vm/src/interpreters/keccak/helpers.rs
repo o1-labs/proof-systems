@@ -1,5 +1,5 @@
 use crate::{
-    keccak::interpreter::Interpreter,
+    interpreters::keccak::interpreter::Interpreter,
     lookups::{Lookup, LookupTableIDs::*},
 };
 use ark_ff::{One, Zero};

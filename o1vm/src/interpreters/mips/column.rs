@@ -1,4 +1,4 @@
-use crate::mips::{
+use crate::interpreters::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{self, IType, JType, RType},
 };

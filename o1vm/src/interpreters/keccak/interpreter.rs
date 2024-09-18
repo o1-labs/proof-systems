@@ -1,7 +1,7 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 use crate::{
-    keccak::{
+    interpreters::keccak::{
         column::{PAD_BYTES_LEN, PAD_SUFFIX_LEN, ROUND_CONST_LEN},
         grid_index,
         helpers::{ArithHelpers, BoolHelpers, LogupHelpers},

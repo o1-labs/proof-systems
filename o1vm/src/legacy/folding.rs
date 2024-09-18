@@ -288,10 +288,214 @@ where
     }
 }
 
+pub mod keccak {
+    use std::ops::Index;
+
+    use ark_poly::{Evaluations, Radix2EvaluationDomain};
+    use folding::{
+        checker::{Checker, ExtendedProvider, Provider},
+        expressions::FoldingColumnTrait,
+        FoldingConfig,
+    };
+    use kimchi_msm::columns::Column;
+    use poly_commitment::srs::SRS;
+
+    use crate::{
+        interpreters::keccak::{
+            column::{
+                ColumnAlias as KeccakColumn, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS,
+                N_ZKVM_KECCAK_SEL_COLS,
+            },
+            Steps,
+        },
+        Curve, Fp,
+    };
+
+    use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
+
+    pub type KeccakFoldingEnvironment = DecomposedFoldingEnvironment<
+        N_ZKVM_KECCAK_COLS,
+        N_ZKVM_KECCAK_REL_COLS,
+        N_ZKVM_KECCAK_SEL_COLS,
+        KeccakConfig,
+        (),
+    >;
+
+    pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
+    pub type KeccakFoldingInstance = FoldingInstance<N_ZKVM_KECCAK_COLS, Curve>;
+
+    impl Index<KeccakColumn> for KeccakFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: KeccakColumn) -> &Self::Output {
+            &self.witness.cols[usize::from(index)]
+        }
+    }
+
+    // Implemented for decomposable folding compatibility
+    impl Index<Steps> for KeccakFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        /// Map a selector column to the corresponding witness column.
+        fn index(&self, index: Steps) -> &Self::Output {
+            &self.witness.cols[usize::from(index)]
+        }
+    }
+
+    // Implementing this so that generic constraints can be used in folding
+    impl Index<Column> for KeccakFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        /// Map a column alias to the corresponding witness column.
+        fn index(&self, index: Column) -> &Self::Output {
+            match index {
+                Column::Relation(ix) => &self.witness.cols[ix],
+                // Even if `Column::DynamicSelector(ix)` would correspond to
+                // `&self.witness.cols[N_ZKVM_KECCAK_REL_COLS + ix]`, the
+                // current design of constraints should not include the dynamic
+                // selectors. Instead, folding will add them in the
+                // `DecomposableFoldingScheme` as extended selector columns, and
+                // the `selector()` function inside the `FoldingEnv` will return
+                // the actual witness column values.
+                _ => panic!("Undesired column type inside expressions"),
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    pub struct KeccakConfig;
+
+    impl FoldingColumnTrait for KeccakColumn {
+        fn is_witness(&self) -> bool {
+            // dynamic selectors KeccakColumn::Selector() count as witnesses
+            true
+        }
+    }
+
+    impl FoldingConfig for KeccakConfig {
+        type Column = Column;
+        type Selector = Steps;
+        type Challenge = Challenge;
+        type Curve = Curve;
+        type Srs = SRS<Curve>;
+        type Instance = KeccakFoldingInstance;
+        type Witness = KeccakFoldingWitness;
+        type Structure = ();
+        type Env = KeccakFoldingEnvironment;
+    }
+
+    // IMPLEMENT CHECKER TRAITS
+
+    impl Checker<KeccakConfig> for ExtendedProvider<KeccakConfig> {}
+    impl Checker<KeccakConfig> for Provider<KeccakConfig> {}
+}
+
+pub mod mips {
+    use std::ops::Index;
+
+    use ark_poly::{Evaluations, Radix2EvaluationDomain};
+    use folding::{expressions::FoldingColumnTrait, FoldingConfig};
+    use kimchi_msm::columns::Column;
+    use poly_commitment::srs::SRS;
+
+    use crate::{
+        interpreters::mips::{
+            column::{ColumnAlias as MIPSColumn, N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+            Instruction,
+        },
+        Curve, Fp,
+    };
+
+    use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
+
+    // Decomposable folding compatibility
+    pub type DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment<
+        N_MIPS_COLS,
+        N_MIPS_REL_COLS,
+        N_MIPS_SEL_COLS,
+        DecomposableMIPSFoldingConfig,
+        (),
+    >;
+
+    pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;
+    pub type MIPSFoldingInstance = FoldingInstance<N_MIPS_COLS, Curve>;
+
+    // -- Start indexer implementations
+    // Implement indexers over columns and selectors to implement an abstract
+    // folding environment over selectors, see [crate::folding::FoldingEnvironment]
+    // for more details
+
+    impl Index<Column> for FoldingWitness<N_MIPS_REL_COLS, Fp> {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: Column) -> &Self::Output {
+            match index {
+                Column::Relation(ix) => &self.witness.cols[ix],
+                _ => panic!("Invalid column type"),
+            }
+        }
+    }
+
+    impl Index<MIPSColumn> for MIPSFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: MIPSColumn) -> &Self::Output {
+            &self.witness.cols[usize::from(index)]
+        }
+    }
+
+    // Implemented for decomposable folding compatibility
+    impl Index<Instruction> for MIPSFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        /// Map a selector column to the corresponding witness column.
+        fn index(&self, index: Instruction) -> &Self::Output {
+            &self.witness.cols[usize::from(index)]
+        }
+    }
+
+    // Implementing this so that generic constraints can be used in folding
+    impl Index<Column> for MIPSFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        /// Map a column alias to the corresponding witness column.
+        fn index(&self, index: Column) -> &Self::Output {
+            match index {
+                Column::Relation(ix) => &self.witness.cols[ix],
+                Column::DynamicSelector(ix) => &self.witness.cols[N_MIPS_REL_COLS + ix],
+                _ => panic!("Invalid column type"),
+            }
+        }
+    }
+    // -- End of indexer implementations
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    pub struct DecomposableMIPSFoldingConfig;
+
+    impl FoldingColumnTrait for MIPSColumn {
+        fn is_witness(&self) -> bool {
+            // All MIPS columns are witness columns
+            true
+        }
+    }
+
+    impl FoldingConfig for DecomposableMIPSFoldingConfig {
+        type Column = Column;
+        type Selector = Instruction;
+        type Challenge = Challenge;
+        type Curve = Curve;
+        type Srs = SRS<Curve>;
+        type Instance = MIPSFoldingInstance;
+        type Witness = MIPSFoldingWitness;
+        type Structure = ();
+        type Env = DecomposableMIPSFoldingEnvironment;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
-        folding::{FoldingInstance, FoldingWitness, *},
+        legacy::folding::{FoldingInstance, FoldingWitness, *},
         Curve, Fp,
     };
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -305,6 +509,7 @@ mod tests {
         },
         curve::KimchiCurve,
     };
+    use poly_commitment::srs::SRS;
     use std::ops::Index;
 
     #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -352,7 +557,7 @@ mod tests {
         type Challenge = Challenge;
         type Selector = ();
         type Curve = Curve;
-        type Srs = poly_commitment::srs::SRS<Curve>;
+        type Srs = SRS<Curve>;
         type Instance = TestFoldingInstance;
         type Witness = TestFoldingWitness;
         type Structure = ();
