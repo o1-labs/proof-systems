@@ -20,6 +20,7 @@ pub mod constraints;
 pub mod folding;
 pub mod interpreter;
 pub mod registers;
+pub mod single;
 #[cfg(test)]
 pub mod tests;
 pub mod trace;
