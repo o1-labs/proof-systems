@@ -225,9 +225,9 @@
 //! ```
 //!
 //! where:
-//! - `x` is the input value
-//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
-//! - `b_i` is the i-th bit of the input value
+//! - `x` is the input value                            14
+//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - Σ  2^j b_{i * 15 + j}`
+//! - `b_i` is the i-th bit of the input value          j=0
 //!
 //! ## Handle the combinaison of constraints
 //!
