@@ -126,7 +126,7 @@ $$
 \end{align}
 $$
 
-here are the actual lagrange basis calculated with the [formula here](lagrange.md), oh and we actually use $L_0$ in the code, not $L_1$, so let's change that as well:
+here are the actual lagrange basis calculated with the [formula here](../plonk/lagrange.md), oh and we actually use $L_0$ in the code, not $L_1$, so let's change that as well:
 
 $$
 \begin{align}

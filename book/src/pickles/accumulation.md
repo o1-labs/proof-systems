@@ -3,7 +3,7 @@
 ## Introduction
 
 The trick below was originally described in [Halo](https://eprint.iacr.org/2020/499.pdf),
-however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](/https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
+however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
 
 Relevant resources include:
 
@@ -732,7 +732,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
             \end{align}
             $$
         These are combined using a random linear combination with $\chalv$ in the inner product argument
-        (see [Different functionalities](/plonk/inner_product_api.html) for details).
+        (see [Different functionalities](../plonk/inner_product_api.html) for details).
         </details>
 
 1. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.
@@ -756,7 +756,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
        \openx^{(\rounds)} =
        \openx^{(\rounds)}_{\chaleval} + \chalv \cdot \openx^{(\rounds)}_{\chaleval\omega}
        $$
-       See [Different functionalities](/plonk/inner_product_api.html) for more details or
+       See [Different functionalities](../plonk/inner_product_api.html) for more details or
        [the relevant code](https://github.com/o1-labs/proof-systems/blob/76c678d3db9878730f8a4eead65d1e038a509916/poly-commitment/src/commitment.rs#L785).
     1. Compute $\accCom \gets \comm^{(k)} - [\openy'] \cdot \genOpen$    (i.e. st. $\comm^{(k)} = \accCom + [\openy'] \cdot \genOpen$)
 
@@ -767,7 +767,7 @@ Note that the accumulator verifier must be proven (in addition to the Kimchi/Plo
 
 Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
 a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
-This takes the form of [`passthough` data](passthrough.html) in pickles.
+This takes the form of `passthough` in pickles.
 
 Note however, that the accumulation verifier makes use of both $\GG$-operations and $\FF$-operations,
 therefore it (like the Kimchi verifier) also requires [deferred computation](deferred.html).
