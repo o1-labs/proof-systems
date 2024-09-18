@@ -155,7 +155,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
         interpreter::run_ivc(&mut constraints_fp, *instr);
         constraints_fp.reset();
     });
-    assert_eq!(constraints_fp.constraints.len(), 41);
+    assert_eq!(constraints_fp.constraints.len(), 43);
 }
 
 #[test]
@@ -184,8 +184,8 @@ fn test_degree_of_constraints_ivc() {
         *count += 1;
     });
 
-    assert_eq!(degree_per_constraints.get(&1), Some(&2));
-    assert_eq!(degree_per_constraints.get(&2), Some(&26));
+    assert_eq!(degree_per_constraints.get(&1), Some(&3));
+    assert_eq!(degree_per_constraints.get(&2), Some(&27));
     assert_eq!(degree_per_constraints.get(&3), Some(&1));
     assert_eq!(degree_per_constraints.get(&4), None);
     assert_eq!(degree_per_constraints.get(&5), Some(&12));
@@ -195,13 +195,14 @@ fn test_degree_of_constraints_ivc() {
 fn test_gadget_elliptic_curve_scaling() {
     let instr = Instruction::EllipticCurveScaling(0, 0);
     // FIXME: update when the gadget is fnished
-    helper_compute_constraints_gadget(instr, 8);
+    helper_compute_constraints_gadget(instr, 10);
 
     let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(2, 8);
+    exp_degrees.insert(1, 1);
+    exp_degrees.insert(2, 9);
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
-    helper_gadget_number_of_columns_used(instr, 13, 0);
+    helper_gadget_number_of_columns_used(instr, 10, 0);
 }
 
 #[test]
