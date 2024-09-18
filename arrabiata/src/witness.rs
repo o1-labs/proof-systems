@@ -1,7 +1,7 @@
 use ark_ec::{AffineCurve, SWModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
-use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
@@ -767,6 +767,7 @@ where
         pos_y: Self::Position,
         x1: Self::Variable,
         y1: Self::Variable,
+        row: CurrOrNext,
     ) -> (Self::Variable, Self::Variable) {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
             Fp::modulus_biguint().into()
@@ -799,13 +800,21 @@ where
         let x3 = {
             let double_x1 = x1.clone() + x1.clone();
             let res = lambda.clone() * lambda.clone() - double_x1.clone();
-            self.write_column(pos_x, res.clone())
+            if row == CurrOrNext::Curr {
+                self.write_column(pos_x, res.clone())
+            } else {
+                self.write_column_next_row(pos_x, res.clone())
+            }
         };
         // - Y3 = λ(X1 - X3) - Y1
         let y3 = {
             let x1_minus_x3 = x1.clone() - x3.clone();
             let res = lambda.clone() * x1_minus_x3 - y1.clone();
-            self.write_column(pos_y, res.clone())
+            if row == CurrOrNext::Curr {
+                self.write_column(pos_y, res.clone())
+            } else {
+                self.write_column_next_row(pos_y, res.clone())
+            }
         };
         (x3, y3)
     }

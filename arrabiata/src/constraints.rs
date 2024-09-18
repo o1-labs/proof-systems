@@ -317,6 +317,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos_y: Self::Position,
         x1: Self::Variable,
         y1: Self::Variable,
+        row: CurrOrNext,
     ) -> (Self::Variable, Self::Variable) {
         let lambda = {
             let pos = self.allocate();
@@ -327,11 +328,11 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         };
         let x3 = Expr::Atom(ExprInner::Cell(Variable {
             col: pos_x,
-            row: CurrOrNext::Curr,
+            row,
         }));
         let y3 = Expr::Atom(ExprInner::Cell(Variable {
             col: pos_y,
-            row: CurrOrNext::Curr,
+            row,
         }));
 
         // λ 2y1 = 3x1^2 + a

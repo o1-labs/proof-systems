@@ -363,6 +363,7 @@ use crate::{
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
+use kimchi::circuits::gate::CurrOrNext;
 use log::{debug, error};
 use num_bigint::BigInt;
 
@@ -631,12 +632,16 @@ pub trait InterpreterEnv {
 
     /// Double the elliptic curve point given by the affine coordinates
     /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    /// The last argument, `row`, is used to decide if the result should be
+    /// written in the current or the next row of the variable position `pos_x`
+    /// and `pos_y`.
     fn double_ec_point(
         &mut self,
         pos_x: Self::Position,
         pos_y: Self::Position,
         x1: Self::Variable,
         y1: Self::Variable,
+        row: CurrOrNext,
     ) -> (Self::Variable, Self::Variable);
 
     /// Load the affine coordinates of the elliptic curve point currently saved
