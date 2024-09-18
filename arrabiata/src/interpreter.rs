@@ -366,7 +366,6 @@ use crate::{
     POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
-use kimchi::circuits::gate::CurrOrNext;
 use log::{debug, error};
 use num_bigint::BigInt;
 
@@ -644,7 +643,6 @@ pub trait InterpreterEnv {
         pos_y: Self::Position,
         x1: Self::Variable,
         y1: Self::Variable,
-        row: CurrOrNext,
     ) -> (Self::Variable, Self::Variable);
 
     /// Load the affine coordinates of the elliptic curve point currently saved
@@ -899,7 +897,10 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let (tmp_x, tmp_y) = if processing_bit == 0 {
                 unsafe { env.load_temporary_accumulators(tmp_col_x, tmp_col_y, Side::Left) }
             } else {
-                (env.access_current_row(tmp_col_x), env.access_current_row(tmp_col_y))
+                (
+                    env.access_current_row(tmp_col_x),
+                    env.access_current_row(tmp_col_y),
+                )
             };
             // Conditional addition:
             // if bit == 1, then res = tmp + res
@@ -941,9 +942,8 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             // The slope is saved in a column created in the call to
             // `double_ec_point`
             // We ignore the result as it will be used at the next step only.
-            let (_double_tmp_x, _double_tmp_y) = {
-                env.double_ec_point(tmp_col_x, tmp_col_y, tmp_x.clone(), tmp_y.clone(), CurrOrNext::Next)
-            };
+            let (_double_tmp_x, _double_tmp_y) =
+                { env.double_ec_point(tmp_col_x, tmp_col_y, tmp_x.clone(), tmp_y.clone()) };
             let bit = {
                 let pos = env.allocate();
                 unsafe { env.bitmask_be(&scalar, 1, 0, pos) }

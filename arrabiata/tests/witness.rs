@@ -6,7 +6,6 @@ use arrabiata::{
     witness::Env,
     MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
-use kimchi::circuits::gate::CurrOrNext;
 use mina_curves::pasta::{Fp, Fq, Pallas, ProjectivePallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
 use num_bigint::{BigInt, ToBigInt};
@@ -253,7 +252,7 @@ fn test_witness_double_elliptic_curve_point() {
     let pos_y = env.allocate();
     let p1_x = env.write_column(pos_x, p1.x.to_biguint().into());
     let p1_y = env.write_column(pos_y, p1.y.to_biguint().into());
-    let (res_x, res_y) = env.double_ec_point(pos_x, pos_y, p1_x, p1_y, CurrOrNext::Curr);
+    let (res_x, res_y) = env.double_ec_point(pos_x, pos_y, p1_x, p1_y);
 
     let exp_res: Pallas = p1 + p1;
     let exp_x: BigInt = exp_res.x.to_biguint().into();
