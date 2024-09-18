@@ -948,7 +948,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 unsafe { env.bitmask_be(&scalar, 1, 0, pos) }
             };
             // Checking it is a boolean -> degree 2
-            env.assert_zero(bit.clone() * (env.one() - bit.clone()));
+            env.constrain_boolean(bit.clone());
             let next_scalar = {
                 unsafe {
                     env.bitmask_be(
