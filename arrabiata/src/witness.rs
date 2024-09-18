@@ -71,6 +71,8 @@ pub struct Env<
     /// position.
     pub idx_var: usize,
 
+    pub idx_var_next_row: usize,
+
     /// The index of the latest allocated public inputs in the circuit.
     /// It is used to allocate new public inputs without having to keep track of
     /// the position.
@@ -208,20 +210,22 @@ where
         (pos, CurrOrNext::Curr)
     }
 
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
-        let (col, _) = pos;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private inputs")
-        };
-        self.next_state[idx].clone()
+    fn allocate_next_row(&mut self) -> Self::Position {
+        assert!(self.idx_var_next_row < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+        let pos = Column::X(self.idx_var_next_row);
+        self.idx_var_next_row += 1;
+        (pos, CurrOrNext::Next)
     }
 
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
-        let (col, _) = pos;
+    fn read_position(&self, pos: Self::Position) -> Self::Variable {
+        let (col, row) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        self.state[idx].clone()
+        match row {
+            CurrOrNext::Curr => self.state[idx].clone(),
+            CurrOrNext::Next => self.next_state[idx].clone(),
+        }
     }
 
     fn allocate_public_input(&mut self) -> Self::Position {
@@ -232,7 +236,7 @@ where
     }
 
     fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
-        let (col, _row) = pos;
+        let (col, row) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
@@ -242,22 +246,14 @@ where
             Fq::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
-        self.state[idx] = v.clone();
-        v
-    }
-
-    fn write_column_next_row(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
-        let (col, _) = pos;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private inputs")
-        };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
-        } else {
-            Fq::modulus_biguint().into()
-        };
-        let v = v.mod_floor(&modulus);
-        self.next_state[idx] = v.clone();
+        match row {
+            CurrOrNext::Curr => {
+                self.state[idx] = v.clone();
+            }
+            CurrOrNext::Next => {
+                self.next_state[idx] = v.clone();
+            }
+        }
         v
     }
 
@@ -371,6 +367,7 @@ where
         self.current_row += 1;
         // We reset the indices for the variables
         self.idx_var = 0;
+        self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
         // We keep track of the values we already set.
         self.state = self.next_state.clone();
@@ -922,6 +919,7 @@ impl<
             // ------
             // ------
             idx_var: 0,
+            idx_var_next_row: 0,
             idx_var_pi: 0,
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),

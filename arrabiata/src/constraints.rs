@@ -20,6 +20,7 @@ pub struct Env<Fp: Field> {
     // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
     pub a: BigInt,
     pub idx_var: usize,
+    pub idx_var_next_row: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
@@ -32,6 +33,7 @@ impl<Fp: PrimeField> Env<Fp> {
             poseidon_mds,
             a,
             idx_var: 0,
+            idx_var_next_row: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
         }
@@ -55,12 +57,14 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         (pos, CurrOrNext::Curr)
     }
 
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+    fn allocate_next_row(&mut self) -> Self::Position {
+        assert!(self.idx_var_next_row < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+        let pos = Column::X(self.idx_var_next_row);
+        self.idx_var_next_row += 1;
+        (pos, CurrOrNext::Next)
     }
 
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
+    fn read_position(&self, pos: Self::Position) -> Self::Variable {
         let (col, row) = pos;
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
@@ -88,15 +92,6 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     /// Return the corresponding expression regarding the selected column
     fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
         let (col, row) = pos;
-        assert_eq!(row, CurrOrNext::Curr);
-        let res = Expr::Atom(ExprInner::Cell(Variable { col, row }));
-        self.assert_equal(res.clone(), v);
-        res
-    }
-
-    fn write_column_next_row(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
-        let (col, row) = pos;
-        assert_eq!(row, CurrOrNext::Next);
         let res = Expr::Atom(ExprInner::Cell(Variable { col, row }));
         self.assert_equal(res.clone(), v);
         res
@@ -157,6 +152,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
 
     fn reset(&mut self) {
         self.idx_var = 0;
+        self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
     }
 

@@ -447,23 +447,19 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
-    /// Allocate a new variable in the circuit
+    /// Allocate a new variable in the circuit for the current row
     fn allocate(&mut self) -> Self::Position;
 
-    /// Return the corresponding variable at the given position, for the next row.
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable;
+    /// Allocate a new variable in the circuit for the next row
+    fn allocate_next_row(&mut self) -> Self::Position;
 
-    /// Return the corresponding variable at the given position, for the current
-    /// row.
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable;
+    /// Return the corresponding variable at the given position
+    fn read_position(&self, pos: Self::Position) -> Self::Variable;
 
     fn allocate_public_input(&mut self) -> Self::Position;
 
     /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
-
-    /// Set the value of the variable at the given position for the next row
-    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
 
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
@@ -847,6 +843,12 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let tmp_col_x = env.allocate();
             let tmp_col_y = env.allocate();
             let scalar_col = env.allocate();
+            let next_row_res_col_x = env.allocate_next_row();
+            let next_row_res_col_y = env.allocate_next_row();
+            let next_row_tmp_col_x = env.allocate_next_row();
+            let next_row_tmp_col_y = env.allocate_next_row();
+            let next_row_scalar_col = env.allocate_next_row();
+
             // For the bit, we do have two cases. If we are processing the first
             // bit, we must load the bit from a previous computed value. In the
             // case of folding, it will be the output of the Poseidon hash.
@@ -856,7 +858,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let scalar = if processing_bit == 0 {
                 env.coin_folding_combiner(scalar_col)
             } else {
-                env.access_current_row(scalar_col)
+                env.read_position(scalar_col)
             };
             // FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
@@ -883,24 +885,15 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             } else {
                 // Otherwise, the previous step has written the previous result
                 // in its "next row", i.e. this row.
-                let res_x = {
-                    let pos = env.allocate();
-                    env.access_current_row(pos)
-                };
-                let res_y = {
-                    let pos = env.allocate();
-                    env.access_current_row(pos)
-                };
+                let res_x = { env.read_position(res_col_x) };
+                let res_y = { env.read_position(res_col_y) };
                 (res_x, res_y)
             };
             // Same for the accumulated temporary value
             let (tmp_x, tmp_y) = if processing_bit == 0 {
                 unsafe { env.load_temporary_accumulators(tmp_col_x, tmp_col_y, Side::Left) }
             } else {
-                (
-                    env.access_current_row(tmp_col_x),
-                    env.access_current_row(tmp_col_y),
-                )
+                (env.read_position(tmp_col_x), env.read_position(tmp_col_y))
             };
             // Conditional addition:
             // if bit == 1, then res = tmp + res
@@ -942,8 +935,14 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             // The slope is saved in a column created in the call to
             // `double_ec_point`
             // We ignore the result as it will be used at the next step only.
-            let (_double_tmp_x, _double_tmp_y) =
-                { env.double_ec_point(tmp_col_x, tmp_col_y, tmp_x.clone(), tmp_y.clone()) };
+            let (_double_tmp_x, _double_tmp_y) = {
+                env.double_ec_point(
+                    next_row_tmp_col_x,
+                    next_row_tmp_col_y,
+                    tmp_x.clone(),
+                    tmp_y.clone(),
+                )
+            };
             let bit = {
                 let pos = env.allocate();
                 unsafe { env.bitmask_be(&scalar, 1, 0, pos) }
@@ -956,7 +955,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         &scalar,
                         MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                         1,
-                        scalar_col,
+                        next_row_scalar_col,
                     )
                 }
             };
@@ -968,12 +967,12 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let _x3 = {
                 let res = bit.clone() * res_plus_tmp_x.clone()
                     + (env.one() - bit.clone()) * res_x.clone();
-                env.write_column_next_row(res_col_x, res)
+                env.write_column(next_row_res_col_x, res)
             };
             let _y3 = {
                 let res = bit.clone() * res_plus_tmp_y.clone()
                     + (env.one() - bit.clone()) * res_y.clone();
-                env.write_column_next_row(res_col_y, res)
+                env.write_column(next_row_res_col_y, res)
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
@@ -1092,8 +1091,11 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         unsafe { env.fetch_value_to_absorb(pos, curr_round) }
                     })
                     .collect();
-                let first_col_positions: Vec<E::Position> =
+                let round_input_positions: Vec<E::Position> =
                     (0..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
+                let round_output_positions: Vec<E::Position> = (0..POSEIDON_STATE_SIZE)
+                    .map(|_i| env.allocate_next_row())
+                    .collect();
                 // If we are at the first round, we load the state from the environment.
                 // The permutation argument is used to load the state the
                 // current call to Poseidon might be a succession of Poseidon
@@ -1101,7 +1103,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 // state might be from a previous place in the execution trace.
                 let state: Vec<E::Variable> = if curr_round == 0 {
                     env.activate_gadget(Gadget::PermutationArgument);
-                    first_col_positions
+                    round_input_positions
                         .iter()
                         .enumerate()
                         .map(|(i, pos)| {
@@ -1119,9 +1121,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     // state has been loaded in the "next_row" state during the
                     // previous call, and we can simply load it. No permutation
                     // argument needed.
-                    first_col_positions
+                    round_input_positions
                         .iter()
-                        .map(|pos| env.access_current_row(*pos))
+                        .map(|pos| env.read_position(*pos))
                         .collect()
                 };
 
@@ -1149,7 +1151,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                                 });
                             // The last iteration is written on the next row.
                             if idx_round == 4 {
-                                env.write_column_next_row(first_col_positions[i], acc + rc.clone())
+                                env.write_column(round_output_positions[i], acc + rc.clone())
                             } else {
                                 // Otherwise, we simply allocate a new position
                                 // in the circuit.
