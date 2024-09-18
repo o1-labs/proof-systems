@@ -1,9 +1,6 @@
-# We use --offline to be sure that we do not access the network
-
 name: CI
 
 on:
-  push:
   pull_request:
 
 env:
@@ -94,7 +91,8 @@ jobs:
 
       - name: Install markdownlint
         run: |
-          npm install -g markdownlint-cli
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
 
       #
       # Doc & Spec
@@ -102,21 +100,27 @@ jobs:
 
       - name: Install cargo-spec for specifications
         run: |
+          eval $(opam env)
           cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
-          cd book/specifications
-          cd kimchi && make build
+          cd book/specifications/kimchi
+          make build
 
       - name: Build the polynomial commitment specification
         run: |
-          cd book/specifications
-          cd poly-commitment && make build
+          cd book/specifications/poly-commitment
+          make build
 
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
+
+      - name: Build cargo docs
+        run: |
+          eval $(opam env)
+          RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
 
       #
       # Coding guidelines
@@ -167,7 +171,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Doc tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features --release --doc --offline
+        run: |
+          eval $(opam env)
+          cargo test --all-features --release --doc
