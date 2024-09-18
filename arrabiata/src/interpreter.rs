@@ -207,7 +207,7 @@
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ### Bit composition instruction
+//! ### Bit composition instruction (deprecated)
 //!
 //! Decomposing a 255 bits value into bits can also be done using
 //! [NUMBER_OF_COLUMNS] columns and [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows
