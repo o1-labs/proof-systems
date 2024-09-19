@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Challenges, Constants},
+        expr::{self, l0_1, BerkeleyChallenges, Constants},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -708,11 +708,13 @@ where
                     mds,
                     zk_rows: index.cs.zk_rows,
                 },
-                challenges: Challenges {
+                challenges: BerkeleyChallenges {
                     alpha,
                     beta,
                     gamma,
-                    joint_combiner: lookup_context.joint_combiner,
+                    joint_combiner: lookup_context
+                        .joint_combiner
+                        .unwrap_or(G::ScalarField::zero()),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,

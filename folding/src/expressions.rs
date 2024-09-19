@@ -281,7 +281,9 @@ use ark_ff::One;
 use derivative::Derivative;
 use itertools::Itertools;
 use kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
+    expr::{
+        BerkeleyChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable,
+    },
     gate::CurrOrNext,
 };
 use num_traits::Zero;
@@ -1001,12 +1003,13 @@ pub fn folding_expression<C: FoldingConfig>(
 
 // CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
 
-impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
+impl<F, Config: FoldingConfig> From<ConstantExprInner<F, BerkeleyChallengeTerm>>
+    for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    Config::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<BerkeleyChallengeTerm>,
 {
-    fn from(expr: ConstantExprInner<F>) -> Self {
+    fn from(expr: ConstantExprInner<F, BerkeleyChallengeTerm>) -> Self {
         match expr {
             ConstantExprInner::Challenge(chal) => {
                 FoldingCompatibleExprInner::Challenge(chal.into())
@@ -1021,14 +1024,15 @@ where
     }
 }
 
-impl<F, Col, Config: FoldingConfig<Column = Col>> From<ExprInner<ConstantExprInner<F>, Col>>
+impl<F, Col, Config: FoldingConfig<Column = Col>>
+    From<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>
     for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    Config::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     // TODO: check if this needs some special treatment for Extensions
-    fn from(expr: ExprInner<ConstantExprInner<F>, Col>) -> Self {
+    fn from(expr: ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>) -> Self {
         match expr {
             ExprInner::Constant(cexpr) => cexpr.into(),
             ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
@@ -1043,12 +1047,13 @@ where
 }
 
 impl<F, Col, Config: FoldingConfig<Column = Col>>
-    From<Operations<ExprInner<ConstantExprInner<F>, Col>>> for FoldingCompatibleExpr<Config>
+    From<Operations<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>>
+    for FoldingCompatibleExpr<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    Config::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<BerkeleyChallengeTerm>,
 {
-    fn from(expr: Operations<ExprInner<ConstantExprInner<F>, Col>>) -> Self {
+    fn from(expr: Operations<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>) -> Self {
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) => {
@@ -1068,13 +1073,13 @@ where
     }
 }
 
-impl<F, Col, Config: FoldingConfig<Column = Col>> From<Operations<ConstantExprInner<F>>>
-    for FoldingCompatibleExpr<Config>
+impl<F, Col, Config: FoldingConfig<Column = Col>>
+    From<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>> for FoldingCompatibleExpr<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    Config::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<BerkeleyChallengeTerm>,
 {
-    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+    fn from(expr: Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>) -> Self {
         match expr {
             Operations::Add(x, y) => {
                 FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
@@ -1094,13 +1099,15 @@ where
 }
 
 impl<F, Col, Config: FoldingConfig<Column = Col>>
-    From<Operations<ExprInner<Operations<ConstantExprInner<F>>, Col>>>
+    From<Operations<ExprInner<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>, Col>>>
     for FoldingCompatibleExpr<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    Config::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<BerkeleyChallengeTerm>,
 {
-    fn from(expr: Operations<ExprInner<Operations<ConstantExprInner<F>>, Col>>) -> Self {
+    fn from(
+        expr: Operations<ExprInner<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>, Col>>,
+    ) -> Self {
         match expr {
             Operations::Atom(inner) => match inner {
                 ExprInner::Constant(op) => match op {

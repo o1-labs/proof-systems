@@ -16,9 +16,16 @@ path = "src/lib.rs"
 name = "test_optimism_preimage_read"
 path = "src/test_preimage_read.rs"
 
+[[bin]]
+name = "legacy_o1vm"
+path = "src/legacy/main.rs"
+
 [dependencies]
+# FIXME: Only activate this when legacy_o1vm is built
 ark-bn254.workspace = true
+# FIXME: Only activate this when legacy_o1vm is built
 folding.workspace = true
+# FIXME: Only activate this when legacy_o1vm is built
 kimchi = { workspace = true, features = [ "bn254" ] }
 kimchi-msm.workspace = true
 poly-commitment.workspace = true

@@ -1,6 +1,5 @@
 use crate::{
-    lookups::{Lookup, LookupTableIDs},
-    mips::{
+    interpreters::mips::{
         column::{
             ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
@@ -9,11 +8,15 @@ use crate::{
         },
         interpreter::InterpreterEnv,
     },
+    lookups::{Lookup, LookupTableIDs},
     E,
 };
 use ark_ff::Field;
 use kimchi::circuits::{
-    expr::{ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+    expr::{
+        BerkeleyChallengeTerm, ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations,
+        Variable,
+    },
     gate::CurrOrNext,
 };
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
@@ -56,7 +59,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         MIPSColumn::ScratchState(scratch_idx)
     }
 
-    type Variable = Expr<ConstantExpr<Fp>, Column>;
+    type Variable = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
 
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {

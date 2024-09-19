@@ -2,7 +2,7 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::{
-    keccak::{
+    interpreters::keccak::{
         column::{
             Absorbs::{self, *},
             KeccakWitness,
@@ -21,6 +21,7 @@ use crate::{
     lookups::Lookup,
     E,
 };
+
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{

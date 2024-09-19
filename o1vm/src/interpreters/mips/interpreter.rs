@@ -1,10 +1,10 @@
 use crate::{
     cannon::PAGE_ADDRESS_SIZE,
-    lookups::{Lookup, LookupTableIDs},
-    mips::registers::{
+    interpreters::mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
+    lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::{One, Zero};
 use strum::{EnumCount, IntoEnumIterator};
@@ -166,9 +166,10 @@ pub trait InterpreterEnv {
     /// The variables are "freed" after each step/instruction.
     /// The variable allocation can be seen as an allocation on a stack that is
     /// popped after each step execution.
-    /// At the moment, [crate::mips::witness::SCRATCH_SIZE - 46] elements can be
-    /// allocated. If more temporary variables are required for an instruction,
-    /// increase the value [crate::mips::witness::SCRATCH_SIZE]
+    /// At the moment, [crate::interpreters::mips::witness::SCRATCH_SIZE - 46]
+    /// elements can be allocated. If more temporary variables are required for
+    /// an instruction, increase the value
+    /// [crate::interpreters::mips::witness::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
     type Variable: Clone

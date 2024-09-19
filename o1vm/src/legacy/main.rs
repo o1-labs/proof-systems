@@ -6,27 +6,36 @@ use log::debug;
 use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::{
-        column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
-        environment::KeccakEnv,
-        trace::DecomposedKeccakTrace,
+    interpreters::{
+        keccak::{
+            column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
+            environment::KeccakEnv,
+        },
+        mips::{
+            column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+            constraints as mips_constraints,
+            interpreter::Instruction,
+            witness::{self as mips_witness, SCRATCH_SIZE},
+        },
+    },
+    legacy::{
+        folding::mips::DecomposableMIPSFoldingConfig,
+        proof,
+        trace::{
+            keccak::DecomposedKeccakTrace, mips::DecomposedMIPSTrace, DecomposableTracer, Foldable,
+            Tracer,
+        },
     },
     lookups::LookupTableIDs,
-    mips::{
-        column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-        constraints as mips_constraints,
-        folding::DecomposableMIPSFoldingConfig,
-        interpreter::Instruction,
-        trace::DecomposedMIPSTrace,
-        witness::{self as mips_witness, SCRATCH_SIZE},
-    },
     preimage_oracle::PreImageOracle,
-    proof,
-    trace::{DecomposableTracer, Foldable, Tracer},
-    BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
+    BaseSponge, Fp, OpeningProof, ScalarSponge,
 };
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
+
+/// Domain size shared by the Keccak evaluations, MIPS evaluation and main
+/// program.
+pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();

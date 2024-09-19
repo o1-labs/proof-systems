@@ -16,7 +16,7 @@
 //~
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
+    expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
@@ -30,7 +30,7 @@ use std::marker::PhantomData;
 /// Additionally, if r == 0, then `z_inv` = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
-fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
+fn zero_check<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(z: T, z_inv: T, r: T) -> Vec<T> {
     vec![z_inv * z.clone() - (T::one() - r.clone()), r * z]
 }
 
@@ -98,7 +98,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);
         let y1 = env.witness_curr(1);
