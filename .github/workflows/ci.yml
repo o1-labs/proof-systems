@@ -62,7 +62,9 @@ jobs:
     name: Run checks and tests
     # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
     # Only in this configuration we enable tests with the code coverage data gathering.
-    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
+    # TODO: Change it once the tests with the code coverage data gathering will be enabled again.
+    # TODO:   runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
+    runs-on: ["ubuntu-latest"]
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
@@ -150,31 +152,32 @@ jobs:
           make install-test-deps
 
       - name: Doc tests
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make test-doc
 
       - name: Run non-heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
 
-      - name: Run non-heavy tests with the code coverage
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        run: |
-          eval $(opam env)
-          make nextest-with-coverage
-          make test-doc-with-coverage
-          make generate-test-coverage-report
+      # TODO: Re-enable this for tests with coverage data gathering.
+      # TODO: We intentionally disable the tests with the code coverage data gathering because
+      # TODO:   Rust's code coverage instrumentation is not compatible with some of the optimizations that occur during release builds.
+      # - name: Run non-heavy tests with the code coverage
+      #   if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+      #   run: |
+      #     eval $(opam env)
+      #     make nextest-with-coverage
+      #     make test-doc-with-coverage
+      #     make generate-test-coverage-report
 
-      - name: Use shared code coverage summary
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        uses: ./.github/actions/coverage-summary-shared
+      # - name: Use shared code coverage summary
+      #   if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+      #   uses: ./.github/actions/coverage-summary-shared
 
-      - name: Use shared Codecov reporting steps
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        uses: ./.github/actions/codecov-shared
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # - name: Use shared Codecov reporting steps
+      #   if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+      #   uses: ./.github/actions/codecov-shared
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
