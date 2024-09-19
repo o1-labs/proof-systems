@@ -122,8 +122,7 @@ pub struct Env<
     pub sponge_e1: [BigInt; POSEIDON_STATE_SIZE],
     pub sponge_e2: [BigInt; POSEIDON_STATE_SIZE],
 
-    /// List of public inputs, used first to verify the consistency of the
-    /// previous iteration.
+    /// The current iteration of the IVC
     pub current_iteration: u64,
 
     /// A previous hash, encoded in 2 chunks of 128 bits.
