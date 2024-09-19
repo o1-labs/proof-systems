@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Column","Gadget"],"struct":["GadgetIter"],"type":["E"]};
