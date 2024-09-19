@@ -1131,6 +1131,64 @@
 <a href="#1131" id="1131">1131</a>
 <a href="#1132" id="1132">1132</a>
 <a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.
@@ -1270,10 +1328,10 @@
 //! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
 //! output, and the other values are intermediary values. And we have the following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (o1, o2, o3) = PoseidonPerm(c1, c2, c3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (o1, o2, o3) = PoseidonRound(c1, c2, c3)
 //! ```
 //!
 //! The layout for the one using the &quot;next row&quot; is as follow (5 full rounds):
@@ -1287,11 +1345,11 @@
 //! output, and the other values are intermediary values. And we have the
 //! following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (d1, d2, d3) = PoseidonPerm(c1, c2, c3)
-//! (o1, o2, o3) = PoseidonPerm(d1, d2, d3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (d1, d2, d3) = PoseidonRound(c1, c2, c3)
+//! (o1, o2, o3) = PoseidonRound(d1, d2, d3)
 //! ```
 //!
 //! For both implementations, round constants are passed as public inputs. As a
@@ -1306,41 +1364,44 @@
 //! The Nova-based IVC schemes require to perform scalar multiplications on
 //! elliptic curve points. The scalar multiplication is computed using the
 //! double-and-add algorithm.
-//! First, the scalar is converted to its binary representation. We do use
-//! [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows using [NUMBER_OF_COLUMNS] columns
-//! to compute the 255 bits of the scalar.
+//!
+//! We will consider a basic implementation using the &quot;next row&quot;. The
+//! accumulators will be saved on the &quot;next row&quot;. The decomposition of the
+//! scalar will be incrementally on each row.
+//! The scalar used for the scalar multiplication will be fetched using the
+//! permutation argument (FIXME: to be implemented).
+//! More than one bit can be decomposed at the same time, and we could reduce
+//! the number of rows.
+//! We leave this for future work.
 //!
 //! #### Gadget layout
 //!
 //! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
 //! Therefore, we have 255 rows to compute the scalar multiplication.
-//! For a given step `i`, we have the following intermediary values:
+//! For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
 //! - `res_x`, `res_y`: the result of the scalar multiplication i.e. the accumulator.
 //! - `b`: the i-th bit of the scalar.
+//! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
+//! - `λ&#39;` and `λ`: the coefficients
+//! - o&#39;_x and o&#39;_y equal to `res_plus_tmp_x` and `res_plus_tmp_y` if `b == 1`,
+//! otherwise equal to `o_x` and `o_y`.
 //!
 //! We have the following layout:
 //!
 //! ```text
-//! | C1 |   C2  |   C3   |   C4  |   C5  |   C6   |   C7   | C8 | C9|    C10   |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | -- | ----- | ------ | ----- | ----- | ------ | ------ | -- | -- | ------- | -------- | --- | --- | --- | --- | --- | --- |
-//! | b  | tmp_x |  tmp_y | res_x | res_y | tmp&#39;_x | tmp&#39;_y | λ&#39; | λ  | res&#39;_x  |  res&#39;_y  | o_x | o_y |     |     |     |     |
+//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
+//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- | --- | --- |
+//! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ&#39; |  b  |
+//! | o&#39;_x |  o&#39;_y  | double_tmp&#39;_x | double_tmp&#39;_y |  r_(i+1)  |
 //! ```
-//! where `o_x` and `o_y` are the output of the current step, `tmp&#39;_x` and
-//! `tmp&#39;_y` are the double of the temporary values used for the next step, `λ&#39;`
-//! is the slope computed for tmp&#39; and λ is the slope for computing `res&#39;`.
-//!
-//! FIXME: we might need to change the layout for the permutation argument.
-//! We want `o_x` and `o_y` to be with `res_x` and `res_y`, and `tmp_x` and
-//! `tmp_y` to be with `tmp&#39;_x` and `tmp&#39;_y`.
-//! Also, the bit `b` must come from the decomposition.
 //!
 //! FIXME: an optimisation can be implemented using &quot;a bucket&quot; style algorithm,
 //! as described in [Efficient MSMs in Kimchi
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ### Bit composition instruction
+//! ### Bit composition instruction (deprecated)
 //!
 //! Decomposing a 255 bits value into bits can also be done using
 //! [NUMBER_OF_COLUMNS] columns and [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows
@@ -1358,9 +1419,9 @@
 //! ```
 //!
 //! where:
-//! - `x` is the input value
-//! - for each row `i`, we have `x_i = x_{i - 1} &lt;&lt; 15 - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
-//! - `b_i` is the i-th bit of the input value
+//! - `x` is the input value                            14
+//! - for each row `i`, we have `x_i = x_{i - 1} &lt;&lt; 15 - Σ  2^j b_{i * 15 + j}`
+//! - `b_i` is the i-th bit of the input value          j=0
 //!
 //! ## Handle the combinaison of constraints
 //!
@@ -1577,23 +1638,19 @@
         + Zero
         + One;
 
-    <span class="doccomment">/// Allocate a new variable in the circuit
+    <span class="doccomment">/// Allocate a new variable in the circuit for the current row
     </span><span class="kw">fn </span>allocate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
 
-    <span class="doccomment">/// Return the corresponding variable at the given position, for the next row.
-    </span><span class="kw">fn </span>access_next_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Allocate a new variable in the circuit for the next row
+    </span><span class="kw">fn </span>allocate_next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
 
-    <span class="doccomment">/// Return the corresponding variable at the given position, for the current
-    /// row.
-    </span><span class="kw">fn </span>access_current_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Return the corresponding variable at the given position
+    </span><span class="kw">fn </span>read_position(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>allocate_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
 
     <span class="doccomment">/// Set the value of the variable at the given position for the current row
     </span><span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Set the value of the variable at the given position for the next row
-    </span><span class="kw">fn </span>write_column_next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Write the corresponding public inputs.
     </span><span class="comment">// FIXME: This design might not be the best. Feel free to come up with a
@@ -1764,6 +1821,9 @@
 
     <span class="doccomment">/// Double the elliptic curve point given by the affine coordinates
     /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    /// The last argument, `row`, is used to decide if the result should be
+    /// written in the current or the next row of the variable position `pos_x`
+    /// and `pos_y`.
     </span><span class="kw">fn </span>double_ec_point(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         pos_x: <span class="self">Self</span>::Position,
@@ -1915,7 +1975,7 @@
             </span><span class="kw">let </span>x0 = <span class="kw">unsafe </span>{
                 env.bitmask_be(
                     <span class="kw-2">&amp;</span>r,
-                    <span class="number">255</span>,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * i)
                         .try_into()
                         .unwrap(),
@@ -1926,7 +1986,7 @@
             </span><span class="kw">let </span>x1 = <span class="kw">unsafe </span>{
                 env.bitmask_be(
                     <span class="kw-2">&amp;</span>r,
-                    <span class="number">255</span>,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * (i + <span class="number">1</span>))
                         .try_into()
                         .unwrap(),
@@ -1957,14 +2017,43 @@
             );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) =&gt; {
-            env.activate_gadget(Gadget::PermutationArgument);
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             <span class="macro">assert!</span>(processing_bit &lt; MAXIMUM_FIELD_SIZE_IN_BITS, <span class="string">&quot;Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}&quot;</span>);
             <span class="macro">assert!</span>(i_comm &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;Processing scaling of commitment {i_comm}, bit {processing_bit}&quot;</span>);
+            env.activate_gadget(Gadget::EllipticCurveScaling);
+            <span class="comment">// When processing the first bit, we must load the scalar, and it
+            // comes from previous computation.
+            </span><span class="kw">if </span>processing_bit == <span class="number">0 </span>{
+                env.activate_gadget(Gadget::PermutationArgument);
+            }
+            <span class="comment">// The two first columns are supposed to be used for the output.
+            // It will be used to write the result of the scalar multiplication
+            // in the next row.
+            </span><span class="kw">let </span>res_col_x = env.allocate();
+            <span class="kw">let </span>res_col_y = env.allocate();
+            <span class="kw">let </span>tmp_col_x = env.allocate();
+            <span class="kw">let </span>tmp_col_y = env.allocate();
+            <span class="kw">let </span>scalar_col = env.allocate();
+            <span class="kw">let </span>next_row_res_col_x = env.allocate_next_row();
+            <span class="kw">let </span>next_row_res_col_y = env.allocate_next_row();
+            <span class="kw">let </span>next_row_tmp_col_x = env.allocate_next_row();
+            <span class="kw">let </span>next_row_tmp_col_y = env.allocate_next_row();
+            <span class="kw">let </span>next_row_scalar_col = env.allocate_next_row();
+
+            <span class="comment">// For the bit, we do have two cases. If we are processing the first
+            // bit, we must load the bit from a previous computed value. In the
+            // case of folding, it will be the output of the Poseidon hash.
+            // Therefore we do need the permutation argument.
+            // If it is not the first bit, we suppose the previous value has
+            // been written in the previous step in the current row.
+            </span><span class="kw">let </span>scalar = <span class="kw">if </span>processing_bit == <span class="number">0 </span>{
+                env.coin_folding_combiner(scalar_col)
+            } <span class="kw">else </span>{
+                env.read_position(scalar_col)
+            };
             <span class="comment">// FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
-            // res = O
+            // res = O &lt;-- blinder
             // tmp = P
             // for i in 0..256:
             //   if r[i] == 1:
@@ -1974,33 +2063,28 @@
             // - `processing_bit` is the i-th bit of the scalar, i.e. i in the loop
             // described above.
             // - `i_comm` is used to fetch the commitment.
-            // The temporary values res and tmp will be stored in the temporary
-            // accumulators, and loaded with `load_temporary_accumulators`.
-            // At the end of the execution, the temporary accumulators will be
-            // saved with `save_temporary_accumulators`.
-            </span><span class="kw">let </span>bit = {
-                <span class="kw">let </span>pos = env.allocate();
-                <span class="kw">unsafe </span>{ env.read_bit_of_folding_combiner(pos, processing_bit) }
+            //
+            // If it is the first bit, we must load the commitment using the
+            // permutation argument.
+            // FIXME: the initial value of the result should be a non-zero
+            // point. However, it must be a public value otherwise the prover
+            // might lie on the initial value.
+            // We do have 15 public inputs on each row, we could use some of them.
+            </span><span class="kw">let </span>(res_x, res_y) = <span class="kw">if </span>processing_bit == <span class="number">0 </span>{
+                <span class="comment">// Load the commitment
+                </span><span class="kw">unsafe </span>{ env.load_temporary_accumulators(res_col_x, res_col_y, Side::Right) }
+            } <span class="kw">else </span>{
+                <span class="comment">// Otherwise, the previous step has written the previous result
+                // in its &quot;next row&quot;, i.e. this row.
+                </span><span class="kw">let </span>res_x = { env.read_position(res_col_x) };
+                <span class="kw">let </span>res_y = { env.read_position(res_col_y) };
+                (res_x, res_y)
             };
-            <span class="kw">let </span>(tmp_x, tmp_y) = {
-                <span class="kw">let </span>pos_x = env.allocate();
-                <span class="kw">let </span>pos_y = env.allocate();
-                <span class="kw">unsafe </span>{ env.load_temporary_accumulators(pos_x, pos_y, Side::Left) }
-            };
-            <span class="kw">let </span>(res_x, res_y) = {
-                <span class="kw">let </span>pos_x = env.allocate();
-                <span class="kw">let </span>pos_y = env.allocate();
-                <span class="kw">unsafe </span>{ env.load_temporary_accumulators(pos_x, pos_y, Side::Right) }
-            };
-            <span class="comment">// tmp = tmp + tmp
-            // Compute the double of the temporary value
-            </span><span class="kw">let </span>(tmp_prime_x, tmp_prime_y) = {
-                <span class="kw">let </span>pos_x = env.allocate();
-                <span class="kw">let </span>pos_y = env.allocate();
-                env.double_ec_point(pos_x, pos_y, tmp_x.clone(), tmp_y.clone())
-            };
-            <span class="kw">unsafe </span>{
-                env.save_temporary_accumulators(tmp_prime_x, tmp_prime_y, Side::Left);
+            <span class="comment">// Same for the accumulated temporary value
+            </span><span class="kw">let </span>(tmp_x, tmp_y) = <span class="kw">if </span>processing_bit == <span class="number">0 </span>{
+                <span class="kw">unsafe </span>{ env.load_temporary_accumulators(tmp_col_x, tmp_col_y, Side::Left) }
+            } <span class="kw">else </span>{
+                (env.read_position(tmp_col_x), env.read_position(tmp_col_y))
             };
             <span class="comment">// Conditional addition:
             // if bit == 1, then res = tmp + res
@@ -2037,20 +2121,49 @@
                 };
                 (x3, y3)
             };
-            <span class="kw">let </span>x3 = {
+            <span class="comment">// tmp = tmp + tmp
+            // Compute the double of the temporary value
+            // The slope is saved in a column created in the call to
+            // `double_ec_point`
+            // We ignore the result as it will be used at the next step only.
+            </span><span class="kw">let </span>(_double_tmp_x, _double_tmp_y) = {
+                env.double_ec_point(
+                    next_row_tmp_col_x,
+                    next_row_tmp_col_y,
+                    tmp_x.clone(),
+                    tmp_y.clone(),
+                )
+            };
+            <span class="kw">let </span>bit = {
                 <span class="kw">let </span>pos = env.allocate();
+                <span class="kw">unsafe </span>{ env.bitmask_be(<span class="kw-2">&amp;</span>scalar, <span class="number">1</span>, <span class="number">0</span>, pos) }
+            };
+            <span class="comment">// Checking it is a boolean -&gt; degree 2
+            </span>env.constrain_boolean(bit.clone());
+            <span class="kw">let </span>next_scalar = {
+                <span class="kw">unsafe </span>{
+                    env.bitmask_be(
+                        <span class="kw-2">&amp;</span>scalar,
+                        MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
+                        <span class="number">1</span>,
+                        next_row_scalar_col,
+                    )
+                }
+            };
+            <span class="comment">// Degree 1
+            </span>env.assert_equal(
+                scalar.clone(),
+                bit.clone() + env.constant(BigInt::from(<span class="number">2</span>)) * next_scalar.clone(),
+            );
+            <span class="kw">let </span>_x3 = {
                 <span class="kw">let </span>res = bit.clone() * res_plus_tmp_x.clone()
                     + (env.one() - bit.clone()) * res_x.clone();
-                env.write_column(pos, res)
+                env.write_column(next_row_res_col_x, res)
             };
-            <span class="kw">let </span>y3 = {
-                <span class="kw">let </span>pos = env.allocate();
+            <span class="kw">let </span>_y3 = {
                 <span class="kw">let </span>res = bit.clone() * res_plus_tmp_y.clone()
                     + (env.one() - bit.clone()) * res_y.clone();
-                env.write_column(pos, res)
-            };
-            <span class="kw">unsafe </span>{
-                env.save_temporary_accumulators(x3, y3, Side::Right);
+                env.write_column(next_row_res_col_y, res)
             };
         }
         Instruction::EllipticCurveAddition(i_comm) =&gt; {
@@ -2169,8 +2282,11 @@
                         </span><span class="kw">unsafe </span>{ env.fetch_value_to_absorb(pos, curr_round) }
                     })
                     .collect();
-                <span class="kw">let </span>first_col_positions: Vec&lt;E::Position&gt; =
+                <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; =
                     (<span class="number">0</span>..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
+                <span class="kw">let </span>round_output_positions: Vec&lt;E::Position&gt; = (<span class="number">0</span>..POSEIDON_STATE_SIZE)
+                    .map(|_i| env.allocate_next_row())
+                    .collect();
                 <span class="comment">// If we are at the first round, we load the state from the environment.
                 // The permutation argument is used to load the state the
                 // current call to Poseidon might be a succession of Poseidon
@@ -2178,7 +2294,7 @@
                 // state might be from a previous place in the execution trace.
                 </span><span class="kw">let </span>state: Vec&lt;E::Variable&gt; = <span class="kw">if </span>curr_round == <span class="number">0 </span>{
                     env.activate_gadget(Gadget::PermutationArgument);
-                    first_col_positions
+                    round_input_positions
                         .iter()
                         .enumerate()
                         .map(|(i, pos)| {
@@ -2196,9 +2312,9 @@
                     // state has been loaded in the &quot;next_row&quot; state during the
                     // previous call, and we can simply load it. No permutation
                     // argument needed.
-                    </span>first_col_positions
+                    </span>round_input_positions
                         .iter()
-                        .map(|pos| env.access_current_row(<span class="kw-2">*</span>pos))
+                        .map(|pos| env.read_position(<span class="kw-2">*</span>pos))
                         .collect()
                 };
 
@@ -2226,7 +2342,7 @@
                                 });
                             <span class="comment">// The last iteration is written on the next row.
                             </span><span class="kw">if </span>idx_round == <span class="number">4 </span>{
-                                env.write_column_next_row(first_col_positions[i], acc + rc.clone())
+                                env.write_column(round_output_positions[i], acc + rc.clone())
                             } <span class="kw">else </span>{
                                 <span class="comment">// Otherwise, we simply allocate a new position
                                 // in the circuit.

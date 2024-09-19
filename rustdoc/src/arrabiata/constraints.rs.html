@@ -318,68 +318,6 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{columns::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     columns::{Gadget, E},
@@ -402,6 +340,7 @@
     </span><span class="comment">// FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
     </span><span class="kw">pub </span>a: BigInt,
     <span class="kw">pub </span>idx_var: usize,
+    <span class="kw">pub </span>idx_var_next_row: usize,
     <span class="kw">pub </span>idx_var_pi: usize,
     <span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
 }
@@ -414,6 +353,7 @@
             poseidon_mds,
             a,
             idx_var: <span class="number">0</span>,
+            idx_var_next_row: <span class="number">0</span>,
             idx_var_pi: <span class="number">0</span>,
             constraints: Vec::new(),
         }
@@ -426,7 +366,7 @@
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
 </span><span class="kw">impl</span>&lt;Fp: PrimeField&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
-    <span class="kw">type </span>Position = Column;
+    <span class="kw">type </span>Position = (Column, CurrOrNext);
 
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
 
@@ -434,28 +374,26 @@
         <span class="macro">assert!</span>(<span class="self">self</span>.idx_var &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns&quot;</span>);
         <span class="kw">let </span>pos = Column::X(<span class="self">self</span>.idx_var);
         <span class="self">self</span>.idx_var += <span class="number">1</span>;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
-    <span class="kw">fn </span>access_next_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Next,
-        }))
+    <span class="kw">fn </span>allocate_next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
+        <span class="macro">assert!</span>(<span class="self">self</span>.idx_var_next_row &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns&quot;</span>);
+        <span class="kw">let </span>pos = Column::X(<span class="self">self</span>.idx_var_next_row);
+        <span class="self">self</span>.idx_var_next_row += <span class="number">1</span>;
+        (pos, CurrOrNext::Next)
     }
 
-    <span class="kw">fn </span>access_current_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+    <span class="kw">fn </span>read_position(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>(col, row) = pos;
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     <span class="kw">fn </span>allocate_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
         <span class="macro">assert!</span>(<span class="self">self</span>.idx_var_pi &lt; NUMBER_OF_PUBLIC_INPUTS, <span class="string">&quot;Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs&quot;</span>);
         <span class="kw">let </span>pos = Column::PublicInput(<span class="self">self</span>.idx_var_pi);
         <span class="self">self</span>.idx_var_pi += <span class="number">1</span>;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
     <span class="kw">fn </span>constant(<span class="kw-2">&amp;</span><span class="self">self</span>, value: BigInt) -&gt; <span class="self">Self</span>::Variable {
@@ -466,28 +404,14 @@
     }
 
     <span class="doccomment">/// Return the corresponding expression regarding the selected public input
-    </span><span class="kw">fn </span>write_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, _v: BigInt) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }))
+    </span><span class="kw">fn </span>write_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, _v: BigInt) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="doccomment">/// Return the corresponding expression regarding the selected column
-    </span><span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }));
-        <span class="self">self</span>.assert_equal(res.clone(), v);
-        res
-    }
-
-    <span class="kw">fn </span>write_column_next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Next,
-        }));
+    </span><span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>(col, row) = pos;
+        <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable { col, row }));
         <span class="self">self</span>.assert_equal(res.clone(), v);
         res
     }
@@ -521,22 +445,16 @@
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        position: <span class="self">Self</span>::Position,
+        pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="comment">// FIXME
     </span><span class="kw">fn </span>range_check16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _x: <span class="self">Self</span>::Position) {}
 
-    <span class="kw">fn </span>square(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>v = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }));
+    <span class="kw">fn </span>square(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>v = <span class="self">self</span>.read_position(pos);
         <span class="kw">let </span>x = x.square();
         <span class="self">self</span>.add_constraint(x - v.clone());
         v
@@ -544,23 +462,18 @@
 
     <span class="comment">// This is witness-only. We simply return the corresponding expression to
     // use later in constraints
-    </span><span class="kw">fn </span>fetch_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>, res: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: res,
-            row: CurrOrNext::Curr,
-        }))
+    </span><span class="kw">fn </span>fetch_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.idx_var = <span class="number">0</span>;
+        <span class="self">self</span>.idx_var_next_row = <span class="number">0</span>;
         <span class="self">self</span>.idx_var_pi = <span class="number">0</span>;
     }
 
     <span class="kw">fn </span>coin_folding_combiner(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="kw">unsafe fn </span>read_sixteen_bits_chunks_folding_combiner(
@@ -568,10 +481,8 @@
         pos: <span class="self">Self</span>::Position,
         _i: u32,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="kw">let </span>(col, row) = pos;
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     <span class="kw">unsafe fn </span>read_bit_of_folding_combiner(
@@ -579,17 +490,11 @@
         pos: <span class="self">Self</span>::Position,
         _i: u64,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="kw">fn </span>load_poseidon_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, _i: usize) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="comment">// Witness-only
@@ -601,14 +506,12 @@
         _round: usize,
         _i: usize,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">match </span>pos {
+        <span class="kw">let </span>(col, row) = pos;
+        <span class="kw">match </span>col {
             Column::PublicInput(<span class="kw">_</span>) =&gt; (),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Only public inputs can be used as round constants&quot;</span>),
         };
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     <span class="kw">fn </span>get_poseidon_mds_matrix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, j: usize) -&gt; <span class="self">Self</span>::Variable {
@@ -622,10 +525,7 @@
         pos: <span class="self">Self</span>::Position,
         _curr_round: usize,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="kw">unsafe fn </span>load_temporary_accumulators(
@@ -634,14 +534,8 @@
         pos_y: <span class="self">Self</span>::Position,
         _side: Side,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>x = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_x,
-            row: CurrOrNext::Curr,
-        }));
-        <span class="kw">let </span>y = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_y,
-            row: CurrOrNext::Curr,
-        }));
+        <span class="kw">let </span>x = <span class="self">self</span>.read_position(pos_x);
+        <span class="kw">let </span>y = <span class="self">self</span>.read_position(pos_y);
         (x, y)
     }
 
@@ -660,10 +554,7 @@
     ///
     /// Zero is not allowed as an input.
     </span><span class="kw">unsafe fn </span>inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>v = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }));
+        <span class="kw">let </span>v = <span class="self">self</span>.read_position(pos);
         <span class="kw">let </span>res = v.clone() * x.clone();
         <span class="self">self</span>.assert_equal(res.clone(), <span class="self">self</span>.one());
         v
@@ -677,10 +568,7 @@
         _x2: <span class="self">Self</span>::Variable,
         _y2: <span class="self">Self</span>::Variable,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        <span class="self">self</span>.read_position(pos)
     }
 
     <span class="kw">fn </span>zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -702,19 +590,10 @@
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>lambda = {
             <span class="kw">let </span>pos = <span class="self">self</span>.allocate();
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: pos,
-                row: CurrOrNext::Curr,
-            }))
+            <span class="self">self</span>.read_position(pos)
         };
-        <span class="kw">let </span>x3 = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_x,
-            row: CurrOrNext::Curr,
-        }));
-        <span class="kw">let </span>y3 = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_y,
-            row: CurrOrNext::Curr,
-        }));
+        <span class="kw">let </span>x3 = <span class="self">self</span>.read_position(pos_x);
+        <span class="kw">let </span>y3 = <span class="self">self</span>.read_position(pos_y);
 
         <span class="comment">// λ 2y1 = 3x1^2 + a
         </span><span class="kw">let </span>x1_square = x1.clone() * x1.clone();
@@ -745,10 +624,7 @@
         x2: <span class="self">Self</span>::Variable,
         y2: <span class="self">Self</span>::Variable,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>lambda = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }));
+        <span class="kw">let </span>lambda = <span class="self">self</span>.read_position(pos);
         <span class="kw">let </span>lhs = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
         <span class="kw">let </span>rhs = {
             <span class="kw">let </span>x1_square = x1.clone() * x1.clone();
