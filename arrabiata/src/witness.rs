@@ -469,7 +469,6 @@ where
     }
 
     // The following values are expected to be absorbed in order:
-    // - vk
     // - z0
     // - z1
     // - acc[0]
@@ -491,7 +490,7 @@ where
         if curr_round != 0 {
             self.write_public_input(pos, self.zero())
         } else {
-            // FIXME: we must absorb vk, z0, z1 and i!
+            // FIXME: we must absorb z0, z1 and i!
             // We multiply by 2 as we have two coordinates
             let idx = self.idx_values_to_absorb;
             let res = if idx < 2 * NUMBER_OF_COLUMNS {
@@ -1020,7 +1019,6 @@ impl<
     /// - The previous accumulators (acc_1, ..., acc_17).
     /// - The previous output z_i.
     /// - The initial input z_0.
-    /// - The verification key vk.
     /// - The natural i describing the previous step.
     ///
     /// The control flow is as follow:
@@ -1028,7 +1026,7 @@ impl<
     /// corresponds to the public input:
     ///
     /// ```text
-    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
+    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i)
     /// ```
     ///
     /// - We also have to check that the previous challenges (α, β, γ) have been
@@ -1062,7 +1060,7 @@ impl<
     /// - We compute the next hash we give to the next instance
     ///
     /// ```text
-    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1), vk)
+    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1))
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
