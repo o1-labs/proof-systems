@@ -4,8 +4,9 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
-        expr, lookup,
+        expr::{self, BerkeleyChallengeTerm},
         lookup::{
+            self,
             constraints::LookupConfiguration,
             lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
         },
@@ -42,7 +43,10 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
+) -> (
+    Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    Alphas<F>,
+) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -345,7 +349,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (
-    Linearization<Vec<PolishToken<F, Column>>, Column>,
+    Linearization<Vec<PolishToken<F, Column, BerkeleyChallengeTerm>>, Column>,
     Alphas<F>,
 ) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);

@@ -4,7 +4,7 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
 };
-use kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
+use kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::witness::Witness as GenericWitness;
 use poly_commitment::commitment::CommitmentCurve;
 use std::{array, ops::Index};
@@ -27,13 +27,13 @@ pub enum Challenge {
 }
 
 // Needed to transform from expressions to folding expressions
-impl From<ChallengeTerm> for Challenge {
-    fn from(chal: ChallengeTerm) -> Self {
+impl From<BerkeleyChallengeTerm> for Challenge {
+    fn from(chal: BerkeleyChallengeTerm) -> Self {
         match chal {
-            ChallengeTerm::Beta => Challenge::Beta,
-            ChallengeTerm::Gamma => Challenge::Gamma,
-            ChallengeTerm::JointCombiner => Challenge::JointCombiner,
-            ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+            BerkeleyChallengeTerm::Beta => Challenge::Beta,
+            BerkeleyChallengeTerm::Gamma => Challenge::Gamma,
+            BerkeleyChallengeTerm::JointCombiner => Challenge::JointCombiner,
+            BerkeleyChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
         }
     }
 }
@@ -567,14 +567,14 @@ mod tests {
     #[test]
     fn test_conversion() {
         use super::*;
-        use kimchi::circuits::expr::ChallengeTerm;
+        use kimchi::circuits::expr::BerkeleyChallengeTerm;
 
         // Check that the conversion from ChallengeTerm to Challenge works as expected
-        assert_eq!(Challenge::Beta, ChallengeTerm::Beta.into());
-        assert_eq!(Challenge::Gamma, ChallengeTerm::Gamma.into());
+        assert_eq!(Challenge::Beta, BerkeleyChallengeTerm::Beta.into());
+        assert_eq!(Challenge::Gamma, BerkeleyChallengeTerm::Gamma.into());
         assert_eq!(
             Challenge::JointCombiner,
-            ChallengeTerm::JointCombiner.into()
+            BerkeleyChallengeTerm::JointCombiner.into()
         );
 
         // Create my special constants
@@ -585,27 +585,33 @@ mod tests {
         };
 
         // Define variables to be used in larger expressions
-        let x = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::X,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let y = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::Y,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let z = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::Z,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let endo = Expr::Atom(ExprInner::<ConstantExprInner<Fp>, TestColumn>::Constant(
-            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient),
-        ));
+        let x = Expr::Atom(ExprInner::Cell::<
+            ConstantExprInner<Fp, BerkeleyChallengeTerm>,
+            TestColumn,
+        >(Variable {
+            col: TestColumn::X,
+            row: CurrOrNext::Curr,
+        }));
+        let y = Expr::Atom(ExprInner::Cell::<
+            ConstantExprInner<Fp, BerkeleyChallengeTerm>,
+            TestColumn,
+        >(Variable {
+            col: TestColumn::Y,
+            row: CurrOrNext::Curr,
+        }));
+        let z = Expr::Atom(ExprInner::Cell::<
+            ConstantExprInner<Fp, BerkeleyChallengeTerm>,
+            TestColumn,
+        >(Variable {
+            col: TestColumn::Z,
+            row: CurrOrNext::Curr,
+        }));
+        let endo = Expr::Atom(ExprInner::<
+            ConstantExprInner<Fp, BerkeleyChallengeTerm>,
+            TestColumn,
+        >::Constant(ConstantExprInner::Constant(
+            ConstantTerm::EndoCoefficient,
+        )));
 
         // Define variables with folding expressions
         let x_f =

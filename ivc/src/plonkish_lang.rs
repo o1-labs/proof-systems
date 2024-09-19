@@ -6,7 +6,7 @@ use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
-use kimchi::{self, circuits::expr::ChallengeTerm, curve::KimchiCurve};
+use kimchi::{self, circuits::expr::BerkeleyChallengeTerm, curve::KimchiCurve};
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
@@ -241,13 +241,13 @@ pub enum PlonkishChallenge {
     JointCombiner,
 }
 
-impl From<ChallengeTerm> for PlonkishChallenge {
-    fn from(chal: ChallengeTerm) -> Self {
+impl From<BerkeleyChallengeTerm> for PlonkishChallenge {
+    fn from(chal: BerkeleyChallengeTerm) -> Self {
         match chal {
-            ChallengeTerm::Beta => PlonkishChallenge::Beta,
-            ChallengeTerm::Gamma => PlonkishChallenge::Gamma,
-            ChallengeTerm::JointCombiner => PlonkishChallenge::JointCombiner,
-            ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+            BerkeleyChallengeTerm::Beta => PlonkishChallenge::Beta,
+            BerkeleyChallengeTerm::Gamma => PlonkishChallenge::Gamma,
+            BerkeleyChallengeTerm::JointCombiner => PlonkishChallenge::JointCombiner,
+            BerkeleyChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
         }
     }
 }

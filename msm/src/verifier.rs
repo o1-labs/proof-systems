@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{Challenges, Constants, Expr, PolishToken},
+        expr::{BerkeleyChallenges, Constants, Expr, PolishToken},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -271,11 +271,11 @@ where
         chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
-    let challenges = Challenges {
+    let challenges = BerkeleyChallenges::<G::ScalarField> {
         alpha,
         beta,
         gamma: G::ScalarField::zero(),
-        joint_combiner,
+        joint_combiner: joint_combiner.unwrap_or(G::ScalarField::zero()),
     };
 
     let constants = Constants {

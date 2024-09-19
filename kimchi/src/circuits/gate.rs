@@ -255,11 +255,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             mds: &G::sponge_params().mds,
             zk_rows: cs.zk_rows,
         };
-        let challenges = expr::Challenges {
+        //TODO : use generic challenges, since we do not need those here
+        let challenges = expr::BerkeleyChallenges {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),
-            joint_combiner: Some(F::one()),
+            joint_combiner: F::one(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(

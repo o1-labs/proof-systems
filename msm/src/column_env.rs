@@ -4,7 +4,10 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use crate::{logup, logup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
     domains::EvaluationDomains,
-    expr::{Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain},
+    expr::{
+        BerkeleyChallengeTerm, BerkeleyChallenges, ColumnEnvironment as TColumnEnvironment,
+        Constants, Domain,
+    },
 };
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -34,7 +37,7 @@ pub struct ColumnEnvironment<
     /// Constant values required
     pub constants: Constants<F>,
     /// Challenges from the IOP.
-    pub challenges: Challenges<F>,
+    pub challenges: BerkeleyChallenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
 
@@ -50,7 +53,8 @@ impl<
         const N_FSEL: usize,
         F: FftField,
         ID: LookupTableID,
-    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
+    > TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
+    for ColumnEnvironment<'a, N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
 {
     type Column = crate::columns::Column;
 
@@ -159,7 +163,7 @@ impl<
         &self.constants
     }
 
-    fn get_challenges(&self) -> &Challenges<F> {
+    fn get_challenges(&self) -> &BerkeleyChallenges<F> {
         &self.challenges
     }
 
