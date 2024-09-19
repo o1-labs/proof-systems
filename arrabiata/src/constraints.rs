@@ -20,6 +20,7 @@ pub struct Env<Fp: Field> {
     // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
     pub a: BigInt,
     pub idx_var: usize,
+    pub idx_var_next_row: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
 }
@@ -32,6 +33,7 @@ impl<Fp: PrimeField> Env<Fp> {
             poseidon_mds,
             a,
             idx_var: 0,
+            idx_var_next_row: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
         }
@@ -44,7 +46,7 @@ impl<Fp: PrimeField> Env<Fp> {
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
 impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
-    type Position = Column;
+    type Position = (Column, CurrOrNext);
 
     type Variable = E<Fp>;
 
@@ -52,28 +54,26 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
         let pos = Column::X(self.idx_var);
         self.idx_var += 1;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Next,
-        }))
+    fn allocate_next_row(&mut self) -> Self::Position {
+        assert!(self.idx_var_next_row < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+        let pos = Column::X(self.idx_var_next_row);
+        self.idx_var_next_row += 1;
+        (pos, CurrOrNext::Next)
     }
 
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+    fn read_position(&self, pos: Self::Position) -> Self::Variable {
+        let (col, row) = pos;
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);
         self.idx_var_pi += 1;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
     fn constant(&self, value: BigInt) -> Self::Variable {
@@ -84,28 +84,14 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     /// Return the corresponding expression regarding the selected public input
-    fn write_public_input(&mut self, col: Self::Position, _v: BigInt) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }))
+    fn write_public_input(&mut self, pos: Self::Position, _v: BigInt) -> Self::Variable {
+        self.read_position(pos)
     }
 
     /// Return the corresponding expression regarding the selected column
-    fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
-        let res = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }));
-        self.assert_equal(res.clone(), v);
-        res
-    }
-
-    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
-        let res = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Next,
-        }));
+    fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
+        let (col, row) = pos;
+        let res = Expr::Atom(ExprInner::Cell(Variable { col, row }));
         self.assert_equal(res.clone(), v);
         res
     }
@@ -139,22 +125,16 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _x: &Self::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        position: Self::Position,
+        pos: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     // FIXME
     fn range_check16(&mut self, _x: Self::Position) {}
 
-    fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
-        let v = Expr::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }));
+    fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
+        let v = self.read_position(pos);
         let x = x.square();
         self.add_constraint(x - v.clone());
         v
@@ -162,23 +142,18 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
 
     // This is witness-only. We simply return the corresponding expression to
     // use later in constraints
-    fn fetch_input(&mut self, res: Self::Position) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: res,
-            row: CurrOrNext::Curr,
-        }))
+    fn fetch_input(&mut self, pos: Self::Position) -> Self::Variable {
+        self.read_position(pos)
     }
 
     fn reset(&mut self) {
         self.idx_var = 0;
+        self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     unsafe fn read_sixteen_bits_chunks_folding_combiner(
@@ -186,10 +161,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
         _i: u32,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        let (col, row) = pos;
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     unsafe fn read_bit_of_folding_combiner(
@@ -197,17 +170,11 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
         _i: u64,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, _i: usize) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     // Witness-only
@@ -219,14 +186,12 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _round: usize,
         _i: usize,
     ) -> Self::Variable {
-        match pos {
+        let (col, row) = pos;
+        match col {
             Column::PublicInput(_) => (),
             _ => panic!("Only public inputs can be used as round constants"),
         };
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
@@ -240,10 +205,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
         _curr_round: usize,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     unsafe fn load_temporary_accumulators(
@@ -252,14 +214,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos_y: Self::Position,
         _side: Side,
     ) -> (Self::Variable, Self::Variable) {
-        let x = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_x,
-            row: CurrOrNext::Curr,
-        }));
-        let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_y,
-            row: CurrOrNext::Curr,
-        }));
+        let x = self.read_position(pos_x);
+        let y = self.read_position(pos_y);
         (x, y)
     }
 
@@ -278,10 +234,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     ///
     /// Zero is not allowed as an input.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
-        let v = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }));
+        let v = self.read_position(pos);
         let res = v.clone() * x.clone();
         self.assert_equal(res.clone(), self.one());
         v
@@ -295,10 +248,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         _x2: Self::Variable,
         _y2: Self::Variable,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }))
+        self.read_position(pos)
     }
 
     fn zero(&self) -> Self::Variable {
@@ -320,19 +270,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     ) -> (Self::Variable, Self::Variable) {
         let lambda = {
             let pos = self.allocate();
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: pos,
-                row: CurrOrNext::Curr,
-            }))
+            self.read_position(pos)
         };
-        let x3 = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_x,
-            row: CurrOrNext::Curr,
-        }));
-        let y3 = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos_y,
-            row: CurrOrNext::Curr,
-        }));
+        let x3 = self.read_position(pos_x);
+        let y3 = self.read_position(pos_y);
 
         // λ 2y1 = 3x1^2 + a
         let x1_square = x1.clone() * x1.clone();
@@ -363,10 +304,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         x2: Self::Variable,
         y2: Self::Variable,
     ) -> Self::Variable {
-        let lambda = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }));
+        let lambda = self.read_position(pos);
         let lhs = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
         let rhs = {
             let x1_square = x1.clone() * x1.clone();

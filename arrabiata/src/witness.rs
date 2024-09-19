@@ -1,7 +1,7 @@
 use ark_ec::{AffineCurve, SWModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
-use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
@@ -71,6 +71,8 @@ pub struct Env<
     /// position.
     pub idx_var: usize,
 
+    pub idx_var_next_row: usize,
+
     /// The index of the latest allocated public inputs in the circuit.
     /// It is used to allocate new public inputs without having to keep track of
     /// the position.
@@ -120,8 +122,7 @@ pub struct Env<
     pub sponge_e1: [BigInt; POSEIDON_STATE_SIZE],
     pub sponge_e2: [BigInt; POSEIDON_STATE_SIZE],
 
-    /// List of public inputs, used first to verify the consistency of the
-    /// previous iteration.
+    /// The current iteration of the IVC
     pub current_iteration: u64,
 
     /// A previous hash, encoded in 2 chunks of 128 bits.
@@ -191,7 +192,7 @@ where
     <E1::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
     <E2::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
 {
-    type Position = Column;
+    type Position = (Column, CurrOrNext);
 
     /// For efficiency, and for having a single interpreter, we do not use one
     /// of the fields. We use a generic BigInt to represent the values.
@@ -205,31 +206,36 @@ where
         assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
         let pos = Column::X(self.idx_var);
         self.idx_var += 1;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
-        let Column::X(idx) = pos else {
-            unimplemented!("Only works for private inputs")
-        };
-        self.next_state[idx].clone()
+    fn allocate_next_row(&mut self) -> Self::Position {
+        assert!(self.idx_var_next_row < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+        let pos = Column::X(self.idx_var_next_row);
+        self.idx_var_next_row += 1;
+        (pos, CurrOrNext::Next)
     }
 
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
-        let Column::X(idx) = pos else {
+    fn read_position(&self, pos: Self::Position) -> Self::Variable {
+        let (col, row) = pos;
+        let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        self.state[idx].clone()
+        match row {
+            CurrOrNext::Curr => self.state[idx].clone(),
+            CurrOrNext::Next => self.next_state[idx].clone(),
+        }
     }
 
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);
         self.idx_var_pi += 1;
-        pos
+        (pos, CurrOrNext::Curr)
     }
 
-    fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
+    fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
+        let (col, row) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
@@ -239,25 +245,19 @@ where
             Fq::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
-        self.state[idx] = v.clone();
+        match row {
+            CurrOrNext::Curr => {
+                self.state[idx] = v.clone();
+            }
+            CurrOrNext::Next => {
+                self.next_state[idx] = v.clone();
+            }
+        }
         v
     }
 
-    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private inputs")
-        };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
-        } else {
-            Fq::modulus_biguint().into()
-        };
-        let v = v.mod_floor(&modulus);
-        self.next_state[idx] = v.clone();
-        v
-    }
-
-    fn write_public_input(&mut self, col: Self::Position, v: BigInt) -> Self::Variable {
+    fn write_public_input(&mut self, pos: Self::Position, v: BigInt) -> Self::Variable {
+        let (col, _row) = pos;
         let Column::PublicInput(idx) = col else {
             unimplemented!("Only works for public input columns")
         };
@@ -308,7 +308,8 @@ where
     // FIXME: we should have additional columns for the lookups.
     // This will be implemented when the first version of the IVC is
     // implemented and we can make recursive arguments
-    fn range_check16(&mut self, col: Self::Position) {
+    fn range_check16(&mut self, pos: Self::Position) {
+        let (col, _) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private columns")
         };
@@ -316,9 +317,9 @@ where
         assert!(x < BigInt::from(2_usize).pow(16));
     }
 
-    fn square(&mut self, col: Self::Position, x: Self::Variable) -> Self::Variable {
+    fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = x.clone() * x.clone();
-        self.write_column(col, res.clone());
+        self.write_column(pos, res.clone());
         res
     }
 
@@ -328,11 +329,11 @@ where
         x: &Self::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        col: Self::Position,
+        pos: Self::Position,
     ) -> Self::Variable {
         let diff: u32 = highest_bit - lowest_bit;
         if diff == 0 {
-            self.write_column(col, BigInt::from(0_usize))
+            self.write_column(pos, BigInt::from(0_usize))
         } else {
             assert!(
                 diff > 0,
@@ -341,16 +342,16 @@ where
             let rht = (BigInt::from(1_usize) << diff) - BigInt::from(1_usize);
             let lft = x >> lowest_bit;
             let res: BigInt = lft & rht;
-            self.write_column(col, res)
+            self.write_column(pos, res)
         }
     }
 
     // FIXME: for now, we use the row number and compute the square.
     // This is only for testing purposes, and having something to build the
     // witness.
-    fn fetch_input(&mut self, col: Self::Position) -> Self::Variable {
+    fn fetch_input(&mut self, pos: Self::Position) -> Self::Variable {
         let x = BigInt::from(self.current_row as u64);
-        self.write_column(col, x.clone());
+        self.write_column(pos, x.clone());
         x
     }
 
@@ -365,6 +366,7 @@ where
         self.current_row += 1;
         // We reset the indices for the variables
         self.idx_var = 0;
+        self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
         // We keep track of the values we already set.
         self.state = self.next_state.clone();
@@ -373,12 +375,13 @@ where
     }
 
     /// FIXME: check if we need to pick the left or right sponge
-    fn coin_folding_combiner(&mut self, col: Self::Position) -> Self::Variable {
+    fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
         let r = if self.current_iteration % 2 == 0 {
             self.sponge_e1[0].clone()
         } else {
             self.sponge_e2[0].clone()
         };
+        let (col, _) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private columns")
         };
@@ -465,7 +468,6 @@ where
     }
 
     // The following values are expected to be absorbed in order:
-    // - vk
     // - z0
     // - z1
     // - acc[0]
@@ -479,14 +481,15 @@ where
         pos: Self::Position,
         curr_round: usize,
     ) -> Self::Variable {
-        let Column::PublicInput(_idx) = pos else {
+        let (col, _) = pos;
+        let Column::PublicInput(_idx) = col else {
             panic!("Only works for public inputs")
         };
         // If we are not the round 0, we must absorb nothing.
         if curr_round != 0 {
             self.write_public_input(pos, self.zero())
         } else {
-            // FIXME: we must absorb vk, z0, z1 and i!
+            // FIXME: we must absorb z0, z1 and i!
             // We multiply by 2 as we have two coordinates
             let idx = self.idx_values_to_absorb;
             let res = if idx < 2 * NUMBER_OF_COLUMNS {
@@ -592,20 +595,7 @@ where
                         }
                     }
                 } else {
-                    // If it is not first call, we simply load from the CPU cache (i.e.
-                    // the temporary accumulators)
-                    match side {
-                        Side::Left => {
-                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.0 .0.clone());
-                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.0 .1.clone());
-                            (pt_x, pt_y)
-                        }
-                        Side::Right => {
-                            let pt_x = self.write_column(pos_x, self.temporary_accumulators.1 .0.clone());
-                            let pt_y = self.write_column(pos_y, self.temporary_accumulators.1 .1.clone());
-                            (pt_x, pt_y)
-                        }
-                    }
+                    panic!("We should not load the temporary accumulators for the bits different than 0 when using the elliptic curve scaling. It has been deactivated since we use the 'next row'");
                 }
             }
             Instruction::EllipticCurveAddition(i_comm) => {
@@ -914,6 +904,7 @@ impl<
             // ------
             // ------
             idx_var: 0,
+            idx_var_next_row: 0,
             idx_var_pi: 0,
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
@@ -1027,7 +1018,6 @@ impl<
     /// - The previous accumulators (acc_1, ..., acc_17).
     /// - The previous output z_i.
     /// - The initial input z_0.
-    /// - The verification key vk.
     /// - The natural i describing the previous step.
     ///
     /// The control flow is as follow:
@@ -1035,7 +1025,7 @@ impl<
     /// corresponds to the public input:
     ///
     /// ```text
-    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i, vk)
+    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i)
     /// ```
     ///
     /// - We also have to check that the previous challenges (α, β, γ) have been
@@ -1069,7 +1059,7 @@ impl<
     /// - We compute the next hash we give to the next instance
     ///
     /// ```text
-    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1), vk)
+    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1))
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {

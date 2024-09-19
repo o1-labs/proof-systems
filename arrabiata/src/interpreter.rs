@@ -137,10 +137,10 @@
 //! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
 //! output, and the other values are intermediary values. And we have the following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (o1, o2, o3) = PoseidonPerm(c1, c2, c3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (o1, o2, o3) = PoseidonRound(c1, c2, c3)
 //! ```
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
@@ -154,11 +154,11 @@
 //! output, and the other values are intermediary values. And we have the
 //! following equalities:
 //! ```text
-//! (a1, a2, a3) = PoseidonPerm(x, y, z)
-//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
-//! (d1, d2, d3) = PoseidonPerm(c1, c2, c3)
-//! (o1, o2, o3) = PoseidonPerm(d1, d2, d3)
+//! (a1, a2, a3) = PoseidonRound(x, y, z)
+//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
+//! (d1, d2, d3) = PoseidonRound(c1, c2, c3)
+//! (o1, o2, o3) = PoseidonRound(d1, d2, d3)
 //! ```
 //!
 //! For both implementations, round constants are passed as public inputs. As a
@@ -173,41 +173,44 @@
 //! The Nova-based IVC schemes require to perform scalar multiplications on
 //! elliptic curve points. The scalar multiplication is computed using the
 //! double-and-add algorithm.
-//! First, the scalar is converted to its binary representation. We do use
-//! [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows using [NUMBER_OF_COLUMNS] columns
-//! to compute the 255 bits of the scalar.
+//!
+//! We will consider a basic implementation using the "next row". The
+//! accumulators will be saved on the "next row". The decomposition of the
+//! scalar will be incrementally on each row.
+//! The scalar used for the scalar multiplication will be fetched using the
+//! permutation argument (FIXME: to be implemented).
+//! More than one bit can be decomposed at the same time, and we could reduce
+//! the number of rows.
+//! We leave this for future work.
 //!
 //! #### Gadget layout
 //!
 //! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
 //! Therefore, we have 255 rows to compute the scalar multiplication.
-//! For a given step `i`, we have the following intermediary values:
+//! For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
 //! - `res_x`, `res_y`: the result of the scalar multiplication i.e. the accumulator.
 //! - `b`: the i-th bit of the scalar.
+//! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
+//! - `λ'` and `λ`: the coefficients
+//! - o'_x and o'_y equal to `res_plus_tmp_x` and `res_plus_tmp_y` if `b == 1`,
+//! otherwise equal to `o_x` and `o_y`.
 //!
 //! We have the following layout:
 //!
 //! ```text
-//! | C1 |   C2  |   C3   |   C4  |   C5  |   C6   |   C7   | C8 | C9|    C10   |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | -- | ----- | ------ | ----- | ----- | ------ | ------ | -- | -- | ------- | -------- | --- | --- | --- | --- | --- | --- |
-//! | b  | tmp_x |  tmp_y | res_x | res_y | tmp'_x | tmp'_y | λ' | λ  | res'_x  |  res'_y  | o_x | o_y |     |     |     |     |
+//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
+//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- | --- | --- |
+//! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ' |  b  |
+//! | o'_x |  o'_y  | double_tmp'_x | double_tmp'_y |  r_(i+1)  |
 //! ```
-//! where `o_x` and `o_y` are the output of the current step, `tmp'_x` and
-//! `tmp'_y` are the double of the temporary values used for the next step, `λ'`
-//! is the slope computed for tmp' and λ is the slope for computing `res'`.
-//!
-//! FIXME: we might need to change the layout for the permutation argument.
-//! We want `o_x` and `o_y` to be with `res_x` and `res_y`, and `tmp_x` and
-//! `tmp_y` to be with `tmp'_x` and `tmp'_y`.
-//! Also, the bit `b` must come from the decomposition.
 //!
 //! FIXME: an optimisation can be implemented using "a bucket" style algorithm,
 //! as described in [Efficient MSMs in Kimchi
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ### Bit composition instruction
+//! ### Bit composition instruction (deprecated)
 //!
 //! Decomposing a 255 bits value into bits can also be done using
 //! [NUMBER_OF_COLUMNS] columns and [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows
@@ -225,9 +228,9 @@
 //! ```
 //!
 //! where:
-//! - `x` is the input value
-//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - \sum_{j=0}^{14} 2^j b_{i * 15 + j}`
-//! - `b_i` is the i-th bit of the input value
+//! - `x` is the input value                            14
+//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - Σ  2^j b_{i * 15 + j}`
+//! - `b_i` is the i-th bit of the input value          j=0
 //!
 //! ## Handle the combinaison of constraints
 //!
@@ -444,23 +447,19 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
-    /// Allocate a new variable in the circuit
+    /// Allocate a new variable in the circuit for the current row
     fn allocate(&mut self) -> Self::Position;
 
-    /// Return the corresponding variable at the given position, for the next row.
-    fn access_next_row(&self, pos: Self::Position) -> Self::Variable;
+    /// Allocate a new variable in the circuit for the next row
+    fn allocate_next_row(&mut self) -> Self::Position;
 
-    /// Return the corresponding variable at the given position, for the current
-    /// row.
-    fn access_current_row(&self, pos: Self::Position) -> Self::Variable;
+    /// Return the corresponding variable at the given position
+    fn read_position(&self, pos: Self::Position) -> Self::Variable;
 
     fn allocate_public_input(&mut self) -> Self::Position;
 
     /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
-
-    /// Set the value of the variable at the given position for the next row
-    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
 
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
@@ -631,6 +630,9 @@ pub trait InterpreterEnv {
 
     /// Double the elliptic curve point given by the affine coordinates
     /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    /// The last argument, `row`, is used to decide if the result should be
+    /// written in the current or the next row of the variable position `pos_x`
+    /// and `pos_y`.
     fn double_ec_point(
         &mut self,
         pos_x: Self::Position,
@@ -782,7 +784,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let x0 = unsafe {
                 env.bitmask_be(
                     &r,
-                    255,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * i)
                         .try_into()
                         .unwrap(),
@@ -793,7 +795,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             let x1 = unsafe {
                 env.bitmask_be(
                     &r,
-                    255,
+                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
                     (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * (i + 1))
                         .try_into()
                         .unwrap(),
@@ -824,14 +826,43 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             );
         }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
-            env.activate_gadget(Gadget::PermutationArgument);
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
+            env.activate_gadget(Gadget::EllipticCurveScaling);
+            // When processing the first bit, we must load the scalar, and it
+            // comes from previous computation.
+            if processing_bit == 0 {
+                env.activate_gadget(Gadget::PermutationArgument);
+            }
+            // The two first columns are supposed to be used for the output.
+            // It will be used to write the result of the scalar multiplication
+            // in the next row.
+            let res_col_x = env.allocate();
+            let res_col_y = env.allocate();
+            let tmp_col_x = env.allocate();
+            let tmp_col_y = env.allocate();
+            let scalar_col = env.allocate();
+            let next_row_res_col_x = env.allocate_next_row();
+            let next_row_res_col_y = env.allocate_next_row();
+            let next_row_tmp_col_x = env.allocate_next_row();
+            let next_row_tmp_col_y = env.allocate_next_row();
+            let next_row_scalar_col = env.allocate_next_row();
+
+            // For the bit, we do have two cases. If we are processing the first
+            // bit, we must load the bit from a previous computed value. In the
+            // case of folding, it will be the output of the Poseidon hash.
+            // Therefore we do need the permutation argument.
+            // If it is not the first bit, we suppose the previous value has
+            // been written in the previous step in the current row.
+            let scalar = if processing_bit == 0 {
+                env.coin_folding_combiner(scalar_col)
+            } else {
+                env.read_position(scalar_col)
+            };
             // FIXME: we do add the blinder. We must substract it at the end.
             // Perform the following algorithm (double-and-add):
-            // res = O
+            // res = O <-- blinder
             // tmp = P
             // for i in 0..256:
             //   if r[i] == 1:
@@ -841,33 +872,28 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             // - `processing_bit` is the i-th bit of the scalar, i.e. i in the loop
             // described above.
             // - `i_comm` is used to fetch the commitment.
-            // The temporary values res and tmp will be stored in the temporary
-            // accumulators, and loaded with `load_temporary_accumulators`.
-            // At the end of the execution, the temporary accumulators will be
-            // saved with `save_temporary_accumulators`.
-            let bit = {
-                let pos = env.allocate();
-                unsafe { env.read_bit_of_folding_combiner(pos, processing_bit) }
+            //
+            // If it is the first bit, we must load the commitment using the
+            // permutation argument.
+            // FIXME: the initial value of the result should be a non-zero
+            // point. However, it must be a public value otherwise the prover
+            // might lie on the initial value.
+            // We do have 15 public inputs on each row, we could use some of them.
+            let (res_x, res_y) = if processing_bit == 0 {
+                // Load the commitment
+                unsafe { env.load_temporary_accumulators(res_col_x, res_col_y, Side::Right) }
+            } else {
+                // Otherwise, the previous step has written the previous result
+                // in its "next row", i.e. this row.
+                let res_x = { env.read_position(res_col_x) };
+                let res_y = { env.read_position(res_col_y) };
+                (res_x, res_y)
             };
-            let (tmp_x, tmp_y) = {
-                let pos_x = env.allocate();
-                let pos_y = env.allocate();
-                unsafe { env.load_temporary_accumulators(pos_x, pos_y, Side::Left) }
-            };
-            let (res_x, res_y) = {
-                let pos_x = env.allocate();
-                let pos_y = env.allocate();
-                unsafe { env.load_temporary_accumulators(pos_x, pos_y, Side::Right) }
-            };
-            // tmp = tmp + tmp
-            // Compute the double of the temporary value
-            let (tmp_prime_x, tmp_prime_y) = {
-                let pos_x = env.allocate();
-                let pos_y = env.allocate();
-                env.double_ec_point(pos_x, pos_y, tmp_x.clone(), tmp_y.clone())
-            };
-            unsafe {
-                env.save_temporary_accumulators(tmp_prime_x, tmp_prime_y, Side::Left);
+            // Same for the accumulated temporary value
+            let (tmp_x, tmp_y) = if processing_bit == 0 {
+                unsafe { env.load_temporary_accumulators(tmp_col_x, tmp_col_y, Side::Left) }
+            } else {
+                (env.read_position(tmp_col_x), env.read_position(tmp_col_y))
             };
             // Conditional addition:
             // if bit == 1, then res = tmp + res
@@ -904,20 +930,49 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 };
                 (x3, y3)
             };
-            let x3 = {
+            // tmp = tmp + tmp
+            // Compute the double of the temporary value
+            // The slope is saved in a column created in the call to
+            // `double_ec_point`
+            // We ignore the result as it will be used at the next step only.
+            let (_double_tmp_x, _double_tmp_y) = {
+                env.double_ec_point(
+                    next_row_tmp_col_x,
+                    next_row_tmp_col_y,
+                    tmp_x.clone(),
+                    tmp_y.clone(),
+                )
+            };
+            let bit = {
                 let pos = env.allocate();
+                unsafe { env.bitmask_be(&scalar, 1, 0, pos) }
+            };
+            // Checking it is a boolean -> degree 2
+            env.constrain_boolean(bit.clone());
+            let next_scalar = {
+                unsafe {
+                    env.bitmask_be(
+                        &scalar,
+                        MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
+                        1,
+                        next_row_scalar_col,
+                    )
+                }
+            };
+            // Degree 1
+            env.assert_equal(
+                scalar.clone(),
+                bit.clone() + env.constant(BigInt::from(2)) * next_scalar.clone(),
+            );
+            let _x3 = {
                 let res = bit.clone() * res_plus_tmp_x.clone()
                     + (env.one() - bit.clone()) * res_x.clone();
-                env.write_column(pos, res)
+                env.write_column(next_row_res_col_x, res)
             };
-            let y3 = {
-                let pos = env.allocate();
+            let _y3 = {
                 let res = bit.clone() * res_plus_tmp_y.clone()
                     + (env.one() - bit.clone()) * res_y.clone();
-                env.write_column(pos, res)
-            };
-            unsafe {
-                env.save_temporary_accumulators(x3, y3, Side::Right);
+                env.write_column(next_row_res_col_y, res)
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
@@ -1036,8 +1091,11 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         unsafe { env.fetch_value_to_absorb(pos, curr_round) }
                     })
                     .collect();
-                let first_col_positions: Vec<E::Position> =
+                let round_input_positions: Vec<E::Position> =
                     (0..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
+                let round_output_positions: Vec<E::Position> = (0..POSEIDON_STATE_SIZE)
+                    .map(|_i| env.allocate_next_row())
+                    .collect();
                 // If we are at the first round, we load the state from the environment.
                 // The permutation argument is used to load the state the
                 // current call to Poseidon might be a succession of Poseidon
@@ -1045,7 +1103,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 // state might be from a previous place in the execution trace.
                 let state: Vec<E::Variable> = if curr_round == 0 {
                     env.activate_gadget(Gadget::PermutationArgument);
-                    first_col_positions
+                    round_input_positions
                         .iter()
                         .enumerate()
                         .map(|(i, pos)| {
@@ -1063,9 +1121,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     // state has been loaded in the "next_row" state during the
                     // previous call, and we can simply load it. No permutation
                     // argument needed.
-                    first_col_positions
+                    round_input_positions
                         .iter()
-                        .map(|pos| env.access_current_row(*pos))
+                        .map(|pos| env.read_position(*pos))
                         .collect()
                 };
 
@@ -1093,7 +1151,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                                 });
                             // The last iteration is written on the next row.
                             if idx_round == 4 {
-                                env.write_column_next_row(first_col_positions[i], acc + rc.clone())
+                                env.write_column(round_output_positions[i], acc + rc.clone())
                             } else {
                                 // Otherwise, we simply allocate a new position
                                 // in the circuit.
