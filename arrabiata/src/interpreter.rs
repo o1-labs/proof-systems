@@ -294,7 +294,7 @@
 //! more than 2^32 rows.
 //!
 //! The permutation argument also generates constraints that will be
-//! homogeneized with the gadget constraints.
+//! homogenized with the gadget constraints.
 //!
 //! Note all rows might require to use the permutation argument. Therefore, a
 //! selector will be added to activate/deactivate the permutation argument.
@@ -328,9 +328,9 @@
 //!
 //! ## Folding
 //!
-//! Constraints must be homogeneized for the folding scheme.
-//! Homogeneising a constraint means that we add a new variable (called "U" in
-//! Nova for instance) that will be used to homogeneize the degree of the monomials
+//! Constraints must be homogenized for the folding scheme.
+//! Homogenising a constraint means that we add a new variable (called "U" in
+//! Nova for instance) that will be used to homogenize the degree of the monomials
 //! forming the constraint.
 //! Next to this, additional information, like the cross-terms and the error
 //! terms must be computed.
@@ -348,7 +348,7 @@
 //! The implementation works as follow:
 //! - Split the constraint in monomials
 //! - For the monomials of degree `d`, compute the contribution when
-//! homogeneizing to degree `d'`.
+//! homogenizing to degree `d'`.
 //! - Sum all the contributions.
 //!
 //! The library [mvpoly] can be used to compute the cross-terms and to
