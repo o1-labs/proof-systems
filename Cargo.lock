@@ -260,6 +260,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrabiata"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "clap 4.4.18",
+ "env_logger",
+ "groupmap",
+ "itertools 0.12.1",
+ "kimchi",
+ "log",
+ "mina-curves",
+ "mina-poseidon",
+ "mvpoly",
+ "num-bigint",
+ "num-integer",
+ "o1-utils",
+ "once_cell",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
 name = "askama"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

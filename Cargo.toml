@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "arrabiata",
     "book",
     "turshi",
     "curves",
@@ -88,6 +89,7 @@ kimchi-msm = { path = "./msm", version = "0.1.0" }
 mina-curves = { path = "./curves", version = "0.1.0" }
 mina-hasher = { path = "./hasher", version = "0.1.0" }
 mina-poseidon = { path = "./poseidon", version = "0.1.0" }
+mvpoly = { path = "./mvpoly", version = "0.1.0" }
 o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }

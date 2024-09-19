@@ -1,0 +1,35 @@
+[package]
+name = "arrabiata"
+version = "0.1.0"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+edition = "2021"
+license = "Apache-2.0"
+
+[[bin]]
+name = "arrabiata"
+path = "src/main.rs"
+
+[dependencies]
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+groupmap.workspace = true
+kimchi.workspace = true
+itertools.workspace = true
+log.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+mvpoly.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+o1-utils.workspace = true
+once_cell.workspace = true
+poly-commitment.workspace = true
+rand.workspace = true
+rayon.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
