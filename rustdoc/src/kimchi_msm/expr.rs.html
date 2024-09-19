@@ -73,7 +73,7 @@
 
 </span><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    expr::{BerkeleyChallengeTerm, ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
@@ -88,25 +88,25 @@
 /// polynomial `X3 - X1 - X2 = 0`.
 /// Using the expression framework, this constraint would be
 /// ```
-/// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
+/// use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
 /// use kimchi_msm::columns::Column;
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;
 /// let x1 = E::&lt;Fp&gt;::Atom(
-///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
+///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp, BerkeleyChallengeTerm&gt;&gt;, Column&gt;::Cell(Variable {
 ///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x2 = E::&lt;Fp&gt;::Atom(
-///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
+///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp, BerkeleyChallengeTerm&gt;&gt;, Column&gt;::Cell(Variable {
 ///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x3 = E::&lt;Fp&gt;::Atom(
-///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
+///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp, BerkeleyChallengeTerm&gt;&gt;, Column&gt;::Cell(Variable {
 ///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
@@ -115,7 +115,7 @@
 /// ```
 /// A list of such constraints is used to represent the entire circuit and will
 /// be used to build the quotient polynomial.
-</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
+</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;;
 
 <span class="kw">pub fn </span>curr_cell&lt;F: Field&gt;(col: Column) -&gt; E&lt;F&gt; {
     E::Atom(ExprInner::Cell(Variable {

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module contains the implementation of the IVC scheme in addition to running an arbitrary function that can use up to crate::NUMBER_OF_COLUMNS columns. At the moment, all constraints must be of maximum degree crate::MAX_DEGREE, but it might change in the future."><title>arrabiata::interpreter - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="arrabiata" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../arrabiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../arrabiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module interpreter</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">arrabiata</a>::<wbr><a class="mod" href="#">interpreter</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/arrabiata/interpreter.rs.html#1-962">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module contains the implementation of the IVC scheme in addition to
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module contains the implementation of the IVC scheme in addition to running an arbitrary function that can use up to crate::NUMBER_OF_COLUMNS columns. At the moment, all constraints must be of maximum degree crate::MAX_DEGREE, but it might change in the future."><title>arrabiata::interpreter - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="arrabiata" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../arrabiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../arrabiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module interpreter</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">arrabiata</a>::<wbr><a class="mod" href="#">interpreter</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/arrabiata/interpreter.rs.html#1-1133">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module contains the implementation of the IVC scheme in addition to
 running an arbitrary function that can use up to <a href="../constant.NUMBER_OF_COLUMNS.html" title="constant arrabiata::NUMBER_OF_COLUMNS">crate::NUMBER_OF_COLUMNS</a>
 columns.
 At the moment, all constraints must be of maximum degree
@@ -97,12 +97,48 @@ interpreter, but we leave this for future works.</p>
 <h5 id="gadget-layout-1"><a href="#gadget-layout-1">Gadget layout</a></h5>
 <p>We start with the assumption that 17 columns are available for the whole
 circuit, and we can support constraints up to degree 5.
-Therefore, we can compute 4 full rounds per row.</p>
-<p>FIXME: we can do one more by using “the next row”. Also, we can optimize
-this by using a partial/full round instance of Poseidon. We leave this when
-we move to Poseidon2.</p>
-<p>TBD/FIXME: define gadget layout + maybe change the current implementation
-for the permutation argument.</p>
+Therefore, we can compute 4 full rounds per row if we rely on the
+permutation argument, or 5 full rounds per row if we use the “next row”.</p>
+<p>We provide two implementations of the Poseidon hash function. The first one
+does not use the “next row” and is limited to 4 full rounds per row. The
+second one uses the “next row” and can compute 5 full rounds per row.
+The second implementation is more efficient as it allows to compute one
+additional round per row.
+For the second implementation, the permutation argument will only be
+activated on the first and last group of 5 rounds.</p>
+<p>The layout for the one not using the “next row” is as follow (4 full rounds):</p>
+<div class="example-wrap"><pre class="language-text"><code>| C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+| -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+| x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | o1  | o2  | o3  |
+</code></pre></div>
+<p>where (x, y, z) is the input of the current step, (o1, o2, o3) is the
+output, and the other values are intermediary values. And we have the following equalities:</p>
+<div class="example-wrap"><pre class="language-text"><code>(a1, a2, a3) = PoseidonPerm(x, y, z)
+(b1, b2, b3) = PoseidonPerm(a1, a2, a3)
+(c1, c2, c3) = PoseidonPerm(b1, b2, b3)
+(o1, o2, o3) = PoseidonPerm(c1, c2, c3)
+</code></pre></div>
+<p>The layout for the one using the “next row” is as follow (5 full rounds):</p>
+<div class="example-wrap"><pre class="language-text"><code>| C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+| -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+| x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | d1  | d2  | d3  |
+| o1 | o2 | o2
+</code></pre></div>
+<p>where (x, y, z) is the input of the current step, (o1, o2, o3) is the
+output, and the other values are intermediary values. And we have the
+following equalities:</p>
+<div class="example-wrap"><pre class="language-text"><code>(a1, a2, a3) = PoseidonPerm(x, y, z)
+(b1, b2, b3) = PoseidonPerm(a1, a2, a3)
+(c1, c2, c3) = PoseidonPerm(b1, b2, b3)
+(d1, d2, d3) = PoseidonPerm(c1, c2, c3)
+(o1, o2, o3) = PoseidonPerm(d1, d2, d3)
+</code></pre></div>
+<p>For both implementations, round constants are passed as public inputs. As a
+reminder, public inputs are simply additional columns known by the prover
+and verifier.
+Also, the elements to absorb are added to the initial state at the beginning
+of the call of the Poseidon full hash. The elements to absorb are supposed
+to be passed as public inputs.</p>
 <h4 id="elliptic-curve-scalar-multiplication"><a href="#elliptic-curve-scalar-multiplication">Elliptic curve scalar multiplication</a></h4>
 <p>The Nova-based IVC schemes require to perform scalar multiplications on
 elliptic curve points. The scalar multiplication is computed using the
@@ -207,7 +243,7 @@ index of the row. The permutation values will be encoded with a 32 bits
 value (u32) as we can suppose a negligible probability that a user will use
 more than 2^32 rows.</p>
 <p>The permutation argument also generates constraints that will be
-homogeneized with the gadget constraints.</p>
+homogenized with the gadget constraints.</p>
 <p>Note all rows might require to use the permutation argument. Therefore, a
 selector will be added to activate/deactivate the permutation argument.
 When a method calls <code>save</code> or <code>load</code>, the selector will be activated. By
@@ -232,9 +268,9 @@ input.</p>
 <p>TBD/FIXME: specify. Might require foreign field arithmetic.</p>
 <p>TBD/FIXME: do we need to aggregate them for the end?</p>
 <h3 id="folding"><a href="#folding">Folding</a></h3>
-<p>Constraints must be homogeneized for the folding scheme.
-Homogeneising a constraint means that we add a new variable (called “U” in
-Nova for instance) that will be used to homogeneize the degree of the monomials
+<p>Constraints must be homogenized for the folding scheme.
+Homogenising a constraint means that we add a new variable (called “U” in
+Nova for instance) that will be used to homogenize the degree of the monomials
 forming the constraint.
 Next to this, additional information, like the cross-terms and the error
 terms must be computed.</p>
@@ -250,7 +286,7 @@ monomial to it.</p>
 <ul>
 <li>Split the constraint in monomials</li>
 <li>For the monomials of degree <code>d</code>, compute the contribution when
-homogeneizing to degree <code>d'</code>.</li>
+homogenizing to degree <code>d'</code>.</li>
 <li>Sum all the contributions.</li>
 </ul>
 <p>The library [mvpoly] can be used to compute the cross-terms and to

@@ -101,11 +101,11 @@
 </span><span class="kw">pub const </span>NUMBER_OF_COLUMNS: usize = <span class="number">17</span>;
 
 <span class="doccomment">/// The maximum number of public inputs the circuit can use per row
-/// We do have 12 for now as we want to compute 4 rounds of poseidon per row.
-/// In addition to the 12 public inputs required for the rounds, we add 2 more
-/// for the values to absorb.
-</span><span class="comment">// FIXME: we can do 5 rounds per row by using &quot;the next row&quot;
-</span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">12 </span>+ <span class="number">2</span>;
+/// We do have 15 for now as we want to compute 5 rounds of poseidon per row
+/// using the gadget [crate::columns::Gadget::PoseidonNextRow]. In addition to
+/// the 12 public inputs required for the rounds, we add 2 more for the values
+/// to absorb.
+</span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">15 </span>+ <span class="number">2</span>;
 
 <span class="doccomment">/// The low-exponentiation value used by the Poseidon hash function for the
 /// substitution box.

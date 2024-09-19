@@ -56,57 +56,30 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// Domain size shared by the Keccak evaluations, MIPS evaluation and main
-/// program.
-</span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
-
-<span class="doccomment">/// Modules mimicking the defined structures used by Cannon CLI.
+</pre></div><pre class="rust"><code><span class="doccomment">/// Modules mimicking the defined structures used by Cannon CLI.
 </span><span class="kw">pub mod </span>cannon;
 
 <span class="doccomment">/// A CLI mimicking the Cannon CLI.
 </span><span class="kw">pub mod </span>cannon_cli;
 
-<span class="doccomment">/// Integration with folding. Contains common trait implementations to be used
-/// by each circuit.
-</span><span class="kw">pub mod </span>folding;
+<span class="kw">pub mod </span>interpreters;
 
-<span class="doccomment">/// Implementation of Keccak used by the zkVM.
-</span><span class="kw">pub mod </span>keccak;
+<span class="doccomment">/// Legacy implementation of the recursive proof composition.
+/// It does use the folding and ivc libraries defined in this monorepo, and aims
+/// to be compatible with Ethereum natively, using the curve bn254.
+</span><span class="kw">pub mod </span>legacy;
 
 <span class="doccomment">/// Instantiation of the lookups for the VM project.
 </span><span class="kw">pub mod </span>lookups;
 
-<span class="doccomment">/// MIPS interpreter.
-</span><span class="kw">pub mod </span>mips;
-
 <span class="doccomment">/// Preimage oracle interface used by the zkVM.
 </span><span class="kw">pub mod </span>preimage_oracle;
-
-<span class="doccomment">/// Proof system of the zkVM.
-</span><span class="kw">pub mod </span>proof;
 
 <span class="doccomment">/// The RAM lookup argument.
 </span><span class="kw">pub mod </span>ramlookup;
 
-<span class="doccomment">/// Abstract execution traces, possible long, that can be folded.
-/// A trace is a sequence of data points organized in a 2D array, constrained.
-</span><span class="kw">pub mod </span>trace;
-
 <span class="kw">use </span>ark_ec::bn::Bn;
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
 <span class="kw">use </span>kimchi_msm::columns::Column;
 
 <span class="kw">use </span>mina_poseidon::{
@@ -128,9 +101,10 @@
 /// `P(X, Y, Z) = q_x X + q_y Y + q_m X Y + q_o Z + q_c`
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;;
 
 <span class="comment">// Instantiate it with the desired group and field
+// FIXME: move this into legacy::main.rs
 
 </span><span class="doccomment">/// Scalar field of BN254
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;

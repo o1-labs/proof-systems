@@ -119,7 +119,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
 <span class="kw">use </span>rand::RngCore;
 
 <span class="kw">pub mod </span>monomials;
@@ -188,7 +188,7 @@
     /// &quot;the expression framework&quot;.
     /// In the near future, the &quot;expression framework&quot; should be moved also into
     /// this library.
-    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(expr: Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;) -&gt; <span class="self">Self</span>;
+    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(expr: Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Returns true if the polynomial is homogeneous (of degree `D`).
     /// As a reminder, a polynomial is homogeneous if all its monomials have the

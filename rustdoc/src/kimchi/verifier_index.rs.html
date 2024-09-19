@@ -522,6 +522,7 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -529,7 +530,7 @@
     alphas::Alphas,
     circuits::{
         berkeley_columns::Column,
-        expr::{Linearization, PolishToken},
+        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
@@ -669,7 +670,8 @@
     </span><span class="kw">pub </span>lookup_index: <span class="prelude-ty">Option</span>&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
     <span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column&gt;&gt;, Column&gt;,
+    </span><span class="kw">pub </span>linearization:
+        Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column, BerkeleyChallengeTerm&gt;&gt;, Column&gt;,
     <span class="doccomment">/// The mapping between powers of alpha and constraints
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>powers_of_alpha: Alphas&lt;G::ScalarField&gt;,

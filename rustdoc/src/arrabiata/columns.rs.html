@@ -80,7 +80,23 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
@@ -97,14 +113,27 @@
     <span class="comment">// Permutation argument
     </span>PermutationArgument,
     <span class="comment">// Two old gadgets
+    </span><span class="doccomment">/// Decompose a 255 bits scalar into 16 chunks of 16 bits.
     </span>SixteenBitsDecomposition,
-    BitDecompositionFrom16Bits,
-    <span class="comment">// Use this one instead to decompose scalar
+    <span class="doccomment">/// Decompose a 16bits chunk into individual bits.
+    </span>BitDecompositionFrom16Bits,
+    <span class="doccomment">/// This gadget decomposes a 255 bits value into bits using 17 lines and 17
+    /// columns.
     </span>BitDecomposition,
     <span class="comment">// Elliptic curve related gadgets
     </span>EllipticCurveAddition,
     EllipticCurveScaling,
-    Poseidon,
+    <span class="doccomment">/// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. The implementation does not use the &quot;next row&quot;
+    /// and is unsafe at the moment as no permutation argument is implemented.
+    </span>Poseidon,
+    <span class="doccomment">/// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. Compared to the previous one (that might be
+    /// deprecated in the future), this implementation does use the &quot;next row&quot;
+    /// to allow the computation of one additional round per row. In the current
+    /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
+    /// rounds per row.
+    </span>PoseidonNextRow,
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq)]
@@ -114,7 +143,8 @@
     X(usize),
 }
 
-<span class="kw">pub type </span>E&lt;Fp&gt; = Expr&lt;ConstantExpr&lt;Fp&gt;, Column&gt;;
+<span class="comment">// FIXME: We should use something different than BerkeleyChallengeTerm here
+</span><span class="kw">pub type </span>E&lt;Fp&gt; = Expr&lt;ConstantExpr&lt;Fp, BerkeleyChallengeTerm&gt;, Column&gt;;
 
 <span class="comment">// Code to allow for pretty printing of the expressions
 </span><span class="kw">impl </span>FormattedOutput <span class="kw">for </span>Column {
@@ -129,6 +159,7 @@
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
                 Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
+                Gadget::PoseidonNextRow =&gt; <span class="string">&quot;q_pos_next_row&quot;</span>.to_string(),
             },
             Column::PublicInput(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pi_{{{i}}}&quot;</span>).to_string(),
             Column::X(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;x_{{{i}}}&quot;</span>).to_string(),
@@ -146,6 +177,7 @@
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
                 Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
+                Gadget::PoseidonNextRow =&gt; <span class="string">&quot;q_pos_next_row&quot;</span>.to_string(),
             },
             Column::PublicInput(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pi[{i}]&quot;</span>),
             Column::X(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;x[{i}]&quot;</span>),

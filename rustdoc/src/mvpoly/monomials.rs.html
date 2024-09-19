@@ -620,8 +620,10 @@
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
 <a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
 <span class="kw">use </span>num_integer::binomial;
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>std::{
@@ -1051,7 +1053,9 @@
 
     <span class="comment">// FIXME: use a better implementation, this is a temporary (working but not
     // efficient) solution
-    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(expr: Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(
+        expr: Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;,
+    ) -&gt; <span class="self">Self </span>{
         prime::Dense::from_expr(expr).into()
     }
 

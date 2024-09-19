@@ -1770,6 +1770,8 @@
 <a href="#1770" id="1770">1770</a>
 <a href="#1771" id="1771">1771</a>
 <a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1777,7 +1779,7 @@
         argument::{Argument, ArgumentType},
         berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{<span class="self">self</span>, l0_1, Challenges, Constants},
+        expr::{<span class="self">self</span>, l0_1, BerkeleyChallenges, Constants},
         gate::GateType,
         lookup::{<span class="self">self</span>, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -2480,11 +2482,13 @@
                     mds,
                     zk_rows: index.cs.zk_rows,
                 },
-                challenges: Challenges {
+                challenges: BerkeleyChallenges {
                     alpha,
                     beta,
                     gamma,
-                    joint_combiner: lookup_context.joint_combiner,
+                    joint_combiner: lookup_context
+                        .joint_combiner
+                        .unwrap_or(G::ScalarField::zero()),
                 },
                 witness: <span class="kw-2">&amp;</span>lagrange.d8.this.w,
                 coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,

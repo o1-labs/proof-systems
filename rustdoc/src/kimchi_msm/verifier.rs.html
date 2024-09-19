@@ -347,7 +347,7 @@
 <span class="kw">use </span>kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{Challenges, Constants, Expr, PolishToken},
+        expr::{BerkeleyChallenges, Constants, Expr, PolishToken},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -605,11 +605,11 @@
         chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
     };
 
-    <span class="kw">let </span>challenges = Challenges {
+    <span class="kw">let </span>challenges = BerkeleyChallenges::&lt;G::ScalarField&gt; {
         alpha,
         beta,
         gamma: G::ScalarField::zero(),
-        joint_combiner,
+        joint_combiner: joint_combiner.unwrap_or(G::ScalarField::zero()),
     };
 
     <span class="kw">let </span>constants = Constants {

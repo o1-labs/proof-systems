@@ -357,6 +357,29 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{columns::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     columns::{Gadget, E},
@@ -414,6 +437,20 @@
         pos
     }
 
+    <span class="kw">fn </span>access_next_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Next,
+        }))
+    }
+
+    <span class="kw">fn </span>access_current_row(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     <span class="kw">fn </span>allocate_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
         <span class="macro">assert!</span>(<span class="self">self</span>.idx_var_pi &lt; NUMBER_OF_PUBLIC_INPUTS, <span class="string">&quot;Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs&quot;</span>);
         <span class="kw">let </span>pos = Column::PublicInput(<span class="self">self</span>.idx_var_pi);
@@ -441,6 +478,15 @@
         <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable {
             col,
             row: CurrOrNext::Curr,
+        }));
+        <span class="self">self</span>.assert_equal(res.clone(), v);
+        res
+    }
+
+    <span class="kw">fn </span>write_column_next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable {
+            col,
+            row: CurrOrNext::Next,
         }));
         <span class="self">self</span>.assert_equal(res.clone(), v);
         res

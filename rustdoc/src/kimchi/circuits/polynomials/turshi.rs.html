@@ -1035,6 +1035,18 @@
 <a href="#1035" id="1035">1035</a>
 <a href="#1036" id="1036">1036</a>
 <a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1121,7 +1133,7 @@
         argument::{Argument, ArgumentEnv, ArgumentType},
         berkeley_columns::{Column, E},
         constraints::ConstraintSystem,
-        expr::{<span class="self">self</span>, constraints::ExprOps, Cache},
+        expr::{<span class="self">self</span>, constraints::ExprOps, BerkeleyChallengeTerm, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
@@ -1262,11 +1274,11 @@
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
             zk_rows: <span class="number">3</span>,
         };
-        <span class="kw">let </span>challenges = expr::Challenges {
+        <span class="kw">let </span>challenges = expr::BerkeleyChallenges {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
-            joint_combiner: <span class="prelude-val">None</span>,
+            joint_combiner: F::zero(),
         };
 
         <span class="kw">let </span>pt = F::rand(rng);
@@ -1770,7 +1782,7 @@
 // CONSTRAINTS-RELATED
 
 </span><span class="doccomment">/// Returns the expression corresponding to the literal &quot;2&quot;
-</span><span class="kw">fn </span>two&lt;F: Field, T: ExprOps&lt;F&gt;&gt;() -&gt; T {
+</span><span class="kw">fn </span>two&lt;F: Field, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;() -&gt; T {
     T::literal(<span class="number">2u64</span>.into()) <span class="comment">// 2
 </span>}
 
@@ -1805,7 +1817,10 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span>pc_ini = env.witness_curr(<span class="number">0</span>); <span class="comment">// copy from public input
         </span><span class="kw">let </span>ap_ini = env.witness_curr(<span class="number">1</span>); <span class="comment">// copy from public input
         </span><span class="kw">let </span>pc_fin = env.witness_curr(<span class="number">2</span>); <span class="comment">// copy from public input
@@ -1842,7 +1857,10 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load all variables of the witness corresponding to Cairoinstruction gates
         </span><span class="kw">let </span>pc = env.witness_curr(<span class="number">0</span>);
         <span class="kw">let </span>ap = env.witness_curr(<span class="number">1</span>);
@@ -1988,7 +2006,10 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="comment">// Load current row
         </span><span class="kw">let </span>f_pc_abs = env.witness_curr(<span class="number">7</span>);
         <span class="kw">let </span>f_pc_rel = env.witness_curr(<span class="number">8</span>);
@@ -2055,7 +2076,10 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load computed updated registers
         </span><span class="kw">let </span>pcup = env.witness_curr(<span class="number">7</span>);
         <span class="kw">let </span>apup = env.witness_curr(<span class="number">8</span>);

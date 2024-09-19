@@ -236,6 +236,7 @@
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 
 </span><span class="kw">use crate</span>::{
@@ -243,7 +244,7 @@
     circuits::{
         berkeley_columns::Column,
         constraints::{ColumnEvaluations, ConstraintSystem},
-        expr::{Linearization, PolishToken},
+        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -267,7 +268,8 @@
 
     <span class="doccomment">/// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column&gt;&gt;, Column&gt;,
+    </span><span class="kw">pub </span>linearization:
+        Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column, BerkeleyChallengeTerm&gt;&gt;, Column&gt;,
 
     <span class="doccomment">/// The mapping between powers of alpha and constraints
     </span><span class="attr">#[serde(skip)]

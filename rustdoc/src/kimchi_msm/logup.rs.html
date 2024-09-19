@@ -1097,7 +1097,7 @@
 </span><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
 
-<span class="kw">use </span>kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
+<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
 
 <span class="kw">use crate</span>::{
     columns::Column,
@@ -1307,11 +1307,11 @@
     lookups: Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;,
 ) -&gt; E&lt;F&gt; {
     <span class="kw">let </span>joint_combiner = {
-        <span class="kw">let </span>joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
+        <span class="kw">let </span>joint_combiner = ConstantExpr::from(BerkeleyChallengeTerm::JointCombiner);
         E::Atom(ExprInner::Constant(joint_combiner))
     };
     <span class="kw">let </span>beta = {
-        <span class="kw">let </span>beta = ConstantExpr::from(ChallengeTerm::Beta);
+        <span class="kw">let </span>beta = ConstantExpr::from(BerkeleyChallengeTerm::Beta);
         E::Atom(ExprInner::Constant(beta))
     };
 

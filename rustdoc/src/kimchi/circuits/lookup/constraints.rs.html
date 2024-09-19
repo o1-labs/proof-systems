@@ -790,10 +790,14 @@
 <a href="#790" id="790">790</a>
 <a href="#791" id="791">791</a>
 <a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns::Column,
-        expr::{prologue::<span class="kw-2">*</span>, ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
+        expr::{
+            prologue::<span class="kw-2">*</span>, BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset,
+        },
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -1186,8 +1190,8 @@
 
     <span class="comment">// gamma * (beta + 1)
     </span><span class="kw">let </span>gammabeta1 = E::&lt;F&gt;::from(
-        ConstantExpr::from(ChallengeTerm::Gamma)
-            * (ConstantExpr::from(ChallengeTerm::Beta) + ConstantExpr::one()),
+        ConstantExpr::from(BerkeleyChallengeTerm::Gamma)
+            * (ConstantExpr::from(BerkeleyChallengeTerm::Beta) + ConstantExpr::one()),
     );
 
     <span class="comment">// the numerator part in the multiset check of plookup
@@ -1215,7 +1219,7 @@
             E::one() - lookup_indicator
         };
 
-        <span class="kw">let </span>joint_combiner = E::from(ChallengeTerm::JointCombiner);
+        <span class="kw">let </span>joint_combiner = E::from(BerkeleyChallengeTerm::JointCombiner);
         <span class="kw">let </span>table_id_combiner =
             <span class="comment">// Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
             // needed.
@@ -1247,7 +1251,7 @@
 
         <span class="comment">// (1 + beta)^max_per_row
         </span><span class="kw">let </span>beta1_per_row: E&lt;F&gt; = {
-            <span class="kw">let </span>beta1 = E::from(ConstantExpr::one() + ChallengeTerm::Beta.into());
+            <span class="kw">let </span>beta1 = E::from(ConstantExpr::one() + BerkeleyChallengeTerm::Beta.into());
             <span class="comment">// Compute beta1.pow(lookup_info.max_per_row)
             </span><span class="kw">let </span><span class="kw-2">mut </span>res = beta1.clone();
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..lookup_info.max_per_row {
@@ -1269,7 +1273,7 @@
         // as we need to multiply the denominator with this eventually
         </span><span class="kw">let </span>dummy_padding = |spec_len| {
             <span class="kw">let </span><span class="kw-2">mut </span>res = E::one();
-            <span class="kw">let </span>dummy: E&lt;<span class="kw">_</span>&gt; = E::from(ChallengeTerm::Gamma) + dummy_lookup.clone();
+            <span class="kw">let </span>dummy: E&lt;<span class="kw">_</span>&gt; = E::from(BerkeleyChallengeTerm::Gamma) + dummy_lookup.clone();
             <span class="kw">for </span>i <span class="kw">in </span>spec_len..lookup_info.max_per_row {
                 <span class="kw">let </span><span class="kw-2">mut </span>dummy_used = dummy.clone();
                 <span class="kw">if </span>generate_feature_flags {
@@ -1302,7 +1306,7 @@
             </span><span class="kw">let </span>eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
-                    E::from(ChallengeTerm::Gamma)
+                    E::from(BerkeleyChallengeTerm::Gamma)
                         + j.evaluate(<span class="kw-2">&amp;</span>joint_combiner, <span class="kw-2">&amp;</span>table_id_combiner, <span class="kw-2">&amp;</span>eval)
                 })
                 .fold(padding, |acc: E&lt;F&gt;, x: E&lt;F&gt;| acc * x)

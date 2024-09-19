@@ -583,6 +583,7 @@
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -603,7 +604,7 @@
 <span class="kw">use </span>kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{l0_1, Challenges, Constants, Expr},
+        expr::{l0_1, BerkeleyChallenges, Constants, Expr},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -814,13 +815,14 @@
 
     <span class="kw">let </span>zk_rows = <span class="number">0</span>;
     <span class="kw">let </span>column_env: ColumnEnvironment&lt;<span class="lifetime">&#39;_</span>, N_WIT, N_REL, N_DSEL, N_FSEL, <span class="kw">_</span>, <span class="kw">_</span>&gt; = {
-        <span class="kw">let </span>challenges = Challenges {
+        <span class="kw">let </span>challenges = BerkeleyChallenges {
             alpha,
             <span class="comment">// NB: as there is no permutation argument, we do use the beta
             // field instead of a new one for the evaluation point.
             </span>beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
-            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
+            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner)
+                .unwrap_or(G::ScalarField::zero()),
         };
         ColumnEnvironment {
             constants: Constants {

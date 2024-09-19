@@ -1147,6 +1147,13 @@
 <a href="#1147" id="1147">1147</a>
 <a href="#1148" id="1148">1148</a>
 <a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1430,7 +1437,9 @@
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
+    expr::{
+        BerkeleyChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable,
+    },
     gate::CurrOrNext,
 };
 <span class="kw">use </span>num_traits::Zero;
@@ -2150,12 +2159,13 @@
 
 <span class="comment">// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
 
-</span><span class="kw">impl</span>&lt;F, Config: FoldingConfig&gt; From&lt;ConstantExprInner&lt;F&gt;&gt; <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
+</span><span class="kw">impl</span>&lt;F, Config: FoldingConfig&gt; From&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;
+    <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    Config::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;BerkeleyChallengeTerm&gt;,
 {
-    <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             ConstantExprInner::Challenge(chal) =&gt; {
                 FoldingCompatibleExprInner::Challenge(chal.into())
@@ -2170,14 +2180,15 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt; From&lt;ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;&gt;
+<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt;
+    From&lt;ExprInner&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;, Col&gt;&gt;
     <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    Config::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;BerkeleyChallengeTerm&gt;,
 {
     <span class="comment">// TODO: check if this needs some special treatment for Extensions
-    </span><span class="kw">fn </span>from(expr: ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">fn </span>from(expr: ExprInner&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;, Col&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             ExprInner::Constant(cexpr) =&gt; cexpr.into(),
             ExprInner::Cell(col) =&gt; FoldingCompatibleExprInner::Cell(col),
@@ -2192,12 +2203,13 @@
 }
 
 <span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt;
-    From&lt;Operations&lt;ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;&gt;&gt; <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
+    From&lt;Operations&lt;ExprInner&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;, Col&gt;&gt;&gt;
+    <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    Config::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;BerkeleyChallengeTerm&gt;,
 {
-    <span class="kw">fn </span>from(expr: Operations&lt;ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(expr: Operations&lt;ExprInner&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;, Col&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             Operations::Atom(inner) =&gt; FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) =&gt; {
@@ -2217,13 +2229,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt; From&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;&gt;
-    <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
+<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt;
+    From&lt;Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;&gt; <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    Config::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;BerkeleyChallengeTerm&gt;,
 {
-    <span class="kw">fn </span>from(expr: Operations&lt;ConstantExprInner&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(expr: Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             Operations::Add(x, y) =&gt; {
                 FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
@@ -2243,13 +2255,15 @@
 }
 
 <span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt;
-    From&lt;Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;, Col&gt;&gt;&gt;
+    From&lt;Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;, Col&gt;&gt;&gt;
     <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    Config::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;BerkeleyChallengeTerm&gt;,
 {
-    <span class="kw">fn </span>from(expr: Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;, Col&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(
+        expr: Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;, Col&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             Operations::Atom(inner) =&gt; <span class="kw">match </span>inner {
                 ExprInner::Constant(op) =&gt; <span class="kw">match </span>op {

@@ -365,6 +365,9 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
 </pre></div><pre class="rust"><code><span class="comment">//~ Rotation of a 64-bit word by a known offset
 
 </span><span class="kw">use </span><span class="kw">super</span>::range_check::witness::range_check_0_row;
@@ -373,7 +376,7 @@
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{
             constraints::{crumb, ExprOps},
-            Cache,
+            BerkeleyChallengeTerm, Cache,
         },
         gate::{CircuitGate, Connect, GateType},
         lookup::{
@@ -580,7 +583,10 @@
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="comment">// Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = (<span class="number">7</span>..COLUMNS)

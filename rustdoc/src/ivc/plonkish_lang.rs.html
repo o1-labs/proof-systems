@@ -273,7 +273,7 @@
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::expr::ChallengeTerm, curve::KimchiCurve};
+<span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::expr::BerkeleyChallengeTerm, curve::KimchiCurve};
 <span class="kw">use </span>kimchi_msm::{columns::Column, witness::Witness <span class="kw">as </span>GenericWitness};
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>poly_commitment::{
@@ -508,13 +508,13 @@
     JointCombiner,
 }
 
-<span class="kw">impl </span>From&lt;ChallengeTerm&gt; <span class="kw">for </span>PlonkishChallenge {
-    <span class="kw">fn </span>from(chal: ChallengeTerm) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>From&lt;BerkeleyChallengeTerm&gt; <span class="kw">for </span>PlonkishChallenge {
+    <span class="kw">fn </span>from(chal: BerkeleyChallengeTerm) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>chal {
-            ChallengeTerm::Beta =&gt; PlonkishChallenge::Beta,
-            ChallengeTerm::Gamma =&gt; PlonkishChallenge::Gamma,
-            ChallengeTerm::JointCombiner =&gt; PlonkishChallenge::JointCombiner,
-            ChallengeTerm::Alpha =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Alpha not allowed in folding expressions&quot;</span>),
+            BerkeleyChallengeTerm::Beta =&gt; PlonkishChallenge::Beta,
+            BerkeleyChallengeTerm::Gamma =&gt; PlonkishChallenge::Gamma,
+            BerkeleyChallengeTerm::JointCombiner =&gt; PlonkishChallenge::JointCombiner,
+            BerkeleyChallengeTerm::Alpha =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Alpha not allowed in folding expressions&quot;</span>),
         }
     }
 }

@@ -208,13 +208,16 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field addition gate.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
         constraints::{compact_limb, ExprOps},
-        Cache,
+        BerkeleyChallengeTerm, Cache,
     },
     gate::GateType,
     polynomials::foreign_field_common::LIMB_COUNT,
@@ -352,7 +355,10 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">4</span>;
 
-    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span>foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         <span class="comment">// stored as coefficient for better correspondance with the relation being proved
@@ -414,7 +420,7 @@
 }
 
 <span class="comment">// Auxiliary function to obtain the constraints to check a carry flag
-</span><span class="kw">fn </span>is_carry&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(flag: <span class="kw-2">&amp;</span>T) -&gt; T {
+</span><span class="kw">fn </span>is_carry&lt;F: PrimeField, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(flag: <span class="kw-2">&amp;</span>T) -&gt; T {
     <span class="comment">// Carry bits are -1, 0, or 1.
     </span>flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }

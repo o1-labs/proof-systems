@@ -278,7 +278,7 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
-<span class="kw">use crate</span>::{keccak::pad_blocks, ramlookup::RAMLookup};
+<span class="kw">use crate</span>::{interpreters::keccak::pad_blocks, ramlookup::RAMLookup};
 <span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{

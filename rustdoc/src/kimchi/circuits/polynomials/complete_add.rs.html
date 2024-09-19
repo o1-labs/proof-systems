@@ -297,6 +297,9 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.
 
 </span><span class="comment">//~ The layout is
@@ -315,7 +318,7 @@
 //~
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
+    expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
@@ -329,7 +332,7 @@
 /// Additionally, if r == 0, then `z_inv` = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
-</span><span class="kw">fn </span>zero_check&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(z: T, z_inv: T, r: T) -&gt; Vec&lt;T&gt; {
+</span><span class="kw">fn </span>zero_check&lt;F: Field, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(z: T, z_inv: T, r: T) -&gt; Vec&lt;T&gt; {
     <span class="macro">vec!</span>[z_inv * z.clone() - (T::one() - r.clone()), r * z]
 }
 
@@ -397,7 +400,10 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">7</span>;
 
-    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         </span><span class="kw">let </span>x1 = env.witness_curr(<span class="number">0</span>);
         <span class="kw">let </span>y1 = env.witness_curr(<span class="number">1</span>);

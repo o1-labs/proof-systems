@@ -365,6 +365,9 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication
 
 </span><span class="comment">//~ This gadget is used to constrain that
@@ -460,7 +463,7 @@
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
+        expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
         gate::GateType,
     },
 };
@@ -472,7 +475,7 @@
 /// For more details see the &quot;Intermediate products&quot; Section of
 /// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 ///
-</span><span class="kw">pub fn </span>compute_intermediate_products&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>compute_intermediate_products&lt;F: PrimeField, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
     left_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     right_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     quotient: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
@@ -502,7 +505,7 @@
 }
 
 <span class="comment">// Compute native modulus values
-</span><span class="kw">pub fn </span>compute_native_modulus_values&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>compute_native_modulus_values&lt;F: PrimeField, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
     left_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     right_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     quotient: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
@@ -532,7 +535,7 @@
 }
 
 <span class="doccomment">/// Composes the 91-bit carry1 value from its parts
-</span><span class="kw">pub fn </span>compose_carry&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(carry: <span class="kw-2">&amp;</span>[T; <span class="number">11</span>]) -&gt; T {
+</span><span class="kw">pub fn </span>compose_carry&lt;F: PrimeField, T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(carry: <span class="kw-2">&amp;</span>[T; <span class="number">11</span>]) -&gt; T {
     <span class="macro">auto_clone_array!</span>(carry);
     carry(<span class="number">0</span>)
         + T::two_pow(<span class="number">12</span>) * carry(<span class="number">1</span>)
@@ -561,7 +564,10 @@
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
     <span class="comment">// DEGREE is 4
 
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
 
         <span class="comment">//

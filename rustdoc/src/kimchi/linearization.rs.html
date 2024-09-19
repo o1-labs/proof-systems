@@ -361,14 +361,19 @@
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use crate</span>::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
-        expr, lookup,
+        expr::{<span class="self">self</span>, BerkeleyChallengeTerm},
         lookup::{
+            <span class="self">self</span>,
             constraints::LookupConfiguration,
             lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
         },
@@ -405,7 +410,10 @@
 </span><span class="kw">pub fn </span>constraints_expr&lt;F: PrimeField + SquareRootField&gt;(
     feature_flags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FeatureFlags&gt;,
     generic: bool,
-) -&gt; (Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Alphas&lt;F&gt;) {
+) -&gt; (
+    Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;,
+    Alphas&lt;F&gt;,
+) {
     <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints
     </span><span class="kw">let </span><span class="kw-2">mut </span>powers_of_alpha = Alphas::&lt;F&gt;::default();
 
@@ -708,7 +716,7 @@
     feature_flags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FeatureFlags&gt;,
     generic: bool,
 ) -&gt; (
-    Linearization&lt;Vec&lt;PolishToken&lt;F, Column&gt;&gt;, Column&gt;,
+    Linearization&lt;Vec&lt;PolishToken&lt;F, Column, BerkeleyChallengeTerm&gt;&gt;, Column&gt;,
     Alphas&lt;F&gt;,
 ) {
     <span class="kw">let </span>evaluated_cols = linearization_columns::&lt;F&gt;(feature_flags);

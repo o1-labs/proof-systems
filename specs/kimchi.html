@@ -1722,7 +1722,8 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column&gt;&gt;, Column&gt;,
+    pub linearization:
+        Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column, BerkeleyChallengeTerm&gt;&gt;, Column&gt;,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
@@ -1863,7 +1864,8 @@ pub struct VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt;
     pub lookup_index: Option&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column&gt;&gt;, Column&gt;,
+    pub linearization:
+        Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField, Column, BerkeleyChallengeTerm&gt;&gt;, Column&gt;,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas&lt;G::ScalarField&gt;,

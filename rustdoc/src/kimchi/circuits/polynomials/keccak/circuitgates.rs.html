@@ -315,6 +315,12 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak gadget
 </span><span class="kw">use crate</span>::{
     auto_clone, auto_clone_array,
@@ -322,7 +328,7 @@
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{
             constraints::{boolean, ExprOps},
-            Cache,
+            BerkeleyChallengeTerm, Cache,
         },
         gate::GateType,
         polynomials::keccak::{constants::<span class="kw-2">*</span>, OFF},
@@ -408,7 +414,10 @@
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">389</span>;
 
     <span class="comment">// Constraints for one round of the Keccak permutation function
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
 
         <span class="comment">// DEFINE ROUND CONSTANT
@@ -578,7 +587,10 @@
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">532</span>;
 
     <span class="comment">// Constraints for the Keccak sponge
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+        _cache: <span class="kw-2">&amp;mut </span>Cache,
+    ) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
 
         <span class="comment">// LOAD WITNESS
