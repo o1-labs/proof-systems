@@ -212,7 +212,14 @@ where
         let Column::X(idx) = pos else {
             unimplemented!("Only works for private inputs")
         };
-        self.witness[idx][self.current_row + 1].clone()
+        self.next_state[idx].clone()
+    }
+
+    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
+        let Column::X(idx) = pos else {
+            unimplemented!("Only works for private inputs")
+        };
+        self.state[idx].clone()
     }
 
     fn allocate_public_input(&mut self) -> Self::Position {
@@ -1077,7 +1084,8 @@ impl<
             Instruction::Poseidon(i) => {
                 if i < POSEIDON_ROUNDS_FULL - 4 {
                     // We perform 4 rounds per row
-                    // FIXME: we can do 5 by using the "next row"
+                    // FIXME: we can do 5 by using the "next row", see
+                    // PoseidonNextRow
                     Instruction::Poseidon(i + 4)
                 } else {
                     // If we absorbed all the elements, we go to the next instruction
@@ -1090,6 +1098,23 @@ impl<
                     } else {
                         // Otherwise, we continue absorbing
                         Instruction::Poseidon(0)
+                    }
+                }
+            }
+            Instruction::PoseidonNextRow(i) => {
+                if i < POSEIDON_ROUNDS_FULL - 5 {
+                    Instruction::PoseidonNextRow(i + 5)
+                } else {
+                    // If we absorbed all the elements, we go to the next instruction
+                    // In this case, it is the decomposition of the folding combiner
+                    // FIXME: it is not the correct next instruction.
+                    // We must check the computed value is the one given as a
+                    // public input.
+                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
+                        Instruction::BitDecomposition(0)
+                    } else {
+                        // Otherwise, we continue absorbing
+                        Instruction::PoseidonNextRow(0)
                     }
                 }
             }

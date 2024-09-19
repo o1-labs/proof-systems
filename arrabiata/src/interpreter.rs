@@ -117,14 +117,56 @@
 //!
 //! We start with the assumption that 17 columns are available for the whole
 //! circuit, and we can support constraints up to degree 5.
-//! Therefore, we can compute 4 full rounds per row.
+//! Therefore, we can compute 4 full rounds per row if we rely on the
+//! permutation argument, or 5 full rounds per row if we use the "next row".
 //!
-//! FIXME: we can do one more by using "the next row". Also, we can optimize
-//! this by using a partial/full round instance of Poseidon. We leave this when
-//! we move to Poseidon2.
+//! We provide two implementations of the Poseidon hash function. The first one
+//! does not use the "next row" and is limited to 4 full rounds per row. The
+//! second one uses the "next row" and can compute 5 full rounds per row.
+//! The second implementation is more efficient as it allows to compute one
+//! additional round per row.
+//! For the second implementation, the permutation argument will only be
+//! activated on the first and last group of 5 rounds.
 //!
-//! TBD/FIXME: define gadget layout + maybe change the current implementation
-//! for the permutation argument.
+//! The layout for the one not using the "next row" is as follow (4 full rounds):
+//! ```text
+//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+//! | x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | o1  | o2  | o3  |
+//! ```
+//! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
+//! output, and the other values are intermediary values. And we have the following equalities:
+//! ```text
+//! (a1, a2, a3) = PoseidonPerm(x, y, z)
+//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
+//! (o1, o2, o3) = PoseidonPerm(c1, c2, c3)
+//! ```
+//!
+//! The layout for the one using the "next row" is as follow (5 full rounds):
+//! ```text
+//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+//! | x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | d1  | d2  | d3  |
+//! | o1 | o2 | o2
+//! ```
+//! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
+//! output, and the other values are intermediary values. And we have the
+//! following equalities:
+//! ```text
+//! (a1, a2, a3) = PoseidonPerm(x, y, z)
+//! (b1, b2, b3) = PoseidonPerm(a1, a2, a3)
+//! (c1, c2, c3) = PoseidonPerm(b1, b2, b3)
+//! (d1, d2, d3) = PoseidonPerm(c1, c2, c3)
+//! (o1, o2, o3) = PoseidonPerm(d1, d2, d3)
+//! ```
+//!
+//! For both implementations, round constants are passed as public inputs. As a
+//! reminder, public inputs are simply additional columns known by the prover
+//! and verifier.
+//! Also, the elements to absorb are added to the initial state at the beginning
+//! of the call of the Poseidon full hash. The elements to absorb are supposed
+//! to be passed as public inputs.
 //!
 //! ### Elliptic curve scalar multiplication
 //!
@@ -360,6 +402,13 @@ pub enum Instruction {
     /// and is unsafe at the moment as no permutation argument is implemented.
     // FIXME: use the permutation argument or deprecate it.
     Poseidon(usize),
+    /// This gadget implement the Poseidon hash instance described in the
+    /// top-level documentation. Compared to the previous one (that might be
+    /// deprecated in the future), this implementation does use the "next row"
+    /// to allow the computation of one additional round per row. In the current
+    /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
+    /// per row.
+    PoseidonNextRow(usize),
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
@@ -400,6 +449,10 @@ pub trait InterpreterEnv {
 
     /// Return the corresponding variable at the given position, for the next row.
     fn access_next_row(&self, pos: Self::Position) -> Self::Variable;
+
+    /// Return the corresponding variable at the given position, for the current
+    /// row.
+    fn access_current_row(&self, pos: Self::Position) -> Self::Variable;
 
     fn allocate_public_input(&mut self) -> Self::Position;
 
@@ -969,6 +1022,108 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 state.iter().enumerate().for_each(|(i, x)| {
                     unsafe { env.save_poseidon_state(x.clone(), i) };
                 })
+            } else {
+                panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
+            }
+        }
+        Instruction::PoseidonNextRow(curr_round) => {
+            env.activate_gadget(Gadget::PoseidonNextRow);
+            debug!("Executing instruction PoseidonNextRow({curr_round})");
+            if curr_round < POSEIDON_ROUNDS_FULL {
+                // Values to be absorbed are 0 when when the round is not zero,
+                // i.e. when we are processing the rounds.
+                let values_to_absorb: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE - 1)
+                    .map(|_i| {
+                        let pos = env.allocate_public_input();
+                        // fetch_value_to_absorb is supposed to return 0 if curr_round != 0.
+                        unsafe { env.fetch_value_to_absorb(pos, curr_round) }
+                    })
+                    .collect();
+                let first_col_positions: Vec<E::Position> =
+                    (0..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
+                // If we are at the first round, we load the state from the environment.
+                // The permutation argument is used to load the state the
+                // current call to Poseidon might be a succession of Poseidon
+                // calls, like when we need to hash the public inputs, and the
+                // state might be from a previous place in the execution trace.
+                let state: Vec<E::Variable> = if curr_round == 0 {
+                    env.activate_gadget(Gadget::PermutationArgument);
+                    first_col_positions
+                        .iter()
+                        .enumerate()
+                        .map(|(i, pos)| {
+                            let res = env.load_poseidon_state(*pos, i);
+                            // Absorb value. The capacity is POSEIDON_STATE_SIZE - 1
+                            if i < POSEIDON_STATE_SIZE - 1 {
+                                res + values_to_absorb[i].clone()
+                            } else {
+                                res
+                            }
+                        })
+                        .collect()
+                } else {
+                    // Otherwise, as we do use the "next row" trick, the current
+                    // state has been loaded in the "next_row" state during the
+                    // previous call, and we can simply load it. No permutation
+                    // argument needed.
+                    first_col_positions
+                        .iter()
+                        .map(|pos| env.access_current_row(*pos))
+                        .collect()
+                };
+
+                // 5 is the number of rounds we treat per row
+                (0..5).fold(state, |state, idx_round| {
+                    let state: Vec<E::Variable> =
+                        state.iter().map(|x| env.compute_x5(x.clone())).collect();
+
+                    let round = curr_round + idx_round;
+
+                    let rcs: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
+                        .map(|i| {
+                            let pos = env.allocate_public_input();
+                            env.get_poseidon_round_constant(pos, round, i)
+                        })
+                        .collect();
+
+                    let state: Vec<E::Variable> = rcs
+                        .iter()
+                        .enumerate()
+                        .map(|(i, rc)| {
+                            let acc: E::Variable =
+                                state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
+                                    acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
+                                });
+                            // The last iteration is written on the next row.
+                            if idx_round == 4 {
+                                env.write_column_next_row(first_col_positions[i], acc + rc.clone())
+                            } else {
+                                // Otherwise, we simply allocate a new position
+                                // in the circuit.
+                                let pos = env.allocate();
+                                env.write_column(pos, acc + rc.clone())
+                            }
+                        })
+                        .collect();
+                    // If we are at the last round, we save the state in the
+                    // environment.
+                    // It does require the permutation argument to be activated.
+                    // FIXME: activating the permutation argument has no effect
+                    // for now.
+                    // FIXME/IMPROVEME: we might want to execute more Poseidon
+                    // full hash in sequentially, and then save one row. For
+                    // now, we will save the state at the end of the last round
+                    // and reload it at the beginning of the next Poseidon full
+                    // hash.
+                    if round == POSEIDON_ROUNDS_FULL - 1 {
+                        env.activate_gadget(Gadget::PermutationArgument);
+                        state.iter().enumerate().for_each(|(i, x)| {
+                            unsafe { env.save_poseidon_state(x.clone(), i) };
+                        });
+                        env.reset();
+                    };
+                    state
+                });
             } else {
                 panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
             }

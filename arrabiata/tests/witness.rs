@@ -47,6 +47,50 @@ where
 }
 
 #[test]
+fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
+    let srs_log2_size = 6;
+    let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        srs_log2_size,
+        BigInt::from(1u64),
+        sponge.clone(),
+        sponge.clone(),
+    );
+
+    env.current_instruction = Instruction::PoseidonNextRow(0);
+
+    (0..(POSEIDON_ROUNDS_FULL / 5)).for_each(|i| {
+        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(5 * i));
+        env.reset();
+    });
+    let exp_output = {
+        let mut state = sponge
+            .clone()
+            .to_vec()
+            .iter()
+            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        state[0] += env.srs_e2.h.x;
+        state[1] += env.srs_e2.h.y;
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+            poseidon_3_60_0_5_5_fp::static_params(),
+            &mut state,
+        );
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
+    };
+    // Check correctness for current iteration
+    assert_eq!(env.sponge_e1.to_vec(), exp_output);
+    // Check the other sponge hasn't been modified
+    assert_eq!(env.sponge_e2, sponge.clone());
+
+    // Number of rows used by one full hash
+    assert_eq!(env.current_row, 13);
+}
+
+#[test]
 fn test_unit_witness_poseidon_gadget_one_full_hash() {
     let srs_log2_size = 6;
     let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));

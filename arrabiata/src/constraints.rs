@@ -62,6 +62,13 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         }))
     }
 
+    fn access_current_row(&self, pos: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);
