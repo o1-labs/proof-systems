@@ -55,6 +55,13 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         pos
     }
 
+    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: pos,
+            row: CurrOrNext::Next,
+        }))
+    }
+
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);
@@ -82,6 +89,15 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         let res = Expr::Atom(ExprInner::Cell(Variable {
             col,
             row: CurrOrNext::Curr,
+        }));
+        self.assert_equal(res.clone(), v);
+        res
+    }
+
+    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
+        let res = Expr::Atom(ExprInner::Cell(Variable {
+            col,
+            row: CurrOrNext::Next,
         }));
         self.assert_equal(res.clone(), v);
         res

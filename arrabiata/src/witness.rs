@@ -82,6 +82,11 @@ pub struct Env<
     /// State of the current row in the execution trace
     pub state: [BigInt; NUMBER_OF_COLUMNS],
 
+    /// Next row in the execution trace. It is useful when we deal with
+    /// polynomials accessing "the next row", i.e. witness columns where we do
+    /// evaluate at ζ and ζω.
+    pub next_state: [BigInt; NUMBER_OF_COLUMNS],
+
     /// Contain the public state
     // FIXME: I don't like this design. Feel free to suggest a better solution
     pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
@@ -203,6 +208,13 @@ where
         pos
     }
 
+    fn access_next_row(&self, pos: Self::Position) -> Self::Variable {
+        let Column::X(idx) = pos else {
+            unimplemented!("Only works for private inputs")
+        };
+        self.witness[idx][self.current_row + 1].clone()
+    }
+
     fn allocate_public_input(&mut self) -> Self::Position {
         assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
         let pos = Column::PublicInput(self.idx_var_pi);
@@ -221,6 +233,20 @@ where
         };
         let v = v.mod_floor(&modulus);
         self.state[idx] = v.clone();
+        v
+    }
+
+    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable {
+        let Column::X(idx) = col else {
+            unimplemented!("Only works for private inputs")
+        };
+        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+            Fp::modulus_biguint().into()
+        } else {
+            Fq::modulus_biguint().into()
+        };
+        let v = v.mod_floor(&modulus);
+        self.next_state[idx] = v.clone();
         v
     }
 
@@ -327,11 +353,16 @@ where
         self.state.iter().enumerate().for_each(|(i, x)| {
             self.witness[i][self.current_row] = x.clone();
         });
+        // We increment the row
+        // TODO: should we check that we are not going over the domain size?
         self.current_row += 1;
+        // We reset the indices for the variables
         self.idx_var = 0;
         self.idx_var_pi = 0;
-        // Rest the state for the next row
-        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
+        // We keep track of the values we already set.
+        self.state = self.next_state.clone();
+        // And we reset the next state
+        self.next_state = std::array::from_fn(|_| BigInt::from(0_usize));
     }
 
     /// FIXME: check if we need to pick the left or right sponge
@@ -879,6 +910,7 @@ impl<
             idx_var_pi: 0,
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
             challenges,

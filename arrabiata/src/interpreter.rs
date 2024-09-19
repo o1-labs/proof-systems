@@ -386,9 +386,16 @@ pub trait InterpreterEnv {
     /// Allocate a new variable in the circuit
     fn allocate(&mut self) -> Self::Position;
 
+    /// Return the corresponding variable at the given position, for the next row.
+    fn access_next_row(&self, pos: Self::Position) -> Self::Variable;
+
     fn allocate_public_input(&mut self) -> Self::Position;
 
+    /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
+
+    /// Set the value of the variable at the given position for the next row
+    fn write_column_next_row(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
 
     /// Write the corresponding public inputs.
     // FIXME: This design might not be the best. Feel free to come up with a
