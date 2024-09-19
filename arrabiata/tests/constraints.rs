@@ -84,6 +84,22 @@ fn test_gadget_poseidon() {
 }
 
 #[test]
+fn test_gadget_poseidon_next_row() {
+    let instr = Instruction::PoseidonNextRow(0);
+    helper_compute_constraints_gadget(instr, 15);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(5, 15);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 15, 17);
+
+    // We always have 2 additional public inputs, even if set to 0
+    let instr = Instruction::PoseidonNextRow(1);
+    helper_gadget_number_of_columns_used(instr, 15, 17);
+}
+
+#[test]
 fn test_gadget_sixteen_bits_decomposition() {
     let instr = Instruction::SixteenBitsDecomposition;
     helper_compute_constraints_gadget(instr, 1);
