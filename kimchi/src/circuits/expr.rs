@@ -21,9 +21,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::{self, Debug},
+    fmt::{self, Debug, Display, Formatter},
     iter::FromIterator,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
@@ -51,7 +51,7 @@ pub enum ExprError<Column> {
     MissingRuntime,
 }
 
-pub struct Challenges<F> {
+pub struct BerkeleyChallenges<F> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
@@ -59,7 +59,28 @@ pub struct Challenges<F> {
     /// The challenge gamma from the PLONK IOP.
     pub gamma: F,
     /// The challenge joint_combiner which is used to combine joint lookup tables.
-    pub joint_combiner: Option<F>,
+    pub joint_combiner: F,
+}
+
+impl<F: Field> Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
+    type Output = F;
+
+    fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
+        match challenge_term {
+            BerkeleyChallengeTerm::Alpha => &self.alpha,
+            BerkeleyChallengeTerm::Beta => &self.beta,
+            BerkeleyChallengeTerm::Gamma => &self.gamma,
+            BerkeleyChallengeTerm::JointCombiner => &self.joint_combiner,
+        }
+    }
+}
+
+/// The Challenge term that contains an alpha.
+/// Is used to make a random linear combination of constraints
+pub trait AlphaChallengeTerm<'a>:
+    Copy + Clone + Debug + PartialEq + Eq + Serialize + Deserialize<'a> + Display
+{
+    const ALPHA: Self;
 }
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -73,7 +94,13 @@ pub struct Constants<F: 'static> {
     pub zk_rows: u64,
 }
 
-pub trait ColumnEnvironment<'a, F: FftField> {
+pub trait ColumnEnvironment<
+    'a,
+    F: FftField,
+    ChallengeTerm,
+    Challenges: Index<ChallengeTerm, Output = F>,
+>
+{
     /// The generic type of column the environment can use.
     /// In other words, with the multi-variate polynomial analogy, it is the
     /// variables the multi-variate polynomials are defined upon.
@@ -95,7 +122,7 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn get_constants(&self) -> &Constants<F>;
 
     /// Return the challenges, coined by the verifier.
-    fn get_challenges(&self) -> &Challenges<F>;
+    fn get_challenges(&self) -> &Challenges;
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
 
@@ -154,11 +181,30 @@ pub struct Variable<Column> {
 /// TODO: we should generalize the expression type over challenges and constants.
 /// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ChallengeTerm {
+pub enum BerkeleyChallengeTerm {
     Alpha,
     Beta,
     Gamma,
     JointCombiner,
+}
+
+impl Display for BerkeleyChallengeTerm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use BerkeleyChallengeTerm::*;
+        let str = match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+        };
+        write!(f, "{}", str)
+
+        // Debug::fmt(&self, f)
+    }
+}
+
+impl<'a> AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
+    const ALPHA: Self = Self::Alpha;
 }
 
 /// Define the constant terms an expression can use.
@@ -235,12 +281,14 @@ impl<F: Clone> Literal for ConstantTerm<F> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ConstantExprInner<F> {
+pub enum ConstantExprInner<F, ChallengeTerm> {
     Challenge(ChallengeTerm),
     Constant(ConstantTerm<F>),
 }
 
-impl<F: Clone> Literal for ConstantExprInner<F> {
+impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
+    for ConstantExprInner<F, ChallengeTerm>
+{
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(ConstantTerm::literal(x))
@@ -268,13 +316,15 @@ impl<F: Clone> Literal for ConstantExprInner<F> {
     }
 }
 
-impl<F> From<ChallengeTerm> for ConstantExprInner<F> {
+impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
+    for ConstantExprInner<F, ChallengeTerm>
+{
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::Challenge(x)
     }
 }
 
-impl<F> From<ConstantTerm<F>> for ConstantExprInner<F> {
+impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::Constant(x)
     }
@@ -347,29 +397,37 @@ impl<T: Literal + Clone> Literal for Operations<T> {
     }
 }
 
-pub type ConstantExpr<F> = Operations<ConstantExprInner<F>>;
+pub type ConstantExpr<F, ChallengeTerm> = Operations<ConstantExprInner<F, ChallengeTerm>>;
 
-impl<F> From<ConstantTerm<F>> for ConstantExpr<F> {
+impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
 
-impl<F> From<ChallengeTerm> for ConstantExpr<F> {
+impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
+    for ConstantExpr<F, ChallengeTerm>
+{
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
 
-pub trait ToPolish<F, Column> {
-    fn to_polish(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F, Column>>);
+pub trait ToPolish<F, Column, ChallengeTerm> {
+    fn to_polish(
+        &self,
+        cache: &mut HashMap<CacheId, usize>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+    );
 }
 
-impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
+impl<F: Copy, Column, ChallengeTerm: Copy> ToPolish<F, Column, ChallengeTerm>
+    for ConstantExprInner<F, ChallengeTerm>
+{
     fn to_polish(
         &self,
         _cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
     ) {
         match self {
             ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
@@ -378,11 +436,13 @@ impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
     }
 }
 
-impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
+impl<F, Column, ChallengeTerm, T: ToPolish<F, Column, ChallengeTerm>>
+    ToPolish<F, Column, ChallengeTerm> for Operations<T>
+{
     fn to_polish(
         &self,
         cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
     ) {
         match self {
             Operations::Atom(atom) => atom.to_polish(cache, res),
@@ -477,18 +537,13 @@ where
     }
 }
 
-impl<F: Field> ConstantExpr<F> {
+impl<F: Field, ChallengeTerm: Copy> ConstantExpr<F, ChallengeTerm> {
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>, chals: &Challenges<F>) -> F {
+    pub fn value(&self, c: &Constants<F>, chals: &dyn Index<ChallengeTerm, Output = F>) -> F {
         use ConstantExprInner::*;
         use Operations::*;
         match self {
-            Atom(Challenge(ChallengeTerm::Alpha)) => chals.alpha,
-            Atom(Challenge(ChallengeTerm::Beta)) => chals.beta,
-            Atom(Challenge(ChallengeTerm::Gamma)) => chals.gamma,
-            Atom(Challenge(ChallengeTerm::JointCombiner)) => {
-                chals.joint_combiner.expect("joint lookup was not expected")
-            }
+            Atom(Challenge(challenge_term)) => chals[*challenge_term],
             Atom(Constant(ConstantTerm::EndoCoefficient)) => c.endo_coefficient,
             Atom(Constant(ConstantTerm::Mds { row, col })) => c.mds[*row][*col],
             Atom(Constant(ConstantTerm::Literal(x))) => *x,
@@ -561,7 +616,7 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
+    pub fn cache<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(&mut self, e: T) -> T {
         e.cache(self)
     }
 }
@@ -622,19 +677,25 @@ pub enum ExprInner<C, Column> {
 /// the above variables should vanish on the PLONK domain.
 pub type Expr<C, Column> = Operations<ExprInner<C, Column>>;
 
-impl<F, Column> From<ConstantExpr<F>> for Expr<ConstantExpr<F>, Column> {
-    fn from(x: ConstantExpr<F>) -> Self {
+impl<F, Column, ChallengeTerm> From<ConstantExpr<F, ChallengeTerm>>
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
+    fn from(x: ConstantExpr<F, ChallengeTerm>) -> Self {
         Expr::Atom(ExprInner::Constant(x))
     }
 }
 
-impl<F, Column> From<ConstantTerm<F>> for Expr<ConstantExpr<F>, Column> {
+impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<ConstantTerm<F>>
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
     fn from(x: ConstantTerm<F>) -> Self {
         ConstantExpr::from(x).into()
     }
 }
 
-impl<F, Column> From<ChallengeTerm> for Expr<ConstantExpr<F>, Column> {
+impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
     fn from(x: ChallengeTerm) -> Self {
         ConstantExpr::from(x).into()
     }
@@ -806,7 +867,7 @@ where
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PolishToken<F, Column> {
+pub enum PolishToken<F, Column, ChallengeTerm> {
     Constant(ConstantTerm<F>),
     Challenge(ChallengeTerm),
     Cell(Variable<Column>),
@@ -865,15 +926,15 @@ impl<Column: FormattedOutput + Debug> Variable<Column> {
     }
 }
 
-impl<F: FftField, Column: Copy> PolishToken<F, Column> {
+impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, ChallengeTerm> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
-        toks: &[PolishToken<F, Column>],
+        toks: &[PolishToken<F, Column, ChallengeTerm>],
         d: D<F>,
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
-        chals: &Challenges<F>,
+        chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
@@ -885,16 +946,11 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
                 skip_count -= 1;
                 continue;
             }
-            use ChallengeTerm::*;
+
             use ConstantTerm::*;
             use PolishToken::*;
             match t {
-                Challenge(Alpha) => stack.push(chals.alpha),
-                Challenge(Beta) => stack.push(chals.beta),
-                Challenge(Gamma) => stack.push(chals.gamma),
-                Challenge(JointCombiner) => {
-                    stack.push(chals.joint_combiner.expect("no joint lookup was expected"))
-                }
+                Challenge(challenge_term) => stack.push(chals[*challenge_term]),
                 Constant(EndoCoefficient) => stack.push(c.endo_coefficient),
                 Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
@@ -1008,9 +1064,11 @@ impl<C, Column> Expr<C, Column> {
     }
 }
 
-impl<F, Column: FormattedOutput + Debug + Clone> fmt::Display for Expr<ConstantExpr<F>, Column>
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm> fmt::Display
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 where
     F: PrimeField,
+    ChallengeTerm: AlphaChallengeTerm<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.text_str())
@@ -1091,7 +1149,13 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<'a, F: FftField, Environment: ColumnEnvironment<'a, F>>(
+fn unnormalized_lagrange_evals<
+    'a,
+    F: FftField,
+    ChallengeTerm,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
+>(
     l0_1: F,
     i: i32,
     res_domain: Domain,
@@ -1645,7 +1709,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-impl<F: Field, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
+impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'a>>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -1655,17 +1721,17 @@ impl<F: Field, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F>, Column>::zero();
+        let zero = Expr::<ConstantExpr<F, ChallengeTerm>, Column>::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| Expr::from(ConstantExpr::pow(ChallengeTerm::Alpha.into(), i as u64)) * c)
+            .map(|(c, i)| Expr::from(ConstantExpr::pow(ChallengeTerm::ALPHA.into(), i as u64)) * c)
             .fold(zero, |acc, x| acc + x)
     }
 }
 
-impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
+impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, ChallengeTerm>, Column> {
     /// Compile an expression to an RPN expression.
-    pub fn to_polish(&self) -> Vec<PolishToken<F, Column>> {
+    pub fn to_polish(&self) -> Vec<PolishToken<F, Column, ChallengeTerm>> {
         let mut res = vec![];
         let mut cache = HashMap::new();
         self.to_polish_(&mut cache, &mut res);
@@ -1675,7 +1741,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
     fn to_polish_(
         &self,
         cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
     ) {
         match self {
             Expr::Double(x) => {
@@ -1761,15 +1827,22 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
             }
         }
     }
-
+}
+impl<F: FftField, Column: Copy> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
     /// The expression `beta`.
     pub fn beta() -> Self {
-        ChallengeTerm::Beta.into()
+        BerkeleyChallengeTerm::Beta.into()
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
-    fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
+impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
+    fn evaluate_constants_(
+        &self,
+        c: &Constants<F>,
+        chals: &dyn Index<ChallengeTerm, Output = F>,
+    ) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
         // TODO: Use cache
@@ -1799,7 +1872,8 @@ impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     pub fn evaluate<
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Column = Column>,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1817,7 +1891,7 @@ impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
-        chals: &Challenges<F>,
+        chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
         use Operations::*;
@@ -1865,7 +1939,11 @@ impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+    pub fn evaluate_constants<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
         &self,
         env: &Environment,
     ) -> Expr<F, Column> {
@@ -1878,7 +1956,11 @@ impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     /// respective values using `evaluate_constants` and will after evaluate the
     /// monomials with the corresponding column values using the method
     /// `evaluations`.
-    pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+    pub fn evaluations<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
         &self,
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
@@ -1949,7 +2031,12 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+    pub fn evaluations<
+        'a,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
         &self,
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
@@ -1998,7 +2085,13 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         }
     }
 
-    fn evaluations_helper<'a, 'b, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+    fn evaluations_helper<
+        'a,
+        'b,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
@@ -2192,10 +2285,16 @@ impl<A, Column: Copy> Linearization<A, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy> Linearization<Expr<ConstantExpr<F>, Column>, Column> {
+impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
+    Linearization<Expr<ConstantExpr<F, ChallengeTerm>, Column>, Column>
+{
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
-    pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+    pub fn evaluate_constants<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
         &self,
         env: &Environment,
     ) -> Linearization<Expr<F, Column>, Column> {
@@ -2203,13 +2302,16 @@ impl<F: FftField, Column: PartialEq + Copy> Linearization<Expr<ConstantExpr<F>, 
     }
 }
 
-impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>>, Column> {
+impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
+    Linearization<Vec<PolishToken<F, Column, ChallengeTerm>>, Column>
+{
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2239,15 +2341,16 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
     }
 }
 
-impl<F: FftField, Column: Debug + PartialEq + Copy>
-    Linearization<Expr<ConstantExpr<F>, Column>, Column>
+impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm: Copy>
+    Linearization<Expr<ConstantExpr<F, ChallengeTerm>, Column>, Column>
 {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2671,20 +2774,24 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
     }
 }
 
-impl<F: Field, Column> From<u64> for Expr<ConstantExpr<F>, Column> {
+impl<'a, F: Field, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<u64>
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
     fn from(x: u64) -> Self {
         ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
-impl<F: Field> From<u64> for ConstantExpr<F> {
+impl<F: Field, ChallengeTerm> From<u64> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: u64) -> Self {
         ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
-impl<F: Field, Column: PartialEq + Copy> Mul<F> for Expr<ConstantExpr<F>, Column> {
-    type Output = Expr<ConstantExpr<F>, Column>;
+impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'a>> Mul<F>
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
+    type Output = Expr<ConstantExpr<F, ChallengeTerm>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
         Expr::from(ConstantTerm::Literal(y)) * self
@@ -2702,38 +2809,23 @@ pub trait FormattedOutput: Sized {
     fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String;
 }
 
-impl FormattedOutput for ChallengeTerm {
+impl<'a, ChallengeTerm> FormattedOutput for ChallengeTerm
+where
+    ChallengeTerm: AlphaChallengeTerm<'a>,
+{
     fn is_alpha(&self) -> bool {
-        matches!(self, ChallengeTerm::Alpha)
+        self.eq(&ChallengeTerm::ALPHA)
     }
     fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ChallengeTerm::*;
-        match self {
-            Alpha => "alpha".to_string(),
-            Beta => "beta".to_string(),
-            Gamma => "gamma".to_string(),
-            JointCombiner => "joint_combiner".to_string(),
-        }
+        self.to_string()
     }
 
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ChallengeTerm::*;
-        match self {
-            Alpha => "\\alpha".to_string(),
-            Beta => "\\beta".to_string(),
-            Gamma => "\\gamma".to_string(),
-            JointCombiner => "joint\\_combiner".to_string(),
-        }
+        "\\".to_string() + &self.to_string()
     }
 
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ChallengeTerm::*;
-        match self {
-            Alpha => "alpha".to_string(),
-            Beta => "beta".to_string(),
-            Gamma => "gamma".to_string(),
-            JointCombiner => "joint_combiner".to_string(),
-        }
+        self.to_string()
     }
 }
 
@@ -2769,7 +2861,10 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
     }
 }
 
-impl<F: PrimeField> FormattedOutput for ConstantExprInner<F> {
+impl<'a, F: PrimeField, ChallengeTerm> FormattedOutput for ConstantExprInner<F, ChallengeTerm>
+where
+    ChallengeTerm: AlphaChallengeTerm<'a>,
+{
     fn is_alpha(&self) -> bool {
         use ConstantExprInner::*;
         match self {
@@ -2938,9 +3033,11 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     }
 }
 
-impl<F, Column: FormattedOutput + Debug + Clone> Expr<ConstantExpr<F>, Column>
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
 where
     F: PrimeField,
+    ChallengeTerm: AlphaChallengeTerm<'a>,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
@@ -2965,7 +3062,10 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn ocaml(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F, ChallengeTerm>, Column>>,
+    ) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
@@ -3026,7 +3126,10 @@ where
         res
     }
 
-    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn latex(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F, ChallengeTerm>, Column>>,
+    ) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
@@ -3070,7 +3173,10 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn text(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F, ChallengeTerm>, Column>>,
+    ) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
@@ -3152,13 +3258,13 @@ pub mod constraints {
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ExprOps<F>:
-        std::ops::Add<Output = Self>
-        + std::ops::Sub<Output = Self>
-        + std::ops::Neg<Output = Self>
-        + std::ops::Mul<Output = Self>
-        + std::ops::AddAssign<Self>
-        + std::ops::MulAssign<Self>
+    pub trait ExprOps<F, ChallengeTerm>:
+        Add<Output = Self>
+        + Sub<Output = Self>
+        + Neg<Output = Self>
+        + Mul<Output = Self>
+        + AddAssign<Self>
+        + MulAssign<Self>
         + Clone
         + Zero
         + One
@@ -3206,35 +3312,40 @@ pub mod constraints {
         fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
 
         /// Create a constant
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+        fn constant(expr: ConstantExpr<F, ChallengeTerm>, env: Option<&ArgumentData<F>>) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
     }
-
-    impl<F> ExprOps<F> for Expr<ConstantExpr<F>, berkeley_columns::Column>
+    // TODO generalize with generic Column/challengeterm
+    // We need to create a trait for berkeley_columns::Environment
+    impl<F> ExprOps<F, BerkeleyChallengeTerm>
+        for Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>
     where
         F: PrimeField,
-        Expr<ConstantExpr<F>, berkeley_columns::Column>: std::fmt::Display,
+        // TODO remove
+        Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>: std::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as Two<F>>::two_pow(pow))
+            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
+                <F as Two<F>>::two_pow(pow),
+            )
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_limb(),
             )
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_2limb(),
             )
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
                 KimchiForeignElement::<F>::two_to_3limb(),
             )
         }
@@ -3271,7 +3382,10 @@ pub mod constraints {
             coeff(col)
         }
 
-        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+        fn constant(
+            expr: ConstantExpr<F, BerkeleyChallengeTerm>,
+            _: Option<&ArgumentData<F>>,
+        ) -> Self {
             Expr::from(expr)
         }
 
@@ -3279,8 +3393,9 @@ pub mod constraints {
             Expr::Cache(cache.next_id(), Box::new(self.clone()))
         }
     }
-
-    impl<F: Field> ExprOps<F> for F {
+    // TODO generalize with generic Column/challengeterm
+    // We need to generalize argument.rs
+    impl<F: Field> ExprOps<F, BerkeleyChallengeTerm> for F {
         fn two_pow(pow: u64) -> Self {
             <F as Two<F>>::two_pow(pow)
         }
@@ -3335,7 +3450,10 @@ pub mod constraints {
             }
         }
 
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+        fn constant(
+            expr: ConstantExpr<F, BerkeleyChallengeTerm>,
+            env: Option<&ArgumentData<F>>,
+        ) -> Self {
             match env {
                 Some(data) => expr.value(&data.constants, &data.challenges),
                 None => panic!("Missing constants"),
@@ -3348,12 +3466,12 @@ pub mod constraints {
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: Field, T: ExprOps<F>>(b: &T) -> T {
+    pub fn boolean<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: Field, T: ExprOps<F>>(x: &T) -> T {
+    pub fn crumb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -3362,7 +3480,10 @@ pub mod constraints {
     }
 
     /// lo + mi * 2^{LIMB_BITS}
-    pub fn compact_limb<F: Field, T: ExprOps<F>>(lo: &T, mi: &T) -> T {
+    pub fn compact_limb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(
+        lo: &T,
+        mi: &T,
+    ) -> T {
         lo.clone() + mi.clone() * T::two_to_limb()
     }
 }
@@ -3484,11 +3605,11 @@ pub mod test {
                 mds: &Vesta::sponge_params().mds,
                 zk_rows: 3,
             },
-            challenges: Challenges {
+            challenges: BerkeleyChallenges {
                 alpha: one,
                 beta: one,
                 gamma: one,
-                joint_combiner: None,
+                joint_combiner: one,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,
@@ -3527,19 +3648,19 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: Field, T: ExprOps<F>>() -> T {
+        fn test_1<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
             T::zero() + T::one()
         }
         assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
         assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: Field, T: ExprOps<F>>() -> T {
+        fn test_2<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
             T::one() + T::one()
         }
         assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
         assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
+        fn test_3<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
             T::from(2u64) * x
         }
         assert_eq!(
@@ -3548,7 +3669,7 @@ pub mod test {
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {
+        fn test_4<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
             x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(

@@ -4,7 +4,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
         constraints::{compact_limb, ExprOps},
-        Cache,
+        BerkeleyChallengeTerm, Cache,
     },
     gate::GateType,
     polynomials::foreign_field_common::LIMB_COUNT,
@@ -142,7 +142,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved
@@ -204,7 +207,7 @@ where
 }
 
 // Auxiliary function to obtain the constraints to check a carry flag
-fn is_carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
+fn is_carry<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.
     flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }

@@ -1,5 +1,5 @@
 use ark_ff::{One, PrimeField, Zero};
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
 use num_integer::binomial;
 use rand::RngCore;
 use std::{
@@ -429,7 +429,9 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
 
     // FIXME: use a better implementation, this is a temporary (working but not
     // efficient) solution
-    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F>, Column>) -> Self {
+    fn from_expr<Column: Into<usize>>(
+        expr: Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    ) -> Self {
         prime::Dense::from_expr(expr).into()
     }
 

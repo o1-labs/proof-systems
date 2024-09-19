@@ -18,7 +18,7 @@ use ark_poly::{
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{l0_1, Challenges, Constants, Expr},
+        expr::{l0_1, BerkeleyChallenges, Constants, Expr},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -229,13 +229,14 @@ where
 
     let zk_rows = 0;
     let column_env: ColumnEnvironment<'_, N_WIT, N_REL, N_DSEL, N_FSEL, _, _> = {
-        let challenges = Challenges {
+        let challenges = BerkeleyChallenges {
             alpha,
             // NB: as there is no permutation argument, we do use the beta
             // field instead of a new one for the evaluation point.
             beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
-            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
+            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner)
+                .unwrap_or(G::ScalarField::zero()),
         };
         ColumnEnvironment {
             constants: Constants {

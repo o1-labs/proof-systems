@@ -12,11 +12,15 @@ use serde::{Deserialize, Serialize};
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain, FormattedOutput};
+use crate::circuits::expr::{
+    BerkeleyChallenges, ColumnEnvironment, Constants, Domain, FormattedOutput,
+};
 
 use crate::circuits::wires::COLUMNS;
 
 use std::collections::HashMap;
+
+use super::expr::BerkeleyChallengeTerm;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP, use in
@@ -146,7 +150,9 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
     }
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
+impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
+    for Environment<'a, F>
+{
     type Column = Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
@@ -191,7 +197,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
         &self.constants
     }
 
-    fn get_challenges(&self) -> &Challenges<F> {
+    fn get_challenges(&self) -> &BerkeleyChallenges<F> {
         &self.challenges
     }
 
@@ -243,7 +249,7 @@ pub struct Environment<'a, F: FftField> {
     /// Constant values required
     pub constants: Constants<F>,
     /// Challenges from the IOP.
-    pub challenges: Challenges<F>,
+    pub challenges: BerkeleyChallenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
@@ -255,7 +261,7 @@ pub struct Environment<'a, F: FftField> {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>, Column>;
+pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
 
 /// Convenience function to create a constant as [Expr].
 pub fn constant<F>(x: F) -> E<F> {
