@@ -1,6 +1,6 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
-    keccak::{
+    interpreters::keccak::{
         helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
         interpreter::{Interpreter, KeccakInterpreter},
         Constraint, KeccakColumn,

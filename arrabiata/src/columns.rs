@@ -1,4 +1,4 @@
-use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
+use kimchi::circuits::expr::{BerkeleyChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
 use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
@@ -45,7 +45,8 @@ pub enum Column {
     X(usize),
 }
 
-pub type E<Fp> = Expr<ConstantExpr<Fp>, Column>;
+// FIXME: We should use something different than BerkeleyChallengeTerm here
+pub type E<Fp> = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
 
 // Code to allow for pretty printing of the expressions
 impl FormattedOutput for Column {

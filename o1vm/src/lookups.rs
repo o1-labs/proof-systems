@@ -1,7 +1,7 @@
 //! Instantiation of the lookups for the VM project.
 
 use self::LookupTableIDs::*;
-use crate::{keccak::pad_blocks, ramlookup::RAMLookup};
+use crate::{interpreters::keccak::pad_blocks, ramlookup::RAMLookup};
 use ark_ff::{Field, PrimeField};
 use kimchi::{
     circuits::polynomials::keccak::{

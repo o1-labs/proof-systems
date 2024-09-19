@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    keccak::{
+    interpreters::keccak::{
         column::KeccakWitness,
         helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
         interpreter::{Interpreter, KeccakInterpreter},
@@ -20,6 +20,7 @@ use crate::{
         LookupTableIDs::{self, *},
     },
 };
+
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
 use kimchi_msm::LookupTableID;

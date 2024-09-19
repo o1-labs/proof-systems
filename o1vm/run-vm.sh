@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cargo run --bin o1vm \
+cargo run --bin legacy_o1vm \
     --all-features \
     --release \
     -p o1vm -- \

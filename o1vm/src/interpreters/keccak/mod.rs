@@ -1,5 +1,5 @@
 use crate::{
-    keccak::column::{ColumnAlias as KeccakColumn, Steps::*, PAD_SUFFIX_LEN},
+    interpreters::keccak::column::{ColumnAlias as KeccakColumn, Steps::*, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -10,12 +10,10 @@ use kimchi::circuits::polynomials::keccak::constants::{
 pub mod column;
 pub mod constraints;
 pub mod environment;
-pub mod folding;
 pub mod helpers;
 pub mod interpreter;
 #[cfg(test)]
 pub mod tests;
-pub mod trace;
 pub mod witness;
 
 pub use column::{Absorbs, Sponges, Steps};
