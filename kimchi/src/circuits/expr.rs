@@ -512,7 +512,7 @@ impl<F, Column, ChallengeTerm, T: ToPolish<F, Column, ChallengeTerm>>
                     {
                         res.push(PolishToken::Load(*pos))
                     }
-                    None => {
+                    none => {
                         // Haven't computed this yet. Compute it, then store it.
                         x.to_polish(cache, res);
                         res.push(PolishToken::Store);
@@ -1833,7 +1833,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, ConstantTerm>
                     {
                         res.push(PolishToken::Load(*pos))
                     }
-                    None => {
+                    none => {
                         // Haven't computed this yet. Compute it, then store it.
                         e.to_polish_(cache, res);
                         res.push(PolishToken::Store);
@@ -2199,7 +2199,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             }
             Expr::Cache(id, e) => match cache.get(id) {
                 Some(_) => return Either::Right(*id),
-                None => {
+                none => {
                     match e.evaluations_helper(cache, d, env) {
                         Either::Left(es) => {
                             cache.insert(*id, es);
@@ -2238,7 +2238,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             Expr::Atom(ExprInner::Cell(Variable { col, row })) => {
                 let evals: &'a Evaluations<F, D<F>> = {
                     match env.get_column(col) {
-                        None => return Either::Left(EvalResult::Constant(F::zero())),
+                        none => return Either::Left(EvalResult::Constant(F::zero())),
                         Some(e) => e,
                     }
                 };
@@ -3511,14 +3511,14 @@ pub mod constraints {
         fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
             match env {
                 Some(data) => data.witness[(row, col)],
-                None => panic!("Missing witness"),
+                none => panic!("Missing witness"),
             }
         }
 
         fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
             match env {
                 Some(data) => data.coeffs[col],
-                None => panic!("Missing coefficients"),
+                none => panic!("Missing coefficients"),
             }
         }
 
@@ -3528,7 +3528,7 @@ pub mod constraints {
         ) -> Self {
             match env {
                 Some(data) => expr.value(&data.constants, &data.challenges),
-                None => panic!("Missing constants"),
+                none => panic!("Missing constants"),
             }
         }
 
