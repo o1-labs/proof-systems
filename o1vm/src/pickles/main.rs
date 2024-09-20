@@ -3,13 +3,14 @@ use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     interpreters::mips::{
-        constraints as mips_constraints,
-        witness::{self as mips_witness},
+        constraints as mips_constraints, interpreter, witness as mips_witness, Instruction,
     },
     preimage_oracle::PreImageOracle,
+    E,
 };
 use poly_commitment::srs::SRS;
 use std::{fs::File, io::BufReader, process::ExitCode};
+use strum::IntoEnumIterator;
 
 use mina_curves::pasta::{Fp, Vesta};
 
@@ -59,7 +60,15 @@ pub fn main() -> ExitCode {
     // Initialize the environments
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
-    let mut _mips_con_env = mips_constraints::Env::<Fp>::default();
+
+    // TODO: smth w/ selectors
+    let _all_constraints: Vec<E<Fp>> = Instruction::iter()
+        .flat_map(|instr| {
+            let mut env: mips_constraints::Env<Fp> = mips_constraints::Env::default();
+            interpreter::interpret_instruction(&mut env, instr);
+            env.constraints
+        })
+        .collect::<Vec<_>>();
 
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
