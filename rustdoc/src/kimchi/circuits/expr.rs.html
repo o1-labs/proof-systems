@@ -3677,8 +3677,6 @@
 <a href="#3677" id="3677">3677</a>
 <a href="#3678" id="3678">3678</a>
 <a href="#3679" id="3679">3679</a>
-<a href="#3680" id="3680">3680</a>
-<a href="#3681" id="3681">3681</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3879,9 +3877,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
         };
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, str)
-
-        <span class="comment">// Debug::fmt(&amp;self, f)
-    </span>}
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; AlphaChallengeTerm&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>BerkeleyChallengeTerm {
