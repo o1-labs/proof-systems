@@ -220,7 +220,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let evals = ProofEvaluations::dummy_with_witness_evaluations(curr, next);
 
         // Setup circuit constants
-        let constants = expr::Constants {
+        let constants = expr::BerkeleyConstants {
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             zk_rows: 3,

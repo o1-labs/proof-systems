@@ -96,6 +96,8 @@ pub struct BerkeleyConstants<F: 'static> {
 
 pub trait Constants<F: 'static>: Clone {}
 
+impl<F: 'static> Constants<F> for BerkeleyConstants<F> {}
+
 pub trait ColumnEnvironment<
     'a,
     F: FftField,

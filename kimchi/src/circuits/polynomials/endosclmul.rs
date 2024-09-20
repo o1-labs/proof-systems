@@ -138,7 +138,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         let pt = F::from(123456u64);
 
-        let constants = expr::Constants {
+        let constants = expr::BerkeleyConstants {
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
             zk_rows: cs.zk_rows,

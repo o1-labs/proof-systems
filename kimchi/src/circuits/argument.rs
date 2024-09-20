@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 //TODO use generic challenge
 use super::{
     expr::{
-        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, Cache, ConstantExpr,
-        ConstantTerm, Constants,
+        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, BerkeleyConstants, Cache,
+        ConstantExpr, ConstantTerm,
     },
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
@@ -63,7 +63,7 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     pub fn create(
         witness: ArgumentWitness<F>,
         coeffs: Vec<F>,
-        constants: Constants<F>,
+        constants: BerkeleyConstants<F>,
         challenges: BerkeleyChallenges<F>,
     ) -> Self {
         ArgumentEnv {
@@ -153,7 +153,7 @@ pub struct ArgumentData<F: 'static> {
     /// Gate coefficients
     pub coeffs: Vec<F>,
     /// Constants
-    pub constants: Constants<F>,
+    pub constants: BerkeleyConstants<F>,
     pub challenges: BerkeleyChallenges<F>,
 }
 

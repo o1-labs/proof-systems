@@ -250,7 +250,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants {
+        let constants = expr::BerkeleyConstants {
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             zk_rows: cs.zk_rows,

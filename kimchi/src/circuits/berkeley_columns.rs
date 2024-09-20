@@ -20,7 +20,7 @@ use crate::circuits::wires::COLUMNS;
 
 use std::collections::HashMap;
 
-use super::expr::BerkeleyChallengeTerm;
+use super::expr::{BerkeleyChallengeTerm, BerkeleyConstants};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP, use in
@@ -150,7 +150,8 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
     }
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
+impl<'a, F: FftField>
+    ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>, BerkeleyConstants<F>>
     for Environment<'a, F>
 {
     type Column = Column;
@@ -193,7 +194,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyCh
         }
     }
 
-    fn get_constants(&self) -> &Constants<F> {
+    fn get_constants(&self) -> &BerkeleyConstants<F> {
         &self.constants
     }
 
@@ -247,7 +248,7 @@ pub struct Environment<'a, F: FftField> {
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
     /// Constant values required
-    pub constants: Constants<F>,
+    pub constants: BerkeleyConstants<F>,
     /// Challenges from the IOP.
     pub challenges: BerkeleyChallenges<F>,
     /// The domains used in the PLONK argument.
