@@ -198,8 +198,6 @@ impl Display for BerkeleyChallengeTerm {
             JointCombiner => "joint_combiner".to_string(),
         };
         write!(f, "{}", str)
-
-        // Debug::fmt(&self, f)
     }
 }
 
