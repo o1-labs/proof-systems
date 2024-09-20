@@ -5,7 +5,9 @@ use crate::{
         argument::{Argument, ArgumentType},
         berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, BerkeleyChallenges, Constants},
+        expr::{
+            self, l0_1, BerkeleyChallenges, BerkeleyConstantTerm, BerkeleyConstants, Constants,
+        },
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -703,7 +705,7 @@ where
 
             let mds = &G::sponge_params().mds;
             Environment {
-                constants: Constants {
+                constants: BerkeleyConstants {
                     endo_coefficient: index.cs.endo,
                     mds,
                     zk_rows: index.cs.zk_rows,

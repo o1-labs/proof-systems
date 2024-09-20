@@ -443,7 +443,7 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let constants = Constants {
+            let constants = super::circuits::expr::BerkeleyConstants {
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 zk_rows,
@@ -884,7 +884,7 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants and challenges from oracles function
-            let constants = Constants {
+            let constants = super::circuits::expr::BerkeleyConstants {
                 endo_coefficient: verifier_index.endo,
                 mds: &G::sponge_params().mds,
                 zk_rows,

@@ -36,7 +36,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        expr::{constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache},
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
         wires::GateWires,
@@ -77,7 +77,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
     const CONSTRAINTS: u32 = 2;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

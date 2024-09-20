@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{
             constraints::{boolean, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache,
         },
         gate::GateType,
         polynomials::keccak::{constants::*, OFF},
@@ -91,7 +91,7 @@ where
     const CONSTRAINTS: u32 = 389;
 
     // Constraints for one round of the Keccak permutation function
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
@@ -264,7 +264,7 @@ where
     const CONSTRAINTS: u32 = 532;
 
     // Constraints for the Keccak sponge
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

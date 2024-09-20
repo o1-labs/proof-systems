@@ -4,7 +4,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{self, BerkeleyChallengeTerm},
+        expr::{self, BerkeleyChallengeTerm, BerkeleyConstantTerm},
         lookup::{
             self,
             constraints::LookupConfiguration,
@@ -44,7 +44,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (
-    Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>,
     Alphas<F>,
 ) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints

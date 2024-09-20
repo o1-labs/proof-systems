@@ -4,7 +4,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        expr::{constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache},
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
@@ -150,7 +150,7 @@ where
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

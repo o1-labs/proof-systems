@@ -120,7 +120,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
         constraints::{crumb, ExprOps},
-        BerkeleyChallengeTerm, Cache,
+        BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache,
     },
     gate::GateType,
     polynomial::COLUMNS,
@@ -178,7 +178,7 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
@@ -282,7 +282,7 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

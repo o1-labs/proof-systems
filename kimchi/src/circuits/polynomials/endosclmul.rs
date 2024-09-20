@@ -9,7 +9,7 @@ use crate::{
         expr::{
             self,
             constraints::{boolean, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache,
         },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
@@ -188,7 +188,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
     ) -> Vec<T> {

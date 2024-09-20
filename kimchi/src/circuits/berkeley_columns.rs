@@ -20,7 +20,7 @@ use crate::circuits::wires::COLUMNS;
 
 use std::collections::HashMap;
 
-use super::expr::{BerkeleyChallengeTerm, BerkeleyConstants};
+use super::expr::{BerkeleyChallengeTerm, BerkeleyConstantTerm, BerkeleyConstants};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP, use in
@@ -262,7 +262,7 @@ pub struct Environment<'a, F: FftField> {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>;
 
 /// Convenience function to create a constant as [Expr].
 pub fn constant<F>(x: F) -> E<F> {

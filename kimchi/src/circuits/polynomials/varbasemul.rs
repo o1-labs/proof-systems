@@ -13,7 +13,10 @@
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     berkeley_columns::Column,
-    expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache, Variable as VariableGen},
+    expr::{
+        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache,
+        Variable as VariableGen,
+    },
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -171,7 +174,10 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+    pub fn new_from_env<
+        F: PrimeField,
+        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    >(
         &self,
         env: &ArgumentEnv<F, T>,
     ) -> Point<T> {
@@ -224,7 +230,7 @@ fn single_bit_witness<F: FftField>(
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+fn single_bit<F: FftField, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
     cache: &mut Cache,
     b: &T,
     base: Point<T>,
@@ -291,7 +297,7 @@ where
 impl<F, T> FromWitness<F, T> for Variable
 where
     F: PrimeField,
-    T: ExprOps<F, BerkeleyChallengeTerm>,
+    T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
 {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
@@ -329,7 +335,10 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn new_from_env<
+        F: PrimeField,
+        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    >(
         &self,
         env: &ArgumentEnv<F, T>,
     ) -> Layout<T> {
@@ -415,7 +424,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
     ) -> Vec<T> {

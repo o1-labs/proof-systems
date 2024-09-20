@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 //TODO use generic challenge
 use super::{
     expr::{
-        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, BerkeleyConstants, Cache,
-        ConstantExpr, ConstantTerm,
+        constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, BerkeleyConstantTerm,
+        BerkeleyConstants, Cache, ConstantExpr, ConstantTerm,
     },
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
@@ -57,7 +57,7 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
+impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
     pub fn create(
@@ -125,7 +125,10 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     }
 
     /// Constant value (see [ConstantExpr] for supported constants)
-    pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> T {
+    pub fn constant(
+        &self,
+        expr: ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    ) -> T {
         T::constant(expr, self.data.as_ref())
     }
 
@@ -187,7 +190,7 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
     ) -> Vec<T>;

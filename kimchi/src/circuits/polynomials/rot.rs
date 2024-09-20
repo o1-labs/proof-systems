@@ -6,7 +6,7 @@ use crate::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{
             constraints::{crumb, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            BerkeleyChallengeTerm, BerkeleyConstantTerm, Cache,
         },
         gate::{CircuitGate, Connect, GateType},
         lookup::{
@@ -213,7 +213,7 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
