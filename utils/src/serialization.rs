@@ -88,7 +88,7 @@ where
     }
 }
 
-/// Same as `SerdeAs` but using unchecked (de)serialization.
+/// Same as `SerdeAs` but using unchecked and uncompressed (de)serialization.
 pub struct SerdeAsUnchecked;
 
 impl<T> serde_with::SerializeAs<T> for SerdeAsUnchecked
@@ -100,8 +100,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        // Serialization is still as usual, there's no serialize_compressed_unchecked method.
-        val.serialize_compressed(&mut bytes)
+        val.serialize_uncompressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -125,6 +124,6 @@ where
         } else {
             Bytes::deserialize_as(deserializer)?
         };
-        T::deserialize_compressed_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_uncompressed_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
