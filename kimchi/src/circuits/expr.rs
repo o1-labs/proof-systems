@@ -75,6 +75,18 @@ impl<F: Field> Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
     }
 }
 
+impl<F: Field> Index<BerkeleyConstantTerm<F>> for BerkeleyConstants<F> {
+    type Output = F;
+
+    fn index(&self, constant_term: BerkeleyConstantTerm<F>) -> &Self::Output {
+        match constant_term {
+            BerkeleyConstantTerm::EndoCoefficient => &self.endo_coefficient,
+            BerkeleyConstantTerm::Literal(x) => &x,
+            BerkeleyConstantTerm::Mds { row, col } => &(self.mds)[row][col],
+        }
+    }
+}
+
 /// The Challenge term that contains an alpha.
 /// Is used to make a random linear combination of constraints
 pub trait AlphaChallengeTerm<'a>:
@@ -94,7 +106,7 @@ pub struct BerkeleyConstants<F: 'static> {
     pub zk_rows: u64,
 }
 
-pub trait Constants<F: 'static>: Clone {}
+pub trait Constants<F: 'static> {}
 
 impl<F: 'static> Constants<F> for BerkeleyConstants<F> {}
 
@@ -220,7 +232,7 @@ impl<'a> AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
 /// TODO: we should generalize the expression type over challenges and constants.
 /// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ConstantTerm<F> {
+pub enum BerkeleyConstantTerm<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     Literal(F),
@@ -253,32 +265,32 @@ impl<F: Field> Literal for F {
     }
 }
 
-impl<F: Clone> Literal for ConstantTerm<F> {
+impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
-        ConstantTerm::Literal(x)
+        BerkeleyConstantTerm::Literal(x)
     }
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
-            ConstantTerm::Literal(x) => Ok(x),
+            BerkeleyConstantTerm::Literal(x) => Ok(x),
             x => Err(x),
         }
     }
     fn to_literal_ref(&self) -> Option<&Self::F> {
         match self {
-            ConstantTerm::Literal(x) => Some(x),
+            BerkeleyConstantTerm::Literal(x) => Some(x),
             _ => None,
         }
     }
     fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
         match self {
-            ConstantTerm::EndoCoefficient => {
-                ConstantTerm::Literal(constants.endo_coefficient.clone())
+            BerkeleyConstantTerm::EndoCoefficient => {
+                BerkeleyConstantTerm::Literal(constants.endo_coefficient.clone())
             }
-            ConstantTerm::Mds { row, col } => {
-                ConstantTerm::Literal(constants.mds[*row][*col].clone())
+            BerkeleyConstantTerm::Mds { row, col } => {
+                BerkeleyConstantTerm::Literal(constants.mds[*row][*col].clone())
             }
-            ConstantTerm::Literal(_) => self.clone(),
+            BerkeleyConstantTerm::Literal(_) => self.clone(),
         }
     }
 }
@@ -286,7 +298,7 @@ impl<F: Clone> Literal for ConstantTerm<F> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstantExprInner<F, ChallengeTerm> {
     Challenge(ChallengeTerm),
-    Constant(ConstantTerm<F>),
+    Constant(BerkeleyConstantTerm<F>),
 }
 
 impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
@@ -294,7 +306,7 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
 {
     type F = F;
     fn literal(x: Self::F) -> Self {
-        Self::Constant(ConstantTerm::literal(x))
+        Self::Constant(BerkeleyConstantTerm::literal(x))
     }
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
@@ -327,8 +339,8 @@ impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
     }
 }
 
-impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
-    fn from(x: ConstantTerm<F>) -> Self {
+impl<F, ChallengeTerm> From<BerkeleyConstantTerm<F>> for ConstantExprInner<F, ChallengeTerm> {
+    fn from(x: BerkeleyConstantTerm<F>) -> Self {
         ConstantExprInner::Constant(x)
     }
 }
@@ -402,8 +414,8 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 
 pub type ConstantExpr<F, ChallengeTerm> = Operations<ConstantExprInner<F, ChallengeTerm>>;
 
-impl<F, ChallengeTerm> From<ConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
-    fn from(x: ConstantTerm<F>) -> Self {
+impl<F, ChallengeTerm> From<BerkeleyConstantTerm<F>> for ConstantExpr<F, ChallengeTerm> {
+    fn from(x: BerkeleyConstantTerm<F>) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
@@ -547,9 +559,9 @@ impl<F: Field, ChallengeTerm: Copy> ConstantExpr<F, ChallengeTerm> {
         use Operations::*;
         match self {
             Atom(Challenge(challenge_term)) => chals[*challenge_term],
-            Atom(Constant(ConstantTerm::EndoCoefficient)) => c.endo_coefficient,
-            Atom(Constant(ConstantTerm::Mds { row, col })) => c.mds[*row][*col],
-            Atom(Constant(ConstantTerm::Literal(x))) => *x,
+            Atom(Constant(BerkeleyConstantTerm::EndoCoefficient)) => c.endo_coefficient,
+            Atom(Constant(BerkeleyConstantTerm::Mds { row, col })) => c.mds[*row][*col],
+            Atom(Constant(BerkeleyConstantTerm::Literal(x))) => *x,
             Pow(x, p) => x.value(c, chals).pow([*p]),
             Mul(x, y) => x.value(c, chals) * y.value(c, chals),
             Add(x, y) => x.value(c, chals) + y.value(c, chals),
@@ -688,10 +700,10 @@ impl<F, Column, ChallengeTerm> From<ConstantExpr<F, ChallengeTerm>>
     }
 }
 
-impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<ConstantTerm<F>>
+impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<BerkeleyConstantTerm<F>>
     for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
-    fn from(x: ConstantTerm<F>) -> Self {
+    fn from(x: BerkeleyConstantTerm<F>) -> Self {
         ConstantExpr::from(x).into()
     }
 }
@@ -871,7 +883,7 @@ where
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F, Column, ChallengeTerm> {
-    Constant(ConstantTerm<F>),
+    Constant(BerkeleyConstantTerm<F>),
     Challenge(ChallengeTerm),
     Cell(Variable<Column>),
     Dup,
@@ -950,7 +962,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
                 continue;
             }
 
-            use ConstantTerm::*;
+            use BerkeleyConstantTerm::*;
             use PolishToken::*;
             match t {
                 Challenge(challenge_term) => stack.push(chals[*challenge_term]),
@@ -1719,7 +1731,7 @@ impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
-        ConstantTerm::Literal(x).into()
+        BerkeleyConstantTerm::Literal(x).into()
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
@@ -2790,13 +2802,13 @@ impl<'a, F: Field, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<u64>
     for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
     fn from(x: u64) -> Self {
-        ConstantTerm::Literal(F::from(x)).into()
+        BerkeleyConstantTerm::Literal(F::from(x)).into()
     }
 }
 
 impl<F: Field, ChallengeTerm> From<u64> for ConstantExpr<F, ChallengeTerm> {
     fn from(x: u64) -> Self {
-        ConstantTerm::Literal(F::from(x)).into()
+        BerkeleyConstantTerm::Literal(F::from(x)).into()
     }
 }
 
@@ -2806,7 +2818,7 @@ impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'
     type Output = Expr<ConstantExpr<F, ChallengeTerm>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
-        Expr::from(ConstantTerm::Literal(y)) * self
+        Expr::from(BerkeleyConstantTerm::Literal(y)) * self
     }
 }
 
@@ -2841,12 +2853,12 @@ where
     }
 }
 
-impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
+impl<F: PrimeField> FormattedOutput for BerkeleyConstantTerm<F> {
     fn is_alpha(&self) -> bool {
         false
     }
     fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ConstantTerm::*;
+        use BerkeleyConstantTerm::*;
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
@@ -2855,7 +2867,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
     }
 
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ConstantTerm::*;
+        use BerkeleyConstantTerm::*;
         match self {
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
@@ -2864,7 +2876,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
     }
 
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use ConstantTerm::*;
+        use BerkeleyConstantTerm::*;
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
@@ -3383,7 +3395,7 @@ pub mod constraints {
         }
 
         fn literal(x: F) -> Self {
-            ConstantTerm::Literal(x).into()
+            BerkeleyConstantTerm::Literal(x).into()
         }
 
         fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
