@@ -3,7 +3,7 @@ use crate::{
     expr::E, logup::LookupTableID, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
     verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
-use ark_ff::Zero;
+use ark_ec::AffineRepr;
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::kzg::PairingSRS;
 use rand::{CryptoRng, RngCore};

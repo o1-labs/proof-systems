@@ -12,7 +12,7 @@
 //! `poseidon/src/pasta/params.sage`
 
 use crate::poseidon_8_56_5_3_2::columns::PoseidonColumn;
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -96,7 +96,7 @@ where
     // Checking that p - 1 is coprime with 5 as it has to be the case for the sbox
     {
         let one = BigUint::from(1u64);
-        let p: BigUint = TryFrom::try_from(<F as PrimeField>::Params::MODULUS).unwrap();
+        let p: BigUint = TryFrom::try_from(<F as PrimeField>::MODULUS).unwrap();
         let p_minus_one = p - one.clone();
         let five = BigUint::from(5u64);
         assert_eq!(p_minus_one.gcd(&five), one);

@@ -1,4 +1,4 @@
-use ark_ff::{FpParameters, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
@@ -101,7 +101,7 @@ pub const N_LIMBS_LARGE: usize = 4;
 
 /// Returns the highest limb of the foreign field modulus. Is used by the lookups.
 pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
-    let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
+    let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::MODULUS).unwrap();
     f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
 }
 
@@ -547,11 +547,11 @@ pub fn multiplication_circuit<
     let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
 
     // Foreign field modulus
-    let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    let f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
     let f_bi: BigInt = f_bui.to_bigint().unwrap();
 
     // Native field modulus (prime)
-    let n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    let n_bui: BigUint = TryFrom::try_from(F::MODULUS).unwrap();
     let n_bi: BigInt = n_bui.to_bigint().unwrap();
     let n_half_bi = &n_bi / &two_bi;
 
@@ -802,10 +802,9 @@ mod tests {
             lookups::LookupTable,
             N_INTERMEDIATE_LIMBS,
         },
-        Ff1, LIMB_BITSIZE, N_LIMBS,
+        Ff1, Fp, LIMB_BITSIZE, N_LIMBS,
     };
-    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
-    use mina_curves::pasta::Fp;
+    use ark_ff::{BigInteger, One, PrimeField, UniformRand, Zero};
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};
     use rand::{CryptoRng, Rng, RngCore};
@@ -957,7 +956,7 @@ mod tests {
 
     #[test]
     fn test_decomposition_order_minus_one() {
-        let x = BigUint::from_bytes_be(&<Fp as PrimeField>::Params::MODULUS.to_bytes_be())
+        let x = BigUint::from_bytes_be(&<Fp as PrimeField>::MODULUS.to_bytes_be())
             - BigUint::from_str("1").unwrap();
 
         test_decomposition_generic(Fp::from(x));

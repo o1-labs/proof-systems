@@ -16,10 +16,13 @@ mod tests {
         logup::LookupTableID,
         Ff1, Fp,
     };
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::UniformRand;
     use rand::{CryptoRng, RngCore};
-    use std::collections::{BTreeMap, HashMap};
+    use std::{
+        collections::{BTreeMap, HashMap},
+        ops::Mul,
+    };
 
     type FECWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
@@ -35,14 +38,17 @@ mod tests {
         rng: &mut RNG,
         domain_size: usize,
     ) -> FECWitnessBuilderEnv {
-        use mina_curves::pasta::{Fp, Pallas};
+        // NOTE: this uses Pallas-in-Pallas emulation.
+        use mina_curves::pasta::Pallas;
+        type Fp = <Pallas as AffineRepr>::ScalarField;
 
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        let gen = Pallas::prime_subgroup_generator();
+        let gen = Pallas::generator();
+
         let kp: Fp = UniformRand::rand(rng);
         let p: Pallas = gen.mul(kp).into();
         let px: Ff1 = p.x;
@@ -57,8 +63,7 @@ mod tests {
 
             let (rx, ry) = ec_add_circuit(&mut witness_env, px, py, qx, qy);
 
-            let r: Pallas =
-                ark_ec::models::short_weierstrass_jacobian::GroupAffine::new(rx, ry, false);
+            let r: Pallas = ark_ec::models::short_weierstrass::Affine::new_unchecked(rx, ry);
 
             assert!(
                 r == p + q,

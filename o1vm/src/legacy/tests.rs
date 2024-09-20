@@ -1,5 +1,4 @@
 use crate::{
-    legacy::folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints::Env as CEnv,
@@ -7,8 +6,12 @@ use crate::{
         witness::SCRATCH_SIZE,
         ITypeInstruction,
     },
-    legacy::trace::Trace,
-    legacy::folding::DecomposedMIPSTrace,
+    legacy::{
+        folding::{
+            Challenge, DecomposedMIPSTrace, FoldingEnvironment, FoldingInstance, FoldingWitness,
+        },
+        trace::Trace,
+    },
     BaseSponge, Curve,
 };
 
@@ -145,33 +148,33 @@ pub mod mips {
                 RType(rtype) => match rtype {
                     JumpRegister | SyscallExitGroup | Sync => assert_num_constraints(&instr, 1),
                     ShiftLeftLogical
-                        | ShiftRightLogical
-                        | ShiftRightArithmetic
-                        | ShiftLeftLogicalVariable
-                        | ShiftRightLogicalVariable
-                        | ShiftRightArithmeticVariable
-                        | JumpAndLinkRegister
-                        | SyscallReadHint
-                        | MoveFromHi
-                        | MoveFromLo
-                        | MoveToLo
-                        | MoveToHi
-                        | Add
-                        | AddUnsigned
-                        | Sub
-                        | SubUnsigned
-                        | And
-                        | Or
-                        | Xor
-                        | Nor
-                        | SetLessThan
-                        | SetLessThanUnsigned
-                        | MultiplyToRegister
-                        | CountLeadingOnes
-                        | CountLeadingZeros => assert_num_constraints(&instr, 4),
+                    | ShiftRightLogical
+                    | ShiftRightArithmetic
+                    | ShiftLeftLogicalVariable
+                    | ShiftRightLogicalVariable
+                    | ShiftRightArithmeticVariable
+                    | JumpAndLinkRegister
+                    | SyscallReadHint
+                    | MoveFromHi
+                    | MoveFromLo
+                    | MoveToLo
+                    | MoveToHi
+                    | Add
+                    | AddUnsigned
+                    | Sub
+                    | SubUnsigned
+                    | And
+                    | Or
+                    | Xor
+                    | Nor
+                    | SetLessThan
+                    | SetLessThanUnsigned
+                    | MultiplyToRegister
+                    | CountLeadingOnes
+                    | CountLeadingZeros => assert_num_constraints(&instr, 4),
                     MoveZero | MoveNonZero => assert_num_constraints(&instr, 6),
                     SyscallReadOther | SyscallWriteHint | SyscallWriteOther | Multiply
-                        | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 7),
+                    | MultiplyUnsigned | Div | DivUnsigned => assert_num_constraints(&instr, 7),
                     SyscallOther => assert_num_constraints(&instr, 11),
                     SyscallMmap => assert_num_constraints(&instr, 12),
                     SyscallFcntl | SyscallReadPreimage => assert_num_constraints(&instr, 23),
@@ -183,24 +186,23 @@ pub mod mips {
                     JumpAndLink => assert_num_constraints(&instr, 4),
                 },
                 IType(itype) => match itype {
-                    BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16 => {
-                        assert_num_constraints(&instr, 1)
-                    }
+                    BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8
+                    | Store16 => assert_num_constraints(&instr, 1),
                     BranchEq | BranchNeq | Store32 => assert_num_constraints(&instr, 3),
                     AddImmediate
-                        | AddImmediateUnsigned
-                        | SetLessThanImmediate
-                        | SetLessThanImmediateUnsigned
-                        | AndImmediate
-                        | OrImmediate
-                        | XorImmediate
-                        | LoadUpperImmediate
-                        | Load8
-                        | Load16
-                        | Load32
-                        | Load8Unsigned
-                        | Load16Unsigned
-                        | Store32Conditional => assert_num_constraints(&instr, 4),
+                    | AddImmediateUnsigned
+                    | SetLessThanImmediate
+                    | SetLessThanImmediateUnsigned
+                    | AndImmediate
+                    | OrImmediate
+                    | XorImmediate
+                    | LoadUpperImmediate
+                    | Load8
+                    | Load16
+                    | Load32
+                    | Load8Unsigned
+                    | Load16Unsigned
+                    | Store32Conditional => assert_num_constraints(&instr, 4),
                     LoadWordLeft | LoadWordRight | StoreWordLeft | StoreWordRight => {
                         assert_num_constraints(&instr, 13)
                     }
@@ -394,7 +396,8 @@ pub mod keccak {
 
             // Add the columns of the selectors to the circuit
             trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(First)), domain_size);
-            trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Middle)), domain_size);
+            trace
+                .set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Middle)), domain_size);
             trace.set_selector_column::<N_ZKVM_KECCAK_REL_COLS>(Sponge(Absorb(Last)), domain_size);
             trace
         }
@@ -416,10 +419,11 @@ pub mod keccak {
             let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
             // Keep track of the constraints and lookups of the sub-circuits
-            let mut keccak_circuit = <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
-                domain_size,
-                &mut keccak_env,
-            );
+            let mut keccak_circuit =
+                <DecomposedKeccakTrace as DecomposableTracer<KeccakEnv<Fp>>>::new(
+                    domain_size,
+                    &mut keccak_env,
+                );
 
             while keccak_env.step.is_some() {
                 let step = keccak_env.selector();
@@ -435,12 +439,12 @@ pub mod keccak {
             for step in Steps::iter().flat_map(|x| x.into_iter()) {
                 if keccak_circuit.in_circuit(step) {
                     test_completeness_generic_no_lookups::<
-                            N_ZKVM_KECCAK_COLS,
+                        N_ZKVM_KECCAK_COLS,
                         N_ZKVM_KECCAK_REL_COLS,
                         N_ZKVM_KECCAK_SEL_COLS,
                         0,
                         _,
-                        >(
+                    >(
                         keccak_circuit[step].constraints.clone(),
                         Box::new([]),
                         keccak_circuit[step].witness.clone(),
@@ -475,6 +479,8 @@ pub mod keccak {
     // (Step, Left, Right)
     type KeccakFoldingPair = (Steps, KeccakFoldingSide, KeccakFoldingSide);
 
+    type KeccakDefaultFqSponge = DefaultFqSponge<ark_bn254::g1::Config, PlonkSpongeConstantsKimchi>;
+
     #[test]
     fn heavy_test_keccak_folding() {
         use crate::{keccak::folding::KeccakConfig, trace::Foldable, Curve};
@@ -503,10 +509,10 @@ pub mod keccak {
 
             // Store all constraints indexed by Step
             let constraints = <DecomposedKeccakTrace as Foldable<
-                    N_ZKVM_KECCAK_COLS,
+                N_ZKVM_KECCAK_COLS,
                 KeccakConfig,
                 BaseSponge,
-                >>::folding_constraints(&trace);
+            >>::folding_constraints(&trace);
 
             // DEFINITIONS OF FUNCTIONS FOR TESTING PURPOSES
 
@@ -521,127 +527,130 @@ pub mod keccak {
 
             let check_folding =
                 |left: &KeccakFoldingSide,
-            right: &KeccakFoldingSide,
-            constraints: &[FoldingCompatibleExpr<KeccakConfig>],
-            fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
-                // Create the folding scheme ignoring selectors
-                let (scheme, final_constraint) =
-                    FoldingScheme::<KeccakConfig>::new(constraints.to_vec(), &srs, domain, &());
+                 right: &KeccakFoldingSide,
+                 constraints: &[FoldingCompatibleExpr<KeccakConfig>],
+                 fq_sponge: &mut KeccakDefaultFqSponge| {
+                    // Create the folding scheme ignoring selectors
+                    let (scheme, final_constraint) =
+                        FoldingScheme::<KeccakConfig>::new(constraints.to_vec(), &srs, domain, &());
 
-                // Fold both sides and check the constraints ignoring the selector columns
-                let fout =
-                    scheme.fold_instance_witness_pair(left.clone(), right.clone(), fq_sponge);
+                    // Fold both sides and check the constraints ignoring the selector columns
+                    let fout =
+                        scheme.fold_instance_witness_pair(left.clone(), right.clone(), fq_sponge);
 
-                // We should always have 0 as the degree of the constraints,
-                // without selectors, they are never higher than 2 in Keccak.
-                assert_eq!(scheme.get_number_of_additional_columns(), 0);
+                    // We should always have 0 as the degree of the constraints,
+                    // without selectors, they are never higher than 2 in Keccak.
+                    assert_eq!(scheme.get_number_of_additional_columns(), 0);
 
-                let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
-                checker.check(&final_constraint, domain);
-            };
+                    let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
+                    checker.check(&final_constraint, domain);
+                };
 
             let check_decomposable_folding_pair =
                 |step: Option<Steps>,
-            left: &KeccakFoldingSide,
-            right: &KeccakFoldingSide,
-            scheme: &DecomposableFoldingScheme<KeccakConfig>,
-            final_constraint: &FoldingCompatibleExpr<KeccakConfig>,
-            quadri_cols: Option<usize>,
-            fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
-                let fout =
-                    scheme.fold_instance_witness_pair(left.clone(), right.clone(), step, fq_sponge);
+                 left: &KeccakFoldingSide,
+                 right: &KeccakFoldingSide,
+                 scheme: &DecomposableFoldingScheme<KeccakConfig>,
+                 final_constraint: &FoldingCompatibleExpr<KeccakConfig>,
+                 quadri_cols: Option<usize>,
+                 fq_sponge: &mut KeccakDefaultFqSponge| {
+                    let fout = scheme.fold_instance_witness_pair(
+                        left.clone(),
+                        right.clone(),
+                        step,
+                        fq_sponge,
+                    );
 
-                let extra_cols = scheme.get_number_of_additional_columns();
-                if let Some(quadri_cols) = quadri_cols {
-                    assert!(extra_cols == quadri_cols);
-                }
+                    let extra_cols = scheme.get_number_of_additional_columns();
+                    if let Some(quadri_cols) = quadri_cols {
+                        assert!(extra_cols == quadri_cols);
+                    }
 
-                // Check the constraints on the folded circuit applying selectors
-                let checker = ExtendedProvider::<KeccakConfig>::new(
-                    fout.folded_instance,
-                    fout.folded_witness,
-                );
-                checker.check(final_constraint, domain);
-            };
+                    // Check the constraints on the folded circuit applying selectors
+                    let checker = ExtendedProvider::<KeccakConfig>::new(
+                        fout.folded_instance,
+                        fout.folded_witness,
+                    );
+                    checker.check(final_constraint, domain);
+                };
 
             let check_decomposable_folding =
                 |pair: &KeccakFoldingPair,
-            constraints: BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>>,
-            common_constraints: Vec<FoldingCompatibleExpr<KeccakConfig>>,
-            quadri_cols: Option<usize>,
-            fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
-                let (step, left, right) = pair;
-                let (dec_scheme, dec_final_constraint) =
-                    DecomposableFoldingScheme::<KeccakConfig>::new(
-                        constraints,
-                        common_constraints,
-                        &srs,
-                        domain,
-                        &(),
+                 constraints: BTreeMap<Steps, Vec<FoldingCompatibleExpr<KeccakConfig>>>,
+                 common_constraints: Vec<FoldingCompatibleExpr<KeccakConfig>>,
+                 quadri_cols: Option<usize>,
+                 fq_sponge: &mut KeccakDefaultFqSponge| {
+                    let (step, left, right) = pair;
+                    let (dec_scheme, dec_final_constraint) =
+                        DecomposableFoldingScheme::<KeccakConfig>::new(
+                            constraints,
+                            common_constraints,
+                            &srs,
+                            domain,
+                            &(),
+                        );
+                    // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
+                    check_decomposable_folding_pair(
+                        None,
+                        left,
+                        right,
+                        &dec_scheme,
+                        &dec_final_constraint,
+                        quadri_cols,
+                        fq_sponge,
                     );
-                // Subcase A: Check the folded circuit of decomposable folding ignoring selectors (None)
-                check_decomposable_folding_pair(
-                    None,
-                    left,
-                    right,
-                    &dec_scheme,
-                    &dec_final_constraint,
-                    quadri_cols,
-                    fq_sponge,
-                );
-                // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
-                check_decomposable_folding_pair(
-                    Some(*step),
-                    left,
-                    right,
-                    &dec_scheme,
-                    &dec_final_constraint,
-                    quadri_cols,
-                    fq_sponge,
-                );
-            };
+                    // Subcase B: Check the folded circuit of decomposable folding applying selectors (Some)
+                    check_decomposable_folding_pair(
+                        Some(*step),
+                        left,
+                        right,
+                        &dec_scheme,
+                        &dec_final_constraint,
+                        quadri_cols,
+                        fq_sponge,
+                    );
+                };
 
             let check_decomposable_folding_mix =
-                |steps: (Steps, Steps),
-            fq_sponge: &mut DefaultFqSponge<Parameters, PlonkSpongeConstantsKimchi>| {
-                let (dec_scheme, dec_final_constraint) =
-                    DecomposableFoldingScheme::<KeccakConfig>::new(
-                        constraints.clone(),
-                        vec![],
-                        &srs,
-                        domain,
-                        &(),
-                    );
-                let left = {
-                    let fout = dec_scheme.fold_instance_witness_pair(
-                        keccak_trace[0].to_folding_pair(steps.0, fq_sponge, domain, &srs),
-                        keccak_trace[1].to_folding_pair(steps.0, fq_sponge, domain, &srs),
-                        Some(steps.0),
-                        fq_sponge,
-                    );
-                    let checker = ExtendedProvider::<KeccakConfig>::new(
-                        fout.folded_instance,
-                        fout.folded_witness,
-                    );
-                    (checker.instance, checker.witness)
+                |steps: (Steps, Steps), fq_sponge: &mut KeccakDefaultFqSponge| {
+                    let (dec_scheme, dec_final_constraint) =
+                        DecomposableFoldingScheme::<KeccakConfig>::new(
+                            constraints.clone(),
+                            vec![],
+                            &srs,
+                            domain,
+                            &(),
+                        );
+                    let left = {
+                        let fout = dec_scheme.fold_instance_witness_pair(
+                            keccak_trace[0].to_folding_pair(steps.0, fq_sponge, domain, &srs),
+                            keccak_trace[1].to_folding_pair(steps.0, fq_sponge, domain, &srs),
+                            Some(steps.0),
+                            fq_sponge,
+                        );
+                        let checker = ExtendedProvider::<KeccakConfig>::new(
+                            fout.folded_instance,
+                            fout.folded_witness,
+                        );
+                        (checker.instance, checker.witness)
+                    };
+                    let right = {
+                        let fout = dec_scheme.fold_instance_witness_pair(
+                            keccak_trace[0].to_folding_pair(steps.1, fq_sponge, domain, &srs),
+                            keccak_trace[1].to_folding_pair(steps.1, fq_sponge, domain, &srs),
+                            Some(steps.1),
+                            fq_sponge,
+                        );
+                        let checker = ExtendedProvider::<KeccakConfig>::new(
+                            fout.folded_instance,
+                            fout.folded_witness,
+                        );
+                        (checker.instance, checker.witness)
+                    };
+                    let fout = dec_scheme.fold_instance_witness_pair(left, right, None, fq_sponge);
+                    let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
+                    checker.check(&dec_final_constraint, domain);
                 };
-                let right = {
-                    let fout = dec_scheme.fold_instance_witness_pair(
-                        keccak_trace[0].to_folding_pair(steps.1, fq_sponge, domain, &srs),
-                        keccak_trace[1].to_folding_pair(steps.1, fq_sponge, domain, &srs),
-                        Some(steps.1),
-                        fq_sponge,
-                    );
-                    let checker = ExtendedProvider::<KeccakConfig>::new(
-                        fout.folded_instance,
-                        fout.folded_witness,
-                    );
-                    (checker.instance, checker.witness)
-                };
-                let fout = dec_scheme.fold_instance_witness_pair(left, right, None, fq_sponge);
-                let checker = ExtendedProvider::new(fout.folded_instance, fout.folded_witness);
-                checker.check(&dec_final_constraint, domain);
-            };
 
             // HERE STARTS THE TESTING
 
@@ -654,15 +663,16 @@ pub mod keccak {
             assert_eq!(constraints[&Round(0)].len(), 389);
 
             // Total number of Keccak constraints of degree higher than 2 (should be 0)
-            let total_deg_higher_2 = Steps::iter()
-                .flat_map(|x| x.into_iter())
-                .fold(0, |acc, step| {
-                    acc + trace[step]
-                        .constraints
-                        .iter()
-                        .filter(|c| c.degree(1, 0) > 2)
-                        .count()
-                });
+            let total_deg_higher_2 =
+                Steps::iter()
+                    .flat_map(|x| x.into_iter())
+                    .fold(0, |acc, step| {
+                        acc + trace[step]
+                            .constraints
+                            .iter()
+                            .filter(|c| c.degree(1, 0) > 2)
+                            .count()
+                    });
             assert_eq!(total_deg_higher_2, 0);
 
             // Check folding constraints of individual steps ignoring selectors
@@ -685,7 +695,13 @@ pub mod keccak {
                 // CASE 2: Check that `DecomposableFoldingScheme` works when passing the dummy zero constraint
                 //         to each step, and an empty list of common constraints.
                 let pair = (step, left, right);
-                check_decomposable_folding(&pair, dummy_constraints(), vec![], Some(0), &mut fq_sponge);
+                check_decomposable_folding(
+                    &pair,
+                    dummy_constraints(),
+                    vec![],
+                    Some(0),
+                    &mut fq_sponge,
+                );
 
                 // CASE 3: Using a separate `DecomposableFoldingScheme` for each step, check each step
                 //         constraints using a dummy BTreeMap of `vec[0]` per-step constraints and

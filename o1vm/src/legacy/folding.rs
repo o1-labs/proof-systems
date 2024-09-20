@@ -1,4 +1,4 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::AffineRepr;
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
@@ -15,8 +15,8 @@ use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-pub(crate) type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
-pub(crate) type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
+pub(crate) type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::ScalarField;
+pub(crate) type BaseField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::BaseField;
 
 // Does not contain alpha because this one should be provided by folding itself
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
@@ -49,19 +49,19 @@ pub struct FoldingInstance<const N: usize, G: CommitmentCurve> {
     /// - β as the evaluation point for the logup argument
     /// - j: the joint combiner for vector lookups
     /// - γ (set to 0 for now)
-    pub challenges: [<G as AffineCurve>::ScalarField; Challenge::COUNT],
+    pub challenges: [<G as AffineRepr>::ScalarField; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
-    pub alphas: Alphas<<G as AffineCurve>::ScalarField>,
+    pub alphas: Alphas<<G as AffineRepr>::ScalarField>,
 
     /// Blinder used in the polynomial commitment scheme
-    pub blinder: <G as AffineCurve>::ScalarField,
+    pub blinder: <G as AffineRepr>::ScalarField,
 }
 
 impl<const N: usize, G: CommitmentCurve> Foldable<G::ScalarField> for FoldingInstance<N, G> {
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
         FoldingInstance {
             commitments: array::from_fn(|i| {
-                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+                (a.commitments[i] + b.commitments[i].mul(challenge)).into()
             }),
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),

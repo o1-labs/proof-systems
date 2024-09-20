@@ -1,7 +1,7 @@
 //! Clone of kimchi/precomputed_srs.rs but for MSM project with BN254
 
 use crate::{Fp, BN254, DOMAIN_SIZE};
-use ark_ec::PairingEngine;
+use ark_ec::pairing::Pairing;
 use ark_ff::UniformRand;
 use ark_serialize::Write;
 use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
@@ -12,12 +12,12 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 
 /// A clone of the `PairingSRS` that is serialized in a test-optimised way.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TestPairingSRS<Pair: PairingEngine> {
+pub struct TestPairingSRS<Pair: Pairing> {
     pub full_srs: TestSRS<Pair::G1Affine>,
     pub verifier_srs: TestSRS<Pair::G2Affine>,
 }
 
-impl<Pair: PairingEngine> From<PairingSRS<Pair>> for TestPairingSRS<Pair> {
+impl<Pair: Pairing> From<PairingSRS<Pair>> for TestPairingSRS<Pair> {
     fn from(value: PairingSRS<Pair>) -> Self {
         TestPairingSRS {
             full_srs: From::from(value.full_srs),
@@ -26,7 +26,7 @@ impl<Pair: PairingEngine> From<PairingSRS<Pair>> for TestPairingSRS<Pair> {
     }
 }
 
-impl<Pair: PairingEngine> From<TestPairingSRS<Pair>> for PairingSRS<Pair> {
+impl<Pair: Pairing> From<TestPairingSRS<Pair>> for PairingSRS<Pair> {
     fn from(value: TestPairingSRS<Pair>) -> Self {
         PairingSRS {
             full_srs: From::from(value.full_srs),

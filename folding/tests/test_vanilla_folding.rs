@@ -6,7 +6,7 @@
 /// ```text
 /// cargo nextest run test_folding_instance --release --all-features
 /// ```
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::AffineRepr;
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use checker::{ExtendedProvider, Provider};
@@ -30,7 +30,7 @@ use std::println as debug;
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 
 /// The instance is the commitments to the polynomials and the challenges
 /// There are 3 commitments and challanges because there are 3 columns, A, B and
@@ -47,7 +47,7 @@ impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
-                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+                (a.commitments[i] + b.commitments[i] * challenge).into()
             }),
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
