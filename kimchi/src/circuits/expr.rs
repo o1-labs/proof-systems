@@ -85,7 +85,7 @@ pub trait AlphaChallengeTerm<'a>:
 
 /// The collection of constants required to evaluate an `Expr`.
 #[derive(Clone)]
-pub struct Constants<F: 'static> {
+pub struct BerkeleyConstants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -94,11 +94,14 @@ pub struct Constants<F: 'static> {
     pub zk_rows: u64,
 }
 
+pub trait Constants<F: 'static>: Clone {}
+
 pub trait ColumnEnvironment<
     'a,
     F: FftField,
     ChallengeTerm,
     Challenges: Index<ChallengeTerm, Output = F>,
+    Cst: Constants<F>,
 >
 {
     /// The generic type of column the environment can use.
@@ -119,7 +122,7 @@ pub trait ColumnEnvironment<
     /// Return the constants parameters that the expression might use.
     /// For instance, it can be the matrix used by the linear layer in the
     /// permutation.
-    fn get_constants(&self) -> &Constants<F>;
+    fn get_constants(&self) -> &Cst;
 
     /// Return the challenges, coined by the verifier.
     fn get_challenges(&self) -> &Challenges;
@@ -229,7 +232,7 @@ pub trait Literal: Sized + Clone {
     /// Obtains the representation of some constants as a literal.
     /// This is useful before converting Kimchi expressions with constants
     /// to folding compatible expressions.
-    fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
+    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self;
 }
 
 impl<F: Field> Literal for F {
@@ -243,7 +246,7 @@ impl<F: Field> Literal for F {
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
-    fn as_literal(&self, _constants: &Constants<Self::F>) -> Self {
+    fn as_literal(&self, _constants: &dyn Constants<Self::F>) -> Self {
         *self
     }
 }
@@ -265,7 +268,7 @@ impl<F: Clone> Literal for ConstantTerm<F> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
         match self {
             ConstantTerm::EndoCoefficient => {
                 ConstantTerm::Literal(constants.endo_coefficient.clone())
@@ -306,7 +309,7 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
         match self {
             Self::Constant(x) => Self::Constant(x.as_literal(constants)),
             Self::Challenge(_) => self.clone(),
@@ -367,7 +370,7 @@ impl<T: Literal + Clone> Literal for Operations<T> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
         match self {
             Self::Atom(x) => Self::Atom(x.as_literal(constants)),
             Self::Pow(x, n) => Self::Pow(Box::new(x.as_literal(constants)), *n),
@@ -537,7 +540,7 @@ where
 
 impl<F: Field, ChallengeTerm: Copy> ConstantExpr<F, ChallengeTerm> {
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>, chals: &dyn Index<ChallengeTerm, Output = F>) -> F {
+    pub fn value(&self, c: &dyn Constants<F>, chals: &dyn Index<ChallengeTerm, Output = F>) -> F {
         use ConstantExprInner::*;
         use Operations::*;
         match self {
@@ -719,7 +722,7 @@ impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
         match self {
             ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
             ExprInner::Cell(_)
@@ -931,7 +934,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &Constants<F>,
+        c: &dyn Constants<F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
@@ -1152,7 +1155,8 @@ fn unnormalized_lagrange_evals<
     F: FftField,
     ChallengeTerm,
     Challenge: Index<ChallengeTerm, Output = F>,
-    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
+    Cst: Constants<F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst>,
 >(
     l0_1: F,
     i: i32,
@@ -1838,7 +1842,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
 {
     fn evaluate_constants_(
         &self,
-        c: &Constants<F>,
+        c: &dyn Constants<F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Expr<F, Column> {
         use ExprInner::*;
@@ -1871,7 +1875,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1888,7 +1893,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &Constants<F>,
+        c: &dyn Constants<F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
@@ -1940,7 +1945,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1957,7 +1963,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     pub fn evaluations<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2033,7 +2040,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'a,
         ChallengeTerm,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2088,7 +2096,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'b,
         ChallengeTerm,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
@@ -2291,7 +2300,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2309,7 +2319,8 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2348,7 +2359,8 @@ impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm: Copy>
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Cst: Constants<F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -3598,7 +3610,7 @@ pub mod test {
         let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 
         let env = Environment {
-            constants: Constants {
+            constants: BerkeleyConstants {
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
                 zk_rows: 3,
