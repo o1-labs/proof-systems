@@ -15,7 +15,7 @@ use crate::{
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
-use ark_ff::{One, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
@@ -417,9 +417,8 @@ impl<
         ];
         // the result here is numerator_commitment * 1 - quotient * divisor_commitment
         // Note that the unwrap cannot fail as the output of a miller loop is non zero
-        let res = Pair::final_exponentiation(Pair::multi_miller_loop(to_loop_left, to_loop_right))
-            .unwrap();
+        let res = Pair::multi_pairing(to_loop_left, to_loop_right);
 
-        res.0 == Pair::TargetField::one()
+        res.is_zero()
     }
 }
