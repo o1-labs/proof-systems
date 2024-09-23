@@ -72,11 +72,17 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
+        node: [20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
