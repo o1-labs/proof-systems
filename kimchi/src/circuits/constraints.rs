@@ -639,6 +639,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
+//
+pub const NUM_CHUNKS_BY_DEFAULT: usize = 1;
+pub const ZK_ROWS_BY_DEFAULT: u64 = 3;
+
 pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
     (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS
 }
