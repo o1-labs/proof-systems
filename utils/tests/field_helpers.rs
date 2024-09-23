@@ -128,7 +128,7 @@ fn field_big() {
     let field_zero = BaseField::from(0u32);
 
     assert_eq!(
-        BigUint::from_bytes_be(&field_zero.0.to_bytes_be()),
+        BigUint::from_bytes_be(&field_zero.into_bigint().to_bytes_be()),
         BigUint::from_bytes_be(&be_zero_32bytes)
     );
 
