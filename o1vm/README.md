@@ -93,6 +93,15 @@ In either case, `run-code.sh` will:
 3. Execute the OP program through the Cannon MIPS VM.
 4. Execute the OP program through the o1VM MIPS
 
+## Flavors
+
+Different versions/flavors of the o1vm are available.
+- [legacy](./src/legacy/mod.rs) - to be deprecated (currently default).
+- [pickles](./src/pickles/mod.rs)
+
+You can select the flavor you want to run with `run-code.sh` by using the
+environment variable `O1VM_FLAVOR`.
+
 ## Testing the preimage read
 
 Run:
