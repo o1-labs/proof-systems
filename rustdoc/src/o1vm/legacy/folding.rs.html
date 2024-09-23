@@ -965,7 +965,7 @@
             },
             Steps,
         },
-        Curve, Fp,
+        legacy::{Curve, Fp},
     };
 
     <span class="kw">use super</span>::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -1060,7 +1060,7 @@
             column::{ColumnAlias <span class="kw">as </span>MIPSColumn, N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
             Instruction,
         },
-        Curve, Fp,
+        legacy::{Curve, Fp},
     };
 
     <span class="kw">use super</span>::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -1151,8 +1151,8 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use crate</span>::{
-        legacy::folding::{FoldingInstance, FoldingWitness, <span class="kw-2">*</span>},
+    <span class="kw">use </span><span class="kw">crate</span>::legacy::{
+        folding::{FoldingInstance, FoldingWitness, <span class="kw-2">*</span>},
         Curve, Fp,
     };
     <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};

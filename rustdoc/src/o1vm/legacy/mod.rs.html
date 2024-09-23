@@ -18,6 +18,22 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This submodule provides the legacy flavor/interface of the o1vm, and is not
 //! supposed to be used anymore.
 //!
@@ -35,7 +51,23 @@
 //! O1VM_FLAVOR=legacy bash run-code.sh
 //! ```
 
-</span><span class="kw">pub mod </span>folding;
+</span><span class="kw">use </span>ark_ec::bn::Bn;
+<span class="kw">use </span>mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+<span class="kw">use </span>poly_commitment::kzg::KZGProof;
+
+<span class="doccomment">/// Scalar field of BN254
+</span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
+<span class="doccomment">/// Elliptic curve group of BN254
+</span><span class="kw">pub type </span>Curve = ark_bn254::G1Affine;
+<span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;
+<span class="kw">pub type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
+<span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
+<span class="kw">pub type </span>OpeningProof = KZGProof&lt;Bn&lt;ark_bn254::Parameters&gt;&gt;;
+
+<span class="kw">pub mod </span>folding;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>trace;
 </code></pre></div></section></main></body></html>
