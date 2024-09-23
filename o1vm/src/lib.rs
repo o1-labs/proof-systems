@@ -11,6 +11,9 @@ pub mod interpreters;
 /// to be compatible with Ethereum natively, using the curve bn254.
 pub mod legacy;
 
+/// Pickles flavor of the o1vm.
+pub mod pickles;
+
 /// Instantiation of the lookups for the VM project.
 pub mod lookups;
 
