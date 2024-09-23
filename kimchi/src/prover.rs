@@ -208,9 +208,9 @@ where
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
         let zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
-        if (index.cs.zk_rows as usize) < zero_knowledge_limit {
+        if (index.cs.zk_rows as usize) <= zero_knowledge_limit {
             return Err(ProverError::NotZeroKnowledge(
-                zero_knowledge_limit,
+                zero_knowledge_limit + 1,
                 index.cs.zk_rows as usize,
             ));
         }
