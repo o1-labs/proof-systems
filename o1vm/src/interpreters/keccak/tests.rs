@@ -7,7 +7,6 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    Fp,
 };
 
 use ark_ff::{One, Zero};
@@ -18,6 +17,9 @@ use kimchi::{
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
+
+// FIXME: we should check with other fields too
+use ark_bn254::Fr as Fp;
 
 #[test]
 fn test_pad_blocks() {

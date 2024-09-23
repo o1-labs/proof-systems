@@ -15,6 +15,22 @@
 //! O1VM_FLAVOR=legacy bash run-code.sh
 //! ```
 
+use ark_ec::bn::Bn;
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use poly_commitment::kzg::KZGProof;
+
+/// Scalar field of BN254
+pub type Fp = ark_bn254::Fr;
+/// Elliptic curve group of BN254
+pub type Curve = ark_bn254::G1Affine;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+pub type SpongeParams = PlonkSpongeConstantsKimchi;
+pub type OpeningProof = KZGProof<Bn<ark_bn254::Parameters>>;
+
 pub mod folding;
 pub mod proof;
 pub mod trace;

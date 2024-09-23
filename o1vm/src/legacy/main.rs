@@ -25,10 +25,10 @@ use o1vm::{
             keccak::DecomposedKeccakTrace, mips::DecomposedMIPSTrace, DecomposableTracer, Foldable,
             Tracer,
         },
+        BaseSponge, Fp, OpeningProof, ScalarSponge,
     },
     lookups::LookupTableIDs,
     preimage_oracle::PreImageOracle,
-    BaseSponge, Fp, OpeningProof, ScalarSponge,
 };
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;

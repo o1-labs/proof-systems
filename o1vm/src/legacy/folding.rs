@@ -308,7 +308,7 @@ pub mod keccak {
             },
             Steps,
         },
-        Curve, Fp,
+        legacy::{Curve, Fp},
     };
 
     use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -403,7 +403,7 @@ pub mod mips {
             column::{ColumnAlias as MIPSColumn, N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
             Instruction,
         },
-        Curve, Fp,
+        legacy::{Curve, Fp},
     };
 
     use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -494,8 +494,8 @@ pub mod mips {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        legacy::folding::{FoldingInstance, FoldingWitness, *},
+    use crate::legacy::{
+        folding::{FoldingInstance, FoldingWitness, *},
         Curve, Fp,
     };
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
