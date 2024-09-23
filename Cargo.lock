@@ -831,36 +831,12 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "darling"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a01d95850c592940db9b8194bc39f4bc0e89dee5c4265e4b1807c34a9aba453c"
-dependencies = [
- "darling_core 0.13.4",
- "darling_macro 0.13.4",
-]
-
-[[package]]
-name = "darling"
 version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc5d6b04b3fd0ba9926f945895de7d806260a2d7431ba82e7edaecb043c4c6b8"
 dependencies = [
- "darling_core 0.20.5",
- "darling_macro 0.20.5",
-]
-
-[[package]]
-name = "darling_core"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "859d65a907b6852c9361e3185c862aae7fafd2887876799fa55f5f99dc40d610"
-dependencies = [
- "fnv",
- "ident_case",
- "proc-macro2",
- "quote",
- "strsim 0.10.0",
- "syn 1.0.109",
+ "darling_core",
+ "darling_macro",
 ]
 
 [[package]]
@@ -879,22 +855,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
-dependencies = [
- "darling_core 0.13.4",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "darling_macro"
 version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d1545d67a2149e1d93b7e5c7752dce5a7426eb5d1357ddcfd89336b94444f77"
 dependencies = [
- "darling_core 0.20.5",
+ "darling_core",
  "quote",
  "syn 2.0.48",
 ]
@@ -1007,7 +972,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "serde_with 1.14.0",
+ "serde_with",
 ]
 
 [[package]]
@@ -1080,7 +1045,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
  "strum",
  "strum_macros",
  "thiserror",
@@ -1465,7 +1430,7 @@ dependencies = [
  "secp256k1",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
  "snarky-deriver",
  "strum",
  "strum_macros",
@@ -1501,7 +1466,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
  "strum",
  "strum_macros",
  "thiserror",
@@ -1520,7 +1485,7 @@ dependencies = [
  "poly-commitment",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
  "tinytemplate",
 ]
 
@@ -1706,7 +1671,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
 ]
 
 [[package]]
@@ -1912,7 +1877,7 @@ dependencies = [
  "rayon",
  "secp256k1",
  "serde",
- "serde_with 3.6.0",
+ "serde_with",
  "sha2",
  "thiserror",
 ]
@@ -1949,7 +1914,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "serde_with 3.6.0",
+ "serde_with",
  "sha3",
  "stacker",
  "strum",
@@ -2228,7 +2193,7 @@ dependencies = [
  "rayon",
  "rmp-serde",
  "serde",
- "serde_with 3.6.0",
+ "serde_with",
  "thiserror",
 ]
 
@@ -2602,16 +2567,6 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "1.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
-dependencies = [
- "serde",
- "serde_with_macros 1.5.2",
-]
-
-[[package]]
-name = "serde_with"
 version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b0ed1662c5a68664f45b76d18deb0e234aff37207086803165c961eb695e981"
@@ -2623,20 +2578,8 @@ dependencies = [
  "indexmap 2.2.2",
  "serde",
  "serde_json",
- "serde_with_macros 3.6.0",
+ "serde_with_macros",
  "time",
-]
-
-[[package]]
-name = "serde_with_macros"
-version = "1.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e182d6ec6f05393cc0e5ed1bf81ad6db3a8feedf8ee515ecdd369809bcce8082"
-dependencies = [
- "darling 0.13.4",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -2645,7 +2588,7 @@ version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "568577ff0ef47b879f736cd66740e022f3672788cdf002a05a4e609ea5a6fb15"
 dependencies = [
- "darling 0.20.5",
+ "darling",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
