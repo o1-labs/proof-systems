@@ -322,7 +322,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         unimplemented!("TODO")
     }
 
-    fn load_value(&mut self, _pos: Self::Position) -> Self::Variable {
+    fn load_value(&mut self, _row: usize, _pos: Self::Position) -> Self::Variable {
         unimplemented!("TODO")
     }
 }

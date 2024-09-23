@@ -681,7 +681,7 @@ pub trait InterpreterEnv {
     fn save_value(&mut self, pos: Self::Position) -> Self::Variable;
 
     /// Load the latest value saved in the CPU cache for the position [pos].
-    fn load_value(&mut self, pos: Self::Position) -> Self::Variable;
+    fn load_value(&mut self, row: usize, pos: Self::Position) -> Self::Variable;
 }
 
 /// Run the application
