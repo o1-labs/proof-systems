@@ -1,10 +1,10 @@
 # Maller's optimization for kimchi
 
-This document proposes a protocol change for [kimchi](../../specs/kimchi/kimchi.md).
+This document proposes a protocol change for [kimchi](../specs/kimchi.md).
 
 ## What is Maller's optimization?
 
-See the [section on Maller's optimization](maller.md) for background.
+See the [section on Maller's optimization](../plonk/maller.md) for background.
 
 ## Overview
 
@@ -35,7 +35,7 @@ Note right of Verifier: verifies the evaluation proof \n to check that L(zeta) =
 ```
 -->
 
-In the rest of this document, we review the details and considerations needed to implement this change in [kimchi](../../specs/kimchi/kimchi.md).
+In the rest of this document, we review the details and considerations needed to implement this change in [kimchi](../specs/kimchi.md).
 
 ## How to deal with a chunked $t$?
 
@@ -130,7 +130,7 @@ $$
 \end{align}
 $$
 
-Because we use the [inner product polynomial commitment](../../specs/polynomial_commitment.md), we also need:
+Because we use the [inner product polynomial commitment](../plonk/polynomial_commitments.md), we also need:
 
 $$
 \tilde L(\zeta \omega) = \tilde f(\zeta \omega) - Z_H(\zeta) \cdot \tilde t(\zeta \omega)

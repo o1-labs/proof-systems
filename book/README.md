@@ -9,6 +9,8 @@ $ # install dependencies
 $ make deps
 $ # serve the page locally
 $ make
+$ # clean
+$ make clean
 ```
 
 The specifications in the book are dynamically generated. Refer to the [specifications/](specifications/) directory.

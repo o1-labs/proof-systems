@@ -60,7 +60,7 @@ In short, $F$ should be an abelian group over $+$ with $0$ as identity and $\mat
 
 The point of defining a field is that we can algebraically manipulate elements of a field the same way we do with ordinary numbers, adding, multiplying, subtracting, and dividing them without worrying about rounding, underflows, overflows, etc.
 
-> In Rust, we use the trait [`Field`](docs.todo) to represent types that are fields. So, if we have `T : Field` then values of type `T` can be multiplied, subtracted, divided, etc.
+> In Rust, we use the trait `Field` to represent types that are fields. So, if we have `T : Field` then values of type `T` can be multiplied, subtracted, divided, etc.
 
 ### Examples
 
