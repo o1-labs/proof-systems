@@ -38,9 +38,9 @@ mod tests {
         rng: &mut RNG,
         domain_size: usize,
     ) -> FECWitnessBuilderEnv {
-        // NOTE: this uses Pallas-in-Pallas emulation.
         use mina_curves::pasta::Pallas;
-        type Fp = <Pallas as AffineRepr>::ScalarField;
+        // Fq = Ff2
+        type Fq = <Pallas as AffineRepr>::ScalarField;
 
         let mut witness_env = WitnessBuilderEnv::create();
 
@@ -49,13 +49,13 @@ mod tests {
 
         let gen = Pallas::generator();
 
-        let kp: Fp = UniformRand::rand(rng);
+        let kp: Fq = UniformRand::rand(rng);
         let p: Pallas = gen.mul(kp).into();
         let px: Ff1 = p.x;
         let py: Ff1 = p.y;
 
         for row_i in 0..domain_size {
-            let kq: Fp = UniformRand::rand(rng);
+            let kq: Fq = UniformRand::rand(rng);
             let q: Pallas = gen.mul(kq).into();
 
             let qx: Ff1 = q.x;

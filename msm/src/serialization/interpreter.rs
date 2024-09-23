@@ -802,13 +802,16 @@ mod tests {
             lookups::LookupTable,
             N_INTERMEDIATE_LIMBS,
         },
-        Ff1, Fp, LIMB_BITSIZE, N_LIMBS,
+        Ff1, LIMB_BITSIZE, N_LIMBS,
     };
     use ark_ff::{BigInteger, One, PrimeField, UniformRand, Zero};
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};
     use rand::{CryptoRng, Rng, RngCore};
     use std::str::FromStr;
+
+    // In this test module we assume native = foreign = scalar field of Vesta.
+    type Fp = Ff1;
 
     type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
