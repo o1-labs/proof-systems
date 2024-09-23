@@ -23,15 +23,8 @@ pub mod preimage_oracle;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
-use ark_ec::bn::Bn;
 use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
 use kimchi_msm::columns::Column;
-
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use poly_commitment::kzg::KZGProof;
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 
 /// Type to represent a constraint on the individual columns of the execution
@@ -47,15 +40,3 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
 pub(crate) type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
-
-// Instantiate it with the desired group and field
-// FIXME: move this into legacy::main.rs
-
-/// Scalar field of BN254
-pub type Fp = ark_bn254::Fr;
-/// Elliptic curve group of BN254
-pub type Curve = ark_bn254::G1Affine;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type OpeningProof = KZGProof<Bn<ark_bn254::Parameters>>;

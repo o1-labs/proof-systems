@@ -6,10 +6,12 @@ use crate::{
         witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracleT,
-    Fp,
 };
 use rand::{CryptoRng, Rng, RngCore};
 use std::{fs, path::PathBuf};
+
+// FIXME: we should parametrize the tests with different fields.
+use ark_bn254::Fr as Fp;
 
 const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
