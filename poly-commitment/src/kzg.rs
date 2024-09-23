@@ -421,16 +421,5 @@ impl<
             .unwrap();
 
         res.0 == Pair::TargetField::one()
-
-        // @VOLHOVM remove this if not necessary
-        //        let numerator_commitment_proj: <Pair::G1Affine as AffineRepr>::Group =
-        //            { poly_commitment - eval_commitment - blinding_commitment };
-        //        let numerator_commitment_affine: Pair::G1Affine = From::from(numerator_commitment_proj);
-        //
-        //        let numerator = Pair::pairing(numerator_commitment_affine, Pair::G2Affine::generator());
-        //        let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
-        //        numerator == scaled_quotient
-        //    }
-        //}
     }
 }
