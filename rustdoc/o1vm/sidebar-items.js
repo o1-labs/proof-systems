@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cannon","cannon_cli","interpreters","legacy","lookups","preimage_oracle","ramlookup"],"type":["BaseSponge","Curve","Fp","OpeningProof","ScalarSponge","SpongeParams"]};
+window.SIDEBAR_ITEMS = {"mod":["cannon","cannon_cli","interpreters","legacy","lookups","pickles","preimage_oracle","ramlookup"],"type":["BaseSponge","Curve","Fp","OpeningProof","ScalarSponge","SpongeParams"]};
