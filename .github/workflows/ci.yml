@@ -149,16 +149,19 @@ jobs:
           make install-test-deps
 
       - name: Doc tests
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make test-doc
 
       - name: Run non-heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
 
       - name: Run heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest-heavy
