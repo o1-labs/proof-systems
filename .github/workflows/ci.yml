@@ -62,7 +62,7 @@ jobs:
     name: Run checks and tests
     # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
     # Only in this configuration we enable tests with the code coverage data gathering.
-    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
+    runs-on: [hetzner-proof-systems-runners-group-1]
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
@@ -72,7 +72,6 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
-        os: ["ubuntu-latest"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,19 +149,16 @@ jobs:
           make install-test-deps
 
       - name: Doc tests
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make test-doc
 
       - name: Run non-heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
 
       - name: Run heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest-heavy
