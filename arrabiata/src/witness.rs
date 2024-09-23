@@ -801,6 +801,14 @@ where
         };
         (x3, y3)
     }
+
+    fn save_value(&mut self, _pos: Self::Position) -> Self::Variable {
+        unimplemented!("TODO")
+    }
+
+    fn load_value(&mut self, _pos: Self::Position) -> Self::Variable {
+        unimplemented!("TODO")
+    }
 }
 
 impl<

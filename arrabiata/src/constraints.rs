@@ -317,4 +317,12 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.assert_zero(res);
         lambda
     }
+
+    fn save_value(&mut self, _pos: Self::Position) -> Self::Variable {
+        unimplemented!("TODO")
+    }
+
+    fn load_value(&mut self, _pos: Self::Position) -> Self::Variable {
+        unimplemented!("TODO")
+    }
 }

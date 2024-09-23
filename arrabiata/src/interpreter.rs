@@ -673,6 +673,15 @@ pub trait InterpreterEnv {
         _v2: Self::Variable,
         _side: Side,
     );
+
+    /// Save the value located in the position [pos] in the interpreter "cache"
+    /// to be loaded later.
+    ///
+    /// The interpreter "cache" is handled via a permutation argument.
+    fn save_value(&mut self, pos: Self::Position) -> Self::Variable;
+
+    /// Load the latest value saved in the CPU cache for the position [pos].
+    fn load_value(&mut self, pos: Self::Position) -> Self::Variable;
 }
 
 /// Run the application
