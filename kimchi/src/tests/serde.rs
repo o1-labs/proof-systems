@@ -67,9 +67,14 @@ mod tests {
 
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
-                .unwrap();
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+            &group_map,
+            witness,
+            &[],
+            &index,
+            &mut rand::rngs::OsRng,
+        )
+        .unwrap();
 
         // deserialize the verifier index
         let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>, _> =
