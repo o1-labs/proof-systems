@@ -10,8 +10,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::array;
-use std::ops::Mul;
+use std::{array, ops::Mul};
 
 use super::framework::TestFramework;
 

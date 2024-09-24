@@ -22,8 +22,8 @@ use poly_commitment::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
 use std::{
+    array,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,

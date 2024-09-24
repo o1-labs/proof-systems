@@ -1,8 +1,8 @@
 use ark_ff::{Field, PrimeField};
-use mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+    sponge::{DefaultFrSponge, ScalarChallenge},
 };
 
 use crate::proof::{PointEvaluations, ProofEvaluations};

@@ -1,9 +1,11 @@
 //! This module represents a run of a Cairo program as a series of consecutive
 //! execution steps, each of which define the execution logic of Cairo instructions
 
-use crate::flags::*;
-use crate::memory::CairoMemory;
-use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
+use crate::{
+    flags::*,
+    memory::CairoMemory,
+    word::{CairoWord, FlagBits, FlagSets, Offsets},
+};
 use ark_ff::Field;
 
 /// A structure to store program counter, allocation pointer and frame pointer

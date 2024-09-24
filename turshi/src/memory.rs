@@ -1,11 +1,12 @@
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
-use std::fmt::{Display, Formatter, Result};
-use std::ops::{Index, IndexMut};
+use std::{
+    fmt::{Display, Formatter, Result},
+    ops::{Index, IndexMut},
+};
 
-use crate::helper::*;
-use crate::word::CairoWord;
+use crate::{helper::*, word::CairoWord};
 use ark_ff::Field;
 use core::iter::repeat;
 

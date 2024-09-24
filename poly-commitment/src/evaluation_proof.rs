@@ -1,9 +1,11 @@
-use crate::{commitment::*, srs::endos};
-use crate::{srs::SRS, PolynomialsToCombine, SRS as _};
+use crate::{
+    commitment::*,
+    srs::{endos, SRS},
+    PolynomialsToCombine, SRS as _,
+};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
-use ark_poly::{EvaluationDomain, Evaluations};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};

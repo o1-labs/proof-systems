@@ -1,8 +1,7 @@
 use crate::{create_kimchi, create_legacy, Fp, Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
-use std::fs::File;
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 
 //
 // Helpers for test vectors

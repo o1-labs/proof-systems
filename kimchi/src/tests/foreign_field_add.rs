@@ -1,18 +1,19 @@
 use super::framework::TestFramework;
-use crate::circuits::gate::CircuitGateResult;
-use crate::circuits::polynomials::generic::GenericGateSpec;
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::{CircuitGate, CircuitGateError, Connect, GateType},
-    polynomial::COLUMNS,
-    polynomials::{
-        foreign_field_add::witness::{self, FFOps},
-        range_check::{self, witness::extend_multi},
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        polynomial::COLUMNS,
+        polynomials::{
+            foreign_field_add::witness::{self, FFOps},
+            generic::GenericGateSpec,
+            range_check::{self, witness::extend_multi},
+        },
+        wires::Wire,
     },
-    wires::Wire,
+    curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use crate::curve::KimchiCurve;
-use crate::prover_index::ProverIndex;
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
@@ -32,8 +33,7 @@ use poly_commitment::{
     srs::{endos, SRS},
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::array;
-use std::sync::Arc;
+use std::{array, sync::Arc};
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 

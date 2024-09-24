@@ -1,8 +1,10 @@
 #![allow(clippy::all)]
 
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
-use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH},
+    wires::{Wire, COLUMNS, PERMUTS},
+};
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};

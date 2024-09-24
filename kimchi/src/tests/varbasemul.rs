@@ -1,9 +1,11 @@
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    polynomials::varbasemul,
-    wires::*,
+use crate::{
+    circuits::{
+        gate::{CircuitGate, GateType},
+        polynomials::varbasemul,
+        wires::*,
+    },
+    tests::framework::TestFramework,
 };
-use crate::tests::framework::TestFramework;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
@@ -13,9 +15,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::array;
-use std::ops::Mul;
-use std::time::Instant;
+use std::{array, ops::Mul, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

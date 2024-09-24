@@ -27,8 +27,7 @@ use o1_utils::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 
-use std::array;
-use std::sync::Arc;
+use std::{array, sync::Arc};
 
 use crate::{prover_index::ProverIndex, verifier::verify};
 use groupmap::GroupMap;

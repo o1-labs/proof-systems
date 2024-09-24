@@ -5,8 +5,7 @@ use serde::{
     Deserialize, Deserializer, Serializer,
 };
 use serde_with::{de::DeserializeAsWrap, ser::SerializeAsWrap, DeserializeAs, SerializeAs};
-use std::fmt::Formatter;
-use std::marker::PhantomData;
+use std::{fmt::Formatter, marker::PhantomData};
 
 impl<F, G> SerializeAs<JointLookupValue<F>> for JointLookupValue<G>
 where

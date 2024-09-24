@@ -1,25 +1,28 @@
 //! This module implements the linearization.
 
-use crate::alphas::Alphas;
-use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::expr;
-use crate::circuits::lookup;
-use crate::circuits::lookup::{
-    constraints::LookupConfiguration,
-    lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
-};
-use crate::circuits::polynomials::{
-    complete_add::CompleteAdd,
-    endomul_scalar::EndomulScalar,
-    endosclmul::EndosclMul,
-    foreign_field_add::circuitgates::ForeignFieldAdd,
-    foreign_field_mul::circuitgates::ForeignFieldMul,
-    generic, permutation,
-    poseidon::Poseidon,
-    range_check::circuitgates::{RangeCheck0, RangeCheck1},
-    rot,
-    varbasemul::VarbaseMul,
-    xor,
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        argument::{Argument, ArgumentType},
+        expr, lookup,
+        lookup::{
+            constraints::LookupConfiguration,
+            lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
+        },
+        polynomials::{
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_mul::circuitgates::ForeignFieldMul,
+            generic, permutation,
+            poseidon::Poseidon,
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
+            rot,
+            varbasemul::VarbaseMul,
+            xor,
+        },
+    },
 };
 
 use crate::circuits::{

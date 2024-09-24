@@ -12,8 +12,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{BitIteratorLE, Field, PrimeField};
-use std::array;
-use std::marker::PhantomData;
+use std::{array, marker::PhantomData};
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Verify the `EndoMulscalar` gate.
