@@ -20,6 +20,10 @@ path = "src/test_preimage_read.rs"
 name = "legacy_o1vm"
 path = "src/legacy/main.rs"
 
+[[bin]]
+name = "pickles_o1vm"
+path = "src/pickles/main.rs"
+
 [dependencies]
 # FIXME: Only activate this when legacy_o1vm is built
 ark-bn254.workspace = true

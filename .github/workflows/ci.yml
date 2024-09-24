@@ -1,7 +1,12 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
@@ -83,6 +88,9 @@ jobs:
         uses: ./.github/actions/toolchain-shared
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
