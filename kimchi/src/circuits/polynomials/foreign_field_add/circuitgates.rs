@@ -20,7 +20,7 @@ use std::{array, marker::PhantomData};
 //~
 //~ ##### Documentation
 //~
-//~  For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
+//~  For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
 //~
 //~ ##### Mapping
 //~
