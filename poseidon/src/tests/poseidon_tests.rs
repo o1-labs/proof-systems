@@ -1,15 +1,12 @@
 use crate::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
-    pasta::fp_kimchi as SpongeParametersKimchi,
-    pasta::fp_legacy as SpongeParametersLegacy,
-    poseidon::ArithmeticSponge as Poseidon,
-    poseidon::Sponge as _,
+    pasta::{fp_kimchi as SpongeParametersKimchi, fp_legacy as SpongeParametersLegacy},
+    poseidon::{ArithmeticSponge as Poseidon, Sponge as _},
 };
 use mina_curves::pasta::Fp;
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
-use std::fs::File;
-use std::path::PathBuf; // needed for ::new() sponge
+use std::{fs::File, path::PathBuf}; // needed for ::new() sponge
 
 //
 // Helpers for test vectors

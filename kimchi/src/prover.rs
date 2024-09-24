@@ -49,8 +49,7 @@ use poly_commitment::{
     OpenProof, SRS as _,
 };
 use rayon::prelude::*;
-use std::array;
-use std::collections::HashMap;
+use std::{array, collections::HashMap};
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;

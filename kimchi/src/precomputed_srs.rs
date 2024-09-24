@@ -5,8 +5,7 @@
 //! We generate the SRS within the test in this module.
 //! If you modify the SRS, you will need to regenerate the SRS by passing the `SRS_OVERWRITE` env var.
 
-use std::path::PathBuf;
-use std::{fs::File, io::BufReader};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 use poly_commitment::srs::SRS;
 

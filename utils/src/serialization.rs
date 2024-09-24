@@ -93,8 +93,7 @@ mod tests {
 
     use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_serialize::Write;
-    use mina_curves::pasta::{Pallas, Vesta};
-    use mina_curves::pasta::{PallasParameters, VestaParameters};
+    use mina_curves::pasta::{Pallas, PallasParameters, Vesta, VestaParameters};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
     use std::io::BufReader;

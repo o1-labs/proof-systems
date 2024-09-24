@@ -20,11 +20,12 @@ use itertools::Itertools;
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
-use std::{cmp::Ordering, fmt, iter::FromIterator};
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
-    ops::MulAssign,
+    fmt,
+    iter::FromIterator,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
@@ -2965,8 +2966,7 @@ pub mod test {
         srs::{endos, SRS},
     };
     use rand::{prelude::StdRng, SeedableRng};
-    use std::array;
-    use std::sync::Arc;
+    use std::{array, sync::Arc};
 
     #[test]
     #[should_panic]
