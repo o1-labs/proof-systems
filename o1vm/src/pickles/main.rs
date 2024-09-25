@@ -5,8 +5,7 @@ use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     interpreters::mips::{
-        constraints as mips_constraints,
-        witness::{self as mips_witness},
+        column::N_MIPS_REL_COLS, constraints as mips_constraints, witness::{self as mips_witness}
     },
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
@@ -84,6 +83,20 @@ pub fn main() -> ExitCode {
             .push(Fp::from(mips_wit_env.instruction_counter));
         // FIXME: Might be another value
         curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
+
+        curr_proof_inputs
+            .evaluations
+            .selector
+            .push(
+                Fp::from(
+                    ark_ff::BigInt::from(
+                        u32::try_from(
+                            instr.to_selector_column_idx() - N_MIPS_REL_COLS
+                        ).unwrap()
+                    )
+                )
+            );
+
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");

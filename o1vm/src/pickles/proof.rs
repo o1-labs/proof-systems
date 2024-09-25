@@ -1,11 +1,10 @@
-use ark_ff::Zero;
 use kimchi::curve::KimchiCurve;
 
 pub struct WitnessColumns<G> {
-    // FIXME: add selectors
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
+    pub selector: G,
 }
 
 pub struct ProofInputs<G: KimchiCurve> {
@@ -17,10 +16,11 @@ impl<G: KimchiCurve> ProofInputs<G> {
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| {
-                    (0..domain_size).map(|_| G::ScalarField::zero()).collect()
+                    Vec::with_capacity(domain_size)
                 }),
-                instruction_counter: (0..domain_size).map(|_| G::ScalarField::zero()).collect(),
-                error: (0..domain_size).map(|_| G::ScalarField::zero()).collect(),
+                instruction_counter: Vec::with_capacity(domain_size),
+                error: Vec::with_capacity(domain_size),
+                selector: Vec::with_capacity(domain_size),
             },
         }
     }
