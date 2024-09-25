@@ -138,10 +138,6 @@ impl ColumnIndexer for ColumnAlias {
             }
             Self::InstructionCounter => Column::Relation(SCRATCH_SIZE),
             // TODO: what happens with error? It does not have a corresponding alias
-            Self::Selector(s) => {
-                assert!(s < N_MIPS_SEL_COLS);
-                Column::DynamicSelector(s)
-            }
         }
     }
 }
