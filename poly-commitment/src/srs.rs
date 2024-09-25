@@ -241,7 +241,7 @@ impl<G: CommitmentCurve> SRS<G> {
             point_of_random_bytes(&m, &h.finalize())
         };
 
-        SRS {
+        Self {
             g,
             h,
             lagrange_bases: HashMap::new(),
@@ -273,7 +273,7 @@ impl<G: CommitmentCurve> SRS<G> {
             point_of_random_bytes(&m, &h.finalize())
         };
 
-        SRS {
+        Self {
             g,
             h,
             lagrange_bases: HashMap::new(),
@@ -310,7 +310,7 @@ where
             point_of_random_bytes(&m, &h.finalize())
         };
 
-        SRS {
+        Self {
             g,
             h,
             lagrange_bases: HashMap::new(),
