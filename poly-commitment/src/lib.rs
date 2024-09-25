@@ -2,9 +2,8 @@ pub mod chunked;
 mod combine;
 pub mod commitment;
 pub mod error;
-pub mod evaluation_proof;
+pub mod ipa;
 pub mod kzg;
-pub mod srs;
 
 pub use commitment::PolyComm;
 

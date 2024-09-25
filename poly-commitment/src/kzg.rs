@@ -9,8 +9,9 @@
 //! The pairing friendly curve requirement is hidden in the Pairing trait
 //! parameter.
 
+// FIXME: Avoid using ipa::SRS in this module. This is a temporary solution.
 use crate::{
-    commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
+    commitment::*, evaluation_proof::combine_polys, ipa::SRS, CommitmentError,
     PolynomialsToCombine, SRS as SRSTrait,
 };
 
