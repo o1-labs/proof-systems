@@ -439,11 +439,6 @@ impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
     }
 }
 
-pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineRepr>::BaseField) -> G {
-    let (x, y) = m.to_group(t);
-    G::of_coordinates(x, y)
-}
-
 /// Computes the linearization of the evaluations of a (potentially
 /// split) polynomial.
 ///
@@ -872,7 +867,10 @@ impl<G: CommitmentCurve> SRS<G> {
             sponge.absorb_fr(&[shift_scalar::<G>(*combined_inner_product)]);
 
             let t = sponge.challenge_fq();
-            let u: G = to_group(group_map, t);
+            let u: G = {
+                let (x, y) = group_map.to_group(t);
+                G::of_coordinates(x, y)
+            };
 
             let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
 

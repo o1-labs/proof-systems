@@ -11,6 +11,7 @@ use crate::{
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
+use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};
@@ -217,7 +218,10 @@ impl<G: CommitmentCurve> SRS<G> {
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
-        let u: G = to_group(group_map, t);
+        let u: G = {
+            let (x, y) = group_map.to_group(t);
+            G::of_coordinates(x, y)
+        };
 
         let mut a = p.coeffs;
         assert!(padded_length >= a.len());
