@@ -349,10 +349,10 @@ impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Fro
     }
 }
 
-impl<F, ChallengeTerm, ConstantTerm> From<ConstantTerm>
-    for ConstantExprInner<F, ChallengeTerm, ConstantTerm>
+impl<F, ChallengeTerm, CstTerm: ConstantTerm<F>> From<CstTerm>
+    for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
-    fn from(x: ConstantTerm) -> Self {
+    fn from(x: dyn ConstantTerm<F>) -> Self {
         ConstantExprInner::Constant(x)
     }
 }
@@ -720,21 +720,21 @@ impl<F, Column, ChallengeTerm, ConstantTerm> From<ConstantExpr<F, ChallengeTerm,
     }
 }
 
-impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, ConstantTerm> From<ConstantTerm>
-    for Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm> From<CstTerm>
+    for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
-    fn from(x: BerkeleyConstantTerm<F>) -> Self {
+    fn from(x: CstTerm) -> Self {
         ConstantExpr::from(x).into()
     }
 }
 
-impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, ConstantTerm> From<ChallengeTerm>
-    for Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+/* impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
+    From<ChallengeTerm> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     fn from(x: ChallengeTerm) -> Self {
         ConstantExpr::from(x).into()
     }
-}
+} */
 
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
