@@ -341,19 +341,33 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, ConstantTerm> Literal
     }
 }
 
-impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> From<ChallengeTerm>
-    for ConstantExprInner<F, ChallengeTerm, CstTerm>
-{
-    fn from(x: ChallengeTerm) -> Self {
-        ConstantExprInner::Challenge(x)
-    }
+// TODO Improve me : this is the only way I found to avoid
+// conflicting implementation to convert term to expressions
+pub trait CstorChalTerm {
+    const IS_CST: bool;
 }
 
-impl<F, ChallengeTerm, CstTerm: ConstantTerm<F>> From<CstTerm>
-    for ConstantExprInner<F, ChallengeTerm, CstTerm>
+impl CstorChalTerm for BerkeleyChallengeTerm {
+    const IS_CST: bool = false;
+}
+impl<F> CstorChalTerm for BerkeleyConstantTerm<F> {
+    const IS_CST: bool = true;
+}
+
+impl<
+        'a,
+        F,
+        ChallengeTerm: AlphaChallengeTerm<'a>,
+        CstTerm: ConstantTerm<F>,
+        Term: CstorChalTerm,
+    > From<Term> for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
-    fn from(x: dyn ConstantTerm<F>) -> Self {
-        ConstantExprInner::Constant(x)
+    fn from(x: Term) -> Self {
+        if x.IS_CST {
+            ConstantExprInner::Constant(x)
+        } else {
+            ConstantExprInner::Challenge(x)
+        }
     }
 }
 
@@ -2827,14 +2841,14 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
     }
 }
 
-impl<'a, F: Field, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
+/* impl<'a, F: Field, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
     From<u64> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     fn from(x: u64) -> Self {
-        ConstantTerm::from_litteral(F::from(x)).into()
+        ConstantExpr::<F, ChallengeTerm, CstTerm>::from(x).into()
     }
 }
-
+ */
 impl<F: Field, ChallengeTerm, CstTerm: ConstantTerm<F>> From<u64>
     for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
