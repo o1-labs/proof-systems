@@ -69,7 +69,34 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>o1vm::{
     cannon::{<span class="self">self</span>, Meta, Start, State},
     cannon_cli,
@@ -77,6 +104,7 @@
         constraints <span class="kw">as </span>mips_constraints,
         witness::{<span class="self">self </span><span class="kw">as </span>mips_witness},
     },
+    pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>poly_commitment::srs::SRS;
@@ -88,6 +116,8 @@
 
 <span class="kw">pub fn </span>main() -&gt; ExitCode {
     <span class="kw">let </span>cli = cannon_cli::main_cli();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
 
     <span class="kw">let </span>configuration = cannon_cli::read_configuration(<span class="kw-2">&amp;</span>cli.get_matches());
 
@@ -132,9 +162,29 @@
         mips_witness::Env::&lt;Fp, PreImageOracle&gt;::create(cannon::PAGE_SIZE <span class="kw">as </span>usize, state, po);
     <span class="kw">let </span><span class="kw-2">mut </span>_mips_con_env = mips_constraints::Env::&lt;Fp&gt;::default();
 
+    <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
     <span class="kw">while </span>!mips_wit_env.halt {
         <span class="kw">let </span>instr = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
-        <span class="macro">println!</span>(<span class="string">&quot;Executed instruction: {:?}&quot;</span>, instr);
+        <span class="macro">debug!</span>(<span class="string">&quot;Instruction {:?} has been executed&quot;</span>, instr);
+        <span class="comment">// FIXME: add selectors
+        </span><span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
+            .scratch_state
+            .iter()
+            .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+        {
+            scratch_chunk.push(<span class="kw-2">*</span>scratch);
+        }
+        curr_proof_inputs
+            .evaluations
+            .instruction_counter
+            .push(Fp::from(mips_wit_env.instruction_counter));
+        <span class="comment">// FIXME: Might be another value
+        </span>curr_proof_inputs.evaluations.error.push(Fp::rand(<span class="kw-2">&amp;mut </span>rng));
+        <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+            <span class="comment">// FIXME
+            </span><span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk&quot;</span>);
+            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+        }
     }
 
     <span class="comment">// TODO: Logic
