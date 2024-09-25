@@ -5,7 +5,9 @@ use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     interpreters::mips::{
-        column::N_MIPS_REL_COLS, constraints as mips_constraints, witness::{self as mips_witness}
+        column::N_MIPS_REL_COLS,
+        constraints as mips_constraints,
+        witness::{self as mips_witness},
     },
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
@@ -87,15 +89,9 @@ pub fn main() -> ExitCode {
         curr_proof_inputs
             .evaluations
             .selector
-            .push(
-                Fp::from(
-                    ark_ff::BigInt::from(
-                        u32::try_from(
-                            instr.to_selector_column_idx() - N_MIPS_REL_COLS
-                        ).unwrap()
-                    )
-                )
-            );
+            .push(Fp::from(ark_ff::BigInt::from(
+                u32::try_from(instr.to_selector_column_idx() - N_MIPS_REL_COLS).unwrap(),
+            )));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
