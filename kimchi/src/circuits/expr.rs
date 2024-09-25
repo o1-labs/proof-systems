@@ -242,7 +242,7 @@ pub trait ConstantTerm<F>: Copy {
     fn from_litteral(x: F) -> Self;
 }
 
-impl<F> ConstantTerm<F> for BerkeleyConstantTerm<F> {
+impl<F: Field> ConstantTerm<F> for BerkeleyConstantTerm<F> {
     fn from_litteral(x: F) -> Self {
         BerkeleyConstantTerm::Literal(x)
     }
@@ -311,12 +311,12 @@ pub enum ConstantExprInner<F, ChallengeTerm, CstTerm: ConstantTerm<F>> {
     Constant(CstTerm),
 }
 
-impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, ConstantTerm> Literal
-    for ConstantExprInner<F, ChallengeTerm, ConstantTerm>
+impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Literal
+    for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
     type F = F;
     fn literal(x: Self::F) -> Self {
-        Self::Constant(BerkeleyConstantTerm::literal(x))
+        Self::Constant(CstTerm::from_literal(x))
     }
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
@@ -441,18 +441,10 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 pub type ConstantExpr<F, ChallengeTerm, ConstantTerm> =
     Operations<ConstantExprInner<F, ChallengeTerm, ConstantTerm>>;
 
-impl<F, ChallengeTerm, ConstantTerm> From<BerkeleyConstantTerm<F>>
-    for ConstantExpr<F, ChallengeTerm, ConstantTerm>
+impl<F, ChallengeTerm, CstTerm: ConstantTerm<F>, Term: CstorChalTerm> From<Term>
+    for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
-    fn from(x: ConstantTerm) -> Self {
-        ConstantExprInner::from(x).into()
-    }
-}
-
-impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, ConstantTerm> From<ChallengeTerm>
-    for ConstantExpr<F, ChallengeTerm, ConstantTerm>
-{
-    fn from(x: ChallengeTerm) -> Self {
+    fn from(x: Term) -> Self {
         ConstantExprInner::from(x).into()
     }
 }
@@ -465,8 +457,8 @@ pub trait ToPolish<F, Column, ChallengeTerm> {
     );
 }
 
-impl<F: Copy, Column, ChallengeTerm: Copy, ConstantTerm> ToPolish<F, Column, ChallengeTerm>
-    for ConstantExprInner<F, ChallengeTerm, ConstantTerm>
+impl<F: Copy, Column, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
+    ToPolish<F, Column, ChallengeTerm> for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
     fn to_polish(
         &self,
@@ -581,7 +573,9 @@ where
     }
 }
 
-impl<F: Field, ChallengeTerm: Copy, ConstantTerm> ConstantExpr<F, ChallengeTerm, ConstantTerm> {
+impl<F: Field, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
+    ConstantExpr<F, ChallengeTerm, CstTerm>
+{
     /// Evaluate the given constant expression to a field element.
     pub fn value(
         &self,
@@ -662,7 +656,12 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<F: Field, ChallengeTerm, CstTerm, T: ExprOps<F, ChallengeTerm, CstTerm>>(
+    pub fn cache<
+        F: Field,
+        ChallengeTerm,
+        CstTerm: ConstantTerm<F>,
+        T: ExprOps<F, ChallengeTerm, CstTerm>,
+    >(
         &mut self,
         e: T,
     ) -> T {
@@ -726,29 +725,28 @@ pub enum ExprInner<C, Column> {
 /// the above variables should vanish on the PLONK domain.
 pub type Expr<C, Column> = Operations<ExprInner<C, Column>>;
 
-impl<F, Column, ChallengeTerm, ConstantTerm> From<ConstantExpr<F, ChallengeTerm, ConstantTerm>>
-    for Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+impl<F, Column, ChallengeTerm, CstTerm: ConstantTerm<F>>
+    From<ConstantExpr<F, ChallengeTerm, CstTerm>>
+    for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
-    fn from(x: ConstantExpr<F, ChallengeTerm, ConstantTerm>) -> Self {
+    fn from(x: ConstantExpr<F, ChallengeTerm, CstTerm>) -> Self {
         Expr::Atom(ExprInner::Constant(x))
     }
 }
 
-impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm> From<CstTerm>
-    for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
+impl<
+        'a,
+        F,
+        Column,
+        ChallengeTerm: AlphaChallengeTerm<'a>,
+        CstTerm: ConstantTerm<F>,
+        Term: CstorChalTerm,
+    > From<Term> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
-    fn from(x: CstTerm) -> Self {
+    fn from(x: Term) -> Self {
         ConstantExpr::from(x).into()
     }
 }
-
-/* impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
-    From<ChallengeTerm> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
-{
-    fn from(x: ChallengeTerm) -> Self {
-        ConstantExpr::from(x).into()
-    }
-} */
 
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
@@ -1113,8 +1111,8 @@ impl<C, Column> Expr<C, Column> {
     }
 }
 
-impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm, ConstantTerm> fmt::Display
-    for Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm, CstTerm: ConstantTerm<F>>
+    fmt::Display for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 where
     F: PrimeField,
     ChallengeTerm: AlphaChallengeTerm<'a>,
@@ -1784,8 +1782,8 @@ impl<
     }
 }
 
-impl<F: FftField, Column: Copy, ChallengeTerm: Copy, ConstantTerm>
-    Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
+    Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     /// Compile an expression to an RPN expression.
     pub fn to_polish(&self) -> Vec<PolishToken<F, Column, ChallengeTerm>> {
@@ -1894,8 +1892,8 @@ impl<F: FftField, Column: Copy>
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, ConstantTerm>
-    Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>
+impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
+    Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     fn evaluate_constants_(
         &self,
@@ -2349,8 +2347,8 @@ impl<A, Column: Copy> Linearization<A, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, ConstantTerm>
-    Linearization<Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>, Column>
+impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
+    Linearization<Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>, Column>
 {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
@@ -2407,8 +2405,12 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
     }
 }
 
-impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm: Copy, ConstantTerm>
-    Linearization<Expr<ConstantExpr<F, ChallengeTerm, ConstantTerm>, Column>, Column>
+impl<
+        F: FftField,
+        Column: Debug + PartialEq + Copy,
+        ChallengeTerm: Copy,
+        CstTerm: ConstantTerm<F>,
+    > Linearization<Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>, Column>
 {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
@@ -3335,7 +3337,7 @@ pub mod constraints {
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ExprOps<F, ChallengeTerm, CstTerm>:
+    pub trait ExprOps<F, ChallengeTerm, CstTerm: ConstantTerm<F>>:
         Add<Output = Self>
         + Sub<Output = Self>
         + Neg<Output = Self>
