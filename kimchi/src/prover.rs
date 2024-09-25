@@ -1508,8 +1508,8 @@ pub mod caml {
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineRepr;
     use poly_commitment::{
-        commitment::caml::{CamlOpeningProof, CamlPolyComm},
-        evaluation_proof::OpeningProof,
+        commitment::caml::CamlPolyComm,
+        evaluation_proof::{caml::CamlOpeningProof, OpeningProof},
     };
 
     #[cfg(feature = "internal_tracing")]
@@ -1533,7 +1533,8 @@ pub mod caml {
         pub evals: CamlProofEvaluations<CamlF>,
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>,
     }
 
     //
@@ -1585,8 +1586,10 @@ pub mod caml {
     // ProverCommitments<G> -> CamlProverCommitments<CamlG>
     // we need to know how to convert G to CamlG.
     // we don't know that information, unless we implemented some trait (e.g. ToCaml)
-    // we can do that, but instead we implemented the From trait for the reverse operations (From<G> for CamlG).
-    // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
+    // we can do that, but instead we implemented the From trait for the reverse
+    // operations (From<G> for CamlG).
+    // it reduces the complexity, but forces us to do the conversion in two
+    // phases instead of one.
 
     //
     // CamlLookupCommitments<CamlG> <-> LookupCommitments<G>

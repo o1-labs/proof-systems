@@ -501,3 +501,62 @@ impl<G: AffineRepr> OpeningProof<G> {
         Challenges { chal, chal_inv }
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::OpeningProof;
+    use ark_ec::AffineRepr;
+    use ocaml;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlOpeningProof<G, F> {
+        /// vector of rounds of L & R commitments
+        pub lr: Vec<(G, G)>,
+        pub delta: G,
+        pub z1: F,
+        pub z2: F,
+        pub sg: G,
+    }
+
+    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineRepr,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(opening_proof: OpeningProof<G>) -> Self {
+            Self {
+                lr: opening_proof
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
+                    .collect(),
+                delta: CamlG::from(opening_proof.delta),
+                z1: opening_proof.z1.into(),
+                z2: opening_proof.z2.into(),
+                sg: CamlG::from(opening_proof.sg),
+            }
+        }
+    }
+
+    impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
+    where
+        G: AffineRepr,
+        CamlG: Into<G>,
+        CamlF: Into<G::ScalarField>,
+    {
+        fn from(caml: CamlOpeningProof<CamlG, CamlF>) -> Self {
+            Self {
+                lr: caml
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: caml.delta.into(),
+                z1: caml.z1.into(),
+                z2: caml.z2.into(),
+                sg: caml.sg.into(),
+            }
+        }
+    }
+}
