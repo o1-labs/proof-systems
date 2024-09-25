@@ -13,7 +13,7 @@ use crate::{
         N_LIMBS_LARGE, N_LIMBS_SMALL,
     },
 };
-use ark_ff::{FpParameters, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use core::marker::PhantomData;
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
@@ -432,11 +432,11 @@ pub fn ec_add_circuit<
     let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
 
     // Foreign field modulus
-    let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    let f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
     let f_bi: BigInt = f_bui.to_bigint().unwrap();
 
     // Native field modulus (prime)
-    let n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    let n_bui: BigUint = TryFrom::try_from(F::MODULUS).unwrap();
     let n_bi: BigInt = n_bui.to_bigint().unwrap();
     let n_half_bi = &n_bi / &two_bi;
 

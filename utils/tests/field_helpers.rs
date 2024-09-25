@@ -1,4 +1,4 @@
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{BigInteger, One, PrimeField};
 use mina_curves::pasta::Pallas as CurvePoint;
 use num_bigint::BigUint;
@@ -8,7 +8,7 @@ use o1_utils::{
 };
 
 /// Base field element type
-pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
 #[test]
 fn field_hex() {
@@ -95,7 +95,10 @@ fn field_bits() {
     .is_ok());
 
     assert_eq!(
-        BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
+        BaseField::from_bits(&vec![
+            true;
+            <BaseField as PrimeField>::MODULUS_BIT_SIZE as usize
+        ]),
         Err(FieldHelpersError::DeserializeBytes)
     );
 
@@ -125,7 +128,7 @@ fn field_big() {
     let field_zero = BaseField::from(0u32);
 
     assert_eq!(
-        BigUint::from_bytes_be(&field_zero.into_repr().to_bytes_be()),
+        BigUint::from_bytes_be(&field_zero.into_bigint().to_bytes_be()),
         BigUint::from_bytes_be(&be_zero_32bytes)
     );
 

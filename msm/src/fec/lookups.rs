@@ -1,5 +1,5 @@
 use crate::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 use std::marker::PhantomData;
@@ -154,7 +154,7 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                 value < F::from(1u64 << 9) || value >= F::zero() - F::from(1u64 << 9)
             }
             Self::RangeCheckFfHighest(_) => {
-                let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+                let f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
                 let top_modulus_f: F =
                     F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
                 value < top_modulus_f

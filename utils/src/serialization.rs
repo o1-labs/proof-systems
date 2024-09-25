@@ -23,7 +23,7 @@ pub mod ser {
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_compressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         Bytes::serialize_as(&bytes, serializer)
@@ -37,7 +37,7 @@ pub mod ser {
         D: serde::Deserializer<'de>,
     {
         let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_compressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
 
@@ -60,7 +60,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_compressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -84,11 +84,11 @@ where
         } else {
             Bytes::deserialize_as(deserializer)?
         };
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_compressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
 
-/// Same as `SerdeAs` but using unchecked (de)serialization.
+/// Same as `SerdeAs` but using unchecked and uncompressed (de)serialization.
 pub struct SerdeAsUnchecked;
 
 impl<T> serde_with::SerializeAs<T> for SerdeAsUnchecked
@@ -100,7 +100,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize_unchecked(&mut bytes)
+        val.serialize_uncompressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -124,6 +124,6 @@ where
         } else {
             Bytes::deserialize_as(deserializer)?
         };
-        T::deserialize_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_uncompressed_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }

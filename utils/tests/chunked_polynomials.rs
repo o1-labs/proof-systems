@@ -1,5 +1,5 @@
 use ark_ff::{Field, One};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
 use mina_curves::pasta::Fp;
 use o1_utils::ExtendedDensePolynomial;
 

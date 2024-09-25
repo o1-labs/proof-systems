@@ -1,4 +1,7 @@
-use ark_ec::{short_weierstrass_jacobian::GroupAffine, ProjectiveCurve, SWModelParameters};
+use ark_ec::{
+    models::short_weierstrass::{Affine, SWCurveConfig},
+    AffineRepr, Group,
+};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
     interpreter::{self, Instruction, InterpreterEnv},
@@ -29,20 +32,18 @@ impl SpongeConstants for PlonkSpongeConstants {
     const PERM_INITIAL_ARK: bool = false;
 }
 
-fn helper_generate_random_elliptic_curve_point<RNG, P: SWModelParameters>(
-    rng: &mut RNG,
-) -> GroupAffine<P>
+fn helper_generate_random_elliptic_curve_point<RNG, P: SWCurveConfig>(rng: &mut RNG) -> Affine<P>
 where
     P::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
     let p1_x = P::BaseField::rand(rng);
-    let mut p1: Option<GroupAffine<P>> = GroupAffine::<P>::get_point_from_x(p1_x, false);
+    let mut p1: Option<Affine<P>> = Affine::<P>::get_point_from_x_unchecked(p1_x, false);
     while p1.is_none() {
         let p1_x = P::BaseField::rand(rng);
-        p1 = GroupAffine::<P>::get_point_from_x(p1_x, false);
+        p1 = Affine::<P>::get_point_from_x_unchecked(p1_x, false);
     }
-    let p1: GroupAffine<P> = p1.unwrap().scale_by_cofactor().into();
+    let p1: Affine<P> = p1.unwrap().mul_by_cofactor_to_group().into();
     p1
 }
 
@@ -179,7 +180,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
         let res: Pallas =
-            env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0];
+            (env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),
@@ -198,7 +199,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
         let res: Vesta =
-            env.ivc_accumulator_e1[0].elems[0] + env.previous_commitments_e1[0].elems[0];
+            (env.ivc_accumulator_e1[0].elems[0] + env.previous_commitments_e1[0].elems[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),
@@ -217,7 +218,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
         let res: Pallas =
-            env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0];
+            (env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),
@@ -254,7 +255,7 @@ fn test_witness_double_elliptic_curve_point() {
     let p1_y = env.write_column(pos_y, p1.y.to_biguint().into());
     let (res_x, res_y) = env.double_ec_point(pos_x, pos_y, p1_x, p1_y);
 
-    let exp_res: Pallas = p1 + p1;
+    let exp_res: Pallas = (p1 + p1).into();
     let exp_x: BigInt = exp_res.x.to_biguint().into();
     let exp_y: BigInt = exp_res.y.to_biguint().into();
 
@@ -291,8 +292,9 @@ where
     let res_y: BigInt = env.state[1].clone();
 
     let p1_proj: ProjectivePallas = p1.into();
-    let p1_r: Pallas = p1_proj.mul(r.clone().to_u64_digits().1).into();
-    let exp_res: Pallas = p1_r + env.srs_e2.h;
+    // @volhovm TODO check if mul_bigint is what was intended
+    let p1_r: Pallas = p1_proj.mul_bigint(r.clone().to_u64_digits().1).into();
+    let exp_res: Pallas = (p1_r + env.srs_e2.h).into();
 
     let exp_x: BigInt = exp_res.x.to_biguint().into();
     let exp_y: BigInt = exp_res.y.to_biguint().into();

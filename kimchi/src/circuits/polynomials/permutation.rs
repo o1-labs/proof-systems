@@ -49,10 +49,10 @@ use crate::{
     proof::{PointEvaluations, ProofEvaluations},
     prover_index::ProverIndex,
 };
-use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
@@ -134,7 +134,7 @@ pub struct Shifts<F> {
 
 impl<F> Shifts<F>
 where
-    F: FftField + SquareRootField,
+    F: FftField,
 {
     /// Generates the shifts for a given domain
     pub fn new(domain: &D<F>) -> Self {

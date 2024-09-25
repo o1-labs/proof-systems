@@ -94,7 +94,7 @@ fn test_generic_gate_pub_empty() {
 fn test_generic_gate_kzg() {
     type Fp = ark_bn254::Fr;
     type SpongeParams = PlonkSpongeConstantsKimchi;
-    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
     use ark_ff::UniformRand;
@@ -112,7 +112,7 @@ fn test_generic_gate_kzg() {
     // create and verify proof based on the witness
     <TestFramework<
         _,
-        poly_commitment::kzg::KZGProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        poly_commitment::kzg::KZGProof<ark_ec::bn::Bn<ark_bn254::Config>>,
     > as Default>::default()
     .gates(gates)
     .witness(witness)

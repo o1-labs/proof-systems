@@ -1,7 +1,7 @@
 use std::ops::Index;
 
 use crate::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::Field;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
@@ -54,7 +54,7 @@ pub type SimpleEvalEnv<Curve, const N_COL: usize, const N_FSEL: usize> = Generic
     Curve,
     N_COL,
     N_FSEL,
-    Evaluations<<Curve as AffineCurve>::ScalarField, R2D<<Curve as AffineCurve>::ScalarField>>,
+    Evaluations<<Curve as AffineRepr>::ScalarField, R2D<<Curve as AffineRepr>::ScalarField>>,
 >;
 
 impl<

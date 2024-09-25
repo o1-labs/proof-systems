@@ -18,7 +18,7 @@ where
     pub fn new<Curve: KimchiCurve<ScalarField = F>>() -> Self {
         let poseidon = Curve::sponge_params().clone();
         let endo_q = Curve::other_curve_endo();
-        let base = Curve::other_curve_prime_subgroup_generator();
+        let base = Curve::other_curve_generator();
 
         Self {
             poseidon,

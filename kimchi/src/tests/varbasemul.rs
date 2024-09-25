@@ -6,7 +6,7 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
@@ -15,7 +15,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::{array, time::Instant};
+use std::{array, ops::Mul, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -23,7 +23,7 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn varbase_mul_test() {
-    let num_bits = F::size_in_bits();
+    let num_bits = F::MODULUS_BIT_SIZE as usize;
     let chunks = num_bits / 5;
 
     let num_scalars = 10;
@@ -55,14 +55,14 @@ fn varbase_mul_test() {
     let start = Instant::now();
     for i in 0..num_scalars {
         let x = F::rand(rng);
-        let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
-        let x_ = <Other as AffineCurve>::ScalarField::from_repr(
+        let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_bigint()).take(num_bits).collect();
+        let x_ = <Other as AffineRepr>::ScalarField::from_bigint(
             <F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..]),
         )
         .unwrap();
 
-        let base = Other::prime_subgroup_generator();
-        let g = Other::prime_subgroup_generator().into_projective();
+        let base = Other::generator();
+        let g = Other::generator().into_group();
         let acc = (g + g).into_affine();
         let acc = (acc.x, acc.y);
 
@@ -76,12 +76,12 @@ fn varbase_mul_test() {
             acc,
         );
 
-        let shift = <Other as AffineCurve>::ScalarField::from(2).pow([(bits_msb.len()) as u64]);
+        let shift = <Other as AffineRepr>::ScalarField::from(2).pow([(bits_msb.len()) as u64]);
         let expected = g
-            .mul((<Other as AffineCurve>::ScalarField::one() + shift + x_.double()).into_repr())
+            .mul(&(<Other as AffineRepr>::ScalarField::one() + shift + x_.double()))
             .into_affine();
 
-        assert_eq!(x_.into_repr(), res.n.into_repr());
+        assert_eq!(x_.into_bigint(), res.n.into_bigint());
         assert_eq!((expected.x, expected.y), res.acc);
     }
     println!(

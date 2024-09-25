@@ -4,7 +4,7 @@ use crate::{
     serialization::interpreter::{limb_decompose_biguint, limb_decompose_ff},
     LIMB_BITSIZE, N_LIMBS,
 };
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
@@ -75,7 +75,7 @@ pub fn ff_addition_circuit<
     a: Ff,
     b: Ff,
 ) {
-    let f_bigint: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    let f_bigint: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
 
     let a_limbs: [F; N_LIMBS] = limb_decompose_ff::<F, Ff, LIMB_BITSIZE, N_LIMBS>(&a);
     let b_limbs: [F; N_LIMBS] = limb_decompose_ff::<F, Ff, LIMB_BITSIZE, N_LIMBS>(&b);

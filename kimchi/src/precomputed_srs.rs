@@ -118,7 +118,7 @@ where
 mod tests {
     use super::*;
 
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::PrimeField;
     use ark_serialize::Write;
     use hex;
@@ -127,8 +127,8 @@ mod tests {
 
     use crate::circuits::domains::EvaluationDomains;
 
-    fn test_regression_serialization_srs_with_generators<G: AffineCurve>(exp_output: String) {
-        let h = G::prime_subgroup_generator();
+    fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: String) {
+        let h = G::generator();
         let g = vec![h];
         let lagrange_bases = HashMap::new();
         let srs = SRS::<G> {

@@ -2,6 +2,7 @@
 //! to fold a simple addition circuit. The addition circuit consists of a single
 //! constraint of degree 1 over 3 columns (A + B - C = 0).
 
+use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{
@@ -54,7 +55,7 @@ pub type Fq = ark_bn254::Fq;
 /// The curve we commit into
 pub type Curve = BN254G1Affine;
 
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 

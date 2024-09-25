@@ -7,7 +7,7 @@ use crate::{
     },
     LIMB_BITSIZE, N_LIMBS,
 };
-use ark_ff::{Field, PrimeField, SquareRootField, Zero};
+use ark_ff::{Field, PrimeField, Zero};
 
 fn fill_limbs_a_b<
     F: PrimeField,
@@ -253,7 +253,7 @@ pub fn test_fixed_sel_degree_7_with_constants<
 // NB: Assumes non-standard selectors
 /// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_SEL_3.
 pub fn test_fixed_sel_degree_7_mul_witness<
-    F: SquareRootField + PrimeField,
+    F: PrimeField,
     Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn> + DirectWitnessCap<F, TestColumn>,
 >(
     env: &mut Env,
@@ -328,7 +328,7 @@ pub fn constrain_lookups<
 }
 
 pub fn lookups_circuit<
-    F: SquareRootField + PrimeField,
+    F: PrimeField,
     Env: ColAccessCap<F, TestColumn>
         + ColWriteCap<F, TestColumn>
         + DirectWitnessCap<F, TestColumn>

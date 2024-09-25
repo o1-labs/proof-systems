@@ -26,10 +26,10 @@ use poly_commitment::kzg::KZGProof;
 pub type Fp = ark_bn254::Fr;
 /// Elliptic curve group of BN254
 pub type Curve = ark_bn254::G1Affine;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type OpeningProof = KZGProof<Bn<ark_bn254::Parameters>>;
+pub type OpeningProof = KZGProof<Bn<ark_bn254::Config>>;
 
 pub mod folding;
 pub mod proof;

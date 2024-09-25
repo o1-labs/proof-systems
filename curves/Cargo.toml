@@ -18,3 +18,4 @@ num-bigint.workspace = true
 rand.workspace = true
 ark-algebra-test-templates.workspace = true
 ark-std.workspace = true
+ark-serialize.workspace = true

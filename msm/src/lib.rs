@@ -44,9 +44,9 @@ pub const LIMB_BITSIZE: usize = 15;
 /// [`Ff1`] or [`Ff2`]).
 pub const N_LIMBS: usize = 17;
 
-pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
-pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
-pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
+pub type BN254 = ark_ec::bn::Bn<ark_bn254::Config>;
+pub type BN254G1Affine = <BN254 as ark_ec::pairing::Pairing>::G1Affine;
+pub type BN254G2Affine = <BN254 as ark_ec::pairing::Pairing>::G2Affine;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
@@ -56,6 +56,6 @@ pub type Ff1 = mina_curves::pasta::Fp;
 pub type Ff2 = mina_curves::pasta::Fq;
 
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type OpeningProof = KZGProof<BN254>;

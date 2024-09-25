@@ -7,7 +7,7 @@ use crate::{
     proof::RecursionChallenge,
 };
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,

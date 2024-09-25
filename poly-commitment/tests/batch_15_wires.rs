@@ -2,7 +2,7 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};

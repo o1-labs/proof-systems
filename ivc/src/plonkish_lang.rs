@@ -1,7 +1,6 @@
 /// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
-use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
@@ -122,7 +121,7 @@ impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: u
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
         Self {
             commitments: std::array::from_fn(|i| {
-                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+                (a.commitments[i] + b.commitments[i].mul(challenge)).into()
             }),
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),

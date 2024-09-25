@@ -1,7 +1,7 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, UniformRand, Zero};
+use ark_ec::AffineRepr;
+use ark_ff::{One, UniformRand};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     checker::{Checker, ExtendedProvider},
@@ -25,7 +25,7 @@ use std::println as debug;
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -69,7 +69,7 @@ impl Foldable<Fp> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
             commitments: std::array::from_fn(|i| {
-                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+                (a.commitments[i] + b.commitments[i] * challenge).into()
             }),
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),

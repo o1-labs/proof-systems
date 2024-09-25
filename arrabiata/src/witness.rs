@@ -1,4 +1,4 @@
-use ark_ec::{AffineCurve, SWModelParameters};
+use ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -32,8 +32,8 @@ pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: AffineCurve<ScalarField = Fp, BaseField = Fq>,
-    E2: AffineCurve<ScalarField = Fq, BaseField = Fp>,
+    E1: AffineRepr<ScalarField = Fp, BaseField = Fq>,
+    E2: AffineRepr<ScalarField = Fq, BaseField = Fp>,
 > {
     // ----------------
     // Setup related (domains + SRS)
@@ -189,8 +189,8 @@ impl<
         E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
-    <E1::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
-    <E2::Params as ark_ec::ModelParameters>::BaseField: PrimeField,
+    <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -815,8 +815,8 @@ impl<
         sponge_e2: [BigInt; 3],
     ) -> Self {
         {
-            assert!(Fp::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            assert!(Fq::size_in_bits() <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(Fp::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             let modulus_fp = Fp::modulus_biguint();
             assert!(
                 (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))
@@ -871,10 +871,10 @@ impl<
 
         // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e1.h + srs_e1.h]))
+            .map(|_| PolyComm::new(vec![(srs_e1.h + srs_e1.h).into()]))
             .collect();
         let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e2.h + srs_e2.h]))
+            .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
             .collect();
         // FIXME: zero will not work.
         let ivc_accumulator_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)

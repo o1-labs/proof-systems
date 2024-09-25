@@ -16,6 +16,7 @@ path = "src/lib.rs"
 ark-ff.workspace = true
 ark-ec.workspace = true
 ark-poly.workspace = true
+ark-serialize.workspace = true
 rand.workspace = true
 rayon.workspace = true
 serde.workspace = true
@@ -30,10 +31,9 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion.workspace = true
 serde_json.workspace = true
 hex.workspace = true
-ark-serialize.workspace = true
 
 [features]
 default = []

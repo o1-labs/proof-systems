@@ -276,7 +276,7 @@ use crate::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::One;
 use derivative::Derivative;
 use itertools::Itertools;
@@ -368,7 +368,7 @@ pub enum ExpExtension<C: FoldingConfig> {
     Debug(bound = "C: FoldingConfig")
 )]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
-    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Constant(<C::Curve as AffineRepr>::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable<C::Column>),
     /// extra nodes created by folding, should not be passed to folding
@@ -750,7 +750,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 Mul(e1, e2)
             }
             // TODO: Replace with `Pow`
-            FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineCurve>::ScalarField::one())),
+            FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineRepr>::ScalarField::one())),
             FoldingExp::Pow(e, 1) => e.into_compatible(),
             FoldingExp::Pow(e, i) => {
                 let e = e.into_compatible();
@@ -932,7 +932,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
         Pow(_, 0) => Box::new(
             [Term {
                 exp: FoldingExp::Atom(ExtendedFoldingColumn::Constant(
-                    <C::Curve as AffineCurve>::ScalarField::one(),
+                    <C::Curve as AffineRepr>::ScalarField::one(),
                 )),
                 sign: Sign::Pos,
             }]
@@ -1006,7 +1006,7 @@ pub fn folding_expression<C: FoldingConfig>(
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F, BerkeleyChallengeTerm>>
     for FoldingCompatibleExprInner<Config>
 where
-    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Curve: AffineRepr<ScalarField = F>,
     Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     fn from(expr: ConstantExprInner<F, BerkeleyChallengeTerm>) -> Self {
@@ -1028,7 +1028,7 @@ impl<F, Col, Config: FoldingConfig<Column = Col>>
     From<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>
     for FoldingCompatibleExprInner<Config>
 where
-    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Curve: AffineRepr<ScalarField = F>,
     Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     // TODO: check if this needs some special treatment for Extensions
@@ -1050,7 +1050,7 @@ impl<F, Col, Config: FoldingConfig<Column = Col>>
     From<Operations<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>>
     for FoldingCompatibleExpr<Config>
 where
-    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Curve: AffineRepr<ScalarField = F>,
     Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     fn from(expr: Operations<ExprInner<ConstantExprInner<F, BerkeleyChallengeTerm>, Col>>) -> Self {
@@ -1076,7 +1076,7 @@ where
 impl<F, Col, Config: FoldingConfig<Column = Col>>
     From<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>> for FoldingCompatibleExpr<Config>
 where
-    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Curve: AffineRepr<ScalarField = F>,
     Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     fn from(expr: Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>) -> Self {
@@ -1102,7 +1102,7 @@ impl<F, Col, Config: FoldingConfig<Column = Col>>
     From<Operations<ExprInner<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>, Col>>>
     for FoldingCompatibleExpr<Config>
 where
-    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Curve: AffineRepr<ScalarField = F>,
     Config::Challenge: From<BerkeleyChallengeTerm>,
 {
     fn from(
