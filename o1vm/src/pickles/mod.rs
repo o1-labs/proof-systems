@@ -12,5 +12,7 @@
 //! O1VM_FLAVOR=pickles bash run-code.sh
 //! ```
 
+pub mod proof;
+
 // TODO: Empty for now, but some modules like prover, verifier & co. will be
 // added soon.

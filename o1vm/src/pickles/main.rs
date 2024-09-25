@@ -1,4 +1,6 @@
+use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
+use log::debug;
 use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -6,6 +8,7 @@ use o1vm::{
         constraints as mips_constraints,
         witness::{self as mips_witness},
     },
+    pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::srs::SRS;
@@ -17,6 +20,8 @@ pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
+
+    let mut rng = rand::thread_rng();
 
     let configuration = cannon_cli::read_configuration(&cli.get_matches());
 
@@ -61,9 +66,29 @@ pub fn main() -> ExitCode {
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
     let mut _mips_con_env = mips_constraints::Env::<Fp>::default();
 
+    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
-        println!("Executed instruction: {:?}", instr);
+        debug!("Instruction {:?} has been executed", instr);
+        // FIXME: add selectors
+        for (scratch, scratch_chunk) in mips_wit_env
+            .scratch_state
+            .iter()
+            .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+        {
+            scratch_chunk.push(*scratch);
+        }
+        curr_proof_inputs
+            .evaluations
+            .instruction_counter
+            .push(Fp::from(mips_wit_env.instruction_counter));
+        // FIXME: Might be another value
+        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
+        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+            // FIXME
+            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
+            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+        }
     }
 
     // TODO: Logic
