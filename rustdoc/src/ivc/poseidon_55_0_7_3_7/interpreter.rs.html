@@ -193,7 +193,7 @@
 //! `poseidon/src/pasta/params.sage`
 
 </span><span class="kw">use </span><span class="kw">crate</span>::poseidon_55_0_7_3_7::columns::PoseidonColumn;
-<span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
@@ -258,7 +258,7 @@
     <span class="comment">// Checking that p - 1 is coprime with 7 as it has to be the case for the sbox
     </span>{
         <span class="kw">let </span>one = BigUint::from(<span class="number">1u64</span>);
-        <span class="kw">let </span>p: BigUint = TryFrom::try_from(&lt;F <span class="kw">as </span>PrimeField&gt;::Params::MODULUS).unwrap();
+        <span class="kw">let </span>p: BigUint = TryFrom::try_from(&lt;F <span class="kw">as </span>PrimeField&gt;::MODULUS).unwrap();
         <span class="kw">let </span>p_minus_one = p - one.clone();
         <span class="kw">let </span>seven = BigUint::from(<span class="number">7u64</span>);
         <span class="macro">assert_eq!</span>(p_minus_one.gcd(<span class="kw-2">&amp;</span>seven), one);

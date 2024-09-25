@@ -907,6 +907,8 @@
 <a href="#907" id="907">907</a>
 <a href="#908" id="908">908</a>
 <a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Random oracle input structures and algorithms
 //!
 //! Definition of random oracle input structure and
@@ -1000,7 +1002,7 @@
     </span><span class="kw">pub fn </span>append_scalar(<span class="kw-2">mut </span><span class="self">self</span>, s: Fq) -&gt; <span class="self">Self </span>{
         <span class="comment">// mina scalars are 255 bytes
         </span><span class="kw">let </span>bytes = s.to_bytes();
-        <span class="kw">let </span>bits = <span class="kw-2">&amp;</span>bytes.as_bits::&lt;Lsb0&gt;()[..Fq::size_in_bits()];
+        <span class="kw">let </span>bits = <span class="kw-2">&amp;</span>bytes.as_bits::&lt;Lsb0&gt;()[..Fq::MODULUS_BIT_SIZE <span class="kw">as </span>usize];
         <span class="self">self</span>.bits.extend(bits);
         <span class="self">self
     </span>}
@@ -1030,7 +1032,9 @@
     <span class="doccomment">/// Serialize random oracle input to bytes
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>bits: BitVec&lt;u8&gt; = <span class="self">self</span>.fields.iter().fold(BitVec::new(), |<span class="kw-2">mut </span>acc, fe| {
-            acc.extend_from_bitslice(<span class="kw-2">&amp;</span>fe.to_bytes().as_bits::&lt;Lsb0&gt;()[..Fp::size_in_bits()]);
+            acc.extend_from_bitslice(
+                <span class="kw-2">&amp;</span>fe.to_bytes().as_bits::&lt;Lsb0&gt;()[..Fp::MODULUS_BIT_SIZE <span class="kw">as </span>usize],
+            );
 
             acc
         });
@@ -1046,7 +1050,7 @@
 
         <span class="kw">let </span>bits_as_fields =
             <span class="self">self</span>.bits
-                .chunks(Fp::size_in_bits() - <span class="number">1</span>)
+                .chunks(Fp::MODULUS_BIT_SIZE <span class="kw">as </span>usize - <span class="number">1</span>)
                 .fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>acc, chunk| {
                     <span class="comment">// Workaround: chunk.clone() does not appear to respect
                     // the chunk&#39;s boundaries when it&#39;s not byte-aligned.
@@ -1066,7 +1070,7 @@
                     bv.clone_from_bitslice(chunk);
 
                     <span class="comment">// extend to the size of a field;
-                    </span>bv.resize(Fp::size_in_bits(), <span class="bool-val">false</span>);
+                    </span>bv.resize(Fp::MODULUS_BIT_SIZE <span class="kw">as </span>usize, <span class="bool-val">false</span>);
 
                     acc.push(
                         Fp::from_bytes(<span class="kw-2">&amp;</span>bv.into_vec())

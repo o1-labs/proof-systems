@@ -194,7 +194,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::Index;
 
 <span class="kw">use </span><span class="kw">crate</span>::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>folding::{
@@ -247,7 +247,7 @@
     Curve,
     N_COL,
     N_FSEL,
-    Evaluations&lt;&lt;Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField, R2D&lt;&lt;Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;&gt;,
+    Evaluations&lt;&lt;Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField, R2D&lt;&lt;Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;&gt;,
 &gt;;
 
 <span class="kw">impl</span>&lt;

@@ -130,7 +130,7 @@
 <a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
-</span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+</span><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::foreign_field::ForeignFieldHelpers;
 
@@ -158,7 +158,7 @@
 <span class="doccomment">/// Number of gates in this gadget
 </span><span class="kw">pub const </span>GATE_COUNT: usize = <span class="number">1</span>;
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Create foreign field multiplication gate
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where

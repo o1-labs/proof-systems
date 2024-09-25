@@ -2028,7 +2028,7 @@ pub struct ProofEvaluations&lt;Evals&gt; {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
-pub struct LookupCommitments&lt;G: AffineCurve&gt; {
+pub struct LookupCommitments&lt;G: AffineRepr&gt; {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
     /// Commitment to the lookup aggregation polynomial
@@ -2041,7 +2041,7 @@ pub struct LookupCommitments&lt;G: AffineCurve&gt; {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
-pub struct ProverCommitments&lt;G: AffineCurve&gt; {
+pub struct ProverCommitments&lt;G: AffineRepr&gt; {
     /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm&lt;G&gt;; COLUMNS],
     /// The commitment to the permutation polynomial
@@ -2056,7 +2056,7 @@ pub struct ProverCommitments&lt;G: AffineCurve&gt; {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
-pub struct ProverProof&lt;G: AffineCurve, OpeningProof&gt; {
+pub struct ProverProof&lt;G: AffineRepr, OpeningProof&gt; {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments&lt;G&gt;,
 
@@ -2084,7 +2084,7 @@ pub struct ProverProof&lt;G: AffineCurve, OpeningProof&gt; {
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct RecursionChallenge&lt;G&gt;
 where
-    G: AffineCurve,
+    G: AffineRepr,
 {
     /// Vector of scalar field elements
     #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]

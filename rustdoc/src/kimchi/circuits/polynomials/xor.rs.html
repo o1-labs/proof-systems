@@ -298,14 +298,14 @@
     },
     variable_map,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
 <span class="kw">use </span>std::{array, marker::PhantomData};
 
 <span class="kw">use </span><span class="kw">super</span>::generic::GenericGateSpec;
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Extends a XOR gadget for `bits` length to a circuit
     /// Includes:
     /// - num_xors Xor16 gates

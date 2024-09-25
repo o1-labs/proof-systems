@@ -71,49 +71,63 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{
-    biginteger::BigInteger256 <span class="kw">as </span>BigInteger, FftParameters, Fp256, Fp256Parameters, FpParameters,
-};
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::fft::{FftParameters, Fp256Parameters, FpParameters};
+<span class="kw">use </span>ark_ff::{biginteger::BigInteger256 <span class="kw">as </span>BigInteger, Fp256};
 
 <span class="kw">pub struct </span>FqParameters;
 
-<span class="kw">pub type </span>Fq = Fp256&lt;FqParameters&gt;;
+<span class="kw">use </span>ark_ff::fields::{MontBackend, MontConfig};
+
+<span class="attr">#[derive(MontConfig)]
+#[modulus = <span class="string">&quot;28948022309329048855892746252171976963363056481941647379679742748393362948097&quot;</span>]
+#[generator = <span class="string">&quot;5&quot;</span>]
+</span><span class="kw">pub struct </span>FrConfig;
+<span class="kw">pub type </span>Fq = Fp256&lt;MontBackend&lt;FrConfig, <span class="number">4</span>&gt;&gt;;
 
 <span class="kw">impl </span>Fp256Parameters <span class="kw">for </span>FqParameters {}
+
 <span class="kw">impl </span>FftParameters <span class="kw">for </span>FqParameters {
     <span class="kw">type </span>BigInt = BigInteger;
 
     <span class="kw">const </span>TWO_ADICITY: u32 = <span class="number">32</span>;
 
     <span class="attr">#[rustfmt::skip]
-    </span><span class="kw">const </span>TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
+    </span><span class="kw">const </span>TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger::new([
         <span class="number">0x218077428c9942de</span>, <span class="number">0xcc49578921b60494</span>, <span class="number">0xac2e5d27b2efbee2</span>, <span class="number">0xb79fa897f2db056
     </span>]);
 }
+
 <span class="kw">impl </span>FpParameters <span class="kw">for </span>FqParameters {
     <span class="comment">// 28948022309329048855892746252171976963363056481941647379679742748393362948097
-    </span><span class="kw">const </span>MODULUS: BigInteger = BigInteger([
+    </span><span class="kw">const </span>MODULUS: BigInteger = BigInteger::new([
         <span class="number">0x8c46eb2100000001</span>,
         <span class="number">0x224698fc0994a8dd</span>,
         <span class="number">0x0</span>,
         <span class="number">0x4000000000000000</span>,
     ]);
 
-    <span class="kw">const </span>R: BigInteger = BigInteger([
+    <span class="kw">const </span>R: BigInteger = BigInteger::new([
         <span class="number">0x5b2b3e9cfffffffd</span>,
         <span class="number">0x992c350be3420567</span>,
         <span class="number">0xffffffffffffffff</span>,
         <span class="number">0x3fffffffffffffff</span>,
     ]);
 
-    <span class="kw">const </span>R2: BigInteger = BigInteger([
+    <span class="kw">const </span>R2: BigInteger = BigInteger::new([
         <span class="number">0xfc9678ff0000000f</span>,
         <span class="number">0x67bb433d891a16e3</span>,
         <span class="number">0x7fae231004ccf590</span>,
         <span class="number">0x96d41af7ccfdaa9</span>,
     ]);
 
-    <span class="kw">const </span>MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
+    <span class="kw">const </span>MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger::new([
         <span class="number">0xc623759080000000</span>,
         <span class="number">0x11234c7e04ca546e</span>,
         <span class="number">0x0</span>,
@@ -122,13 +136,13 @@
 
     <span class="comment">// T and T_MINUS_ONE_DIV_TWO, where MODULUS - 1 = 2^S * T
 
-    </span><span class="kw">const </span>T: BigInteger = BigInteger([<span class="number">0x994a8dd8c46eb21</span>, <span class="number">0x224698fc</span>, <span class="number">0x0</span>, <span class="number">0x40000000</span>]);
+    </span><span class="kw">const </span>T: BigInteger = BigInteger::new([<span class="number">0x994a8dd8c46eb21</span>, <span class="number">0x224698fc</span>, <span class="number">0x0</span>, <span class="number">0x40000000</span>]);
 
     <span class="kw">const </span>T_MINUS_ONE_DIV_TWO: BigInteger =
-        BigInteger([<span class="number">0x4ca546ec6237590</span>, <span class="number">0x11234c7e</span>, <span class="number">0x0</span>, <span class="number">0x20000000</span>]);
+        BigInteger::new([<span class="number">0x4ca546ec6237590</span>, <span class="number">0x11234c7e</span>, <span class="number">0x0</span>, <span class="number">0x20000000</span>]);
 
     <span class="comment">// GENERATOR = 5
-    </span><span class="kw">const </span>GENERATOR: BigInteger = BigInteger([
+    </span><span class="kw">const </span>GENERATOR: BigInteger = BigInteger::new([
         <span class="number">0x96bc8c8cffffffed</span>,
         <span class="number">0x74c2a54b49f7778e</span>,
         <span class="number">0xfffffffffffffffd</span>,

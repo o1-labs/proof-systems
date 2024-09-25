@@ -630,7 +630,7 @@
     <span class="kw">let </span>bits_per_row = <span class="number">2 </span>* crumbs_per_row;
     <span class="macro">assert_eq!</span>(num_bits % bits_per_row, <span class="number">0</span>);
 
-    <span class="kw">let </span>bits_lsb: Vec&lt;<span class="kw">_</span>&gt; = BitIteratorLE::new(scalar.into_repr())
+    <span class="kw">let </span>bits_lsb: Vec&lt;<span class="kw">_</span>&gt; = BitIteratorLE::new(scalar.into_bigint())
         .take(num_bits)
         .collect();
     <span class="kw">let </span>bits_msb: Vec&lt;<span class="kw">_</span>&gt; = bits_lsb.iter().rev().collect();
@@ -741,7 +741,7 @@
         <span class="kw">let </span>f1 = c_func;
 
         <span class="kw">let </span>f2 = |x: F| -&gt; F {
-            <span class="kw">let </span>bits_le = x.into_repr().to_bits_le();
+            <span class="kw">let </span>bits_le = x.into_bigint().to_bits_le();
             <span class="kw">let </span>b0 = bits_le[<span class="number">0</span>];
             <span class="kw">let </span>b1 = bits_le[<span class="number">1</span>];
 
@@ -773,7 +773,7 @@
         <span class="kw">let </span>f1 = d_func;
 
         <span class="kw">let </span>f2 = |x: F| -&gt; F {
-            <span class="kw">let </span>bits_le = x.into_repr().to_bits_le();
+            <span class="kw">let </span>bits_le = x.into_bigint().to_bits_le();
             <span class="kw">let </span>b0 = bits_le[<span class="number">0</span>];
             <span class="kw">let </span>b1 = bits_le[<span class="number">1</span>];
 

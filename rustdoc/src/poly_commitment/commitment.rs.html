@@ -1110,18 +1110,6 @@
 <a href="#1110" id="1110">1110</a>
 <a href="#1111" id="1111">1111</a>
 <a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1136,17 +1124,15 @@
     SRS <span class="kw">as </span>SRSTrait,
 };
 <span class="kw">use </span>ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine <span class="kw">as </span>SWJAffine, msm::VariableBaseMSM,
-    AffineCurve, ProjectiveCurve, SWModelParameters,
+    models::short_weierstrass::Affine <span class="kw">as </span>SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
+    CurveGroup, VariableBaseMSM,
 };
-<span class="kw">use </span>ark_ff::{
-    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
-};
+<span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-<span class="kw">use </span>core::ops::{Add, Sub};
+<span class="kw">use </span>core::ops::{Add, AddAssign, Sub};
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::{math, ExtendedDensePolynomial <span class="kw">as _</span>};
@@ -1318,16 +1304,16 @@
 /// ```
 ///
 /// in the other case.
-</span><span class="kw">pub fn </span>shift_scalar&lt;G: AffineCurve&gt;(x: G::ScalarField) -&gt; G::ScalarField
+</span><span class="kw">pub fn </span>shift_scalar&lt;G: AffineRepr&gt;(x: G::ScalarField) -&gt; G::ScalarField
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="kw">let </span>n1 = &lt;G::ScalarField <span class="kw">as </span>PrimeField&gt;::Params::MODULUS;
+    <span class="kw">let </span>n1 = &lt;G::ScalarField <span class="kw">as </span>PrimeField&gt;::MODULUS;
     <span class="kw">let </span>n2 = &lt;G::ScalarField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_le(
-        <span class="kw-2">&amp;</span>&lt;G::BaseField <span class="kw">as </span>PrimeField&gt;::Params::MODULUS.to_bits_le()[..],
+        <span class="kw-2">&amp;</span>&lt;G::BaseField <span class="kw">as </span>PrimeField&gt;::MODULUS.to_bits_le()[..],
     );
     <span class="kw">let </span>two: G::ScalarField = (<span class="number">2u64</span>).into();
-    <span class="kw">let </span>two_pow = two.pow([&lt;G::ScalarField <span class="kw">as </span>PrimeField&gt;::Params::MODULUS_BITS <span class="kw">as </span>u64]);
+    <span class="kw">let </span>two_pow = two.pow([&lt;G::ScalarField <span class="kw">as </span>PrimeField&gt;::MODULUS_BIT_SIZE <span class="kw">as </span>u64]);
     <span class="kw">if </span>n1 &lt; n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } <span class="kw">else </span>{
@@ -1335,7 +1321,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineCurve&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineRepr&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
@@ -1344,7 +1330,7 @@
         <span class="kw">let </span>n2 = other.elems.len();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..std::cmp::max(n1, n2) {
             <span class="kw">let </span>pt = <span class="kw">if </span>i &lt; n1 &amp;&amp; i &lt; n2 {
-                <span class="self">self</span>.elems[i] + other.elems[i]
+                (<span class="self">self</span>.elems[i] + other.elems[i]).into_affine()
             } <span class="kw">else if </span>i &lt; n1 {
                 <span class="self">self</span>.elems[i]
             } <span class="kw">else </span>{
@@ -1356,7 +1342,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineCurve&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineRepr + Sub&lt;Output = C::Group&gt;&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
@@ -1365,7 +1351,7 @@
         <span class="kw">let </span>n2 = other.elems.len();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..std::cmp::max(n1, n2) {
             <span class="kw">let </span>pt = <span class="kw">if </span>i &lt; n1 &amp;&amp; i &lt; n2 {
-                <span class="self">self</span>.elems[i] + (-other.elems[i])
+                (<span class="self">self</span>.elems[i] - other.elems[i]).into_affine()
             } <span class="kw">else if </span>i &lt; n1 {
                 <span class="self">self</span>.elems[i]
             } <span class="kw">else </span>{
@@ -1377,7 +1363,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: AffineCurve&gt; PolyComm&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: AffineRepr&gt; PolyComm&lt;C&gt; {
     <span class="kw">pub fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, c: C::ScalarField) -&gt; PolyComm&lt;C&gt; {
         PolyComm {
             elems: <span class="self">self</span>.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
@@ -1397,7 +1383,7 @@
             <span class="kw">return </span><span class="self">Self</span>::new(<span class="macro">vec!</span>[C::zero()]);
         }
 
-        <span class="kw">let </span>all_scalars: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|s| s.into_repr()).collect();
+        <span class="kw">let </span>all_scalars: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|s| s.into_bigint()).collect();
 
         <span class="kw">let </span>elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>elems = Vec::with_capacity(elems_size);
@@ -1410,10 +1396,9 @@
                 </span>.filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
-            <span class="kw">let </span>chunk_msm = VariableBaseMSM::multi_scalar_mul::&lt;C&gt;(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars);
+            <span class="kw">let </span>chunk_msm = C::Group::msm_bigint(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars);
             elems.push(chunk_msm.into_affine());
         }
-
         <span class="self">Self</span>::new(elems)
     }
 }
@@ -1467,41 +1452,31 @@
     res
 }
 
-<span class="kw">pub fn </span>squeeze_prechallenge&lt;Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
+<span class="kw">pub fn </span>squeeze_prechallenge&lt;Fq: Field, G, Fr: Field, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
 ) -&gt; ScalarChallenge&lt;Fr&gt; {
     ScalarChallenge(sponge.challenge())
 }
 
-<span class="kw">pub fn </span>squeeze_challenge&lt;
-    Fq: Field,
-    G,
-    Fr: PrimeField + SquareRootField,
-    EFqSponge: FqSponge&lt;Fq, G, Fr&gt;,
-&gt;(
+<span class="kw">pub fn </span>squeeze_challenge&lt;Fq: Field, G, Fr: PrimeField, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
     endo_r: <span class="kw-2">&amp;</span>Fr,
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
 ) -&gt; Fr {
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-<span class="kw">pub fn </span>absorb_commitment&lt;
-    Fq: Field,
-    G: Clone,
-    Fr: PrimeField + SquareRootField,
-    EFqSponge: FqSponge&lt;Fq, G, Fr&gt;,
-&gt;(
+<span class="kw">pub fn </span>absorb_commitment&lt;Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
     commitment: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
 ) {
     sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.elems);
 }
 
-<span class="doccomment">/// A useful trait extending AffineCurve for commitments.
-/// Unfortunately, we can&#39;t specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
+<span class="doccomment">/// A useful trait extending AffineRepr for commitments.
+/// Unfortunately, we can&#39;t specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
-</span><span class="kw">pub trait </span>CommitmentCurve: AffineCurve {
-    <span class="kw">type </span>Params: SWModelParameters;
+</span><span class="kw">pub trait </span>CommitmentCurve: AffineRepr + Sub&lt;Output = <span class="self">Self</span>::Group&gt; {
+    <span class="kw">type </span>Params: SWCurveConfig;
     <span class="kw">type </span>Map: GroupMap&lt;<span class="self">Self</span>::BaseField&gt;;
 
     <span class="kw">fn </span>to_coordinates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt;;
@@ -1509,7 +1484,7 @@
 }
 
 <span class="doccomment">/// A trait extending CommitmentCurve for endomorphisms.
-/// Unfortunately, we can&#39;t specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
+/// Unfortunately, we can&#39;t specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 </span><span class="kw">pub trait </span>EndoCurve: CommitmentCurve {
     <span class="doccomment">/// Combine where x1 = one
@@ -1538,7 +1513,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;P: SWModelParameters + Clone&gt; CommitmentCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
+<span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; CommitmentCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
     <span class="kw">type </span>Params = P;
     <span class="kw">type </span>Map = BWParameters&lt;P&gt;;
 
@@ -1551,14 +1526,11 @@
     }
 
     <span class="kw">fn </span>of_coordinates(x: P::BaseField, y: P::BaseField) -&gt; SWJAffine&lt;P&gt; {
-        SWJAffine::&lt;P&gt;::new(x, y, <span class="bool-val">false</span>)
+        SWJAffine::&lt;P&gt;::new_unchecked(x, y)
     }
 }
 
-<span class="kw">impl</span>&lt;P: SWModelParameters + Clone&gt; EndoCurve <span class="kw">for </span>SWJAffine&lt;P&gt;
-<span class="kw">where
-    </span>P::BaseField: PrimeField,
-{
+<span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; EndoCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
     <span class="kw">fn </span>combine_one(g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], x2: <span class="self">Self</span>::ScalarField) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
         <span class="kw">crate</span>::combine::affine_window_combine_one(g1, g2, x2)
     }
@@ -1583,7 +1555,7 @@
     }
 }
 
-<span class="kw">pub fn </span>to_group&lt;G: CommitmentCurve&gt;(m: <span class="kw-2">&amp;</span>G::Map, t: &lt;G <span class="kw">as </span>AffineCurve&gt;::BaseField) -&gt; G {
+<span class="kw">pub fn </span>to_group&lt;G: CommitmentCurve&gt;(m: <span class="kw-2">&amp;</span>G::Map, t: &lt;G <span class="kw">as </span>AffineRepr&gt;::BaseField) -&gt; G {
     <span class="kw">let </span>(x, y) = m.to_group(t);
     G::of_coordinates(x, y)
 }
@@ -1648,7 +1620,7 @@
 <span class="doccomment">/// Contains the evaluation of a polynomial commitment at a set of points.
 </span><span class="kw">pub struct </span>Evaluation&lt;G&gt;
 <span class="kw">where
-    </span>G: AffineCurve,
+    </span>G: AffineRepr,
 {
     <span class="doccomment">/// The commitment of the polynomial being evaluated.
     /// Note that PolyComm contains a vector of commitments, which handles the
@@ -1668,7 +1640,7 @@
 </span><span class="comment">// TODO: I think we should really change this name to something more correct
 </span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, OpeningProof&gt;
 <span class="kw">where
-    </span>G: AffineCurve,
+    </span>G: AffineRepr,
     EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
 {
     <span class="doccomment">/// The sponge used to generate/absorb the challenges.
@@ -1828,7 +1800,7 @@
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))<span class="question-mark">?
             </span>.map(|(g, b)| {
                 <span class="kw">let </span><span class="kw-2">mut </span>g_masked = <span class="self">self</span>.h.mul(b);
-                g_masked.add_assign_mixed(<span class="kw-2">&amp;</span>g);
+                g_masked.add_assign(<span class="kw-2">&amp;</span>g);
                 g_masked.into_affine()
             });
         <span class="prelude-val">Ok</span>(BlindedCommitment {
@@ -1849,7 +1821,7 @@
     ) -&gt; PolyComm&lt;G&gt; {
         <span class="kw">let </span>is_zero = plnm.is_zero();
 
-        <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_repr()).collect();
+        <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_bigint()).collect();
 
         <span class="comment">// chunk while commiting
         </span><span class="kw">let </span><span class="kw-2">mut </span>elems = <span class="macro">vec!</span>[];
@@ -1857,7 +1829,7 @@
             elems.push(G::zero());
         } <span class="kw">else </span>{
             coeffs.chunks(<span class="self">self</span>.g.len()).for_each(|coeffs_chunk| {
-                <span class="kw">let </span>chunk = VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span><span class="self">self</span>.g, coeffs_chunk);
+                <span class="kw">let </span>chunk = G::Group::msm_bigint(<span class="kw-2">&amp;</span><span class="self">self</span>.g, coeffs_chunk);
                 elems.push(chunk.into_affine());
             });
         }
@@ -2108,8 +2080,8 @@
         }
 
         <span class="comment">// verify the equation
-        </span><span class="kw">let </span>scalars: Vec&lt;<span class="kw">_</span>&gt; = scalars.iter().map(|x| x.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars) == G::Projective::zero()
+        </span><span class="kw">let </span>scalars: Vec&lt;<span class="kw">_</span>&gt; = scalars.iter().map(|x| x.into_bigint()).collect();
+        G::Group::msm_bigint(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars) == G::Group::zero()
     }
 }
 
@@ -2137,12 +2109,12 @@
 
     </span><span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
     <span class="kw">where
-        </span>G: AffineCurve,
+        </span>G: AffineRepr,
         CamlG: From&lt;G&gt;,
     {
         <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                unshifted: polycomm.elems.into_iter().map(Into::into).collect(),
+                unshifted: polycomm.elems.into_iter().map(CamlG::from).collect(),
                 shifted: <span class="prelude-val">None</span>,
             }
         }
@@ -2150,12 +2122,12 @@
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
     <span class="kw">where
-        </span>G: AffineCurve,
+        </span>G: AffineRepr,
         CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>G&gt;,
     {
         <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                unshifted: polycomm.elems.iter().map(Into::into).collect(),
+                unshifted: polycomm.elems.iter().map(Into::&lt;CamlG&gt;::into).collect(),
                 shifted: <span class="prelude-val">None</span>,
             }
         }
@@ -2163,7 +2135,7 @@
 
     <span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
     <span class="kw">where
-        </span>G: AffineCurve + From&lt;CamlG&gt;,
+        </span>G: AffineRepr + From&lt;CamlG&gt;,
     {
         <span class="kw">fn </span>from(camlpolycomm: CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
             <span class="macro">assert!</span>(
@@ -2171,14 +2143,18 @@
                 <span class="string">&quot;mina#14628: Shifted commitments are deprecated and must not be used&quot;
             </span>);
             PolyComm {
-                elems: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
+                elems: camlpolycomm
+                    .unshifted
+                    .into_iter()
+                    .map(Into::&lt;G&gt;::into)
+                    .collect(),
             }
         }
     }
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
     <span class="kw">where
-        </span>G: AffineCurve + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlG&gt; + From&lt;CamlG&gt;,
+        </span>G: AffineRepr + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlG&gt; + From&lt;CamlG&gt;,
     {
         <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
             <span class="macro">assert!</span>(
@@ -2206,7 +2182,7 @@
 
     <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;OpeningProof&lt;G&gt;&gt; <span class="kw">for </span>CamlOpeningProof&lt;CamlG, CamlF&gt;
     <span class="kw">where
-        </span>G: AffineCurve,
+        </span>G: AffineRepr,
         CamlG: From&lt;G&gt;,
         CamlF: From&lt;G::ScalarField&gt;,
     {
@@ -2215,19 +2191,19 @@
                 lr: opening_proof
                     .lr
                     .into_iter()
-                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
                     .collect(),
-                delta: opening_proof.delta.into(),
+                delta: CamlG::from(opening_proof.delta),
                 z1: opening_proof.z1.into(),
                 z2: opening_proof.z2.into(),
-                sg: opening_proof.sg.into(),
+                sg: CamlG::from(opening_proof.sg),
             }
         }
     }
 
     <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;CamlOpeningProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>OpeningProof&lt;G&gt;
     <span class="kw">where
-        </span>G: AffineCurve,
+        </span>G: AffineRepr,
         CamlG: Into&lt;G&gt;,
         CamlF: Into&lt;G::ScalarField&gt;,
     {

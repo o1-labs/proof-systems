@@ -377,7 +377,7 @@
     },
     LIMB_BITSIZE, N_LIMBS,
 };
-<span class="kw">use </span>ark_ff::{Field, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 
 <span class="kw">fn </span>fill_limbs_a_b&lt;
     F: PrimeField,
@@ -623,7 +623,7 @@
 <span class="comment">// NB: Assumes non-standard selectors
 </span><span class="doccomment">/// Circuit generator function for 3 * A_0^7 + B_0 * FIXED_SEL_3.
 </span><span class="kw">pub fn </span>test_fixed_sel_degree_7_mul_witness&lt;
-    F: SquareRootField + PrimeField,
+    F: PrimeField,
     Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt; + DirectWitnessCap&lt;F, TestColumn&gt;,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
@@ -698,7 +698,7 @@
 }
 
 <span class="kw">pub fn </span>lookups_circuit&lt;
-    F: SquareRootField + PrimeField,
+    F: PrimeField,
     Env: ColAccessCap&lt;F, TestColumn&gt;
         + ColWriteCap&lt;F, TestColumn&gt;
         + DirectWitnessCap&lt;F, TestColumn&gt;

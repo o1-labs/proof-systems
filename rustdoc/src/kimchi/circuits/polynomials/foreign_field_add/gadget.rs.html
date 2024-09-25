@@ -159,7 +159,7 @@
 <a href="#159" id="159">159</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
-</span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+</span><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
@@ -170,7 +170,7 @@
 
 <span class="kw">use </span><span class="kw">super</span>::witness::FFOps;
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
     /// - Inputs
     ///   - starting row

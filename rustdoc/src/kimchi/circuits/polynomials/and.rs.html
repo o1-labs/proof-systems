@@ -195,7 +195,7 @@
     polynomial::COLUMNS,
     wires::Wire,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Two};
 
@@ -238,7 +238,7 @@
 //~ * the `xor` in `a x b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
-</span><span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+</span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Extends an AND gadget for `bytes` length.
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`

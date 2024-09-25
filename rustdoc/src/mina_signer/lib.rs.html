@@ -108,16 +108,16 @@
 <span class="kw">pub use </span>seckey::SecKey;
 <span class="kw">pub use </span>signature::Signature;
 
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 
 <span class="doccomment">/// Affine curve point type
 </span><span class="kw">pub use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
 
 <span class="doccomment">/// Base field element type
-</span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
+</span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineRepr&gt;::BaseField;
 
 <span class="doccomment">/// Scalar field element type
-</span><span class="kw">pub type </span>ScalarField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::ScalarField;
+</span><span class="kw">pub type </span>ScalarField = &lt;CurvePoint <span class="kw">as </span>AffineRepr&gt;::ScalarField;
 
 <span class="doccomment">/// Mina network (or blockchain) identifier
 </span><span class="attr">#[derive(Debug, Clone)]

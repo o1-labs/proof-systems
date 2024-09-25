@@ -47,7 +47,7 @@
     <span class="kw">pub fn </span>new&lt;Curve: KimchiCurve&lt;ScalarField = F&gt;&gt;() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>poseidon = Curve::sponge_params().clone();
         <span class="kw">let </span>endo_q = Curve::other_curve_endo();
-        <span class="kw">let </span>base = Curve::other_curve_prime_subgroup_generator();
+        <span class="kw">let </span>base = Curve::other_curve_generator();
 
         <span class="self">Self </span>{
             poseidon,

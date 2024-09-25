@@ -482,7 +482,7 @@
 //! [expressions].
 </span><span class="comment">// TODO: the documentation above might need more descriptions.
 
-</span><span class="kw">use </span>ark_ec::AffineCurve;
+</span><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
@@ -524,8 +524,8 @@
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-</span><span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
-<span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::BaseField;
+</span><span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField;
+<span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineRepr&gt;::BaseField;
 
 <span class="comment">// &#39;static seems to be used for expressions. Can we get rid of it?
 </span><span class="kw">pub trait </span>FoldingConfig: Debug + <span class="lifetime">&#39;static </span>{
@@ -556,7 +556,7 @@
     <span class="kw">type </span>Structure: Clone;
 
     <span class="kw">type </span>Env: FoldingEnv&lt;
-        &lt;<span class="self">Self</span>::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        &lt;<span class="self">Self</span>::Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField,
         <span class="self">Self</span>::Instance,
         <span class="self">Self</span>::Witness,
         <span class="self">Self</span>::Column,

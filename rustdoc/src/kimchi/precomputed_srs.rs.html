@@ -355,7 +355,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>ark_ec::AffineRepr;
     <span class="kw">use </span>ark_ff::PrimeField;
     <span class="kw">use </span>ark_serialize::Write;
     <span class="kw">use </span>hex;
@@ -364,8 +364,8 @@
 
     <span class="kw">use </span><span class="kw">crate</span>::circuits::domains::EvaluationDomains;
 
-    <span class="kw">fn </span>test_regression_serialization_srs_with_generators&lt;G: AffineCurve&gt;(exp_output: String) {
-        <span class="kw">let </span>h = G::prime_subgroup_generator();
+    <span class="kw">fn </span>test_regression_serialization_srs_with_generators&lt;G: AffineRepr&gt;(exp_output: String) {
+        <span class="kw">let </span>h = G::generator();
         <span class="kw">let </span>g = <span class="macro">vec!</span>[h];
         <span class="kw">let </span>lagrange_bases = HashMap::new();
         <span class="kw">let </span>srs = SRS::&lt;G&gt; {

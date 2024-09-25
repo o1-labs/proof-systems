@@ -1143,7 +1143,7 @@
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
 <a href="#1145" id="1145">1145</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, SWModelParameters};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -1177,8 +1177,8 @@
 </span><span class="kw">pub struct </span>Env&lt;
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: AffineCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
-    E2: AffineCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
+    E1: AffineRepr&lt;ScalarField = Fp, BaseField = Fq&gt;,
+    E2: AffineRepr&lt;ScalarField = Fq, BaseField = Fp&gt;,
 &gt; {
     <span class="comment">// ----------------
     // Setup related (domains + SRS)
@@ -1334,8 +1334,8 @@
         E2: CommitmentCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
     &gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp, Fq, E1, E2&gt;
 <span class="kw">where
-    </span>&lt;E1::Params <span class="kw">as </span>ark_ec::ModelParameters&gt;::BaseField: PrimeField,
-    &lt;E2::Params <span class="kw">as </span>ark_ec::ModelParameters&gt;::BaseField: PrimeField,
+    </span>&lt;E1::Params <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField: PrimeField,
+    &lt;E2::Params <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField: PrimeField,
 {
     <span class="kw">type </span>Position = (Column, CurrOrNext);
 
@@ -1960,8 +1960,8 @@
         sponge_e2: [BigInt; <span class="number">3</span>],
     ) -&gt; <span class="self">Self </span>{
         {
-            <span class="macro">assert!</span>(Fp::size_in_bits() &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
-            <span class="macro">assert!</span>(Fq::size_in_bits() &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
+            <span class="macro">assert!</span>(Fp::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
+            <span class="macro">assert!</span>(Fq::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
             <span class="kw">let </span>modulus_fp = Fp::modulus_biguint();
             <span class="macro">assert!</span>(
                 (modulus_fp - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(POSEIDON_ALPHA))
@@ -2016,10 +2016,10 @@
 
         <span class="comment">// Default set to the blinders. Using double to make the EC scaling happy.
         </span><span class="kw">let </span>previous_commitments_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e1.h + srs_e1.h]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e1.h + srs_e1.h).into()]))
             .collect();
         <span class="kw">let </span>previous_commitments_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e2.h + srs_e2.h]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e2.h + srs_e2.h).into()]))
             .collect();
         <span class="comment">// FIXME: zero will not work.
         </span><span class="kw">let </span>ivc_accumulator_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)

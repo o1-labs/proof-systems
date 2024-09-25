@@ -96,7 +96,7 @@
     gate::{CircuitGate, GateType},
     wires::Wire,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+<span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use super</span>::{
     constants::{RATE_IN_BYTES, ROUNDS},
@@ -105,7 +105,7 @@
 
 <span class="kw">const </span>SPONGE_COEFFS: usize = <span class="number">336</span>;
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Extends a Keccak circuit to hash one message
     /// Note:
     /// Requires at least one more row after the Keccak gadget so that

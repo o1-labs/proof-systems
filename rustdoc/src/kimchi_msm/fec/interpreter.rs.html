@@ -712,7 +712,7 @@
         N_LIMBS_LARGE, N_LIMBS_SMALL,
     },
 };
-<span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -1131,11 +1131,11 @@
     <span class="kw">let </span>large_limb_size: F = From::from(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
 
     <span class="comment">// Foreign field modulus
-    </span><span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    </span><span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
     <span class="kw">let </span>f_bi: BigInt = f_bui.to_bigint().unwrap();
 
     <span class="comment">// Native field modulus (prime)
-    </span><span class="kw">let </span>n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    </span><span class="kw">let </span>n_bui: BigUint = TryFrom::try_from(F::MODULUS).unwrap();
     <span class="kw">let </span>n_bi: BigInt = n_bui.to_bigint().unwrap();
     <span class="kw">let </span>n_half_bi = <span class="kw-2">&amp;</span>n_bi / <span class="kw-2">&amp;</span>two_bi;
 

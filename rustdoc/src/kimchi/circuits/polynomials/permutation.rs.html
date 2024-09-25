@@ -555,10 +555,10 @@
     proof::{PointEvaluations, ProofEvaluations},
     prover_index::ProverIndex,
 };
-<span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
@@ -640,7 +640,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Shifts&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField + SquareRootField,
+    </span>F: FftField,
 {
     <span class="doccomment">/// Generates the shifts for a given domain
     </span><span class="kw">pub fn </span>new(domain: <span class="kw-2">&amp;</span>D&lt;F&gt;) -&gt; <span class="self">Self </span>{

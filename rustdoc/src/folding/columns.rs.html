@@ -42,7 +42,7 @@
 //! scheme as they describe the basic expressiveness of the system.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::FoldingConfig;
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
 
@@ -67,7 +67,7 @@
     <span class="doccomment">/// The error term introduced in the &quot;relaxed&quot; instance.
     </span>Error,
     <span class="doccomment">/// A constant value in our expression
-    </span>Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
+    </span>Constant(&lt;C::Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField),
     <span class="doccomment">/// A challenge used by the PIOP or the folding scheme.
     </span>Challenge(C::Challenge),
     <span class="doccomment">/// A list of randomizer to combine expressions

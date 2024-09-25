@@ -655,7 +655,7 @@
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
 <a href="#657" id="657">657</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::{
@@ -672,8 +672,8 @@
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::BaseField;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineRepr&gt;::ScalarField;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineRepr&gt;::BaseField;
 
 <span class="comment">// Does not contain alpha because this one should be provided by folding itself
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
@@ -706,19 +706,19 @@
     /// - β as the evaluation point for the logup argument
     /// - j: the joint combiner for vector lookups
     /// - γ (set to 0 for now)
-    </span><span class="kw">pub </span>challenges: [&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField; Challenge::COUNT],
+    </span><span class="kw">pub </span>challenges: [&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField; Challenge::COUNT],
     <span class="doccomment">/// Reuses the Alphas defined in the example of folding
-    </span><span class="kw">pub </span>alphas: Alphas&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
+    </span><span class="kw">pub </span>alphas: Alphas&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;,
 
     <span class="doccomment">/// Blinder used in the polynomial commitment scheme
-    </span><span class="kw">pub </span>blinder: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+    </span><span class="kw">pub </span>blinder: &lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         FoldingInstance {
             commitments: array::from_fn(|i| {
-                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+                (a.commitments[i] + b.commitments[i].mul(challenge)).into()
             }),
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),

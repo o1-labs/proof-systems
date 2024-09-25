@@ -285,7 +285,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; RangeCheckLimbs1&lt;F&gt; {
     <span class="doccomment">///extracts the limbs needed for range check from the bits of f
     </span><span class="kw">fn </span>parse(f: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>bits = f.into_repr().to_bits_le().into_iter();
+        <span class="kw">let </span><span class="kw-2">mut </span>bits = f.into_bigint().to_bits_le().into_iter();
         <span class="kw">let </span>crumbs = parse_limbs::&lt;F, <span class="number">2</span>, <span class="number">8</span>&gt;(bits.by_ref());
         <span class="kw">let </span>limbs = parse_limbs::&lt;F, <span class="number">12</span>, <span class="number">6</span>&gt;(bits);
         <span class="self">Self </span>{ crumbs, limbs }
@@ -309,7 +309,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; RangeCheckLimbs2&lt;F&gt; {
     <span class="doccomment">///extracts the limbs needed for range check from the bits of f
     </span><span class="kw">fn </span>parse(f: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>bits = f.into_repr().to_bits_le().into_iter();
+        <span class="kw">let </span><span class="kw-2">mut </span>bits = f.into_bigint().to_bits_le().into_iter();
         <span class="kw">let </span>crumbs_low = parse_limbs::&lt;F, <span class="number">2</span>, <span class="number">19</span>&gt;(bits.by_ref());
         <span class="kw">let </span>limbs = parse_limbs::&lt;F, <span class="number">12</span>, <span class="number">4</span>&gt;(bits.by_ref());
         <span class="kw">let </span>crumbs_high = parse_limbs::&lt;F, <span class="number">2</span>, <span class="number">1</span>&gt;(bits);

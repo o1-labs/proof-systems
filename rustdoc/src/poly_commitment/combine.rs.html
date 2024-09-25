@@ -705,12 +705,6 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Batch elliptic curve algorithms based on the batch-affine principle.
 //!
 //! The principle is the following:
@@ -729,15 +723,16 @@
 //! such a scratch array within each algorithm.
 
 </span><span class="kw">use </span>ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine <span class="kw">as </span>SWJAffine, AffineCurve, ProjectiveCurve,
-    SWModelParameters,
+    models::short_weierstrass::Affine <span class="kw">as </span>SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
+    CurveGroup, Group,
 };
 <span class="kw">use </span>ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::ops::AddAssign;
 
-<span class="kw">fn </span>add_pairs_in_place&lt;P: SWModelParameters&gt;(pairs: <span class="kw-2">&amp;mut </span>Vec&lt;SWJAffine&lt;P&gt;&gt;) {
+<span class="kw">fn </span>add_pairs_in_place&lt;P: SWCurveConfig&gt;(pairs: <span class="kw-2">&amp;mut </span>Vec&lt;SWJAffine&lt;P&gt;&gt;) {
     <span class="kw">let </span>len = <span class="kw">if </span>pairs.len() % <span class="number">2 </span>== <span class="number">0 </span>{
         pairs.len()
     } <span class="kw">else </span>{
@@ -799,7 +794,7 @@
 /// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
 /// addition formula and don&#39;t have to handle the edge cases of doubling and
 /// hitting the point at infinity.
-</span><span class="kw">fn </span>batch_add_assign_no_branch&lt;P: SWModelParameters&gt;(
+</span><span class="kw">fn </span>batch_add_assign_no_branch&lt;P: SWCurveConfig&gt;(
     denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
     v0: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
     v1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
@@ -830,7 +825,7 @@
 }
 
 <span class="doccomment">/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
-</span><span class="kw">pub fn </span>batch_add_assign&lt;P: SWModelParameters&gt;(
+</span><span class="kw">pub fn </span>batch_add_assign&lt;P: SWCurveConfig&gt;(
     denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
     v0: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
     v1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
@@ -881,7 +876,7 @@
         });
 }
 
-<span class="kw">fn </span>affine_window_combine_base&lt;P: SWModelParameters&gt;(
+<span class="kw">fn </span>affine_window_combine_base&lt;P: SWCurveConfig&gt;(
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     x1: P::ScalarField,
@@ -903,8 +898,8 @@
     };
     <span class="macro">assert!</span>(g1g2.len() == g1.len());
 
-    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_bigint()).tuples();
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
     <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
 
@@ -988,11 +983,11 @@
     points
 }
 
-<span class="kw">fn </span>batch_endo_in_place&lt;P: SWModelParameters&gt;(endo_coeff: P::BaseField, ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
+<span class="kw">fn </span>batch_endo_in_place&lt;P: SWCurveConfig&gt;(endo_coeff: P::BaseField, ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
     ps.par_iter_mut().for_each(|p| p.x <span class="kw-2">*</span>= endo_coeff);
 }
 
-<span class="kw">fn </span>batch_negate_in_place&lt;P: SWModelParameters&gt;(ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
+<span class="kw">fn </span>batch_negate_in_place&lt;P: SWCurveConfig&gt;(ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
     ps.par_iter_mut().for_each(|p| {
         p.y = -p.y;
     });
@@ -1000,7 +995,7 @@
 
 <span class="doccomment">/// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to
 /// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
-</span><span class="kw">fn </span>affine_window_combine_one_endo_base&lt;P: SWModelParameters&gt;(
+</span><span class="kw">fn </span>affine_window_combine_one_endo_base&lt;P: SWCurveConfig&gt;(
     endo_coeff: P::BaseField,
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
@@ -1017,7 +1012,7 @@
         (limbs_lsb[limb <span class="kw">as </span>usize] &gt;&gt; j) &amp; <span class="number">1
     </span>}
 
-    <span class="kw">let </span>rep = chal.<span class="number">0</span>.into_repr();
+    <span class="kw">let </span>rep = chal.<span class="number">0</span>.into_bigint();
     <span class="kw">let </span>r = rep.as_ref();
 
     <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
@@ -1053,7 +1048,7 @@
 }
 
 <span class="doccomment">/// Double an array of curve points in-place.
-</span><span class="kw">fn </span>batch_double_in_place&lt;P: SWModelParameters&gt;(
+</span><span class="kw">fn </span>batch_double_in_place&lt;P: SWCurveConfig&gt;(
     denominators: <span class="kw-2">&amp;mut </span>Vec&lt;P::BaseField&gt;,
     points: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
 ) {
@@ -1079,12 +1074,12 @@
         });
 }
 
-<span class="kw">fn </span>affine_window_combine_one_base&lt;P: SWModelParameters&gt;(
+<span class="kw">fn </span>affine_window_combine_one_base&lt;P: SWCurveConfig&gt;(
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     x2: P::ScalarField,
 ) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
     <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
 
@@ -1125,7 +1120,7 @@
     points
 }
 
-<span class="kw">pub fn </span>affine_window_combine&lt;P: SWModelParameters&gt;(
+<span class="kw">pub fn </span>affine_window_combine&lt;P: SWCurveConfig&gt;(
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     x1: P::ScalarField,
@@ -1144,7 +1139,7 @@
 /// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
 ///
 /// Internally, it uses the curve endomorphism to speed up this operation.
-</span><span class="kw">pub fn </span>affine_window_combine_one_endo&lt;P: SWModelParameters&gt;(
+</span><span class="kw">pub fn </span>affine_window_combine_one_endo&lt;P: SWCurveConfig&gt;(
     endo_coeff: P::BaseField,
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
@@ -1158,7 +1153,7 @@
         .collect();
     v.concat()
 }
-<span class="kw">pub fn </span>affine_window_combine_one&lt;P: SWModelParameters&gt;(
+<span class="kw">pub fn </span>affine_window_combine_one&lt;P: SWCurveConfig&gt;(
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     x2: P::ScalarField,
@@ -1172,24 +1167,23 @@
     v.concat()
 }
 
-<span class="kw">pub fn </span>window_combine&lt;G: AffineCurve&gt;(
+<span class="kw">pub fn </span>window_combine&lt;G: AffineRepr&gt;(
     g_lo: <span class="kw-2">&amp;</span>[G],
     g_hi: <span class="kw-2">&amp;</span>[G],
     x_lo: G::ScalarField,
     x_hi: G::ScalarField,
 ) -&gt; Vec&lt;G&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>g_proj: Vec&lt;G::Projective&gt; = {
+    <span class="kw">let </span><span class="kw-2">mut </span>g_proj: Vec&lt;G::Group&gt; = {
         <span class="kw">let </span>pairs: Vec&lt;<span class="kw">_</span>&gt; = g_lo.iter().zip(g_hi).collect();
         pairs
             .into_par_iter()
             .map(|(lo, hi)| window_shamir::&lt;G&gt;(x_lo, <span class="kw-2">*</span>lo, x_hi, <span class="kw-2">*</span>hi))
             .collect()
     };
-    G::Projective::batch_normalization(g_proj.as_mut_slice());
-    g_proj.par_iter().map(|g| g.into_affine()).collect()
+    G::Group::normalize_batch(g_proj.as_mut_slice())
 }
 
-<span class="kw">pub fn </span>affine_shamir_window_table&lt;P: SWModelParameters&gt;(
+<span class="kw">pub fn </span>affine_shamir_window_table&lt;P: SWCurveConfig&gt;(
     denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
     g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
@@ -1268,7 +1262,7 @@
     res
 }
 
-<span class="kw">pub fn </span>affine_shamir_window_table_one&lt;P: SWModelParameters&gt;(
+<span class="kw">pub fn </span>affine_shamir_window_table_one&lt;P: SWCurveConfig&gt;(
     denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
     g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
 ) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">3</span>] {
@@ -1298,118 +1292,113 @@
     res
 }
 
-<span class="kw">fn </span>window_shamir&lt;G: AffineCurve&gt;(
-    x1: G::ScalarField,
-    g1: G,
-    x2: G::ScalarField,
-    g2: G,
-) -&gt; G::Projective {
+<span class="kw">fn </span>window_shamir&lt;G: AffineRepr&gt;(x1: G::ScalarField, g1: G, x2: G::ScalarField, g2: G) -&gt; G::Group {
     <span class="kw">let </span>[_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
         shamir_window_table(g1, g2);
 
-    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_bigint()).tuples();
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>res = G::Projective::zero();
+    <span class="kw">let </span><span class="kw-2">mut </span>res = G::Group::zero();
 
     <span class="kw">for </span>((hi_1, lo_1), (hi_2, lo_2)) <span class="kw">in </span>windows1.zip(windows2) {
         res.double_in_place();
         res.double_in_place();
         <span class="kw">match </span>((hi_1, lo_1), (hi_2, lo_2)) {
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; (),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_00),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_00),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_00),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_00),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_00),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_00),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_01),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_01),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_01),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_01),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_01),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_01),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_01),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_01),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_10),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_10),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_10),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_10),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_10),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_10),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_10),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_10),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_11),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_11),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_11),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_11),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_11),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_11),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_11),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_11),
         }
     }
 
     res
 }
 
-<span class="kw">pub fn </span>shamir_window_table&lt;G: AffineCurve&gt;(g1: G, g2: G) -&gt; [G; <span class="number">16</span>] {
-    <span class="kw">let </span>g00_00 = G::prime_subgroup_generator().into_projective();
-    <span class="kw">let </span>g01_00 = g1.into_projective();
+<span class="kw">pub fn </span>shamir_window_table&lt;G: AffineRepr&gt;(g1: G, g2: G) -&gt; [G; <span class="number">16</span>] {
+    <span class="kw">let </span>g00_00 = G::generator().into_group();
+    <span class="kw">let </span>g01_00 = g1.into_group();
     <span class="kw">let </span>g10_00 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g01_00;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g11_00 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g10_00;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
 
-    <span class="kw">let </span>g00_01 = g2.into_projective();
+    <span class="kw">let </span>g00_01 = g2.into_group();
     <span class="kw">let </span>g01_01 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g10_01 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g01_01;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g11_01 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g10_01;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
 
     <span class="kw">let </span>g00_10 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g2);
+        g.add_assign(<span class="kw-2">&amp;</span>g2);
         g
     };
     <span class="kw">let </span>g01_10 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g10_10 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g01_10;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g11_10 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g10_10;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g00_11 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g2);
+        g.add_assign(<span class="kw-2">&amp;</span>g2);
         g
     };
     <span class="kw">let </span>g01_11 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g00_11;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g10_11 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g01_11;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
     <span class="kw">let </span>g11_11 = {
         <span class="kw">let </span><span class="kw-2">mut </span>g = g10_11;
-        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g.add_assign(<span class="kw-2">&amp;</span>g1);
         g
     };
 
@@ -1417,8 +1406,7 @@
         g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
         g11_10, g00_11, g01_11, g10_11, g11_11,
     ];
-    G::Projective::batch_normalization(v.as_mut_slice());
-    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = v.iter().map(|x| x.into_affine()).collect();
+    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = G::Group::normalize_batch(v.as_mut_slice());
     [
         v[<span class="number">0</span>], v[<span class="number">1</span>], v[<span class="number">2</span>], v[<span class="number">3</span>], v[<span class="number">4</span>], v[<span class="number">5</span>], v[<span class="number">6</span>], v[<span class="number">7</span>], v[<span class="number">8</span>], v[<span class="number">9</span>], v[<span class="number">10</span>], v[<span class="number">11</span>], v[<span class="number">12</span>], v[<span class="number">13</span>],
         v[<span class="number">14</span>], v[<span class="number">15</span>],

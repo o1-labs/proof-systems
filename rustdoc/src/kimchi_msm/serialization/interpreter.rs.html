@@ -1027,7 +1027,9 @@
 <a href="#1027" id="1027">1027</a>
 <a href="#1028" id="1028">1028</a>
 <a href="#1029" id="1029">1029</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>num_traits::{sign::Signed, Euclid};
@@ -1130,7 +1132,7 @@
 
 <span class="doccomment">/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
 </span><span class="kw">pub fn </span>ff_modulus_highest_limb&lt;Ff: PrimeField&gt;() -&gt; BigUint {
-    <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(&lt;Ff <span class="kw">as </span>PrimeField&gt;::Params::MODULUS).unwrap();
+    <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(&lt;Ff <span class="kw">as </span>PrimeField&gt;::MODULUS).unwrap();
     f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE)
 }
 
@@ -1576,11 +1578,11 @@
     <span class="kw">let </span>large_limb_size: F = From::from(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
 
     <span class="comment">// Foreign field modulus
-    </span><span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    </span><span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
     <span class="kw">let </span>f_bi: BigInt = f_bui.to_bigint().unwrap();
 
     <span class="comment">// Native field modulus (prime)
-    </span><span class="kw">let </span>n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    </span><span class="kw">let </span>n_bui: BigUint = TryFrom::try_from(F::MODULUS).unwrap();
     <span class="kw">let </span>n_bi: BigInt = n_bui.to_bigint().unwrap();
     <span class="kw">let </span>n_half_bi = <span class="kw-2">&amp;</span>n_bi / <span class="kw-2">&amp;</span>two_bi;
 
@@ -1833,12 +1835,14 @@
         },
         Ff1, LIMB_BITSIZE, N_LIMBS,
     };
-    <span class="kw">use </span>ark_ff::{BigInteger, FpParameters <span class="kw">as _</span>, One, PrimeField, UniformRand, Zero};
-    <span class="kw">use </span>mina_curves::pasta::Fp;
+    <span class="kw">use </span>ark_ff::{BigInteger, One, PrimeField, UniformRand, Zero};
     <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>o1_utils::{tests::make_test_rng, FieldHelpers};
     <span class="kw">use </span>rand::{CryptoRng, Rng, RngCore};
     <span class="kw">use </span>std::str::FromStr;
+
+    <span class="comment">// In this test module we assume native = foreign = scalar field of Vesta.
+    </span><span class="kw">type </span>Fp = Ff1;
 
     <span class="kw">type </span>SerializationWitnessBuilderEnv = WitnessBuilderEnv&lt;
         Fp,
@@ -1986,7 +1990,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_decomposition_order_minus_one() {
-        <span class="kw">let </span>x = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>&lt;Fp <span class="kw">as </span>PrimeField&gt;::Params::MODULUS.to_bytes_be())
+        <span class="kw">let </span>x = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>&lt;Fp <span class="kw">as </span>PrimeField&gt;::MODULUS.to_bytes_be())
             - BigUint::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
 
         test_decomposition_generic(Fp::from(x));

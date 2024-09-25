@@ -204,7 +204,7 @@
     error::CommitmentError,
     evaluation_proof::DensePolynomialOrEvaluations,
 };
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
@@ -355,19 +355,19 @@
     /// - `sponge`: Sponge used to coin and absorb values
     /// - `rng`: The RNG to use to generate random elements in the open
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;&gt;(
+    </span><span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,
         plnms: PolynomialsToCombine&lt;G, D&gt;,
-        elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
-        polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
-        evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField,
+        elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField],
+        polyscale: &lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField,
+        evalscale: &lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField,
         sponge: EFqSponge, <span class="comment">// sponge
         </span>rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>EFqSponge:
-            Clone + FqSponge&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::BaseField, G, &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
+            Clone + FqSponge&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::BaseField, G, &lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;,
         RNG: RngCore + CryptoRng;
 
     <span class="kw">fn </span>verify&lt;EFqSponge, RNG&gt;(

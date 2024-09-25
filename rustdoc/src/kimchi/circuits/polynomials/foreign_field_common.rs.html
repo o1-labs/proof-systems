@@ -619,13 +619,13 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>ark_ec::AffineRepr;
     <span class="kw">use </span>ark_ff::One;
     <span class="kw">use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
     <span class="kw">use </span>num_bigint::RandBigInt;
 
     <span class="doccomment">/// Base field element type
-    </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
+    </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineRepr&gt;::BaseField;
 
     <span class="kw">fn </span>secp256k1_modulus() -&gt; BigUint {
         BigUint::from_bytes_be(<span class="kw-2">&amp;</span>secp256k1::constants::FIELD_SIZE)

@@ -146,7 +146,7 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! Clone of kimchi/precomputed_srs.rs but for MSM project with BN254
 
 </span><span class="kw">use crate</span>::{Fp, BN254, DOMAIN_SIZE};
-<span class="kw">use </span>ark_ec::PairingEngine;
+<span class="kw">use </span>ark_ec::pairing::Pairing;
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>ark_serialize::Write;
 <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
@@ -157,12 +157,12 @@
 
 <span class="doccomment">/// A clone of the `PairingSRS` that is serialized in a test-optimised way.
 </span><span class="attr">#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-</span><span class="kw">pub struct </span>TestPairingSRS&lt;Pair: PairingEngine&gt; {
+</span><span class="kw">pub struct </span>TestPairingSRS&lt;Pair: Pairing&gt; {
     <span class="kw">pub </span>full_srs: TestSRS&lt;Pair::G1Affine&gt;,
     <span class="kw">pub </span>verifier_srs: TestSRS&lt;Pair::G2Affine&gt;,
 }
 
-<span class="kw">impl</span>&lt;Pair: PairingEngine&gt; From&lt;PairingSRS&lt;Pair&gt;&gt; <span class="kw">for </span>TestPairingSRS&lt;Pair&gt; {
+<span class="kw">impl</span>&lt;Pair: Pairing&gt; From&lt;PairingSRS&lt;Pair&gt;&gt; <span class="kw">for </span>TestPairingSRS&lt;Pair&gt; {
     <span class="kw">fn </span>from(value: PairingSRS&lt;Pair&gt;) -&gt; <span class="self">Self </span>{
         TestPairingSRS {
             full_srs: From::from(value.full_srs),
@@ -171,7 +171,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;Pair: PairingEngine&gt; From&lt;TestPairingSRS&lt;Pair&gt;&gt; <span class="kw">for </span>PairingSRS&lt;Pair&gt; {
+<span class="kw">impl</span>&lt;Pair: Pairing&gt; From&lt;TestPairingSRS&lt;Pair&gt;&gt; <span class="kw">for </span>PairingSRS&lt;Pair&gt; {
     <span class="kw">fn </span>from(value: TestPairingSRS&lt;Pair&gt;) -&gt; <span class="self">Self </span>{
         PairingSRS {
             full_srs: From::from(value.full_srs),

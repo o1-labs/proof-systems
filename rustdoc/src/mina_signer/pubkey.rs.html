@@ -331,16 +331,23 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms
 //!
 //! Definition of public key structure and helpers
 
-</span><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+</span><span class="kw">use </span>ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
 <span class="kw">use </span>ark_ff::{BigInteger, PrimeField, Zero};
 <span class="kw">use </span>bs58;
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>sha2::{Digest, Sha256};
-<span class="kw">use </span>std::ops::Neg;
+<span class="kw">use </span>std::ops::{Mul, Neg};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use crate</span>::{BaseField, CurvePoint, ScalarField, SecKey};
@@ -419,12 +426,17 @@
             .map_err(|<span class="kw">_</span>| PubKeyError::XCoordinateBytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>y = BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes[BaseField::size_in_bytes()..])
             .map_err(|<span class="kw">_</span>| PubKeyError::YCoordinateBytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>pt = CurvePoint::get_point_from_x(x, y.<span class="number">0</span>.is_odd()).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
+        <span class="kw">let </span>pt = CurvePoint::get_point_from_x_unchecked(x, y.<span class="number">0</span>.is_odd())
+            .ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
         <span class="kw">if </span>pt.y != y {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
         }
 
-        <span class="kw">let </span>public = CurvePoint::new(x, y, pt.infinity);
+        <span class="kw">let </span>public = Affine {
+            x,
+            y,
+            infinity: pt.infinity,
+        };
         <span class="kw">if </span>!public.is_on_curve() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
         }
@@ -448,7 +460,7 @@
         <span class="kw">if </span>secret_key.clone().into_scalar() == ScalarField::zero() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::SecKey);
         }
-        <span class="kw">let </span>pt = CurvePoint::prime_subgroup_generator()
+        <span class="kw">let </span>pt = CurvePoint::generator()
             .mul(secret_key.into_scalar())
             .into_affine();
         <span class="kw">if </span>!pt.is_on_curve() {
@@ -491,9 +503,10 @@
         }
 
         <span class="kw">let </span>x = BaseField::from_bytes(x_bytes).map_err(|<span class="kw">_</span>| PubKeyError::XCoordinateBytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>pt = CurvePoint::get_point_from_x(x, y_parity).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>pt =
+            CurvePoint::get_point_from_x_unchecked(x, y_parity).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>pt.y.into_repr().is_even() == y_parity {
+        <span class="kw">if </span>pt.y.into_bigint().is_even() == y_parity {
             pt.y = pt.y.neg();
         }
 
@@ -520,14 +533,14 @@
         <span class="kw">let </span>point = <span class="self">self</span>.<span class="number">0</span>;
         CompressedPubKey {
             x: point.x,
-            is_odd: point.y.into_repr().is_odd(),
+            is_odd: point.y.into_bigint().is_odd(),
         }
     }
 
     <span class="doccomment">/// Serialize public key into corresponding Mina address
     </span><span class="kw">pub fn </span>into_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">let </span>point = <span class="self">self</span>.point();
-        into_address(<span class="kw-2">&amp;</span>point.x, point.y.into_repr().is_odd())
+        into_address(<span class="kw-2">&amp;</span>point.x, point.y.into_bigint().is_odd())
     }
 
     <span class="doccomment">/// Deserialize public key into bytes
@@ -604,7 +617,8 @@
         </span>} <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::YCoordinateParity);
         };
-        <span class="kw">let </span>public = CurvePoint::get_point_from_x(x, is_odd).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
+        <span class="kw">let </span>public =
+            CurvePoint::get_point_from_x_unchecked(x, is_odd).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
         <span class="kw">if </span>!public.is_on_curve() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
         }
@@ -627,7 +641,7 @@
     </span><span class="kw">pub fn </span>from_secret_key(sec_key: SecKey) -&gt; <span class="self">Self </span>{
         <span class="comment">// We do not need to check point is on the curve, since it&#39;s derived directly from the generator point
         </span><span class="kw">let </span>public = PubKey::from_point_unsafe(
-            CurvePoint::prime_subgroup_generator()
+            CurvePoint::generator()
                 .mul(sec_key.into_scalar())
                 .into_affine(),
         );

@@ -604,7 +604,7 @@
         tables::LookupTable,
     },
 };
-<span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField};
+<span class="kw">use </span>ark_ff::{FftField, PrimeField};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
@@ -790,7 +790,7 @@
     </span><span class="kw">pub </span>configuration: LookupConfiguration&lt;F&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; LookupConstraintSystem&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; LookupConstraintSystem&lt;F&gt; {
     <span class="doccomment">/// Create the `LookupConstraintSystem`.
     ///
     /// # Errors

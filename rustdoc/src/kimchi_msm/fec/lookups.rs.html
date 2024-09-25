@@ -165,7 +165,7 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
-<span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -320,7 +320,7 @@
                 value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">9</span>)
             }
             <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+                <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::MODULUS).unwrap();
                 <span class="kw">let </span>top_modulus_f: F =
                     F::from_biguint(<span class="kw-2">&amp;</span>(f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE))).unwrap();
                 value &lt; top_modulus_f

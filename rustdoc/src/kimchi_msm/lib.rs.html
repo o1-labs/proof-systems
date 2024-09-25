@@ -105,9 +105,9 @@
 /// [`Ff1`] or [`Ff2`]).
 </span><span class="kw">pub const </span>N_LIMBS: usize = <span class="number">17</span>;
 
-<span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
-<span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
-<span class="kw">pub type </span>BN254G2Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G2Affine;
+<span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Config&gt;;
+<span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::pairing::Pairing&gt;::G1Affine;
+<span class="kw">pub type </span>BN254G2Affine = &lt;BN254 <span class="kw">as </span>ark_ec::pairing::Pairing&gt;::G2Affine;
 
 <span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
@@ -117,7 +117,7 @@
 <span class="kw">pub type </span>Ff2 = mina_curves::pasta::Fq;
 
 <span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
-<span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;
+<span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Config, SpongeParams&gt;;
 <span class="kw">pub type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
 <span class="kw">pub type </span>OpeningProof = KZGProof&lt;BN254&gt;;
 </code></pre></div></section></main></body></html>

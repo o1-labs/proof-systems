@@ -381,7 +381,7 @@
         },
         precomputed_srs,
     };
-    <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
+    <span class="kw">use </span>ark_ff::PrimeField;
     <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
     <span class="kw">use </span>poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
 
@@ -402,7 +402,7 @@
     ) -&gt; ProverIndex&lt;G, OpeningProof&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         </span><span class="kw">let </span>cs = ConstraintSystem::&lt;G::ScalarField&gt;::create(gates)
@@ -439,7 +439,7 @@
     ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         new_index_for_test_with_lookups_and_custom_srs(
             gates,
@@ -471,7 +471,7 @@
     ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="prelude-val">None</span>)
     }

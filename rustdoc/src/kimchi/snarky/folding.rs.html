@@ -222,7 +222,7 @@
     loc,
     snarky::{api::SnarkyCircuit, cvar::FieldVar, runner::RunState},
 };
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{BigInteger, One, PrimeField};
 <span class="kw">use </span>mina_curves::pasta::Fp;
 <span class="kw">use </span>poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
@@ -285,7 +285,7 @@
     </span><span class="macro">todo!</span>()
 }
 
-<span class="kw">type </span>F&lt;C&gt; = &lt;C <span class="kw">as </span>AffineCurve&gt;::ScalarField;
+<span class="kw">type </span>F&lt;C&gt; = &lt;C <span class="kw">as </span>AffineRepr&gt;::ScalarField;
 
 <span class="kw">fn </span>challenge_linear_combination&lt;F: PrimeField&gt;(
     _full: FullChallenge&lt;FieldVar&lt;F&gt;&gt;,
@@ -324,11 +324,11 @@
 ) -&gt; SnarkyResult&lt;FieldVar&lt;F&gt;&gt; {
     <span class="kw">let </span>(high, low): (FieldVar&lt;F&gt;, FieldVar&lt;F&gt;) = sys.compute(<span class="macro">loc!</span>(), |wit| {
         <span class="kw">let </span>val = wit.read_var(v);
-        <span class="kw">let </span><span class="kw-2">mut </span>high = val.into_repr();
+        <span class="kw">let </span><span class="kw-2">mut </span>high = val.into_bigint();
         high.divn(CHALLENGE_BITS <span class="kw">as </span>u32);
-        <span class="kw">let </span><span class="kw-2">mut </span>low = val.into_repr();
-        low.sub_noborrow(<span class="kw-2">&amp;</span>high);
-        (F::from_repr(high).unwrap(), F::from_repr(low).unwrap())
+        <span class="kw">let </span><span class="kw-2">mut </span>low = val.into_bigint();
+        low.sub_with_borrow(<span class="kw-2">&amp;</span>high);
+        (F::from_bigint(high).unwrap(), F::from_bigint(low).unwrap())
     })<span class="question-mark">?</span>;
     <span class="kw">let </span>composition = high.mul(base, <span class="prelude-val">None</span>, <span class="macro">loc!</span>(), sys)<span class="question-mark">? </span>+ <span class="kw-2">&amp;</span>low;
     <span class="comment">// TODO: constraint low to 127 bits

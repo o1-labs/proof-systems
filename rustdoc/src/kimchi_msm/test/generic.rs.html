@@ -275,7 +275,7 @@
     expr::E, logup::LookupTableID, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
     verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
-<span class="kw">use </span>ark_ff::Zero;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>poly_commitment::kzg::PairingSRS;
 <span class="kw">use </span>rand::{CryptoRng, RngCore};

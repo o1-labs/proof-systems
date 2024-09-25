@@ -174,6 +174,11 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -192,10 +197,13 @@
         logup::LookupTableID,
         Ff1, Fp,
     };
-    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>ark_ec::AffineRepr;
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
-    <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+    <span class="kw">use </span>std::{
+        collections::{BTreeMap, HashMap},
+        ops::Mul,
+    };
 
     <span class="kw">type </span>FECWitnessBuilderEnv = WitnessBuilderEnv&lt;
         Fp,
@@ -211,21 +219,24 @@
         rng: <span class="kw-2">&amp;mut </span>RNG,
         domain_size: usize,
     ) -&gt; FECWitnessBuilderEnv {
-        <span class="kw">use </span>mina_curves::pasta::{Fp, Pallas};
+        <span class="kw">use </span>mina_curves::pasta::Pallas;
+        <span class="comment">// Fq = Ff2
+        </span><span class="kw">type </span>Fq = &lt;Pallas <span class="kw">as </span>AffineRepr&gt;::ScalarField;
 
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
 
-        </span><span class="kw">let </span>gen = Pallas::prime_subgroup_generator();
-        <span class="kw">let </span>kp: Fp = UniformRand::rand(rng);
+        </span><span class="kw">let </span>gen = Pallas::generator();
+
+        <span class="kw">let </span>kp: Fq = UniformRand::rand(rng);
         <span class="kw">let </span>p: Pallas = gen.mul(kp).into();
         <span class="kw">let </span>px: Ff1 = p.x;
         <span class="kw">let </span>py: Ff1 = p.y;
 
         <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
-            <span class="kw">let </span>kq: Fp = UniformRand::rand(rng);
+            <span class="kw">let </span>kq: Fq = UniformRand::rand(rng);
             <span class="kw">let </span>q: Pallas = gen.mul(kq).into();
 
             <span class="kw">let </span>qx: Ff1 = q.x;
@@ -233,8 +244,7 @@
 
             <span class="kw">let </span>(rx, ry) = ec_add_circuit(<span class="kw-2">&amp;mut </span>witness_env, px, py, qx, qy);
 
-            <span class="kw">let </span>r: Pallas =
-                ark_ec::models::short_weierstrass_jacobian::GroupAffine::new(rx, ry, <span class="bool-val">false</span>);
+            <span class="kw">let </span>r: Pallas = ark_ec::models::short_weierstrass::Affine::new_unchecked(rx, ry);
 
             <span class="macro">assert!</span>(
                 r == p + q,

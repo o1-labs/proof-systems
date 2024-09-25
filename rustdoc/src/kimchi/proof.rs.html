@@ -997,7 +997,7 @@
     lookup::lookups::LookupPattern,
     wires::{COLUMNS, PERMUTS},
 };
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
@@ -1099,7 +1099,7 @@
 </span><span class="attr">#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
-</span><span class="kw">pub struct </span>LookupCommitments&lt;G: AffineCurve&gt; {
+</span><span class="kw">pub struct </span>LookupCommitments&lt;G: AffineRepr&gt; {
     <span class="doccomment">/// Commitments to the sorted lookup table polynomial (may have chunks)
     </span><span class="kw">pub </span>sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
     <span class="doccomment">/// Commitment to the lookup aggregation polynomial
@@ -1112,7 +1112,7 @@
 </span><span class="attr">#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
-</span><span class="kw">pub struct </span>ProverCommitments&lt;G: AffineCurve&gt; {
+</span><span class="kw">pub struct </span>ProverCommitments&lt;G: AffineRepr&gt; {
     <span class="doccomment">/// The commitments to the witness (execution trace)
     </span><span class="kw">pub </span>w_comm: [PolyComm&lt;G&gt;; COLUMNS],
     <span class="doccomment">/// The commitment to the permutation polynomial
@@ -1127,7 +1127,7 @@
 </span><span class="attr">#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
-</span><span class="kw">pub struct </span>ProverProof&lt;G: AffineCurve, OpeningProof&gt; {
+</span><span class="kw">pub struct </span>ProverProof&lt;G: AffineRepr, OpeningProof&gt; {
     <span class="doccomment">/// All the polynomial commitments required in the proof
     </span><span class="kw">pub </span>commitments: ProverCommitments&lt;G&gt;,
 
@@ -1155,7 +1155,7 @@
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>RecursionChallenge&lt;G&gt;
 <span class="kw">where
-    </span>G: AffineCurve,
+    </span>G: AffineRepr,
 {
     <span class="doccomment">/// Vector of scalar field elements
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
@@ -1336,7 +1336,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: AffineCurve&gt; RecursionChallenge&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: AffineRepr&gt; RecursionChallenge&lt;G&gt; {
     <span class="kw">pub fn </span>new(chals: Vec&lt;G::ScalarField&gt;, comm: PolyComm&lt;G&gt;) -&gt; RecursionChallenge&lt;G&gt; {
         RecursionChallenge { chals, comm }
     }
@@ -1496,7 +1496,7 @@
 
     </span><span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;RecursionChallenge&lt;G&gt;&gt; <span class="kw">for </span>CamlRecursionChallenge&lt;CamlG, CamlF&gt;
     <span class="kw">where
-        </span>G: AffineCurve,
+        </span>G: AffineRepr,
         CamlG: From&lt;G&gt;,
         CamlF: From&lt;G::ScalarField&gt;,
     {
@@ -1510,7 +1510,7 @@
 
     <span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;CamlRecursionChallenge&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>RecursionChallenge&lt;G&gt;
     <span class="kw">where
-        </span>G: AffineCurve + From&lt;CamlG&gt;,
+        </span>G: AffineRepr + From&lt;CamlG&gt;,
         G::ScalarField: From&lt;CamlF&gt;,
     {
         <span class="kw">fn </span>from(caml_ch: CamlRecursionChallenge&lt;CamlG, CamlF&gt;) -&gt; RecursionChallenge&lt;G&gt; {

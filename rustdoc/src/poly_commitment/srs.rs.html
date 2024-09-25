@@ -317,12 +317,11 @@
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements structures and methods to handle Structure Reference
 //! String (SRS).
 
 </span><span class="kw">use crate</span>::{commitment::CommitmentCurve, PolyComm};
-<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ec::{AffineRepr, CurveGroup};
 <span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -369,10 +368,10 @@
     <span class="kw">let </span>endo_q: G::BaseField = mina_poseidon::sponge::endo_coefficient();
     <span class="kw">let </span>endo_r = {
         <span class="kw">let </span>potential_endo_r: G::ScalarField = mina_poseidon::sponge::endo_coefficient();
-        <span class="kw">let </span>t = G::prime_subgroup_generator();
+        <span class="kw">let </span>t = G::generator();
         <span class="kw">let </span>(x, y) = t.to_coordinates().unwrap();
         <span class="kw">let </span>phi_t = G::of_coordinates(x * endo_q, y);
-        <span class="kw">if </span>t.mul(potential_endo_r) == phi_t.into_projective() {
+        <span class="kw">if </span>t.mul(potential_endo_r) == phi_t.into_group() {
             potential_endo_r
         } <span class="kw">else </span>{
             potential_endo_r * potential_endo_r
@@ -402,12 +401,13 @@
 
         <span class="kw">let </span>n =
             &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_be(<span class="kw-2">&amp;</span>bits);
-        <span class="kw">let </span>t = &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::from_repr(n)
+        <span class="kw">let </span>t = &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::from_bigint(n)
             .expect(<span class="string">&quot;packing code has a bug&quot;</span>);
         base_fields.push(t)
     }
 
     <span class="kw">let </span>t = G::BaseField::from_base_prime_field_elems(<span class="kw-2">&amp;</span>base_fields).unwrap();
+
     <span class="kw">let </span>(x, y) = map.to_group(t);
     G::of_coordinates(x, y).mul_by_cofactor()
 }
@@ -510,24 +510,22 @@
         <span class="comment">// For each chunk
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
             <span class="comment">// Initialize the vector with zero curve points
-            </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt; =
-                <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::zero(); n];
+            </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group&gt; = <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::zero(); n];
             <span class="comment">// Overwrite the terms corresponding to that chunk with the SRS curve points
             </span><span class="kw">let </span>start_offset = i * srs_size;
             <span class="kw">let </span>num_terms = min((i + <span class="number">1</span>) * srs_size, n) - start_offset;
             <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..num_terms {
-                lg[start_offset + j] = <span class="self">self</span>.g[j].into_projective()
+                lg[start_offset + j] = <span class="self">self</span>.g[j].into_group()
             }
             <span class="comment">// Apply the IFFT
             </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
-            &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
             <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of elems chunks
-            </span>elems.push(lg)
+            </span>elems.push(&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::normalize_batch(lg.as_mut_slice()));
         }
 
         <span class="kw">let </span>chunked_commitments: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
             .map(|i| PolyComm {
-                elems: elems.iter().map(|v| v[i].into_affine()).collect(),
+                elems: elems.iter().map(|v| v[i]).collect(),
             })
             .collect();
         <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
@@ -546,7 +544,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>x_pow = G::ScalarField::one();
         <span class="kw">let </span>g: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..depth)
             .map(|<span class="kw">_</span>| {
-                <span class="kw">let </span>res = G::prime_subgroup_generator().mul(x_pow);
+                <span class="kw">let </span>res = G::generator().mul(x_pow);
                 x_pow <span class="kw-2">*</span>= x;
                 res.into_affine()
             })

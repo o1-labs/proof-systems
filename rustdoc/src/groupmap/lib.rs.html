@@ -182,8 +182,6 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Follows approach of SvdW06 to construct a &quot;near injection&quot; from a field
 //! into an elliptic curve defined over that field. WB19 is also a useful
 //! reference that details several constructions which are more appropriate in other
@@ -205,8 +203,8 @@
 //! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. &lt;https://eprint.iacr.org/2019/403&gt;
 //!
 
-</span><span class="kw">use </span>ark_ec::models::SWModelParameters;
-<span class="kw">use </span>ark_ff::{Field, One, SquareRootField, Zero};
+</span><span class="kw">use </span>ark_ec::short_weierstrass::SWCurveConfig;
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 
 <span class="kw">pub trait </span>GroupMap&lt;F&gt; {
     <span class="kw">fn </span>setup() -&gt; <span class="self">Self</span>;
@@ -215,7 +213,7 @@
 }
 
 <span class="attr">#[derive(Clone, Copy)]
-</span><span class="kw">pub struct </span>BWParameters&lt;G: SWModelParameters&gt; {
+</span><span class="kw">pub struct </span>BWParameters&lt;G: SWCurveConfig&gt; {
     u: G::BaseField,
     fu: G::BaseField,
     sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
@@ -224,12 +222,13 @@
 }
 
 <span class="doccomment">/// returns the right-hand side of the Short Weierstrass curve equation for a given x
-</span><span class="kw">fn </span>curve_eqn&lt;G: SWModelParameters&gt;(x: G::BaseField) -&gt; G::BaseField {
+</span><span class="kw">fn </span>curve_eqn&lt;G: SWCurveConfig&gt;(x: G::BaseField) -&gt; G::BaseField {
     <span class="kw">let </span><span class="kw-2">mut </span>res = x;
     res <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>x; <span class="comment">// x^2
     </span>res += <span class="kw-2">&amp;</span>G::COEFF_A; <span class="comment">// x^2 + A
     </span>res <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>x; <span class="comment">// x^3 + A x
     </span>res += <span class="kw-2">&amp;</span>G::COEFF_B; <span class="comment">// x^3 + A x + B
+
     </span>res
 }
 
@@ -247,7 +246,7 @@
 }
 
 <span class="doccomment">/// ?
-</span><span class="kw">fn </span>potential_xs_helper&lt;G: SWModelParameters&gt;(
+</span><span class="kw">fn </span>potential_xs_helper&lt;G: SWCurveConfig&gt;(
     params: <span class="kw-2">&amp;</span>BWParameters&lt;G&gt;,
     t2: G::BaseField,
     alpha: G::BaseField,
@@ -275,10 +274,7 @@
 }
 
 <span class="doccomment">/// ?
-</span><span class="kw">fn </span>potential_xs&lt;G: SWModelParameters&gt;(
-    params: <span class="kw-2">&amp;</span>BWParameters&lt;G&gt;,
-    t: G::BaseField,
-) -&gt; [G::BaseField; <span class="number">3</span>] {
+</span><span class="kw">fn </span>potential_xs&lt;G: SWCurveConfig&gt;(params: <span class="kw-2">&amp;</span>BWParameters&lt;G&gt;, t: G::BaseField) -&gt; [G::BaseField; <span class="number">3</span>] {
     <span class="kw">let </span>t2 = t.square();
     <span class="kw">let </span><span class="kw-2">mut </span>alpha_inv = t2;
     alpha_inv += <span class="kw-2">&amp;</span>params.fu;
@@ -294,12 +290,12 @@
 
 <span class="doccomment">/// returns the y-coordinate if x is a valid point on the curve, otherwise None
 /// TODO: what about sign?
-</span><span class="kw">pub fn </span>get_y&lt;G: SWModelParameters&gt;(x: G::BaseField) -&gt; <span class="prelude-ty">Option</span>&lt;G::BaseField&gt; {
+</span><span class="kw">pub fn </span>get_y&lt;G: SWCurveConfig&gt;(x: G::BaseField) -&gt; <span class="prelude-ty">Option</span>&lt;G::BaseField&gt; {
     <span class="kw">let </span>fx = curve_eqn::&lt;G&gt;(x);
     fx.sqrt()
 }
 
-<span class="kw">fn </span>get_xy&lt;G: SWModelParameters&gt;(
+<span class="kw">fn </span>get_xy&lt;G: SWCurveConfig&gt;(
     params: <span class="kw-2">&amp;</span>BWParameters&lt;G&gt;,
     t: G::BaseField,
 ) -&gt; (G::BaseField, G::BaseField) {
@@ -312,7 +308,7 @@
     <span class="macro">panic!</span>(<span class="string">&quot;get_xy&quot;</span>)
 }
 
-<span class="kw">impl</span>&lt;G: SWModelParameters&gt; GroupMap&lt;G::BaseField&gt; <span class="kw">for </span>BWParameters&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: SWCurveConfig&gt; GroupMap&lt;G::BaseField&gt; <span class="kw">for </span>BWParameters&lt;G&gt; {
     <span class="kw">fn </span>setup() -&gt; <span class="self">Self </span>{
         <span class="macro">assert!</span>(G::COEFF_A.is_zero());
 

@@ -1011,9 +1011,6 @@
 <a href="#1011" id="1011">1011</a>
 <a href="#1012" id="1012">1012</a>
 <a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -1034,7 +1031,7 @@
     error::{DomainCreationError, SetupError},
     prover_index::ProverIndex,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
@@ -1293,11 +1290,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;
-        F: PrimeField + SquareRootField,
-        G: KimchiCurve&lt;ScalarField = F&gt;,
-        OpeningProof: OpenProof&lt;G&gt;,
-    &gt; ProverIndex&lt;G, OpeningProof&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;, OpeningProof: OpenProof&lt;G&gt;&gt;
+    ProverIndex&lt;G, OpeningProof&gt;
 {
     <span class="doccomment">/// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
@@ -1351,7 +1345,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; ConstraintSystem&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
     <span class="doccomment">/// evaluate witness polynomials over domains
     </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
         <span class="comment">// compute shifted witness polynomials
@@ -1679,7 +1673,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; Builder&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; Builder&lt;F&gt; {
     <span class="doccomment">/// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     </span><span class="kw">pub fn </span>public(<span class="kw-2">mut </span><span class="self">self</span>, public: usize) -&gt; <span class="self">Self </span>{
@@ -1933,7 +1927,7 @@
     <span class="kw">use </span>mina_curves::pasta::{Fp, Fq};
     <span class="kw">use </span>o1_utils::FieldHelpers;
 
-    <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; ConstraintSystem&lt;F&gt; {
+    <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
         <span class="kw">pub fn </span>for_testing(gates: Vec&lt;CircuitGate&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
             <span class="kw">let </span>public = <span class="number">0</span>;
             <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test

@@ -140,6 +140,7 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive
 
 </span><span class="kw">use crate</span>::{
@@ -147,6 +148,7 @@
     permutation::{full_round, poseidon_block_cipher},
 };
 <span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 
@@ -189,7 +191,7 @@
 
 <span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
-</span><span class="kw">pub struct </span>ArithmeticSpongeParams&lt;F: Field&gt; {
+</span><span class="kw">pub struct </span>ArithmeticSpongeParams&lt;F: Field + CanonicalSerialize + CanonicalDeserialize&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
     </span><span class="kw">pub </span>round_constants: Vec&lt;Vec&lt;F&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]

@@ -62,10 +62,10 @@
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
 <span class="doccomment">/// Elliptic curve group of BN254
 </span><span class="kw">pub type </span>Curve = ark_bn254::G1Affine;
-<span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;
+<span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Config, SpongeParams&gt;;
 <span class="kw">pub type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
 <span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
-<span class="kw">pub type </span>OpeningProof = KZGProof&lt;Bn&lt;ark_bn254::Parameters&gt;&gt;;
+<span class="kw">pub type </span>OpeningProof = KZGProof&lt;Bn&lt;ark_bn254::Config&gt;&gt;;
 
 <span class="kw">pub mod </span>folding;
 <span class="kw">pub mod </span>proof;

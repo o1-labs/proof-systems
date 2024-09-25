@@ -205,7 +205,7 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a useful trait for recursion: [KimchiCurve],
 //! which defines how a pair of curves interact.
 
-</span><span class="kw">use </span>ark_ec::{short_weierstrass_jacobian::GroupAffine, AffineCurve, ModelParameters};
+</span><span class="kw">use </span>ark_ec::{short_weierstrass::Affine, AffineRepr, CurveConfig};
 <span class="kw">use </span>mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
@@ -237,32 +237,32 @@
 
     <span class="doccomment">/// Accessor for the other curve&#39;s prime subgroup generator, as coordinates
     </span><span class="comment">// TODO: This leaked from snarky.rs. Stop the bleed.
-    </span><span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField);
+    </span><span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField);
 }
 
 <span class="kw">fn </span>vesta_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
-    &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-    &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+    &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
+    &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
 ) {
     <span class="kw">static </span>VESTA_ENDOS: Lazy&lt;(
-        &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-        &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
-    )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;VestaParameters&gt;&gt;);
+        &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
+        &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
+    )&gt; = Lazy::new(endos::&lt;Affine&lt;VestaParameters&gt;&gt;);
     <span class="kw-2">&amp;</span>VESTA_ENDOS
 }
 
 <span class="kw">fn </span>pallas_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
-    &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-    &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+    &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
+    &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
 ) {
     <span class="kw">static </span>PALLAS_ENDOS: Lazy&lt;(
-        &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-        &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
-    )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;PallasParameters&gt;&gt;);
+        &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
+        &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
+    )&gt; = Lazy::new(endos::&lt;Affine&lt;PallasParameters&gt;&gt;);
     <span class="kw-2">&amp;</span>PALLAS_ENDOS
 }
 
-<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;VestaParameters&gt; {
+<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>Affine&lt;VestaParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;vesta&quot;</span>;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
@@ -281,14 +281,14 @@
         <span class="kw-2">&amp;</span>pallas_endos().<span class="number">0
     </span>}
 
-    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;PallasParameters&gt;::prime_subgroup_generator()
+    <span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        Affine::&lt;PallasParameters&gt;::generator()
             .to_coordinates()
             .unwrap()
     }
 }
 
-<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;PallasParameters&gt; {
+<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>Affine&lt;PallasParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;pallas&quot;</span>;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
@@ -307,8 +307,8 @@
         <span class="kw-2">&amp;</span>vesta_endos().<span class="number">0
     </span>}
 
-    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;VestaParameters&gt;::prime_subgroup_generator()
+    <span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        Affine::&lt;VestaParameters&gt;::generator()
             .to_coordinates()
             .unwrap()
     }
@@ -318,7 +318,7 @@
 // Legacy curves
 //
 
-</span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;LegacyVestaParameters&gt; {
+</span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>Affine&lt;LegacyVestaParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;legacy_vesta&quot;</span>;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
@@ -337,14 +337,14 @@
         <span class="kw-2">&amp;</span>pallas_endos().<span class="number">0
     </span>}
 
-    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;PallasParameters&gt;::prime_subgroup_generator()
+    <span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        Affine::&lt;PallasParameters&gt;::generator()
             .to_coordinates()
             .unwrap()
     }
 }
 
-<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;LegacyPallasParameters&gt; {
+<span class="kw">impl </span>KimchiCurve <span class="kw">for </span>Affine&lt;LegacyPallasParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;legacy_pallas&quot;</span>;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
@@ -363,8 +363,8 @@
         <span class="kw-2">&amp;</span>vesta_endos().<span class="number">0
     </span>}
 
-    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;VestaParameters&gt;::prime_subgroup_generator()
+    <span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        Affine::&lt;VestaParameters&gt;::generator()
             .to_coordinates()
             .unwrap()
     }
@@ -374,7 +374,7 @@
 </span><span class="kw">use </span>mina_poseidon::dummy_values::kimchi_dummy;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;bn254&quot;</span>)]
-</span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;ark_bn254::g1::Parameters&gt; {
+</span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>Affine&lt;ark_bn254::g1::Config&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;bn254&quot;</span>;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
@@ -401,7 +401,7 @@
         <span class="kw-2">&amp;</span>ENDO
     }
 
-    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+    <span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
         <span class="comment">// TODO: Dummy value, this is definitely not right
         </span>(<span class="number">44u64</span>.into(), <span class="number">88u64</span>.into())
     }

@@ -1269,7 +1269,7 @@
     proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
-<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -2012,7 +2012,7 @@
 <span class="kw">fn </span>to_batch&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, EFrSponge, OpeningProof: OpenProof&lt;G&gt;&gt;(
     verifier_index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G, OpeningProof&gt;,
     proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G, OpeningProof&gt;,
-    public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
+    public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, OpeningProof&gt;&gt;
 <span class="kw">where
     </span>G: KimchiCurve,

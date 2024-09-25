@@ -400,14 +400,14 @@
     gate::GateType,
     wires::COLUMNS,
 };
-<span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 
 <span class="doccomment">/// Get the expresion of constraints.
 ///
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-</span><span class="kw">pub fn </span>constraints_expr&lt;F: PrimeField + SquareRootField&gt;(
+</span><span class="kw">pub fn </span>constraints_expr&lt;F: PrimeField&gt;(
     feature_flags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FeatureFlags&gt;,
     generic: bool,
 ) -&gt; (
@@ -609,7 +609,7 @@
 
 <span class="doccomment">/// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-</span><span class="kw">pub fn </span>linearization_columns&lt;F: FftField + SquareRootField&gt;(
+</span><span class="kw">pub fn </span>linearization_columns&lt;F: FftField&gt;(
     feature_flags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FeatureFlags&gt;,
 ) -&gt; std::collections::HashSet&lt;Column&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>h = std::collections::HashSet::new();
@@ -712,7 +712,7 @@
 ///
 /// Will panic if the `linearization` process fails.
 </span><span class="attr">#[allow(clippy::type_complexity)]
-</span><span class="kw">pub fn </span>expr_linearization&lt;F: PrimeField + SquareRootField&gt;(
+</span><span class="kw">pub fn </span>expr_linearization&lt;F: PrimeField&gt;(
     feature_flags: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FeatureFlags&gt;,
     generic: bool,
 ) -&gt; (

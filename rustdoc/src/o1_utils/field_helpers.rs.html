@@ -206,9 +206,11 @@
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
-</span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+</span><span class="kw">use </span>ark_ff::{BigInteger, Field, PrimeField};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
 <span class="kw">use </span>rand::rngs::StdRng;
 <span class="kw">use </span>std::ops::Neg;
@@ -330,7 +332,7 @@
     <span class="kw">where
         </span>F: PrimeField,
     {
-        F::size_in_bits() / <span class="number">8 </span>+ (F::size_in_bits() % <span class="number">8 </span>!= <span class="number">0</span>) <span class="kw">as </span>usize
+        (F::MODULUS_BIT_SIZE / <span class="number">8</span>) <span class="kw">as </span>usize + (F::MODULUS_BIT_SIZE % <span class="number">8 </span>!= <span class="number">0</span>) <span class="kw">as </span>usize
     }
 
     <span class="doccomment">/// Get the modulus as `BigUint`
@@ -338,18 +340,19 @@
     <span class="kw">where
         </span>F: PrimeField,
     {
-        BigUint::from_bytes_le(<span class="kw-2">&amp;</span>F::Params::MODULUS.to_bytes_le())
+        BigUint::from_bytes_le(<span class="kw-2">&amp;</span>F::MODULUS.to_bytes_le())
     }
 }
 
 <span class="kw">impl</span>&lt;F: Field&gt; FieldHelpers&lt;F&gt; <span class="kw">for </span>F {
     <span class="kw">fn </span>from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
-        F::deserialize(<span class="kw-2">&amp;mut &amp;*</span>bytes).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(<span class="kw-2">&amp;mut &amp;*</span>bytes).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
     <span class="kw">fn </span>from_hex(hex: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
         <span class="kw">let </span>bytes: Vec&lt;u8&gt; = hex::decode(hex).map_err(|<span class="kw">_</span>| FieldHelpersError::DecodeHex)<span class="question-mark">?</span>;
-        F::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(<span class="kw-2">&amp;mut &amp;</span>bytes[..])
+            .map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
     <span class="doccomment">/// Creates a field element from bits (little endian)
@@ -362,12 +365,13 @@
                 bytes
             });
 
-        F::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(<span class="kw-2">&amp;mut &amp;</span>bytes[..])
+            .map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
-        <span class="self">self</span>.serialize(<span class="kw-2">&amp;mut </span>bytes)
+        <span class="self">self</span>.serialize_uncompressed(<span class="kw-2">&amp;mut </span>bytes)
             .expect(<span class="string">&quot;Failed to serialize field&quot;</span>);
 
         bytes

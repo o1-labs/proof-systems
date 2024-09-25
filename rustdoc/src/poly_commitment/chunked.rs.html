@@ -43,8 +43,10 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::ProjectiveCurve;
+<a href="#46" id="46">46</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveGroup;
 <span class="kw">use </span>ark_ff::{Field, Zero};
+<span class="kw">use </span>std::ops::AddAssign;
 
 <span class="kw">use crate</span>::{commitment::CommitmentCurve, PolyComm};
 
@@ -55,13 +57,13 @@
     <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n
     </span><span class="comment">// TODO(mimoo): better name for this function
     </span><span class="kw">pub fn </span>chunk_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>, zeta_n: C::ScalarField) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>res = C::Projective::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>res = C::Group::zero();
         <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
         </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.elems.iter().rev() {
             res <span class="kw-2">*</span>= zeta_n;
-            res.add_assign_mixed(chunk);
+            res.add_assign(chunk);
         }
 
         PolyComm {

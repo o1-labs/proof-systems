@@ -151,6 +151,9 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme
 //!
 //! An implementation of the singer interface for the Mina signature algorithm
@@ -158,9 +161,9 @@
 //! Details: &lt;https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md&gt;
 
 </span><span class="kw">use </span>ark_ec::{
-    AffineCurve,     <span class="comment">// for prime_subgroup_generator()
-    </span>ProjectiveCurve, <span class="comment">// for into_affine()
-</span>};
+    AffineRepr, <span class="comment">// for generator()
+    </span>CurveGroup,
+};
 <span class="kw">use </span>ark_ff::{
     BigInteger, <span class="comment">// for is_even()
     </span>Field,      <span class="comment">// for from_random_bytes()
@@ -172,7 +175,7 @@
     Blake2bVar,
 };
 <span class="kw">use </span>mina_hasher::{<span class="self">self</span>, DomainParameter, Hasher, ROInput};
-<span class="kw">use </span>std::ops::Neg;
+<span class="kw">use </span>std::ops::{Add, Neg};
 
 <span class="kw">use crate</span>::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 
@@ -211,8 +214,10 @@
 <span class="kw">impl</span>&lt;H: <span class="lifetime">&#39;static </span>+ Hashable&gt; Signer&lt;H&gt; <span class="kw">for </span>Schnorr&lt;H&gt; {
     <span class="kw">fn </span>sign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, kp: <span class="kw-2">&amp;</span>Keypair, input: <span class="kw-2">&amp;</span>H) -&gt; Signature {
         <span class="kw">let </span>k: ScalarField = <span class="self">self</span>.derive_nonce(kp, input);
-        <span class="kw">let </span>r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
-        <span class="kw">let </span>k: ScalarField = <span class="kw">if </span>r.y.into_repr().is_even() { k } <span class="kw">else </span>{ -k };
+        <span class="kw">let </span>r: CurvePoint = CurvePoint::generator()
+            .mul_bigint(k.into_bigint())
+            .into_affine();
+        <span class="kw">let </span>k: ScalarField = <span class="kw">if </span>r.y.into_bigint().is_even() { k } <span class="kw">else </span>{ -k };
 
         <span class="kw">let </span>e: ScalarField = <span class="self">self</span>.message_hash(<span class="kw-2">&amp;</span>kp.public, r.x, input);
         <span class="kw">let </span>s: ScalarField = k + e * kp.secret.scalar();
@@ -223,17 +228,19 @@
     <span class="kw">fn </span>verify(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sig: <span class="kw-2">&amp;</span>Signature, public: <span class="kw-2">&amp;</span>PubKey, input: <span class="kw-2">&amp;</span>H) -&gt; bool {
         <span class="kw">let </span>ev: ScalarField = <span class="self">self</span>.message_hash(public, sig.rx, input);
 
-        <span class="kw">let </span>sv: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(sig.s)
+        <span class="kw">let </span>sv = CurvePoint::generator()
+            .mul_bigint(sig.s.into_bigint())
             .into_affine();
         <span class="comment">// Perform addition and infinity check in projective coordinates for performance
-        </span><span class="kw">let </span>rv = public.point().mul(ev).neg().add_mixed(<span class="kw-2">&amp;</span>sv);
+        </span><span class="kw">let </span>rv = public.point().mul_bigint(ev.into_bigint()).neg().add(sv);
+
         <span class="kw">if </span>rv.is_zero() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
+
         <span class="kw">let </span>rv = rv.into_affine();
 
-        rv.y.into_repr().is_even() &amp;&amp; rv.x == sig.rx
+        rv.y.into_bigint().is_even() &amp;&amp; rv.x == sig.rx
     }
 }
 
@@ -300,8 +307,7 @@
         <span class="comment">// Squeeze and convert from base field element to scalar field element
         // Since the difference in modulus between the two fields is &lt; 2^125, w.h.p., a
         // random value from one field will fit in the other field.
-        </span>ScalarField::from_repr(<span class="self">self</span>.hasher.hash(<span class="kw-2">&amp;</span>schnorr_input).into_repr())
-            .expect(<span class="string">&quot;failed to create scalar&quot;</span>)
+        </span>ScalarField::from(<span class="self">self</span>.hasher.hash(<span class="kw-2">&amp;</span>schnorr_input).into_bigint())
     }
 }
 </code></pre></div></section></main></body></html>
