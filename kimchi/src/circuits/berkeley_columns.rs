@@ -9,7 +9,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use ark_ff::FftField;
+use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
 use crate::circuits::expr::{BerkeleyChallenges, ColumnEnvironment, Domain, FormattedOutput};
@@ -260,33 +260,54 @@ pub struct Environment<'a, F: FftField> {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>;
+pub type E<F>
+where
+    F: Field,
+= Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>;
 
 /// Convenience function to create a constant as [Expr].
-pub fn constant<F>(x: F) -> E<F> {
+pub fn constant<F>(x: F) -> E<F>
+where
+    F: Field,
+{
     ConstantTerm::Literal(x).into()
 }
 
 /// Helper function to quickly create an expression for a witness.
-pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F>
+where
+    F: Field,
+{
     E::<F>::cell(Column::Witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
-pub fn witness_curr<F>(i: usize) -> E<F> {
+pub fn witness_curr<F>(i: usize) -> E<F>
+where
+    F: Field,
+{
     witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
-pub fn witness_next<F>(i: usize) -> E<F> {
+pub fn witness_next<F>(i: usize) -> E<F>
+where
+    F: Field,
+{
     witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
-pub fn index<F>(g: GateType) -> E<F> {
+pub fn index<F>(g: GateType) -> E<F>
+where
+    F: Field,
+{
     E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
 }
 
-pub fn coeff<F>(i: usize) -> E<F> {
+pub fn coeff<F>(i: usize) -> E<F>
+where
+    F: Field,
+{
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
