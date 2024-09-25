@@ -1,7 +1,4 @@
-use ark_ec::{
-    models::short_weierstrass::{Affine, SWCurveConfig},
-    AffineRepr, Group,
-};
+use ark_ec::{AffineRepr, Group};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
     interpreter::{self, Instruction, InterpreterEnv},
@@ -30,21 +27,6 @@ impl SpongeConstants for PlonkSpongeConstants {
     const PERM_SBOX: u32 = 5;
     const PERM_FULL_MDS: bool = true;
     const PERM_INITIAL_ARK: bool = false;
-}
-
-fn helper_generate_random_elliptic_curve_point<RNG, P: SWCurveConfig>(rng: &mut RNG) -> Affine<P>
-where
-    P::BaseField: PrimeField,
-    RNG: RngCore + CryptoRng,
-{
-    let p1_x = P::BaseField::rand(rng);
-    let mut p1: Option<Affine<P>> = Affine::<P>::get_point_from_x_unchecked(p1_x, false);
-    while p1.is_none() {
-        let p1_x = P::BaseField::rand(rng);
-        p1 = Affine::<P>::get_point_from_x_unchecked(p1_x, false);
-    }
-    let p1: Affine<P> = p1.unwrap().mul_by_cofactor_to_group().into();
-    p1
 }
 
 #[test]
@@ -246,7 +228,10 @@ fn test_witness_double_elliptic_curve_point() {
     env.current_instruction = Instruction::EllipticCurveAddition(0);
 
     // Generate a random point
-    let p1: Pallas = helper_generate_random_elliptic_curve_point(&mut rng);
+    let p1: Pallas = {
+        let x = Fq::rand(&mut rng);
+        Pallas::generator().mul_bigint(x.into_bigint()).into()
+    };
 
     // Doubling in the environment
     let pos_x = env.allocate();
@@ -277,7 +262,10 @@ where
     );
 
     let i_comm = 0;
-    let p1: Pallas = helper_generate_random_elliptic_curve_point(rng);
+    let p1: Pallas = {
+        let x = Fq::rand(rng);
+        Pallas::generator().mul_bigint(x.into_bigint()).into()
+    };
     env.previous_commitments_e2[0] = PolyComm::new(vec![p1]);
 
     // We only go up to the maximum bit field size.
