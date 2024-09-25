@@ -208,3 +208,15 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
         -F::from(-i as u64)
     }
 }
+
+/// `pows(d, x)` returns a vector containing the first `d` powers of the
+/// field element `x` (from `1` to `x^(d-1)`).
+pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
+    let mut acc = F::one();
+    let mut res = vec![];
+    for _ in 1..=d {
+        res.push(acc);
+        acc *= x;
+    }
+    res
+}
