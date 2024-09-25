@@ -229,3 +229,12 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     }
     res
 }
+
+/// COmpute the inner product of two slices of field elements.
+pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
+    let mut res = F::zero();
+    for (&x, y) in xs.iter().zip(ys) {
+        res += &(x * y);
+    }
+    res
+}
