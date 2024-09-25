@@ -37,7 +37,8 @@ impl BenchmarkCtx {
         math::ceil_log2(self.index.srs.max_degree())
     }
 
-    /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
+    /// This will create a context that allows for benchmarks of `num_gates`
+    /// gates (multiplication gates).
     pub fn new(srs_size_log2: u32) -> Self {
         // there's some overhead that we need to remove (e.g. zk rows)
 

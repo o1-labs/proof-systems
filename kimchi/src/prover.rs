@@ -153,11 +153,13 @@ where
         )
     }
 
-    /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
+    /// This function constructs prover's recursive zk-proof from the witness &
+    /// the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
-    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`)
+    /// are None.
     ///
     /// # Panics
     ///

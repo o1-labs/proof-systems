@@ -13,7 +13,8 @@ use poly_commitment::{
     srs::endos,
 };
 
-/// Represents additional information that a curve needs in order to be used with Kimchi
+/// Represents additional information that a curve needs in order to be used
+/// with Kimchi
 pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     /// A human readable name.
     const NAME: &'static str;
@@ -24,11 +25,12 @@ pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     /// Provides the sponge params to be used with the other curve.
     fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField>;
 
-    /// Provides the coefficients for the curve endomorphism, called (q,r) in some places.
+    /// Provides the coefficients for the curve endomorphism, called (q,r) in
+    /// some places.
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
 
-    /// Provides the coefficient for the curve endomorphism over the other field, called q in some
-    /// places.
+    /// Provides the coefficient for the curve endomorphism over the other
+    /// field, called q in some places.
     fn other_curve_endo() -> &'static Self::ScalarField;
 
     /// Accessor for the other curve's prime subgroup generator, as coordinates

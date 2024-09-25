@@ -38,8 +38,10 @@ pub struct PointEvaluations<Evals> {
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
-/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
-/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length
+/// that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they
+/// are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
@@ -50,7 +52,8 @@ pub struct ProofEvaluations<Evals> {
     /// permutation polynomial
     pub z: Evals,
     /// permutation polynomials
-    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    /// (PERMUTS-1 evaluations because the last permutation is only used in
+    /// commitment form)
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
     pub coefficients: [Evals; COLUMNS],
@@ -60,11 +63,13 @@ pub struct ProofEvaluations<Evals> {
     pub poseidon_selector: Evals,
     /// evaluation of the elliptic curve addition selector polynomial
     pub complete_add_selector: Evals,
-    /// evaluation of the elliptic curve variable base scalar multiplication selector polynomial
+    /// evaluation of the elliptic curve variable base scalar multiplication
+    /// selector polynomial
     pub mul_selector: Evals,
     /// evaluation of the endoscalar multiplication selector polynomial
     pub emul_selector: Evals,
-    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    /// evaluation of the endoscalar multiplication scalar computation selector
+    /// polynomial
     pub endomul_scalar_selector: Evals,
 
     // Optional gates
@@ -100,7 +105,8 @@ pub struct ProofEvaluations<Evals> {
     pub lookup_gate_lookup_selector: Option<Evals>,
     /// evaluation of the RangeCheck range check pattern selector polynomial
     pub range_check_lookup_selector: Option<Evals>,
-    /// evaluation of the ForeignFieldMul range check pattern selector polynomial
+    /// evaluation of the ForeignFieldMul range check pattern selector
+    /// polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
 }
 
@@ -132,7 +138,8 @@ pub struct ProverCommitments<G: AffineRepr> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
-/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
+/// The proof that the prover creates from a
+/// [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
@@ -150,7 +157,8 @@ pub struct ProverProof<G: AffineRepr, OpeningProof> {
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
 
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-evaluation-of-l)
+    /// Required evaluation for [Maller's
+    /// optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
