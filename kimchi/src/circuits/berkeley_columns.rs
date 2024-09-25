@@ -12,9 +12,7 @@ use serde::{Deserialize, Serialize};
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{
-    BerkeleyChallenges, ColumnEnvironment, Constants, Domain, FormattedOutput,
-};
+use crate::circuits::expr::{BerkeleyChallenges, ColumnEnvironment, Domain, FormattedOutput};
 
 use crate::circuits::wires::COLUMNS;
 

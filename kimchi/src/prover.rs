@@ -5,9 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{
-            self, l0_1, BerkeleyChallenges, BerkeleyConstantTerm, BerkeleyConstants, Constants,
-        },
+        expr::{self, l0_1, BerkeleyChallenges, BerkeleyConstants},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{

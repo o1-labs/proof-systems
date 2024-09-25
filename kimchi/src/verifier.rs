@@ -5,7 +5,7 @@ use crate::{
         argument::ArgumentType,
         berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{BerkeleyChallenges, Constants, PolishToken},
+        expr::{BerkeleyChallenges, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
