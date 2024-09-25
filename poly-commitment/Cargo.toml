@@ -35,9 +35,14 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
+criterion.workspace = true
 colored.workspace = true
 rand_chacha.workspace = true
 ark-bn254.workspace = true
 
 [features]
 ocaml_types = ["ocaml", "ocaml-gen"]
+
+[[bench]]
+name = "poly_comm"
+harness = false

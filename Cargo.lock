@@ -1782,6 +1782,7 @@ dependencies = [
  "ark-serialize",
  "blake2",
  "colored",
+ "criterion",
  "groupmap",
  "itertools",
  "mina-curves",
