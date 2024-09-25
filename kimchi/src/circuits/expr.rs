@@ -306,9 +306,13 @@ impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ConstantExprInner<ChallengeTerm, ConstantTerm> {
+pub enum ConstantExprInner<F, ChallengeTerm, ConstantTerm> {
     Challenge(ChallengeTerm),
     Constant(ConstantTerm),
+    // Todo fixme : We don't want the compiler to complain that F
+    // is unused. This is the quick fix I found
+    // It is very ugly
+    Phantom(std::marker::PhantomData<F>),
 }
 
 impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Literal
@@ -337,6 +341,7 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<
         match self {
             Self::Constant(x) => Self::Constant(x.as_literal(constants)),
             Self::Challenge(_) => self.clone(),
+            Self::Phantom(x) => panic!(""),
         }
     }
 }
@@ -468,6 +473,7 @@ impl<F: Copy, Column, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
         match self {
             ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
             ConstantExprInner::Constant(c) => res.push(PolishToken::Constant(*c)),
+            Self::Phantom(x) => panic!(""),
         }
     }
 }
@@ -587,6 +593,7 @@ impl<F: Field, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
         match self {
             Atom(Challenge(challenge_term)) => chals[*challenge_term],
             Atom(Constant(constant_term)) => c[*constant_term],
+            Atom(Phantom(phantom)) => panic!(""),
             Pow(x, p) => x.value(c, chals).pow([*p]),
             Mul(x, y) => x.value(c, chals) * y.value(c, chals),
             Add(x, y) => x.value(c, chals) + y.value(c, chals),
@@ -2948,6 +2955,7 @@ where
         match self {
             Challenge(x) => x.is_alpha(),
             Constant(x) => x.is_alpha(),
+            Phantom(x) => panic!(""),
         }
     }
     fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String {
@@ -2969,6 +2977,7 @@ where
                 });
                 res
             }
+            Phantom(x) => panic!(""),
         }
     }
     fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String {
@@ -2990,6 +2999,7 @@ where
                 });
                 res
             }
+            Phantom(x) => panic!(""),
         }
     }
     fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String {
@@ -3011,6 +3021,7 @@ where
                 });
                 res
             }
+            Phantom(x) => panic!(""),
         }
     }
 }
