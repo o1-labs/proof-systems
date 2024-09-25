@@ -306,9 +306,9 @@ impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ConstantExprInner<F, ChallengeTerm, CstTerm: ConstantTerm<F>> {
+pub enum ConstantExprInner<ChallengeTerm, ConstantTerm> {
     Challenge(ChallengeTerm),
-    Constant(CstTerm),
+    Constant(ConstantTerm),
 }
 
 impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Literal
