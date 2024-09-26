@@ -1774,9 +1774,6 @@
 <a href="#1774" id="1774">1774</a>
 <a href="#1775" id="1775">1775</a>
 <a href="#1776" id="1776">1776</a>
-<a href="#1777" id="1777">1777</a>
-<a href="#1778" id="1778">1778</a>
-<a href="#1779" id="1779">1779</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -3287,8 +3284,8 @@
     <span class="kw">use </span><span class="kw">crate</span>::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     <span class="kw">use </span>ark_ec::AffineRepr;
     <span class="kw">use </span>poly_commitment::{
-        commitment::caml::CamlPolyComm,
-        evaluation_proof::{caml::CamlOpeningProof, OpeningProof},
+        commitment::caml::{CamlOpeningProof, CamlPolyComm},
+        evaluation_proof::OpeningProof,
     };
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;internal_tracing&quot;</span>)]
@@ -3312,9 +3309,8 @@
         </span><span class="kw">pub </span>evals: CamlProofEvaluations&lt;CamlF&gt;,
         <span class="kw">pub </span>ft_eval1: CamlF,
         <span class="kw">pub </span>public: Vec&lt;CamlF&gt;,
-        <span class="comment">//Vec&lt;(Vec&lt;CamlF&gt;, CamlPolyComm&lt;CamlG&gt;)&gt;,
-        </span><span class="kw">pub </span>prev_challenges: Vec&lt;CamlRecursionChallenge&lt;CamlG, CamlF&gt;&gt;,
-    }
+        <span class="kw">pub </span>prev_challenges: Vec&lt;CamlRecursionChallenge&lt;CamlG, CamlF&gt;&gt;, <span class="comment">//Vec&lt;(Vec&lt;CamlF&gt;, CamlPolyComm&lt;CamlG&gt;)&gt;,
+    </span>}
 
     <span class="comment">//
     // CamlProverCommitments&lt;CamlG&gt;
@@ -3365,10 +3361,8 @@
     // ProverCommitments&lt;G&gt; -&gt; CamlProverCommitments&lt;CamlG&gt;
     // we need to know how to convert G to CamlG.
     // we don&#39;t know that information, unless we implemented some trait (e.g. ToCaml)
-    // we can do that, but instead we implemented the From trait for the reverse
-    // operations (From&lt;G&gt; for CamlG).
-    // it reduces the complexity, but forces us to do the conversion in two
-    // phases instead of one.
+    // we can do that, but instead we implemented the From trait for the reverse operations (From&lt;G&gt; for CamlG).
+    // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
 
     //
     // CamlLookupCommitments&lt;CamlG&gt; &lt;-&gt; LookupCommitments&lt;G&gt;
