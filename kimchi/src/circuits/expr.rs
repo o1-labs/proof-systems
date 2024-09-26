@@ -321,13 +321,13 @@ pub enum ConstantExprInner<F, ChallengeTerm, ConstantTerm> {
     Phantom(std::marker::PhantomData<F>),
 }
 
-impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Literal
+impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: Literal<F = F>> Literal
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
-    type CstTerm = CstTerm;
-    type F = F;
+    type CstTerm = CstTerm::CstTerm;
+    type F = CstTerm::F;
     fn literal(x: Self::F) -> Self {
-        Self::Constant(CstTerm::from_literal(x))
+        Self::Constant(CstTerm::literal(x))
     }
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
@@ -344,7 +344,7 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &dyn Index<CstTerm, Output = F>) -> Self {
+    fn as_literal(&self, constants: &dyn Index<<CstTerm as Literal>::CstTerm, Output = F>) -> Self {
         match self {
             Self::Constant(x) => Self::Constant(x.as_literal(constants)),
             Self::Challenge(_) => self.clone(),
@@ -424,7 +424,7 @@ impl<T: Literal + Clone> Literal for Operations<T> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Index<T::CstTerm, Output = T::F>) -> Self {
         match self {
             Self::Atom(x) => Self::Atom(x.as_literal(constants)),
             Self::Pow(x, n) => Self::Pow(Box::new(x.as_literal(constants)), *n),
@@ -599,7 +599,7 @@ impl<F: Field, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
     /// Evaluate the given constant expression to a field element.
     pub fn value(
         &self,
-        c: &dyn Index<ChallengeTerm, Output = F>,
+        c: &dyn Index<CstTerm, Output = F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> F {
         use ConstantExprInner::*;
@@ -1792,7 +1792,7 @@ impl<
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
-        ConstantTerm::from_litteral(x).into()
+        CstTerm::litteral(x).into()
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
