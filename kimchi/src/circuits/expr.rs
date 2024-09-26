@@ -985,6 +985,9 @@ pub enum PolishToken<F, Column, ChallengeTerm, CstTerm> {
     SkipIf(FeatureFlag, usize),
     /// Skip the given number of tokens if the feature is disabled.
     SkipIfNot(FeatureFlag, usize),
+    // Todo fixme : We don't want the compiler to complain that F
+    // is unused. This is the quick fix I found
+    // It is very ugly
     Phantom(std::marker::PhantomData<F>),
 }
 
