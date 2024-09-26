@@ -2,8 +2,8 @@
     feature_flags: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="../circuits/constraints/struct.FeatureFlags.html" title="struct kimchi::circuits::constraints::FeatureFlags">FeatureFlags</a>&gt;,
     generic: <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.bool.html">bool</a>
 ) -&gt; (<a class="struct" href="../circuits/expr/struct.Linearization.html" title="struct kimchi::circuits::expr::Linearization">Linearization</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="../circuits/expr/enum.PolishToken.html" title="enum kimchi::circuits::expr::PolishToken">PolishToken</a>&lt;F, <a class="enum" href="../circuits/berkeley_columns/enum.Column.html" title="enum kimchi::circuits::berkeley_columns::Column">Column</a>, <a class="enum" href="../circuits/expr/enum.BerkeleyChallengeTerm.html" title="enum kimchi::circuits::expr::BerkeleyChallengeTerm">BerkeleyChallengeTerm</a>&gt;&gt;, <a class="enum" href="../circuits/berkeley_columns/enum.Column.html" title="enum kimchi::circuits::berkeley_columns::Column">Column</a>&gt;, <a class="struct" href="../alphas/struct.Alphas.html" title="struct kimchi::alphas::Alphas">Alphas</a>&lt;F&gt;)</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Linearize the <code>expr</code>.</p>
-<p>If the <code>feature_flags</code> argument is <code>None</code>, this will generate an expression using the
-<code>Expr::IfFeature</code> variant for each of the flags.</p>
+<p>If the <code>feature_flags</code> argument is <code>None</code>, this will generate an expression
+using the <code>Expr::IfFeature</code> variant for each of the flags.</p>
 <h2 id="panics"><a href="#panics">Panics</a></h2>
 <p>Will panic if the <code>linearization</code> process fails.</p>
 </div></details></section></div></main></body></html>

@@ -115,32 +115,6 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
@@ -180,7 +154,8 @@
         math::ceil_log2(<span class="self">self</span>.index.srs.max_degree())
     }
 
-    <span class="doccomment">/// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
+    <span class="doccomment">/// This will create a context that allows for benchmarks of `num_gates`
+    /// gates (multiplication gates).
     </span><span class="kw">pub fn </span>new(srs_size_log2: u32) -&gt; <span class="self">Self </span>{
         <span class="comment">// there&#39;s some overhead that we need to remove (e.g. zk rows)
 
@@ -255,33 +230,6 @@
             <span class="kw-2">&amp;</span>batch,
         )
         .unwrap();
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>std::time::Instant;
-
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_bench() {
-        <span class="comment">// context created in 21.2235 ms
-        </span><span class="kw">let </span>start = Instant::now();
-        <span class="kw">let </span>srs_size = <span class="number">4</span>;
-        <span class="kw">let </span>ctx = BenchmarkCtx::new(srs_size);
-        <span class="macro">println!</span>(<span class="string">&quot;testing bench code for SRS of size {srs_size}&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;context created in {}s&quot;</span>, start.elapsed().as_secs());
-
-        <span class="comment">// proof created in 7.1227 ms
-        </span><span class="kw">let </span>start = Instant::now();
-        <span class="kw">let </span>(proof, public_input) = ctx.create_proof();
-        <span class="macro">println!</span>(<span class="string">&quot;proof created in {}s&quot;</span>, start.elapsed().as_secs());
-
-        <span class="comment">// proof verified in 1.710 ms
-        </span><span class="kw">let </span>start = Instant::now();
-        ctx.batch_verification(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[(proof, public_input)]);
-        <span class="macro">println!</span>(<span class="string">&quot;proof verified in {}&quot;</span>, start.elapsed().as_secs());
     }
 }
 </code></pre></div></section></main></body></html>

@@ -202,6 +202,8 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a useful trait for recursion: [KimchiCurve],
 //! which defines how a pair of curves interact.
 
@@ -217,7 +219,8 @@
     srs::endos,
 };
 
-<span class="doccomment">/// Represents additional information that a curve needs in order to be used with Kimchi
+<span class="doccomment">/// Represents additional information that a curve needs in order to be used
+/// with Kimchi
 </span><span class="kw">pub trait </span>KimchiCurve: CommitmentCurve + EndoCurve {
     <span class="doccomment">/// A human readable name.
     </span><span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
@@ -228,11 +231,12 @@
     <span class="doccomment">/// Provides the sponge params to be used with the other curve.
     </span><span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt;;
 
-    <span class="doccomment">/// Provides the coefficients for the curve endomorphism, called (q,r) in some places.
+    <span class="doccomment">/// Provides the coefficients for the curve endomorphism, called (q,r) in
+    /// some places.
     </span><span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField);
 
-    <span class="doccomment">/// Provides the coefficient for the curve endomorphism over the other field, called q in some
-    /// places.
+    <span class="doccomment">/// Provides the coefficient for the curve endomorphism over the other
+    /// field, called q in some places.
     </span><span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField;
 
     <span class="doccomment">/// Accessor for the other curve&#39;s prime subgroup generator, as coordinates

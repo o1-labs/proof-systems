@@ -1772,6 +1772,8 @@
 <a href="#1772" id="1772">1772</a>
 <a href="#1773" id="1773">1773</a>
 <a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1927,11 +1929,13 @@
         )
     }
 
-    <span class="doccomment">/// This function constructs prover&#39;s recursive zk-proof from the witness &amp; the `ProverIndex` against SRS instance
+    <span class="doccomment">/// This function constructs prover&#39;s recursive zk-proof from the witness &amp;
+    /// the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
-    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`)
+    /// are None.
     ///
     /// # Panics
     ///
