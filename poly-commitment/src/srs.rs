@@ -1,17 +1,23 @@
 //! This module implements structures and methods to handle Structure Reference
 //! String (SRS).
 
-use crate::{commitment::CommitmentCurve, PolyComm};
-use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use crate::{
+    commitment::CommitmentCurve, error::CommitmentError, BlindedCommitment, PolyComm,
+    SRS as SRSTrait,
+};
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{cmp::min, collections::HashMap};
+use std::{cmp::min, collections::HashMap, ops::AddAssign};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
@@ -315,5 +321,162 @@ where
             h,
             lagrange_bases: HashMap::new(),
         }
+    }
+}
+
+impl<G> SRSTrait<G> for SRS<G>
+where
+    G: CommitmentCurve,
+{
+    /// The maximum polynomial degree that can be committed to
+    fn max_poly_size(&self) -> usize {
+        self.g.len()
+    }
+
+    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
+        self.lagrange_bases.get(&domain_size)
+    }
+
+    fn blinding_commitment(&self) -> G {
+        self.h
+    }
+
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial
+    /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
+    /// a random `w` per commitment.
+    fn mask(
+        &self,
+        comm: PolyComm<G>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        let blinders = comm.map(|_| G::ScalarField::rand(rng));
+        self.mask_custom(comm, &blinders).unwrap()
+    }
+
+    /// Same as [SRS::mask] except that you can pass the blinders manually.
+    fn mask_custom(
+        &self,
+        com: PolyComm<G>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        let commitment = com
+            .zip(blinders)
+            .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
+            .map(|(g, b)| {
+                let mut g_masked = self.h.mul(b);
+                g_masked.add_assign(&g);
+                g_masked.into_affine()
+            });
+        Ok(BlindedCommitment {
+            commitment,
+            blinders: blinders.clone(),
+        })
+    }
+
+    /// This function commits a polynomial using the SRS' basis of size `n`.
+    /// - `plnm`: polynomial to commit to with max size of sections
+    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
+    /// The function returns an unbounded commitment vector
+    /// (which splits the commitment into several commitments of size at most `n`).
+    fn commit_non_hiding(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+    ) -> PolyComm<G> {
+        let is_zero = plnm.is_zero();
+
+        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
+
+        // chunk while commiting
+        let mut elems = vec![];
+        if is_zero {
+            elems.push(G::zero());
+        } else {
+            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
+                let chunk = G::Group::msm_bigint(&self.g, coeffs_chunk);
+                elems.push(chunk.into_affine());
+            });
+        }
+
+        for _ in elems.len()..num_chunks {
+            elems.push(G::zero());
+        }
+
+        PolyComm::<G> { elems }
+    }
+
+    /// Commits a polynomial, potentially splitting the result in multiple
+    /// commitments.
+    fn commit(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
+    }
+
+    fn commit_custom(
+        &self,
+        plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_non_hiding(plnm, num_chunks), blinders)
+    }
+
+    fn commit_evaluations_non_hiding(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+    ) -> PolyComm<G> {
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
+            PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
+        };
+        match domain.size.cmp(&plnm.domain().size) {
+            std::cmp::Ordering::Less => {
+                let s = (plnm.domain().size / domain.size) as usize;
+                let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
+                commit_evaluations(&v, basis)
+            }
+            std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
+            std::cmp::Ordering::Greater => {
+                panic!("desired commitment domain size ({}) greater than evaluations' domain size ({}):", domain.size, plnm.domain().size)
+            }
+        }
+    }
+
+    fn commit_evaluations(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
+    }
+
+    fn commit_evaluations_custom(
+        &self,
+        domain: D<G::ScalarField>,
+        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        self.mask_custom(self.commit_evaluations_non_hiding(domain, plnm), blinders)
+    }
+
+    fn create(depth: usize) -> Self {
+        SRS::create(depth)
+    }
+
+    fn add_lagrange_basis(&mut self, domain: D<<G>::ScalarField>) {
+        self.add_lagrange_basis(domain)
+    }
+
+    fn size(&self) -> usize {
+        self.g.len()
     }
 }
