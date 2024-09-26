@@ -1093,6 +1093,17 @@
 <a href="#1093" id="1093">1093</a>
 <a href="#1094" id="1094">1094</a>
 <a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1418,6 +1429,17 @@
         s[i] = s[i - (pow &gt;&gt; <span class="number">1</span>)] * chals[rounds - <span class="number">1 </span>- (k - <span class="number">1</span>)];
     }
     s
+}
+
+<span class="doccomment">/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
+</span><span class="kw">pub fn </span>pows&lt;F: Field&gt;(d: usize, x: F) -&gt; Vec&lt;F&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>acc = F::one();
+    <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
+    <span class="kw">for _ in </span><span class="number">1</span>..=d {
+        res.push(acc);
+        acc <span class="kw-2">*</span>= x;
+    }
+    res
 }
 
 <span class="kw">pub fn </span>squeeze_prechallenge&lt;Fq: Field, G, Fr: Field, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
