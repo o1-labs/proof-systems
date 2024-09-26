@@ -464,21 +464,21 @@ impl<
     }
 }
 
-pub trait ToPolish<F, Column, ChallengeTerm> {
+pub trait ToPolish<F, Column, ChallengeTerm, CstTerm> {
     fn to_polish(
         &self,
         cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>>,
     );
 }
 
 impl<F: Copy, Column, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
-    ToPolish<F, Column, ChallengeTerm> for ConstantExprInner<F, ChallengeTerm, CstTerm>
+    ToPolish<F, Column, ChallengeTerm, CstTerm> for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
     fn to_polish(
         &self,
         _cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>>,
     ) {
         match self {
             ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
@@ -488,13 +488,13 @@ impl<F: Copy, Column, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
     }
 }
 
-impl<F, Column, ChallengeTerm, T: ToPolish<F, Column, ChallengeTerm>>
-    ToPolish<F, Column, ChallengeTerm> for Operations<T>
+impl<F, Column, ChallengeTerm, CstTerm, T: ToPolish<F, Column, ChallengeTerm, CstTerm>>
+    ToPolish<F, Column, ChallengeTerm, CstTerm> for Operations<T>
 {
     fn to_polish(
         &self,
         cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>>,
     ) {
         match self {
             Operations::Atom(atom) => atom.to_polish(cache, res),
@@ -786,7 +786,7 @@ impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Index<Self::CstTerm, Output = Self::F>) -> Self {
         match self {
             ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
             ExprInner::Cell(_)
@@ -932,8 +932,8 @@ where
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PolishToken<F, Column, ChallengeTerm> {
-    Constant(BerkeleyConstantTerm<F>),
+pub enum PolishToken<F, Column, ChallengeTerm, CstTerm> {
+    Constant(CstTerm),
     Challenge(ChallengeTerm),
     Cell(Variable<Column>),
     Dup,
@@ -991,14 +991,16 @@ impl<Column: FormattedOutput + Debug> Variable<Column> {
     }
 }
 
-impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, ChallengeTerm> {
+impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
+    PolishToken<F, Column, ChallengeTerm, CstTerm>
+{
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
-        toks: &[PolishToken<F, Column, ChallengeTerm>],
+        toks: &[PolishToken<F, Column, ChallengeTerm, CstTerm>],
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &dyn Constants<F>,
+        c: &dyn Index<CstTerm, Output = F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
@@ -1016,8 +1018,8 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
             use PolishToken::*;
             match t {
                 Challenge(challenge_term) => stack.push(chals[*challenge_term]),
-                Constant(EndoCoefficient) => stack.push(c.endo_coefficient),
-                Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
+                Constant(constant_term) => stack.push(c[*constant_term]),
+
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
@@ -1804,7 +1806,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
     Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     /// Compile an expression to an RPN expression.
-    pub fn to_polish(&self) -> Vec<PolishToken<F, Column, ChallengeTerm>> {
+    pub fn to_polish(&self) -> Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>> {
         let mut res = vec![];
         let mut cache = HashMap::new();
         self.to_polish_(&mut cache, &mut res);
@@ -1814,7 +1816,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: ConstantTerm<F>>
     fn to_polish_(
         &self,
         cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>>,
     ) {
         match self {
             Expr::Double(x) => {
@@ -2383,8 +2385,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     }
 }
 
-impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
-    Linearization<Vec<PolishToken<F, Column, ChallengeTerm>>, Column>
+impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy, CstTerm: Copy>
+    Linearization<Vec<PolishToken<F, Column, ChallengeTerm, CstTerm>>, Column>
 {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
