@@ -349,17 +349,24 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (
-    Linearization<Vec<PolishToken<F, Column, BerkeleyChallengeTerm>>, Column>,
+    Linearization<
+        Vec<PolishToken<F, Column, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>,
+        Column,
+    >,
     Alphas<F>,
 ) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
 
-    let linearization = expr
-        .linearize(evaluated_cols)
-        .unwrap()
-        .map(|e| e.to_polish());
+    let linearization: Linearization<
+        Vec<PolishToken<F, Column, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>,
+        Column,
+    > = expr.linearize(evaluated_cols).unwrap().map(
+        |e: Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>| {
+            e.to_polish()
+        },
+    );
 
     assert_eq!(linearization.index_terms.len(), 0);
 

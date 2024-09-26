@@ -5,7 +5,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         berkeley_columns::Column,
-        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
+        expr::{BerkeleyChallengeTerm, BerkeleyConstantTerm, Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
@@ -145,8 +145,17 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization:
-        Linearization<Vec<PolishToken<G::ScalarField, Column, BerkeleyChallengeTerm>>, Column>,
+    pub linearization: Linearization<
+        Vec<
+            PolishToken<
+                G::ScalarField,
+                Column,
+                BerkeleyChallengeTerm,
+                BerkeleyConstantTerm<G::ScalarField>,
+            >,
+        >,
+        Column,
+    >,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,

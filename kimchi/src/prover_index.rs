@@ -5,7 +5,7 @@ use crate::{
     circuits::{
         berkeley_columns::Column,
         constraints::{ColumnEvaluations, ConstraintSystem},
-        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
+        expr::{BerkeleyChallengeTerm, BerkeleyConstantTerm, Linearization, PolishToken},
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -29,8 +29,17 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization:
-        Linearization<Vec<PolishToken<G::ScalarField, Column, BerkeleyChallengeTerm>>, Column>,
+    pub linearization: Linearization<
+        Vec<
+            PolishToken<
+                G::ScalarField,
+                Column,
+                BerkeleyChallengeTerm,
+                BerkeleyConstantTerm<G::ScalarField>,
+            >,
+        >,
+        Column,
+    >,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
