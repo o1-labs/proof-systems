@@ -142,8 +142,8 @@ fn test_degree_constant() {
 
 #[test]
 fn test_degree_random_degree() {
-    mvpoly::pbt::test_degree_random_degree::<Fp, 4, 5, Sparse<Fp, 4, 5>>();
-    mvpoly::pbt::test_degree_random_degree::<Fp, 1, 20, Sparse<Fp, 1, 20>>();
+    mvpoly::pbt::test_degree_random_degree::<Fp, 1, 7, Sparse<Fp, 1, 7>>();
+    mvpoly::pbt::test_degree_random_degree::<Fp, 3, 5, Sparse<Fp, 3, 5>>();
 }
 
 #[test]

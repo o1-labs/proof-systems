@@ -231,13 +231,7 @@ pub fn test_degree_random_degree<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    // Test with a random degree up to 5
-    let max_degree: usize = rng.gen_range(1..5);
-    let p = unsafe { T::random(&mut rng, Some(max_degree)) };
-    let degree = unsafe { p.degree() };
-    assert!(degree <= max_degree);
-    // Test with a random degree up to 20 (for univariate polynomials)
-    let max_degree: usize = rng.gen_range(1..20);
+    let max_degree: usize = rng.gen_range(1..D);
     let p = unsafe { T::random(&mut rng, Some(max_degree)) };
     let degree = unsafe { p.degree() };
     assert!(degree <= max_degree);
@@ -250,7 +244,7 @@ pub fn test_mvpoly_add_degree_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
+    let degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(degree)) };
     let p2 = unsafe { T::random(&mut rng, Some(degree)) };
     let p3 = p1.clone() + p2.clone();
@@ -267,7 +261,7 @@ pub fn test_mvpoly_sub_degree_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
+    let degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(degree)) };
     let p2 = unsafe { T::random(&mut rng, Some(degree)) };
     let p3 = p1.clone() - p2.clone();
@@ -284,7 +278,7 @@ pub fn test_mvpoly_neg_degree_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
+    let degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(degree)) };
     let p2 = -p1.clone();
     let degree_p1 = unsafe { p1.degree() };
@@ -299,7 +293,7 @@ pub fn test_mvpoly_mul_by_scalar_degree_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..5);
+    let degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(degree)) };
     let c = F::rand(&mut rng);
     let p2 = p1.clone() * T::from(c);
@@ -315,7 +309,7 @@ pub fn test_mvpoly_mul_degree_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let degree = rng.gen_range(1..3);
+    let degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(degree)) };
     let p2 = unsafe { T::random(&mut rng, Some(degree)) };
     let p3 = p1.clone() * p2.clone();
@@ -332,7 +326,7 @@ pub fn test_mvpoly_mul_eval_pbt<
     T: MVPoly<F, N, D>,
 >() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let max_degree = rng.gen_range(1..3);
+    let max_degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(max_degree)) };
     let p2 = unsafe { T::random(&mut rng, Some(max_degree)) };
     let p3 = p1.clone() * p2.clone();
@@ -345,7 +339,7 @@ pub fn test_mvpoly_mul_eval_pbt<
 
 pub fn test_mvpoly_mul_pbt<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let max_degree = rng.gen_range(1..3);
+    let max_degree = rng.gen_range(1..D);
     let p1 = unsafe { T::random(&mut rng, Some(max_degree)) };
     let p2 = unsafe { T::random(&mut rng, Some(max_degree)) };
     assert_eq!(p1.clone() * p2.clone(), p2.clone() * p1.clone());
