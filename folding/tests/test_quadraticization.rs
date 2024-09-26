@@ -8,7 +8,7 @@ use folding::{
     Witness,
 };
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::srs::SRS;
+use poly_commitment::{evaluation_proof::SRS, SRS as _};
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -146,7 +146,7 @@ fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) ->
     use ark_poly::EvaluationDomain;
 
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+    let mut srs = poly_commitment::evaluation_proof::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
 
     let (scheme, _) = FoldingScheme::<TestConfig>::new(constraints, &srs, domain, &());

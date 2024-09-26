@@ -4,7 +4,6 @@ pub mod commitment;
 pub mod error;
 pub mod evaluation_proof;
 pub mod kzg;
-pub mod srs;
 
 pub use commitment::PolyComm;
 
@@ -21,7 +20,7 @@ use ark_poly::{
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
 
-pub trait SRS<G: CommitmentCurve>: Clone {
+pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 

@@ -34,8 +34,8 @@ use mina_poseidon::{
 };
 use poly_commitment::{
     commitment::CommitmentCurve,
-    evaluation_proof::OpeningProof,
-    srs::{endos, SRS},
+    evaluation_proof::{endos, OpeningProof, SRS},
+    SRS as _,
 };
 
 use super::framework::TestFramework;

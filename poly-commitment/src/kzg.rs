@@ -10,8 +10,9 @@
 //! parameter.
 
 use crate::{
-    commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
-    PolynomialsToCombine, SRS as SRSTrait,
+    commitment::*,
+    evaluation_proof::{combine_polys, SRS},
+    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};

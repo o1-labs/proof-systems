@@ -23,7 +23,7 @@ use kimchi::{
     curve::KimchiCurve,
 };
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::{srs::SRS, SRS as _};
+use poly_commitment::{evaluation_proof::SRS, SRS as _};
 use rand::thread_rng;
 use std::println as debug;
 
@@ -396,7 +396,7 @@ mod checker {
 fn test_folding_instance() {
     let constraints = constraints();
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+    let mut srs = poly_commitment::evaluation_proof::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
 
     let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());

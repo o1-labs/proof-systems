@@ -7,7 +7,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, SRS as _};
 
 use crate::{
     circuits::{
@@ -34,7 +34,7 @@ pub struct BenchmarkCtx {
 
 impl BenchmarkCtx {
     pub fn srs_size(&self) -> usize {
-        math::ceil_log2(self.index.srs.max_degree())
+        math::ceil_log2(self.index.srs.max_poly_size())
     }
 
     /// This will create a context that allows for benchmarks of `num_gates`

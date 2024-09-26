@@ -15,8 +15,7 @@ use poly_commitment::{
         combine_evaluations, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
         Evaluation,
     },
-    evaluation_proof::DensePolynomialOrEvaluations,
-    srs::SRS,
+    evaluation_proof::{DensePolynomialOrEvaluations, SRS},
     PolyComm, SRS as _,
 };
 use rand::{rngs::StdRng, SeedableRng};

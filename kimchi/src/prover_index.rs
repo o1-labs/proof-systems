@@ -144,7 +144,10 @@ pub mod testing {
     };
     use ark_ff::PrimeField;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
+    use poly_commitment::{
+        evaluation_proof::{OpeningProof, SRS},
+        OpenProof,
+    };
 
     #[allow(clippy::too_many_arguments)]
     pub fn new_index_for_test_with_lookups_and_custom_srs<

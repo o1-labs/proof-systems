@@ -5,13 +5,12 @@ use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
-use kimchi::{self, circuits::expr::BerkeleyChallengeTerm, curve::KimchiCurve};
+use kimchi::{self, circuits::expr::BerkeleyChallengeTerm};
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve},
-    srs::SRS,
-    PolyComm, SRS as _,
+    PolyComm, SRS,
 };
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::ops::Index;
@@ -104,7 +103,7 @@ impl<const N_COL: usize, const N_FSEL: usize, F: FftField> Index<()>
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PlonkishInstance<
-    G: KimchiCurve,
+    G: CommitmentCurve,
     const N_COL: usize,
     const N_CHALS: usize,
     const N_ALPHAS: usize,
@@ -115,7 +114,7 @@ pub struct PlonkishInstance<
     pub blinder: G::ScalarField,
 }
 
-impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize>
+impl<G: CommitmentCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize>
     Foldable<G::ScalarField> for PlonkishInstance<G, N_COL, N_CHALS, N_ALPHAS>
 {
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
@@ -130,8 +129,8 @@ impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: u
     }
 }
 
-impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize> Instance<G>
-    for PlonkishInstance<G, N_COL, N_CHALS, N_ALPHAS>
+impl<G: CommitmentCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: usize>
+    Instance<G> for PlonkishInstance<G, N_COL, N_CHALS, N_ALPHAS>
 {
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         // FIXME: check!!!!
@@ -153,13 +152,16 @@ impl<G: KimchiCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHAS: u
 }
 
 // Implementation for 3 challenges; only for now.
-impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize>
+impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
     PlonkishInstance<G, N_COL, 3, N_ALPHAS>
 {
-    pub fn from_witness<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn from_witness<
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        Srs: SRS<G> + std::marker::Sync,
+    >(
         w: &GenericWitness<N_COL, Evaluations<G::ScalarField, R2D<G::ScalarField>>>,
         fq_sponge: &mut EFqSponge,
-        srs: &SRS<G>,
+        srs: &Srs,
         domain: R2D<G::ScalarField>,
     ) -> Self {
         let blinder = G::ScalarField::one();
@@ -251,7 +253,7 @@ impl From<BerkeleyChallengeTerm> for PlonkishChallenge {
     }
 }
 
-impl<G: KimchiCurve, const N_COL: usize, const N_ALPHAS: usize> Index<PlonkishChallenge>
+impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize> Index<PlonkishChallenge>
     for PlonkishInstance<G, N_COL, 3, N_ALPHAS>
 {
     type Output = G::ScalarField;

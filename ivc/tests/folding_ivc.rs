@@ -1,3 +1,4 @@
+use ark_ff::UniformRand;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv,
@@ -6,12 +7,13 @@ use folding::{
 use ivc::ivc::{constraints::constrain_ivc, lookups::IVCLookupTable, N_ADDITIONAL_WIT_COL_QUAD};
 use kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::{circuit_design::ConstraintBuilderEnv, columns::Column, Ff1};
-use poly_commitment::srs::SRS;
+use poly_commitment::{kzg::PairingSRS, SRS as _};
 
 #[test]
 fn test_regression_additional_columns_reduction_to_degree_2() {
     pub type Fp = ark_bn254::Fr;
     pub type Curve = ark_bn254::G1Affine;
+    pub type Pairing = ark_bn254::Bn254;
 
     // ---- Folding fake structures ----
     #[derive(Hash, Clone, Debug, PartialEq, Eq)]
@@ -78,7 +80,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
 
         type Curve = Curve;
 
-        type Srs = SRS<Curve>;
+        type Srs = PairingSRS<Pairing>;
 
         type Instance = TestInstance;
 
@@ -121,8 +123,10 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
     constrain_ivc::<Ff1, _>(&mut constraint_env);
     let constraints = constraint_env.get_relation_constraints();
 
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let toxic_waste = Fp::rand(&mut rng);
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = SRS::<Curve>::create(2);
+    let mut srs = unsafe { PairingSRS::create(toxic_waste, 2) };
     srs.add_lagrange_basis(domain);
 
     let folding_compat_expresions: Vec<FoldingCompatibleExpr<TestConfig>> = constraints

@@ -298,7 +298,7 @@ pub mod keccak {
         FoldingConfig,
     };
     use kimchi_msm::columns::Column;
-    use poly_commitment::srs::SRS;
+    use poly_commitment::kzg::PairingSRS;
 
     use crate::{
         interpreters::keccak::{
@@ -308,7 +308,7 @@ pub mod keccak {
             },
             Steps,
         },
-        legacy::{Curve, Fp},
+        legacy::{Curve, Fp, Pairing},
     };
 
     use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -377,7 +377,7 @@ pub mod keccak {
         type Selector = Steps;
         type Challenge = Challenge;
         type Curve = Curve;
-        type Srs = SRS<Curve>;
+        type Srs = PairingSRS<Pairing>;
         type Instance = KeccakFoldingInstance;
         type Witness = KeccakFoldingWitness;
         type Structure = ();
@@ -396,14 +396,14 @@ pub mod mips {
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use folding::{expressions::FoldingColumnTrait, FoldingConfig};
     use kimchi_msm::columns::Column;
-    use poly_commitment::srs::SRS;
+    use poly_commitment::kzg::PairingSRS;
 
     use crate::{
         interpreters::mips::{
             column::{ColumnAlias as MIPSColumn, N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
             Instruction,
         },
-        legacy::{Curve, Fp},
+        legacy::{Curve, Fp, Pairing},
     };
 
     use super::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -484,7 +484,7 @@ pub mod mips {
         type Selector = Instruction;
         type Challenge = Challenge;
         type Curve = Curve;
-        type Srs = SRS<Curve>;
+        type Srs = PairingSRS<Pairing>;
         type Instance = MIPSFoldingInstance;
         type Witness = MIPSFoldingWitness;
         type Structure = ();
@@ -496,7 +496,7 @@ pub mod mips {
 mod tests {
     use crate::legacy::{
         folding::{FoldingInstance, FoldingWitness, *},
-        Curve, Fp,
+        Curve, Fp, Pairing,
     };
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use folding::{
@@ -509,7 +509,7 @@ mod tests {
         },
         curve::KimchiCurve,
     };
-    use poly_commitment::srs::SRS;
+    use poly_commitment::kzg::PairingSRS;
     use std::ops::Index;
 
     #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -557,7 +557,7 @@ mod tests {
         type Challenge = Challenge;
         type Selector = ();
         type Curve = Curve;
-        type Srs = SRS<Curve>;
+        type Srs = PairingSRS<Pairing>;
         type Instance = TestFoldingInstance;
         type Witness = TestFoldingWitness;
         type Structure = ();

@@ -43,7 +43,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
-use poly_commitment::{PolyComm, SRS as _};
+use poly_commitment::{kzg::PairingSRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use std::{collections::BTreeMap, ops::Index};
 use strum::EnumCount;
@@ -54,6 +54,7 @@ use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 pub type Fq = ark_bn254::Fq;
 /// The curve we commit into
 pub type Curve = BN254G1Affine;
+pub type Pairing = ark_bn254::Bn254;
 
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -192,6 +193,7 @@ pub fn heavy_test_simple_add() {
         PlonkishChallenge,
         PlonkishInstance<Curve, N_COL_TOTAL, N_CHALS, N_ALPHAS>, // TODO check if it's quad or not
         PlonkishWitness<N_COL_TOTAL, N_FSEL, Fp>,
+        PairingSRS<Pairing>,
         (),
         GenericVecStructure<Curve>,
     >;
@@ -313,7 +315,7 @@ pub fn heavy_test_simple_add() {
     // this one needs to be used in prover(..).
     let (folding_scheme, real_folding_compat_constraint) = FoldingScheme::<MainTestConfig>::new(
         folding_compat_constraints.clone(),
-        &srs.full_srs,
+        &srs,
         domain.d1,
         &structure,
     );

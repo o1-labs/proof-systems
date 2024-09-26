@@ -8,9 +8,8 @@ use ark_poly::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use poly_commitment::{
     commitment::Evaluation,
-    evaluation_proof::DensePolynomialOrEvaluations,
+    evaluation_proof::{DensePolynomialOrEvaluations, SRS},
     kzg::{KZGProof, PairingSRS},
-    srs::SRS,
     SRS as _,
 };
 

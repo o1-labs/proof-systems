@@ -22,8 +22,8 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use poly_commitment::{
-    evaluation_proof::OpeningProof,
-    srs::{endos, SRS},
+    evaluation_proof::{endos, OpeningProof, SRS},
+    SRS as _,
 };
 
 use super::framework::TestFramework;
