@@ -359,33 +359,47 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: Literal<F = F
 // TODO Improve me : this is the only way I found to avoid
 // conflicting implementation to convert term (constant and challenge)
 // to expressions
-pub trait CstorChalTerm {
-    const IS_CST: bool;
+pub trait CstorChalTerm<ChallengeTerm, CstTerm> {
+    fn to_chal(self) -> Option<ChallengeTerm>;
+    fn to_cst(self) -> Option<CstTerm>;
 }
 
-impl CstorChalTerm for BerkeleyChallengeTerm {
-    const IS_CST: bool = false;
-}
-impl<F> CstorChalTerm for BerkeleyConstantTerm<F> {
-    const IS_CST: bool = true;
+impl<F> CstorChalTerm<BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> for BerkeleyChallengeTerm {
+    fn to_chal(self) -> Option<BerkeleyChallengeTerm> {
+        Some(self)
+    }
+    fn to_cst(self) -> Option<BerkeleyConstantTerm<F>> {
+        None
+    }
 }
 
-/* impl<
+impl<F> CstorChalTerm<BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> for BerkeleyConstantTerm<F> {
+    fn to_chal(self) -> Option<BerkeleyChallengeTerm> {
+        None
+    }
+    fn to_cst(self) -> Option<BerkeleyConstantTerm<F>> {
+        Some(self)
+    }
+}
+
+impl<
         'a,
         F,
         ChallengeTerm: AlphaChallengeTerm<'a>,
         CstTerm: ConstantTerm<F>,
-        Term: CstorChalTerm,
+        Term: CstorChalTerm<ChallengeTerm, dyn ConstantTerm<F>>,
     > From<Term> for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
     fn from(x: Term) -> Self {
-        if x::IS_CST {
-            ConstantExprInner::Constant(x)
-        } else {
-            ConstantExprInner::Challenge(x)
+        match x.to_chal() {
+            Some(chal) => ConstantExprInner::Challenge(chal),
+            None => match x.to_cst() {
+                Some(cst) => ConstantExprInner::Constant(x),
+                None => panic!(""),
+            },
         }
     }
-} */
+}
 /* impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
     Into<ConstantExprInner<F, ChallengeTerm, CstTerm>> for (ChallengeTerm,)
 {
@@ -400,8 +414,8 @@ impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
     fn into(x: Self) -> ConstantExprInner<F, ChallengeTerm, CstTerm> {
         ConstantExprInner::Constant(x)
     }
-} */
-
+}
+ */
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
     Atom(T),
@@ -478,7 +492,7 @@ impl<
         F,
         ChallengeTerm: AlphaChallengeTerm<'a>,
         CstTerm: ConstantTerm<F>,
-        Term: CstorChalTerm,
+        Term: CstorChalTerm<ChallengeTerm, CstTerm>,
     > From<Term> for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
     fn from(x: Term) -> Self {
@@ -779,7 +793,7 @@ impl<
         Column,
         ChallengeTerm: AlphaChallengeTerm<'a>,
         CstTerm: ConstantTerm<F>,
-        Term: CstorChalTerm,
+        Term: CstorChalTerm<ChallengeTerm, CstTerm>,
     > From<Term> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     fn from(x: Term) -> Self {
