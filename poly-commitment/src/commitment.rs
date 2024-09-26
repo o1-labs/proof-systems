@@ -325,17 +325,6 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     s
 }
 
-/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
-pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
-    let mut acc = F::one();
-    let mut res = vec![];
-    for _ in 1..=d {
-        res.push(acc);
-        acc *= x;
-    }
-    res
-}
-
 pub fn squeeze_prechallenge<Fq: Field, G, Fr: Field, EFqSponge: FqSponge<Fq, G, Fr>>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {

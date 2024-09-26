@@ -13,7 +13,7 @@ use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::{math, ExtendedDensePolynomial};
+use o1_utils::{field_helpers::pows, math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
