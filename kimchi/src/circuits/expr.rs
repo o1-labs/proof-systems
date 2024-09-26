@@ -106,9 +106,13 @@ pub struct BerkeleyConstants<F: 'static> {
     pub zk_rows: u64,
 }
 
-pub trait Constants<F: 'static> {}
+pub trait Constants<F: 'static>  {
+    
+    fn zk_rows(x :Self) -> u64 ;}
 
-impl<F: 'static> Constants<F> for BerkeleyConstants<F> {}
+impl<F: 'static> Constants<F> for BerkeleyConstants<F> {fn zk_rows(x :Self) -> u64 {
+    x.zk_rows
+}}
 
 pub trait ColumnEnvironment<
     'a,
