@@ -3599,6 +3599,17 @@ pub mod constraints {
     }
 }
 
+impl<F: Field> From<u64>
+    for Expr<
+        ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+        berkeley_columns::Column,
+    >
+{
+    fn from(x: u64) -> Self {
+        let cst_expr = ConstantExpr::<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>::from(x);
+        cst_expr.into()
+    }
+}
 /// Auto clone macro - Helps make constraints more readable
 /// by eliminating requirement to .clone() all the time
 #[macro_export]
