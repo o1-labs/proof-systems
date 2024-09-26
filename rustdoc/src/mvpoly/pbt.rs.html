@@ -523,12 +523,6 @@
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
 <a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a list of property tests for the `MVPoly` trait.
 //!
 //! Any type that implements the `MVPoly` trait should pass these tests.
@@ -762,13 +756,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="comment">// Test with a random degree up to 5
-    </span><span class="kw">let </span>max_degree: usize = rng.gen_range(<span class="number">1</span>..<span class="number">5</span>);
-    <span class="kw">let </span>p = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
-    <span class="kw">let </span>degree = <span class="kw">unsafe </span>{ p.degree() };
-    <span class="macro">assert!</span>(degree &lt;= max_degree);
-    <span class="comment">// Test with a random degree up to 20 (for univariate polynomials)
-    </span><span class="kw">let </span>max_degree: usize = rng.gen_range(<span class="number">1</span>..<span class="number">20</span>);
+    <span class="kw">let </span>max_degree: usize = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>degree = <span class="kw">unsafe </span>{ p.degree() };
     <span class="macro">assert!</span>(degree &lt;= max_degree);
@@ -781,7 +769,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..<span class="number">5</span>);
+    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p3 = p1.clone() + p2.clone();
@@ -798,7 +786,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..<span class="number">5</span>);
+    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p3 = p1.clone() - p2.clone();
@@ -815,7 +803,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..<span class="number">5</span>);
+    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p2 = -p1.clone();
     <span class="kw">let </span>degree_p1 = <span class="kw">unsafe </span>{ p1.degree() };
@@ -830,7 +818,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..<span class="number">5</span>);
+    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>c = F::rand(<span class="kw-2">&amp;mut </span>rng);
     <span class="kw">let </span>p2 = p1.clone() * T::from(c);
@@ -846,7 +834,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..<span class="number">3</span>);
+    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
     <span class="kw">let </span>p3 = p1.clone() * p2.clone();
@@ -863,7 +851,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..<span class="number">3</span>);
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p3 = p1.clone() * p2.clone();
@@ -876,7 +864,7 @@
 
 <span class="kw">pub fn </span>test_mvpoly_mul_pbt&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, T: MVPoly&lt;F, N, D&gt;&gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..<span class="number">3</span>);
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="macro">assert_eq!</span>(p1.clone() * p2.clone(), p2.clone() * p1.clone());
