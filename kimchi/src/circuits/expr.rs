@@ -256,7 +256,10 @@ pub trait Literal: Sized + Clone {
     /// Obtains the representation of some constants as a literal.
     /// This is useful before converting Kimchi expressions with constants
     /// to folding compatible expressions.
-    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self;
+    fn as_literal(
+        &self,
+        constants: &dyn Index<BerkeleyConstantTerm<Self::F>, Output = Self::F>,
+    ) -> Self;
 }
 
 impl<F: Field> Literal for F {
@@ -270,11 +273,16 @@ impl<F: Field> Literal for F {
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
-    fn as_literal(&self, _constants: &dyn Constants<Self::F>) -> Self {
+    fn as_literal(
+        &self,
+        _constants: &dyn Index<BerkeleyConstantTerm<Self::F>, Output = Self::F>,
+    ) -> Self {
         *self
     }
 }
 
+// We don't provide a generic implementation of literal for constant terms
+// as the required trait would be almost equivalent to literal
 impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
@@ -292,16 +300,8 @@ impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
-        match self {
-            BerkeleyConstantTerm::EndoCoefficient => {
-                BerkeleyConstantTerm::Literal(constants.endo_coefficient.clone())
-            }
-            BerkeleyConstantTerm::Mds { row, col } => {
-                BerkeleyConstantTerm::Literal(constants.mds[*row][*col].clone())
-            }
-            BerkeleyConstantTerm::Literal(_) => self.clone(),
-        }
+    fn as_literal(&self, constants: &dyn Index<BerkeleyConstantTerm<F>, Output = F>) -> Self {
+        BerkeleyConstantTerm::Literal(constants[*self].clone())
     }
 }
 
