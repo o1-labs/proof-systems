@@ -209,13 +209,13 @@ mod tests {
 
     /// Checks if `get_srs` (prod) succeeds for Pallas. Can be used for time-profiling.
     #[test]
-    pub fn check_get_srs_prod_pallas() {
+    pub fn heavy_check_get_srs_prod_pallas() {
         get_srs::<Pallas>();
     }
 
     /// Checks if `get_srs` (prod) succeeds for Vesta. Can be used for time-profiling.
     #[test]
-    pub fn check_get_srs_prod_vesta() {
+    pub fn heavy_check_get_srs_prod_vesta() {
         get_srs::<Vesta>();
     }
 
