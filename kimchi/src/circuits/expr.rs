@@ -953,6 +953,7 @@ pub enum PolishToken<F, Column, ChallengeTerm, CstTerm> {
     SkipIf(FeatureFlag, usize),
     /// Skip the given number of tokens if the feature is disabled.
     SkipIfNot(FeatureFlag, usize),
+    Phantom(std::marker::PhantomData<F>),
 }
 
 pub trait ColumnEvaluations<F> {
