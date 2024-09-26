@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlOpeningProof","CamlPolyComm"]};
+window.SIDEBAR_ITEMS = {"struct":["CamlPolyComm"]};
