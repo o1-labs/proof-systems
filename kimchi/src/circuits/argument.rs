@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     expr::{
         constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges, BerkeleyConstantTerm,
-        BerkeleyConstants, Cache, ConstantExpr, ConstantTerm,
+        BerkeleyConstants, Cache, ConstantExpr,
     },
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
@@ -135,7 +135,7 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>> Ar
     /// Helper to access endomorphism coefficient constant
     pub fn endo_coefficient(&self) -> T {
         T::constant(
-            ConstantExpr::from(ConstantTerm::EndoCoefficient),
+            ConstantExpr::from(BerkeleyConstantTerm::<F>::EndoCoefficient),
             self.data.as_ref(),
         )
     }
@@ -143,7 +143,7 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>> Ar
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(
-            ConstantExpr::from(ConstantTerm::Mds { row, col }),
+            ConstantExpr::from(BerkeleyConstantTerm::<F>::Mds { row, col }),
             self.data.as_ref(),
         )
     }

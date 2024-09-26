@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{CacheId, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
+        expr::{CacheId, ColumnEvaluations, ConstantExpr, Expr, ExprError},
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},
     },
@@ -270,7 +270,7 @@ pub fn constant<F>(x: F) -> E<F>
 where
     F: Field,
 {
-    ConstantTerm::Literal(x).into()
+    BerkeleyConstantTerm::<F>::Literal(x).into()
 }
 
 /// Helper function to quickly create an expression for a witness.

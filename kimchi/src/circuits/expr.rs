@@ -238,17 +238,18 @@ pub enum BerkeleyConstantTerm<F> {
     Literal(F),
 }
 
-pub trait ConstantTerm<F>: Copy {
-    fn from_litteral(x: F) -> Self;
+pub trait ConstantTerm<F>: Copy + Literal<F = F> {
+    fn from_literal(x: F) -> Self;
 }
 
 impl<F: Field> ConstantTerm<F> for BerkeleyConstantTerm<F> {
-    fn from_litteral(x: F) -> Self {
+    fn from_literal(x: F) -> Self {
         BerkeleyConstantTerm::Literal(x)
     }
 }
 
 pub trait Literal: Sized + Clone {
+    type CstTerm;
     type F;
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
@@ -256,13 +257,13 @@ pub trait Literal: Sized + Clone {
     /// Obtains the representation of some constants as a literal.
     /// This is useful before converting Kimchi expressions with constants
     /// to folding compatible expressions.
-    fn as_literal(
-        &self,
-        constants: &dyn Index<BerkeleyConstantTerm<Self::F>, Output = Self::F>,
-    ) -> Self;
+    fn as_literal(&self, constants: &dyn Index<Self::CstTerm, Output = Self::F>) -> Self;
 }
 
 impl<F: Field> Literal for F {
+    // We can define CstTerm as the specific Berkeley version,
+    // as it is unused here
+    type CstTerm = BerkeleyConstantTerm<F>;
     type F = F;
     fn literal(x: Self::F) -> Self {
         x
@@ -284,6 +285,7 @@ impl<F: Field> Literal for F {
 // We don't provide a generic implementation of literal for constant terms
 // as the required trait would be almost equivalent to literal
 impl<F: Clone> Literal for BerkeleyConstantTerm<F> {
+    type CstTerm = BerkeleyConstantTerm<F>;
     type F = F;
     fn literal(x: Self::F) -> Self {
         BerkeleyConstantTerm::Literal(x)
@@ -318,6 +320,7 @@ pub enum ConstantExprInner<F, ChallengeTerm, ConstantTerm> {
 impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> Literal
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
+    type CstTerm = CstTerm;
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(CstTerm::from_literal(x))
@@ -337,7 +340,7 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<
             _ => None,
         }
     }
-    fn as_literal(&self, constants: &dyn Constants<Self::F>) -> Self {
+    fn as_literal(&self, constants: &dyn Index<CstTerm, Output = F>) -> Self {
         match self {
             Self::Constant(x) => Self::Constant(x.as_literal(constants)),
             Self::Challenge(_) => self.clone(),
@@ -347,7 +350,8 @@ impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<
 }
 
 // TODO Improve me : this is the only way I found to avoid
-// conflicting implementation to convert term to expressions
+// conflicting implementation to convert term (constant and challenge)
+// to expressions
 pub trait CstorChalTerm {
     const IS_CST: bool;
 }
@@ -397,6 +401,7 @@ impl<T> From<T> for Operations<T> {
 
 impl<T: Literal + Clone> Literal for Operations<T> {
     type F = T::F;
+    type CstTerm = T::CstTerm;
     fn literal(x: Self::F) -> Self {
         Self::Atom(T::literal(x))
     }
@@ -757,6 +762,7 @@ impl<
 
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
+    type CstTerm = T::CstTerm;
     fn literal(x: Self::F) -> Self {
         ExprInner::Constant(T::literal(x))
     }
