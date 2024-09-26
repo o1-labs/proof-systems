@@ -16,7 +16,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
@@ -274,15 +274,6 @@ impl<C: AffineRepr> PolyComm<C> {
         }
         Self::new(elems)
     }
-}
-
-/// Returns the product of all the field elements belonging to an iterator.
-pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
-    let mut res = F::one();
-    for x in xs {
-        res *= &x;
-    }
-    res
 }
 
 /// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...

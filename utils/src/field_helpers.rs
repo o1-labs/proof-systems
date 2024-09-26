@@ -220,3 +220,12 @@ pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     }
     res
 }
+
+/// Returns the product of all the field elements belonging to an iterator.
+pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
+    let mut res = F::one();
+    for x in xs {
+        res *= &x;
+    }
+    res
+}
