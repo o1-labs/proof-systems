@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FieldHelpersError"],"fn":["i32_to_field","pows","product"],"trait":["BigUintFieldHelpers","FieldHelpers","RandomField","Two"],"type":["Result"]};
+window.SIDEBAR_ITEMS = {"enum":["FieldHelpersError"],"fn":["i32_to_field","inner_prod","pows","product"],"trait":["BigUintFieldHelpers","FieldHelpers","RandomField","Two"],"type":["Result"]};

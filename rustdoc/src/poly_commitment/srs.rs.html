@@ -905,14 +905,15 @@
 <a href="#905" id="905">905</a>
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements structures and methods to handle Structure Reference
 //! String (SRS).
 
 </span><span class="kw">use crate</span>::{
     commitment::{
-        b_poly, b_poly_coefficients, combine_commitments, inner_prod, shift_scalar,
-        squeeze_prechallenge, BatchEvaluationProof, BlindedCommitment, CommitmentCurve, EndoCurve,
-        Evaluation,
+        b_poly, b_poly_coefficients, combine_commitments, shift_scalar, squeeze_prechallenge,
+        BatchEvaluationProof, BlindedCommitment, CommitmentCurve, EndoCurve, Evaluation,
     },
     error::CommitmentError,
     evaluation_proof::{combine_polys, Challenges, OpeningProof},
@@ -927,7 +928,10 @@
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>groupmap::GroupMap;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-<span class="kw">use </span>o1_utils::{field_helpers::pows, math, ExtendedDensePolynomial};
+<span class="kw">use </span>o1_utils::{
+    field_helpers::{inner_prod, pows},
+    math, ExtendedDensePolynomial,
+};
 <span class="kw">use </span>rand::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
