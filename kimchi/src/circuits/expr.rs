@@ -1019,7 +1019,6 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
                 continue;
             }
 
-            use BerkeleyConstantTerm::*;
             use PolishToken::*;
             match t {
                 Challenge(challenge_term) => stack.push(chals[*challenge_term]),
@@ -1036,7 +1035,6 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
                     };
                     stack.push(unnormalized_lagrange_basis(&d, offset, &pt))
                 }
-                Constant(Literal(x)) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
                     Ok(x) => stack.push(x),
@@ -2877,11 +2875,11 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
     }
 }
  */
-impl<F: Field, ChallengeTerm, CstTerm: ConstantTerm<F>> From<u64>
+impl<'a, F: Field, ChallengeTerm : AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> From<u64>
     for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
     fn from(x: u64) -> Self {
-        ConstantTerm::from_litteral(F::from(x)).into()
+        <CstTerm as Literal>::literal(F::from(x)).into()
     }
 }
 
@@ -2896,7 +2894,7 @@ impl<
     type Output = Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
-        Expr::from(ConstantTerm::from_litteral(y)) * self
+        Expr::from(CstTerm::literal(y)) * self
     }
 }
 
@@ -2973,7 +2971,7 @@ where
         use ConstantExprInner::*;
         match self {
             Challenge(x) => x.is_alpha(),
-            Constant(x) => x.is_alpha(),
+            Constant(x) => false,
             Phantom(x) => panic!(""),
         }
     }
