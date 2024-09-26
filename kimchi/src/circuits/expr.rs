@@ -3426,27 +3426,31 @@ pub mod constraints {
         >: std::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                <F as Two<F>>::two_pow(pow),
-            )
+            Expr::<
+                ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+                berkeley_columns::Column,
+            >::literal(<F as Two<F>>::two_pow(pow))
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_limb(),
-            )
+            Expr::<
+                ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+                berkeley_columns::Column,
+            >::literal(KimchiForeignElement::<F>::two_to_limb())
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_2limb(),
-            )
+            Expr::<
+                ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+                berkeley_columns::Column,
+            >::literal(KimchiForeignElement::<F>::two_to_2limb())
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_3limb(),
-            )
+            Expr::<
+                ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+                berkeley_columns::Column,
+            >::literal(KimchiForeignElement::<F>::two_to_3limb())
         }
 
         fn double(&self) -> Self {
