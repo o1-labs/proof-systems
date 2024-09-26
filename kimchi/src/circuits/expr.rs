@@ -1004,7 +1004,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &dyn Index<CstTerm, Output = F>,
+        c: &dyn Index<CstTerm, Output = F> + Constants<F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
@@ -1921,7 +1921,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
 {
     fn evaluate_constants_(
         &self,
-        c: &dyn Constants<F>,
+        c: &dyn Index<CstTerm, Output = F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Expr<F, Column> {
         use ExprInner::*;
@@ -1954,7 +1954,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
+        Cst: Index<CstTerm, Output = F> + Constants<F>,
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
@@ -1972,7 +1972,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &dyn Constants<F>,
+        c: &dyn Index<CstTerm, Output = F>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
@@ -2024,7 +2024,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
+        Cst: Constants<F> + Index<CstTerm, Output = F>,
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
@@ -2042,7 +2042,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluations<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
+        Cst: Constants<F> + Index<CstTerm, Output = F>,
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
@@ -2379,7 +2379,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
+        Cst: Constants<F> + Index<CstTerm, Output = F> Cst: Constants<F>,
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
@@ -2398,7 +2398,8 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy, CstTerm: Copy>
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Cst: Constants<F>,
+        Cst: Constants<F> + Index<CstTerm, Output = F> Cst: Constants<F>,
+
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
@@ -2442,7 +2443,7 @@ impl<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Cst: Constants<F>,
+        Cst: Constants<F> + Index<CstTerm, Output = F> ,
         Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
     >(
         &self,
