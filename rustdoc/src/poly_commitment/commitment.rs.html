@@ -1039,78 +1039,6 @@
 <a href="#1039" id="1039">1039</a>
 <a href="#1040" id="1040">1040</a>
 <a href="#1041" id="1041">1041</a>
-<a href="#1042" id="1042">1042</a>
-<a href="#1043" id="1043">1043</a>
-<a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a>
-<a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
-<a href="#1050" id="1050">1050</a>
-<a href="#1051" id="1051">1051</a>
-<a href="#1052" id="1052">1052</a>
-<a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a>
-<a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
-<a href="#1071" id="1071">1071</a>
-<a href="#1072" id="1072">1072</a>
-<a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1231,16 +1159,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;A: Clone&gt; PolyComm&lt;A&gt;
-<span class="kw">where
-    </span>A: CanonicalDeserialize + CanonicalSerialize,
-{
+<span class="kw">impl</span>&lt;A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize&gt; PolyComm&lt;A&gt; {
     <span class="kw">pub fn </span>map&lt;B, F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>f: F) -&gt; PolyComm&lt;B&gt;
     <span class="kw">where
         </span>F: FnMut(A) -&gt; B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        <span class="kw">let </span>elems = <span class="self">self</span>.elems.iter().map(|x| f(x.clone())).collect();
+        <span class="kw">let </span>elems = <span class="self">self</span>.elems.iter().map(|x| f(<span class="kw-2">*</span>x)).collect();
         PolyComm { elems }
     }
 
@@ -1253,9 +1178,7 @@
     </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.elems.is_empty()
     }
-}
 
-<span class="kw">impl</span>&lt;A: Copy + CanonicalDeserialize + CanonicalSerialize&gt; PolyComm&lt;A&gt; {
     <span class="comment">// TODO: if all callers end up calling unwrap, just call this zip_eq and
     // panic here (and document the panic)
     </span><span class="kw">pub fn </span>zip&lt;B: Copy + CanonicalDeserialize + CanonicalSerialize&gt;(
@@ -1443,17 +1366,6 @@
     s
 }
 
-<span class="doccomment">/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
-</span><span class="kw">pub fn </span>pows&lt;F: Field&gt;(d: usize, x: F) -&gt; Vec&lt;F&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>acc = F::one();
-    <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
-    <span class="kw">for _ in </span><span class="number">1</span>..=d {
-        res.push(acc);
-        acc <span class="kw-2">*</span>= x;
-    }
-    res
-}
-
 <span class="kw">pub fn </span>squeeze_prechallenge&lt;Fq: Field, G, Fr: Field, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
 ) -&gt; ScalarChallenge&lt;Fr&gt; {
@@ -1555,11 +1467,6 @@
     ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
         <span class="kw">crate</span>::combine::affine_window_combine(g1, g2, x1, x2)
     }
-}
-
-<span class="kw">pub fn </span>to_group&lt;G: CommitmentCurve&gt;(m: <span class="kw-2">&amp;</span>G::Map, t: &lt;G <span class="kw">as </span>AffineRepr&gt;::BaseField) -&gt; G {
-    <span class="kw">let </span>(x, y) = m.to_group(t);
-    G::of_coordinates(x, y)
 }
 
 <span class="doccomment">/// Computes the linearization of the evaluations of a (potentially
@@ -1990,7 +1897,10 @@
             sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(<span class="kw-2">*</span>combined_inner_product)]);
 
             <span class="kw">let </span>t = sponge.challenge_fq();
-            <span class="kw">let </span>u: G = to_group(group_map, t);
+            <span class="kw">let </span>u: G = {
+                <span class="kw">let </span>(x, y) = group_map.to_group(t);
+                G::of_coordinates(x, y)
+            };
 
             <span class="kw">let </span>Challenges { chal, chal_inv } = opening.challenges::&lt;EFqSponge&gt;(<span class="kw-2">&amp;</span>endo_r, sponge);
 
@@ -2097,11 +2007,11 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
     <span class="comment">// polynomial commitment
+    </span><span class="kw">use </span><span class="kw">super</span>::PolyComm;
+    <span class="kw">use </span>ark_ec::AffineRepr;
 
-    </span><span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    <span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
         <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
         <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
@@ -2166,60 +2076,6 @@
             PolyComm {
                 <span class="comment">//FIXME something with as_ref()
                 </span>elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
-            }
-        }
-    }
-
-    <span class="comment">// opening proof
-
-    </span><span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    </span><span class="kw">pub struct </span>CamlOpeningProof&lt;G, F&gt; {
-        <span class="doccomment">/// vector of rounds of L &amp; R commitments
-        </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
-        <span class="kw">pub </span>delta: G,
-        <span class="kw">pub </span>z1: F,
-        <span class="kw">pub </span>z2: F,
-        <span class="kw">pub </span>sg: G,
-    }
-
-    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;OpeningProof&lt;G&gt;&gt; <span class="kw">for </span>CamlOpeningProof&lt;CamlG, CamlF&gt;
-    <span class="kw">where
-        </span>G: AffineRepr,
-        CamlG: From&lt;G&gt;,
-        CamlF: From&lt;G::ScalarField&gt;,
-    {
-        <span class="kw">fn </span>from(opening_proof: OpeningProof&lt;G&gt;) -&gt; <span class="self">Self </span>{
-            <span class="self">Self </span>{
-                lr: opening_proof
-                    .lr
-                    .into_iter()
-                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
-                    .collect(),
-                delta: CamlG::from(opening_proof.delta),
-                z1: opening_proof.z1.into(),
-                z2: opening_proof.z2.into(),
-                sg: CamlG::from(opening_proof.sg),
-            }
-        }
-    }
-
-    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;CamlOpeningProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>OpeningProof&lt;G&gt;
-    <span class="kw">where
-        </span>G: AffineRepr,
-        CamlG: Into&lt;G&gt;,
-        CamlF: Into&lt;G::ScalarField&gt;,
-    {
-        <span class="kw">fn </span>from(caml: CamlOpeningProof&lt;CamlG, CamlF&gt;) -&gt; <span class="self">Self </span>{
-            <span class="self">Self </span>{
-                lr: caml
-                    .lr
-                    .into_iter()
-                    .map(|(g1, g2)| (g1.into(), g2.into()))
-                    .collect(),
-                delta: caml.delta.into(),
-                z1: caml.z1.into(),
-                z2: caml.z2.into(),
-                sg: caml.sg.into(),
             }
         }
     }
