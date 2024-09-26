@@ -146,7 +146,7 @@ mod tests {
     #[test]
     /// Tests if building the IVC circuit succeeds when using the general case
     /// (i.e. fold_iteration != 0).
-    pub fn test_ivc_circuit_general_case() {
+    pub fn heavy_test_ivc_circuit_general_case() {
         let mut rng = o1_utils::tests::make_test_rng(None);
         build_ivc_circuit::<_, IVCLookupTable<Ff1>, _>(
             &mut rng,
