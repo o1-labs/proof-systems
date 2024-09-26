@@ -680,9 +680,7 @@ impl<G: CommitmentCurve> SRS<G> {
             lagrange_bases: HashMap::new(),
         }
     }
-}
 
-impl<G: CommitmentCurve> SRS<G> {
     /// This function creates SRS instance for circuits with number of rows up
     /// to `depth`.
     pub fn create(depth: usize) -> Self {
