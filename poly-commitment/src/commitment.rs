@@ -608,14 +608,6 @@ pub fn combine_evaluations<G: CommitmentCurve>(
     acc
 }
 
-pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
-    let mut res = F::zero();
-    for (&x, y) in xs.iter().zip(ys) {
-        res += &(x * y);
-    }
-    res
-}
-
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     // polynomial commitment

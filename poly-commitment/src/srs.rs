@@ -3,9 +3,8 @@
 
 use crate::{
     commitment::{
-        b_poly, b_poly_coefficients, combine_commitments, inner_prod, shift_scalar,
-        squeeze_prechallenge, BatchEvaluationProof, BlindedCommitment, CommitmentCurve, EndoCurve,
-        Evaluation,
+        b_poly, b_poly_coefficients, combine_commitments, shift_scalar, squeeze_prechallenge,
+        BatchEvaluationProof, BlindedCommitment, CommitmentCurve, EndoCurve, Evaluation,
     },
     error::CommitmentError,
     evaluation_proof::{combine_polys, Challenges, OpeningProof},
@@ -20,7 +19,10 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::{field_helpers::pows, math, ExtendedDensePolynomial};
+use o1_utils::{
+    field_helpers::{inner_prod, pows},
+    math, ExtendedDensePolynomial,
+};
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
