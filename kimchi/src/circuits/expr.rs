@@ -107,12 +107,12 @@ pub struct BerkeleyConstants<F: 'static> {
 }
 
 pub trait Constants<F: 'static, CstTerm>: Index<CstTerm, Output = F> {
-    fn zk_rows(x: Self) -> u64;
+    fn zk_rows(self: &Self) -> u64;
 }
 
 impl<F: 'static + Field> Constants<F, BerkeleyConstantTerm<F>> for BerkeleyConstants<F> {
-    fn zk_rows(x: Self) -> u64 {
-        x.zk_rows
+    fn zk_rows(self: &Self) -> u64 {
+        self.zk_rows
     }
 }
 
@@ -370,7 +370,7 @@ impl<F> CstorChalTerm for BerkeleyConstantTerm<F> {
     const IS_CST: bool = true;
 }
 
-impl<
+/* impl<
         'a,
         F,
         ChallengeTerm: AlphaChallengeTerm<'a>,
@@ -379,13 +379,28 @@ impl<
     > From<Term> for ConstantExprInner<F, ChallengeTerm, CstTerm>
 {
     fn from(x: Term) -> Self {
-        if x.IS_CST {
+        if x::IS_CST {
             ConstantExprInner::Constant(x)
         } else {
             ConstantExprInner::Challenge(x)
         }
     }
+} */
+/* impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
+    Into<ConstantExprInner<F, ChallengeTerm, CstTerm>> for (ChallengeTerm,)
+{
+    fn into(x: Self) -> ConstantExprInner<F, ChallengeTerm, CstTerm> {
+        ConstantExprInner::Challenge(x)
+    }
 }
+
+impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>>
+    Into<ConstantExprInner<F, ChallengeTerm, CstTerm>> for (CstTerm,)
+{
+    fn into(x: Self) -> ConstantExprInner<F, ChallengeTerm, CstTerm> {
+        ConstantExprInner::Constant(x)
+    }
+} */
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
@@ -1028,7 +1043,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
                 Constant(constant_term) => stack.push(c[*constant_term]),
 
                 VanishesOnZeroKnowledgeAndPreviousRows => {
-                    stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
+                    stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows() + 1, pt))
                 }
                 UnnormalizedLagrangeBasis(i) => {
                     let offset = if i.zk_rows {
@@ -1975,7 +1990,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &dyn Index<CstTerm, Output = F>,
+        c: &dyn Constants<F, CstTerm>,
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         use ExprInner::*;
@@ -2001,11 +2016,11 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
                 Ok(x - y)
             }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
-                Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
+                Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows() + 1, pt))
             }
             Atom(UnnormalizedLagrangeBasis(i)) => {
                 let offset = if i.zk_rows {
-                    -(c.zk_rows as i32) + i.offset
+                    -(c.zk_rows() as i32) + i.offset
                 } else {
                     i.offset
                 };
@@ -2130,7 +2145,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
-        let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        let deg = self.degree(d1_size, env.get_constants().zk_rows());
         let d = if deg <= d1_size {
             Domain::D1
         } else if deg <= 4 * d1_size {
@@ -2267,7 +2282,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             Expr::Atom(ExprInner::Constant(x)) => EvalResult::Constant(*x),
             Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
                 let offset = if i.zk_rows {
-                    -(env.get_constants().zk_rows as i32) + i.offset
+                    -(env.get_constants().zk_rows() as i32) + i.offset
                 } else {
                     i.offset
                 };
@@ -2880,7 +2895,7 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
     }
 }
  */
-impl<'a, F: Field, ChallengeTerm : AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> From<u64>
+impl<'a, F: Field, ChallengeTerm: AlphaChallengeTerm<'a>, CstTerm: ConstantTerm<F>> From<u64>
     for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
     fn from(x: u64) -> Self {
