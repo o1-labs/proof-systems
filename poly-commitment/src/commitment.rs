@@ -118,16 +118,13 @@ where
     }
 }
 
-impl<A: Clone> PolyComm<A>
-where
-    A: CanonicalDeserialize + CanonicalSerialize,
-{
+impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
     where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let elems = self.elems.iter().map(|x| f(x.clone())).collect();
+        let elems = self.elems.iter().map(|x| f(*x)).collect();
         PolyComm { elems }
     }
 
@@ -140,9 +137,7 @@ where
     pub fn is_empty(&self) -> bool {
         self.elems.is_empty()
     }
-}
 
-impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     // TODO: if all callers end up calling unwrap, just call this zip_eq and
     // panic here (and document the panic)
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
