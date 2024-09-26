@@ -451,8 +451,13 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 pub type ConstantExpr<F, ChallengeTerm, ConstantTerm> =
     Operations<ConstantExprInner<F, ChallengeTerm, ConstantTerm>>;
 
-impl<F, ChallengeTerm, CstTerm: ConstantTerm<F>, Term: CstorChalTerm> From<Term>
-    for ConstantExpr<F, ChallengeTerm, CstTerm>
+impl<
+        'a,
+        F,
+        ChallengeTerm: AlphaChallengeTerm<'a>,
+        CstTerm: ConstantTerm<F>,
+        Term: CstorChalTerm,
+    > From<Term> for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
     fn from(x: Term) -> Self {
         ConstantExprInner::from(x).into()
