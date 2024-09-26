@@ -1,9 +1,13 @@
-//! To prover and verify proofs you need a [Structured Reference String](https://www.cryptologie.net/article/560/zk-faq-whats-a-trusted-setup-whats-a-structured-reference-string-whats-toxic-waste/) (SRS).
-//! The generation of this SRS is quite expensive, so we provide a pre-generated SRS in this repo.
+//! To prover and verify proofs you need a [Structured Reference
+//! String](https://www.cryptologie.net/article/560/zk-faq-whats-a-trusted-setup-whats-a-structured-reference-string-whats-toxic-waste/)
+//! (SRS).
+//! The generation of this SRS is quite expensive, so we provide a pre-generated
+//! SRS in this repo.
 //! Specifically, two of them, one for each pasta curve.
 //!
 //! We generate the SRS within the test in this module.
-//! If you modify the SRS, you will need to regenerate the SRS by passing the `SRS_OVERWRITE` env var.
+//! If you modify the SRS, you will need to regenerate the SRS by passing the
+//! `SRS_OVERWRITE` env var.
 
 use crate::curve::KimchiCurve;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -12,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
 
-/// We store several different types of SRS objects. This enum parameterizes them.
+/// We store several different types of SRS objects. This enum parameterizes
+/// them.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum StoredSRSType {
     Test,

@@ -176,9 +176,10 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 /// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
 /// ```
 ///
-/// otherwise. So, if we want to actually scale by `s`, we need to apply the inverse function
-/// of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case), before supplying the scalar
-/// to our in-circuit scalar-multiplication function. This computes that inverse function.
+/// otherwise. So, if we want to actually scale by `s`, we need to apply the
+/// inverse function of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case),
+/// before supplying the scalar to our in-circuit scalar-multiplication
+/// function. This computes that inverse function.
 /// Namely,
 ///
 /// ```ignore

@@ -338,8 +338,8 @@ pub fn linearization_columns<F: FftField>(
 
 /// Linearize the `expr`.
 ///
-/// If the `feature_flags` argument is `None`, this will generate an expression using the
-/// `Expr::IfFeature` variant for each of the flags.
+/// If the `feature_flags` argument is `None`, this will generate an expression
+/// using the `Expr::IfFeature` variant for each of the flags.
 ///
 /// # Panics
 ///
