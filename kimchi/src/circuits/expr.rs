@@ -106,20 +106,23 @@ pub struct BerkeleyConstants<F: 'static> {
     pub zk_rows: u64,
 }
 
-pub trait Constants<F: 'static>  {
-    
-    fn zk_rows(x :Self) -> u64 ;}
+pub trait Constants<F: 'static, CstTerm>: Index<CstTerm, Output = F> {
+    fn zk_rows(x: Self) -> u64;
+}
 
-impl<F: 'static> Constants<F> for BerkeleyConstants<F> {fn zk_rows(x :Self) -> u64 {
-    x.zk_rows
-}}
+impl<F: 'static + Field> Constants<F, BerkeleyConstantTerm<F>> for BerkeleyConstants<F> {
+    fn zk_rows(x: Self) -> u64 {
+        x.zk_rows
+    }
+}
 
 pub trait ColumnEnvironment<
     'a,
     F: FftField,
     ChallengeTerm,
     Challenges: Index<ChallengeTerm, Output = F>,
-    Cst: Constants<F>,
+    CstTerm,
+    Cst: Constants<F, CstTerm>,
 >
 {
     /// The generic type of column the environment can use.
@@ -1005,7 +1008,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        c: &dyn Index<CstTerm, Output = F> + Constants<F>,
+        c: &(dyn Constants<F, CstTerm>),
         chals: &dyn Index<ChallengeTerm, Output = F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
@@ -1029,7 +1032,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy, CstTerm: Copy>
                 }
                 UnnormalizedLagrangeBasis(i) => {
                     let offset = if i.zk_rows {
-                        -(c.zk_rows as i32) + i.offset
+                        -(c.zk_rows() as i32) + i.offset
                     } else {
                         i.offset
                     };
@@ -1224,8 +1227,9 @@ fn unnormalized_lagrange_evals<
     F: FftField,
     ChallengeTerm,
     Challenge: Index<ChallengeTerm, Output = F>,
-    Cst: Constants<F>,
-    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst>,
+    CstTerm,
+    Cst: Constants<F, CstTerm>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst>,
 >(
     l0_1: F,
     i: i32,
@@ -1953,8 +1957,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Index<CstTerm, Output = F> + Constants<F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -2023,8 +2027,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F> + Index<CstTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2041,8 +2045,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluations<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F> + Index<CstTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2118,8 +2122,9 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'a,
         ChallengeTerm,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        CstTerm,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2174,8 +2179,9 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'b,
         ChallengeTerm,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        CstTerm,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
@@ -2378,8 +2384,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy, CstTerm: Consta
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
-        Cst: Constants<F> + Index<CstTerm, Output = F> Cst: Constants<F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2397,9 +2403,8 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy, CstTerm: Copy>
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Cst: Constants<F> + Index<CstTerm, Output = F> Cst: Constants<F>,
-
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -2442,8 +2447,8 @@ impl<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
         ColEvaluations: ColumnEvaluations<F, Column = Column>,
-        Cst: Constants<F> + Index<CstTerm, Output = F> ,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Cst, Column = Column>,
+        Cst: Constants<F, CstTerm> + Index<CstTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, CstTerm, Cst, Column = Column>,
     >(
         &self,
         env: &Environment,

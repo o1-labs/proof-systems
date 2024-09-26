@@ -149,8 +149,14 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
 }
 
 impl<'a, F: FftField>
-    ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>, BerkeleyConstants<F>>
-    for Environment<'a, F>
+    ColumnEnvironment<
+        'a,
+        F,
+        BerkeleyChallengeTerm,
+        BerkeleyChallenges<F>,
+        BerkeleyConstantTerm<F>,
+        BerkeleyConstants<F>,
+    > for Environment<'a, F>
 {
     type Column = Column;
 
