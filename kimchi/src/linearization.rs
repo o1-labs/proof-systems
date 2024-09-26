@@ -362,11 +362,10 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     let linearization: Linearization<
         Vec<PolishToken<F, Column, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>,
         Column,
-    > = expr.linearize(evaluated_cols).unwrap().map(
-        |e: Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>| {
-            e.to_polish()
-        },
-    );
+    > = expr
+        .linearize(evaluated_cols)
+        .unwrap()
+        .map(|e| e.to_polish());
 
     assert_eq!(linearization.index_terms.len(), 0);
 
