@@ -1798,7 +1798,7 @@ impl<
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F, ChallengeTerm>, Column>::zero();
+        let zero = Expr::<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>::zero();
         cs.into_iter()
             .zip_eq(alphas)
             .map(|(c, i)| Expr::from(ConstantExpr::pow(ChallengeTerm::ALPHA.into(), i as u64)) * c)
