@@ -34,7 +34,12 @@ ocaml-gen = { version = "0.1.5", optional = true }
 serde_json = "1.0"
 hex = "0.4"
 ark-serialize = "0.4.2"
+criterion = "0.3"
 
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", ]
+
+[[bench]]
+name = "poseidon_bench"
+harness = false
