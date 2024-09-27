@@ -774,7 +774,14 @@ impl<
     }
 }
 
-impl<
+/* impl<F, Column, ChallengeTerm, CstTerm, Term: From<ConstantExpr<F, ChallengeTerm, CstTerm>>>
+    From<Term> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
+{
+    fn from(x: ChallengeTerm) -> Self {
+        ConstantExpr::from(x).into()
+    }
+} */
+/* impl<
         'a,
         F,
         Column,
@@ -795,11 +802,11 @@ impl<
         CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     > From<CstTerm> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
-    fn from(x: ChallengeTerm) -> Self {
+    fn from(x: CstTerm) -> Self {
         ConstantExpr::from(x).into()
     }
 }
-
+ */
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
     type CstTerm = T::CstTerm;
