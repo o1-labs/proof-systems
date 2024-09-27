@@ -45,3 +45,5 @@ Now, you can run this and other benchmarks in Wasm, using the following from the
 ```sh
 ./bench-wasm.sh --bench=poseidon_bench
 ```
+
+For this to work, the filename of your benchmark has to be the same as the benchmark name!
