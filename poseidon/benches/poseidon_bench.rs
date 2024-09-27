@@ -10,12 +10,12 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     let mut group = c.benchmark_group("Poseidon");
     group.sample_size(100);
 
-    let mut poseidon =
-        Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(SpongeParametersKimchi::static_params());
-
     // Chain of hashes, starting from a random value
     group.bench_function("poseidon_hash_kimchi", |b| {
         let mut hash: Fp = rand::random();
+        let mut poseidon = Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(
+            SpongeParametersKimchi::static_params(),
+        );
 
         b.iter(|| {
             poseidon.absorb(&[hash]);
