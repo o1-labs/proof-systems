@@ -3,18 +3,15 @@
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
-use o1_utils::field_helpers::BigUintFieldHelpers;
-use o1_utils::{FieldHelpers, ForeignElement};
+use o1_utils::{field_helpers::BigUintFieldHelpers, FieldHelpers, ForeignElement};
 use std::array;
 
-use crate::circuits::witness::Variables;
-use crate::variable_map;
 use crate::{
     circuits::{
         polynomial::COLUMNS,
-        witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
+        witness::{init_row, CopyBitsCell, CopyCell, VariableCell, Variables, WitnessCell},
     },
-    variables,
+    variable_map, variables,
 };
 use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 

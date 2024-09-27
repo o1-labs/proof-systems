@@ -1,11 +1,10 @@
 //! This module computes the witness of a foreign field addition circuit.
 
-use crate::circuits::expr::constraints::compact_limb;
-use crate::circuits::witness::Variables;
 use crate::{
     circuits::{
+        expr::constraints::compact_limb,
         polynomial::COLUMNS,
-        witness::{self, ConstantCell, VariableCell, WitnessCell},
+        witness::{self, ConstantCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
 };

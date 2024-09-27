@@ -4,9 +4,11 @@ use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_traits::{One, Zero};
-use std::array;
-use std::fmt::{Debug, Formatter};
-use std::ops::{Index, IndexMut};
+use std::{
+    array,
+    fmt::{Debug, Formatter},
+    ops::{Index, IndexMut},
+};
 
 /// Index of low limb (in 3-limb foreign elements)
 pub const LO: usize = 0;

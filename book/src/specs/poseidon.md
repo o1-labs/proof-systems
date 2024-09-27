@@ -149,15 +149,15 @@ and the following permutation configuration:
 
 ### Poseidon-Fp
 
-You can find the MDS matrix and round constants we use in [/poseidon/src/pasta/fp_kimchi.rs](/poseidon/src/pasta/fp_kimchi.rs).
+You can find the MDS matrix and round constants we use in [/poseidon/src/pasta/fp_kimchi.rs](https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fp_kimchi.rs).
 
 ### Poseidon-Fq
 
-You can find the MDS matrix and round constants we use in [/poseidon/src/pasta/fp_kimchi.rs](/poseidon/src/pasta/fq_kimchi.rs).
+You can find the MDS matrix and round constants we use in [/poseidon/src/pasta/fp_kimchi.rs](https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fq_kimchi.rs).
 
 ## Test vectors
 
-We have test vectors contained in [/poseidon/src/tests/test_vectors/kimchi.json](/poseidon/src/tests/test_vectors/kimchi.json).
+We have test vectors contained in [/poseidon/src/tests/test_vectors/kimchi.json](https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/tests/test_vectors/kimchi.json).
 
 ## Pointers to the OCaml code
 

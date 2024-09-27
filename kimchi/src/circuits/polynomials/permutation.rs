@@ -52,9 +52,8 @@ use crate::{
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
-use ark_poly::{DenseUVPolynomial, Polynomial};
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use poly_commitment::OpenProof;

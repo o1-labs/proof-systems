@@ -31,7 +31,7 @@ Another way of looking at this is that they let you prove membership in sets of 
 $A_f := \{ a \colon A \mid \text{There exists } w \colon W \text{ such that} f(a, w) = \mathsf{true} \}$[^1]
 
 
-These are called [NP sets](todo.link). In intuitive terms, an NP set is one in which membership can be efficiently checked given some "witness" or helper information (which is $w$).
+These are called `NP sets`. In intuitive terms, an NP set is one in which membership can be efficiently checked given some "witness" or helper information (which is $w$).
 
 Inductive proof systems let you prove membership in sets that are inductively defined. An inductively defined set is one where membership can be efficiently checked given some helper information, but the computation is explicitly segmented into pieces.
 

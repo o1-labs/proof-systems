@@ -1,5 +1,7 @@
-use crate::constants::SpongeConstants;
-use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use crate::{
+    constants::SpongeConstants,
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+};
 use ark_ec::models::short_weierstrass::{Affine, SWCurveConfig};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 

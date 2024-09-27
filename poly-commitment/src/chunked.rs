@@ -2,8 +2,7 @@ use ark_ec::CurveGroup;
 use ark_ff::{Field, Zero};
 use std::ops::AddAssign;
 
-use crate::commitment::CommitmentCurve;
-use crate::PolyComm;
+use crate::{commitment::CommitmentCurve, PolyComm};
 
 impl<C> PolyComm<C>
 where

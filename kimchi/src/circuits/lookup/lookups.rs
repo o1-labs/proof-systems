@@ -1,18 +1,22 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
-    lookup::index::LookupSelectors,
-    lookup::tables::{
-        combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        XOR_TABLE_ID,
+    lookup::{
+        index::LookupSelectors,
+        tables::{
+            combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
+            XOR_TABLE_ID,
+        },
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::ops::{Mul, Neg};
+use std::{
+    collections::HashSet,
+    ops::{Mul, Neg},
+};
 use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;

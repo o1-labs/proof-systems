@@ -1,6 +1,9 @@
 use super::fft::{FftParameters, Fp256Parameters};
-use ark_ff::fields::{MontBackend, MontConfig};
-use ark_ff::{biginteger::BigInteger256 as BigInteger, Fp256};
+use ark_ff::{
+    biginteger::BigInteger256 as BigInteger,
+    fields::{MontBackend, MontConfig},
+    Fp256,
+};
 
 #[derive(MontConfig)]
 #[modulus = "28948022309329048855892746252171976963363056481941560715954676764349967630337"]

@@ -28,9 +28,7 @@ use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
-use std::default::Default;
-use std::sync::Arc;
+use std::{array, default::Default, sync::Arc};
 
 //
 // ConstraintSystem
@@ -263,8 +261,8 @@ pub fn selector_polynomial<F: PrimeField>(
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
-    /// Returns a [Builder<F>]
+    /// Initializes the [`ConstraintSystem<F>`] on input `gates` and `fr_sponge_params`.
+    /// Returns a [`Builder<F>`]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
     /// - `prev_challenges: 0`

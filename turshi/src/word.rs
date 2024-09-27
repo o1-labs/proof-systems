@@ -4,8 +4,7 @@
 //! Our Pallas curves have 255 bits, so Cairo native instructions will fit.
 //! This means that our Cairo implementation can admit a larger domain for immediate values than theirs.
 
-use crate::flags::*;
-use crate::helper::CairoFieldHelpers;
+use crate::{flags::*, helper::CairoFieldHelpers};
 use ark_ff::Field;
 use o1_utils::field_helpers::FieldHelpers;
 
@@ -244,8 +243,10 @@ impl<F: Field> FlagSets<F> for CairoWord<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::flags::*;
-    use crate::word::{FlagBits, FlagSets, Offsets};
+    use crate::{
+        flags::*,
+        word::{FlagBits, FlagSets, Offsets},
+    };
     use ark_ff::{One, Zero};
     use mina_curves::pasta::Fp as F;
 
