@@ -1,8 +1,10 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use mina_curves::pasta::Fp;
-use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
-use mina_poseidon::pasta::fp_kimchi as SpongeParametersKimchi;
-use mina_poseidon::poseidon::{ArithmeticSponge as Poseidon, Sponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    pasta::fp_kimchi as SpongeParametersKimchi,
+    poseidon::{ArithmeticSponge as Poseidon, Sponge},
+};
 
 pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     let mut group = c.benchmark_group("Poseidon");
