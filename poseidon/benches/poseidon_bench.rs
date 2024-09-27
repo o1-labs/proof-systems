@@ -11,17 +11,13 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     let mut poseidon =
         Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(SpongeParametersKimchi::static_params());
 
+    // Chain of hashes, starting from a random value
     group.bench_function("poseidon_hash_kimchi", |b| {
+        let mut hash: Fp = rand::random();
+
         b.iter(|| {
-            let input: Vec<Fp> = vec![
-                Fp::from(1),
-                Fp::from(2),
-                Fp::from(3),
-                Fp::from(4),
-                Fp::from(5),
-            ];
-            poseidon.absorb(&input);
-            poseidon.squeeze();
+            poseidon.absorb(&vec![hash]);
+            hash = poseidon.squeeze();
         })
     });
 
