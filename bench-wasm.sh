@@ -22,6 +22,21 @@ if [ -z "$BENCH_NAME" ]; then
     exit 1
 fi
 
+# Function to delete any old .wasm files related to the current benchmark
+cleanup_old_wasm_files() {
+    WASM_FILES=$(find target/wasm32-wasi/release/deps/ -type f -name "*$BENCH_NAME*.wasm")
+    
+    if [ -n "$WASM_FILES" ]; then
+        echo "Cleaning up old WASM files for benchmark '$BENCH_NAME'..."
+        rm -f $WASM_FILES
+    else
+        echo "No old WASM files found for benchmark '$BENCH_NAME'."
+    fi
+}
+
+# Call the cleanup function
+cleanup_old_wasm_files
+
 # Build the WASM benchmark with cargo-wasi
 echo "Building benchmark '$BENCH_NAME' with cargo-wasi..."
 cargo wasi build --bench="$BENCH_NAME" --release
