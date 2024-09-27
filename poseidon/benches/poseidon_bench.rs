@@ -18,7 +18,7 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
         let mut hash: Fp = rand::random();
 
         b.iter(|| {
-            poseidon.absorb(&vec![hash]);
+            poseidon.absorb(&[hash]);
             hash = poseidon.squeeze();
         })
     });
