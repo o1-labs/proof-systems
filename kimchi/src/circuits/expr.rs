@@ -1872,7 +1872,12 @@ impl<
         let zero = Expr::<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| Expr::from(ConstantExpr::pow(ChallengeTerm::ALPHA.into(), i as u64)) * c)
+            .map(|(c, i)| {
+                Expr::from(ConstantExpr::pow(
+                    ChallengeTerm::ALPHA.into().into(),
+                    i as u64,
+                )) * c
+            })
             .fold(zero, |acc, x| acc + x)
     }
 }
@@ -1987,7 +1992,7 @@ impl<F: FftField, Column: Copy>
 {
     /// The expression `beta`.
     pub fn beta() -> Self {
-        BerkeleyChallengeTerm::Beta.into()
+        BerkeleyChallengeTerm::Beta.into().into()
     }
 }
 
