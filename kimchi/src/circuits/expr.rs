@@ -294,10 +294,13 @@ impl<F> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>
     }
 }
 
-impl<C, Column, CstTerm, ChallengeTerm, F> Into<Expr<C, Column>>
+impl<Column, CstTerm, ChallengeTerm, F>
+    Into<Expr<ConstantExprInner<F, CstTerm, ChallengeTerm>, Column>>
     for ConstantExprInner<F, CstTerm, ChallengeTerm>
 {
-    fn into(self: ConstantExprInner<F, CstTerm, ChallengeTerm>) -> Expr<C, Column> {
+    fn into(
+        self: ConstantExprInner<F, CstTerm, ChallengeTerm>,
+    ) -> Expr<ConstantExprInner<F, CstTerm, ChallengeTerm>, Column> {
         Operations::Atom(ExprInner::Constant(self))
     }
 }
