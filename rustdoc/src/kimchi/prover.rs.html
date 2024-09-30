@@ -1777,6 +1777,14 @@
 <a href="#1777" id="1777">1777</a>
 <a href="#1778" id="1778">1778</a>
 <a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1989,9 +1997,17 @@
             .ok_or(ProverError::NoRoomForZkInWitness)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
-        <span class="kw">if </span>(index.cs.zk_rows <span class="kw">as </span>usize) &lt; zero_knowledge_limit {
+        <span class="comment">// Because the lower bound is strict, the result of the function above
+        // is not a sufficient number of zero knowledge rows, so the error must
+        // be raised anytime the number of zero knowledge rows is not greater
+        // than the strict lower bound.
+        // Example:
+        //   for 1 chunk, `zero_knowledge_limit` is 2, and we need at least 3,
+        //   thus the error should be raised and the message should say that the
+        //   expected number of zero knowledge rows is 3 (hence the + 1).
+        </span><span class="kw">if </span>(index.cs.zk_rows <span class="kw">as </span>usize) &lt;= zero_knowledge_limit {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::NotZeroKnowledge(
-                zero_knowledge_limit,
+                zero_knowledge_limit + <span class="number">1</span>,
                 index.cs.zk_rows <span class="kw">as </span>usize,
             ));
         }
