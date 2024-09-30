@@ -212,10 +212,10 @@ where
         let zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
         // Because the lower bound is strict, the result of the function above
         // is not a sufficient number of zero knowledge rows, so the error must
-        // be raised anytime the number of zero knowledge rows is not greater 
+        // be raised anytime the number of zero knowledge rows is not greater
         // than the strict lower bound.
         // Example:
-        //   for 1 chunk, `zero_knowledge_limit` is 2, and we need at least 3, 
+        //   for 1 chunk, `zero_knowledge_limit` is 2, and we need at least 3,
         //   thus the error should be raised and the message should say that the
         //   expected number of zero knowledge rows is 3 (hence the + 1).
         if (index.cs.zk_rows as usize) <= zero_knowledge_limit {
