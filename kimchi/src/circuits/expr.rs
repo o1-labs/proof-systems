@@ -266,7 +266,7 @@ pub trait ConstantTerm<F, CstExprInner>:
     fn from_literal(x: F) -> Self;
 }
 
-impl<F: Field, CstExprInner> ConstantTerm<F, CstExprInner> for BerkeleyConstantTerm<F> {
+impl<F: Field> ConstantTerm<F, ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>> for BerkeleyConstantTerm<F> {
     fn from_literal(x: F) -> Self {
         BerkeleyConstantTerm::Literal(x)
     }
@@ -275,16 +275,16 @@ impl<F: Field, CstExprInner> ConstantTerm<F, CstExprInner> for BerkeleyConstantT
 impl<F: Field> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
     for BerkeleyChallengeTerm
 {
-    fn into(x: BerkeleyChallengeTerm) {
-        ConstantExprInner::Challenge(x)
+    fn into(self: BerkeleyChallengeTerm) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
+        ConstantExprInner::Challenge(self)
     }
 }
 
 impl<F: Field> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
     for BerkeleyConstantTerm<F>
 {
-    fn into(x: BerkeleyConstantTerm<F>) {
-        ConstantExprInner::Constant(x)
+    fn into(self: BerkeleyConstantTerm<F>) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
+        ConstantExprInner::Constant(self)
     }
 }
 
