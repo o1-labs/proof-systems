@@ -1992,7 +1992,11 @@ impl<F: FftField, Column: Copy>
 {
     /// The expression `beta`.
     pub fn beta() -> Self {
-        BerkeleyChallengeTerm::Beta.into().into()
+        let cstexprinner: ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> =
+            BerkeleyChallengeTerm::Beta.into();
+        let cstexpr: ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> =
+            cstexprinner.into();
+        cstexpr.into()
     }
 }
 
