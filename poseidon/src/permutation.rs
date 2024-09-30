@@ -1,8 +1,9 @@
 //! The permutation module contains the function implementing the permutation used in Poseidon
 
+use mina_curves::pasta::wasm_friendly::minimal_field::MinimalField;
+
 use crate::{
     constants::SpongeConstants,
-    minimal_field::MinimalField,
     poseidon::{sbox, ArithmeticSpongeParams},
 };
 

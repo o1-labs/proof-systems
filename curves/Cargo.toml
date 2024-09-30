@@ -12,10 +12,10 @@ license = "Apache-2.0"
 [dependencies]
 ark-ec.workspace = true
 ark-ff.workspace = true
+ark-serialize.workspace = true
 
 [dev-dependencies]
-rand.workspace = true 
+rand.workspace = true
 ark-test-curves.workspace = true
 ark-algebra-test-templates.workspace = true
-ark-serialize.workspace = true
 ark-std.workspace = true

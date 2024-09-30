@@ -2,10 +2,10 @@
 
 use crate::{
     constants::SpongeConstants,
-    minimal_field::MinimalField,
     permutation::{full_round, poseidon_block_cipher},
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use mina_curves::pasta::wasm_friendly::minimal_field::MinimalField;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
