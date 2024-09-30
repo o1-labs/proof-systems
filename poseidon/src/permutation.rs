@@ -2,11 +2,11 @@
 
 use crate::{
     constants::SpongeConstants,
+    minimal_field::MinimalField,
     poseidon::{sbox, ArithmeticSpongeParams},
 };
-use ark_ff::Field;
 
-fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
+fn apply_mds_matrix<F: MinimalField, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &[F],
 ) -> Vec<F> {
@@ -30,7 +30,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     }
 }
 
-pub fn full_round<F: Field, SC: SpongeConstants>(
+pub fn full_round<F: MinimalField, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
     r: usize,
@@ -44,7 +44,7 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     }
 }
 
-pub fn half_rounds<F: Field, SC: SpongeConstants>(
+pub fn half_rounds<F: MinimalField, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut [F],
 ) {
@@ -84,7 +84,7 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
     }
 }
 
-pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
+pub fn poseidon_block_cipher<F: MinimalField, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
