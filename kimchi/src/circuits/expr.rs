@@ -1856,14 +1856,14 @@ impl<
         'a,
         F: Field,
         Column: PartialEq + Copy,
-        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     > Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
-        CstTerm::literal(x).into()
+        (CstTerm::literal(x)).into().into()
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
