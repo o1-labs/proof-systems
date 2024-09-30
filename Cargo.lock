@@ -2257,8 +2257,10 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "ark-test-curves",
+ "derivative",
  "num-bigint",
  "rand",
+ "wasm-bindgen",
 ]
 
 [[package]]

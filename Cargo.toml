@@ -49,6 +49,7 @@ criterion = { version = "0.5", features = [
   "cargo_bench_support",
   "html_reports",
 ] }
+derivative = { version = "2.0", features = ["use_core"] }
 elf = "0.7.2"
 env_logger = "0.11.1"
 getrandom = { version = "0.2.15", features = ["js"] }

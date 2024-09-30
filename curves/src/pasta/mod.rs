@@ -1,5 +1,6 @@
 pub mod curves;
 pub mod fields;
+pub mod wasm_friendly;
 
 pub use curves::{
     pallas::{Pallas, PallasParameters, ProjectivePallas},
