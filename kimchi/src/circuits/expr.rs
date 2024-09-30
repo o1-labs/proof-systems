@@ -305,6 +305,14 @@ impl<Column, CstTerm, ChallengeTerm, F>
     }
 }
 
+impl<F, ChallengeTerm, CstTerm, Column> From<ConstantExprInner<F, ChallengeTerm, CstTerm>>
+    for Operations<ExprInner<Operations<ConstantExprInner<F, ChallengeTerm, CstTerm>>, Column>>
+{
+    fn from(value: ConstantExprInner<F, ChallengeTerm, CstTerm>) -> Self {
+        Operations::Atom(ExprInner::Constant(Operations::Atom(value)))
+    }
+}
+
 pub trait Literal: Sized + Clone {
     type CstTerm;
     type F;
