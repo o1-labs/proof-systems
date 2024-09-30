@@ -489,7 +489,7 @@ impl<T: Literal + Clone> Literal for Operations<T> {
 pub type ConstantExpr<F, ChallengeTerm, ConstantTerm> =
     Operations<ConstantExprInner<F, ChallengeTerm, ConstantTerm>>;
 
-impl<
+/* impl<
         'a,
         F,
         ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
@@ -499,7 +499,7 @@ impl<
     fn from(x: ChallengeTerm) -> Self {
         ConstantExprInner::from(x).into()
     }
-}
+} */
 
 pub trait ToPolish<F, Column, ChallengeTerm, CstTerm> {
     fn to_polish(
