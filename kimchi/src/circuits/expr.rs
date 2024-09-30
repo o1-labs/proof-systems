@@ -2973,12 +2973,31 @@ pub trait FormattedOutput: Sized {
     fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String;
 }
 
-impl<'a, ChallengeTerm, CstTerm, F> FormattedOutput for ChallengeTerm
+pub trait IsAlpha {
+    fn is_alpha(self: Self) -> bool;
+}
+
+impl IsAlpha for BerkeleyChallengeTerm {
+    fn is_alpha(self: Self) -> bool {
+        match self {
+            BerkeleyChallengeTerm::ALPHA => true,
+            _ => false,
+        }
+    }
+}
+
+impl<F> IsAlpha for BerkeleyConstantTerm<F> {
+    fn is_alpha(self: Self) -> bool {
+        false
+    }
+}
+
+impl<'a, Term> FormattedOutput for Term
 where
-    ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+    Term: Display + IsAlpha,
 {
     fn is_alpha(&self) -> bool {
-        self.eq(&ChallengeTerm::ALPHA)
+        self.is_alpha()
     }
     fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         self.to_string()
@@ -2993,38 +3012,6 @@ where
     }
 }
 
-//Todo generalize
-impl<F: PrimeField> FormattedOutput for BerkeleyConstantTerm<F> {
-    fn is_alpha(&self) -> bool {
-        false
-    }
-    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use BerkeleyConstantTerm::*;
-        match self {
-            EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
-        }
-    }
-
-    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use BerkeleyConstantTerm::*;
-        match self {
-            EndoCoefficient => "endo\\_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
-        }
-    }
-
-    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
-        use BerkeleyConstantTerm::*;
-        match self {
-            EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("0x{}", x.to_hex()),
-        }
-    }
-}
 
 impl<'a, F: PrimeField, ChallengeTerm, CstTerm> FormattedOutput
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
