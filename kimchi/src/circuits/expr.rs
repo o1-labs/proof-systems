@@ -2986,14 +2986,15 @@ impl<
         'a,
         F: Field,
         Column: PartialEq + Copy,
-        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     > Mul<F> for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
     type Output = Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
-        Expr::from(CstTerm::literal(y)) * self
+        let expr: ConstantExprInner<F, ChallengeTerm, CstTerm> = CstTerm::literal(y).into();
+        Expr::from(expr) * self
     }
 }
 
