@@ -288,6 +288,14 @@ impl<F: Field> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstant
     }
 }
 
+impl<C,Column, CstTerm, ChallengeTerm, F> Into<Expr<C, Column>> for ConstantExprInner<F, CstTerm, ChallengeTerm> {
+    fn into(self : ConstantExprInner<F, CstTerm, ChallengeTerm>) -> Expr<C, Column> {
+        Operations::Atom(ExprInner::Constant(self))
+    }
+}
+
+
+
 pub trait Literal: Sized + Clone {
     type CstTerm;
     type F;
