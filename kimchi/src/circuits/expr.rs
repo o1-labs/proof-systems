@@ -709,7 +709,7 @@ impl Cache {
     pub fn cache<
         F: Field,
         ChallengeTerm,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
         T: ExprOps<F, ChallengeTerm, CstTerm>,
     >(
         &mut self,
@@ -3433,7 +3433,7 @@ pub mod constraints {
     pub trait ExprOps<
         F,
         ChallengeTerm,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     >:
         Add<Output = Self>
         + Sub<Output = Self>
@@ -3498,7 +3498,7 @@ pub mod constraints {
     }
     // TODO generalize with generic Column/challengeterm
     // We need to create a trait for berkeley_columns::Environment
-    impl<F> ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>
+    impl<F: Field> ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>
         for Expr<
             ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
             berkeley_columns::Column,
