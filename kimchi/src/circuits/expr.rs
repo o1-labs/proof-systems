@@ -2993,6 +2993,7 @@ where
     }
 }
 
+//Todo generalize
 impl<F: PrimeField> FormattedOutput for BerkeleyConstantTerm<F> {
     fn is_alpha(&self) -> bool {
         false
