@@ -1990,6 +1990,7 @@ impl<
 impl<F: FftField, Column: Copy>
     Expr<ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>, Column>
 {
+    // IMPROVEME : this is ugly
     /// The expression `beta`.
     pub fn beta() -> Self {
         let cstexprinner: ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> =
@@ -2972,12 +2973,12 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
 impl<
         'a,
         F: Field,
-        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     > From<u64> for ConstantExpr<F, ChallengeTerm, CstTerm>
 {
     fn from(x: u64) -> Self {
-        <CstTerm as Literal>::literal(F::from(x)).into()
+        <CstTerm as Literal>::literal(F::from(x)).into().into()
     }
 }
 
