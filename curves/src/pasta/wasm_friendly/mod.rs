@@ -1,2 +1,8 @@
+pub mod bigint32;
+pub use bigint32::BigInt;
+
 pub mod minimal_field;
+pub use minimal_field::MinimalField;
+
 pub mod wasm_fp;
+pub use wasm_fp::Fp;
