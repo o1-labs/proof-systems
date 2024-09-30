@@ -266,35 +266,41 @@ pub trait ConstantTerm<F, CstExprInner>:
     fn from_literal(x: F) -> Self;
 }
 
-impl<F: Field> ConstantTerm<F, ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>> for BerkeleyConstantTerm<F> {
+impl<F: Field> ConstantTerm<F, ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
+    for BerkeleyConstantTerm<F>
+{
     fn from_literal(x: F) -> Self {
         BerkeleyConstantTerm::Literal(x)
     }
 }
 
-impl<F: Field> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
+impl<F> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
     for BerkeleyChallengeTerm
 {
-    fn into(self: BerkeleyChallengeTerm) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
+    fn into(
+        self: BerkeleyChallengeTerm,
+    ) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
         ConstantExprInner::Challenge(self)
     }
 }
 
-impl<F: Field> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
+impl<F> Into<ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>
     for BerkeleyConstantTerm<F>
 {
-    fn into(self: BerkeleyConstantTerm<F>) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
+    fn into(
+        self: BerkeleyConstantTerm<F>,
+    ) -> ConstantExprInner<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> {
         ConstantExprInner::Constant(self)
     }
 }
 
-impl<C,Column, CstTerm, ChallengeTerm, F> Into<Expr<C, Column>> for ConstantExprInner<F, CstTerm, ChallengeTerm> {
-    fn into(self : ConstantExprInner<F, CstTerm, ChallengeTerm>) -> Expr<C, Column> {
+impl<C, Column, CstTerm, ChallengeTerm, F> Into<Expr<C, Column>>
+    for ConstantExprInner<F, CstTerm, ChallengeTerm>
+{
+    fn into(self: ConstantExprInner<F, CstTerm, ChallengeTerm>) -> Expr<C, Column> {
         Operations::Atom(ExprInner::Constant(self))
     }
 }
-
-
 
 pub trait Literal: Sized + Clone {
     type CstTerm;
@@ -3019,7 +3025,6 @@ where
         self.to_string()
     }
 }
-
 
 impl<'a, F: PrimeField, ChallengeTerm, CstTerm> FormattedOutput
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
