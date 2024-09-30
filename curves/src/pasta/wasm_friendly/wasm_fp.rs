@@ -1,5 +1,5 @@
 /**
- * MinimalField trait implementation `Fp` which only depends on an `FpConfig` trait
+ * MinimalField trait implementation `Fp` which only depends on an `FpBackend` trait
  *
  * Most of this code was copied over from ark_ff::Fp
  */
@@ -17,22 +17,13 @@ use std::{
 
 use super::minimal_field::MinimalField;
 
-pub trait FpConfig<const N: usize>: Send + Sync + 'static + Sized {
-    /// The modulus of the field.
+pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     const MODULUS: BigInt<N>;
 
-    /// Additive identity of the field, i.e. the element `e`
-    /// such that, for all elements `f` of the field, `e + f = f`.
     const ZERO: Fp<Self, N>;
-
-    /// Multiplicative identity of the field, i.e. the element `e`
-    /// such that, for all elements `f` of the field, `e * f = f`.
     const ONE: Fp<Self, N>;
 
-    /// Set a += b.
     fn add_assign(a: &mut Fp<Self, N>, b: &Fp<Self, N>);
-
-    /// Set a *= b.
     fn mul_assign(a: &mut Fp<Self, N>, b: &Fp<Self, N>);
 
     /// Construct a field element from an integer in the range
@@ -52,14 +43,14 @@ pub trait FpConfig<const N: usize>: Send + Sync + 'static + Sized {
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
-pub struct Fp<P: FpConfig<N>, const N: usize>(
+pub struct Fp<P: FpBackend<N>, const N: usize>(
     pub BigInt<N>,
     #[derivative(Debug = "ignore")]
     #[doc(hidden)]
     pub PhantomData<P>,
 );
 
-impl<P: FpConfig<N>, const N: usize> Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
     #[inline]
     fn from_bigint(r: BigInt<N>) -> Option<Self> {
         P::from_bigint(r)
@@ -68,7 +59,7 @@ impl<P: FpConfig<N>, const N: usize> Fp<P, N> {
 
 // field
 
-impl<P: FpConfig<N>, const N: usize> MinimalField for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> MinimalField for Fp<P, N> {
     fn square_in_place(&mut self) -> &mut Self {
         // implemented with mul_assign for now
         let self_copy = *self;
@@ -79,7 +70,7 @@ impl<P: FpConfig<N>, const N: usize> MinimalField for Fp<P, N> {
 
 // add, zero
 
-impl<P: FpConfig<N>, const N: usize> Zero for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> Zero for Fp<P, N> {
     #[inline]
     fn zero() -> Self {
         P::ZERO
@@ -91,13 +82,13 @@ impl<P: FpConfig<N>, const N: usize> Zero for Fp<P, N> {
     }
 }
 
-impl<'a, P: FpConfig<N>, const N: usize> AddAssign<&'a Self> for Fp<P, N> {
+impl<'a, P: FpBackend<N>, const N: usize> AddAssign<&'a Self> for Fp<P, N> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
         P::add_assign(self, other)
     }
 }
-impl<P: FpConfig<N>, const N: usize> Add<Self> for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> Add<Self> for Fp<P, N> {
     type Output = Self;
 
     #[inline]
@@ -106,7 +97,7 @@ impl<P: FpConfig<N>, const N: usize> Add<Self> for Fp<P, N> {
         self
     }
 }
-impl<'a, P: FpConfig<N>, const N: usize> Add<&'a Fp<P, N>> for Fp<P, N> {
+impl<'a, P: FpBackend<N>, const N: usize> Add<&'a Fp<P, N>> for Fp<P, N> {
     type Output = Self;
 
     #[inline]
@@ -118,7 +109,7 @@ impl<'a, P: FpConfig<N>, const N: usize> Add<&'a Fp<P, N>> for Fp<P, N> {
 
 // mul, one
 
-impl<P: FpConfig<N>, const N: usize> One for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> One for Fp<P, N> {
     #[inline]
     fn one() -> Self {
         P::ONE
@@ -129,13 +120,13 @@ impl<P: FpConfig<N>, const N: usize> One for Fp<P, N> {
         *self == P::ONE
     }
 }
-impl<'a, P: FpConfig<N>, const N: usize> MulAssign<&'a Self> for Fp<P, N> {
+impl<'a, P: FpBackend<N>, const N: usize> MulAssign<&'a Self> for Fp<P, N> {
     #[inline]
     fn mul_assign(&mut self, other: &Self) {
         P::mul_assign(self, other)
     }
 }
-impl<P: FpConfig<N>, const N: usize> Mul<Self> for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> Mul<Self> for Fp<P, N> {
     type Output = Self;
 
     #[inline]
@@ -144,7 +135,7 @@ impl<P: FpConfig<N>, const N: usize> Mul<Self> for Fp<P, N> {
         self
     }
 }
-impl<'a, P: FpConfig<N>, const N: usize> Mul<&'a Fp<P, N>> for Fp<P, N> {
+impl<'a, P: FpBackend<N>, const N: usize> Mul<&'a Fp<P, N>> for Fp<P, N> {
     type Output = Self;
 
     #[inline]
@@ -156,7 +147,7 @@ impl<'a, P: FpConfig<N>, const N: usize> Mul<&'a Fp<P, N>> for Fp<P, N> {
 
 // (de)serialization
 
-impl<P: FpConfig<N>, const N: usize> CanonicalSerialize for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> CanonicalSerialize for Fp<P, N> {
     #[inline]
     fn serialize_with_mode<W: Write>(
         &self,
@@ -172,13 +163,13 @@ impl<P: FpConfig<N>, const N: usize> CanonicalSerialize for Fp<P, N> {
     }
 }
 
-impl<P: FpConfig<N>, const N: usize> Valid for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> Valid for Fp<P, N> {
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
     }
 }
 
-impl<P: FpConfig<N>, const N: usize> CanonicalDeserialize for Fp<P, N> {
+impl<P: FpBackend<N>, const N: usize> CanonicalDeserialize for Fp<P, N> {
     fn deserialize_with_mode<R: Read>(
         reader: R,
         compress: Compress,
