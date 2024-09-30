@@ -92,7 +92,15 @@ pub fn interpreter_simple_add<
     env.assert_zero(eq);
 }
 
+// Ignoring this test for now.
+// When run with the code coverage, it takes hours, and crashes the CI, even
+// though it takes less than 10 minutes to run on a desktop without test
+// coverage.
+// The code isn't used, and we don't plan to use it in the short term, so it's
+// not a big deal.
+// Also, the code wasn't in a good state.
 #[test]
+#[ignore]
 pub fn heavy_test_simple_add() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     // FIXME: this has to be 1 << 15. the 16 is temporary, since we
