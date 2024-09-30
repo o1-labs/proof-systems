@@ -790,7 +790,7 @@ impl<
         F,
         Column,
         ChallengeTerm,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
     > From<ConstantExpr<F, ChallengeTerm, CstTerm>>
     for Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>
 {
