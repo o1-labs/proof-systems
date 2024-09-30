@@ -230,8 +230,8 @@ impl<F: Field> Display for BerkeleyConstantTerm<F> {
         use BerkeleyConstantTerm::*;
         let str = match self {
             EndoCoefficient => "EndoCoefficient".to_string(),
-            Mds { row, col } => println!("Mds row : {}, col {}", row, col).to_string(),
-            Literal(x) => println!("Literal({})", x),
+            Mds { row, col } => format!("Mds row : {}, col {}", row, col).to_string(),
+            Literal(x) => format!("Literal({})", x),
         };
         write!(f, "{}", str)
     }
@@ -1852,7 +1852,7 @@ impl<
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
-        CstTerm::litteral(x).into()
+        CstTerm::literal(x).into()
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
@@ -3029,8 +3029,8 @@ where
 impl<'a, F: PrimeField, ChallengeTerm, CstTerm> FormattedOutput
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
 where
-    ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-    CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+    ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+    CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
 {
     fn is_alpha(&self) -> bool {
         use ConstantExprInner::*;
