@@ -3658,7 +3658,7 @@ pub mod constraints {
     pub fn boolean<
         F: Field,
         ChallengeTerm,
-        T: ExprOps<F, ChallengeTerm, BerkeleyConstantTerm<F>>,
+        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
     >(
         b: &T,
     ) -> T {
@@ -3666,7 +3666,11 @@ pub mod constraints {
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm, BerkeleyConstantTerm<F>>>(
+    pub fn crumb<
+        F: Field,
+        ChallengeTerm,
+        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    >(
         x: &T,
     ) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
@@ -3680,7 +3684,7 @@ pub mod constraints {
     pub fn compact_limb<
         F: Field,
         ChallengeTerm,
-        T: ExprOps<F, ChallengeTerm, BerkeleyConstantTerm<F>>,
+        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
     >(
         lo: &T,
         mi: &T,
