@@ -108,11 +108,17 @@ pub struct BerkeleyConstants<F: 'static> {
 
 pub trait Constants<F: 'static, CstTerm>: Index<CstTerm, Output = F> {
     fn zk_rows(self: &Self) -> u64;
+    // necessarry for upcast coercion
+    // used in the evaluate_ function
+    fn upcast(self: &Self) -> &dyn Index<CstTerm, Output = F>;
 }
 
 impl<F: 'static + Field> Constants<F, BerkeleyConstantTerm<F>> for BerkeleyConstants<F> {
     fn zk_rows(self: &Self) -> u64 {
         self.zk_rows
+    }
+    fn upcast(self: &Self) -> &dyn Index<BerkeleyConstantTerm<F>, Output = F> {
+        self
     }
 }
 
@@ -2068,7 +2074,10 @@ impl<
         use Operations::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
-            Atom(Constant(x)) => Ok(x.value(c, chals)),
+            Atom(Constant(x)) => {
+                let index_cst = c.upcast();
+                Ok(x.value(index_cst, chals))
+            }
             Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c, chals)?.pow([*p])),
             Mul(x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c, chals)?;
