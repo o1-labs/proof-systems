@@ -955,7 +955,7 @@
         FoldingConfig,
     };
     <span class="kw">use </span>kimchi_msm::columns::Column;
-    <span class="kw">use </span>poly_commitment::srs::SRS;
+    <span class="kw">use </span>poly_commitment::kzg::PairingSRS;
 
     <span class="kw">use crate</span>::{
         interpreters::keccak::{
@@ -965,7 +965,7 @@
             },
             Steps,
         },
-        legacy::{Curve, Fp},
+        legacy::{Curve, Fp, Pairing},
     };
 
     <span class="kw">use super</span>::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -1034,7 +1034,7 @@
         <span class="kw">type </span>Selector = Steps;
         <span class="kw">type </span>Challenge = Challenge;
         <span class="kw">type </span>Curve = Curve;
-        <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
+        <span class="kw">type </span>Srs = PairingSRS&lt;Pairing&gt;;
         <span class="kw">type </span>Instance = KeccakFoldingInstance;
         <span class="kw">type </span>Witness = KeccakFoldingWitness;
         <span class="kw">type </span>Structure = ();
@@ -1053,14 +1053,14 @@
     <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
     <span class="kw">use </span>folding::{expressions::FoldingColumnTrait, FoldingConfig};
     <span class="kw">use </span>kimchi_msm::columns::Column;
-    <span class="kw">use </span>poly_commitment::srs::SRS;
+    <span class="kw">use </span>poly_commitment::kzg::PairingSRS;
 
     <span class="kw">use crate</span>::{
         interpreters::mips::{
             column::{ColumnAlias <span class="kw">as </span>MIPSColumn, N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
             Instruction,
         },
-        legacy::{Curve, Fp},
+        legacy::{Curve, Fp, Pairing},
     };
 
     <span class="kw">use super</span>::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness};
@@ -1141,7 +1141,7 @@
         <span class="kw">type </span>Selector = Instruction;
         <span class="kw">type </span>Challenge = Challenge;
         <span class="kw">type </span>Curve = Curve;
-        <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
+        <span class="kw">type </span>Srs = PairingSRS&lt;Pairing&gt;;
         <span class="kw">type </span>Instance = MIPSFoldingInstance;
         <span class="kw">type </span>Witness = MIPSFoldingWitness;
         <span class="kw">type </span>Structure = ();
@@ -1153,7 +1153,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::legacy::{
         folding::{FoldingInstance, FoldingWitness, <span class="kw-2">*</span>},
-        Curve, Fp,
+        Curve, Fp, Pairing,
     };
     <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
     <span class="kw">use </span>folding::{
@@ -1166,7 +1166,7 @@
         },
         curve::KimchiCurve,
     };
-    <span class="kw">use </span>poly_commitment::srs::SRS;
+    <span class="kw">use </span>poly_commitment::kzg::PairingSRS;
     <span class="kw">use </span>std::ops::Index;
 
     <span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -1214,7 +1214,7 @@
         <span class="kw">type </span>Challenge = Challenge;
         <span class="kw">type </span>Selector = ();
         <span class="kw">type </span>Curve = Curve;
-        <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
+        <span class="kw">type </span>Srs = PairingSRS&lt;Pairing&gt;;
         <span class="kw">type </span>Instance = TestFoldingInstance;
         <span class="kw">type </span>Witness = TestFoldingWitness;
         <span class="kw">type </span>Structure = ();

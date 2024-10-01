@@ -107,7 +107,7 @@
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
-<span class="kw">use </span>poly_commitment::srs::SRS;
+<span class="kw">use </span>poly_commitment::{evaluation_proof::SRS, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>std::{fs::File, io::BufReader, process::ExitCode};
 
 <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};

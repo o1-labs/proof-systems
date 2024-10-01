@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["folding","proof","trace"],"type":["BaseSponge","Curve","Fp","OpeningProof","ScalarSponge","SpongeParams"]};
+window.SIDEBAR_ITEMS = {"mod":["folding","proof","trace"],"type":["BaseSponge","Curve","Fp","OpeningProof","Pairing","ScalarSponge","SpongeParams"]};

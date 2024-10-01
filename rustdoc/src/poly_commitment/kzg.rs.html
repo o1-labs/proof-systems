@@ -422,6 +422,7 @@
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -434,8 +435,9 @@
 //! parameter.
 
 </span><span class="kw">use crate</span>::{
-    commitment::<span class="kw-2">*</span>, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
-    PolynomialsToCombine, SRS <span class="kw">as </span>SRSTrait,
+    commitment::<span class="kw-2">*</span>,
+    evaluation_proof::{combine_polys, SRS},
+    CommitmentError, PolynomialsToCombine, SRS <span class="kw">as </span>SRSTrait,
 };
 
 <span class="kw">use </span>ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};

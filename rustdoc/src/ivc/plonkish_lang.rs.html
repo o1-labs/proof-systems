@@ -264,6 +264,8 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides definition of plonkish language related instance,
 /// witness, and tools to work with them. The IVC is specialized for
 /// exactly the plonkish language.
@@ -271,13 +273,12 @@
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::expr::BerkeleyChallengeTerm, curve::KimchiCurve};
+<span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::expr::BerkeleyChallengeTerm};
 <span class="kw">use </span>kimchi_msm::{columns::Column, witness::Witness <span class="kw">as </span>GenericWitness};
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve},
-    srs::SRS,
-    PolyComm, SRS <span class="kw">as _</span>,
+    PolyComm, SRS,
 };
 <span class="kw">use </span>rayon::iter::{IntoParallelIterator <span class="kw">as _</span>, ParallelIterator <span class="kw">as _</span>};
 <span class="kw">use </span>std::ops::Index;
@@ -370,7 +371,7 @@
 
 <span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
 </span><span class="kw">pub struct </span>PlonkishInstance&lt;
-    G: KimchiCurve,
+    G: CommitmentCurve,
     <span class="kw">const </span>N_COL: usize,
     <span class="kw">const </span>N_CHALS: usize,
     <span class="kw">const </span>N_ALPHAS: usize,
@@ -381,7 +382,7 @@
     <span class="kw">pub </span>blinder: G::ScalarField,
 }
 
-<span class="kw">impl</span>&lt;G: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
     Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
 {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
@@ -396,8 +397,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt; Instance&lt;G&gt;
-    <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
+<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+    Instance&lt;G&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
 {
     <span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
         <span class="comment">// FIXME: check!!!!
@@ -419,13 +420,16 @@
 }
 
 <span class="comment">// Implementation for 3 challenges; only for now.
-</span><span class="kw">impl</span>&lt;G: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+</span><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
     PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
 {
-    <span class="kw">pub fn </span>from_witness&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+    <span class="kw">pub fn </span>from_witness&lt;
+        EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+        Srs: SRS&lt;G&gt; + std::marker::Sync,
+    &gt;(
         w: <span class="kw-2">&amp;</span>GenericWitness&lt;N_COL, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;,
         fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-        srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
+        srs: <span class="kw-2">&amp;</span>Srs,
         domain: R2D&lt;G::ScalarField&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>blinder = G::ScalarField::one();
@@ -517,7 +521,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: KimchiCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt; Index&lt;PlonkishChallenge&gt;
+<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt; Index&lt;PlonkishChallenge&gt;
     <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
 {
     <span class="kw">type </span>Output = G::ScalarField;

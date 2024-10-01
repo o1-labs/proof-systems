@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["chunked","commitment","error","evaluation_proof","kzg","srs"],"trait":["OpenProof","SRS"]};
+window.SIDEBAR_ITEMS = {"mod":["chunked","commitment","error","evaluation_proof","kzg"],"trait":["OpenProof","SRS"]};

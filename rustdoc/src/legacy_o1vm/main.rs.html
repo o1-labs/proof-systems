@@ -329,6 +329,7 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>folding::decomposable_folding::DecomposableFoldingScheme;
 <span class="kw">use </span>kimchi::o1_utils;
@@ -361,6 +362,7 @@
     lookups::LookupTableIDs,
     preimage_oracle::PreImageOracle,
 };
+<span class="kw">use </span>poly_commitment::SRS <span class="kw">as _</span>;
 <span class="kw">use </span>std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
@@ -433,7 +435,7 @@
                 BaseSponge,
             &gt;&gt;::folding_constraints(<span class="kw-2">&amp;</span>mips_trace),
             <span class="macro">vec!</span>[],
-            <span class="kw-2">&amp;</span>srs.full_srs,
+            <span class="kw-2">&amp;</span>srs,
             domain.d1,
             <span class="kw-2">&amp;</span>(),
         )

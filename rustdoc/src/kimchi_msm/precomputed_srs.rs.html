@@ -150,7 +150,7 @@
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>ark_serialize::Write;
 <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
-<span class="kw">use </span>poly_commitment::kzg::PairingSRS;
+<span class="kw">use </span>poly_commitment::{kzg::PairingSRS, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{fs::File, io::BufReader, path::PathBuf};

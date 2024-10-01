@@ -188,14 +188,12 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>chunked;
 <span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
 <span class="kw">pub mod </span>error;
 <span class="kw">pub mod </span>evaluation_proof;
 <span class="kw">pub mod </span>kzg;
-<span class="kw">pub mod </span>srs;
 
 <span class="kw">pub use </span>commitment::PolyComm;
 
@@ -212,7 +210,7 @@
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 
-<span class="kw">pub trait </span>SRS&lt;G: CommitmentCurve&gt;: Clone {
+<span class="kw">pub trait </span>SRS&lt;G: CommitmentCurve&gt;: Clone + Sized {
     <span class="doccomment">/// The maximum polynomial degree that can be committed to
     </span><span class="kw">fn </span>max_poly_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 

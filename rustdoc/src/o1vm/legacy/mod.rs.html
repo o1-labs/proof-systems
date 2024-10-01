@@ -34,6 +34,7 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This submodule provides the legacy flavor/interface of the o1vm, and is not
 //! supposed to be used anymore.
 //!
@@ -62,6 +63,7 @@
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
 <span class="doccomment">/// Elliptic curve group of BN254
 </span><span class="kw">pub type </span>Curve = ark_bn254::G1Affine;
+<span class="kw">pub type </span>Pairing = ark_bn254::Bn254;
 <span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Config, SpongeParams&gt;;
 <span class="kw">pub type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
 <span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
