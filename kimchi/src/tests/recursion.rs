@@ -15,7 +15,7 @@ use mina_poseidon::{
 };
 use o1_utils::math;
 use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
-use rand::prelude::*;
+use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;

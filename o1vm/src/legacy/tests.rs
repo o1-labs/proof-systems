@@ -22,7 +22,7 @@ use itertools::Itertools;
 use kimchi::{curve::KimchiCurve, o1_utils};
 use kimchi_msm::{columns::Column, witness::Witness};
 use mina_poseidon::FqSponge;
-use poly_commitment::{commitment::absorb_commitment, srs::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::absorb_commitment, kzg::PairingSRS, PolyComm, SRS as _};
 use rand::{CryptoRng, Rng, RngCore};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
@@ -82,7 +82,7 @@ pub mod mips {
         witness: &FoldingWitness<N_MIPS_REL_COLS, Fp>,
         fq_sponge: &mut BaseSponge,
         domain: D<Fp>,
-        srs: &SRS<Curve>,
+        srs: &PairingSRS<Curve>,
     ) -> FoldingInstance<N_MIPS_REL_COLS, Curve> {
         let commitments: Witness<N_MIPS_REL_COLS, PolyComm<Curve>> = (&witness.witness)
             .into_par_iter()
@@ -224,7 +224,7 @@ pub mod mips {
         let domain_size = 1 << 3;
         let domain: D<Fp> = D::<Fp>::new(domain_size).unwrap();
 
-        let mut srs = SRS::<Curve>::create(domain_size);
+        let mut srs = PairingSRS::<Curve>::create(domain_size);
         srs.add_lagrange_basis(domain);
 
         // Generating constraints
@@ -271,7 +271,7 @@ pub mod mips {
             type Selector = ();
             type Challenge = Challenge;
             type Curve = Curve;
-            type Srs = SRS<Curve>;
+            type Srs = PairingSRS<Curve>;
             type Instance = FoldingInstance<N_MIPS_REL_COLS, Curve>;
             type Witness = FoldingWitness<N_MIPS_REL_COLS, Fp>;
             // The structure must a provable Trace. Here we use a single
@@ -488,7 +488,7 @@ pub mod keccak {
         use folding::{checker::Checker, expressions::FoldingCompatibleExpr};
         use kimchi::curve::KimchiCurve;
         use mina_poseidon::FqSponge;
-        use poly_commitment::srs::SRS;
+        use poly_commitment::kzg::PairingSRS;
 
         // guaranteed to have at least 30MB of stack
         stacker::grow(30 * 1024 * 1024, || {
@@ -496,7 +496,7 @@ pub mod keccak {
             let domain_size = 1 << 6;
 
             let domain = D::<Fp>::new(domain_size).unwrap();
-            let mut srs = SRS::<Curve>::create(domain_size);
+            let mut srs = PairingSRS::<Curve>::create(domain_size);
             srs.add_lagrange_basis(domain);
 
             // Create sponge

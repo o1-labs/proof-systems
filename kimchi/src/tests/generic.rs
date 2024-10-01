@@ -9,6 +9,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use poly_commitment::SRS as _;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;

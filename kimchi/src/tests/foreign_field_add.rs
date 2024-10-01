@@ -29,8 +29,8 @@ use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use poly_commitment::{
-    evaluation_proof::OpeningProof,
-    srs::{endos, SRS},
+    evaluation_proof::{endos, OpeningProof, SRS},
+    SRS as _,
 };
 use rand::{rngs::StdRng, Rng};
 use std::{array, sync::Arc};

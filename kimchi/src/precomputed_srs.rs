@@ -11,7 +11,7 @@
 
 use crate::curve::KimchiCurve;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use poly_commitment::{srs::SRS, PolyComm};
+use poly_commitment::{evaluation_proof::SRS, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
@@ -128,6 +128,7 @@ mod tests {
     use ark_serialize::Write;
     use hex;
     use mina_curves::pasta::{Pallas, Vesta};
+    use poly_commitment::SRS as _;
     use std::collections::HashMap;
 
     use crate::circuits::domains::EvaluationDomains;

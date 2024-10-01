@@ -17,16 +17,14 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
-use num_bigint::BigUint;
-use num_traits::One;
-use o1_utils::{FieldHelpers, Two};
-
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
-use num_bigint::RandBigInt;
+use num_bigint::{BigUint, RandBigInt};
+use num_traits::One;
+use o1_utils::{FieldHelpers, Two};
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;

@@ -7,7 +7,7 @@ use crate::{
 use derivative::Derivative;
 use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
 use memoization::ColumnMemoizer;
-use poly_commitment::{commitment::CommitmentCurve, srs};
+use poly_commitment::{self, commitment::CommitmentCurve};
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 #[derive(Clone, Default)]
@@ -58,18 +58,21 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// ```
 #[derive(Derivative)]
 #[derivative(Hash, PartialEq, Eq, Debug)]
-pub struct StandardConfig<G, Col, Chall, I, W, Sel = (), Str = EmptyStructure<G>>(
-    PhantomData<(G, Col, Chall, Sel, Str, I, W)>,
+#[allow(clippy::type_complexity)]
+pub struct StandardConfig<G, Col, Chall, I, W, Srs, Sel = (), Str = EmptyStructure<G>>(
+    PhantomData<(G, Col, Chall, Sel, Str, I, W, Srs)>,
 );
 
 //implementing FoldingConfig
-impl<G, Col, Chall, Sel, Str, I, W> FoldingConfig for StandardConfig<G, Col, Chall, I, W, Sel, Str>
+impl<G, Col, Chall, Sel, Str, I, W, Srs> FoldingConfig
+    for StandardConfig<G, Col, Chall, I, W, Srs, Sel, Str>
 where
     Self: 'static,
     G: CommitmentCurve,
     I: Instance<G> + Index<Chall, Output = G::ScalarField> + Clone,
     W: Witness<G> + Clone,
     W: Index<Col, Output = [G::ScalarField]> + Index<Sel, Output = [G::ScalarField]>,
+    Srs: poly_commitment::SRS<G>,
     Col: Hash + Eq + Debug + Clone + FoldingColumnTrait,
     Sel: Ord + Copy + Hash + Debug,
     Chall: Hash + Eq + Debug + Copy,
@@ -83,7 +86,7 @@ where
 
     type Curve = G;
 
-    type Srs = srs::SRS<G>;
+    type Srs = Srs;
 
     type Instance = I;
 
@@ -427,7 +430,7 @@ mod example {
 
         let constraints = vec![constraint()];
         let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+        let mut srs = poly_commitment::evaluation_proof::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
         // this is the default structure, which does nothing or panics if
         // indexed (as it shouldn't be indexed)

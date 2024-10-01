@@ -30,6 +30,7 @@ use o1vm::{
     lookups::LookupTableIDs,
     preimage_oracle::PreImageOracle,
 };
+use poly_commitment::SRS as _;
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
 
@@ -102,7 +103,7 @@ pub fn main() -> ExitCode {
                 BaseSponge,
             >>::folding_constraints(&mips_trace),
             vec![],
-            &srs.full_srs,
+            &srs,
             domain.d1,
             &(),
         )

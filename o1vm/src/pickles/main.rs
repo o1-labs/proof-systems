@@ -11,7 +11,7 @@ use o1vm::{
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
-use poly_commitment::srs::SRS;
+use poly_commitment::{evaluation_proof::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 use mina_curves::pasta::{Fp, Vesta};

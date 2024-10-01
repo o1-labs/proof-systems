@@ -26,6 +26,7 @@ use poly_commitment::kzg::KZGProof;
 pub type Fp = ark_bn254::Fr;
 /// Elliptic curve group of BN254
 pub type Curve = ark_bn254::G1Affine;
+pub type Pairing = ark_bn254::Bn254;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;

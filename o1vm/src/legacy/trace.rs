@@ -6,7 +6,10 @@
 //! selected using "selectors".
 
 use crate::{
-    legacy::folding::{BaseField, FoldingInstance, FoldingWitness, ScalarField},
+    legacy::{
+        folding::{BaseField, FoldingInstance, FoldingWitness, ScalarField},
+        Curve, Pairing,
+    },
     lookups::Lookup,
     E,
 };
@@ -129,7 +132,7 @@ pub trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
         selector: C::Selector,
         fq_sponge: &mut Sponge,
         domain: D<ScalarField<C>>,
-        srs: &poly_commitment::srs::SRS<C::Curve>,
+        srs: &poly_commitment::kzg::PairingSRS<Pairing>,
     ) -> (
         FoldingInstance<N, C::Curve>,
         FoldingWitness<N, ScalarField<C>>,
@@ -140,8 +143,8 @@ pub trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
 }
 
 /// Implement the trait Foldable for the structure [DecomposedTrace]
-impl<const N: usize, C: FoldingConfig<Column = Column>, Sponge> Foldable<N, C, Sponge>
-    for DecomposedTrace<N, C>
+impl<const N: usize, C: FoldingConfig<Column = Column, Curve = Curve>, Sponge>
+    Foldable<N, C, Sponge> for DecomposedTrace<N, C>
 where
     C::Selector: Into<usize>,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
@@ -152,7 +155,7 @@ where
         selector: C::Selector,
         fq_sponge: &mut Sponge,
         domain: D<ScalarField<C>>,
-        srs: &poly_commitment::srs::SRS<C::Curve>,
+        srs: &poly_commitment::kzg::PairingSRS<Pairing>,
     ) -> (
         FoldingInstance<N, C::Curve>,
         FoldingWitness<N, ScalarField<C>>,

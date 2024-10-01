@@ -10,7 +10,7 @@ use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
 use poly_commitment::{
     commitment::{CommitmentCurve, EndoCurve},
-    srs::endos,
+    evaluation_proof::endos,
 };
 
 /// Represents additional information that a curve needs in order to be used

@@ -10,7 +10,7 @@ mod tests {
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
-    use poly_commitment::kzg::PairingSRS;
+    use poly_commitment::{kzg::PairingSRS, SRS as _};
 
     // Number of columns
     const LOOKUP_TEST_N_COL: usize = 10;

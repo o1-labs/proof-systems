@@ -12,7 +12,7 @@ use folding::{
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use poly_commitment::{srs::SRS, SRS as _};
+use poly_commitment::{evaluation_proof::SRS, SRS as _};
 use rand::thread_rng;
 use std::{collections::BTreeMap, ops::Index};
 

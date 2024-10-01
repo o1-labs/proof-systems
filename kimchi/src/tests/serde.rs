@@ -17,7 +17,11 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
+use poly_commitment::{
+    commitment::CommitmentCurve,
+    evaluation_proof::{OpeningProof, SRS},
+    SRS as _,
+};
 use std::{array, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
