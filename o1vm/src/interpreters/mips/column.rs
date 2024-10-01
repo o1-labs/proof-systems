@@ -51,6 +51,7 @@ pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
+    Selector(usize),
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three
@@ -66,6 +67,7 @@ impl From<ColumnAlias> for usize {
                 i
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE,
+            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s
         }
     }
 }
@@ -138,6 +140,10 @@ impl ColumnIndexer for ColumnAlias {
             }
             Self::InstructionCounter => Column::Relation(SCRATCH_SIZE),
             // TODO: what happens with error? It does not have a corresponding alias
+            Self::Selector(s) => {
+                assert!(s < N_MIPS_SEL_COLS);
+                Column::DynamicSelector(s)
+            }
         }
     }
 }

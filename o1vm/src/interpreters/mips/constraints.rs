@@ -14,13 +14,14 @@ use crate::{
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations,
-        Variable,
+        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr, ExprInner, Operations, Variable
     },
     gate::CurrOrNext,
 };
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
+
+use super::column::N_MIPS_SEL_COLS;
 
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
@@ -70,6 +71,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
         self.constraints.push(assert_equals_zero)
+    }
+
+    fn activate_selector(&mut self, _selector_idx: usize) {
+        let mut acc : Self::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::<Fp>::Literal(Fp::one())))));
+        for i in 0..N_MIPS_SEL_COLS {
+            let var = self.variable(MIPSColumn::Selector(i));
+            acc += var.clone();
+            self.add_constraint(var.clone() * var.clone() - var);
+        }
+        self.add_constraint(acc);
     }
 
     fn check_is_zero(_assert_equals_zero: &Self::Variable) {

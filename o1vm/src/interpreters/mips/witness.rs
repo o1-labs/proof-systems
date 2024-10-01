@@ -1,3 +1,4 @@
+use super::column::N_MIPS_SEL_COLS;
 use crate::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -82,6 +83,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
+    pub selector: usize,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
     pub preimage_bytes_read: u64,
@@ -141,23 +143,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     type Variable = u64;
 
-    // TODO: update variable() function once scratch_state is [u64;
-    // SCRATCH_SIZE]
-    fn variable(&self, _column: Self::Position) -> Self::Variable {
-        todo!();
-        /*
-        match column {
-            Column::ScratchState(idx) => self.scratch_state[idx],
-            Column::Selector(ins) => match ins {
-                Instruction::RType(r) => self.selectors[r as usize],
-                Instruction::IType(i) => self.selectors[i as usize + RTypeInstruction::COUNT],
-                Instruction::JType(j) => {
-                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
-                }
-            },
-            Column::InstructionCounter => self.instructions_counter,
-        }
-        */
+    fn variable(&self, column: Self::Position) -> Self::Variable {
+        u64::try_from(usize::from(column)).unwrap()
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
@@ -165,6 +152,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // Do not assert that _assert_equals_zero is zero here!
         // Some variables may have placeholders that do not faithfully
         // represent the underlying values.
+    }
+
+    fn activate_selector(&mut self, selector_idx: usize) {
+        assert!(selector_idx < N_MIPS_SEL_COLS);
+        self.selector = selector_idx;
     }
 
     fn check_is_zero(assert_equals_zero: &Self::Variable) {
@@ -844,6 +836,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
 
+        // This will trigger an assert if it's never changed.
+        let selector = N_MIPS_SEL_COLS;
+
         let syscall_env = SyscallEnv::create(&state);
 
         let mut initial_memory: Vec<(u32, Vec<u8>)> = state
@@ -900,6 +895,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            selector,
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: 0,
@@ -912,6 +908,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn reset_scratch_state(&mut self) {
         self.scratch_state_idx = 0;
         self.scratch_state = fresh_scratch_state();
+        self.selector = N_MIPS_SEL_COLS;
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
@@ -922,6 +919,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
+            Column::Selector(s) => self.selector = s,
         }
     }
 
@@ -1145,6 +1143,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (self.normalized_instruction_counter() + 1) * MAX_ACC
     }
 
+    // HERE!!
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
     pub fn step(
@@ -1170,7 +1169,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             return opcode;
         }
 
+        self.activate_selector(opcode.to_selector_column_idx());
+
         interpreter::interpret_instruction(self, opcode);
+
+        // HERE!!!
 
         self.instruction_counter = self.next_instruction_counter();
 
