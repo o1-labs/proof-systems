@@ -77,11 +77,11 @@ fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
     true
 }
 
-/// TODO performance ideas to test:
-/// - unroll loops
-/// - introduce locals for a[i] instead of accessing memory multiple times
-/// - only do 1 carry pass at the end, by proving properties of greater-than on uncarried result
-/// - use cheaper, approximate greater-than check a[8] > Fp::MODULUS[8]
+// TODO performance ideas to test:
+// - unroll loops
+// - introduce locals for a[i] instead of accessing memory multiple times
+// - only do 1 carry pass at the end, by proving properties of greater-than on uncarried result
+// - use cheaper, approximate greater-than check a[8] > Fp::MODULUS[8]
 pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     let mut tmp: u32;
     let mut carry: i32 = 0;
