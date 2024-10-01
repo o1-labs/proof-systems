@@ -67,7 +67,7 @@ pub struct AggregatedEvaluationProof {
     /// an Fq-sponge
     fq_sponge: DefaultFqSponge<VestaParameters, SC>,
     /// the actual evaluation proof
-    proof: OpeningProof<Vesta>,
+    pub proof: OpeningProof<Vesta>,
 }
 
 impl AggregatedEvaluationProof {
@@ -105,18 +105,17 @@ impl AggregatedEvaluationProof {
     }
 }
 
-fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
+    mut rng: &mut RNG,
+    group_map: &<Vesta as CommitmentCurve>::Map,
+    srs: &SRS<Vesta>,
+) -> (Vec<AggregatedEvaluationProof>, Duration, Duration) {
+    let num_chunks = 1;
+
     let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
 
-    // create an SRS optimized for polynomials of degree 2^7 - 1
-    let srs = SRS::<Vesta>::create(1 << 7);
-
-    let num_chunks = 1;
-
-    // TODO: move to bench
     let mut time_commit = Duration::new(0, 0);
     let mut time_open = Duration::new(0, 0);
 
@@ -194,7 +193,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
 
         let timer = Instant::now();
         let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
-            &group_map,
+            group_map,
             &polynomials,
             &eval_points.clone(),
             polymask,
@@ -215,6 +214,19 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
             proof,
         });
     }
+
+    (proofs, time_commit, time_open)
+}
+
+fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    // create an SRS optimized for polynomials of degree 2^7 - 1
+    let srs = SRS::<Vesta>::create(1 << 7);
+
+    // TODO: move to bench
+
+    let (proofs, time_commit, time_open) =
+        generate_random_opening_proof(&mut rng, &group_map, &srs);
 
     println!("{} {:?}", "total commitment time:".yellow(), time_commit);
     println!(

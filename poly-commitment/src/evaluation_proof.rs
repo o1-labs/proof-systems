@@ -362,7 +362,7 @@ impl<G: CommitmentCurve> SRS<G> {
 }
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct OpeningProof<G: AffineRepr> {
     /// vector of rounds of L & R commitments

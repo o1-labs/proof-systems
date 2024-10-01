@@ -85,11 +85,12 @@ impl BenchmarkCtx {
 
         // add the proof to the batch
         (
-            ProverProof::create::<BaseSponge, ScalarSponge>(
+            ProverProof::create::<BaseSponge, ScalarSponge, _>(
                 &self.group_map,
                 witness,
                 &[],
                 &self.index,
+                &mut rand::rngs::OsRng,
             )
             .unwrap(),
             public_input,
