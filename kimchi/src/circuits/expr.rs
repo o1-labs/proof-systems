@@ -3063,7 +3063,7 @@ impl<'a, F: PrimeField, ChallengeTerm, CstTerm> FormattedOutput
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
 where
     ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>> + IsAlpha,
-    CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+    CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>> + IsAlpha,
 {
     fn is_alpha(&self) -> bool {
         use ConstantExprInner::*;
@@ -3242,7 +3242,7 @@ impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm, CstTerm>
 where
     F: PrimeField,
     ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-    CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
+    CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>> + IsAlpha + Display,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
