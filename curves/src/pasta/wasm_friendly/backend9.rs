@@ -26,6 +26,22 @@ pub const fn from_64x4(pa: [u64; 4]) -> [u32; 9] {
     p[8] = (pa[3] >> 40) as u32;
     p
 }
+pub const fn to_64x4(pa: [u32; 9]) -> [u64; 4] {
+    let mut p = [0u64; 4];
+    p[0] = pa[0] as u64;
+    p[0] |= (pa[1] as u64) << 29;
+    p[0] |= (pa[2] as u64) << 58;
+    p[1] = (pa[2] as u64) >> 6;
+    p[1] |= (pa[3] as u64) << 23;
+    p[1] |= (pa[4] as u64) << 52;
+    p[2] = (pa[4] as u64) >> 12;
+    p[2] |= (pa[5] as u64) << 17;
+    p[2] |= (pa[6] as u64) << 46;
+    p[3] = (pa[6] as u64) >> 18;
+    p[3] |= (pa[7] as u64) << 11;
+    p[3] |= (pa[8] as u64) << 40;
+    p
+}
 
 pub trait FpConstants: Send + Sync + 'static + Sized {
     const MODULUS: B;
@@ -169,5 +185,22 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
         } else {
             Some(from_bigint_unsafe(x))
         }
+    }
+    fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
+        let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut r = x.0 .0.clone();
+        // convert back from montgomery form
+        mul_assign::<Self>(&mut r, &one);
+        BigInt(r)
+    }
+
+    fn pack(x: Fp<Self, 9>) -> Vec<u64> {
+        let x = Self::to_bigint(x).0;
+        let x64 = to_64x4(x);
+        let mut res = Vec::with_capacity(4);
+        for limb in x64.iter() {
+            res.push(*limb);
+        }
+        res
     }
 }

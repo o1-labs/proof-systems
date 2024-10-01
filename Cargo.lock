@@ -1315,6 +1315,7 @@ dependencies = [
  "ark-std",
  "ark-test-curves",
  "derivative",
+ "num-bigint",
  "rand",
  "wasm-bindgen",
 ]

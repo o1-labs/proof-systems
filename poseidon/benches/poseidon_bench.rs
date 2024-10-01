@@ -20,6 +20,9 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
             SpongeParametersKimchi::static_params(),
         );
 
+        poseidon.absorb(&[Fp::zero()]);
+        println!("{}", poseidon.squeeze().to_string());
+
         b.iter(|| {
             poseidon.absorb(&[hash]);
             hash = poseidon.squeeze();
@@ -30,6 +33,9 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     group.bench_function("poseidon_hash_kimchi_fp9", |b| {
         let mut hash: Fp9 = Fp9::zero();
         let mut poseidon = Poseidon::<Fp9, PlonkSpongeConstantsKimchi>::new(fp9_static_params());
+
+        poseidon.absorb(&[Fp9::zero()]);
+        println!("{}", poseidon.squeeze().to_string());
 
         b.iter(|| {
             poseidon.absorb(&[hash]);

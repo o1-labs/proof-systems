@@ -14,6 +14,7 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-serialize.workspace = true
 wasm-bindgen.workspace = true
+num-bigint.workspace = true
 derivative = { version = "2.0", features = ["use_core"] }
 
 [dev-dependencies]

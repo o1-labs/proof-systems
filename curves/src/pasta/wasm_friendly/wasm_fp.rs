@@ -10,6 +10,7 @@ use ark_serialize::{
     Write,
 };
 use derivative::Derivative;
+use num_bigint::BigUint;
 use std::{
     marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign},
@@ -28,7 +29,10 @@ pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     /// Construct a field element from an integer in the range
     /// `0..(Self::MODULUS - 1)`. Returns `None` if the integer is outside
     /// this range.
-    fn from_bigint(other: BigInt<N>) -> Option<Fp<Self, N>>;
+    fn from_bigint(x: BigInt<N>) -> Option<Fp<Self, N>>;
+    fn to_bigint(x: Fp<Self, N>) -> BigInt<N>;
+
+    fn pack(x: Fp<Self, N>) -> Vec<u64>;
 }
 
 /// Represents an element of the prime field F_p, where `p == P::MODULUS`.
@@ -58,6 +62,19 @@ impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
     #[inline]
     pub fn from_bigint(r: BigInt<N>) -> Option<Self> {
         P::from_bigint(r)
+    }
+    #[inline]
+    pub fn into_bigint(self) -> BigInt<N> {
+        P::to_bigint(self)
+    }
+
+    pub fn to_bytes_le(self) -> Vec<u8> {
+        let chunks = P::pack(self).into_iter().map(|x| x.to_le_bytes());
+        let mut bytes = Vec::with_capacity(chunks.len() * 8);
+        for chunk in chunks {
+            bytes.extend_from_slice(&chunk);
+        }
+        bytes
     }
 }
 
@@ -195,5 +212,20 @@ impl<P: FpBackend<N>, const N: usize> CanonicalDeserialize for Fp<P, N> {
     ) -> Result<Self, SerializationError> {
         Self::from_bigint(BigInt::deserialize_with_mode(reader, compress, validate)?)
             .ok_or(SerializationError::InvalidData)
+    }
+}
+
+// display
+
+impl<P: FpBackend<N>, const N: usize> From<Fp<P, N>> for BigUint {
+    #[inline]
+    fn from(val: Fp<P, N>) -> BigUint {
+        BigUint::from_bytes_le(&val.to_bytes_le())
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> std::fmt::Display for Fp<P, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        BigUint::from(*self).fmt(f)
     }
 }
