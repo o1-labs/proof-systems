@@ -67,7 +67,7 @@ impl From<ColumnAlias> for usize {
                 i
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE,
-            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s
+            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s,
         }
     }
 }

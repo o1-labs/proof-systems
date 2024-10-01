@@ -14,7 +14,8 @@ use crate::{
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr, ExprInner, Operations, Variable
+        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr,
+        ExprInner, Operations, Variable,
     },
     gate::CurrOrNext,
 };
@@ -74,7 +75,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn activate_selector(&mut self, _selector_idx: usize) {
-        let mut acc : Self::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::<Fp>::Literal(Fp::one())))));
+        let mut acc: Self::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(
+            ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::<Fp>::Literal(
+                Fp::one(),
+            )),
+        )));
         for i in 0..N_MIPS_SEL_COLS {
             let var = self.variable(MIPSColumn::Selector(i));
             acc += var.clone();
