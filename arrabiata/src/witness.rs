@@ -6,7 +6,7 @@ use log::{debug, info};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 

@@ -13,7 +13,7 @@ use kimchi::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
+use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof};
 use serde::Serialize;
 use std::{
     collections::HashMap,

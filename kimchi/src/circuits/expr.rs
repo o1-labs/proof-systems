@@ -3539,7 +3539,7 @@ pub mod test {
     use ark_ff::UniformRand;
     use mina_curves::pasta::{Fp, Pallas, Vesta};
     use poly_commitment::{
-        evaluation_proof::{endos, OpeningProof, SRS},
+        ipa::{endos, OpeningProof, SRS},
         SRS as _,
     };
     use rand::{prelude::StdRng, SeedableRng};

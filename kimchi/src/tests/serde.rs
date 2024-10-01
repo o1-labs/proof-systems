@@ -19,7 +19,7 @@ use mina_poseidon::{
 };
 use poly_commitment::{
     commitment::CommitmentCurve,
-    evaluation_proof::{OpeningProof, SRS},
+    ipa::{OpeningProof, SRS},
     SRS as _,
 };
 use std::{array, time::Instant};

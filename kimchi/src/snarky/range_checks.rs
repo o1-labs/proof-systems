@@ -165,7 +165,7 @@ mod test {
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
-    use poly_commitment::evaluation_proof::OpeningProof;
+    use poly_commitment::ipa::OpeningProof;
 
     type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;

@@ -430,7 +430,7 @@ mod example {
 
         let constraints = vec![constraint()];
         let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-        let mut srs = poly_commitment::evaluation_proof::SRS::<Curve>::create(2);
+        let mut srs = poly_commitment::ipa::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
         // this is the default structure, which does nothing or panics if
         // indexed (as it shouldn't be indexed)

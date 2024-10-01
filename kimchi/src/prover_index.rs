@@ -145,7 +145,7 @@ pub mod testing {
     use ark_ff::PrimeField;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use poly_commitment::{
-        evaluation_proof::{OpeningProof, SRS},
+        ipa::{OpeningProof, SRS},
         OpenProof,
     };
 
