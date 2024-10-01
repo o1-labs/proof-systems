@@ -3002,8 +3002,10 @@ impl<
     type Output = Expr<ConstantExpr<F, ChallengeTerm, CstTerm>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
-        let expr: ConstantExprInner<F, ChallengeTerm, CstTerm> = CstTerm::literal(y).into();
-        Expr::from(expr) * self
+        let exprinner: ConstantExprInner<F, ChallengeTerm, CstTerm> = CstTerm::literal(y).into();
+        let cstexpr: ConstantExpr<F, ChallengeTerm, CstTerm> = exprinner.into();
+        let output: Self::Output = cstexpr.into();
+        output * self
     }
 }
 
@@ -3025,7 +3027,7 @@ pub trait IsAlpha {
 impl IsAlpha for BerkeleyChallengeTerm {
     fn is_alpha(self: Self) -> bool {
         match self {
-            BerkeleyChallengeTerm::ALPHA => true,
+            BerkeleyChallengeTerm::Alpha => true,
             _ => false,
         }
     }
@@ -3060,7 +3062,7 @@ where
 impl<'a, F: PrimeField, ChallengeTerm, CstTerm> FormattedOutput
     for ConstantExprInner<F, ChallengeTerm, CstTerm>
 where
-    ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
+    ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, ChallengeTerm, CstTerm>> + IsAlpha,
     CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
 {
     fn is_alpha(&self) -> bool {
