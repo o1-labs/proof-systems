@@ -8,3 +8,5 @@ pub mod wasm_fp;
 pub use wasm_fp::Fp;
 
 pub mod backend9;
+pub mod pasta;
+pub use pasta::Fp9;

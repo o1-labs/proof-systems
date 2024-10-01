@@ -13,6 +13,20 @@ const MASK: u32 = (1 << SHIFT) - 1;
 const SHIFT64: u64 = SHIFT as u64;
 const MASK64: u64 = MASK as u64;
 
+pub const fn from_64x4(pa: [u64; 4]) -> [u32; 9] {
+    let mut p = [0u32; 9];
+    p[0] = (pa[0] & MASK64) as u32;
+    p[1] = ((pa[0] >> 29) & MASK64) as u32;
+    p[2] = (((pa[0] >> 58) | (pa[1] << 6)) & MASK64) as u32;
+    p[3] = ((pa[1] >> 23) & MASK64) as u32;
+    p[4] = (((pa[1] >> 52) | (pa[2] << 12)) & MASK64) as u32;
+    p[5] = ((pa[2] >> 17) & MASK64) as u32;
+    p[6] = (((pa[2] >> 46) | (pa[3] << 18)) & MASK64) as u32;
+    p[7] = ((pa[3] >> 11) & MASK64) as u32;
+    p[8] = (pa[3] >> 40) as u32;
+    p
+}
+
 pub trait FpConstants: Send + Sync + 'static + Sized {
     const MODULUS: B;
     const MODULUS64: B64 = {
@@ -129,12 +143,12 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 // implement FpBackend given FpConstants
 
 impl<FpC: FpConstants> FpBackend<9> for FpC {
-    const MODULUS: BigInt<9> = BigInt(FpC::MODULUS);
+    const MODULUS: BigInt<9> = BigInt(Self::MODULUS);
     const ZERO: BigInt<9> = BigInt([0; 9]);
-    const ONE: BigInt<9> = BigInt(FpC::R);
+    const ONE: BigInt<9> = BigInt(Self::R);
 
     fn add_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        add_assign::<FpC>(&mut x.0 .0, &y.0 .0);
+        add_assign::<Self>(&mut x.0 .0, &y.0 .0);
     }
 
     fn mul_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
