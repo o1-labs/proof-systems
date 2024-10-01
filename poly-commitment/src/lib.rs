@@ -2,7 +2,10 @@ pub mod chunked;
 mod combine;
 pub mod commitment;
 pub mod error;
-pub mod evaluation_proof;
+
+/// Inner product argument
+pub mod ipa;
+/// KZG polynomial commitment scheme
 pub mod kzg;
 
 pub use commitment::PolyComm;
@@ -10,7 +13,7 @@ pub use commitment::PolyComm;
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
-    evaluation_proof::DensePolynomialOrEvaluations,
+    ipa::DensePolynomialOrEvaluations,
 };
 use ark_ec::AffineRepr;
 use ark_ff::UniformRand;

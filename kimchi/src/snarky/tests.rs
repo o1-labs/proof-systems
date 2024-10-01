@@ -14,7 +14,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::evaluation_proof::OpeningProof;
+use poly_commitment::ipa::OpeningProof;
 
 use super::prelude::*;
 

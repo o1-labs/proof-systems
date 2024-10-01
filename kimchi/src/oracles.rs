@@ -38,7 +38,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use ark_ff::PrimeField;
-    use poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
+    use poly_commitment::{commitment::shift_scalar, ipa::OpeningProof};
 
     use crate::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,

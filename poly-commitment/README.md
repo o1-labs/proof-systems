@@ -5,7 +5,7 @@ This library offers implementations of different Polynomial Commitment Scheme
 
 Currently, the following polynomial commitment schemes are implemented:
 - [KZG10](./src/kzg.rs)
-- [Inner Product Argument](./src/commitment.rs)
+- [Inner Product Argument](./src/ipa.rs)
 
 The implementations are made initially to be compatible with Kimchi (a Plonk-ish
 variant with 15 wires and some custom gates) and to be used in the Mina

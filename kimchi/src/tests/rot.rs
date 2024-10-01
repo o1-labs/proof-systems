@@ -28,7 +28,7 @@ use mina_poseidon::{
 };
 use o1_utils::Two;
 use poly_commitment::{
-    evaluation_proof::{endos, OpeningProof, SRS},
+    ipa::{endos, OpeningProof, SRS},
     SRS as _,
 };
 use rand::Rng;

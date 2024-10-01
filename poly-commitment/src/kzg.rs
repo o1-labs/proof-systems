@@ -11,7 +11,7 @@
 
 use crate::{
     commitment::*,
-    evaluation_proof::{combine_polys, SRS},
+    ipa::{combine_polys, SRS},
     CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
 };
 

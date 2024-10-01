@@ -11,7 +11,7 @@
 
 use crate::curve::KimchiCurve;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use poly_commitment::{evaluation_proof::SRS, PolyComm};
+use poly_commitment::{ipa::SRS, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
