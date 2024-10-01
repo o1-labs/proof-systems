@@ -19,7 +19,6 @@ use super::minimal_field::MinimalField;
 
 pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     const MODULUS: BigInt<N>;
-
     const ZERO: BigInt<N>;
     const ONE: BigInt<N>;
 
@@ -41,7 +40,8 @@ pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     Clone(bound = ""),
     Copy(bound = ""),
     PartialEq(bound = ""),
-    Eq(bound = "")
+    Eq(bound = ""),
+    Debug(bound = "")
 )]
 pub struct Fp<P: FpBackend<N>, const N: usize>(
     pub BigInt<N>,
@@ -51,12 +51,12 @@ pub struct Fp<P: FpBackend<N>, const N: usize>(
 );
 
 impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
-    fn new(bigint: BigInt<N>) -> Self {
+    pub fn new(bigint: BigInt<N>) -> Self {
         Fp(bigint, Default::default())
     }
 
     #[inline]
-    fn from_bigint(r: BigInt<N>) -> Option<Self> {
+    pub fn from_bigint(r: BigInt<N>) -> Option<Self> {
         P::from_bigint(r)
     }
 }
@@ -65,13 +65,13 @@ impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
 
 impl<P: FpBackend<N>, const N: usize> From<BigInt<N>> for Fp<P, N> {
     fn from(val: BigInt<N>) -> Self {
-        Fp::new(val)
+        Fp::from_bigint(val).unwrap()
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<[u32; N]> for Fp<P, N> {
     fn from(val: [u32; N]) -> Self {
-        Fp::new(BigInt(val))
+        Fp::from_bigint(BigInt(val)).unwrap()
     }
 }
 
@@ -91,7 +91,7 @@ impl<P: FpBackend<N>, const N: usize> MinimalField for Fp<P, N> {
 impl<P: FpBackend<N>, const N: usize> Zero for Fp<P, N> {
     #[inline]
     fn zero() -> Self {
-        Fp(P::ZERO, Default::default())
+        Fp::new(P::ZERO)
     }
 
     #[inline]
@@ -130,7 +130,7 @@ impl<'a, P: FpBackend<N>, const N: usize> Add<&'a Fp<P, N>> for Fp<P, N> {
 impl<P: FpBackend<N>, const N: usize> One for Fp<P, N> {
     #[inline]
     fn one() -> Self {
-        Fp(P::ONE, Default::default())
+        Fp::new(P::ONE)
     }
 
     #[inline]

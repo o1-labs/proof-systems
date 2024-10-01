@@ -43,6 +43,7 @@ pub trait FpConstants: Send + Sync + 'static + Sized {
     /// montgomery params
     /// TODO: compute these
     const R: B; // R = 2^261 mod modulus
+    const R2: B; // R^2 mod modulus
     const MINV: u64; // -modulus^(-1) mod 2^29, as a u64
 }
 
@@ -142,6 +143,13 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 
 // implement FpBackend given FpConstants
 
+pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
+    let mut r = x.0.clone();
+    // convert to montgomery form
+    mul_assign::<FpC>(&mut r, &FpC::R2);
+    Fp(BigInt(r), Default::default())
+}
+
 impl<FpC: FpConstants> FpBackend<9> for FpC {
     const MODULUS: BigInt<9> = BigInt(Self::MODULUS);
     const ZERO: BigInt<9> = BigInt([0; 9]);
@@ -155,14 +163,11 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
         mul_assign::<Self>(&mut x.0 .0, &y.0 .0);
     }
 
-    fn from_bigint(other: BigInt<9>) -> Option<Fp<Self, 9>> {
-        let mut r = [0; 9];
-        for i in 0..9 {
-            r[i] = other.0[i] as u32;
+    fn from_bigint(x: BigInt<9>) -> Option<Fp<Self, 9>> {
+        if gte_modulus::<Self>(&x.0) {
+            None
+        } else {
+            Some(from_bigint_unsafe(x))
         }
-        if gte_modulus::<Self>(&r) {
-            return None;
-        }
-        Some(Fp(BigInt(r), Default::default()))
     }
 }
