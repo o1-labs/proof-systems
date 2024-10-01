@@ -1,4 +1,3 @@
-use ark_ff::Zero;
 use kimchi::curve::KimchiCurve;
 
 pub struct WitnessColumns<G> {
@@ -16,11 +15,9 @@ impl<G: KimchiCurve> ProofInputs<G> {
     pub fn new(domain_size: usize) -> Self {
         ProofInputs {
             evaluations: WitnessColumns {
-                scratch: std::array::from_fn(|_| {
-                    (0..domain_size).map(|_| G::ScalarField::zero()).collect()
-                }),
-                instruction_counter: (0..domain_size).map(|_| G::ScalarField::zero()).collect(),
-                error: (0..domain_size).map(|_| G::ScalarField::zero()).collect(),
+                scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+                instruction_counter: Vec::with_capacity(domain_size),
+                error: Vec::with_capacity(domain_size),
             },
         }
     }
