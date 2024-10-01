@@ -1316,6 +1316,7 @@ dependencies = [
  "ark-test-curves",
  "derivative",
  "rand",
+ "wasm-bindgen",
 ]
 
 [[package]]
