@@ -41,7 +41,6 @@ pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
-    Clone(bound = ""),
     Copy(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
@@ -53,6 +52,12 @@ pub struct Fp<P: FpBackend<N>, const N: usize>(
     #[doc(hidden)]
     pub PhantomData<P>,
 );
+
+impl<P: FpBackend<N>, const N: usize> Clone for Fp<P, N> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
     pub fn new(bigint: BigInt<N>) -> Self {

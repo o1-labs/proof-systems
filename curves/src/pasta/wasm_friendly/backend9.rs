@@ -7,7 +7,7 @@ use super::wasm_fp::{Fp, FpBackend};
 type B = [u32; 9];
 type B64 = [u64; 9];
 
-const SHIFT: u64 = 29;
+const SHIFT: u32 = 29;
 const MASK: u32 = (1 << SHIFT) - 1;
 
 const SHIFT64: u64 = SHIFT as u64;
@@ -66,6 +66,8 @@ pub trait FpConstants: Send + Sync + 'static + Sized {
 #[inline]
 fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
     for i in (0..9).rev() {
+        // don't fix warning -- that makes it 15% slower!
+        #[allow(clippy::comparison_chain)]
         if x[i] > FpC::MODULUS[i] {
             return true;
         } else if x[i] < FpC::MODULUS[i] {
@@ -92,6 +94,7 @@ pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 
     if gte_modulus::<FpC>(x) {
         carry = 0;
+        #[allow(clippy::needless_range_loop)]
         for i in 0..9 {
             tmp = x[i].wrapping_sub(FpC::MODULUS[i]) + (carry as u32);
             carry = (tmp as i32) >> SHIFT;
@@ -103,12 +106,15 @@ pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 #[inline]
 fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
     if gte_modulus::<FpC>(x) {
+        #[allow(clippy::needless_range_loop)]
         for i in 0..9 {
             x[i] = x[i].wrapping_sub(FpC::MODULUS[i]);
         }
+        #[allow(clippy::needless_range_loop)]
         for i in 1..9 {
-            x[i] = x[i] + (((x[i - 1] as i32) >> SHIFT) as u32);
+            x[i] += ((x[i - 1] as i32) >> SHIFT) as u32;
         }
+        #[allow(clippy::needless_range_loop)]
         for i in 0..8 {
             x[i] &= MASK;
         }
@@ -129,6 +135,7 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     let mut tmp: u64;
 
     // main loop, without intermediate carries except for z0
+    #[allow(clippy::needless_range_loop)]
     for i in 0..9 {
         let xi = x[i] as u64;
 
@@ -160,7 +167,7 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 // implement FpBackend given FpConstants
 
 pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
-    let mut r = x.0.clone();
+    let mut r = x.0;
     // convert to montgomery form
     mul_assign::<FpC>(&mut r, &FpC::R2);
     Fp(BigInt(r), Default::default())
@@ -188,7 +195,7 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
     }
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
         let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
-        let mut r = x.0 .0.clone();
+        let mut r = x.0 .0;
         // convert back from montgomery form
         mul_assign::<Self>(&mut r, &one);
         BigInt(r)
