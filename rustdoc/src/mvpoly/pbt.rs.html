@@ -818,8 +818,8 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
-    <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D / <span class="number">2</span>);
+    <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>c = F::rand(<span class="kw-2">&amp;mut </span>rng);
     <span class="kw">let </span>p2 = p1.clone() * T::from(c);
     <span class="kw">let </span>degree_p1 = <span class="kw">unsafe </span>{ p1.degree() };
@@ -834,9 +834,9 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>degree = rng.gen_range(<span class="number">1</span>..D);
-    <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
-    <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(degree)) };
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D / <span class="number">2</span>);
+    <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
+    <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p3 = p1.clone() * p2.clone();
     <span class="kw">let </span>degree_p1 = <span class="kw">unsafe </span>{ p1.degree() };
     <span class="kw">let </span>degree_p2 = <span class="kw">unsafe </span>{ p2.degree() };
@@ -851,7 +851,7 @@
     T: MVPoly&lt;F, N, D&gt;,
 &gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D);
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D / <span class="number">2</span>);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p3 = p1.clone() * p2.clone();
@@ -864,7 +864,7 @@
 
 <span class="kw">pub fn </span>test_mvpoly_mul_pbt&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, T: MVPoly&lt;F, N, D&gt;&gt;() {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D);
+    <span class="kw">let </span>max_degree = rng.gen_range(<span class="number">1</span>..D / <span class="number">2</span>);
     <span class="kw">let </span>p1 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="kw">let </span>p2 = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">Some</span>(max_degree)) };
     <span class="macro">assert_eq!</span>(p1.clone() * p2.clone(), p2.clone() * p1.clone());
