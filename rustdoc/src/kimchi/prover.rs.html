@@ -1833,7 +1833,7 @@
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    evaluation_proof::DensePolynomialOrEvaluations,
+    ipa::DensePolynomialOrEvaluations,
     OpenProof, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
@@ -3237,7 +3237,7 @@
         }
 
         <span class="comment">//~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
-        </span><span class="macro">internal_tracing::checkpoint!</span>(internal_traces; create_aggregated_evaluation_proof);
+        </span><span class="macro">internal_tracing::checkpoint!</span>(internal_traces; create_aggregated_ipa);
         <span class="kw">let </span>proof = OpenProof::open(
             <span class="kw-2">&amp;*</span>index.srs,
             group_map,
@@ -3294,7 +3294,7 @@
     compute_ft_poly,
     ft_eval_zeta_omega,
     build_polynomials,
-    create_aggregated_evaluation_proof,
+    create_aggregated_ipa,
     create_recursive_done);
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
@@ -3304,7 +3304,7 @@
     <span class="kw">use </span>ark_ec::AffineRepr;
     <span class="kw">use </span>poly_commitment::{
         commitment::caml::CamlPolyComm,
-        evaluation_proof::{caml::CamlOpeningProof, OpeningProof},
+        ipa::{caml::CamlOpeningProof, OpeningProof},
     };
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;internal_tracing&quot;</span>)]

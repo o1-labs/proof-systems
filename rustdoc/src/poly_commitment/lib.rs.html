@@ -188,19 +188,25 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>chunked;
 <span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
 <span class="kw">pub mod </span>error;
-<span class="kw">pub mod </span>evaluation_proof;
-<span class="kw">pub mod </span>kzg;
+
+<span class="doccomment">/// Inner product argument
+</span><span class="kw">pub mod </span>ipa;
+<span class="doccomment">/// KZG polynomial commitment scheme
+</span><span class="kw">pub mod </span>kzg;
 
 <span class="kw">pub use </span>commitment::PolyComm;
 
 <span class="kw">use crate</span>::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
-    evaluation_proof::DensePolynomialOrEvaluations,
+    ipa::DensePolynomialOrEvaluations,
 };
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::UniformRand;

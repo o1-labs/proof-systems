@@ -880,7 +880,7 @@
 
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[constraint()];
         <span class="kw">let </span>domain = Radix2EvaluationDomain::&lt;Fp&gt;::new(<span class="number">2</span>).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>srs = poly_commitment::evaluation_proof::SRS::&lt;Curve&gt;::create(<span class="number">2</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>srs = poly_commitment::ipa::SRS::&lt;Curve&gt;::create(<span class="number">2</span>);
         srs.add_lagrange_basis(domain);
         <span class="comment">// this is the default structure, which does nothing or panics if
         // indexed (as it shouldn&#39;t be indexed)

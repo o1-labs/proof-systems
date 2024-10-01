@@ -416,7 +416,7 @@
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
-    <span class="kw">use </span>poly_commitment::evaluation_proof::OpeningProof;
+    <span class="kw">use </span>poly_commitment::ipa::OpeningProof;
 
     <span class="kw">type </span>BaseSponge = DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;;
     <span class="kw">type </span>ScalarSponge = DefaultFrSponge&lt;Fp, PlonkSpongeConstantsKimchi&gt;;

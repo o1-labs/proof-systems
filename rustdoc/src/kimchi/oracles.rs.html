@@ -143,7 +143,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use </span>ark_ff::PrimeField;
-    <span class="kw">use </span>poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
+    <span class="kw">use </span>poly_commitment::{commitment::shift_scalar, ipa::OpeningProof};
 
     <span class="kw">use crate</span>::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
