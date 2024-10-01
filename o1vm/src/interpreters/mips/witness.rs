@@ -836,7 +836,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
 
-        // This will trigger an assert if it's never changed.
         let selector = N_MIPS_SEL_COLS;
 
         let syscall_env = SyscallEnv::create(&state);
@@ -1143,7 +1142,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (self.normalized_instruction_counter() + 1) * MAX_ACC
     }
 
-    // HERE!!
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
     pub fn step(
@@ -1172,8 +1170,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.activate_selector(opcode.to_selector_column_idx());
 
         interpreter::interpret_instruction(self, opcode);
-
-        // HERE!!!
 
         self.instruction_counter = self.next_instruction_counter();
 
