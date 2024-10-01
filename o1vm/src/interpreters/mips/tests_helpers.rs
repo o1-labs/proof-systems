@@ -88,6 +88,7 @@ where
         registers_write_index: Registers::default(),
         scratch_state_idx: 0,
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
+        selector: N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related
         syscall_env: SyscallEnv::default(),
