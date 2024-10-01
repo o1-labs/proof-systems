@@ -107,7 +107,7 @@ use std::{array, marker::PhantomData};
 ///
 pub fn compute_intermediate_products<
     F: PrimeField,
-    T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    T: ExprOps<F,>,
 >(
     left_input: &[T; 3],
     right_input: &[T; 3],
@@ -140,7 +140,7 @@ pub fn compute_intermediate_products<
 // Compute native modulus values
 pub fn compute_native_modulus_values<
     F: PrimeField,
-    T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    T: ExprOps<F,>,
 >(
     left_input: &[T; 3],
     right_input: &[T; 3],
@@ -173,7 +173,7 @@ pub fn compute_native_modulus_values<
 /// Composes the 91-bit carry1 value from its parts
 pub fn compose_carry<
     F: PrimeField,
-    T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    T: ExprOps<F,>,
 >(
     carry: &[T; 11],
 ) -> T {
@@ -205,7 +205,7 @@ where
     const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

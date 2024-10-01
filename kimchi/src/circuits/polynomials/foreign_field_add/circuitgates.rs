@@ -142,7 +142,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
@@ -207,7 +207,7 @@ where
 }
 
 // Auxiliary function to obtain the constraints to check a carry flag
-fn is_carry<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+fn is_carry<F: PrimeField, T: ExprOps<F,>>(
     flag: &T,
 ) -> T {
     // Carry bits are -1, 0, or 1.

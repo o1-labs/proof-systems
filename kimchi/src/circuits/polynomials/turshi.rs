@@ -733,7 +733,7 @@ pub mod testing {
 // CONSTRAINTS-RELATED
 
 /// Returns the expression corresponding to the literal "2"
-fn two<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>() -> T {
+fn two<F: Field, T: ExprOps<F,>>() -> T {
     T::literal(2u64.into()) // 2
 }
 
@@ -768,7 +768,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
@@ -808,7 +808,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
     ) -> Vec<T> {
@@ -957,7 +957,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {
@@ -1027,7 +1027,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
     ) -> Vec<T> {

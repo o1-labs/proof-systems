@@ -104,7 +104,7 @@ impl Keccak {
     /// Expands a u64 word into a vector of 4 sparse u64 quarters
     pub fn expand_word<
         F: PrimeField,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+        T: ExprOps<F,>,
     >(
         word: u64,
     ) -> Vec<T> {

@@ -176,7 +176,7 @@ impl<T> Point<T> {
 impl Point<Variable> {
     pub fn new_from_env<
         F: PrimeField,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+        T: ExprOps<F,>,
     >(
         &self,
         env: &ArgumentEnv<F, T>,
@@ -230,7 +230,7 @@ fn single_bit_witness<F: FftField>(
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+fn single_bit<F: FftField, T: ExprOps<F,>>(
     cache: &mut Cache,
     b: &T,
     base: Point<T>,
@@ -297,7 +297,7 @@ where
 impl<F, T> FromWitness<F, T> for Variable
 where
     F: PrimeField,
-    T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+    T: ExprOps<F,>,
 {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
@@ -337,7 +337,7 @@ impl Layout<Variable> {
 
     fn new_from_env<
         F: PrimeField,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
+        T: ExprOps<F,>,
     >(
         &self,
         env: &ArgumentEnv<F, T>,
@@ -424,7 +424,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
+    fn constraint_checks<T: ExprOps<F,>>(
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
     ) -> Vec<T> {

@@ -727,7 +727,7 @@ impl Cache {
         F: Field,
         ChallengeTerm,
         CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
-        T: ExprOps<F, ChallengeTerm, CstTerm>,
+        T: ExprOps<F>,
     >(
         &mut self,
         e: T,
