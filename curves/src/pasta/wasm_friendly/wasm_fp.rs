@@ -51,9 +51,27 @@ pub struct Fp<P: FpBackend<N>, const N: usize>(
 );
 
 impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
+    fn new(bigint: BigInt<N>) -> Self {
+        Fp(bigint, Default::default())
+    }
+
     #[inline]
     fn from_bigint(r: BigInt<N>) -> Option<Self> {
         P::from_bigint(r)
+    }
+}
+
+// coerce into Fp from either BigInt<N> or [u32; N]
+
+impl<P: FpBackend<N>, const N: usize> From<BigInt<N>> for Fp<P, N> {
+    fn from(val: BigInt<N>) -> Self {
+        Fp::new(val)
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> From<[u32; N]> for Fp<P, N> {
+    fn from(val: [u32; N]) -> Self {
+        Fp::new(BigInt(val))
     }
 }
 
