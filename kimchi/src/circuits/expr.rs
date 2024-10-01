@@ -3462,12 +3462,8 @@ pub mod constraints {
 
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
-    /// constraint code for witness computation.
-    pub trait ExprOps<
-        F,
-        ChallengeTerm,
-        CstTerm: ConstantTerm<F, ConstantExprInner<F, ChallengeTerm, CstTerm>>,
-    >:
+    /// constraint code for witness computation.s
+    pub trait ExprOps<F>:
         Add<Output = Self>
         + Sub<Output = Self>
         + Neg<Output = Self>
@@ -3522,7 +3518,7 @@ pub mod constraints {
 
         /// Create a constant
         fn constant(
-            expr: ConstantExpr<F, ChallengeTerm, CstTerm>,
+            expr: ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
             env: Option<&ArgumentData<F>>,
         ) -> Self;
 
@@ -3531,7 +3527,7 @@ pub mod constraints {
     }
     // TODO generalize with generic Column/challengeterm
     // We need to create a trait for berkeley_columns::Environment
-    impl<F: Field> ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>
+    impl<F: Field> ExprOps<F>
         for Expr<
             ConstantExpr<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
             berkeley_columns::Column,
@@ -3617,7 +3613,7 @@ pub mod constraints {
     }
     // TODO generalize with generic Column/challengeterm
     // We need to generalize argument.rs
-    impl<F: Field> ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>> for F {
+    impl<F: Field> ExprOps<F> for F {
         fn two_pow(pow: u64) -> Self {
             <F as Two<F>>::two_pow(pow)
         }
@@ -3688,24 +3684,12 @@ pub mod constraints {
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<
-        F: Field,
-        ChallengeTerm,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
-    >(
-        b: &T,
-    ) -> T {
+    pub fn boolean<F: Field, T: ExprOps<F>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<
-        F: Field,
-        ChallengeTerm,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
-    >(
-        x: &T,
-    ) -> T {
+    pub fn crumb<F: Field, T: ExprOps<F>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -3714,14 +3698,7 @@ pub mod constraints {
     }
 
     /// lo + mi * 2^{LIMB_BITS}
-    pub fn compact_limb<
-        F: Field,
-        ChallengeTerm,
-        T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>,
-    >(
-        lo: &T,
-        mi: &T,
-    ) -> T {
+    pub fn compact_limb<F: Field, T: ExprOps<F>>(lo: &T, mi: &T) -> T {
         lo.clone() + mi.clone() * T::two_to_limb()
     }
 }
@@ -3897,21 +3874,19 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>() -> T {
+        fn test_1<F: Field, T: ExprOps<F>>() -> T {
             T::zero() + T::one()
         }
         assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
         assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>() -> T {
+        fn test_2<F: Field, T: ExprOps<F>>() -> T {
             T::one() + T::one()
         }
         assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
         assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
-            x: T,
-        ) -> T {
+        fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
             T::from(2u64) * x
         }
         assert_eq!(
@@ -3920,9 +3895,7 @@ pub mod test {
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: Field, T: ExprOps<F, BerkeleyChallengeTerm, BerkeleyConstantTerm<F>>>(
-            x: T,
-        ) -> T {
+        fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {
             x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(
