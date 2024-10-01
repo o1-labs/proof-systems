@@ -1,5 +1,4 @@
-use super::backend9;
-use super::wasm_fp;
+use super::{backend9, wasm_fp};
 use crate::pasta::Fp;
 use ark_ff::PrimeField;
 

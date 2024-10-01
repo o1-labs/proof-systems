@@ -1,7 +1,6 @@
 use ark_ff::Zero;
 use criterion::{criterion_group, criterion_main, Criterion};
-use mina_curves::pasta::wasm_friendly::Fp9;
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{wasm_friendly::Fp9, Fp};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::fp_kimchi as SpongeParametersKimchi,
