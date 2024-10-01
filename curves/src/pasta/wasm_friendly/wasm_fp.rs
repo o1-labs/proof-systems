@@ -20,8 +20,8 @@ use super::minimal_field::MinimalField;
 pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     const MODULUS: BigInt<N>;
 
-    const ZERO: Fp<Self, N>;
-    const ONE: Fp<Self, N>;
+    const ZERO: BigInt<N>;
+    const ONE: BigInt<N>;
 
     fn add_assign(a: &mut Fp<Self, N>, b: &Fp<Self, N>);
     fn mul_assign(a: &mut Fp<Self, N>, b: &Fp<Self, N>);
@@ -73,12 +73,12 @@ impl<P: FpBackend<N>, const N: usize> MinimalField for Fp<P, N> {
 impl<P: FpBackend<N>, const N: usize> Zero for Fp<P, N> {
     #[inline]
     fn zero() -> Self {
-        P::ZERO
+        Fp(P::ZERO, Default::default())
     }
 
     #[inline]
     fn is_zero(&self) -> bool {
-        *self == P::ZERO
+        *self == Self::zero()
     }
 }
 
@@ -112,12 +112,12 @@ impl<'a, P: FpBackend<N>, const N: usize> Add<&'a Fp<P, N>> for Fp<P, N> {
 impl<P: FpBackend<N>, const N: usize> One for Fp<P, N> {
     #[inline]
     fn one() -> Self {
-        P::ONE
+        Fp(P::ONE, Default::default())
     }
 
     #[inline]
     fn is_one(&self) -> bool {
-        *self == P::ONE
+        *self == Self::one()
     }
 }
 impl<'a, P: FpBackend<N>, const N: usize> MulAssign<&'a Self> for Fp<P, N> {
