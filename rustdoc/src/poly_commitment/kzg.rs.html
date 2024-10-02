@@ -423,6 +423,64 @@
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -441,7 +499,7 @@
 };
 
 <span class="kw">use </span>ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
-<span class="kw">use </span>ark_ff::{PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D,
@@ -451,6 +509,64 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::ops::Neg;
+
+<span class="doccomment">/// Combine the (chunked) evaluations of multiple polynomials.
+/// This function returns the accumulation of the evaluations, scaled by
+/// `polyscale`.
+/// If no evaluation is given, the function returns an empty vector.
+/// It does also suppose that for each evaluation, the number of evaluations is
+/// the same. It is not constrained yet in the interface, but it should be. If
+/// one list has not the same size, it will be shrunk to the size of the first
+/// element of the list.
+/// For instance, if we have 3 polynomials P1, P2, P3 evaluated at the points
+/// ζ and ζω (like in vanilla PlonK), and for each polynomial, we have two
+/// chunks, i.e. we have
+/// ```text
+///         2 chunks of P1
+///        /---------------\
+/// E1 = [(P1_1(ζ), P1_2(ζ)), (P1_1(ζω), P1_2(ζω))]
+/// E2 = [(P2_1(ζ), P2_2(ζ)), (P2_1(ζω), P2_2(ζω))]
+/// E3 = [(P3_1(ζ), P3_2(ζ)), (P3_1(ζω), P3_2(ζω))]
+/// ```
+/// The output will be a list of 3 elements, equal to:
+/// ```text
+/// P1_1(ζ) + P1_2(ζ) * polyscale + P1_1(ζω) polyscale^2 + P1_2(ζω) * polyscale^3
+/// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
+/// ```
+</span><span class="kw">pub fn </span>combine_evaluations&lt;G: CommitmentCurve&gt;(
+    evaluations: <span class="kw-2">&amp;</span>Vec&lt;Evaluation&lt;G&gt;&gt;,
+    polyscale: G::ScalarField,
+) -&gt; Vec&lt;G::ScalarField&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
+    <span class="kw">let </span><span class="kw-2">mut </span>acc = {
+        <span class="kw">let </span>num_evals = <span class="kw">if </span>!evaluations.is_empty() {
+            evaluations[<span class="number">0</span>].evaluations.len()
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
+        <span class="macro">vec!</span>[G::ScalarField::zero(); num_evals]
+    };
+
+    <span class="kw">for </span>Evaluation { evaluations, .. } <span class="kw">in </span>evaluations
+        .iter()
+        .filter(|x| !x.commitment.elems.is_empty())
+    {
+        <span class="comment">// IMPROVEME: we could have a flat array that would contain all the
+        // evaluations and all the chunks. It would avoid fetching the memory
+        // and avoid indirection into RAM.
+        // We could have a single flat array.
+        // iterating over the polynomial segments
+        </span><span class="kw">for </span>chunk_idx <span class="kw">in </span><span class="number">0</span>..evaluations[<span class="number">0</span>].len() {
+            <span class="comment">// supposes that all evaluations are of the same size
+            </span><span class="kw">for </span>eval_pt_idx <span class="kw">in </span><span class="number">0</span>..evaluations.len() {
+                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * xi_i;
+            }
+            xi_i <span class="kw-2">*</span>= polyscale;
+        }
+    }
+
+    acc
+}
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]

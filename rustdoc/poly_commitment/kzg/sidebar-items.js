@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["KZGProof","PairingSRS"]};
+window.SIDEBAR_ITEMS = {"fn":["combine_evaluations"],"struct":["KZGProof","PairingSRS"]};
