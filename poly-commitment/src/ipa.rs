@@ -193,7 +193,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut plnm = plnm_coefficients.to_dense_polynomial();
 
     if !plnm_evals_part.is_empty() {
-        // n is the number of evaluations points, which is a multiple of the
+        // n is the number of evaluations, which is a multiple of the
         // domain size.
         // We treat now each chunk.
         let n = plnm_evals_part.len();
