@@ -75,6 +75,12 @@ BIN_EXTRA_ARGS="-p poly-commitment" make nextest-all-with-coverage
 ```
 
 Note: In example above we run tests for the `poly-commitment` package only.
+You can also use the environment variable `BIN_EXTRA_ARGS` to select a specific
+test to run. For instance:
+```
+BIN_EXTRA_ARGS="test_opening_proof" make nextest
+```
+will only run the tests containing `test_opening_proof`.
 
 We build and run tests in `--release` mode, because otherwise tests execution can last for a long time.
 
