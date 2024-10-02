@@ -37,8 +37,11 @@ use std::{cmp::min, collections::HashMap, iter::Iterator, ops::AddAssign};
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
+/// Represent a polynomial either with its coefficients or its evaluations
 pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
+    /// Polynomial represented by its coefficients
     DensePolynomial(&'a DensePolynomial<F>),
+    /// Polynomial represented by its evaluations over a domain D
     Evaluations(&'a Evaluations<F, D>, D),
 }
 
