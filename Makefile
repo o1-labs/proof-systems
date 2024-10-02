@@ -119,4 +119,13 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report
+generate-doc:
+		@echo ""
+		@echo "Generating the documentation."
+		@echo ""
+		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
+		@echo ""
+		@echo "The documentation is available at: ./target/doc"
+		@echo ""
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc
