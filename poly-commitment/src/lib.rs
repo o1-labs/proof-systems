@@ -148,6 +148,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
 #[allow(type_alias_bounds)]
 /// Simply an alias to represent a polynomial with its commitment, possibly with
 /// a blinder.
+// TODO: add a string to name the polynomial
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
     PolyComm<G::ScalarField>,
