@@ -822,8 +822,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // just the powers of a single point as in the original IPA, but rather
         // a vector of linearly combined powers with `evalscale` as recombiner.
         //
-        // b_init_j = sum_i r^i elm_i^j
-        //          = zeta^j + evalscale * zeta^j omega^j
+        // b_init_j = Σ_i r^i elm_i^j
+        //          = ζ^j + evalscale * ζ^j ω^j
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
