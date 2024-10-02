@@ -33,7 +33,7 @@ use poly_commitment::{
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
@@ -326,7 +326,7 @@ fn create_test_constraint_system_ffadd(
     let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Arc::new(srs);
+    let srs = Arc::new(RwLock::new(srs));
 
     let (endo_q, _endo_r) = endos::<Pallas>();
     ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
@@ -1495,7 +1495,7 @@ fn test_ffadd_finalization() {
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
+        let srs = Arc::new(RwLock::new(srs));
 
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)

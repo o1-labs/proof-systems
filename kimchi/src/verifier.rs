@@ -795,18 +795,18 @@ where
                 verifier_index.public,
             ));
         }
-        let lgr_comm = verifier_index
-            .srs()
+        let srs_locked = verifier_index.srs().read().unwrap();
+        let lgr_comm = srs_locked
             .get_lagrange_basis(verifier_index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
         if public_input.is_empty() {
-            PolyComm::new(vec![verifier_index.srs().blinding_commitment(); chunk_size])
+            PolyComm::new(vec![srs_locked.blinding_commitment(); chunk_size])
         } else {
             let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
             let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
-            verifier_index
-                .srs()
+
+            srs_locked
                 .mask_custom(
                     public_comm.clone(),
                     &public_comm.map(|_| G::ScalarField::one()),
@@ -1199,7 +1199,9 @@ where
     // TODO: Account for the different SRS lengths
     let srs = proofs[0].verifier_index.srs();
     for &Context { verifier_index, .. } in proofs {
-        if verifier_index.srs().max_poly_size() != srs.max_poly_size() {
+        if verifier_index.srs().read().unwrap().max_poly_size()
+            != srs.read().unwrap().max_poly_size()
+        {
             return Err(VerifyError::DifferentSRS);
         }
     }
@@ -1220,7 +1222,12 @@ where
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
-    if OpeningProof::verify(srs, group_map, &mut batch, &mut thread_rng()) {
+    if OpeningProof::verify(
+        &srs.read().unwrap(),
+        group_map,
+        &mut batch,
+        &mut thread_rng(),
+    ) {
         Ok(())
     } else {
         Err(VerifyError::OpenProof)

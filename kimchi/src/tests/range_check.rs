@@ -28,7 +28,7 @@ use o1_utils::{
 use rand::{rngs::StdRng, SeedableRng};
 
 use std::array;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::{prover_index::ProverIndex, verifier::verify};
 use groupmap::GroupMap;
@@ -1085,7 +1085,7 @@ fn verify_64_bit_range_check() {
     let index = {
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
+        let srs = Arc::new(RwLock::new(srs));
 
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)

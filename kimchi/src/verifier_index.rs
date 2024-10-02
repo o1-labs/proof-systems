@@ -28,6 +28,7 @@ use std::{
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,
     sync::Arc,
+    sync::RwLock,
 };
 
 //~spec:startcode
@@ -66,7 +67,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// polynomial commitment keys
     #[serde(skip)]
     #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
-    pub srs: Arc<OpeningProof::SRS>,
+    pub srs: Arc<RwLock<OpeningProof::SRS>>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -171,6 +172,8 @@ where
         let mask_fixed = |commitment: PolyComm<G>| {
             let blinders = commitment.map(|_| G::ScalarField::one());
             self.srs
+                .read()
+                .unwrap()
                 .mask_custom(commitment, &blinders)
                 .unwrap()
                 .commitment
@@ -185,22 +188,38 @@ where
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
                     lookup_info: cs.configuration.lookup_info,
-                    lookup_selectors: cs
-                        .lookup_selectors
-                        .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
+                    lookup_selectors: cs.lookup_selectors.as_ref().map(|e| {
+                        self.srs
+                            .read()
+                            .unwrap()
+                            .commit_evaluations_non_hiding(domain, e)
+                    }),
                     lookup_table: cs
                         .lookup_table8
                         .iter()
-                        .map(|e| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, e)))
+                        .map(|e| {
+                            mask_fixed(
+                                self.srs
+                                    .read()
+                                    .unwrap()
+                                    .commit_evaluations_non_hiding(domain, e),
+                            )
+                        })
                         .collect(),
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
-                        mask_fixed(self.srs.commit_evaluations_non_hiding(domain, table_ids8))
+                        mask_fixed(
+                            self.srs
+                                .read()
+                                .unwrap()
+                                .commit_evaluations_non_hiding(domain, table_ids8),
+                        )
                     }),
-                    runtime_tables_selector: cs
-                        .runtime_selector
-                        .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
+                    runtime_tables_selector: cs.runtime_selector.as_ref().map(|e| {
+                        self.srs
+                            .read()
+                            .unwrap()
+                            .commit_evaluations_non_hiding(domain, e)
+                    }),
                 })
         };
 
@@ -215,80 +234,104 @@ where
             srs: Arc::clone(&self.srs),
 
             sigma_comm: array::from_fn(|i| {
-                self.srs.commit_evaluations_non_hiding(
+                self.srs.read().unwrap().commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.permutation_coefficients8[i],
                 )
             }),
             coefficients_comm: array::from_fn(|i| {
-                self.srs.commit_evaluations_non_hiding(
+                self.srs.read().unwrap().commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.coefficients8[i],
                 )
             }),
             generic_comm: mask_fixed(
-                self.srs.commit_evaluations_non_hiding(
+                self.srs.read().unwrap().commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.generic_selector4,
                 ),
             ),
 
-            psm_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
+            psm_comm: mask_fixed(self.srs.read().unwrap().commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.poseidon_selector8,
             )),
 
-            complete_add_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
+            complete_add_comm: mask_fixed(self.srs.read().unwrap().commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.complete_add_selector4,
             )),
             mul_comm: mask_fixed(
                 self.srs
+                    .read()
+                    .unwrap()
                     .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
             ),
             emul_comm: mask_fixed(
                 self.srs
+                    .read()
+                    .unwrap()
                     .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
             ),
 
-            endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
-                domain,
-                &self.column_evaluations.endomul_scalar_selector8,
-            )),
+            endomul_scalar_comm: mask_fixed(
+                self.srs.read().unwrap().commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.endomul_scalar_selector8,
+                ),
+            ),
 
-            range_check0_comm: self
-                .column_evaluations
-                .range_check0_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            range_check0_comm: self.column_evaluations.range_check0_selector8.as_ref().map(
+                |eval8| {
+                    self.srs
+                        .read()
+                        .unwrap()
+                        .commit_evaluations_non_hiding(domain, eval8)
+                },
+            ),
 
-            range_check1_comm: self
-                .column_evaluations
-                .range_check1_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            range_check1_comm: self.column_evaluations.range_check1_selector8.as_ref().map(
+                |eval8| {
+                    self.srs
+                        .read()
+                        .unwrap()
+                        .commit_evaluations_non_hiding(domain, eval8)
+                },
+            ),
 
             foreign_field_add_comm: self
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| {
+                    self.srs
+                        .read()
+                        .unwrap()
+                        .commit_evaluations_non_hiding(domain, eval8)
+                }),
 
             foreign_field_mul_comm: self
                 .column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            xor_comm: self
-                .column_evaluations
-                .xor_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            rot_comm: self
-                .column_evaluations
-                .rot_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| {
+                    self.srs
+                        .read()
+                        .unwrap()
+                        .commit_evaluations_non_hiding(domain, eval8)
+                }),
+            xor_comm: self.column_evaluations.xor_selector8.as_ref().map(|eval8| {
+                self.srs
+                    .read()
+                    .unwrap()
+                    .commit_evaluations_non_hiding(domain, eval8)
+            }),
+            rot_comm: self.column_evaluations.rot_selector8.as_ref().map(|eval8| {
+                self.srs
+                    .read()
+                    .unwrap()
+                    .commit_evaluations_non_hiding(domain, eval8)
+            }),
 
             shift: self.cs.shift,
             permutation_vanishing_polynomial_m: {
@@ -316,7 +359,7 @@ where
 
 impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> {
     /// Gets srs from [`VerifierIndex`] lazily
-    pub fn srs(&self) -> &Arc<OpeningProof::SRS>
+    pub fn srs(&self) -> &Arc<RwLock<OpeningProof::SRS>>
     where
         G::BaseField: PrimeField,
     {
@@ -340,7 +383,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     pub fn from_file(
-        srs: Arc<OpeningProof::SRS>,
+        srs: Arc<RwLock<OpeningProof::SRS>>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these

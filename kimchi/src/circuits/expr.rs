@@ -2966,7 +2966,7 @@ pub mod test {
     };
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
-    use std::sync::Arc;
+    use std::sync::{Arc, RwLock};
 
     #[test]
     #[should_panic]
@@ -3010,7 +3010,7 @@ pub mod test {
             let constraint_system = ConstraintSystem::fp_for_testing(gates);
             let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
             srs.add_lagrange_basis(constraint_system.domain.d1);
-            let srs = Arc::new(srs);
+            let srs = Arc::new(RwLock::new(srs));
 
             let (endo_q, _endo_r) = endos::<Pallas>();
             ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)

@@ -38,12 +38,12 @@ fn test_recursion() {
     let index = test_runner.prover_index();
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let prev_challenges = {
-        let k = math::ceil_log2(index.srs.g.len());
+        let k = math::ceil_log2(index.srs.read().unwrap().g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, 1)
+            index.srs.read().unwrap().commit_non_hiding(&b, 1)
         };
         RecursionChallenge::new(chals, comm)
     };

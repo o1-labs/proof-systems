@@ -15,7 +15,7 @@ use mina_poseidon::FqSponge;
 use poly_commitment::{OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::sync::Arc;
+use std::{sync::Arc, sync::RwLock};
 
 /// The index used by the prover
 #[serde_as]
@@ -37,7 +37,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// polynomial commitment keys
     #[serde(skip)]
     #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
-    pub srs: Arc<OpeningProof::SRS>,
+    pub srs: Arc<RwLock<OpeningProof::SRS>>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -63,9 +63,9 @@ where
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
-        srs: Arc<OpeningProof::SRS>,
+        srs: Arc<RwLock<OpeningProof::SRS>>,
     ) -> Self {
-        let max_poly_size = srs.max_poly_size();
+        let max_poly_size = srs.read().unwrap().max_poly_size();
         cs.endo = endo_q;
 
         // pre-compute the linearization
@@ -176,7 +176,7 @@ pub mod testing {
 
         let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
         let srs = get_srs(cs.domain.d1, srs_size);
-        let srs = Arc::new(srs);
+        let srs = Arc::new(RwLock::new(srs));
 
         let &endo_q = G::other_curve_endo();
         ProverIndex::create(cs, endo_q, srs)

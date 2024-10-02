@@ -260,10 +260,16 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks);
+        let public_comm = index
+            .srs
+            .read()
+            .unwrap()
+            .commit_non_hiding(&public_poly, num_chunks);
         let public_comm = {
             index
                 .srs
+                .read()
+                .unwrap()
                 .mask_custom(
                     public_comm.clone(),
                     &public_comm.map(|_| G::ScalarField::one()),
@@ -295,17 +301,23 @@ where
 
             let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
                 // no blinders: blind the witness
-                None => index
-                    .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
+                None => index.srs.read().unwrap().commit_evaluations(
+                    index.cs.domain.d1,
+                    &witness_eval,
+                    rng,
+                ),
                 // blinders: blind the witness with them
                 Some(blinder) => {
                     // TODO: make this a function rather no? mask_with_custom()
                     let witness_com = index
                         .srs
+                        .read()
+                        .unwrap()
                         .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
                     index
                         .srs
+                        .read()
+                        .unwrap()
                         .mask_custom(witness_com, blinder)
                         .map_err(ProverError::WrongBlinders)?
                 }
@@ -393,6 +405,8 @@ where
                 let runtime_table_comm =
                     index
                         .srs
+                        .read()
+                        .unwrap()
                         .commit(&runtime_table_contribution, num_chunks, rng);
 
                 // absorb the commitment
@@ -531,7 +545,13 @@ where
             //~~ * Commit each of the sorted polynomials.
             let sorted_comms: Vec<_> = sorted
                 .iter()
-                .map(|v| index.srs.commit_evaluations(index.cs.domain.d1, v, rng))
+                .map(|v| {
+                    index
+                        .srs
+                        .read()
+                        .unwrap()
+                        .commit_evaluations(index.cs.domain.d1, v, rng)
+                })
                 .collect();
 
             //~~ * Absorb each commitments to the sorted polynomials.
@@ -584,9 +604,12 @@ where
             )?;
 
             //~~ * Commit to the aggregation polynomial.
-            let aggreg_comm = index
-                .srs
-                .commit_evaluations(index.cs.domain.d1, &aggreg, rng);
+            let aggreg_comm =
+                index
+                    .srs
+                    .read()
+                    .unwrap()
+                    .commit_evaluations(index.cs.domain.d1, &aggreg, rng);
 
             //~~ * Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
             absorb_commitment(&mut fq_sponge, &aggreg_comm.commitment);
@@ -607,7 +630,7 @@ where
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
+        let z_comm = index.srs.read().unwrap().commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -866,7 +889,13 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
-        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
+        let t_comm = {
+            index
+                .srs
+                .read()
+                .unwrap()
+                .commit(&quotient_poly, 7 * num_chunks, rng)
+        };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
@@ -1438,7 +1467,7 @@ where
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
         let proof = OpenProof::open(
-            &*index.srs,
+            &*index.srs.read().unwrap(),
             group_map,
             &polynomials,
             &[zeta, zeta_omega],

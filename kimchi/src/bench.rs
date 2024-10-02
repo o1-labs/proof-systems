@@ -34,7 +34,7 @@ pub struct BenchmarkCtx {
 
 impl BenchmarkCtx {
     pub fn srs_size(&self) -> usize {
-        math::ceil_log2(self.index.srs.max_degree())
+        math::ceil_log2(self.index.srs.read().unwrap().max_degree())
     }
 
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
