@@ -18,7 +18,7 @@ use poly_commitment::{
     ipa::{DensePolynomialOrEvaluations, SRS},
     PolyComm, SRS as _,
 };
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::Rng;
 use std::array;
 
 #[test]
@@ -266,38 +266,41 @@ fn test_opening_proof() {
             commitment2.blinders,
         ),
     ];
-    let elm = vec![Fp::rand(rng), Fp::rand(rng)];
-
+    // Generate a random number of evaluation point
+    let nb_elem: u32 = rng.gen_range(1..7);
+    let elm: Vec<Fp> = (0..nb_elem).map(|_| Fp::rand(&mut rng)).collect();
     let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
 
-    // evaluate the polynomials at these two points
-    let poly1_chunked_evals = vec![
-        poly1
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[0]),
-        poly1
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[1]),
-    ];
+    // evaluate the polynomials at the points
+    let poly1_chunked_evals: Vec<Vec<Fp>> = elm
+        .iter()
+        .map(|elmi| {
+            poly1
+                .to_chunked_polynomial(1, srs.g.len())
+                .evaluate_chunks(*elmi)
+        })
+        .collect();
 
     fn sum(c: &[Fp]) -> Fp {
         c.iter().fold(Fp::zero(), |a, &b| a + b)
     }
 
-    assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-    assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
+    for (i, chunks) in poly1_chunked_evals.iter().enumerate() {
+        assert_eq!(sum(chunks), poly1.evaluate(&elm[i]))
+    }
 
-    let poly2_chunked_evals = vec![
-        poly2
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[0]),
-        poly2
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[1]),
-    ];
+    let poly2_chunked_evals: Vec<Vec<Fp>> = elm
+        .iter()
+        .map(|elmi| {
+            poly2
+                .to_chunked_polynomial(1, srs.g.len())
+                .evaluate_chunks(*elmi)
+        })
+        .collect();
 
-    assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-    assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+    for (i, chunks) in poly2_chunked_evals.iter().enumerate() {
+        assert_eq!(sum(chunks), poly2.evaluate(&elm[i]))
+    }
 
     let evaluations = vec![
         Evaluation {
@@ -318,16 +321,18 @@ fn test_opening_proof() {
         combined_inner_product(&v, &u, &es)
     };
 
-    // verify the proof
-    let mut batch = vec![BatchEvaluationProof {
-        sponge,
-        evaluation_points: elm.clone(),
-        polyscale: v,
-        evalscale: u,
-        evaluations,
-        opening: &opening_proof,
-        combined_inner_product,
-    }];
+    {
+        // create the proof
+        let mut batch = vec![BatchEvaluationProof {
+            sponge,
+            evaluation_points: elm,
+            polyscale: v,
+            evalscale: u,
+            evaluations,
+            opening: &opening_proof,
+            combined_inner_product,
+        }];
 
-    assert!(srs.verify(&group_map, &mut batch, rng));
+        assert!(srs.verify(&group_map, &mut batch, rng));
+    }
 }
