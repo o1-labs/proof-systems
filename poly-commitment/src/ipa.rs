@@ -31,9 +31,13 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{cmp::min, collections::HashMap, iter::Iterator, ops::AddAssign};
 
-// A formal sum of the form
-// `s_0 * p_0 + ... s_n * p_n`
-// where each `s_i` is a scalar and each `p_i` is a polynomial.
+/// A formal sum of the form
+/// `s_0 * p_0 + ... s_n * p_n`
+/// where each `s_i` is a scalar and each `p_i` is a polynomial.
+/// The parameter `P` is expected to be the coefficients of the polynomial
+/// `p_i`, even though we could treat it as the evaluations.
+///
+/// This hypothesis is important if `to_dense_polynomial` is called.
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
