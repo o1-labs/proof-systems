@@ -1185,6 +1185,71 @@
 <a href="#1185" id="1185">1185</a>
 <a href="#1186" id="1186">1186</a>
 <a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the polynomial commitment scheme
 //! called the Inner Product Argument (IPA) as described in [Efficient
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
@@ -1218,15 +1283,22 @@
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::{cmp::min, collections::HashMap, iter::Iterator, ops::AddAssign};
 
-<span class="comment">// A formal sum of the form
-// `s_0 * p_0 + ... s_n * p_n`
-// where each `s_i` is a scalar and each `p_i` is a polynomial.
+<span class="doccomment">/// A formal sum of the form
+/// `s_0 * p_0 + ... s_n * p_n`
+/// where each `s_i` is a scalar and each `p_i` is a polynomial.
+/// The parameter `P` is expected to be the coefficients of the polynomial
+/// `p_i`, even though we could treat it as the evaluations.
+///
+/// This hypothesis is important if `to_dense_polynomial` is called.
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">struct </span>ScaledChunkedPolynomial&lt;F, P&gt;(Vec&lt;(F, P)&gt;);
 
-<span class="kw">pub enum </span>DensePolynomialOrEvaluations&lt;<span class="lifetime">&#39;a</span>, F: FftField, D: EvaluationDomain&lt;F&gt;&gt; {
-    DensePolynomial(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>DensePolynomial&lt;F&gt;),
-    Evaluations(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&gt;, D),
+<span class="doccomment">/// Represent a polynomial either with its coefficients or its evaluations
+</span><span class="kw">pub enum </span>DensePolynomialOrEvaluations&lt;<span class="lifetime">&#39;a</span>, F: FftField, D: EvaluationDomain&lt;F&gt;&gt; {
+    <span class="doccomment">/// Polynomial represented by its coefficients
+    </span>DensePolynomial(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>DensePolynomial&lt;F&gt;),
+    <span class="doccomment">/// Polynomial represented by its evaluations over a domain D
+    </span>Evaluations(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&gt;, D),
 }
 
 <span class="kw">impl</span>&lt;F, P&gt; ScaledChunkedPolynomial&lt;F, P&gt; {
@@ -1236,15 +1308,26 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; ScaledChunkedPolynomial&lt;F, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[F]&gt; {
-    <span class="kw">fn </span>to_dense_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DensePolynomial&lt;F&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res = DensePolynomial::&lt;F&gt;::zero();
+    <span class="doccomment">/// Compute the resulting scaled polynomial.
+    /// Example:
+    /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling
+    /// factors `2` and `3`, the result is the polynomial `11 + 16X`.
+    /// ```text
+    /// 2 * [1, 2] + 3 * [3, 4] = [2, 4] + [9, 12] = [11, 16]
+    /// ```
+    </span><span class="kw">fn </span>to_dense_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DensePolynomial&lt;F&gt; {
+        <span class="comment">// Note: using a reference to avoid reallocation of the result.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = DensePolynomial::&lt;F&gt;::zero();
 
         <span class="kw">let </span>scaled: Vec&lt;<span class="kw">_</span>&gt; = <span class="self">self
             </span>.<span class="number">0
             </span>.par_iter()
             .map(|(scale, segment)| {
                 <span class="kw">let </span>scale = <span class="kw-2">*</span>scale;
-                <span class="kw">let </span>v = segment.par_iter().map(|x| scale * <span class="kw-2">*</span>x).collect();
+                <span class="comment">// We simply scale each coefficients.
+                // It is simply because DensePolynomial doesn&#39;t have a method
+                // `scale`.
+                </span><span class="kw">let </span>v = segment.par_iter().map(|x| scale * <span class="kw-2">*</span>x).collect();
                 DensePolynomial::from_coefficients_vec(v)
             })
             .collect();
@@ -1257,22 +1340,40 @@
     }
 }
 
-<span class="doccomment">/// Combine the polynomials using `polyscale`, creating a single unified
-/// polynomial to open.
+<span class="doccomment">/// Combine the polynomials using a scalar (`polyscale`), creating a single
+/// unified polynomial to open. This function also accepts polynomials in
+/// evaluations form. In this case it applies an IFFT, and, if necessarry,
+/// applies chunking to it (ie. split it in multiple polynomials of
+/// degree less than the SRS size).
 /// Parameters:
-/// - plnms: vector of polynomial with optional degree bound and commitment randomness
-/// - polyscale: scaling factor for polynomials
+/// - plnms: vector of polynomials, either in evaluations or coefficients form.
+/// The order of the output follows the order of this structure.
+/// - polyscale: scalar to combine the polynomials, which will be scaled based
+/// on the number of polynomials to combine.
+///
+/// Example:
+/// Given the three polynomials `p1(X)`, and `p3(X)` in coefficients
+/// forms, p2(X) in evaluation form,
+/// and the scaling factor `s`, the result will be the polynomial:
+///
+/// ```text
+/// p1(X) + s * i_fft(chunks(p2))(X) + s^2 p3(X)
+/// ```
+///
+/// Additional complexity is added to handle chunks.
+</span><span class="comment">// TODO: move into utils? It is useful for multiple PCS
 </span><span class="kw">pub fn </span>combine_polys&lt;G: CommitmentCurve, D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
     plnms: PolynomialsToCombine&lt;G, D&gt;,
     polyscale: G::ScalarField,
     srs_length: usize,
 ) -&gt; (DensePolynomial&lt;G::ScalarField&gt;, G::ScalarField) {
-    <span class="kw">let </span><span class="kw-2">mut </span>plnm = ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>plnm_evals_part = {
+    <span class="comment">// Initialising the output for the combined coefficients forms
+    </span><span class="kw">let </span><span class="kw-2">mut </span>plnm_coefficients =
+        ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
+    <span class="comment">// Initialising the output for the combined evaluations forms
+    </span><span class="kw">let </span><span class="kw-2">mut </span>plnm_evals_part = {
         <span class="comment">// For now just check that all the evaluation polynomials are the same
         // degree so that we can do just a single FFT.
-        // Furthermore we check they have size less than the SRS size so we
-        // don&#39;t have to do chunking.
         // If/when we change this, we can add more complicated code to handle
         // different degrees.
         </span><span class="kw">let </span>degree = plnms
@@ -1293,10 +1394,18 @@
     <span class="kw">let </span><span class="kw-2">mut </span>omega = G::ScalarField::zero();
     <span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
 
-    <span class="comment">// iterating over polynomials in the batch
+    <span class="comment">// Iterating over polynomials in the batch.
+    // Note that `omegas` are given as `PolyComm&lt;G::ScalarField&gt;`. They are
+    // evaluations.
+    // We do modify two different structures depending on the form of the
+    // polynomial we are currently processing: `plnm` and `plnm_evals_part`.
+    // We do need to treat both forms separately.
     </span><span class="kw">for </span>(p_i, omegas) <span class="kw">in </span>plnms {
         <span class="kw">match </span>p_i {
-            DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) =&gt; {
+            <span class="comment">// Here we scale the polynomial in evaluations forms
+            // Note that based on the check above, sub_domain.size() always give
+            // the same value
+            </span>DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) =&gt; {
                 <span class="kw">let </span>stride = evals_i.evals.len() / sub_domain.size();
                 <span class="kw">let </span>evals = <span class="kw-2">&amp;</span>evals_i.evals;
                 plnm_evals_part
@@ -1311,13 +1420,14 @@
                 }
             }
 
-            DensePolynomialOrEvaluations::DensePolynomial(p_i) =&gt; {
+            <span class="comment">// Here we scale the polynomial in coefficient forms
+            </span>DensePolynomialOrEvaluations::DensePolynomial(p_i) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
                 </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.elems.len() {
                     <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
-                    plnm.add_poly(scale, segment);
+                    plnm_coefficients.add_poly(scale, segment);
 
                     omega += <span class="kw-2">&amp;</span>(omegas.elems[j] * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
@@ -1327,16 +1437,23 @@
         }
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>plnm = plnm.to_dense_polynomial();
+    <span class="comment">// Now, we will combine both evaluations and coefficients forms
+
+    // plnm will be our final combined polynomial. We first treat the
+    // polynomials in coefficients forms, which is simply scaling the
+    // coefficients and add them.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>plnm = plnm_coefficients.to_dense_polynomial();
+
     <span class="kw">if </span>!plnm_evals_part.is_empty() {
-        <span class="kw">let </span>n = plnm_evals_part.len();
+        <span class="comment">// n is the number of evaluations, which is a multiple of the
+        // domain size.
+        // We treat now each chunk.
+        </span><span class="kw">let </span>n = plnm_evals_part.len();
         <span class="kw">let </span>max_poly_size = srs_length;
-        <span class="kw">let </span>num_chunks = <span class="kw">if </span>n == <span class="number">0 </span>{
-            <span class="number">1
-        </span>} <span class="kw">else </span>{
-            n / max_poly_size + <span class="kw">if </span>n % max_poly_size == <span class="number">0 </span>{ <span class="number">0 </span>} <span class="kw">else </span>{ <span class="number">1 </span>}
-        };
-        plnm += <span class="kw-2">&amp;</span>Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
+        <span class="comment">// equiv to divceil, but unstable in rust &lt; 1.73.
+        </span><span class="kw">let </span>num_chunks = n / max_poly_size + <span class="kw">if </span>n % max_poly_size == <span class="number">0 </span>{ <span class="number">0 </span>} <span class="kw">else </span>{ <span class="number">1 </span>};
+        <span class="comment">// Interpolation on the whole domain, i.e. it can be d2, d4, etc.
+        </span>plnm += <span class="kw-2">&amp;</span>Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
             .linearize(polyscale);
@@ -1960,13 +2077,16 @@
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
-    <span class="doccomment">/// This function opens polynomial commitments in batch
-    /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    <span class="doccomment">/// This function opens polynomials in batch at several points
+    /// - plnms: batch of polynomials to open commitments for
     /// - elm: evaluation point vector to open the commitments at
-    /// - polyscale: polynomial scaling factor for opening commitments in batch
-    /// - evalscale: eval scaling factor for opening commitments in batch
-    /// - oracle_params: parameters for the random oracle argument
-    /// RETURN: commitment opening proof
+    /// - polyscale: used to combine polynomials for opening commitments in batch
+    /// (we will open the \sum_i polyscale^i * plnms.(i))
+    /// - evalscale: used to combine evaluations to open on only one point
+    /// - sponge: parameters for the random oracle argument
+    /// - rng: used for blinders for the zk property
+    /// A slight modification to the original protocol is done
+    /// when absorbing the first prover message.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
@@ -1993,6 +2113,9 @@
         <span class="kw">let </span>padded_length = <span class="number">1 </span>&lt;&lt; rounds;
 
         <span class="comment">// TODO: Trim this to the degree of the largest polynomial
+        // TODO: We do always suppose we have a power of 2 for the SRS in
+        // practice. Therefore, padding equals zero, and this code can be
+        // removed. Only a current test case uses a SRS with a non-power of 2.
         </span><span class="kw">let </span>padding = padded_length - <span class="self">self</span>.g.len();
         <span class="kw">let </span><span class="kw-2">mut </span>g = <span class="self">self</span>.g.clone();
         g.extend(<span class="macro">vec!</span>[G::zero(); padding]);
@@ -2003,8 +2126,8 @@
         // just the powers of a single point as in the original IPA, but rather
         // a vector of linearly combined powers with `evalscale` as recombiner.
         //
-        // b_init_j = sum_i r^i elm_i^j
-        //          = zeta^j + evalscale * zeta^j omega^j
+        // b_init[j] = Σ_i evalscale^i elm_i^j
+        //          = ζ^j + evalscale * ζ^j ω^j (in the specific case of opening)
         </span><span class="kw">let </span>b_init = {
             <span class="comment">// randomise/scale the eval powers
             </span><span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
@@ -2027,7 +2150,14 @@
             .map(|(a, b)| <span class="kw-2">*</span>a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
-        sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product)]);
+        <span class="comment">// Usually, the prover sends `combined_inner_product`` to the verifier
+        // So we should absorb `combined_inner_product``
+        // However it is more efficient in the recursion circuit
+        // to absorb a slightly modified version of it.
+        // As a reminder, in a recursive setting, the challenges are given as a public input
+        // and verified in the next iteration.
+        // See the `shift_scalar`` doc.
+        </span>sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product)]);
 
         <span class="kw">let </span>t = sponge.challenge_fq();
         <span class="kw">let </span>u: G = {
