@@ -56,7 +56,15 @@ impl<F, P> ScaledChunkedPolynomial<F, P> {
 }
 
 impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
+    /// Compute the resulting scaled polynomial.
+    /// Example:
+    /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling
+    /// factors `2` and `3`, the result is the polynomial `11 + 16X`.
+    /// ```text
+    /// 2 * [1, 2] + 3 * [3, 4] = [2, 4] + [9, 12] = [11, 16]
+    /// ```
     fn to_dense_polynomial(&self) -> DensePolynomial<F> {
+        // Note: using a reference to avoid reallocation of the result.
         let mut res = DensePolynomial::<F>::zero();
 
         let scaled: Vec<_> = self
@@ -64,6 +72,9 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
             .par_iter()
             .map(|(scale, segment)| {
                 let scale = *scale;
+                // We simply scale each coefficients.
+                // It is simply because DensePolynomial doesn't have a method
+                // `scale`.
                 let v = segment.par_iter().map(|x| scale * *x).collect();
                 DensePolynomial::from_coefficients_vec(v)
             })
