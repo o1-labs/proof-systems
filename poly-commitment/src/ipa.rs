@@ -825,15 +825,16 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function opens polynomial commitments in batch
-    /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    /// This function opens polynomials in batch at several points
+    /// - plnms: batch of polynomials to open commitments for
     /// - elm: evaluation point vector to open the commitments at
     /// - polyscale: used to combine polynomials for opening commitments in batch
-    /// (we will open the \sum_i polyscale^i * plnms.[i])
+    /// (we will open the \sum_i polyscale^i * plnms.(i))
     /// - evalscale: used to combine evaluations to open on only one point
     /// - sponge: parameters for the random oracle argument
     /// - rng: used for blinders for the zk property
-    /// RETURN: commitment opening proof
+    /// A slight modification to the original protocol is done
+    /// when absorbing the first prover message.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
@@ -901,6 +902,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // So we should absorb `combined_inner_product``
         // However it is more efficient in the recursion circuit
         // to absorb a slightly modified version of it.
+        // As a reminder, in a recursive seeting, the challenges are given as a public input
+        // and verified in the next iteration.
         // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
