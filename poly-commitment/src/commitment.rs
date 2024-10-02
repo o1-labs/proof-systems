@@ -23,7 +23,17 @@ use serde_with::{
 };
 use std::{iter::Iterator, marker::PhantomData};
 
-/// A polynomial commitment.
+/// Represent a polynomial commitment when the type is instantiated with a
+/// curve.
+///
+/// The structure also handles chunking, i.e. when we aim to handle polynomials
+/// whose degree is higher than the SRS size. For this reason, we do use a
+/// vector for the field `elems`.
+///
+/// Note that the parameter `C` is not constrained to be a curve, therefore in
+/// some places in the code, `C` can refer to a scalar field element. For
+/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of the
+/// polynomial bound by a specific commitment, at a particular evaluation point.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
@@ -160,7 +170,7 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 /// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
 /// ```
 ///
-/// otherwise. So, if we want to actually scale by `s`, we need to apply the
+/// otherwise. So, if we want to actually scale by `x`, we need to apply the
 /// inverse function of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case),
 /// before supplying the scalar to our in-circuit scalar-multiplication
 /// function. This computes that inverse function.
@@ -466,6 +476,7 @@ pub fn combined_inner_product<F: PrimeField>(
 }
 
 /// Contains the evaluation of a polynomial commitment at a set of points.
+#[derive(Clone)]
 pub struct Evaluation<G>
 where
     G: AffineRepr,
