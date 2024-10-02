@@ -88,11 +88,28 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-/// Combine the polynomials using `polyscale`, creating a single unified
-/// polynomial to open.
+/// Combine the polynomials using a scalar (`polyscale`), creating a single
+/// unified polynomial to open. This function also accepts polynomials in
+/// evaluations form. In this case it applies an IFFT, and, if necessarry,
+/// applies chunking to it (ie. split it in multiple polynomials of
+/// degree less than the SRS size).
 /// Parameters:
-/// - plnms: vector of polynomial with optional degree bound and commitment randomness
-/// - polyscale: scaling factor for polynomials
+/// - plnms: vector of polynomials, either in evaluations or coefficients form.
+/// The order of the output follows the order of this structure.
+/// - polyscale: scalar to combine the polynomials, which will be scaled based
+/// on the number of polynomials to combine.
+///
+/// Example:
+/// Given the three polynomials `p1(X)`, and `p3(X)` in coefficients
+/// forms, p2(X) in evaluation form,
+/// and the scaling factor `s`, the result will be the polynomial:
+///
+/// ```text
+/// p1(X) + s * i_fft(chunks(p2))(X) + s^2 p3(X)
+/// ```
+///
+/// Additional complexity is added to handle chunks.
+// TODO: move into utils? It is useful for multiple PCS
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     plnms: PolynomialsToCombine<G, D>,
     polyscale: G::ScalarField,
