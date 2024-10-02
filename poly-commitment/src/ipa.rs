@@ -809,6 +809,9 @@ impl<G: CommitmentCurve> SRS<G> {
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
+        // TODO: We do always suppose we have a power of 2 for the SRS in
+        // practice. Therefore, padding equals zero, and this code can be
+        // removed. Only a current test case uses a SRS with a non-power of 2.
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
