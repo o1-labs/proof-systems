@@ -1,10 +1,17 @@
 // Here live the unit tests for the MIPS instructions
 use crate::{
-    interpreters::mips::{interpreter::debugging::InstructionParts, tests_helpers::*},
+    interpreters::mips::{
+        column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+        interpreter::debugging::InstructionParts,
+        tests_helpers::*,
+    },
     preimage_oracle::PreImageOracleT,
 };
 use kimchi::o1_utils;
 use rand::Rng;
+use strum::IntoEnumIterator;
+
+use super::Instruction;
 
 pub(crate) fn sign_extend(x: u32, bitlength: u32) -> u32 {
     let high_bit = (x >> (bitlength - 1)) & 1;
@@ -46,6 +53,17 @@ fn test_on_disk_preimage_can_read_file() {
     assert_eq!(bytes.len(), 358);
 }
 
+#[test]
+fn test_all_instructions_have_a_usize_representation_smaller_than_the_number_of_selectors() {
+    Instruction::iter().for_each(|i| {
+        assert!(
+            usize::from(i) - N_MIPS_REL_COLS < N_MIPS_SEL_COLS,
+            "Instruction {:?} has a usize representation larger than the number of selectors ({})",
+            i,
+            usize::from(i) - (N_MIPS_REL_COLS + 1)
+        );
+    });
+}
 mod rtype {
 
     use super::*;

@@ -143,8 +143,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     type Variable = u64;
 
-    fn variable(&self, column: Self::Position) -> Self::Variable {
-        u64::try_from(usize::from(column)).unwrap()
+    fn variable(&self, _column: Self::Position) -> Self::Variable {
+        todo!()
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
@@ -154,9 +154,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         // represent the underlying values.
     }
 
-    fn activate_selector(&mut self, selector_idx: usize) {
-        assert!(selector_idx < N_MIPS_SEL_COLS);
-        self.selector = selector_idx;
+    fn activate_selector(&mut self, instruction: Instruction) {
+        self.selector = instruction.into();
     }
 
     fn check_is_zero(assert_equals_zero: &Self::Variable) {
@@ -829,6 +828,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
         self.syscall_env.last_hint = Some(remaining);
     }
+
+    fn reset(&mut self) {
+        self.scratch_state_idx = 0;
+        self.scratch_state = fresh_scratch_state();
+        self.selector = N_MIPS_SEL_COLS;
+    }
 }
 
 impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
@@ -1166,8 +1171,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             );
             return opcode;
         }
-
-        self.activate_selector(opcode.to_selector_column_idx());
 
         interpreter::interpret_instruction(self, opcode);
 
