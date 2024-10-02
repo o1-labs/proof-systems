@@ -828,9 +828,11 @@ impl<G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
     /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
     /// - elm: evaluation point vector to open the commitments at
-    /// - polyscale: polynomial scaling factor for opening commitments in batch
-    /// - evalscale: eval scaling factor for opening commitments in batch
-    /// - oracle_params: parameters for the random oracle argument
+    /// - polyscale: used to combine polynomials for opening commitments in batch
+    /// (we will open the \sum_i polyscale^i * plnms.[i])
+    /// - evalscale: used to combine evaluations to open on only one point
+    /// - sponge: parameters for the random oracle argument
+    /// - rng: used for blinders for the zk property
     /// RETURN: commitment opening proof
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
@@ -871,8 +873,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // just the powers of a single point as in the original IPA, but rather
         // a vector of linearly combined powers with `evalscale` as recombiner.
         //
-        // b_init_j = Σ_i r^i elm_i^j
-        //          = ζ^j + evalscale * ζ^j ω^j
+        // b_init[j] = Σ_i evalscale^i elm_i^j
+        //          = ζ^j + evalscale * ζ^j ω^j (in the specific case of opening)
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
@@ -895,6 +897,11 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|(a, b)| *a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
+        // Usually, the prover sends `combined_inner_product`` to the verifier
+        // So we should absorb `combined_inner_product``
+        // However it is more efficient in the recursion circuit
+        // to absorb a slightly modified version of it.
+        // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
