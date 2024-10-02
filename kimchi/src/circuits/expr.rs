@@ -3039,6 +3039,17 @@ impl<F> IsAlpha for BerkeleyConstantTerm<F> {
     }
 }
 
+impl<F, ChallengeTerm: IsAlpha, CstTerm> IsAlpha
+    for &Operations<ConstantExprInner<F, ChallengeTerm, CstTerm>>
+{
+    fn is_alpha(self: Self) -> bool {
+        match self {
+            Operations::Atom(ConstantExprInner::Challenge(x)) => x.is_alpha(),
+            _ => false,
+        }
+    }
+}
+
 impl<'a, Term> FormattedOutput for Term
 where
     Term: Display + IsAlpha,
@@ -3242,7 +3253,7 @@ impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm, CstTerm>
 where
     F: PrimeField,
     ChallengeTerm: AlphaChallengeTerm<'a, ConstantExprInner<F, CstTerm, ChallengeTerm>>,
-    CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>> + IsAlpha + Display,
+    CstTerm: ConstantTerm<F, ConstantExprInner<F, CstTerm, ChallengeTerm>> + Display,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
