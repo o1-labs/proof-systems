@@ -23,7 +23,17 @@ use serde_with::{
 };
 use std::{iter::Iterator, marker::PhantomData};
 
-/// A polynomial commitment.
+/// Represent a polynomial commitment when the type is instantiated with a
+/// curve.
+///
+/// The structure also handles chunking, i.e. when we aim to handle polynomials
+/// whose degree is higher than the SRS size. For this reason, we do use a
+/// vector for the field `elems`.
+///
+/// Note that the parameter `C` is not constrained to be a curve, therefore in
+/// some places in the code, `C` can refer to a scalar field element. For
+/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of the
+/// polynomial bound by a specific commitment, at a particular evaluation point.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
