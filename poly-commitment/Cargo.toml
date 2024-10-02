@@ -46,3 +46,7 @@ ocaml_types = ["ocaml", "ocaml-gen"]
 [[bench]]
 name = "poly_comm"
 harness = false
+
+[[bench]]
+name = "ipa"
+harness = false
