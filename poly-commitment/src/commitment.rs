@@ -817,7 +817,6 @@ mod tests {
     use ark_poly::{DenseUVPolynomial, Polynomial, Radix2EvaluationDomain};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
-    use rand::{rngs::StdRng, SeedableRng};
     use std::array;
 
     #[test]
@@ -922,7 +921,7 @@ mod tests {
 
         // create an SRS
         let srs = SRS::<VestaG>::create(20);
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
         // commit the two polynomials
         let commitment1 = srs.commit(&poly1, 1, rng);

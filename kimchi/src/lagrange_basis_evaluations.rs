@@ -153,13 +153,12 @@ mod tests {
     use ark_ff::{One, UniformRand, Zero};
     use ark_poly::{Polynomial, Radix2EvaluationDomain};
     use mina_curves::pasta::Fp;
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_lagrange_evaluations() {
         let n = 1 << 4;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let x = Fp::rand(rng);
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
@@ -184,7 +183,7 @@ mod tests {
     fn test_new_with_chunked_segments() {
         let n = 1 << 4;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let x = Fp::rand(rng);
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
         let evaluator_chunked =
@@ -205,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_evaluation() {
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let n = 1 << 10;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
 
@@ -228,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_evaluation_boolean() {
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let n = 1 << 1;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
 

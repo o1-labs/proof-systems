@@ -9,7 +9,6 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::{rngs::StdRng, SeedableRng};
 use std::{array, ops::Mul};
 
 use super::framework::TestFramework;
@@ -21,6 +20,8 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 // Tests add and double gates
 #[test]
 fn ec_test() {
+    let rng = &mut o1_utils::tests::make_test_rng(None);
+
     let num_doubles = 100;
     let num_additions = 100;
     let num_infs = 100;
@@ -36,8 +37,6 @@ fn ec_test() {
     }
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
-
-    let rng = &mut StdRng::from_seed([0; 32]);
 
     let ps: Vec<Other> = {
         let p = Other::generator()

@@ -257,7 +257,7 @@ where
     <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // setup
-    let mut rng = rand::thread_rng();
+    let mut rng = o1_utils::tests::make_test_rng(None);
     test_randomised(&mut rng)
 }
 

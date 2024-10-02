@@ -25,7 +25,6 @@ use o1_utils::{
     },
     FieldHelpers,
 };
-use rand::{rngs::StdRng, SeedableRng};
 
 use std::{array, sync::Arc};
 
@@ -47,11 +46,6 @@ type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
-
-const RNG_SEED: [u8; 32] = [
-    22, 4, 34, 75, 29, 255, 0, 126, 237, 19, 86, 160, 1, 90, 131, 221, 186, 168, 40, 59, 0, 4, 9,
-    0, 33, 210, 215, 172, 130, 24, 164, 12,
-];
 
 fn create_test_prover_index(
     public_size: usize,
@@ -1143,7 +1137,7 @@ fn verify_64_bit_range_check() {
 
 #[test]
 fn compact_multi_range_check() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Create prover index
     let index = create_test_prover_index(0, true);
@@ -1230,7 +1224,7 @@ fn verify_range_check_valid_proof1() {
 
 #[test]
 fn verify_compact_multi_range_check_proof() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let limbs: [PallasField; 3] =
         array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();

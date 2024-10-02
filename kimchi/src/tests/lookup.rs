@@ -135,7 +135,7 @@ fn setup_successfull_runtime_table_test(
 ) {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let nb_lookups = lookups.len();
 
     // circuit
@@ -200,7 +200,7 @@ fn test_runtime_table() {
     let num = 5;
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let first_column = [8u32, 9, 8, 7, 1];
     let len = first_column.len();
@@ -456,7 +456,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
 fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let first_column = [0, 1, 2, 3, 4];
     let len = first_column.len();
@@ -561,7 +561,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let len = rng.gen_range(1usize..1000);
     let first_column: Vec<i32> = (0..len as i32).collect();
@@ -575,7 +575,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
     let data: Vec<Fp> = first_column
         .into_iter()
-        .map(|_| UniformRand::rand(&mut rng))
+        .map(|_| UniformRand::rand(rng))
         .collect();
     let runtime_table = RuntimeTable { id: table_id, data };
 
@@ -595,7 +595,7 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
     let max_len: u32 = 100u32;
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     // Non zero-length table
     let len = 1u32 + rng.gen_range(0u32..max_len);
@@ -645,7 +645,7 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let max_len: u32 = 100u32;
     let max_table_id: i32 = 100;
 
@@ -692,7 +692,7 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
 fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let power_of_2: u32 = rng.gen_range(3..16);
     // 4 = zk_rows + 1 for the closing constraint on the polynomial.
@@ -700,9 +700,7 @@ fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     // We want to create a table with an ID different than 0.
     let table_id: i32 = rng.gen_range(1..1_000);
     let idx: Vec<Fp> = (1..(len + 1) as i32).map(Into::into).collect();
-    let values: Vec<Fp> = (1..(len + 1))
-        .map(|_| UniformRand::rand(&mut rng))
-        .collect();
+    let values: Vec<Fp> = (1..(len + 1)).map(|_| UniformRand::rand(rng)).collect();
     let lt = LookupTable {
         id: table_id,
         data: vec![idx, values],

@@ -340,14 +340,12 @@ mod tests {
         Radix2EvaluationDomain as D,
     };
 
-    use rand::{rngs::StdRng, SeedableRng};
-
     #[test]
     fn test_pairing_proof() {
         let n = 64;
         let domain = D::<ScalarField>::new(n).unwrap();
 
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
         let x = ScalarField::rand(rng);
 
