@@ -18,7 +18,7 @@ use poly_commitment::{
     ipa::{DensePolynomialOrEvaluations, SRS},
     PolyComm, SRS as _,
 };
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
 
 #[test]
@@ -242,7 +242,7 @@ fn test_opening_proof() {
 
     // create an SRS
     let srs = SRS::<VestaG>::create(20);
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let mut rng = &mut o1_utils::tests::make_test_rng(None);
 
     // commit the two polynomials
     let commitment1 = srs.commit(&poly1, 1, rng);
