@@ -902,7 +902,7 @@ impl<G: CommitmentCurve> SRS<G> {
         // So we should absorb `combined_inner_product``
         // However it is more efficient in the recursion circuit
         // to absorb a slightly modified version of it.
-        // As a reminder, in a recursive seeting, the challenges are given as a public input
+        // As a reminder, in a recursive setting, the challenges are given as a public input
         // and verified in the next iteration.
         // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
