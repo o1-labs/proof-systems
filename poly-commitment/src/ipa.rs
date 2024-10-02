@@ -98,12 +98,13 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     polyscale: G::ScalarField,
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
-    let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
+    // Initialising the output for the combined coefficients forms
+    let mut plnm_coefficients =
+        ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
+    // Initialising the output for the combined evaluations forms
     let mut plnm_evals_part = {
         // For now just check that all the evaluation polynomials are the same
         // degree so that we can do just a single FFT.
-        // Furthermore we check they have size less than the SRS size so we
-        // don't have to do chunking.
         // If/when we change this, we can add more complicated code to handle
         // different degrees.
         let degree = plnms
@@ -124,9 +125,17 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut omega = G::ScalarField::zero();
     let mut scale = G::ScalarField::one();
 
-    // iterating over polynomials in the batch
+    // Iterating over polynomials in the batch.
+    // Note that `omegas` are given as `PolyComm<G::ScalarField>`. They are
+    // evaluations.
+    // We do modify two different structures depending on the form of the
+    // polynomial we are currently processing: `plnm` and `plnm_evals_part`.
+    // We do need to treat both forms separately.
     for (p_i, omegas) in plnms {
         match p_i {
+            // Here we scale the polynomial in evaluations forms
+            // Note that based on the check above, sub_domain.size() always give
+            // the same value
             DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
                 let stride = evals_i.evals.len() / sub_domain.size();
                 let evals = &evals_i.evals;
@@ -142,13 +151,14 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                 }
             }
 
+            // Here we scale the polynomial in coefficient forms
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 for j in 0..omegas.elems.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
-                    plnm.add_poly(scale, segment);
+                    plnm_coefficients.add_poly(scale, segment);
 
                     omega += &(omegas.elems[j] * scale);
                     scale *= &polyscale;
@@ -158,12 +168,22 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
         }
     }
 
-    let mut plnm = plnm.to_dense_polynomial();
+    // Now, we will combine both evaluations and coefficients forms
+
+    // plnm will be our final combined polynomial. We first treat the
+    // polynomials in coefficients forms, which is simply scaling the
+    // coefficients and add them.
+    let mut plnm = plnm_coefficients.to_dense_polynomial();
+
     if !plnm_evals_part.is_empty() {
+        // n is the number of evaluations points, which is a multiple of the
+        // domain size.
+        // We treat now each chunk.
         let n = plnm_evals_part.len();
         let max_poly_size = srs_length;
         // equiv to divceil, but unstable in rust < 1.73.
         let num_chunks = n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 };
+        // Interpolation on the whole domain, i.e. it can be d2, d4, etc.
         plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
