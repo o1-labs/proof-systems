@@ -16,7 +16,7 @@ use crate::{
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
@@ -26,6 +26,64 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::ops::Neg;
+
+/// Combine the (chunked) evaluations of multiple polynomials.
+/// This function returns the accumulation of the evaluations, scaled by
+/// `polyscale`.
+/// If no evaluation is given, the function returns an empty vector.
+/// It does also suppose that for each evaluation, the number of evaluations is
+/// the same. It is not constrained yet in the interface, but it should be. If
+/// one list has not the same size, it will be shrunk to the size of the first
+/// element of the list.
+/// For instance, if we have 3 polynomials P1, P2, P3 evaluated at the points
+/// ζ and ζω (like in vanilla PlonK), and for each polynomial, we have two
+/// chunks, i.e. we have
+/// ```text
+///         2 chunks of P1
+///        /---------------\
+/// E1 = [(P1_1(ζ), P1_2(ζ)), (P1_1(ζω), P1_2(ζω))]
+/// E2 = [(P2_1(ζ), P2_2(ζ)), (P2_1(ζω), P2_2(ζω))]
+/// E3 = [(P3_1(ζ), P3_2(ζ)), (P3_1(ζω), P3_2(ζω))]
+/// ```
+/// The output will be a list of 3 elements, equal to:
+/// ```text
+/// P1_1(ζ) + P1_2(ζ) * polyscale + P1_1(ζω) polyscale^2 + P1_2(ζω) * polyscale^3
+/// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
+/// ```
+pub fn combine_evaluations<G: CommitmentCurve>(
+    evaluations: &Vec<Evaluation<G>>,
+    polyscale: G::ScalarField,
+) -> Vec<G::ScalarField> {
+    let mut xi_i = G::ScalarField::one();
+    let mut acc = {
+        let num_evals = if !evaluations.is_empty() {
+            evaluations[0].evaluations.len()
+        } else {
+            0
+        };
+        vec![G::ScalarField::zero(); num_evals]
+    };
+
+    for Evaluation { evaluations, .. } in evaluations
+        .iter()
+        .filter(|x| !x.commitment.elems.is_empty())
+    {
+        // IMPROVEME: we could have a flat array that would contain all the
+        // evaluations and all the chunks. It would avoid fetching the memory
+        // and avoid indirection into RAM.
+        // We could have a single flat array.
+        // iterating over the polynomial segments
+        for chunk_idx in 0..evaluations[0].len() {
+            // supposes that all evaluations are of the same size
+            for eval_pt_idx in 0..evaluations.len() {
+                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * xi_i;
+            }
+            xi_i *= polyscale;
+        }
+    }
+
+    acc
+}
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
