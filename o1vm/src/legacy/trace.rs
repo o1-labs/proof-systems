@@ -17,7 +17,7 @@ use ark_ff::{One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use folding::{expressions::FoldingCompatibleExpr, Alphas, FoldingConfig};
 use itertools::Itertools;
-use kimchi::circuits::expr::BerkeleyChallengeTerm;
+use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
 use kimchi_msm::{columns::Column, witness::Witness};
 use mina_poseidon::sponge::FqSponge;
 use poly_commitment::{commitment::absorb_commitment, PolyComm, SRS as _};

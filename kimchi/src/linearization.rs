@@ -4,7 +4,8 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{self, BerkeleyChallengeTerm},
+        berkeley_columns::BerkeleyChallengeTerm,
+        expr::{self},
         lookup::{
             self,
             constraints::LookupConfiguration,

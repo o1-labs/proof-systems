@@ -5,11 +5,12 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
         constraints::ConstraintSystem,
         expr::{
             self,
             constraints::{boolean, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            Cache,
         },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
@@ -143,7 +144,7 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
             zk_rows: cs.zk_rows,
         };
-        let challenges = expr::BerkeleyChallenges {
+        let challenges = BerkeleyChallenges {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),

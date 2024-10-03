@@ -12,8 +12,9 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{BerkeleyChallenges, Constants, Expr, PolishToken},
+        expr::{Constants, Expr, PolishToken},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

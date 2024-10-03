@@ -3,11 +3,9 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
 use crate::interpreters::mips::witness::SCRATCH_SIZE;
 use kimchi::circuits::{
+    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
-    expr::{
-        BerkeleyChallengeTerm, BerkeleyChallenges, ColumnEnvironment as TColumnEnvironment,
-        Constants, Domain,
-    },
+    expr::{ColumnEnvironment as TColumnEnvironment, Constants, Domain},
 };
 
 use super::proof::WitnessColumns;

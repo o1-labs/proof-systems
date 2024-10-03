@@ -281,9 +281,8 @@ use ark_ff::One;
 use derivative::Derivative;
 use itertools::Itertools;
 use kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable,
-    },
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use num_traits::Zero;

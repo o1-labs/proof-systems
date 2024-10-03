@@ -82,9 +82,9 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::{Column, E},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges, Column, E},
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        expr::{self, constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
@@ -225,7 +225,7 @@ impl<F: PrimeField> CircuitGate<F> {
             mds: &G::sponge_params().mds,
             zk_rows: 3,
         };
-        let challenges = expr::BerkeleyChallenges {
+        let challenges = BerkeleyChallenges {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),

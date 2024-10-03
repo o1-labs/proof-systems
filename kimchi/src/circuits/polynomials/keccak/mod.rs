@@ -8,7 +8,7 @@ use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
 use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};
-use super::super::expr::BerkeleyChallengeTerm;
+use super::super::berkeley_columns::BerkeleyChallengeTerm;
 
 #[macro_export]
 macro_rules! grid {

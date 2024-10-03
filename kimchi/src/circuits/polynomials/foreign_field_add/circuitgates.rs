@@ -2,9 +2,10 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
+    berkeley_columns::BerkeleyChallengeTerm,
     expr::{
         constraints::{compact_limb, ExprOps},
-        BerkeleyChallengeTerm, Cache,
+        Cache,
     },
     gate::GateType,
     polynomials::foreign_field_common::LIMB_COUNT,

@@ -4,8 +4,8 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        berkeley_columns::Column,
-        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
+        berkeley_columns::{BerkeleyChallengeTerm, Column},
+        expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},

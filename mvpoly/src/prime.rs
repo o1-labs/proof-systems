@@ -149,10 +149,8 @@ use std::{
 
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner,
-        Operations, Variable,
-    },
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use num_integer::binomial;

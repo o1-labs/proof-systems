@@ -5,7 +5,7 @@ use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
-use kimchi::{self, circuits::expr::BerkeleyChallengeTerm};
+use kimchi::{self, circuits::berkeley_columns::BerkeleyChallengeTerm};
 use kimchi_msm::{columns::Column, witness::Witness as GenericWitness};
 use mina_poseidon::FqSponge;
 use poly_commitment::{

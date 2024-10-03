@@ -3,11 +3,9 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
 use crate::{logup, logup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
+    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
-    expr::{
-        BerkeleyChallengeTerm, BerkeleyChallenges, ColumnEnvironment as TColumnEnvironment,
-        Constants, Domain,
-    },
+    expr::{ColumnEnvironment as TColumnEnvironment, Constants, Domain},
 };
 
 /// The collection of polynomials (all in evaluation form) and constants

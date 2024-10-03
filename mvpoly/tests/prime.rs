@@ -1,6 +1,7 @@
 use ark_ff::{One, UniformRand, Zero};
 use kimchi::circuits::{
-    expr::{BerkeleyChallengeTerm, ConstantExpr, Expr, ExprInner, Variable},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 use mina_curves::pasta::Fp;

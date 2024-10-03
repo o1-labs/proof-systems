@@ -3,9 +3,9 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        berkeley_columns::Column,
+        berkeley_columns::{BerkeleyChallengeTerm, Column},
         constraints::{ColumnEvaluations, ConstraintSystem},
-        expr::{BerkeleyChallengeTerm, Linearization, PolishToken},
+        expr::{Linearization, PolishToken},
     },
     curve::KimchiCurve,
     linearization::expr_linearization,

@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use ark_ff::PrimeField;
-use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr},
+};
 use rand::RngCore;
 
 pub mod monomials;

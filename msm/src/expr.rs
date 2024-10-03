@@ -4,7 +4,8 @@
 
 use ark_ff::Field;
 use kimchi::circuits::{
-    expr::{BerkeleyChallengeTerm, ConstantExpr, Expr, ExprInner, Variable},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
@@ -19,8 +20,9 @@ use crate::columns::Column;
 /// polynomial `X3 - X1 - X2 = 0`.
 /// Using the expression framework, this constraint would be
 /// ```
-/// use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExprInner, ExprInner, Operations, Variable};
+/// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
+/// use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
 /// use kimchi_msm::columns::Column;
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;

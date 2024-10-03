@@ -1,9 +1,7 @@
 use crate::{
     circuits::{
-        berkeley_columns::Column,
-        expr::{
-            prologue::*, BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset,
-        },
+        berkeley_columns::{BerkeleyChallengeTerm, Column},
+        expr::{prologue::*, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
