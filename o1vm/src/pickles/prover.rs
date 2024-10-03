@@ -1,9 +1,13 @@
-use crate::E;
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
-    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{l0_1, BerkeleyChallenges, Constants},
+    },
+    curve::KimchiCurve,
+    groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -15,7 +19,11 @@ use poly_commitment::{
 use rand::{CryptoRng, RngCore};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use super::proof::{Proof, ProofInputs, WitnessColumns};
+use super::{
+    column_env::ColumnEnvironment,
+    proof::{Proof, ProofInputs, WitnessColumns},
+};
+use crate::E;
 
 /// Make a PlonKish proof for the given circuit. As inputs, we get the execution
 /// trace consisting of evaluations of polynomials over a certain domain
@@ -106,7 +114,7 @@ where
     // Based on the regression test
     // `test_regression_constraints_with_selectors`, the highest degree is 6.
     // Therefore, we do evaluate on d8.
-    let _evaluations_d8 = {
+    let evaluations_d8 = {
         let WitnessColumns {
             scratch,
             instruction_counter,
@@ -139,6 +147,35 @@ where
     // Round 2: Creating and committing to the quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
 
+    let (_, endo_r) = G::endos();
+
+    // Constraints combiner
+    let alpha: G::ScalarField = fq_sponge.challenge();
+
+    let zk_rows = 0;
+    let _column_env: ColumnEnvironment<'_, G::ScalarField> = {
+        // FIXME: use a proper Challenge structure
+        let challenges = BerkeleyChallenges {
+            alpha,
+            // No permutation argument for the moment
+            beta: G::ScalarField::zero(),
+            gamma: G::ScalarField::zero(),
+            // No lookup for the moment
+            joint_combiner: G::ScalarField::zero(),
+        };
+        ColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: *endo_r,
+                mds: &G::sponge_params().mds,
+                zk_rows,
+            },
+            challenges,
+            witness: &evaluations_d8,
+            l0_1: l0_1(domain.d1),
+            domain,
+        }
+    };
+
     // FIXME: add quotient polynomial
 
     ////////////////////////////////////////////////////////////////////////////
@@ -146,7 +183,6 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
-    let (_, endo_r) = G::endos();
 
     let zeta = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * omega;
