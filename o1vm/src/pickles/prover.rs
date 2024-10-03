@@ -24,6 +24,20 @@ use super::{
     proof::{Proof, ProofInputs, WitnessColumns},
 };
 use crate::E;
+use thiserror::Error;
+
+/// Errors that can arise when creating a proof
+#[derive(Error, Debug, Clone)]
+pub enum ProverError {
+    #[error("the proof could not be constructed: {0}")]
+    Generic(&'static str),
+
+    #[error("the provided (witness) constraints was not satisfied: {0}")]
+    ConstraintNotSatisfied(String),
+
+    #[error("the provided (witness) constraint has degree {0} > allowed {1}; expr: {2}")]
+    ConstraintDegreeTooHigh(u64, u64, String),
+}
 
 /// Make a PlonKish proof for the given circuit. As inputs, we get the execution
 /// trace consisting of evaluations of polynomials over a certain domain
@@ -47,9 +61,9 @@ pub fn prove<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
     inputs: ProofInputs<G>,
-    _constraints: &[E<G::ScalarField>],
+    constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Proof<G>
+) -> Result<Proof<G>, ProverError>
 where
     <G as AffineRepr>::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -153,7 +167,7 @@ where
     let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
-    let _column_env: ColumnEnvironment<'_, G::ScalarField> = {
+    let column_env: ColumnEnvironment<'_, G::ScalarField> = {
         // FIXME: use a proper Challenge structure
         let challenges = BerkeleyChallenges {
             alpha,
@@ -176,7 +190,72 @@ where
         }
     };
 
-    // FIXME: add quotient polynomial
+    let quotient_poly: DensePolynomial<G::ScalarField> = {
+        let mut last_constraint_failed = None;
+        // Only for debugging purposes
+        for expr in constraints.iter() {
+            let fail_q_division =
+                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
+            // Check this expression are witness satisfied
+            let (_, res) = expr
+                .evaluations(&column_env)
+                .interpolate_by_ref()
+                .divide_by_vanishing_poly(domain.d1)
+                .ok_or(fail_q_division.clone())?;
+            if !res.is_zero() {
+                eprintln!("Unsatisfied expression: {}", expr);
+                //return Err(fail_q_division);
+                last_constraint_failed = Some(expr.clone());
+            }
+        }
+        if let Some(expr) = last_constraint_failed {
+            return Err(ProverError::ConstraintNotSatisfied(format!(
+                "Unsatisfied expression: {:}",
+                expr
+            )));
+        }
+
+        // Compute ∑ α^i constraint_i as an expression
+        let combined_expr =
+            E::combine_constraints(0..(constraints.len() as u32), (constraints).to_vec());
+
+        // We want to compute the quotient polynomial, i.e.
+        // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
+        // The sum of the expressions is called the "constraint polynomial".
+        // We will use the evaluations points of the individual witness
+        // columns.
+        // Note that as the constraints might be of higher degree than N, the
+        // size of the set H we want the constraints to be verified on, we must
+        // have more than N evaluations points for each columns. This is handled
+        // in the ColumnEnvironment structure.
+        // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
+        // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
+        // 2N evaluation points to compute P as deg(P(X)) <= 2N.
+        let expr_evaluation: Evaluations<G::ScalarField, D<G::ScalarField>> =
+            combined_expr.evaluations(&column_env);
+
+        // And we interpolate using the evaluations
+        let expr_evaluation_interpolated = expr_evaluation.interpolate();
+
+        let fail_final_q_division = || {
+            panic!("Division by vanishing poly must not fail at this point, we checked it before")
+        };
+        // We compute the polynomial t(X) by dividing the constraints polynomial
+        // by the vanishing polynomial, i.e. Z_H(X).
+        let (quotient, res) = expr_evaluation_interpolated
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap_or_else(fail_final_q_division);
+        // As the constraints must be verified on H, the rest of the division
+        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+        // equal on H.
+        if !res.is_zero() {
+            fail_final_q_division();
+        }
+
+        quotient
+    };
+
+    let _t_comm = srs.commit_non_hiding(&quotient_poly, 7);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -272,10 +351,10 @@ where
         rng,
     );
 
-    Proof {
+    Ok(Proof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,
-    }
+    })
 }

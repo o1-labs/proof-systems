@@ -126,13 +126,15 @@ pub fn main() -> ExitCode {
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
-            let _proof: Proof<Vesta> =
+            let _proof: Result<Proof<Vesta>, prover::ProverError> =
                 prover::prove::<
                     Vesta,
                     DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                     DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                     _,
                 >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
+            // FIXME: check that the proof is correct. This is for testing purposes.
+            // Leaving like this for now.
             debug!(
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
