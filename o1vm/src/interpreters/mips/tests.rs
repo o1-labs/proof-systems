@@ -60,7 +60,7 @@ fn test_all_instructions_have_a_usize_representation_smaller_than_the_number_of_
             usize::from(i) - N_MIPS_REL_COLS < N_MIPS_SEL_COLS,
             "Instruction {:?} has a usize representation larger than the number of selectors ({})",
             i,
-            usize::from(i) - (N_MIPS_REL_COLS + 1)
+            usize::from(i) - N_MIPS_REL_COLS
         );
     });
 }
