@@ -225,7 +225,9 @@ where
         quotient
     };
 
-    let _t_comm = srs.commit_non_hiding(&quotient_poly, 7);
+    let t_comm = srs.commit_non_hiding(&quotient_poly, 7);
+
+    absorb_commitment(&mut fq_sponge, &t_comm);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
