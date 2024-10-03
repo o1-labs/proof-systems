@@ -61,6 +61,13 @@ in order to utilize applicaitons like `cast`.
 foundryup
 ```
 
+You will also need to install jq with your favorite packet manager.
+
+eg. on Ubuntu
+```shell
+sudo apt-get install jq
+```
+
 ## Running the Optimism demo
 
 Start by initializing the submodules:
