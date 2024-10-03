@@ -1,8 +1,11 @@
 use std::array;
 
 use ark_ec::{AffineRepr, Group};
-use ark_ff::{One, PrimeField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use ark_ff::{Field, PrimeField, Zero, One};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D,
+};
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
@@ -11,6 +14,7 @@ use kimchi::{
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
+    o1_utils::ExtendedDensePolynomial,
     plonk_sponge::FrSponge,
 };
 use log::debug;
@@ -326,6 +330,29 @@ where
         fr_sponge.absorb(zeta_omega_eval);
     }
 
+    // Compute ft(X) = \
+    //   (1 - ζ^n) \
+    //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
+    // where Σ_i t_i(X) X^{i n} = t(X), and t(X) is the quotient polynomial.
+    // At the end, we get the (partial) evaluation of the constraint polynomial
+    // in ζ.
+    let ft: DensePolynomial<G::ScalarField> = {
+        let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
+        // Compute Σ_i t_i(X) ζ^{i n}
+        // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
+        let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
+            .to_chunked_polynomial(7, domain.d1.size as usize)
+            .linearize(evaluation_point_to_domain_size);
+        // -Z_H = (1 - ζ^n)
+        let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
+        // Multiply the polynomial Σ_i t_i(X) ζ^{i n} by -Z_H(ζ)
+        // (the evaluation in ζ of the vanishing polynomial)
+        t_chunked.scale(minus_vanishing_poly_at_zeta)
+    };
+
+    let ft_eval_zeta_omega = ft.evaluate(&zeta_omega);
+    fr_sponge.absorb(&ft_eval_zeta_omega);
+
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -335,6 +362,7 @@ where
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
+    polynomials.push(ft);
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
