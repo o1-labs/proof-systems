@@ -185,12 +185,9 @@ pub trait InterpreterEnv {
 
     /// Add a constraint to the proof system, asserting that
     /// `assert_equals_zero` is 0.
-    /// This method should be called after the selector has been activated by
-    /// [self.activate_selector].
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
     /// Activate the selector for the given instruction.
-    /// This method must be called before any call to `add_constraint`.
     fn activate_selector(&mut self, selector: Instruction);
 
     /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
