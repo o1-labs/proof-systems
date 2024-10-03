@@ -34,7 +34,7 @@ use mina_poseidon::{
 };
 use poly_commitment::{
     commitment::CommitmentCurve,
-    evaluation_proof::{endos, OpeningProof, SRS},
+    ipa::{endos, OpeningProof, SRS},
     SRS as _,
 };
 

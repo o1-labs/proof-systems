@@ -12,7 +12,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use poly_commitment::evaluation_proof::endos;
+use poly_commitment::ipa::endos;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 

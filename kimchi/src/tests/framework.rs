@@ -27,7 +27,7 @@ use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
 use poly_commitment::{
-    commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
+    commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
 };
 use std::{fmt::Write, time::Instant};
 

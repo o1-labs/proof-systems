@@ -31,14 +31,21 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{cmp::min, collections::HashMap, iter::Iterator, ops::AddAssign};
 
-// A formal sum of the form
-// `s_0 * p_0 + ... s_n * p_n`
-// where each `s_i` is a scalar and each `p_i` is a polynomial.
+/// A formal sum of the form
+/// `s_0 * p_0 + ... s_n * p_n`
+/// where each `s_i` is a scalar and each `p_i` is a polynomial.
+/// The parameter `P` is expected to be the coefficients of the polynomial
+/// `p_i`, even though we could treat it as the evaluations.
+///
+/// This hypothesis is important if `to_dense_polynomial` is called.
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
+/// Represent a polynomial either with its coefficients or its evaluations
 pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
+    /// Polynomial represented by its coefficients
     DensePolynomial(&'a DensePolynomial<F>),
+    /// Polynomial represented by its evaluations over a domain D
     Evaluations(&'a Evaluations<F, D>, D),
 }
 
@@ -49,7 +56,15 @@ impl<F, P> ScaledChunkedPolynomial<F, P> {
 }
 
 impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
+    /// Compute the resulting scaled polynomial.
+    /// Example:
+    /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling
+    /// factors `2` and `3`, the result is the polynomial `11 + 16X`.
+    /// ```text
+    /// 2 * [1, 2] + 3 * [3, 4] = [2, 4] + [9, 12] = [11, 16]
+    /// ```
     fn to_dense_polynomial(&self) -> DensePolynomial<F> {
+        // Note: using a reference to avoid reallocation of the result.
         let mut res = DensePolynomial::<F>::zero();
 
         let scaled: Vec<_> = self
@@ -57,6 +72,9 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
             .par_iter()
             .map(|(scale, segment)| {
                 let scale = *scale;
+                // We simply scale each coefficients.
+                // It is simply because DensePolynomial doesn't have a method
+                // `scale`.
                 let v = segment.par_iter().map(|x| scale * *x).collect();
                 DensePolynomial::from_coefficients_vec(v)
             })
@@ -70,22 +88,40 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-/// Combine the polynomials using `polyscale`, creating a single unified
-/// polynomial to open.
+/// Combine the polynomials using a scalar (`polyscale`), creating a single
+/// unified polynomial to open. This function also accepts polynomials in
+/// evaluations form. In this case it applies an IFFT, and, if necessarry,
+/// applies chunking to it (ie. split it in multiple polynomials of
+/// degree less than the SRS size).
 /// Parameters:
-/// - plnms: vector of polynomial with optional degree bound and commitment randomness
-/// - polyscale: scaling factor for polynomials
+/// - plnms: vector of polynomials, either in evaluations or coefficients form.
+/// The order of the output follows the order of this structure.
+/// - polyscale: scalar to combine the polynomials, which will be scaled based
+/// on the number of polynomials to combine.
+///
+/// Example:
+/// Given the three polynomials `p1(X)`, and `p3(X)` in coefficients
+/// forms, p2(X) in evaluation form,
+/// and the scaling factor `s`, the result will be the polynomial:
+///
+/// ```text
+/// p1(X) + s * i_fft(chunks(p2))(X) + s^2 p3(X)
+/// ```
+///
+/// Additional complexity is added to handle chunks.
+// TODO: move into utils? It is useful for multiple PCS
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     plnms: PolynomialsToCombine<G, D>,
     polyscale: G::ScalarField,
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
-    let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
+    // Initialising the output for the combined coefficients forms
+    let mut plnm_coefficients =
+        ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
+    // Initialising the output for the combined evaluations forms
     let mut plnm_evals_part = {
         // For now just check that all the evaluation polynomials are the same
         // degree so that we can do just a single FFT.
-        // Furthermore we check they have size less than the SRS size so we
-        // don't have to do chunking.
         // If/when we change this, we can add more complicated code to handle
         // different degrees.
         let degree = plnms
@@ -106,9 +142,17 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut omega = G::ScalarField::zero();
     let mut scale = G::ScalarField::one();
 
-    // iterating over polynomials in the batch
+    // Iterating over polynomials in the batch.
+    // Note that `omegas` are given as `PolyComm<G::ScalarField>`. They are
+    // evaluations.
+    // We do modify two different structures depending on the form of the
+    // polynomial we are currently processing: `plnm` and `plnm_evals_part`.
+    // We do need to treat both forms separately.
     for (p_i, omegas) in plnms {
         match p_i {
+            // Here we scale the polynomial in evaluations forms
+            // Note that based on the check above, sub_domain.size() always give
+            // the same value
             DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
                 let stride = evals_i.evals.len() / sub_domain.size();
                 let evals = &evals_i.evals;
@@ -124,13 +168,14 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                 }
             }
 
+            // Here we scale the polynomial in coefficient forms
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 for j in 0..omegas.elems.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
-                    plnm.add_poly(scale, segment);
+                    plnm_coefficients.add_poly(scale, segment);
 
                     omega += &(omegas.elems[j] * scale);
                     scale *= &polyscale;
@@ -140,15 +185,22 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
         }
     }
 
-    let mut plnm = plnm.to_dense_polynomial();
+    // Now, we will combine both evaluations and coefficients forms
+
+    // plnm will be our final combined polynomial. We first treat the
+    // polynomials in coefficients forms, which is simply scaling the
+    // coefficients and add them.
+    let mut plnm = plnm_coefficients.to_dense_polynomial();
+
     if !plnm_evals_part.is_empty() {
+        // n is the number of evaluations, which is a multiple of the
+        // domain size.
+        // We treat now each chunk.
         let n = plnm_evals_part.len();
         let max_poly_size = srs_length;
-        let num_chunks = if n == 0 {
-            1
-        } else {
-            n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 }
-        };
+        // equiv to divceil, but unstable in rust < 1.73.
+        let num_chunks = n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 };
+        // Interpolation on the whole domain, i.e. it can be d2, d4, etc.
         plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
@@ -773,13 +825,16 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function opens polynomial commitments in batch
-    /// - plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    /// This function opens polynomials in batch at several points
+    /// - plnms: batch of polynomials to open commitments for
     /// - elm: evaluation point vector to open the commitments at
-    /// - polyscale: polynomial scaling factor for opening commitments in batch
-    /// - evalscale: eval scaling factor for opening commitments in batch
-    /// - oracle_params: parameters for the random oracle argument
-    /// RETURN: commitment opening proof
+    /// - polyscale: used to combine polynomials for opening commitments in batch
+    /// (we will open the \sum_i polyscale^i * plnms.(i))
+    /// - evalscale: used to combine evaluations to open on only one point
+    /// - sponge: parameters for the random oracle argument
+    /// - rng: used for blinders for the zk property
+    /// A slight modification to the original protocol is done
+    /// when absorbing the first prover message.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
@@ -806,6 +861,9 @@ impl<G: CommitmentCurve> SRS<G> {
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
+        // TODO: We do always suppose we have a power of 2 for the SRS in
+        // practice. Therefore, padding equals zero, and this code can be
+        // removed. Only a current test case uses a SRS with a non-power of 2.
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
@@ -816,8 +874,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // just the powers of a single point as in the original IPA, but rather
         // a vector of linearly combined powers with `evalscale` as recombiner.
         //
-        // b_init_j = sum_i r^i elm_i^j
-        //          = zeta^j + evalscale * zeta^j omega^j
+        // b_init[j] = Σ_i evalscale^i elm_i^j
+        //          = ζ^j + evalscale * ζ^j ω^j (in the specific case of opening)
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
@@ -840,6 +898,13 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|(a, b)| *a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
+        // Usually, the prover sends `combined_inner_product`` to the verifier
+        // So we should absorb `combined_inner_product``
+        // However it is more efficient in the recursion circuit
+        // to absorb a slightly modified version of it.
+        // As a reminder, in a recursive setting, the challenges are given as a public input
+        // and verified in the next iteration.
+        // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();

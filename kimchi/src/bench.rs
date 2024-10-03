@@ -7,7 +7,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS as _};
 
 use crate::{
     circuits::{

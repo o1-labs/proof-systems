@@ -9,7 +9,7 @@ use folding::{
 };
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::{evaluation_proof::SRS, SRS as _};
+use poly_commitment::{ipa::SRS, SRS as _};
 use rand::thread_rng;
 use std::{collections::BTreeMap, ops::Index};
 

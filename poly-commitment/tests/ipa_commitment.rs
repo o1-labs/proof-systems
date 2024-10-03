@@ -1,4 +1,3 @@
-use ark_ec::AffineRepr;
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -11,134 +10,12 @@ use mina_poseidon::{
 };
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
-    commitment::{
-        combine_evaluations, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
-        Evaluation,
-    },
-    evaluation_proof::{DensePolynomialOrEvaluations, SRS},
+    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    ipa::{DensePolynomialOrEvaluations, SRS},
     PolyComm, SRS as _,
 };
-use rand::{rngs::StdRng, SeedableRng};
+use rand::Rng;
 use std::array;
-
-#[test]
-fn test_combine_evaluations() {
-    let nb_of_chunks = 1;
-
-    // we ignore commitments
-    let dummy_commitments = PolyComm::<VestaG> {
-        elems: vec![VestaG::zero(); nb_of_chunks],
-    };
-
-    let polyscale = Fp::from(2);
-    // Using only one evaluation. Starting with eval_p1
-    {
-        let eval_p1 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point. Only one chunk.
-                vec![Fp::from(1)],
-                // Eval at second point. Only one chunk.
-                vec![Fp::from(2)],
-            ],
-        };
-
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1], polyscale);
-        // We have 2 evaluation points.
-        assert_eq!(output.len(), 2);
-        // polyscale is not used.
-        let exp_output = [Fp::from(1), Fp::from(2)];
-        output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
-            assert_eq!(o, e);
-        });
-    }
-
-    // And after that eval_p2
-    {
-        let eval_p2 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point. Only one chunk.
-                vec![Fp::from(3)],
-                // Eval at second point. Only one chunk.
-                vec![Fp::from(4)],
-            ],
-        };
-
-        let output = combine_evaluations::<VestaG>(&vec![eval_p2], polyscale);
-        // We have 2 evaluation points
-        assert_eq!(output.len(), 2);
-        // polyscale is not used.
-        let exp_output = [Fp::from(3), Fp::from(4)];
-        output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
-            assert_eq!(o, e);
-        });
-    }
-
-    // Now with two evaluations
-    {
-        let eval_p1 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point. Only one chunk.
-                vec![Fp::from(1)],
-                // Eval at second point. Only one chunk.
-                vec![Fp::from(2)],
-            ],
-        };
-
-        let eval_p2 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point. Only one chunk.
-                vec![Fp::from(3)],
-                // Eval at second point. Only one chunk.
-                vec![Fp::from(4)],
-            ],
-        };
-
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
-        // We have 2 evaluation points
-        assert_eq!(output.len(), 2);
-        let exp_output = [Fp::from(1 + 3 * 2), Fp::from(2 + 4 * 2)];
-        output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
-            assert_eq!(o, e);
-        });
-    }
-
-    // Now with two evaluations and two chunks
-    {
-        let eval_p1 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point.
-                vec![Fp::from(1), Fp::from(3)],
-                // Eval at second point.
-                vec![Fp::from(2), Fp::from(4)],
-            ],
-        };
-
-        let eval_p2 = Evaluation {
-            commitment: dummy_commitments.clone(),
-            evaluations: vec![
-                // Eval at first point.
-                vec![Fp::from(5), Fp::from(7)],
-                // Eval at second point.
-                vec![Fp::from(6), Fp::from(8)],
-            ],
-        };
-
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
-        // We have 2 evaluation points
-        assert_eq!(output.len(), 2);
-        let o1 = Fp::from(1 + 3 * 2 + 5 * 4 + 7 * 8);
-        let o2 = Fp::from(2 + 4 * 2 + 6 * 4 + 8 * 8);
-        let exp_output = [o1, o2];
-        output.iter().zip(exp_output.iter()).for_each(|(o, e)| {
-            assert_eq!(o, e);
-        });
-    }
-}
 
 #[test]
 fn test_lagrange_commitments() {
@@ -242,7 +119,7 @@ fn test_opening_proof() {
 
     // create an SRS
     let srs = SRS::<VestaG>::create(20);
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let mut rng = &mut o1_utils::tests::make_test_rng(None);
 
     // commit the two polynomials
     let commitment1 = srs.commit(&poly1, 1, rng);
@@ -266,38 +143,41 @@ fn test_opening_proof() {
             commitment2.blinders,
         ),
     ];
-    let elm = vec![Fp::rand(rng), Fp::rand(rng)];
-
+    // Generate a random number of evaluation point
+    let nb_elem: u32 = rng.gen_range(1..7);
+    let elm: Vec<Fp> = (0..nb_elem).map(|_| Fp::rand(&mut rng)).collect();
     let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
 
-    // evaluate the polynomials at these two points
-    let poly1_chunked_evals = vec![
-        poly1
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[0]),
-        poly1
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[1]),
-    ];
+    // evaluate the polynomials at the points
+    let poly1_chunked_evals: Vec<Vec<Fp>> = elm
+        .iter()
+        .map(|elmi| {
+            poly1
+                .to_chunked_polynomial(1, srs.g.len())
+                .evaluate_chunks(*elmi)
+        })
+        .collect();
 
     fn sum(c: &[Fp]) -> Fp {
         c.iter().fold(Fp::zero(), |a, &b| a + b)
     }
 
-    assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-    assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
+    for (i, chunks) in poly1_chunked_evals.iter().enumerate() {
+        assert_eq!(sum(chunks), poly1.evaluate(&elm[i]))
+    }
 
-    let poly2_chunked_evals = vec![
-        poly2
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[0]),
-        poly2
-            .to_chunked_polynomial(1, srs.g.len())
-            .evaluate_chunks(elm[1]),
-    ];
+    let poly2_chunked_evals: Vec<Vec<Fp>> = elm
+        .iter()
+        .map(|elmi| {
+            poly2
+                .to_chunked_polynomial(1, srs.g.len())
+                .evaluate_chunks(*elmi)
+        })
+        .collect();
 
-    assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-    assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+    for (i, chunks) in poly2_chunked_evals.iter().enumerate() {
+        assert_eq!(sum(chunks), poly2.evaluate(&elm[i]))
+    }
 
     let evaluations = vec![
         Evaluation {
@@ -318,16 +198,18 @@ fn test_opening_proof() {
         combined_inner_product(&v, &u, &es)
     };
 
-    // verify the proof
-    let mut batch = vec![BatchEvaluationProof {
-        sponge,
-        evaluation_points: elm.clone(),
-        polyscale: v,
-        evalscale: u,
-        evaluations,
-        opening: &opening_proof,
-        combined_inner_product,
-    }];
+    {
+        // create the proof
+        let mut batch = vec![BatchEvaluationProof {
+            sponge,
+            evaluation_points: elm,
+            polyscale: v,
+            evalscale: u,
+            evaluations,
+            opening: &opening_proof,
+            combined_inner_product,
+        }];
 
-    assert!(srs.verify(&group_map, &mut batch, rng));
+        assert!(srs.verify(&group_map, &mut batch, rng));
+    }
 }
