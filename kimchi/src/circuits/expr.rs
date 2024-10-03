@@ -1779,12 +1779,6 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
         }
     }
 }
-impl<F: FftField, Column: Copy> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
-    /// The expression `beta`.
-    pub fn beta() -> Self {
-        BerkeleyChallengeTerm::Beta.into()
-    }
-}
 
 impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     Expr<ConstantExpr<F, ChallengeTerm>, Column>
