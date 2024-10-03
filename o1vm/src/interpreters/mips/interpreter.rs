@@ -186,6 +186,9 @@ pub trait InterpreterEnv {
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
+    /// Activate the selector, adding a constraint that it's equal to `selector_idx`
+    fn activate_selector(&mut self, selector_idx: usize);
+
     /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
     fn check_is_zero(assert_equals_zero: &Self::Variable);
 
