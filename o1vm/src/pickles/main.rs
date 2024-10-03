@@ -73,18 +73,20 @@ pub fn main() -> ExitCode {
     // TODO: give this to the prover + verifier
     let _constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
-        let mut constraints = Instruction::iter().fold(vec![], |mut acc, instr| {
-            interpreter::interpret_instruction(&mut mips_con_env, instr);
-            let selector = mips_con_env.get_selector();
-            let constraints_with_selector: Vec<E<Fp>> = mips_con_env
-                .get_constraints()
-                .into_iter()
-                .map(|c| selector.clone() * c)
-                .collect();
-            acc.extend(constraints_with_selector);
-            mips_con_env.reset();
-            acc
-        });
+        let mut constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(vec![], |mut acc, instr| {
+                interpreter::interpret_instruction(&mut mips_con_env, instr);
+                let selector = mips_con_env.get_selector();
+                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                mips_con_env.reset();
+                acc
+            });
         constraints.extend(mips_con_env.get_selector_constraints());
         constraints
     };
