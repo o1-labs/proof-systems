@@ -40,6 +40,20 @@ gvm install go1.21
 gvm use go1.21 [--default]
 ```
 
+If you do not have a go version installed you will need earlier versions
+to install 1.21
+
+```shell
+gvm install go1.4 -B
+gvm use go1.4
+export GOROOT_BOOTSTRAP=$GOROOT
+gvm install go1.17.13
+gvm use go1.17.13
+export GOROOT_BOOTSTRAP=$GOROOT
+gvm install go1.21
+gvm use go1.21s
+```
+
 You also will need to install the [Foundry](https://getfoundry.sh/) toolkit 
 in order to utilize applicaitons like `cast`.
 
