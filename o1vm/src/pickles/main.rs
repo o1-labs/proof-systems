@@ -79,7 +79,7 @@ pub fn main() -> ExitCode {
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
     // TODO: give this to the prover + verifier
-    let _constraints = {
+    let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
             .flat_map(|instr_typ| instr_typ.into_iter())
@@ -126,12 +126,13 @@ pub fn main() -> ExitCode {
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
-            let _proof: Proof<Vesta> = prover::prove::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                _,
-            >(domain_fp, &srs, curr_proof_inputs, &mut rng);
+            let _proof: Proof<Vesta> =
+                prover::prove::<
+                    Vesta,
+                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                    _,
+                >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
             debug!(
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()

@@ -1,3 +1,4 @@
+use crate::E;
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
@@ -28,7 +29,6 @@ use super::proof::{Proof, ProofInputs, WitnessColumns};
 ///
 /// The final proof consists of the opening proof, the commitments and the
 /// evaluations at ζ and ζω.
-// FIXME: add constraints (come with the quotient polynomial)
 // TODO: we might need blinders when the evaluation of columns are zeroes.
 pub fn prove<
     G: KimchiCurve,
@@ -39,6 +39,7 @@ pub fn prove<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
     inputs: ProofInputs<G>,
+    _constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
 ) -> Proof<G>
 where
