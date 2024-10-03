@@ -22,13 +22,14 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::curve::KimchiCurve;
 
 <span class="kw">pub struct </span>WitnessColumns&lt;G&gt; {
-    <span class="comment">// FIXME: add selectors
-    </span><span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE],
+    <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
+    <span class="kw">pub </span>selector: G,
 }
 
 <span class="kw">pub struct </span>ProofInputs&lt;G: KimchiCurve&gt; {
@@ -42,6 +43,7 @@
                 scratch: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size)),
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
+                selector: Vec::with_capacity(domain_size),
             },
         }
     }

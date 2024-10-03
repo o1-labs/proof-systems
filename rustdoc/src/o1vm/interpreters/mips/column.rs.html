@@ -159,6 +159,24 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::{
     witness::SCRATCH_SIZE,
     Instruction::{<span class="self">self</span>, IType, JType, RType},
@@ -212,6 +230,7 @@
     <span class="comment">// Can be seen as the abstract indexed variable X_{i}
     </span>ScratchState(usize),
     InstructionCounter,
+    Selector(usize),
 }
 
 <span class="doccomment">/// The columns used by the MIPS circuit. The MIPS circuit is split into three
@@ -227,6 +246,7 @@
                 i
             }
             ColumnAlias::InstructionCounter =&gt; SCRATCH_SIZE,
+            ColumnAlias::Selector(s) =&gt; SCRATCH_SIZE + <span class="number">1 </span>+ s,
         }
     }
 }
@@ -292,8 +312,18 @@
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
     <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
-        <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
-        </span>Column::Relation(usize::from(<span class="self">self</span>))
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::ScratchState(ss) =&gt; {
+                <span class="macro">assert!</span>(ss &lt; SCRATCH_SIZE);
+                Column::Relation(ss)
+            }
+            <span class="self">Self</span>::InstructionCounter =&gt; Column::Relation(SCRATCH_SIZE),
+            <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
+            </span><span class="self">Self</span>::Selector(s) =&gt; {
+                <span class="macro">assert!</span>(s &lt; N_MIPS_SEL_COLS);
+                Column::DynamicSelector(s)
+            }
+        }
     }
 }
 
@@ -318,6 +348,12 @@
     <span class="kw">const </span>N_COL: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         Column::DynamicSelector(usize::from(<span class="self">self</span>) - N_MIPS_REL_COLS)
+    }
+}
+
+<span class="kw">impl </span>Instruction {
+    <span class="kw">pub fn </span>to_selector_column_idx(<span class="self">self</span>) -&gt; usize {
+        usize::from(<span class="self">self</span>) - N_MIPS_REL_COLS
     }
 }
 </code></pre></div></section></main></body></html>

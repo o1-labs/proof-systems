@@ -1315,8 +1315,8 @@
 <a href="#1315" id="1315">1315</a>
 <a href="#1316" id="1316">1316</a>
 <a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
+<span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
         PAGE_ADDRESS_SIZE, PAGE_SIZE,
@@ -1400,6 +1400,7 @@
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
+    <span class="kw">pub </span>selector: usize,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
     <span class="kw">pub </span>preimage: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     <span class="kw">pub </span>preimage_bytes_read: u64,
@@ -1459,24 +1460,9 @@
 
     <span class="kw">type </span>Variable = u64;
 
-    <span class="comment">// TODO: update variable() function once scratch_state is [u64;
-    // SCRATCH_SIZE]
-    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, _column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        <span class="macro">todo!</span>();
-        <span class="comment">/*
-        match column {
-            Column::ScratchState(idx) =&gt; self.scratch_state[idx],
-            Column::Selector(ins) =&gt; match ins {
-                Instruction::RType(r) =&gt; self.selectors[r as usize],
-                Instruction::IType(i) =&gt; self.selectors[i as usize + RTypeInstruction::COUNT],
-                Instruction::JType(j) =&gt; {
-                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
-                }
-            },
-            Column::InstructionCounter =&gt; self.instructions_counter,
-        }
-        */
-    </span>}
+    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        u64::try_from(usize::from(column)).unwrap()
+    }
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _assert_equals_zero: <span class="self">Self</span>::Variable) {
         <span class="comment">// No-op for witness
@@ -1484,6 +1470,11 @@
         // Some variables may have placeholders that do not faithfully
         // represent the underlying values.
     </span>}
+
+    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector_idx: usize) {
+        <span class="macro">assert!</span>(selector_idx &lt; N_MIPS_SEL_COLS);
+        <span class="self">self</span>.selector = selector_idx;
+    }
 
     <span class="kw">fn </span>check_is_zero(assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>assert_equals_zero, <span class="number">0</span>);
@@ -2162,6 +2153,8 @@
         <span class="kw">let </span>initial_instruction_pointer = state.pc;
         <span class="kw">let </span>next_instruction_pointer = state.next_pc;
 
+        <span class="kw">let </span>selector = N_MIPS_SEL_COLS;
+
         <span class="kw">let </span>syscall_env = SyscallEnv::create(<span class="kw-2">&amp;</span>state);
 
         <span class="kw">let </span><span class="kw-2">mut </span>initial_memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt; = state
@@ -2218,6 +2211,7 @@
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            selector,
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: <span class="number">0</span>,
@@ -2230,6 +2224,7 @@
     <span class="kw">pub fn </span>reset_scratch_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.scratch_state_idx = <span class="number">0</span>;
         <span class="self">self</span>.scratch_state = fresh_scratch_state();
+        <span class="self">self</span>.selector = N_MIPS_SEL_COLS;
     }
 
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: u64) {
@@ -2240,6 +2235,7 @@
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
             Column::InstructionCounter =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Cannot overwrite the column {:?}&quot;</span>, column),
+            Column::Selector(s) =&gt; <span class="self">self</span>.selector = s,
         }
     }
 
@@ -2487,6 +2483,8 @@
             );
             <span class="kw">return </span>opcode;
         }
+
+        <span class="self">self</span>.activate_selector(opcode.to_selector_column_idx());
 
         interpreter::interpret_instruction(<span class="self">self</span>, opcode);
 

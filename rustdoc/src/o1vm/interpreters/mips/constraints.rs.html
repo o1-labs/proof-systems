@@ -603,6 +603,22 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::{
         column::{
@@ -619,13 +635,15 @@
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations,
-        Variable,
+        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr,
+        ExprInner, Operations, Variable,
     },
     gate::CurrOrNext,
 };
 <span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer <span class="kw">as _</span>};
 <span class="kw">use </span>std::array;
+
+<span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
 
 <span class="doccomment">/// The environment keeping the constraints between the different polynomials
 </span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
@@ -675,6 +693,20 @@
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable) {
         <span class="self">self</span>.constraints.push(assert_equals_zero)
+    }
+
+    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector_idx: usize) {
+        <span class="kw">let </span><span class="kw-2">mut </span>acc: <span class="self">Self</span>::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(
+            ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::&lt;Fp&gt;::Literal(
+                Fp::one(),
+            )),
+        )));
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_MIPS_SEL_COLS {
+            <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
+            acc += var.clone();
+            <span class="self">self</span>.add_constraint(var.clone() * var.clone() - var);
+        }
+        <span class="self">self</span>.add_constraint(acc);
     }
 
     <span class="kw">fn </span>check_is_zero(_assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {

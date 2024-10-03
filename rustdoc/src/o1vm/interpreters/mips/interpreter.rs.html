@@ -2678,6 +2678,9 @@
 <a href="#2678" id="2678">2678</a>
 <a href="#2679" id="2679">2679</a>
 <a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
+<a href="#2683" id="2683">2683</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -2865,6 +2868,9 @@
 
     <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     </span><span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Activate the selector, adding a constraint that it&#39;s equal to `selector_idx`
+    </span><span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector_idx: usize);
 
     <span class="doccomment">/// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
     </span><span class="kw">fn </span>check_is_zero(assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
