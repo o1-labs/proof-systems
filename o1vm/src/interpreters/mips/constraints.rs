@@ -73,7 +73,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn activate_selector(&mut self, selector: Instruction) {
         // Sanity check: we only want to activate once per instruction
-        assert!(self.selector.is_none());
+        assert!(self.selector.is_none(), "A selector has been already activated. You might need to reset the environment if you want to start a new instruction.");
         let n = usize::from(selector) - N_MIPS_REL_COLS;
         self.selector = Some(self.variable(MIPSColumn::Selector(n)))
     }
