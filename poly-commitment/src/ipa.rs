@@ -613,7 +613,7 @@ where
             chunks.push(G::zero());
         }
 
-        PolyComm::<G> { chunks }
+        PolyComm::<G>::new(chunks)
     }
 
     /// Commits a polynomial, potentially splitting the result in multiple

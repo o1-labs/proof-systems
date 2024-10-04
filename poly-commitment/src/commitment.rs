@@ -162,7 +162,7 @@ where
                     chunks.push(value);
                 }
 
-                Ok(PolyComm { chunks })
+                Ok(PolyComm::new(chunks))
             }
         }
 
@@ -180,7 +180,7 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         B: CanonicalDeserialize + CanonicalSerialize,
     {
         let chunks = self.chunks.iter().map(|x| f(*x)).collect();
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 
     /// Returns the number of chunks.
@@ -208,7 +208,7 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
             .zip(other.chunks.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        Some(PolyComm { chunks })
+        Some(PolyComm::new(chunks))
     }
 
     /// Return only the first chunk
@@ -284,7 +284,7 @@ impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             chunks.push(pt);
         }
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 }
 
@@ -305,7 +305,7 @@ impl<'a, 'b, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &'
             };
             chunks.push(pt);
         }
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 }
 

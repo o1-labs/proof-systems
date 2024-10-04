@@ -1402,10 +1402,10 @@ where
                         .map(|blinding| *joint_combiner * blinding + base_blinding)
                         .collect();
 
-                    PolyComm { chunks }
+                    PolyComm::new(chunks)
                 } else {
                     let chunks = vec![base_blinding; num_chunks];
-                    PolyComm { chunks }
+                    PolyComm::new(chunks)
                 }
             };
 
