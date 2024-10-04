@@ -7,6 +7,9 @@ pub mod ipa;
 /// KZG polynomial commitment scheme
 pub mod kzg;
 
+// Exposing property based tests for the SRS trait
+pub mod pbt_srs;
+
 pub use commitment::PolyComm;
 
 use crate::{
@@ -76,8 +79,8 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// also contain the additional chunks.
     ///
     /// See the test
-    /// `test_regression_commit_non_hiding_expected_number_of_chunks` for an
-    /// example of the number of chunks returned.
+    /// [crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks]
+    /// for an example of the number of chunks returned.
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
