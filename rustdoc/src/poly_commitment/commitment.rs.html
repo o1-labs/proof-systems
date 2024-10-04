@@ -640,6 +640,61 @@
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
 <a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -652,10 +707,9 @@
     models::short_weierstrass::Affine <span class="kw">as </span>SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
     CurveGroup, VariableBaseMSM,
 };
-<span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField};
+<span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-<span class="kw">use </span>core::ops::{Add, Sub};
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::{field_helpers::product, ExtendedDensePolynomial <span class="kw">as _</span>};
@@ -663,7 +717,11 @@
 <span class="kw">use </span>serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
 };
-<span class="kw">use </span>std::{iter::Iterator, marker::PhantomData};
+<span class="kw">use </span>std::{
+    iter::Iterator,
+    marker::PhantomData,
+    ops::{Add, AddAssign, Sub},
+};
 
 <span class="doccomment">/// Represent a polynomial commitment when the type is instantiated with a
 /// curve.
@@ -682,6 +740,54 @@
 </span><span class="kw">pub struct </span>PolyComm&lt;C&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>chunks: Vec&lt;C&gt;,
+}
+
+<span class="kw">impl</span>&lt;C&gt; PolyComm&lt;C&gt;
+<span class="kw">where
+    </span>C: CommitmentCurve,
+{
+    <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n
+    </span><span class="kw">pub fn </span>chunk_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>, zeta_n: C::ScalarField) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>res = C::Group::zero();
+        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.chunks.iter().rev() {
+            res <span class="kw-2">*</span>= zeta_n;
+            res.add_assign(chunk);
+        }
+
+        PolyComm {
+            chunks: <span class="macro">vec!</span>[res.into_affine()],
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;F&gt; PolyComm&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
+{
+    <span class="doccomment">/// Multiplies each blinding chunk of f with powers of zeta^n
+    </span><span class="kw">pub fn </span>chunk_blinding(<span class="kw-2">&amp;</span><span class="self">self</span>, zeta_n: F) -&gt; F {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
+        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.chunks.iter().rev() {
+            res <span class="kw-2">*</span>= zeta_n;
+            res += chunk
+        }
+        res
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt; {
+    <span class="kw">type </span>Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>G;
+    <span class="kw">type </span>IntoIter = std::slice::Iter&lt;<span class="lifetime">&#39;a</span>, G&gt;;
+
+    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        <span class="self">self</span>.chunks.iter()
+    }
 }
 
 <span class="doccomment">/// A commitment to a polynomial with some blinding factors.
@@ -800,6 +906,13 @@
             .map(|(x, y)| (<span class="kw-2">*</span>x, <span class="kw-2">*</span>y))
             .collect();
         <span class="prelude-val">Some</span>(PolyComm { chunks })
+    }
+
+    <span class="doccomment">/// Return only the first chunk
+    /// Getting this single value is relatively common in the codebase, even
+    /// though we should not do this, and abstract the chunks in the structure.
+    </span><span class="kw">pub fn </span>get_first_chunk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; A {
+        <span class="self">self</span>.chunks[<span class="number">0</span>]
     }
 }
 
@@ -1192,10 +1305,7 @@
     <span class="comment">// will contain the power of polyscale
     </span><span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
 
-    <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations
-        .iter()
-        .filter(|x| !x.commitment.chunks.is_empty())
-    {
+    <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         <span class="comment">// iterating over the polynomial segments
         </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.chunks {
             scalars.push(rand_base * xi_i);

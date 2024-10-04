@@ -125,10 +125,33 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::expr::E;
 <span class="kw">use </span>log::debug;
+<span class="kw">use </span>mina_curves::pasta::VestaParameters;
+<span class="kw">use </span>mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 <span class="kw">use </span>o1vm::{
     cannon::{<span class="self">self</span>, Meta, Start, State},
     cannon_cli,
@@ -139,11 +162,14 @@
         witness::{<span class="self">self </span><span class="kw">as </span>mips_witness},
         Instruction,
     },
-    pickles::proof::ProofInputs,
+    pickles::{
+        proof::{Proof, ProofInputs},
+        prover,
+    },
     preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>poly_commitment::{ipa::SRS, SRS <span class="kw">as _</span>};
-<span class="kw">use </span>std::{fs::File, io::BufReader, process::ExitCode};
+<span class="kw">use </span>std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
@@ -187,7 +213,7 @@
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(<span class="string">&quot;info&quot;</span>)).init();
 
     <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
-    <span class="kw">let </span>_srs: SRS&lt;Vesta&gt; = {
+    <span class="kw">let </span>srs: SRS&lt;Vesta&gt; = {
         <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::create(DOMAIN_SIZE);
         srs.add_lagrange_basis(domain_fp.d1);
         srs
@@ -198,7 +224,7 @@
         mips_witness::Env::&lt;Fp, PreImageOracle&gt;::create(cannon::PAGE_SIZE <span class="kw">as </span>usize, state, po);
 
     <span class="comment">// TODO: give this to the prover + verifier
-    </span><span class="kw">let </span>_constraints = {
+    </span><span class="kw">let </span>constraints = {
         <span class="kw">let </span><span class="kw-2">mut </span>mips_con_env = mips_constraints::Env::&lt;Fp&gt;::default();
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = Instruction::iter()
             .flat_map(|instr_typ| instr_typ.into_iter())
@@ -220,8 +246,7 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
     <span class="kw">while </span>!mips_wit_env.halt {
-        <span class="kw">let </span>instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
-        <span class="macro">debug!</span>(<span class="string">&quot;Instruction {:?} has been executed&quot;</span>, instr);
+        <span class="kw">let </span>_instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
         <span class="comment">// FIXME: add selectors
         </span><span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
             .scratch_state
@@ -244,11 +269,22 @@
 
         <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             <span class="comment">// FIXME
-            </span><span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk&quot;</span>);
+            </span><span class="kw">let </span>start_iteration = Instant::now();
+            <span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk&quot;</span>);
+            <span class="kw">let </span>_proof: Proof&lt;Vesta&gt; =
+                prover::prove::&lt;
+                    Vesta,
+                    DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;,
+                    DefaultFrSponge&lt;Fp, PlonkSpongeConstantsKimchi&gt;,
+                    <span class="kw">_</span>,
+                &gt;(domain_fp, <span class="kw-2">&amp;</span>srs, curr_proof_inputs, <span class="kw-2">&amp;</span>constraints, <span class="kw-2">&amp;mut </span>rng);
+            <span class="macro">debug!</span>(
+                <span class="string">&quot;Proof generated in {elapsed} μs&quot;</span>,
+                elapsed = start_iteration.elapsed().as_micros()
+            );
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-
     <span class="comment">// TODO: Logic
     </span>ExitCode::SUCCESS
 }

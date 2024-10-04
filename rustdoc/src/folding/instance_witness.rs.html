@@ -725,7 +725,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.instance.to_absorb();
         <span class="kw">let </span>extended_commitments = <span class="self">self</span>.extended.iter().map(|commit| {
             <span class="macro">assert_eq!</span>(commit.len(), <span class="number">1</span>);
-            commit.chunks[<span class="number">0</span>]
+            commit.get_first_chunk()
         });
         elements.<span class="number">1</span>.extend(extended_commitments);
         elements
@@ -772,7 +772,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.extended_instance.to_absorb();
         elements.<span class="number">0</span>.push(<span class="self">self</span>.u);
         <span class="macro">assert_eq!</span>(<span class="self">self</span>.error_commitment.len(), <span class="number">1</span>);
-        elements.<span class="number">1</span>.push(<span class="self">self</span>.error_commitment.chunks[<span class="number">0</span>]);
+        elements.<span class="number">1</span>.push(<span class="self">self</span>.error_commitment.get_first_chunk());
         elements
     }
 

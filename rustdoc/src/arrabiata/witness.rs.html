@@ -1143,6 +1143,8 @@
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
 <a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1641,7 +1643,8 @@
                 <span class="kw">let </span>idx_col = idx / <span class="number">2</span>;
                 <span class="macro">debug!</span>(<span class="string">&quot;Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb&quot;</span>, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - <span class="number">1</span>);
                 <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e2[idx_col].chunks[<span class="number">0</span>]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e2[idx_col]
+                        .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
                     <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
@@ -1650,7 +1653,8 @@
                         <span class="self">self</span>.write_public_input(pos, pt_y.to_biguint().into())
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e1[idx_col].chunks[<span class="number">0</span>]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e1[idx_col]
+                        .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
                     <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
@@ -1689,7 +1693,7 @@
                     <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].chunks[<span class="number">0</span>];
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].get_first_chunk();
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1715,7 +1719,7 @@
                     } <span class="kw">else </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].chunks[<span class="number">0</span>];
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].get_first_chunk();
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1748,22 +1752,22 @@
                 </span><span class="kw">let </span>(pt_x, pt_y): (BigInt, BigInt) = <span class="kw">match </span>side {
                     Side::Left =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e2[i_comm].chunks[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e2[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e1[i_comm].chunks[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e1[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
                     Side::Right =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].chunks[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].chunks[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }

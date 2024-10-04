@@ -23,7 +23,18 @@
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::curve::KimchiCurve;
+<span class="kw">use </span>poly_commitment::{ipa::OpeningProof, PolyComm};
 
 <span class="kw">pub struct </span>WitnessColumns&lt;G&gt; {
     <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE],
@@ -47,5 +58,14 @@
             },
         }
     }
+}
+
+<span class="comment">// FIXME: should we blind the commitment?
+</span><span class="kw">pub struct </span>Proof&lt;G: KimchiCurve&gt; {
+    <span class="kw">pub </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="kw">pub </span>zeta_evaluations: WitnessColumns&lt;G::ScalarField&gt;,
+    <span class="kw">pub </span>zeta_omega_evaluations: WitnessColumns&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// IPA opening proof
+    </span><span class="kw">pub </span>opening_proof: OpeningProof&lt;G&gt;,
 }
 </code></pre></div></section></main></body></html>

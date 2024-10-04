@@ -1413,8 +1413,8 @@
                     .for_each(|(i, x)| {
                         <span class="kw-2">*</span>x += scale * evals[i * stride];
                     });
-                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.len() {
-                    omega += <span class="kw-2">&amp;</span>(omegas.chunks[j] * scale);
+                <span class="kw">for </span>chunk <span class="kw">in </span>omegas.into_iter() {
+                    omega += <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>chunk * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                 }
             }
@@ -1423,12 +1423,12 @@
             </span>DensePolynomialOrEvaluations::DensePolynomial(p_i) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
-                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.len() {
+                </span><span class="kw">for </span>chunk <span class="kw">in </span>omegas.into_iter() {
                     <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(scale, segment);
 
-                    omega += <span class="kw-2">&amp;</span>(omegas.chunks[j] * scale);
+                    omega += <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>chunk * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                     offset += srs_length;
                 }

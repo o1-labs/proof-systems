@@ -322,8 +322,8 @@
         </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].len(), <span class="number">1</span>);
 
-        <span class="kw">let </span>t0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>];
-        <span class="kw">let </span>t1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>];
+        <span class="kw">let </span>t0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].get_first_chunk();
+        <span class="kw">let </span>t1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].get_first_chunk();
 
         <span class="kw">let </span>to_absorb = env.to_absorb(t0, t1);
         fq_sponge.absorb_fr(<span class="kw-2">&amp;</span>to_absorb.<span class="number">0</span>);
@@ -391,8 +391,8 @@
             left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
             left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
             left.<span class="number">1</span>.extend([
-                error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>],
-                error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>],
+                error_commitments[<span class="number">0</span>].get_first_chunk(),
+                error_commitments[<span class="number">1</span>].get_first_chunk(),
             ]);
             left
         };
