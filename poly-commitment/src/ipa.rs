@@ -825,22 +825,14 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function opens polynomials in batch at several points
-    /// - plnms: batch of polynomials to open commitments for
-    /// - elm: evaluation point vector to open the commitments at
-    /// - polyscale: used to combine polynomials for opening commitments in batch
-    /// (we will open the \sum_i polyscale^i * plnms.(i))
-    /// - evalscale: used to combine evaluations to open on only one point
-    /// - sponge: parameters for the random oracle argument
-    /// - rng: used for blinders for the zk property
-    /// A slight modification to the original protocol is done
-    /// when absorbing the first prover message.
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
+    // NB: a slight modification to the original protocol is done when absorbing
+    // the first prover message to improve the efficiency in a recursive
+    // setting.
     pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(
         &self,
         group_map: &G::Map,
-        // TODO(mimoo): create a type for that entry
         plnms: PolynomialsToCombine<G, D>,
         elm: &[G::ScalarField],
         polyscale: G::ScalarField,
