@@ -7,6 +7,9 @@ pub mod ipa;
 /// KZG polynomial commitment scheme
 pub mod kzg;
 
+// Exposing property based tests for the SRS trait
+pub mod pbt_srs;
+
 pub use commitment::PolyComm;
 
 use crate::{
