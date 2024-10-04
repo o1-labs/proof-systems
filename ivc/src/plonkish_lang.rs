@@ -177,7 +177,7 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
 
         // Absorbing commitments
         (&commitments).into_iter().for_each(|c| {
-            assert!(c.chunks.len() == 1);
+            assert!(c.len() == 1);
             absorb_commitment(fq_sponge, c)
         });
 

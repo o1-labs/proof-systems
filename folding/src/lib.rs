@@ -235,8 +235,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        assert_eq!(error_commitments[0].chunks.len(), 1);
-        assert_eq!(error_commitments[1].chunks.len(), 1);
+        assert_eq!(error_commitments[0].len(), 1);
+        assert_eq!(error_commitments[1].len(), 1);
 
         let t_0 = &error_commitments[0].chunks[0];
         let t_1 = &error_commitments[1].chunks[0];
@@ -300,8 +300,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        assert_eq!(error_commitments[0].chunks.len(), 1);
-        assert_eq!(error_commitments[1].chunks.len(), 1);
+        assert_eq!(error_commitments[0].len(), 1);
+        assert_eq!(error_commitments[1].len(), 1);
 
         let to_absorb = {
             let mut left = a.to_absorb();
