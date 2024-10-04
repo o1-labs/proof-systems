@@ -12,6 +12,7 @@
 //! O1VM_FLAVOR=pickles bash run-code.sh
 //! ```
 
+pub mod column_env;
 pub mod proof;
 pub mod prover;
 
