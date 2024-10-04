@@ -101,6 +101,31 @@ where
         }
     };
 
+    // We evaluate on a domain higher than d1 for the quotient polynomial.
+    // Based on the regression test
+    // `test_regression_constraints_with_selectors`, the highest degree is 6.
+    // Therefore, we do evaluate on d8.
+    let _evaluations_d8 = {
+        let WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+            // FIXME
+            selector: _,
+        } = &polys;
+        let eval_d8 =
+            |poly: &DensePolynomial<G::ScalarField>| poly.evaluate_over_domain_by_ref(domain.d8);
+        // Doing in parallel
+        let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: eval_d8(instruction_counter),
+            error: eval_d8(error),
+            // FIXME
+            selector: eval_d8(error),
+        }
+    };
+
     // Absorbing the commitments - Fiat Shamir
     // We do not parallelize as we need something deterministic.
     for comm in commitments.scratch.iter() {
