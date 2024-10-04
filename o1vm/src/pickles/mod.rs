@@ -13,6 +13,7 @@
 //! ```
 
 pub mod proof;
+pub mod prover;
 
 #[cfg(test)]
 mod tests;

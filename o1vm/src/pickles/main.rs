@@ -2,6 +2,11 @@ use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
+use mina_curves::pasta::VestaParameters;
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -12,11 +17,14 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::proof::ProofInputs,
+    pickles::{
+        proof::{Proof, ProofInputs},
+        prover,
+    },
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
-use std::{fs::File, io::BufReader, process::ExitCode};
+use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
 use strum::IntoEnumIterator;
 
 use mina_curves::pasta::{Fp, Vesta};
@@ -60,7 +68,7 @@ pub fn main() -> ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-    let _srs: SRS<Vesta> = {
+    let srs: SRS<Vesta> = {
         let mut srs = SRS::create(DOMAIN_SIZE);
         srs.add_lagrange_basis(domain_fp.d1);
         srs
@@ -93,8 +101,7 @@ pub fn main() -> ExitCode {
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
-        let instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
-        debug!("Instruction {:?} has been executed", instr);
+        let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         // FIXME: add selectors
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
@@ -117,11 +124,21 @@ pub fn main() -> ExitCode {
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
+            let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
+            let _proof: Proof<Vesta> = prover::prove::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                _,
+            >(domain_fp, &srs, curr_proof_inputs, &mut rng);
+            debug!(
+                "Proof generated in {elapsed} μs",
+                elapsed = start_iteration.elapsed().as_micros()
+            );
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-
     // TODO: Logic
     ExitCode::SUCCESS
 }
