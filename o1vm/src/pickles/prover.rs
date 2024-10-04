@@ -29,12 +29,6 @@ use thiserror::Error;
 /// Errors that can arise when creating a proof
 #[derive(Error, Debug, Clone)]
 pub enum ProverError {
-    #[error("the proof could not be constructed: {0}")]
-    Generic(&'static str),
-
-    #[error("the provided constraint was not satisfied: {0}")]
-    ConstraintNotSatisfied(String),
-
     #[error("the provided constraint has degree {0} > allowed {1}; expr: {2}")]
     ConstraintDegreeTooHigh(u64, u64, String),
 }
