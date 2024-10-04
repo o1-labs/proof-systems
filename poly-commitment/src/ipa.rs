@@ -564,7 +564,6 @@ where
         self.mask_custom(comm, &blinders).unwrap()
     }
 
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
@@ -611,8 +610,6 @@ where
         PolyComm::<G> { chunks }
     }
 
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
