@@ -238,8 +238,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].len(), 1);
         assert_eq!(error_commitments[1].len(), 1);
 
-        let t_0 = &error_commitments[0].chunks[0];
-        let t_1 = &error_commitments[1].chunks[0];
+        let t_0 = &error_commitments[0].get_first_chunk();
+        let t_1 = &error_commitments[1].get_first_chunk();
 
         // Absorbing the commitments into the sponge
         let to_absorb = env.to_absorb(t_0, t_1);
@@ -309,8 +309,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             left.0.extend(right.0);
             left.1.extend(right.1);
             left.1.extend([
-                error_commitments[0].chunks[0],
-                error_commitments[1].chunks[0],
+                error_commitments[0].get_first_chunk(),
+                error_commitments[1].get_first_chunk(),
             ]);
             left
         };
@@ -343,7 +343,8 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             let right = right_instance.to_absorb();
             left.0.extend(right.0);
             left.1.extend(right.1);
-            left.1.extend([t_0.chunks[0], t_1.chunks[0]]);
+            left.1
+                .extend([t_0.get_first_chunk(), t_1.get_first_chunk()]);
             left
         };
 

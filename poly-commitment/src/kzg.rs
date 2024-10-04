@@ -414,7 +414,10 @@ impl<
             quotient
         };
 
-        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
+        let quotient = srs
+            .full_srs
+            .commit_non_hiding(&quotient_poly, 1)
+            .get_first_chunk();
 
         Some(KZGProof {
             quotient,
@@ -455,12 +458,12 @@ impl<
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
-            .chunks[0];
+            .get_first_chunk();
         // Taking the first element of the commitment, i.e. no support for chunking.
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
-            .chunks[0]
+            .get_first_chunk()
             .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
         // We compute the result of the multiplication of two miller loop,
