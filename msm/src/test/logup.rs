@@ -24,10 +24,7 @@ mod tests {
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-        let mut srs: PairingSRS<BN254> = {
-            let toxic_waste = Fp::rand(&mut rng);
-            unsafe { PairingSRS::create(toxic_waste, domain.d1.size as usize) }
-        };
+        let mut srs: PairingSRS<BN254> = { PairingSRS::create(domain.d1.size as usize) };
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut inputs = ProofInputs::random(domain);
