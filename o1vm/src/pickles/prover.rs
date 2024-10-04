@@ -209,9 +209,7 @@ where
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
                 // We do not have any blinder, therefore we set to 0.
-                PolyComm {
-                    elems: vec![G::ScalarField::zero()],
-                },
+                PolyComm::new(vec![G::ScalarField::zero()]),
             )
         })
         .collect();
