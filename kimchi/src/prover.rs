@@ -1397,9 +1397,8 @@ where
 
                     let chunks = runtime_comm
                         .blinders
-                        .chunks
-                        .iter()
-                        .map(|blinding| *joint_combiner * blinding + base_blinding)
+                        .into_iter()
+                        .map(|blinding| *joint_combiner * *blinding + base_blinding)
                         .collect();
 
                     PolyComm::new(chunks)
