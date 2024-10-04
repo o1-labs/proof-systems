@@ -84,6 +84,15 @@ where
     }
 }
 
+impl<'a, G> IntoIterator for &'a PolyComm<G> {
+    type Item = &'a G;
+    type IntoIter = std::slice::Iter<'a, G>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.chunks.iter()
+    }
+}
+
 /// A commitment to a polynomial with some blinding factors.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlindedCommitment<G>

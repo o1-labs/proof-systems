@@ -162,8 +162,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                for j in 0..omegas.len() {
-                    omega += &(omegas.chunks[j] * scale);
+                for chunk in omegas.into_iter() {
+                    omega += &(*chunk * scale);
                     scale *= &polyscale;
                 }
             }
@@ -172,12 +172,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                for j in 0..omegas.len() {
+                for chunk in omegas.into_iter() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(scale, segment);
 
-                    omega += &(omegas.chunks[j] * scale);
+                    omega += &(*chunk * scale);
                     scale *= &polyscale;
                     offset += srs_length;
                 }
