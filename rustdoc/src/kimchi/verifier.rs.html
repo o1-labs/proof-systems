@@ -1489,11 +1489,11 @@
         </span><span class="kw">let </span>alpha = alpha_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        </span><span class="kw">if </span><span class="self">self</span>.commitments.t_comm.chunks.len() &gt; chunk_size * <span class="number">7 </span>{
+        </span><span class="kw">if </span><span class="self">self</span>.commitments.t_comm.len() &gt; chunk_size * <span class="number">7 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectCommitmentLength(
                 <span class="string">&quot;t&quot;</span>,
                 chunk_size * <span class="number">7</span>,
-                <span class="self">self</span>.commitments.t_comm.chunks.len(),
+                <span class="self">self</span>.commitments.t_comm.len(),
             ));
         }
 

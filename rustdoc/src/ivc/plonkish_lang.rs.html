@@ -445,7 +445,7 @@
 
         <span class="comment">// Absorbing commitments
         </span>(<span class="kw-2">&amp;</span>commitments).into_iter().for_each(|c| {
-            <span class="macro">assert!</span>(c.chunks.len() == <span class="number">1</span>);
+            <span class="macro">assert!</span>(c.len() == <span class="number">1</span>);
             absorb_commitment(fq_sponge, c)
         });
 

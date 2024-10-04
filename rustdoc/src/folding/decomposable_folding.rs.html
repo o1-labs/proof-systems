@@ -319,8 +319,8 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].len(), <span class="number">1</span>);
 
         <span class="kw">let </span>t0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>];
         <span class="kw">let </span>t1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>];
@@ -382,8 +382,8 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].len(), <span class="number">1</span>);
 
         <span class="kw">let </span>to_absorb = {
             <span class="kw">let </span><span class="kw-2">mut </span>left = a.to_absorb();

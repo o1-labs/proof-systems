@@ -1249,7 +1249,6 @@
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
 <a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the polynomial commitment scheme
 //! called the Inner Product Argument (IPA) as described in [Efficient
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
@@ -1414,7 +1413,7 @@
                     .for_each(|(i, x)| {
                         <span class="kw-2">*</span>x += scale * evals[i * stride];
                     });
-                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.chunks.len() {
+                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.len() {
                     omega += <span class="kw-2">&amp;</span>(omegas.chunks[j] * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                 }
@@ -1424,7 +1423,7 @@
             </span>DensePolynomialOrEvaluations::DensePolynomial(p_i) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
-                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.chunks.len() {
+                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.len() {
                     <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(scale, segment);
@@ -2317,9 +2316,8 @@
                         (<span class="kw-2">*</span>evals).clone().interpolate()
                     }
                 };
-                <span class="kw">let </span>chunked_polynomial =
-                    poly.to_chunked_polynomial(blinders.chunks.len(), <span class="self">self</span>.g.len());
-                <span class="kw">let </span>chunked_commitment = { <span class="self">self</span>.commit_non_hiding(<span class="kw-2">&amp;</span>poly, blinders.chunks.len()) };
+                <span class="kw">let </span>chunked_polynomial = poly.to_chunked_polynomial(blinders.len(), <span class="self">self</span>.g.len());
+                <span class="kw">let </span>chunked_commitment = { <span class="self">self</span>.commit_non_hiding(<span class="kw-2">&amp;</span>poly, blinders.len()) };
                 <span class="kw">let </span>masked_commitment = <span class="kw">match </span><span class="self">self</span>.mask_custom(chunked_commitment, blinders) {
                     <span class="prelude-val">Ok</span>(comm) =&gt; comm,
                     <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Error at index {i}: {err}&quot;</span>),
