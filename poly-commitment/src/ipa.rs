@@ -835,7 +835,6 @@ impl<G: CommitmentCurve> SRS<G> {
     /// - rng: used for blinders for the zk property
     /// A slight modification to the original protocol is done
     /// when absorbing the first prover message.
-    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
     pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(

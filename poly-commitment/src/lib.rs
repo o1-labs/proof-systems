@@ -172,7 +172,6 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator in case blinding is needed
-    #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
