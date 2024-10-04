@@ -549,7 +549,7 @@
 
     <span class="kw">for </span>Evaluation { evaluations, .. } <span class="kw">in </span>evaluations
         .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
+        .filter(|x| !x.commitment.chunks.is_empty())
     {
         <span class="comment">// IMPROVEME: we could have a flat array that would contain all the
         // evaluations and all the chunks. It would avoid fetching the memory
@@ -897,7 +897,7 @@
             quotient
         };
 
-        <span class="kw">let </span>quotient = srs.full_srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">1</span>).elems[<span class="number">0</span>];
+        <span class="kw">let </span>quotient = srs.full_srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">1</span>).chunks[<span class="number">0</span>];
 
         <span class="prelude-val">Some</span>(KZGProof {
             quotient,
@@ -938,12 +938,12 @@
         </span><span class="kw">let </span>divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(<span class="kw-2">&amp;</span>divisor_polynomial(elm), <span class="number">1</span>)
-            .elems[<span class="number">0</span>];
+            .chunks[<span class="number">0</span>];
         <span class="comment">// Taking the first element of the commitment, i.e. no support for chunking.
         </span><span class="kw">let </span>eval_commitment = srs
             .full_srs
             .commit_non_hiding(<span class="kw-2">&amp;</span>eval_polynomial(elm, <span class="kw-2">&amp;</span>evals), <span class="number">1</span>)
-            .elems[<span class="number">0</span>]
+            .chunks[<span class="number">0</span>]
             .into_group();
         <span class="kw">let </span>numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
         <span class="comment">// We compute the result of the multiplication of two miller loop,

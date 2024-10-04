@@ -635,6 +635,11 @@
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
 <a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -665,7 +670,7 @@
 ///
 /// The structure also handles chunking, i.e. when we aim to handle polynomials
 /// whose degree is higher than the SRS size. For this reason, we do use a
-/// vector for the field `elems`.
+/// vector for the field `chunks`.
 ///
 /// Note that the parameter `C` is not constrained to be a curve, therefore in
 /// some places in the code, `C` can refer to a scalar field element. For
@@ -676,7 +681,7 @@
 #[serde(bound = <span class="string">&quot;C: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>PolyComm&lt;C&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>elems: Vec&lt;C&gt;,
+    </span><span class="kw">pub </span>chunks: Vec&lt;C&gt;,
 }
 
 <span class="doccomment">/// A commitment to a polynomial with some blinding factors.
@@ -690,8 +695,8 @@
 }
 
 <span class="kw">impl</span>&lt;T&gt; PolyComm&lt;T&gt; {
-    <span class="kw">pub fn </span>new(elems: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ elems }
+    <span class="kw">pub fn </span>new(chunks: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ chunks }
     }
 }
 
@@ -703,7 +708,12 @@
     <span class="kw">where
         </span>S: serde::Serializer,
     {
-        serializer.collect_seq(source.elems.iter().map(|e| SerializeAsWrap::&lt;T, U&gt;::new(e)))
+        serializer.collect_seq(
+            source
+                .chunks
+                .iter()
+                .map(|e| SerializeAsWrap::&lt;T, U&gt;::new(e)),
+        )
     }
 }
 
@@ -734,16 +744,16 @@
                 </span>A: serde::de::SeqAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
                 <span class="attr">#[allow(clippy::redundant_closure_call)]
-                </span><span class="kw">let </span><span class="kw-2">mut </span>elems = <span class="macro">vec!</span>[];
+                </span><span class="kw">let </span><span class="kw-2">mut </span>chunks = <span class="macro">vec!</span>[];
 
                 <span class="kw">while let </span><span class="prelude-val">Some</span>(value) = seq
                     .next_element()<span class="question-mark">?
                     </span>.map(|v: DeserializeAsWrap&lt;T, U&gt;| v.into_inner())
                 {
-                    elems.push(value);
+                    chunks.push(value);
                 }
 
-                <span class="prelude-val">Ok</span>(PolyComm { elems })
+                <span class="prelude-val">Ok</span>(PolyComm { chunks })
             }
         }
 
@@ -760,18 +770,18 @@
         </span>F: FnMut(A) -&gt; B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        <span class="kw">let </span>elems = <span class="self">self</span>.elems.iter().map(|x| f(<span class="kw-2">*</span>x)).collect();
-        PolyComm { elems }
+        <span class="kw">let </span>chunks = <span class="self">self</span>.chunks.iter().map(|x| f(<span class="kw-2">*</span>x)).collect();
+        PolyComm { chunks }
     }
 
-    <span class="doccomment">/// Returns the length of the commitment.
+    <span class="doccomment">/// Returns the number of chunks.
     </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.elems.len()
+        <span class="self">self</span>.chunks.len()
     }
 
     <span class="doccomment">/// Returns `true` if the commitment is empty.
     </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.elems.is_empty()
+        <span class="self">self</span>.chunks.is_empty()
     }
 
     <span class="comment">// TODO: if all callers end up calling unwrap, just call this zip_eq and
@@ -780,16 +790,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>PolyComm&lt;B&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;PolyComm&lt;(A, B)&gt;&gt; {
-        <span class="kw">if </span><span class="self">self</span>.elems.len() != other.elems.len() {
+        <span class="kw">if </span><span class="self">self</span>.chunks.len() != other.chunks.len() {
             <span class="kw">return </span><span class="prelude-val">None</span>;
         }
-        <span class="kw">let </span>elems = <span class="self">self
-            </span>.elems
+        <span class="kw">let </span>chunks = <span class="self">self
+            </span>.chunks
             .iter()
-            .zip(other.elems.iter())
+            .zip(other.chunks.iter())
             .map(|(x, y)| (<span class="kw-2">*</span>x, <span class="kw-2">*</span>y))
             .collect();
-        <span class="prelude-val">Some</span>(PolyComm { elems })
+        <span class="prelude-val">Some</span>(PolyComm { chunks })
     }
 }
 
@@ -845,20 +855,20 @@
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>elems = <span class="macro">vec!</span>[];
-        <span class="kw">let </span>n1 = <span class="self">self</span>.elems.len();
-        <span class="kw">let </span>n2 = other.elems.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>n1 = <span class="self">self</span>.chunks.len();
+        <span class="kw">let </span>n2 = other.chunks.len();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..std::cmp::max(n1, n2) {
             <span class="kw">let </span>pt = <span class="kw">if </span>i &lt; n1 &amp;&amp; i &lt; n2 {
-                (<span class="self">self</span>.elems[i] + other.elems[i]).into_affine()
+                (<span class="self">self</span>.chunks[i] + other.chunks[i]).into_affine()
             } <span class="kw">else if </span>i &lt; n1 {
-                <span class="self">self</span>.elems[i]
+                <span class="self">self</span>.chunks[i]
             } <span class="kw">else </span>{
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm { chunks }
     }
 }
 
@@ -866,27 +876,27 @@
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>elems = <span class="macro">vec!</span>[];
-        <span class="kw">let </span>n1 = <span class="self">self</span>.elems.len();
-        <span class="kw">let </span>n2 = other.elems.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>n1 = <span class="self">self</span>.chunks.len();
+        <span class="kw">let </span>n2 = other.chunks.len();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..std::cmp::max(n1, n2) {
             <span class="kw">let </span>pt = <span class="kw">if </span>i &lt; n1 &amp;&amp; i &lt; n2 {
-                (<span class="self">self</span>.elems[i] - other.elems[i]).into_affine()
+                (<span class="self">self</span>.chunks[i] - other.chunks[i]).into_affine()
             } <span class="kw">else if </span>i &lt; n1 {
-                <span class="self">self</span>.elems[i]
+                <span class="self">self</span>.chunks[i]
             } <span class="kw">else </span>{
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm { chunks }
     }
 }
 
 <span class="kw">impl</span>&lt;C: AffineRepr&gt; PolyComm&lt;C&gt; {
     <span class="kw">pub fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, c: C::ScalarField) -&gt; PolyComm&lt;C&gt; {
         PolyComm {
-            elems: <span class="self">self</span>.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
+            chunks: <span class="self">self</span>.chunks.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
@@ -905,21 +915,21 @@
 
         <span class="kw">let </span>all_scalars: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|s| s.into_bigint()).collect();
 
-        <span class="kw">let </span>elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>elems = Vec::with_capacity(elems_size);
+        <span class="kw">let </span>elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(elems_size);
 
         <span class="kw">for </span>chunk <span class="kw">in </span><span class="number">0</span>..elems_size {
             <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = com
                 .iter()
                 .zip(<span class="kw-2">&amp;</span>all_scalars)
                 <span class="comment">// get rid of scalars that don&#39;t have an associated chunk
-                </span>.filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
+                </span>.filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
             <span class="kw">let </span>chunk_msm = C::Group::msm_bigint(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars);
-            elems.push(chunk_msm.into_affine());
+            chunks.push(chunk_msm.into_affine());
         }
-        <span class="self">Self</span>::new(elems)
+        <span class="self">Self</span>::new(chunks)
     }
 }
 
@@ -969,7 +979,7 @@
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
     commitment: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
 ) {
-    sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.elems);
+    sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.chunks);
 }
 
 <span class="doccomment">/// A useful trait extending AffineRepr for commitments.
@@ -1184,10 +1194,10 @@
 
     <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations
         .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
+        .filter(|x| !x.commitment.chunks.is_empty())
     {
         <span class="comment">// iterating over the polynomial segments
-        </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.elems {
+        </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.chunks {
             scalars.push(rand_base * xi_i);
             points.push(<span class="kw-2">*</span>comm_ch);
 
@@ -1218,7 +1228,7 @@
     {
         <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                unshifted: polycomm.elems.into_iter().map(CamlG::from).collect(),
+                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
                 shifted: <span class="prelude-val">None</span>,
             }
         }
@@ -1231,7 +1241,7 @@
     {
         <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                unshifted: polycomm.elems.iter().map(Into::&lt;CamlG&gt;::into).collect(),
+                unshifted: polycomm.chunks.iter().map(Into::&lt;CamlG&gt;::into).collect(),
                 shifted: <span class="prelude-val">None</span>,
             }
         }
@@ -1247,7 +1257,7 @@
                 <span class="string">&quot;mina#14628: Shifted commitments are deprecated and must not be used&quot;
             </span>);
             PolyComm {
-                elems: camlpolycomm
+                chunks: camlpolycomm
                     .unshifted
                     .into_iter()
                     .map(Into::&lt;G&gt;::into)
@@ -1267,7 +1277,7 @@
             </span>);
             PolyComm {
                 <span class="comment">//FIXME something with as_ref()
-                </span>elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+                </span>chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
         }
     }

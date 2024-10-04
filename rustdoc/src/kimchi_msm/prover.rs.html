@@ -724,7 +724,7 @@
 
     <span class="kw">let </span>witness_comms: Witness&lt;N_WIT, PolyComm&lt;G&gt;&gt; = {
         <span class="kw">let </span>blinders = PolyComm {
-            elems: <span class="macro">vec!</span>[G::ScalarField::one()],
+            chunks: <span class="macro">vec!</span>[G::ScalarField::one()],
         };
         <span class="kw">let </span>comm = {
             |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| {
@@ -1076,10 +1076,10 @@
 
     <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     <span class="kw">let </span>non_hiding = |d1_size| PolyComm {
-        elems: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
+        chunks: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
     };
     <span class="kw">let </span>hiding = |d1_size| PolyComm {
-        elems: <span class="macro">vec!</span>[G::ScalarField::one(); d1_size],
+        chunks: <span class="macro">vec!</span>[G::ScalarField::one(); d1_size],
     };
 
     <span class="comment">// Gathering all polynomials to use in the opening proof

@@ -2952,7 +2952,7 @@
 
             PolyComm {
                 <span class="comment">// blinding_f - Z_H(zeta) * blinding_t
-                </span>elems: <span class="macro">vec!</span>[
+                </span>chunks: <span class="macro">vec!</span>[
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
             }
@@ -2988,7 +2988,7 @@
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.elems.len(),
+                    comm.chunks.len(),
                 )
             })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -3023,7 +3023,7 @@
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
         </span><span class="kw">let </span>non_hiding = |d1_size: usize| PolyComm {
-            elems: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
+            chunks: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
         };
 
         <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -3035,7 +3035,7 @@
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span>fixed_hiding = |d1_size: usize| PolyComm {
-            elems: <span class="macro">vec!</span>[G::ScalarField::one(); d1_size],
+            chunks: <span class="macro">vec!</span>[G::ScalarField::one(); d1_size],
         };
 
         <span class="comment">//~ 1. Then, include:
@@ -3182,17 +3182,17 @@
                 <span class="kw">if </span>lcs.runtime_selector.is_some() {
                     <span class="kw">let </span>runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
 
-                    <span class="kw">let </span>elems = runtime_comm
+                    <span class="kw">let </span>chunks = runtime_comm
                         .blinders
-                        .elems
+                        .chunks
                         .iter()
                         .map(|blinding| <span class="kw-2">*</span>joint_combiner * blinding + base_blinding)
                         .collect();
 
-                    PolyComm { elems }
+                    PolyComm { chunks }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>elems = <span class="macro">vec!</span>[base_blinding; num_chunks];
-                    PolyComm { elems }
+                    <span class="kw">let </span>chunks = <span class="macro">vec!</span>[base_blinding; num_chunks];
+                    PolyComm { chunks }
                 }
             };
 

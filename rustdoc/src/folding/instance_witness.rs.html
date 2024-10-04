@@ -724,8 +724,8 @@
     </span><span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.instance.to_absorb();
         <span class="kw">let </span>extended_commitments = <span class="self">self</span>.extended.iter().map(|commit| {
-            <span class="macro">assert_eq!</span>(commit.elems.len(), <span class="number">1</span>);
-            commit.elems[<span class="number">0</span>]
+            <span class="macro">assert_eq!</span>(commit.chunks.len(), <span class="number">1</span>);
+            commit.chunks[<span class="number">0</span>]
         });
         elements.<span class="number">1</span>.extend(extended_commitments);
         elements
@@ -771,8 +771,8 @@
     </span><span class="kw">pub fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>elements = <span class="self">self</span>.extended_instance.to_absorb();
         elements.<span class="number">0</span>.push(<span class="self">self</span>.u);
-        <span class="macro">assert_eq!</span>(<span class="self">self</span>.error_commitment.elems.len(), <span class="number">1</span>);
-        elements.<span class="number">1</span>.push(<span class="self">self</span>.error_commitment.elems[<span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(<span class="self">self</span>.error_commitment.chunks.len(), <span class="number">1</span>);
+        elements.<span class="number">1</span>.push(<span class="self">self</span>.error_commitment.chunks[<span class="number">0</span>]);
         elements
     }
 

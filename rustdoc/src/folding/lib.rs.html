@@ -463,6 +463,8 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the &quot;folding scheme&quot;
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -700,11 +702,11 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
 
-        <span class="kw">let </span>t_0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>];
-        <span class="kw">let </span>t_1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>];
+        <span class="kw">let </span>t_0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>];
+        <span class="kw">let </span>t_1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>];
 
         <span class="comment">// Absorbing the commitments into the sponge
         </span><span class="kw">let </span>to_absorb = env.to_absorb(t_0, t_1);
@@ -765,16 +767,18 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
 
         <span class="kw">let </span>to_absorb = {
             <span class="kw">let </span><span class="kw-2">mut </span>left = a.to_absorb();
             <span class="kw">let </span>right = b.to_absorb();
             left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
             left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
-            left.<span class="number">1
-                </span>.extend([error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>], error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>]]);
+            left.<span class="number">1</span>.extend([
+                error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>],
+                error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>],
+            ]);
             left
         };
 
@@ -806,7 +810,7 @@
             <span class="kw">let </span>right = right_instance.to_absorb();
             left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
             left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
-            left.<span class="number">1</span>.extend([t_0.elems[<span class="number">0</span>], t_1.elems[<span class="number">0</span>]]);
+            left.<span class="number">1</span>.extend([t_0.chunks[<span class="number">0</span>], t_1.chunks[<span class="number">0</span>]]);
             left
         };
 

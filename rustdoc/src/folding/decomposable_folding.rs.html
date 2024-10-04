@@ -203,6 +203,8 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -317,11 +319,11 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
 
-        <span class="kw">let </span>t0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>];
-        <span class="kw">let </span>t1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>];
+        <span class="kw">let </span>t0 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>];
+        <span class="kw">let </span>t1 = <span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>];
 
         <span class="kw">let </span>to_absorb = env.to_absorb(t0, t1);
         fq_sponge.absorb_fr(<span class="kw-2">&amp;</span>to_absorb.<span class="number">0</span>);
@@ -380,16 +382,18 @@
 
         <span class="comment">// sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].chunks.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].chunks.len(), <span class="number">1</span>);
 
         <span class="kw">let </span>to_absorb = {
             <span class="kw">let </span><span class="kw-2">mut </span>left = a.to_absorb();
             <span class="kw">let </span>right = b.to_absorb();
             left.<span class="number">0</span>.extend(right.<span class="number">0</span>);
             left.<span class="number">1</span>.extend(right.<span class="number">1</span>);
-            left.<span class="number">1
-                </span>.extend([error_commitments[<span class="number">0</span>].elems[<span class="number">0</span>], error_commitments[<span class="number">1</span>].elems[<span class="number">0</span>]]);
+            left.<span class="number">1</span>.extend([
+                error_commitments[<span class="number">0</span>].chunks[<span class="number">0</span>],
+                error_commitments[<span class="number">1</span>].chunks[<span class="number">0</span>],
+            ]);
             left
         };
 

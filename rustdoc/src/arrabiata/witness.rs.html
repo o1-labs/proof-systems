@@ -1641,7 +1641,7 @@
                 <span class="kw">let </span>idx_col = idx / <span class="number">2</span>;
                 <span class="macro">debug!</span>(<span class="string">&quot;Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb&quot;</span>, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - <span class="number">1</span>);
                 <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e2[idx_col].elems[<span class="number">0</span>]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e2[idx_col].chunks[<span class="number">0</span>]
                         .to_coordinates()
                         .unwrap();
                     <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
@@ -1650,7 +1650,7 @@
                         <span class="self">self</span>.write_public_input(pos, pt_y.to_biguint().into())
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e1[idx_col].elems[<span class="number">0</span>]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e1[idx_col].chunks[<span class="number">0</span>]
                         .to_coordinates()
                         .unwrap();
                     <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
@@ -1689,7 +1689,7 @@
                     <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].elems[<span class="number">0</span>];
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].chunks[<span class="number">0</span>];
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1715,7 +1715,7 @@
                     } <span class="kw">else </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].elems[<span class="number">0</span>];
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].chunks[<span class="number">0</span>];
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1748,22 +1748,22 @@
                 </span><span class="kw">let </span>(pt_x, pt_y): (BigInt, BigInt) = <span class="kw">match </span>side {
                     Side::Left =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e2[i_comm].elems[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e2[i_comm].chunks[<span class="number">0</span>];
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e1[i_comm].elems[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e1[i_comm].chunks[<span class="number">0</span>];
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
                     Side::Right =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].elems[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].chunks[<span class="number">0</span>];
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].elems[<span class="number">0</span>];
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].chunks[<span class="number">0</span>];
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }

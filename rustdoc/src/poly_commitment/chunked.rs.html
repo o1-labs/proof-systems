@@ -61,13 +61,13 @@
         <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
-        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.elems.iter().rev() {
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.chunks.iter().rev() {
             res <span class="kw-2">*</span>= zeta_n;
             res.add_assign(chunk);
         }
 
         PolyComm {
-            elems: <span class="macro">vec!</span>[res.into_affine()],
+            chunks: <span class="macro">vec!</span>[res.into_affine()],
         }
     }
 }
@@ -83,7 +83,7 @@
         <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
-        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.elems.iter().rev() {
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.chunks.iter().rev() {
             res <span class="kw-2">*</span>= zeta_n;
             res += chunk
         }

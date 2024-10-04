@@ -734,7 +734,7 @@
 
     <span class="kw">let </span>witness_comms: Witness&lt;N_WIT_QUAD, PolyComm&lt;G&gt;&gt; = {
         <span class="kw">let </span>blinders = PolyComm {
-            elems: <span class="macro">vec!</span>[Fp::one()],
+            chunks: <span class="macro">vec!</span>[Fp::one()],
         };
         <span class="kw">let </span>comm = {
             |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;Fp&gt;| {
@@ -938,10 +938,10 @@
 
     <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     <span class="kw">let </span>non_hiding = |d1_size| PolyComm {
-        elems: <span class="macro">vec!</span>[Fp::zero(); d1_size],
+        chunks: <span class="macro">vec!</span>[Fp::zero(); d1_size],
     };
     <span class="kw">let </span>hiding = |d1_size| PolyComm {
-        elems: <span class="macro">vec!</span>[Fp::one(); d1_size],
+        chunks: <span class="macro">vec!</span>[Fp::one(); d1_size],
     };
 
     <span class="comment">// Gathering all polynomials_to_open to use in the opening proof

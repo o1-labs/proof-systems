@@ -445,13 +445,13 @@
 
         <span class="comment">// Absorbing commitments
         </span>(<span class="kw-2">&amp;</span>commitments).into_iter().for_each(|c| {
-            <span class="macro">assert!</span>(c.elems.len() == <span class="number">1</span>);
+            <span class="macro">assert!</span>(c.chunks.len() == <span class="number">1</span>);
             absorb_commitment(fq_sponge, c)
         });
 
         <span class="kw">let </span>commitments: [G; N_COL] = commitments
             .into_iter()
-            .map(|c| c.elems[<span class="number">0</span>])
+            .map(|c| c.chunks[<span class="number">0</span>])
             .collect_vec()
             .try_into()
             .unwrap();
@@ -483,7 +483,7 @@
         <span class="comment">// Absorbing commitments
         </span><span class="self">self</span>.commitments
             .iter()
-            .for_each(|c| absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>PolyComm { elems: <span class="macro">vec!</span>[<span class="kw-2">*</span>c] }));
+            .for_each(|c| absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>PolyComm { chunks: <span class="macro">vec!</span>[<span class="kw-2">*</span>c] }));
 
         <span class="kw">let </span>beta = fq_sponge.challenge();
         <span class="kw">let </span>gamma = fq_sponge.challenge();

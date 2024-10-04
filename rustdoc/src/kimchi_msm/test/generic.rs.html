@@ -380,7 +380,7 @@
         <span class="comment">// Checking that none of the commitments are zero
         </span>(<span class="kw-2">&amp;</span>proof.proof_comms.witness_comms)
             .into_iter()
-            .for_each(|v| v.elems.iter().for_each(|x| <span class="macro">assert!</span>(!x.is_zero())));
+            .for_each(|v| v.chunks.iter().for_each(|x| <span class="macro">assert!</span>(!x.is_zero())));
 
         <span class="comment">// Checking the number of chunks of the quotient polynomial
         </span><span class="kw">let </span>max_degree = {

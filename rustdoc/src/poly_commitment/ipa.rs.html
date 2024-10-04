@@ -1414,8 +1414,8 @@
                     .for_each(|(i, x)| {
                         <span class="kw-2">*</span>x += scale * evals[i * stride];
                     });
-                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.elems.len() {
-                    omega += <span class="kw-2">&amp;</span>(omegas.elems[j] * scale);
+                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.chunks.len() {
+                    omega += <span class="kw-2">&amp;</span>(omegas.chunks[j] * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                 }
             }
@@ -1424,12 +1424,12 @@
             </span>DensePolynomialOrEvaluations::DensePolynomial(p_i) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
-                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.elems.len() {
+                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.chunks.len() {
                     <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(scale, segment);
 
-                    omega += <span class="kw-2">&amp;</span>(omegas.elems[j] * scale);
+                    omega += <span class="kw-2">&amp;</span>(omegas.chunks[j] * scale);
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                     offset += srs_length;
                 }
@@ -1851,21 +1851,21 @@
         <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_bigint()).collect();
 
         <span class="comment">// chunk while commiting
-        </span><span class="kw">let </span><span class="kw-2">mut </span>elems = <span class="macro">vec!</span>[];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>chunks = <span class="macro">vec!</span>[];
         <span class="kw">if </span>is_zero {
-            elems.push(G::zero());
+            chunks.push(G::zero());
         } <span class="kw">else </span>{
             coeffs.chunks(<span class="self">self</span>.g.len()).for_each(|coeffs_chunk| {
                 <span class="kw">let </span>chunk = G::Group::msm_bigint(<span class="kw-2">&amp;</span><span class="self">self</span>.g, coeffs_chunk);
-                elems.push(chunk.into_affine());
+                chunks.push(chunk.into_affine());
             });
         }
 
-        <span class="kw">for _ in </span>elems.len()..num_chunks {
-            elems.push(G::zero());
+        <span class="kw">for _ in </span>chunks.len()..num_chunks {
+            chunks.push(G::zero());
         }
 
-        PolyComm::&lt;G&gt; { elems }
+        PolyComm::&lt;G&gt; { chunks }
     }
 
     <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple
@@ -2045,7 +2045,7 @@
         // polynomials.
         </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
         <span class="kw">let </span>num_elems = (n + srs_size - <span class="number">1</span>) / srs_size;
-        <span class="kw">let </span><span class="kw-2">mut </span>elems = Vec::with_capacity(num_elems);
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(num_elems);
 
         <span class="comment">// For each chunk
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
@@ -2059,13 +2059,13 @@
             }
             <span class="comment">// Apply the IFFT
             </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
-            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of elems chunks
-            </span>elems.push(&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::normalize_batch(lg.as_mut_slice()));
+            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of chunks
+            </span>chunks.push(&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::normalize_batch(lg.as_mut_slice()));
         }
 
         <span class="kw">let </span>chunked_commitments: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
             .map(|i| PolyComm {
-                elems: elems.iter().map(|v| v[i]).collect(),
+                chunks: chunks.iter().map(|v| v[i]).collect(),
             })
             .collect();
         <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
@@ -2318,8 +2318,8 @@
                     }
                 };
                 <span class="kw">let </span>chunked_polynomial =
-                    poly.to_chunked_polynomial(blinders.elems.len(), <span class="self">self</span>.g.len());
-                <span class="kw">let </span>chunked_commitment = { <span class="self">self</span>.commit_non_hiding(<span class="kw-2">&amp;</span>poly, blinders.elems.len()) };
+                    poly.to_chunked_polynomial(blinders.chunks.len(), <span class="self">self</span>.g.len());
+                <span class="kw">let </span>chunked_commitment = { <span class="self">self</span>.commit_non_hiding(<span class="kw-2">&amp;</span>poly, blinders.chunks.len()) };
                 <span class="kw">let </span>masked_commitment = <span class="kw">match </span><span class="self">self</span>.mask_custom(chunked_commitment, blinders) {
                     <span class="prelude-val">Ok</span>(comm) =&gt; comm,
                     <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Error at index {i}: {err}&quot;</span>),
