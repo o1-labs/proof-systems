@@ -599,10 +599,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
     // will contain the power of polyscale
     let mut xi_i = G::ScalarField::one();
 
-    for Evaluation { commitment, .. } in evaluations
-        .iter()
-        .filter(|x| !x.commitment.chunks.is_empty())
-    {
+    for Evaluation { commitment, .. } in evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         // iterating over the polynomial segments
         for comm_ch in &commitment.chunks {
             scalars.push(rand_base * xi_i);
