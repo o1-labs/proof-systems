@@ -26,6 +26,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use super::{
     column_env::ColumnEnvironment,
     proof::{Proof, ProofInputs, WitnessColumns},
+    DEGREE_QUOTIENT_POLYNOMIAL,
 };
 use crate::E;
 use thiserror::Error;
@@ -229,7 +230,7 @@ where
         quotient
     };
 
-    let t_comm = srs.commit_non_hiding(&quotient_poly, 7);
+    let t_comm = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
 
     absorb_commitment(&mut fq_sponge, &t_comm);
 
@@ -298,7 +299,7 @@ where
         // Compute Σ_i t_i(X) ζ^{i n}
         // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
         let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
-            .to_chunked_polynomial(7, domain.d1.size as usize)
+            .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
         // -Z_H = (1 - ζ^n)
         let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
