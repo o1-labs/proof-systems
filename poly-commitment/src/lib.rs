@@ -1,4 +1,3 @@
-pub mod chunked;
 mod combine;
 pub mod commitment;
 pub mod error;
