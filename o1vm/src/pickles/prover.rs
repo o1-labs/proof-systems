@@ -191,30 +191,6 @@ where
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
-        let mut last_constraint_failed = None;
-        // Only for debugging purposes
-        for expr in constraints.iter() {
-            let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
-            // Check this expression are witness satisfied
-            let (_, res) = expr
-                .evaluations(&column_env)
-                .interpolate_by_ref()
-                .divide_by_vanishing_poly(domain.d1)
-                .ok_or(fail_q_division.clone())?;
-            if !res.is_zero() {
-                eprintln!("Unsatisfied expression: {}", expr);
-                //return Err(fail_q_division);
-                last_constraint_failed = Some(expr.clone());
-            }
-        }
-        if let Some(expr) = last_constraint_failed {
-            return Err(ProverError::ConstraintNotSatisfied(format!(
-                "Unsatisfied expression: {:}",
-                expr
-            )));
-        }
-
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
             E::combine_constraints(0..(constraints.len() as u32), (constraints).to_vec());
