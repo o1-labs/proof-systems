@@ -563,8 +563,6 @@
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines structures and traits to build and manipulate traces.
 //! A trace is a collection of data points that represent the execution of a
 //! program.
@@ -1013,7 +1011,7 @@
         interpreters::mips::{
             column::{N_MIPS_COLS, N_MIPS_REL_COLS},
             constraints::Env,
-            interpreter::{interpret_instruction, Instruction},
+            interpreter::{interpret_instruction, Instruction, InterpreterEnv},
         },
         legacy::{
             folding::{mips::DecomposableMIPSFoldingConfig, ScalarField},
@@ -1075,14 +1073,12 @@
                 witness: Witness {
                     cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
                 },
-                constraints: env.constraints.clone(),
-                lookups: env.lookups.clone(),
+                constraints: env.get_constraints(),
+                lookups: env.get_lookups(),
             };
-            env.scratch_state_idx = <span class="number">0</span>; <span class="comment">// Reset the scratch state index for the next instruction
-            </span>env.constraints = <span class="macro">vec!</span>[]; <span class="comment">// Clear the constraints for the next instruction
-            </span>env.lookups = <span class="macro">vec!</span>[]; <span class="comment">// Clear the lookups for the next instruction
-
-            </span>trace
+            <span class="comment">// Clear for the next instruction
+            </span>env.reset();
+            trace
         }
 
         <span class="kw">fn </span>push_row(

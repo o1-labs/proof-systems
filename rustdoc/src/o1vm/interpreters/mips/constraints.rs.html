@@ -619,39 +619,69 @@
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::{
         column::{
             ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
             MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
-            MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY,
+            MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY, N_MIPS_REL_COLS,
         },
         interpreter::InterpreterEnv,
+        Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr,
-        ExprInner, Operations, Variable,
-    },
+    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-<span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer <span class="kw">as _</span>};
+<span class="kw">use </span>kimchi_msm::columns::ColumnIndexer <span class="kw">as _</span>;
 <span class="kw">use </span>std::array;
 
 <span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
 
 <span class="doccomment">/// The environment keeping the constraints between the different polynomials
 </span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
-    <span class="kw">pub </span>scratch_state_idx: usize,
+    scratch_state_idx: usize,
     <span class="doccomment">/// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
-    </span><span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
-    <span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
+    </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
+    <span class="doccomment">/// Selector (as expression) for the constraints of the environment.
+    </span>selector: <span class="prelude-ty">Option</span>&lt;E&lt;Fp&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; Default <span class="kw">for </span>Env&lt;Fp&gt; {
@@ -660,6 +690,7 @@
             scratch_state_idx: <span class="number">0</span>,
             constraints: Vec::new(),
             lookups: Vec::new(),
+            selector: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -682,7 +713,7 @@
         MIPSColumn::ScratchState(scratch_idx)
     }
 
-    <span class="kw">type </span>Variable = Expr&lt;ConstantExpr&lt;Fp, BerkeleyChallengeTerm&gt;, Column&gt;;
+    <span class="kw">type </span>Variable = E&lt;Fp&gt;;
 
     <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
@@ -691,22 +722,15 @@
         }))
     }
 
-    <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.constraints.push(assert_equals_zero)
+    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: Instruction) {
+        <span class="comment">// Sanity check: we only want to activate once per instruction
+        </span><span class="macro">assert!</span>(<span class="self">self</span>.selector.is_none(), <span class="string">&quot;A selector has been already activated. You might need to reset the environment if you want to start a new instruction.&quot;</span>);
+        <span class="kw">let </span>n = usize::from(selector) - N_MIPS_REL_COLS;
+        <span class="self">self</span>.selector = <span class="prelude-val">Some</span>(<span class="self">self</span>.variable(MIPSColumn::Selector(n)))
     }
 
-    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector_idx: usize) {
-        <span class="kw">let </span><span class="kw-2">mut </span>acc: <span class="self">Self</span>::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(
-            ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::&lt;Fp&gt;::Literal(
-                Fp::one(),
-            )),
-        )));
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_MIPS_SEL_COLS {
-            <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
-            acc += var.clone();
-            <span class="self">self</span>.add_constraint(var.clone() * var.clone() - var);
-        }
-        <span class="self">self</span>.add_constraint(acc);
+    <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.constraints.push(assert_equals_zero)
     }
 
     <span class="kw">fn </span>check_is_zero(_assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
@@ -1239,5 +1263,41 @@
     <span class="kw">fn </span>request_hint_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, _len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="comment">// No-op, witness only
     </span>}
+
+    <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.scratch_state_idx = <span class="number">0</span>;
+        <span class="self">self</span>.constraints.clear();
+        <span class="self">self</span>.lookups.clear();
+        <span class="self">self</span>.selector = <span class="prelude-val">None</span>;
+    }
+}
+
+<span class="kw">impl</span>&lt;Fp: Field&gt; Env&lt;Fp&gt; {
+    <span class="doccomment">/// Return the constraints for the selector.
+    /// Each selector must be a boolean.
+    </span><span class="kw">pub fn </span>get_selector_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;Fp&gt;&gt; {
+        <span class="kw">let </span>one = &lt;<span class="self">Self </span><span class="kw">as </span>InterpreterEnv&gt;::Variable::one();
+        (<span class="number">0</span>..N_MIPS_SEL_COLS)
+            .map(|i| {
+                <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
+                (var.clone() - one.clone()) * var.clone()
+            })
+            .collect()
+    }
+
+    <span class="kw">pub fn </span>get_selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; E&lt;Fp&gt; {
+        <span class="self">self</span>.selector
+            .clone()
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Selector is not set&quot;</span>))
+    }
+
+    <span class="doccomment">/// Return the constraints for the current instruction, without the selector
+    </span><span class="kw">pub fn </span>get_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;Fp&gt;&gt; {
+        <span class="self">self</span>.constraints.clone()
+    }
+
+    <span class="kw">pub fn </span>get_lookups(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt; {
+        <span class="self">self</span>.lookups.clone()
+    }
 }
 </code></pre></div></section></main></body></html>

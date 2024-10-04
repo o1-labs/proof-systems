@@ -2681,6 +2681,12 @@
 <a href="#2681" id="2681">2681</a>
 <a href="#2682" id="2682">2682</a>
 <a href="#2683" id="2683">2683</a>
+<a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -2866,11 +2872,12 @@
     <span class="comment">// Returns the variable in the current row corresponding to a given column alias.
     </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
+    <span class="doccomment">/// Add a constraint to the proof system, asserting that
+    /// `assert_equals_zero` is 0.
     </span><span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable);
 
-    <span class="doccomment">/// Activate the selector, adding a constraint that it&#39;s equal to `selector_idx`
-    </span><span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector_idx: usize);
+    <span class="doccomment">/// Activate the selector for the given instruction.
+    </span><span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: Instruction);
 
     <span class="doccomment">/// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
     </span><span class="kw">fn </span>check_is_zero(assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
@@ -3661,9 +3668,14 @@
     ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>request_hint_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Reset the environment to handle the next instruction
+    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
+    env.activate_selector(instr);
+
     <span class="kw">match </span>instr {
         Instruction::RType(instr) =&gt; interpret_rtype(env, instr),
         Instruction::JType(instr) =&gt; interpret_jtype(env, instr),

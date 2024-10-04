@@ -103,22 +103,48 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>kimchi_msm::expr::E;
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>o1vm::{
     cannon::{<span class="self">self</span>, Meta, Start, State},
     cannon_cli,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
-        constraints <span class="kw">as </span>mips_constraints,
+        constraints <span class="kw">as </span>mips_constraints, interpreter,
+        interpreter::InterpreterEnv,
         witness::{<span class="self">self </span><span class="kw">as </span>mips_witness},
+        Instruction,
     },
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>poly_commitment::{ipa::SRS, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>std::{fs::File, io::BufReader, process::ExitCode};
+<span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
 
@@ -170,11 +196,31 @@
     <span class="comment">// Initialize the environments
     </span><span class="kw">let </span><span class="kw-2">mut </span>mips_wit_env =
         mips_witness::Env::&lt;Fp, PreImageOracle&gt;::create(cannon::PAGE_SIZE <span class="kw">as </span>usize, state, po);
-    <span class="kw">let </span><span class="kw-2">mut </span>_mips_con_env = mips_constraints::Env::&lt;Fp&gt;::default();
+
+    <span class="comment">// TODO: give this to the prover + verifier
+    </span><span class="kw">let </span>_constraints = {
+        <span class="kw">let </span><span class="kw-2">mut </span>mips_con_env = mips_constraints::Env::&lt;Fp&gt;::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>acc, instr| {
+                interpreter::interpret_instruction(<span class="kw-2">&amp;mut </span>mips_con_env, instr);
+                <span class="kw">let </span>selector = mips_con_env.get_selector();
+                <span class="kw">let </span>constraints_with_selector: Vec&lt;E&lt;Fp&gt;&gt; = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                mips_con_env.reset();
+                acc
+            });
+        constraints.extend(mips_con_env.get_selector_constraints());
+        constraints
+    };
 
     <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
     <span class="kw">while </span>!mips_wit_env.halt {
-        <span class="kw">let </span>instr = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
+        <span class="kw">let </span>instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
         <span class="macro">debug!</span>(<span class="string">&quot;Instruction {:?} has been executed&quot;</span>, instr);
         <span class="comment">// FIXME: add selectors
         </span><span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
@@ -194,9 +240,7 @@
         curr_proof_inputs
             .evaluations
             .selector
-            .push(Fp::from(ark_ff::BigInt::from(
-                u32::try_from(instr.to_selector_column_idx() - N_MIPS_REL_COLS).unwrap(),
-            )));
+            .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) <span class="kw">as </span>u64));
 
         <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             <span class="comment">// FIXME

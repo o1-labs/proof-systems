@@ -1315,6 +1315,9 @@
 <a href="#1315" id="1315">1315</a>
 <a href="#1316" id="1316">1316</a>
 <a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
 <span class="kw">use crate</span>::{
     cannon::{
@@ -1460,8 +1463,8 @@
 
     <span class="kw">type </span>Variable = u64;
 
-    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        u64::try_from(usize::from(column)).unwrap()
+    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, _column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="macro">todo!</span>()
     }
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _assert_equals_zero: <span class="self">Self</span>::Variable) {
@@ -1471,9 +1474,8 @@
         // represent the underlying values.
     </span>}
 
-    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector_idx: usize) {
-        <span class="macro">assert!</span>(selector_idx &lt; N_MIPS_SEL_COLS);
-        <span class="self">self</span>.selector = selector_idx;
+    <span class="kw">fn </span>activate_selector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: Instruction) {
+        <span class="self">self</span>.selector = instruction.into();
     }
 
     <span class="kw">fn </span>check_is_zero(assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
@@ -2146,6 +2148,12 @@
 
         <span class="self">self</span>.syscall_env.last_hint = <span class="prelude-val">Some</span>(remaining);
     }
+
+    <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.scratch_state_idx = <span class="number">0</span>;
+        <span class="self">self</span>.scratch_state = fresh_scratch_state();
+        <span class="self">self</span>.selector = N_MIPS_SEL_COLS;
+    }
 }
 
 <span class="kw">impl</span>&lt;Fp: Field, PreImageOracle: PreImageOracleT&gt; Env&lt;Fp, PreImageOracle&gt; {
@@ -2483,8 +2491,6 @@
             );
             <span class="kw">return </span>opcode;
         }
-
-        <span class="self">self</span>.activate_selector(opcode.to_selector_column_idx());
 
         interpreter::interpret_instruction(<span class="self">self</span>, opcode);
 
