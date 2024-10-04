@@ -10,10 +10,9 @@ use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
     CurveGroup, VariableBaseMSM,
 };
-use ark_ff::{BigInteger, Field, One, PrimeField};
+use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
@@ -21,7 +20,11 @@ use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
 };
-use std::{iter::Iterator, marker::PhantomData};
+use std::{
+    iter::Iterator,
+    marker::PhantomData,
+    ops::{Add, AddAssign, Sub},
+};
 
 /// Represent a polynomial commitment when the type is instantiated with a
 /// curve.
@@ -40,6 +43,45 @@ use std::{iter::Iterator, marker::PhantomData};
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chunks: Vec<C>,
+}
+
+impl<C> PolyComm<C>
+where
+    C: CommitmentCurve,
+{
+    /// Multiplies each commitment chunk of f with powers of zeta^n
+    pub fn chunk_commitment(&self, zeta_n: C::ScalarField) -> Self {
+        let mut res = C::Group::zero();
+        // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        for chunk in self.chunks.iter().rev() {
+            res *= zeta_n;
+            res.add_assign(chunk);
+        }
+
+        PolyComm {
+            chunks: vec![res.into_affine()],
+        }
+    }
+}
+
+impl<F> PolyComm<F>
+where
+    F: Field,
+{
+    /// Multiplies each blinding chunk of f with powers of zeta^n
+    pub fn chunk_blinding(&self, zeta_n: F) -> F {
+        let mut res = F::zero();
+        // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        for chunk in self.chunks.iter().rev() {
+            res *= zeta_n;
+            res += chunk
+        }
+        res
+    }
 }
 
 /// A commitment to a polynomial with some blinding factors.
