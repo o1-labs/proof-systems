@@ -1,5 +1,8 @@
-use crate::interpreters::mips::{
-    constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
+use crate::{
+    interpreters::mips::{
+        constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
+    },
+    pickles::{MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 use kimchi_msm::expr::E;
@@ -28,12 +31,10 @@ fn test_regression_constraints_with_selectors() {
         constraints
     };
 
-    // Total number of constraints
-    assert_eq!(constraints.len(), 463);
+    assert_eq!(constraints.len(), TOTAL_NUMBER_OF_CONSTRAINTS);
 
-    // Check highest degree
     let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap();
-    assert_eq!(max_degree, 6);
+    assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
 }
 
 #[test]
