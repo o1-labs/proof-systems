@@ -35,7 +35,7 @@ pub enum ProverError {
     #[error("the provided constraint was not satisfied: {0}")]
     ConstraintNotSatisfied(String),
 
-    #[error("the provided (witness) constraint has degree {0} > allowed {1}; expr: {2}")]
+    #[error("the provided constraint has degree {0} > allowed {1}; expr: {2}")]
     ConstraintDegreeTooHigh(u64, u64, String),
 }
 
