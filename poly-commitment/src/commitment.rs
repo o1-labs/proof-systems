@@ -159,6 +159,13 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
             .collect();
         Some(PolyComm { chunks })
     }
+
+    /// Return only the first chunk
+    /// Getting this single value is relatively common in the codebase, even
+    /// though we should not do this, and abstract the chunks in the structure.
+    pub fn get_first_chunk(&self) -> A {
+        self.chunks[0]
+    }
 }
 
 /// Inside the circuit, we have a specialized scalar multiplication which computes
