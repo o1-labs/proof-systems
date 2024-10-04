@@ -584,11 +584,6 @@ where
         })
     }
 
-    /// This function commits a polynomial using the SRS' basis of size `n`.
-    /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
-    /// The function returns an unbounded commitment vector
-    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
