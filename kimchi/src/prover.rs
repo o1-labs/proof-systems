@@ -1201,7 +1201,7 @@ where
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.chunks.len(),
+                    comm.len(),
                 )
             })
             .collect::<Vec<_>>();

@@ -209,7 +209,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.instance.to_absorb();
         let extended_commitments = self.extended.iter().map(|commit| {
-            assert_eq!(commit.chunks.len(), 1);
+            assert_eq!(commit.len(), 1);
             commit.chunks[0]
         });
         elements.1.extend(extended_commitments);
@@ -256,7 +256,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G>) {
         let mut elements = self.extended_instance.to_absorb();
         elements.0.push(self.u);
-        assert_eq!(self.error_commitment.chunks.len(), 1);
+        assert_eq!(self.error_commitment.len(), 1);
         elements.1.push(self.error_commitment.chunks[0]);
         elements
     }
