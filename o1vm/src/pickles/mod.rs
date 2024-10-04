@@ -14,5 +14,5 @@
 
 pub mod proof;
 
-// TODO: Empty for now, but some modules like prover, verifier & co. will be
-// added soon.
+#[cfg(test)]
+mod tests;

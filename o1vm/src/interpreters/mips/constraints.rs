@@ -4,33 +4,33 @@ use crate::{
             ColumnAlias as MIPSColumn, MIPS_BYTE_COUNTER_OFF, MIPS_CHUNK_BYTES_LEN,
             MIPS_END_OF_PREIMAGE_OFF, MIPS_HASH_COUNTER_OFF, MIPS_HAS_N_BYTES_OFF,
             MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
-            MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY,
+            MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY, N_MIPS_REL_COLS,
         },
         interpreter::InterpreterEnv,
+        Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-use ark_ff::Field;
+use ark_ff::{Field, One};
 use kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr,
-        ExprInner, Operations, Variable,
-    },
+    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-use kimchi_msm::columns::{Column, ColumnIndexer as _};
+use kimchi_msm::columns::ColumnIndexer as _;
 use std::array;
 
 use super::column::N_MIPS_SEL_COLS;
 
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
-    pub scratch_state_idx: usize,
+    scratch_state_idx: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
-    pub constraints: Vec<E<Fp>>,
-    pub lookups: Vec<Lookup<E<Fp>>>,
+    constraints: Vec<E<Fp>>,
+    lookups: Vec<Lookup<E<Fp>>>,
+    /// Selector (as expression) for the constraints of the environment.
+    selector: Option<E<Fp>>,
 }
 
 impl<Fp: Field> Default for Env<Fp> {
@@ -39,6 +39,7 @@ impl<Fp: Field> Default for Env<Fp> {
             scratch_state_idx: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
+            selector: None,
         }
     }
 }
@@ -61,7 +62,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         MIPSColumn::ScratchState(scratch_idx)
     }
 
-    type Variable = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
+    type Variable = E<Fp>;
 
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
@@ -70,22 +71,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }))
     }
 
-    fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
-        self.constraints.push(assert_equals_zero)
+    fn activate_selector(&mut self, selector: Instruction) {
+        // Sanity check: we only want to activate once per instruction
+        assert!(self.selector.is_none(), "A selector has been already activated. You might need to reset the environment if you want to start a new instruction.");
+        let n = usize::from(selector) - N_MIPS_REL_COLS;
+        self.selector = Some(self.variable(MIPSColumn::Selector(n)))
     }
 
-    fn activate_selector(&mut self, _selector_idx: usize) {
-        let mut acc: Self::Variable = -Expr::Atom(ExprInner::Constant(ConstantExpr::Atom(
-            ConstantExprInner::Constant(kimchi::circuits::expr::ConstantTerm::<Fp>::Literal(
-                Fp::one(),
-            )),
-        )));
-        for i in 0..N_MIPS_SEL_COLS {
-            let var = self.variable(MIPSColumn::Selector(i));
-            acc += var.clone();
-            self.add_constraint(var.clone() * var.clone() - var);
-        }
-        self.add_constraint(acc);
+    fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
+        self.constraints.push(assert_equals_zero)
     }
 
     fn check_is_zero(_assert_equals_zero: &Self::Variable) {
@@ -617,5 +611,41 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn request_hint_write(&mut self, _addr: &Self::Variable, _len: &Self::Variable) {
         // No-op, witness only
+    }
+
+    fn reset(&mut self) {
+        self.scratch_state_idx = 0;
+        self.constraints.clear();
+        self.lookups.clear();
+        self.selector = None;
+    }
+}
+
+impl<Fp: Field> Env<Fp> {
+    /// Return the constraints for the selector.
+    /// Each selector must be a boolean.
+    pub fn get_selector_constraints(&self) -> Vec<E<Fp>> {
+        let one = <Self as InterpreterEnv>::Variable::one();
+        (0..N_MIPS_SEL_COLS)
+            .map(|i| {
+                let var = self.variable(MIPSColumn::Selector(i));
+                (var.clone() - one.clone()) * var.clone()
+            })
+            .collect()
+    }
+
+    pub fn get_selector(&self) -> E<Fp> {
+        self.selector
+            .clone()
+            .unwrap_or_else(|| panic!("Selector is not set"))
+    }
+
+    /// Return the constraints for the current instruction, without the selector
+    pub fn get_constraints(&self) -> Vec<E<Fp>> {
+        self.constraints.clone()
+    }
+
+    pub fn get_lookups(&self) -> Vec<Lookup<E<Fp>>> {
+        self.lookups.clone()
     }
 }

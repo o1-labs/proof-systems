@@ -446,7 +446,7 @@ pub mod mips {
         interpreters::mips::{
             column::{N_MIPS_COLS, N_MIPS_REL_COLS},
             constraints::Env,
-            interpreter::{interpret_instruction, Instruction},
+            interpreter::{interpret_instruction, Instruction, InterpreterEnv},
         },
         legacy::{
             folding::{mips::DecomposableMIPSFoldingConfig, ScalarField},
@@ -508,13 +508,11 @@ pub mod mips {
                 witness: Witness {
                     cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
                 },
-                constraints: env.constraints.clone(),
-                lookups: env.lookups.clone(),
+                constraints: env.get_constraints(),
+                lookups: env.get_lookups(),
             };
-            env.scratch_state_idx = 0; // Reset the scratch state index for the next instruction
-            env.constraints = vec![]; // Clear the constraints for the next instruction
-            env.lookups = vec![]; // Clear the lookups for the next instruction
-
+            // Clear for the next instruction
+            env.reset();
             trace
         }
 

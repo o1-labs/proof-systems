@@ -171,9 +171,3 @@ impl ColumnIndexer for Instruction {
         Column::DynamicSelector(usize::from(self) - N_MIPS_REL_COLS)
     }
 }
-
-impl Instruction {
-    pub fn to_selector_column_idx(self) -> usize {
-        usize::from(self) - N_MIPS_REL_COLS
-    }
-}

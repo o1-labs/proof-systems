@@ -183,11 +183,12 @@ pub trait InterpreterEnv {
     // Returns the variable in the current row corresponding to a given column alias.
     fn variable(&self, column: Self::Position) -> Self::Variable;
 
-    /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
+    /// Add a constraint to the proof system, asserting that
+    /// `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
-    /// Activate the selector, adding a constraint that it's equal to `selector_idx`
-    fn activate_selector(&mut self, selector_idx: usize);
+    /// Activate the selector for the given instruction.
+    fn activate_selector(&mut self, selector: Instruction);
 
     /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
     fn check_is_zero(assert_equals_zero: &Self::Variable);
@@ -978,9 +979,14 @@ pub trait InterpreterEnv {
     ) -> Self::Variable;
 
     fn request_hint_write(&mut self, addr: &Self::Variable, len: &Self::Variable);
+
+    /// Reset the environment to handle the next instruction
+    fn reset(&mut self);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
+    env.activate_selector(instr);
+
     match instr {
         Instruction::RType(instr) => interpret_rtype(env, instr),
         Instruction::JType(instr) => interpret_jtype(env, instr),

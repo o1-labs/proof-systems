@@ -1,19 +1,23 @@
 use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi_msm::expr::E;
 use log::debug;
 use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
-        constraints as mips_constraints,
+        constraints as mips_constraints, interpreter,
+        interpreter::InterpreterEnv,
         witness::{self as mips_witness},
+        Instruction,
     },
     pickles::proof::ProofInputs,
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode};
+use strum::IntoEnumIterator;
 
 use mina_curves::pasta::{Fp, Vesta};
 
@@ -65,11 +69,31 @@ pub fn main() -> ExitCode {
     // Initialize the environments
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
-    let mut _mips_con_env = mips_constraints::Env::<Fp>::default();
+
+    // TODO: give this to the prover + verifier
+    let _constraints = {
+        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
+        let mut constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(vec![], |mut acc, instr| {
+                interpreter::interpret_instruction(&mut mips_con_env, instr);
+                let selector = mips_con_env.get_selector();
+                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                mips_con_env.reset();
+                acc
+            });
+        constraints.extend(mips_con_env.get_selector_constraints());
+        constraints
+    };
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
-        let instr = mips_wit_env.step(&configuration, &meta, &start);
+        let instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         debug!("Instruction {:?} has been executed", instr);
         // FIXME: add selectors
         for (scratch, scratch_chunk) in mips_wit_env
@@ -89,9 +113,7 @@ pub fn main() -> ExitCode {
         curr_proof_inputs
             .evaluations
             .selector
-            .push(Fp::from(ark_ff::BigInt::from(
-                u32::try_from(instr.to_selector_column_idx() - N_MIPS_REL_COLS).unwrap(),
-            )));
+            .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
