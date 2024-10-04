@@ -32,7 +32,7 @@ pub enum ProverError {
     #[error("the proof could not be constructed: {0}")]
     Generic(&'static str),
 
-    #[error("the provided (witness) constraints was not satisfied: {0}")]
+    #[error("the provided constraint was not satisfied: {0}")]
     ConstraintNotSatisfied(String),
 
     #[error("the provided (witness) constraint has degree {0} > allowed {1}; expr: {2}")]
