@@ -115,8 +115,8 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         assert_eq!(error_commitments[0].len(), 1);
         assert_eq!(error_commitments[1].len(), 1);
 
-        let t0 = &error_commitments[0].chunks[0];
-        let t1 = &error_commitments[1].chunks[0];
+        let t0 = &error_commitments[0].get_first_chunk();
+        let t1 = &error_commitments[1].get_first_chunk();
 
         let to_absorb = env.to_absorb(t0, t1);
         fq_sponge.absorb_fr(&to_absorb.0);
@@ -184,8 +184,8 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
             left.0.extend(right.0);
             left.1.extend(right.1);
             left.1.extend([
-                error_commitments[0].chunks[0],
-                error_commitments[1].chunks[0],
+                error_commitments[0].get_first_chunk(),
+                error_commitments[1].get_first_chunk(),
             ]);
             left
         };

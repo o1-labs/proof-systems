@@ -491,8 +491,8 @@ pub fn heavy_test_simple_add() {
 
     // The polynomial of the computation is linear, therefore, the error terms
     // are zero
-    assert_ne!(folding_output_one.t_0.chunks[0], Curve::zero());
-    assert_ne!(folding_output_one.t_1.chunks[0], Curve::zero());
+    assert_ne!(folding_output_one.t_0.get_first_chunk(), Curve::zero());
+    assert_ne!(folding_output_one.t_1.get_first_chunk(), Curve::zero());
 
     // Sanity check that the u values are the same. The u value is there to
     // homogeneoize the polynomial describing the NP relation.
@@ -518,7 +518,7 @@ pub fn heavy_test_simple_add() {
             .relaxed_extended_left_instance
             .extended_instance
             .extended;
-        let extended_comms: Vec<_> = extended.iter().map(|x| x.chunks[0]).collect();
+        let extended_comms: Vec<_> = extended.iter().map(|x| x.get_first_chunk()).collect();
         comms_left.extend(extended_comms.clone());
         extended_comms.iter().enumerate().for_each(|(i, x)| {
             assert_ne!(
@@ -553,7 +553,7 @@ pub fn heavy_test_simple_add() {
             .relaxed_extended_right_instance
             .extended_instance
             .extended;
-        comms_right.extend(extended.iter().map(|x| x.chunks[0]));
+        comms_right.extend(extended.iter().map(|x| x.get_first_chunk()));
     }
     assert_eq!(comms_right.len(), N_COL_TOTAL_QUAD);
     // Checking they are all not zero.
@@ -571,7 +571,7 @@ pub fn heavy_test_simple_add() {
     comms_out.extend(folded_instance_one.extended_instance.instance.commitments);
     {
         let extended = folded_instance_one.extended_instance.extended.clone();
-        comms_out.extend(extended.iter().map(|x| x.chunks[0]));
+        comms_out.extend(extended.iter().map(|x| x.get_first_chunk()));
     }
     // Checking they are all not zero.
     comms_out.iter().for_each(|c| {
@@ -607,9 +607,9 @@ pub fn heavy_test_simple_add() {
         .commitment;
 
     let error_terms = [
-        left_error_term.chunks[0],
-        right_error_term.chunks[0],
-        folded_instance_one.error_commitment.chunks[0],
+        left_error_term.get_first_chunk(),
+        right_error_term.get_first_chunk(),
+        folded_instance_one.error_commitment.get_first_chunk(),
     ];
     error_terms.iter().for_each(|c| {
         assert_ne!(c, &Curve::zero());
@@ -618,8 +618,8 @@ pub fn heavy_test_simple_add() {
     let error_terms: [(Fq, Fq); 3] = std::array::from_fn(|i| (error_terms[i].x, error_terms[i].y));
 
     let t_terms = [
-        folding_output_one.t_0.chunks[0],
-        folding_output_one.t_1.chunks[0],
+        folding_output_one.t_0.get_first_chunk(),
+        folding_output_one.t_1.get_first_chunk(),
     ];
     t_terms.iter().for_each(|c| {
         assert_ne!(c, &Curve::zero());

@@ -183,7 +183,7 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
 
         let commitments: [G; N_COL] = commitments
             .into_iter()
-            .map(|c| c.chunks[0])
+            .map(|c| c.get_first_chunk())
             .collect_vec()
             .try_into()
             .unwrap();
