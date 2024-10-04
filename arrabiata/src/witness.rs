@@ -496,7 +496,7 @@ where
                 let idx_col = idx / 2;
                 debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
                 if self.current_iteration % 2 == 0 {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e2[idx_col].elems[0]
+                    let (pt_x, pt_y) = self.ivc_accumulator_e2[idx_col].chunks[0]
                         .to_coordinates()
                         .unwrap();
                     if idx % 2 == 0 {
@@ -505,7 +505,7 @@ where
                         self.write_public_input(pos, pt_y.to_biguint().into())
                     }
                 } else {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e1[idx_col].elems[0]
+                    let (pt_x, pt_y) = self.ivc_accumulator_e1[idx_col].chunks[0]
                         .to_coordinates()
                         .unwrap();
                     if idx % 2 == 0 {
@@ -544,7 +544,7 @@ where
                     if self.current_iteration % 2 == 0 {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e2[i_comm].elems[0];
+                                let pt = self.previous_commitments_e2[i_comm].chunks[0];
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -570,7 +570,7 @@ where
                     } else {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e1[i_comm].elems[0];
+                                let pt = self.previous_commitments_e1[i_comm].chunks[0];
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -603,22 +603,22 @@ where
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
                     Side::Left => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.ivc_accumulator_e2[i_comm].elems[0];
+                            let pt = self.ivc_accumulator_e2[i_comm].chunks[0];
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.ivc_accumulator_e1[i_comm].elems[0];
+                            let pt = self.ivc_accumulator_e1[i_comm].chunks[0];
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
                     Side::Right => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.previous_commitments_e2[i_comm].elems[0];
+                            let pt = self.previous_commitments_e2[i_comm].chunks[0];
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.previous_commitments_e1[i_comm].elems[0];
+                            let pt = self.previous_commitments_e1[i_comm].chunks[0];
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }

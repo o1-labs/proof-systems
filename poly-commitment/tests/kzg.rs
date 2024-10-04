@@ -20,7 +20,7 @@ fn test_combine_evaluations() {
 
     // we ignore commitments
     let dummy_commitments = PolyComm::<VestaG> {
-        elems: vec![VestaG::zero(); nb_of_chunks],
+        chunks: vec![VestaG::zero(); nb_of_chunks],
     };
 
     let polyscale = Fp::from(2);

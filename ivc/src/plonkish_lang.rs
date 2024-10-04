@@ -177,13 +177,13 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
 
         // Absorbing commitments
         (&commitments).into_iter().for_each(|c| {
-            assert!(c.elems.len() == 1);
+            assert!(c.chunks.len() == 1);
             absorb_commitment(fq_sponge, c)
         });
 
         let commitments: [G; N_COL] = commitments
             .into_iter()
-            .map(|c| c.elems[0])
+            .map(|c| c.chunks[0])
             .collect_vec()
             .try_into()
             .unwrap();
@@ -215,7 +215,7 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
         // Absorbing commitments
         self.commitments
             .iter()
-            .for_each(|c| absorb_commitment(fq_sponge, &PolyComm { elems: vec![*c] }));
+            .for_each(|c| absorb_commitment(fq_sponge, &PolyComm { chunks: vec![*c] }));
 
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();

@@ -112,11 +112,11 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        assert_eq!(error_commitments[0].elems.len(), 1);
-        assert_eq!(error_commitments[1].elems.len(), 1);
+        assert_eq!(error_commitments[0].chunks.len(), 1);
+        assert_eq!(error_commitments[1].chunks.len(), 1);
 
-        let t0 = &error_commitments[0].elems[0];
-        let t1 = &error_commitments[1].elems[0];
+        let t0 = &error_commitments[0].chunks[0];
+        let t1 = &error_commitments[1].chunks[0];
 
         let to_absorb = env.to_absorb(t0, t1);
         fq_sponge.absorb_fr(&to_absorb.0);
@@ -175,16 +175,18 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
 
         // sanity check to verify that we only have one commitment in polycomm
         // (i.e. domain = poly size)
-        assert_eq!(error_commitments[0].elems.len(), 1);
-        assert_eq!(error_commitments[1].elems.len(), 1);
+        assert_eq!(error_commitments[0].chunks.len(), 1);
+        assert_eq!(error_commitments[1].chunks.len(), 1);
 
         let to_absorb = {
             let mut left = a.to_absorb();
             let right = b.to_absorb();
             left.0.extend(right.0);
             left.1.extend(right.1);
-            left.1
-                .extend([error_commitments[0].elems[0], error_commitments[1].elems[0]]);
+            left.1.extend([
+                error_commitments[0].chunks[0],
+                error_commitments[1].chunks[0],
+            ]);
             left
         };
 

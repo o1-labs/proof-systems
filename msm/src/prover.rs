@@ -138,7 +138,7 @@ where
 
     let witness_comms: Witness<N_WIT, PolyComm<G>> = {
         let blinders = PolyComm {
-            elems: vec![G::ScalarField::one()],
+            chunks: vec![G::ScalarField::one()],
         };
         let comm = {
             |poly: &DensePolynomial<G::ScalarField>| {
@@ -490,10 +490,10 @@ where
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     let non_hiding = |d1_size| PolyComm {
-        elems: vec![G::ScalarField::zero(); d1_size],
+        chunks: vec![G::ScalarField::zero(); d1_size],
     };
     let hiding = |d1_size| PolyComm {
-        elems: vec![G::ScalarField::one(); d1_size],
+        chunks: vec![G::ScalarField::one(); d1_size],
     };
 
     // Gathering all polynomials to use in the opening proof

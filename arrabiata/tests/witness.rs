@@ -162,7 +162,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
         let res: Pallas =
-            (env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0]).into();
+            (env.ivc_accumulator_e2[0].chunks[0] + env.previous_commitments_e2[0].chunks[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),
@@ -181,7 +181,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
         let res: Vesta =
-            (env.ivc_accumulator_e1[0].elems[0] + env.previous_commitments_e1[0].elems[0]).into();
+            (env.ivc_accumulator_e1[0].chunks[0] + env.previous_commitments_e1[0].chunks[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),
@@ -200,7 +200,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
         let res: Pallas =
-            (env.ivc_accumulator_e2[0].elems[0] + env.previous_commitments_e2[0].elems[0]).into();
+            (env.ivc_accumulator_e2[0].chunks[0] + env.previous_commitments_e2[0].chunks[0]).into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
             x3.to_biguint().to_bigint().unwrap(),

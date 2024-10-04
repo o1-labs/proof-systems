@@ -441,42 +441,42 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         // Always present
 
         for comm in sigma_comm.iter() {
-            fq_sponge.absorb_g(&comm.elems);
+            fq_sponge.absorb_g(&comm.chunks);
         }
         for comm in coefficients_comm.iter() {
-            fq_sponge.absorb_g(&comm.elems);
+            fq_sponge.absorb_g(&comm.chunks);
         }
-        fq_sponge.absorb_g(&generic_comm.elems);
-        fq_sponge.absorb_g(&psm_comm.elems);
-        fq_sponge.absorb_g(&complete_add_comm.elems);
-        fq_sponge.absorb_g(&mul_comm.elems);
-        fq_sponge.absorb_g(&emul_comm.elems);
-        fq_sponge.absorb_g(&endomul_scalar_comm.elems);
+        fq_sponge.absorb_g(&generic_comm.chunks);
+        fq_sponge.absorb_g(&psm_comm.chunks);
+        fq_sponge.absorb_g(&complete_add_comm.chunks);
+        fq_sponge.absorb_g(&mul_comm.chunks);
+        fq_sponge.absorb_g(&emul_comm.chunks);
+        fq_sponge.absorb_g(&endomul_scalar_comm.chunks);
 
         // Optional gates
 
         if let Some(range_check0_comm) = range_check0_comm {
-            fq_sponge.absorb_g(&range_check0_comm.elems);
+            fq_sponge.absorb_g(&range_check0_comm.chunks);
         }
 
         if let Some(range_check1_comm) = range_check1_comm {
-            fq_sponge.absorb_g(&range_check1_comm.elems);
+            fq_sponge.absorb_g(&range_check1_comm.chunks);
         }
 
         if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
-            fq_sponge.absorb_g(&foreign_field_mul_comm.elems);
+            fq_sponge.absorb_g(&foreign_field_mul_comm.chunks);
         }
 
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
-            fq_sponge.absorb_g(&foreign_field_add_comm.elems);
+            fq_sponge.absorb_g(&foreign_field_add_comm.chunks);
         }
 
         if let Some(xor_comm) = xor_comm {
-            fq_sponge.absorb_g(&xor_comm.elems);
+            fq_sponge.absorb_g(&xor_comm.chunks);
         }
 
         if let Some(rot_comm) = rot_comm {
-            fq_sponge.absorb_g(&rot_comm.elems);
+            fq_sponge.absorb_g(&rot_comm.chunks);
         }
 
         // Lookup index; optional
@@ -498,26 +498,26 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         }) = lookup_index
         {
             for entry in lookup_table {
-                fq_sponge.absorb_g(&entry.elems);
+                fq_sponge.absorb_g(&entry.chunks);
             }
             if let Some(table_ids) = table_ids {
-                fq_sponge.absorb_g(&table_ids.elems);
+                fq_sponge.absorb_g(&table_ids.chunks);
             }
             if let Some(runtime_tables_selector) = runtime_tables_selector {
-                fq_sponge.absorb_g(&runtime_tables_selector.elems);
+                fq_sponge.absorb_g(&runtime_tables_selector.chunks);
             }
 
             if let Some(xor) = xor {
-                fq_sponge.absorb_g(&xor.elems);
+                fq_sponge.absorb_g(&xor.chunks);
             }
             if let Some(lookup) = lookup {
-                fq_sponge.absorb_g(&lookup.elems);
+                fq_sponge.absorb_g(&lookup.chunks);
             }
             if let Some(range_check) = range_check {
-                fq_sponge.absorb_g(&range_check.elems);
+                fq_sponge.absorb_g(&range_check.chunks);
             }
             if let Some(ffmul) = ffmul {
-                fq_sponge.absorb_g(&ffmul.elems);
+                fq_sponge.absorb_g(&ffmul.chunks);
             }
         }
         fq_sponge.digest_fq()
