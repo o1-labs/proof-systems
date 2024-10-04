@@ -500,19 +500,24 @@ where
     G: AffineRepr,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 {
-    /// The sponge used to generate/absorb the challenges.
+    /// Sponge used to coin and absorb values and simulate
+    /// non-interactivity using the Fiat-Shamir transformation.
     pub sponge: EFqSponge,
     /// A list of evaluations, each supposed to correspond to a different
     /// polynomial.
     pub evaluations: Vec<Evaluation<G>>,
     /// The actual evaluation points. Each field `evaluations` of each structure
     /// of `Evaluation` should have the same (outer) length.
+    /// A randomized folded challenge will be built using `evalscale`.
     pub evaluation_points: Vec<G::ScalarField>,
-    /// scaling factor for evaluation point powers
+    /// A challenge to combine polynomials. Powers of this point will be used,
+    /// hence the name.
     pub polyscale: G::ScalarField,
-    /// scaling factor for polynomials
+    /// A challenge to build a randomized folded challenge (often named u) in
+    /// case of multiple evaluation points. In the case of multiple evaluation
+    /// points, powers of this point will be used, hence the name.
     pub evalscale: G::ScalarField,
-    /// batched opening proof
+    /// The actual opening proof.
     pub opening: &'a OpeningProof,
     pub combined_inner_product: G::ScalarField,
 }
