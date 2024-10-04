@@ -210,12 +210,8 @@ fn test_kzg_proof() {
 fn check_srs_g2_valid_and_serializes() {
     type BN254 = Bn<Config>;
     type BN254G2BaseField = <G2 as AffineRepr>::BaseField;
-    type Fp = ark_bn254::Fr;
 
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let x = Fp::rand(&mut rng);
-    let srs: PairingSRS<BN254> = unsafe { PairingSRS::create(x, 1 << 5) };
+    let srs: PairingSRS<BN254> = PairingSRS::create(1 << 5);
 
     let mut vec: Vec<u8> = vec![0u8; 1024];
 
