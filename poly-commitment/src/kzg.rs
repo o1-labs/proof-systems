@@ -64,10 +64,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         vec![G::ScalarField::zero(); num_evals]
     };
 
-    for Evaluation { evaluations, .. } in evaluations
-        .iter()
-        .filter(|x| !x.commitment.chunks.is_empty())
-    {
+    for Evaluation { evaluations, .. } in evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         // IMPROVEME: we could have a flat array that would contain all the
         // evaluations and all the chunks. It would avoid fetching the memory
         // and avoid indirection into RAM.
