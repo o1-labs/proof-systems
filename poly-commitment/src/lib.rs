@@ -3,9 +3,7 @@ mod combine;
 pub mod commitment;
 pub mod error;
 
-/// Inner product argument
 pub mod ipa;
-/// KZG polynomial commitment scheme
 pub mod kzg;
 
 pub use commitment::PolyComm;
@@ -157,16 +155,23 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
 pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     type SRS: SRS<G>;
 
-    /// Parameters:
-    /// - `srs`: the structured reference string
+    /// Create an opening proof for a batch of polynomials. The parameters are
+    /// the following:
+    /// - `srs`: the structured reference string used to commit
+    /// to the polynomials
     /// - `group_map`: the group map
-    /// - `plnms`: vector of polynomials with optional degree bound and
-    /// commitment randomness
-    /// - `elm`: vector of evaluation points
-    /// - `polyscale`: scaling factor for polynoms
-    /// - `evalscale`: scaling factor for evaluation point powers
-    /// - `sponge`: Sponge used to coin and absorb values
-    /// - `rng`: The RNG to use to generate random elements in the open
+    /// - `plnms`: the list of polynomials to commit to, with possible blinders.
+    /// The type is simply an alias to handle the polynomials in evaluations or
+    /// coefficients forms.
+    /// - `elm`: the evaluation points
+    /// - `polyscale`: a challenge to combine the polynomials.
+    /// - `evalscale`: a challenge to build a randomized folded challenge (often
+    /// refered as u) in case of multiple evaluation points. In the case of
+    /// multiple evaluation points, powers of this point will be used, hence the
+    /// name.
+    /// - `sponge`: Sponge used to coin and absorb values and simulate
+    /// non-interactivity using the Fiat-Shamir transformation.
+    /// - `rng`: a pseudo random number generator in case blinding is needed
     #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
@@ -175,7 +180,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
         elm: &[<G as AffineRepr>::ScalarField],
         polyscale: <G as AffineRepr>::ScalarField,
         evalscale: <G as AffineRepr>::ScalarField,
-        sponge: EFqSponge, // sponge
+        sponge: EFqSponge,
         rng: &mut RNG,
     ) -> Self
     where
@@ -183,6 +188,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
             Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng;
 
+    /// Verify the opening proof
     fn verify<EFqSponge, RNG>(
         srs: &Self::SRS,
         group_map: &G::Map,
