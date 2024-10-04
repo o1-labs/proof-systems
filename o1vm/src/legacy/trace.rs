@@ -179,7 +179,7 @@ where
 
         let commitments: [C::Curve; N] = commitments
             .into_iter()
-            .map(|c| c.elems[0])
+            .map(|c| c.chunks[0])
             .collect_vec()
             .try_into()
             .unwrap();

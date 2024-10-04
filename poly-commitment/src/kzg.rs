@@ -66,7 +66,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
 
     for Evaluation { evaluations, .. } in evaluations
         .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
+        .filter(|x| !x.commitment.chunks.is_empty())
     {
         // IMPROVEME: we could have a flat array that would contain all the
         // evaluations and all the chunks. It would avoid fetching the memory
@@ -414,7 +414,7 @@ impl<
             quotient
         };
 
-        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).elems[0];
+        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
 
         Some(KZGProof {
             quotient,
@@ -455,12 +455,12 @@ impl<
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
-            .elems[0];
+            .chunks[0];
         // Taking the first element of the commitment, i.e. no support for chunking.
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
-            .elems[0]
+            .chunks[0]
             .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
         // We compute the result of the multiplication of two miller loop,

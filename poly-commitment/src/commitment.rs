@@ -28,7 +28,7 @@ use std::{iter::Iterator, marker::PhantomData};
 ///
 /// The structure also handles chunking, i.e. when we aim to handle polynomials
 /// whose degree is higher than the SRS size. For this reason, we do use a
-/// vector for the field `elems`.
+/// vector for the field `chunks`.
 ///
 /// Note that the parameter `C` is not constrained to be a curve, therefore in
 /// some places in the code, `C` can refer to a scalar field element. For
@@ -39,7 +39,7 @@ use std::{iter::Iterator, marker::PhantomData};
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub elems: Vec<C>,
+    pub chunks: Vec<C>,
 }
 
 /// A commitment to a polynomial with some blinding factors.
@@ -53,8 +53,8 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(elems: Vec<T>) -> Self {
-        Self { elems }
+    pub fn new(chunks: Vec<T>) -> Self {
+        Self { chunks }
     }
 }
 
@@ -66,7 +66,12 @@ where
     where
         S: serde::Serializer,
     {
-        serializer.collect_seq(source.elems.iter().map(|e| SerializeAsWrap::<T, U>::new(e)))
+        serializer.collect_seq(
+            source
+                .chunks
+                .iter()
+                .map(|e| SerializeAsWrap::<T, U>::new(e)),
+        )
     }
 }
 
@@ -97,16 +102,16 @@ where
                 A: serde::de::SeqAccess<'de>,
             {
                 #[allow(clippy::redundant_closure_call)]
-                let mut elems = vec![];
+                let mut chunks = vec![];
 
                 while let Some(value) = seq
                     .next_element()?
                     .map(|v: DeserializeAsWrap<T, U>| v.into_inner())
                 {
-                    elems.push(value);
+                    chunks.push(value);
                 }
 
-                Ok(PolyComm { elems })
+                Ok(PolyComm { chunks })
             }
         }
 
@@ -123,18 +128,18 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let elems = self.elems.iter().map(|x| f(*x)).collect();
-        PolyComm { elems }
+        let chunks = self.chunks.iter().map(|x| f(*x)).collect();
+        PolyComm { chunks }
     }
 
-    /// Returns the length of the commitment.
+    /// Returns the number of chunks.
     pub fn len(&self) -> usize {
-        self.elems.len()
+        self.chunks.len()
     }
 
     /// Returns `true` if the commitment is empty.
     pub fn is_empty(&self) -> bool {
-        self.elems.is_empty()
+        self.chunks.is_empty()
     }
 
     // TODO: if all callers end up calling unwrap, just call this zip_eq and
@@ -143,16 +148,16 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         &self,
         other: &PolyComm<B>,
     ) -> Option<PolyComm<(A, B)>> {
-        if self.elems.len() != other.elems.len() {
+        if self.chunks.len() != other.chunks.len() {
             return None;
         }
-        let elems = self
-            .elems
+        let chunks = self
+            .chunks
             .iter()
-            .zip(other.elems.iter())
+            .zip(other.chunks.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        Some(PolyComm { elems })
+        Some(PolyComm { chunks })
     }
 }
 
@@ -208,20 +213,20 @@ impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut elems = vec![];
-        let n1 = self.elems.len();
-        let n2 = other.elems.len();
+        let mut chunks = vec![];
+        let n1 = self.chunks.len();
+        let n2 = other.chunks.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                (self.elems[i] + other.elems[i]).into_affine()
+                (self.chunks[i] + other.chunks[i]).into_affine()
             } else if i < n1 {
-                self.elems[i]
+                self.chunks[i]
             } else {
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm { chunks }
     }
 }
 
@@ -229,27 +234,27 @@ impl<'a, 'b, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &'
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut elems = vec![];
-        let n1 = self.elems.len();
-        let n2 = other.elems.len();
+        let mut chunks = vec![];
+        let n1 = self.chunks.len();
+        let n2 = other.chunks.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                (self.elems[i] - other.elems[i]).into_affine()
+                (self.chunks[i] - other.chunks[i]).into_affine()
             } else if i < n1 {
-                self.elems[i]
+                self.chunks[i]
             } else {
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm { chunks }
     }
 }
 
 impl<C: AffineRepr> PolyComm<C> {
     pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
         PolyComm {
-            elems: self.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
+            chunks: self.chunks.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
@@ -268,21 +273,21 @@ impl<C: AffineRepr> PolyComm<C> {
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
-        let elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
-        let mut elems = Vec::with_capacity(elems_size);
+        let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
+        let mut chunks = Vec::with_capacity(elems_size);
 
         for chunk in 0..elems_size {
             let (points, scalars): (Vec<_>, Vec<_>) = com
                 .iter()
                 .zip(&all_scalars)
                 // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
+                .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
             let chunk_msm = C::Group::msm_bigint(&points, &scalars);
-            elems.push(chunk_msm.into_affine());
+            chunks.push(chunk_msm.into_affine());
         }
-        Self::new(elems)
+        Self::new(chunks)
     }
 }
 
@@ -332,7 +337,7 @@ pub fn absorb_commitment<Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSpong
     sponge: &mut EFqSponge,
     commitment: &PolyComm<G>,
 ) {
-    sponge.absorb_g(&commitment.elems);
+    sponge.absorb_g(&commitment.chunks);
 }
 
 /// A useful trait extending AffineRepr for commitments.
@@ -547,10 +552,10 @@ pub fn combine_commitments<G: CommitmentCurve>(
 
     for Evaluation { commitment, .. } in evaluations
         .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
+        .filter(|x| !x.commitment.chunks.is_empty())
     {
         // iterating over the polynomial segments
-        for comm_ch in &commitment.elems {
+        for comm_ch in &commitment.chunks {
             scalars.push(rand_base * xi_i);
             points.push(*comm_ch);
 
@@ -581,7 +586,7 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.elems.into_iter().map(CamlG::from).collect(),
+                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
                 shifted: None,
             }
         }
@@ -594,7 +599,7 @@ pub mod caml {
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.elems.iter().map(Into::<CamlG>::into).collect(),
+                unshifted: polycomm.chunks.iter().map(Into::<CamlG>::into).collect(),
                 shifted: None,
             }
         }
@@ -610,7 +615,7 @@ pub mod caml {
                 "mina#14628: Shifted commitments are deprecated and must not be used"
             );
             PolyComm {
-                elems: camlpolycomm
+                chunks: camlpolycomm
                     .unshifted
                     .into_iter()
                     .map(Into::<G>::into)
@@ -630,7 +635,7 @@ pub mod caml {
             );
             PolyComm {
                 //FIXME something with as_ref()
-                elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+                chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
         }
     }

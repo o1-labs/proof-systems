@@ -224,7 +224,7 @@ fn instance_from_witness(
         .0
         .iter()
         .map(|w| srs.commit_evaluations_non_hiding(domain, w))
-        .map(|c| c.elems[0])
+        .map(|c| c.chunks[0])
         .collect_vec();
     let commitments: [_; 3] = commitments.try_into().unwrap();
 
@@ -493,8 +493,8 @@ fn test_folding_instance() {
     // show that there is some non trivial computation.
     assert_eq!(t_0.len(), 1);
     assert_eq!(t_1.len(), 1);
-    assert!(!t_0.elems[0].is_zero());
-    assert!(!t_1.elems[0].is_zero());
+    assert!(!t_0.chunks[0].is_zero());
+    assert!(!t_1.chunks[0].is_zero());
 
     // checking that we have the expected number of elements to absorb
     // 3+2 from each instance + 1 from u, times 2 instances

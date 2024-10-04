@@ -234,7 +234,7 @@ where
 
     let witness_comms: Witness<N_WIT_QUAD, PolyComm<G>> = {
         let blinders = PolyComm {
-            elems: vec![Fp::one()],
+            chunks: vec![Fp::one()],
         };
         let comm = {
             |poly: &DensePolynomial<Fp>| {
@@ -438,10 +438,10 @@ where
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
     let non_hiding = |d1_size| PolyComm {
-        elems: vec![Fp::zero(); d1_size],
+        chunks: vec![Fp::zero(); d1_size],
     };
     let hiding = |d1_size| PolyComm {
-        elems: vec![Fp::one(); d1_size],
+        chunks: vec![Fp::one(); d1_size],
     };
 
     // Gathering all polynomials_to_open to use in the opening proof

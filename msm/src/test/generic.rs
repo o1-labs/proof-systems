@@ -108,7 +108,7 @@ pub fn test_completeness_generic<
         // Checking that none of the commitments are zero
         (&proof.proof_comms.witness_comms)
             .into_iter()
-            .for_each(|v| v.elems.iter().for_each(|x| assert!(!x.is_zero())));
+            .for_each(|v| v.chunks.iter().for_each(|x| assert!(!x.is_zero())));
 
         // Checking the number of chunks of the quotient polynomial
         let max_degree = {

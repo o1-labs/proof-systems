@@ -162,8 +162,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                for j in 0..omegas.elems.len() {
-                    omega += &(omegas.elems[j] * scale);
+                for j in 0..omegas.chunks.len() {
+                    omega += &(omegas.chunks[j] * scale);
                     scale *= &polyscale;
                 }
             }
@@ -172,12 +172,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                for j in 0..omegas.elems.len() {
+                for j in 0..omegas.chunks.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(scale, segment);
 
-                    omega += &(omegas.elems[j] * scale);
+                    omega += &(omegas.chunks[j] * scale);
                     scale *= &polyscale;
                     offset += srs_length;
                 }
@@ -599,21 +599,21 @@ where
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
 
         // chunk while commiting
-        let mut elems = vec![];
+        let mut chunks = vec![];
         if is_zero {
-            elems.push(G::zero());
+            chunks.push(G::zero());
         } else {
             coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
                 let chunk = G::Group::msm_bigint(&self.g, coeffs_chunk);
-                elems.push(chunk.into_affine());
+                chunks.push(chunk.into_affine());
             });
         }
 
-        for _ in elems.len()..num_chunks {
-            elems.push(G::zero());
+        for _ in chunks.len()..num_chunks {
+            chunks.push(G::zero());
         }
 
-        PolyComm::<G> { elems }
+        PolyComm::<G> { chunks }
     }
 
     /// Commits a polynomial, potentially splitting the result in multiple
@@ -793,7 +793,7 @@ where
         // polynomials.
         let srs_size = self.g.len();
         let num_elems = (n + srs_size - 1) / srs_size;
-        let mut elems = Vec::with_capacity(num_elems);
+        let mut chunks = Vec::with_capacity(num_elems);
 
         // For each chunk
         for i in 0..num_elems {
@@ -807,13 +807,13 @@ where
             }
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
-            // Append the 'partial Langrange polynomials' to the vector of elems chunks
-            elems.push(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()));
+            // Append the 'partial Langrange polynomials' to the vector of chunks
+            chunks.push(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()));
         }
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                elems: elems.iter().map(|v| v[i]).collect(),
+                chunks: chunks.iter().map(|v| v[i]).collect(),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
@@ -1066,8 +1066,8 @@ impl<G: CommitmentCurve> SRS<G> {
                     }
                 };
                 let chunked_polynomial =
-                    poly.to_chunked_polynomial(blinders.elems.len(), self.g.len());
-                let chunked_commitment = { self.commit_non_hiding(&poly, blinders.elems.len()) };
+                    poly.to_chunked_polynomial(blinders.chunks.len(), self.g.len());
+                let chunked_commitment = { self.commit_non_hiding(&poly, blinders.chunks.len()) };
                 let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
                     Ok(comm) => comm,
                     Err(err) => panic!("Error at index {i}: {err}"),
