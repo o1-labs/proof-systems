@@ -14,10 +14,7 @@ use crate::{
 };
 use ark_ff::{Field, One};
 use kimchi::circuits::{
-    expr::{
-        ConstantExpr, ConstantExprInner, ConstantTerm::Literal, Expr, ExprInner, Operations,
-        Variable,
-    },
+    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use kimchi_msm::columns::ColumnIndexer as _;
