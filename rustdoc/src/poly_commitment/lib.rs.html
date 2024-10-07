@@ -192,6 +192,20 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
 <span class="kw">pub mod </span>error;
@@ -200,6 +214,9 @@
 </span><span class="kw">pub mod </span>ipa;
 <span class="doccomment">/// KZG polynomial commitment scheme
 </span><span class="kw">pub mod </span>kzg;
+
+<span class="comment">// Exposing property based tests for the SRS trait
+</span><span class="kw">pub mod </span>pbt_srs;
 
 <span class="kw">pub use </span>commitment::PolyComm;
 
@@ -254,13 +271,24 @@
     }
 
     <span class="doccomment">/// This function commits a polynomial using the SRS&#39; basis of size `n`.
-    /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output
-    /// polynomial commitment
-    /// The function returns an unbounded commitment vector (which splits the
-    /// commitment into several commitments of size at most `n`).
-    /// It is analogous to [SRS::commit_evaluations_non_hiding] but for
-    /// polynomials.
+    /// - `plnm`: polynomial to commit to. The polynomial can be of any degree,
+    /// including higher than `n`.
+    /// - `num_chunks`: the minimal number of commitments to be included in the
+    /// output polynomial commitment.
+    ///
+    /// The function returns the commitments to the chunks (of size at most `n`) of
+    /// the polynomials.
+    ///
+    /// The function will also pad with zeroes if the polynomial has a degree
+    /// smaller than `n * num_chunks`.
+    ///
+    /// Note that if the polynomial has a degree higher than `n * num_chunks`,
+    /// the output will contain more than `num_chunks` commitments as it will
+    /// also contain the additional chunks.
+    ///
+    /// See the test
+    /// [crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks]
+    /// for an example of the number of chunks returned.
     </span><span class="kw">fn </span>commit_non_hiding(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,

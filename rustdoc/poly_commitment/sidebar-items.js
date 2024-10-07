@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["commitment","error","ipa","kzg"],"trait":["OpenProof","SRS"]};
+window.SIDEBAR_ITEMS = {"mod":["commitment","error","ipa","kzg","pbt_srs"],"trait":["OpenProof","SRS"]};
