@@ -506,8 +506,8 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         self.g.len()
     }
 
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
-        self.lagrange_bases.get(&domain_size)
+    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.get_lagrange_basis_from_domain_size(domain_size)
     }
 
     fn blinding_commitment(&self) -> G {
@@ -591,10 +591,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G> {
-        let basis = self
-            .lagrange_bases
-            .get(&domain.size())
-            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        let basis = self.get_lagrange_basis(domain);
         let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
             PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };

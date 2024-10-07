@@ -148,8 +148,9 @@ impl<
         self.full_srs.max_poly_size()
     }
 
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
-        self.full_srs.get_lagrange_basis(domain_size)
+    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.full_srs
+            .get_lagrange_basis_from_domain_size(domain_size)
     }
 
     fn blinding_commitment(&self) -> G {

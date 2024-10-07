@@ -1,6 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::{commitment::CommitmentCurve, PolyComm};
+use crate::{commitment::CommitmentCurve, hash_map_cache::HashMapCache, PolyComm};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -10,10 +10,10 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, cmp::min, collections::HashMap};
+use std::{array, cmp::min};
 
 #[serde_as]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
 pub struct SRS<G> {
     /// The vector of group elements for committing to polynomials in coefficient form
@@ -26,7 +26,7 @@ pub struct SRS<G> {
     // TODO: the following field should be separated, as they are optimization values
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
-    pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
+    pub lagrange_bases: HashMapCache<usize, Vec<PolyComm<G>>>,
 }
 
 impl<G> PartialEq for SRS<G>
@@ -93,14 +93,8 @@ impl<G: CommitmentCurve> SRS<G> {
         self.g.len()
     }
 
-    /// Compute commitments to the lagrange basis corresponding to the given domain and
-    /// cache them in the SRS
-    pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
+    fn lagrange_basis(&self, domain: D<G::ScalarField>) -> Vec<PolyComm<G>> {
         let n = domain.size();
-
-        if self.lagrange_bases.contains_key(&n) {
-            return;
-        }
 
         // Let V be a vector space over the field F.
         //
@@ -195,12 +189,24 @@ impl<G: CommitmentCurve> SRS<G> {
             elems.push(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()));
         }
 
-        let chunked_commitments: Vec<_> = (0..n)
+        (0..n)
             .map(|i| PolyComm {
                 elems: elems.iter().map(|v| v[i]).collect(),
             })
-            .collect();
-        self.lagrange_bases.insert(n, chunked_commitments);
+            .collect()
+    }
+
+    pub fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.lagrange_bases.get_or_generate(domain_size, || {
+            self.lagrange_basis(D::new(domain_size).unwrap())
+        })
+    }
+
+    /// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    pub fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>> {
+        self.lagrange_bases
+            .get_or_generate(domain.size(), || self.lagrange_basis(domain))
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
@@ -227,7 +233,7 @@ impl<G: CommitmentCurve> SRS<G> {
         SRS {
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 }
@@ -259,7 +265,7 @@ where
         SRS {
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 }
@@ -293,7 +299,7 @@ where
         SRS {
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 }
