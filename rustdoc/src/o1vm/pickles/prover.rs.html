@@ -328,13 +328,15 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{l0_1, BerkeleyChallenges, Constants},
+        expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

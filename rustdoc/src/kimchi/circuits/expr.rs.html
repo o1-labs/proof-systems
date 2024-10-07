@@ -3624,62 +3624,10 @@
 <a href="#3624" id="3624">3624</a>
 <a href="#3625" id="3625">3625</a>
 <a href="#3626" id="3626">3626</a>
-<a href="#3627" id="3627">3627</a>
-<a href="#3628" id="3628">3628</a>
-<a href="#3629" id="3629">3629</a>
-<a href="#3630" id="3630">3630</a>
-<a href="#3631" id="3631">3631</a>
-<a href="#3632" id="3632">3632</a>
-<a href="#3633" id="3633">3633</a>
-<a href="#3634" id="3634">3634</a>
-<a href="#3635" id="3635">3635</a>
-<a href="#3636" id="3636">3636</a>
-<a href="#3637" id="3637">3637</a>
-<a href="#3638" id="3638">3638</a>
-<a href="#3639" id="3639">3639</a>
-<a href="#3640" id="3640">3640</a>
-<a href="#3641" id="3641">3641</a>
-<a href="#3642" id="3642">3642</a>
-<a href="#3643" id="3643">3643</a>
-<a href="#3644" id="3644">3644</a>
-<a href="#3645" id="3645">3645</a>
-<a href="#3646" id="3646">3646</a>
-<a href="#3647" id="3647">3647</a>
-<a href="#3648" id="3648">3648</a>
-<a href="#3649" id="3649">3649</a>
-<a href="#3650" id="3650">3650</a>
-<a href="#3651" id="3651">3651</a>
-<a href="#3652" id="3652">3652</a>
-<a href="#3653" id="3653">3653</a>
-<a href="#3654" id="3654">3654</a>
-<a href="#3655" id="3655">3655</a>
-<a href="#3656" id="3656">3656</a>
-<a href="#3657" id="3657">3657</a>
-<a href="#3658" id="3658">3658</a>
-<a href="#3659" id="3659">3659</a>
-<a href="#3660" id="3660">3660</a>
-<a href="#3661" id="3661">3661</a>
-<a href="#3662" id="3662">3662</a>
-<a href="#3663" id="3663">3663</a>
-<a href="#3664" id="3664">3664</a>
-<a href="#3665" id="3665">3665</a>
-<a href="#3666" id="3666">3666</a>
-<a href="#3667" id="3667">3667</a>
-<a href="#3668" id="3668">3668</a>
-<a href="#3669" id="3669">3669</a>
-<a href="#3670" id="3670">3670</a>
-<a href="#3671" id="3671">3671</a>
-<a href="#3672" id="3672">3672</a>
-<a href="#3673" id="3673">3673</a>
-<a href="#3674" id="3674">3674</a>
-<a href="#3675" id="3675">3675</a>
-<a href="#3676" id="3676">3676</a>
-<a href="#3677" id="3677">3677</a>
-<a href="#3678" id="3678">3678</a>
-<a href="#3679" id="3679">3679</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
+        berkeley_columns::BerkeleyChallengeTerm,
         constraints::FeatureFlags,
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
@@ -3700,7 +3648,7 @@
 <span class="kw">use </span>std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::{<span class="self">self</span>, Debug, Display, Formatter},
+    fmt::{<span class="self">self</span>, Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
@@ -3728,30 +3676,6 @@
 
     <span class="attr">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
     </span>MissingRuntime,
-}
-
-<span class="kw">pub struct </span>BerkeleyChallenges&lt;F&gt; {
-    <span class="doccomment">/// The challenge alpha from the PLONK IOP.
-    </span><span class="kw">pub </span>alpha: F,
-    <span class="doccomment">/// The challenge beta from the PLONK IOP.
-    </span><span class="kw">pub </span>beta: F,
-    <span class="doccomment">/// The challenge gamma from the PLONK IOP.
-    </span><span class="kw">pub </span>gamma: F,
-    <span class="doccomment">/// The challenge joint_combiner which is used to combine joint lookup tables.
-    </span><span class="kw">pub </span>joint_combiner: F,
-}
-
-<span class="kw">impl</span>&lt;F: Field&gt; Index&lt;BerkeleyChallengeTerm&gt; <span class="kw">for </span>BerkeleyChallenges&lt;F&gt; {
-    <span class="kw">type </span>Output = F;
-
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge_term: BerkeleyChallengeTerm) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>challenge_term {
-            BerkeleyChallengeTerm::Alpha =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.alpha,
-            BerkeleyChallengeTerm::Beta =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.beta,
-            BerkeleyChallengeTerm::Gamma =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.gamma,
-            BerkeleyChallengeTerm::JointCombiner =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.joint_combiner,
-        }
-    }
 }
 
 <span class="doccomment">/// The Challenge term that contains an alpha.
@@ -3859,32 +3783,8 @@
 /// interactive protocol.
 /// TODO: we should generalize the expression type over challenges and constants.
 /// See &lt;https://github.com/MinaProtocol/mina/issues/15287&gt;
-</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-</span><span class="kw">pub enum </span>BerkeleyChallengeTerm {
-    Alpha,
-    Beta,
-    Gamma,
-    JointCombiner,
-}
 
-<span class="kw">impl </span>Display <span class="kw">for </span>BerkeleyChallengeTerm {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="kw">use </span>BerkeleyChallengeTerm::<span class="kw-2">*</span>;
-        <span class="kw">let </span>str = <span class="kw">match </span><span class="self">self </span>{
-            Alpha =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
-            Beta =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
-            Gamma =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
-            JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
-        };
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, str)
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; AlphaChallengeTerm&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>BerkeleyChallengeTerm {
-    <span class="kw">const </span>ALPHA: <span class="self">Self </span>= <span class="self">Self</span>::Alpha;
-}
-
-<span class="doccomment">/// Define the constant terms an expression can use.
+/// Define the constant terms an expression can use.
 /// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
 /// permutation used by Poseidon for instance), or endomorphism coefficients
 /// (`EndoCoefficient` - used as an optimisation).
@@ -5503,12 +5403,6 @@
                 }
             }
         }
-    }
-}
-<span class="kw">impl</span>&lt;F: FftField, Column: Copy&gt; Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt; {
-    <span class="doccomment">/// The expression `beta`.
-    </span><span class="kw">pub fn </span>beta() -&gt; <span class="self">Self </span>{
-        BerkeleyChallengeTerm::Beta.into()
     }
 }
 
@@ -7282,7 +7176,7 @@
                 mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
                 zk_rows: <span class="number">3</span>,
             },
-            challenges: BerkeleyChallenges {
+            challenges: <span class="kw">super</span>::berkeley_columns::BerkeleyChallenges {
                 alpha: one,
                 beta: one,
                 gamma: one,

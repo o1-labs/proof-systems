@@ -790,14 +790,10 @@
 <a href="#790" id="790">790</a>
 <a href="#791" id="791">791</a>
 <a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
-        berkeley_columns::Column,
-        expr::{
-            prologue::<span class="kw-2">*</span>, BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset,
-        },
+        berkeley_columns::{BerkeleyChallengeTerm, Column},
+        expr::{prologue::<span class="kw-2">*</span>, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -1338,7 +1334,7 @@
         <span class="comment">// t part of the numerator
         </span><span class="kw">let </span>t_chunk = gammabeta1.clone()
             + E::cell(Column::LookupTable, Curr)
-            + E::beta() * E::cell(Column::LookupTable, Next);
+            + E::from(BerkeleyChallengeTerm::Beta) * E::cell(Column::LookupTable, Next);
 
         <span class="comment">// return the numerator
         </span>f_chunk * t_chunk
@@ -1385,7 +1381,7 @@
             // gamma * (beta + 1) + sorted[i](x w) + beta * sorted[i](x)
             </span><span class="kw">let </span><span class="kw-2">mut </span>expr = gammabeta1.clone()
                 + E::cell(Column::LookupSorted(i), s1)
-                + E::beta() * E::cell(Column::LookupSorted(i), s2);
+                + E::from(BerkeleyChallengeTerm::Beta) * E::cell(Column::LookupSorted(i), s2);
             <span class="kw">if </span>generate_feature_flags {
                 expr = E::IfFeature(
                     FeatureFlag::LookupsPerRow(i <span class="kw">as </span>isize),

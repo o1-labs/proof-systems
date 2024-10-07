@@ -1153,7 +1153,6 @@
 <a href="#1153" id="1153">1153</a>
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1437,9 +1436,8 @@
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable,
-    },
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 <span class="kw">use </span>num_traits::Zero;

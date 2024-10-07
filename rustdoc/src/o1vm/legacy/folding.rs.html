@@ -661,7 +661,7 @@
 <span class="kw">use </span>folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
 };
-<span class="kw">use </span>kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
+<span class="kw">use </span>kimchi::circuits::{berkeley_columns::BerkeleyChallengeTerm, gate::CurrOrNext};
 <span class="kw">use </span>kimchi_msm::witness::Witness <span class="kw">as </span>GenericWitness;
 <span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 <span class="kw">use </span>std::{array, ops::Index};
@@ -1224,7 +1224,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_conversion() {
         <span class="kw">use super</span>::<span class="kw-2">*</span>;
-        <span class="kw">use </span>kimchi::circuits::expr::BerkeleyChallengeTerm;
+        <span class="kw">use </span>kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
 
         <span class="comment">// Check that the conversion from ChallengeTerm to Challenge works as expected
         </span><span class="macro">assert_eq!</span>(Challenge::Beta, BerkeleyChallengeTerm::Beta.into());

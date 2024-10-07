@@ -116,10 +116,16 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr},
+};
 <span class="kw">use </span>rand::RngCore;
 
 <span class="kw">pub mod </span>monomials;

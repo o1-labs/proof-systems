@@ -622,8 +622,14 @@
 <a href="#622" id="622">622</a>
 <a href="#623" id="623">623</a>
 <a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
-<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr},
+};
 <span class="kw">use </span>num_integer::binomial;
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>std::{

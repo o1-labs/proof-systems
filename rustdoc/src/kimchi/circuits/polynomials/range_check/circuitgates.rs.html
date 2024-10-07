@@ -363,6 +363,7 @@
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="comment">//~ The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
 //~ `RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
 //~ v_1$ and $v_2$) of up to 88 bits each.
@@ -483,9 +484,10 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
+    berkeley_columns::BerkeleyChallengeTerm,
     expr::{
         constraints::{crumb, ExprOps},
-        BerkeleyChallengeTerm, Cache,
+        Cache,
     },
     gate::GateType,
     polynomial::COLUMNS,

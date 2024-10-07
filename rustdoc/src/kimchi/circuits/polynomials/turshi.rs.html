@@ -1131,9 +1131,9 @@
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::{Column, E},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges, Column, E},
         constraints::ConstraintSystem,
-        expr::{<span class="self">self</span>, constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        expr::{<span class="self">self</span>, constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
@@ -1274,7 +1274,7 @@
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
             zk_rows: <span class="number">3</span>,
         };
-        <span class="kw">let </span>challenges = expr::BerkeleyChallenges {
+        <span class="kw">let </span>challenges = BerkeleyChallenges {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),

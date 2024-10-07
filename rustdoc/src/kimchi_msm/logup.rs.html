@@ -953,6 +953,9 @@
 <a href="#953" id="953">953</a>
 <a href="#954" id="954">954</a>
 <a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 
 </span><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
@@ -1094,7 +1097,10 @@
 //! - evaluate all polynomials at the evaluation points ζ and ζω (because we
 //! access the &quot;next&quot; row for the accumulator in the quotient polynomial).
 </span><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
-<span class="kw">use </span>kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
+<span class="kw">use </span>kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner},
+};
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
 
 <span class="kw">use crate</span>::{

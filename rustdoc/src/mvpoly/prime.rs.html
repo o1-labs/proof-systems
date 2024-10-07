@@ -876,8 +876,6 @@
 <a href="#876" id="876">876</a>
 <a href="#877" id="877">877</a>
 <a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1029,10 +1027,8 @@
 
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{
-        BerkeleyChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner,
-        Operations, Variable,
-    },
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 <span class="kw">use </span>num_integer::binomial;

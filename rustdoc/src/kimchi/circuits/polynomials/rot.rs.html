@@ -368,15 +368,17 @@
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
 </pre></div><pre class="rust"><code><span class="comment">//~ Rotation of a 64-bit word by a known offset
 
 </span><span class="kw">use </span><span class="kw">super</span>::range_check::witness::range_check_0_row;
 <span class="kw">use crate</span>::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{
             constraints::{crumb, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            Cache,
         },
         gate::{CircuitGate, Connect, GateType},
         lookup::{

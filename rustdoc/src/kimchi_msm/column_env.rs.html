@@ -175,18 +175,14 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
 <span class="kw">use crate</span>::{logup, logup::LookupTableID, witness::Witness};
 <span class="kw">use </span>kimchi::circuits::{
+    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
-    expr::{
-        BerkeleyChallengeTerm, BerkeleyChallenges, ColumnEnvironment <span class="kw">as </span>TColumnEnvironment,
-        Constants, Domain,
-    },
+    expr::{ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain},
 };
 
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants

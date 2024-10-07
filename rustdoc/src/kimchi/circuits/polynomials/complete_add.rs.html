@@ -300,6 +300,7 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.
 
 </span><span class="comment">//~ The layout is
@@ -318,7 +319,8 @@
 //~
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };

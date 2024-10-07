@@ -365,13 +365,15 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use crate</span>::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{<span class="self">self</span>, BerkeleyChallengeTerm},
+        berkeley_columns::BerkeleyChallengeTerm,
+        expr::{<span class="self">self</span>},
         lookup::{
             <span class="self">self</span>,
             constraints::LookupConfiguration,

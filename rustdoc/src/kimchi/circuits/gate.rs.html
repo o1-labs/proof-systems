@@ -628,11 +628,13 @@
 <a href="#628" id="628">628</a>
 <a href="#629" id="629">629</a>
 <a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
     circuits::{
         argument::{Argument, ArgumentEnv},
+        berkeley_columns::BerkeleyChallenges,
         constraints::ConstraintSystem,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
@@ -867,7 +869,7 @@
             zk_rows: cs.zk_rows,
         };
         <span class="comment">//TODO : use generic challenges, since we do not need those here
-        </span><span class="kw">let </span>challenges = expr::BerkeleyChallenges {
+        </span><span class="kw">let </span>challenges = BerkeleyChallenges {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),

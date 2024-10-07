@@ -367,6 +367,7 @@
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
@@ -374,11 +375,12 @@
 </span><span class="kw">use crate</span>::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
         constraints::ConstraintSystem,
         expr::{
             <span class="self">self</span>,
             constraints::{boolean, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            Cache,
         },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
@@ -512,7 +514,7 @@
             endo_coefficient: cs.endo,
             zk_rows: cs.zk_rows,
         };
-        <span class="kw">let </span>challenges = expr::BerkeleyChallenges {
+        <span class="kw">let </span>challenges = BerkeleyChallenges {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),

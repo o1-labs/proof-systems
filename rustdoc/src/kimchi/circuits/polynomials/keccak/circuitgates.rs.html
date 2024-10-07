@@ -321,14 +321,16 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak gadget
 </span><span class="kw">use crate</span>::{
     auto_clone, auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{
             constraints::{boolean, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            Cache,
         },
         gate::GateType,
         polynomials::keccak::{constants::<span class="kw-2">*</span>, OFF},

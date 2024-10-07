@@ -332,6 +332,7 @@
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -346,8 +347,9 @@
 
 <span class="kw">use </span>kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{BerkeleyChallenges, Constants, Expr, PolishToken},
+        expr::{Constants, Expr, PolishToken},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

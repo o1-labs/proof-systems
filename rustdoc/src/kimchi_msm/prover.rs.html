@@ -584,6 +584,7 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
@@ -603,8 +604,9 @@
 };
 <span class="kw">use </span>kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{l0_1, BerkeleyChallenges, Constants, Expr},
+        expr::{l0_1, Constants, Expr},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

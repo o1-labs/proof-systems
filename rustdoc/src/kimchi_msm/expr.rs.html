@@ -67,13 +67,16 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre></div><pre class="rust"><code><span class="comment">// @volhovm Not sure a whole file is necessary for just one type
 // alias, but maybe more code will come.
 // Consider moving to lib.rs
 
 </span><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{BerkeleyChallengeTerm, ConstantExpr, Expr, ExprInner, Variable},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
@@ -88,8 +91,9 @@
 /// polynomial `X3 - X1 - X2 = 0`.
 /// Using the expression framework, this constraint would be
 /// ```
-/// use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExprInner, ExprInner, Operations, Variable};
+/// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
+/// use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
 /// use kimchi_msm::columns::Column;
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;

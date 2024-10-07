@@ -368,6 +368,7 @@
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication
 
 </span><span class="comment">//~ This gadget is used to constrain that
@@ -463,7 +464,8 @@
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        berkeley_columns::BerkeleyChallengeTerm,
+        expr::{constraints::ExprOps, Cache},
         gate::GateType,
     },
 };
