@@ -4,7 +4,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
 use groupmap::GroupMap;
-use mina_curves::pasta::{Fp, Vesta as VestaG};
+use mina_curves::pasta::{Fp, Pallas, Vesta as VestaG};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
 };
@@ -12,7 +12,7 @@ use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{DensePolynomialOrEvaluations, SRS},
-    PolyComm, SRS as _,
+    pbt_srs, PolyComm, SRS as _,
 };
 use rand::Rng;
 use std::array;
@@ -60,9 +60,11 @@ fn test_chunked_lagrange_commitments() {
 
     let expected_lagrange_commitments: Vec<_> = (0..n)
         .map(|i| {
+            // Generating the i-th element of the lagrange basis
             let mut e = vec![Fp::zero(); n];
             e[i] = Fp::one();
             let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+            // Committing, and requesting [num_chunks] chunks.
             srs.commit_non_hiding(&p, num_chunks)
         })
         .collect();
@@ -212,4 +214,12 @@ fn test_opening_proof() {
 
         assert!(srs.verify(&group_map, &mut batch, rng));
     }
+}
+
+// Testing how many chunks are generated with different polynomial sizes and
+// different number of chunks requested.
+#[test]
+fn test_regression_commit_non_hiding_expected_number_of_chunks() {
+    pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks::<VestaG, SRS<VestaG>>();
+    pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks::<Pallas, SRS<Pallas>>()
 }

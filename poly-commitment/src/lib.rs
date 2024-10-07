@@ -7,6 +7,9 @@ pub mod ipa;
 /// KZG polynomial commitment scheme
 pub mod kzg;
 
+// Exposing property based tests for the SRS trait
+pub mod pbt_srs;
+
 pub use commitment::PolyComm;
 
 use crate::{
@@ -60,13 +63,24 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     }
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
-    /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output
-    /// polynomial commitment
-    /// The function returns an unbounded commitment vector (which splits the
-    /// commitment into several commitments of size at most `n`).
-    /// It is analogous to [SRS::commit_evaluations_non_hiding] but for
-    /// polynomials.
+    /// - `plnm`: polynomial to commit to. The polynomial can be of any degree,
+    /// including higher than `n`.
+    /// - `num_chunks`: the minimal number of commitments to be included in the
+    /// output polynomial commitment.
+    ///
+    /// The function returns the commitments to the chunks (of size at most `n`) of
+    /// the polynomials.
+    ///
+    /// The function will also pad with zeroes if the polynomial has a degree
+    /// smaller than `n * num_chunks`.
+    ///
+    /// Note that if the polynomial has a degree higher than `n * num_chunks`,
+    /// the output will contain more than `num_chunks` commitments as it will
+    /// also contain the additional chunks.
+    ///
+    /// See the test
+    /// [crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks]
+    /// for an example of the number of chunks returned.
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,

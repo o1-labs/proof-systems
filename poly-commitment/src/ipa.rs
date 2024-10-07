@@ -564,7 +564,6 @@ where
         self.mask_custom(comm, &blinders).unwrap()
     }
 
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
@@ -584,11 +583,6 @@ where
         })
     }
 
-    /// This function commits a polynomial using the SRS' basis of size `n`.
-    /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
-    /// The function returns an unbounded commitment vector
-    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -616,8 +610,6 @@ where
         PolyComm::<G> { chunks }
     }
 
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
