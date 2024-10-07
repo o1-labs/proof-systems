@@ -68,7 +68,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// - `num_chunks`: the minimal number of commitments to be included in the
     /// output polynomial commitment.
     ///
-    /// The function returns the commitments to the chunks (of at most `n`) of
+    /// The function returns the commitments to the chunks (of size at most `n`) of
     /// the polynomials.
     ///
     /// The function will also pad with zeroes if the polynomial has a degree
