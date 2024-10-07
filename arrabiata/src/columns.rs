@@ -1,4 +1,7 @@
-use kimchi::circuits::expr::{BerkeleyChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{CacheId, ConstantExpr, Expr, FormattedOutput},
+};
 use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 

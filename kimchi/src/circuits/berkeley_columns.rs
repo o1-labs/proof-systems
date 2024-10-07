@@ -12,15 +12,61 @@ use serde::{Deserialize, Serialize};
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{
-    BerkeleyChallenges, ColumnEnvironment, Constants, Domain, FormattedOutput,
-};
+use crate::circuits::expr::{ColumnEnvironment, Constants, Domain, FormattedOutput};
 
 use crate::circuits::wires::COLUMNS;
 
 use std::collections::HashMap;
 
-use super::expr::BerkeleyChallengeTerm;
+/// The challenge terms used in Berkeley
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BerkeleyChallengeTerm {
+    Alpha,
+    Beta,
+    Gamma,
+    JointCombiner,
+}
+
+impl std::fmt::Display for BerkeleyChallengeTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use BerkeleyChallengeTerm::*;
+        let str = match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+        };
+        write!(f, "{}", str)
+    }
+}
+
+impl<'a> super::expr::AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
+    const ALPHA: Self = Self::Alpha;
+}
+
+pub struct BerkeleyChallenges<F> {
+    /// The challenge alpha from the PLONK IOP.
+    pub alpha: F,
+    /// The challenge beta from the PLONK IOP.
+    pub beta: F,
+    /// The challenge gamma from the PLONK IOP.
+    pub gamma: F,
+    /// The challenge joint_combiner which is used to combine joint lookup tables.
+    pub joint_combiner: F,
+}
+
+impl<F: ark_ff::Field> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
+    type Output = F;
+
+    fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
+        match challenge_term {
+            BerkeleyChallengeTerm::Alpha => &self.alpha,
+            BerkeleyChallengeTerm::Beta => &self.beta,
+            BerkeleyChallengeTerm::Gamma => &self.gamma,
+            BerkeleyChallengeTerm::JointCombiner => &self.joint_combiner,
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP, use in

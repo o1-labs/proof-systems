@@ -5,7 +5,7 @@ use folding::{
     FoldingScheme, Instance, Side, Witness,
 };
 use ivc::ivc::{constraints::constrain_ivc, lookups::IVCLookupTable, N_ADDITIONAL_WIT_COL_QUAD};
-use kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
+use kimchi::circuits::{berkeley_columns::BerkeleyChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::{circuit_design::ConstraintBuilderEnv, columns::Column, Ff1};
 use poly_commitment::{kzg::PairingSRS, SRS as _};
 

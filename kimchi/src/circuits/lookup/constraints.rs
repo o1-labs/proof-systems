@@ -1,9 +1,7 @@
 use crate::{
     circuits::{
-        berkeley_columns::Column,
-        expr::{
-            prologue::*, BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset,
-        },
+        berkeley_columns::{BerkeleyChallengeTerm, Column},
+        expr::{prologue::*, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -544,7 +542,7 @@ pub fn constraints<F: FftField>(
         // t part of the numerator
         let t_chunk = gammabeta1.clone()
             + E::cell(Column::LookupTable, Curr)
-            + E::beta() * E::cell(Column::LookupTable, Next);
+            + E::from(BerkeleyChallengeTerm::Beta) * E::cell(Column::LookupTable, Next);
 
         // return the numerator
         f_chunk * t_chunk
@@ -591,7 +589,7 @@ pub fn constraints<F: FftField>(
             // gamma * (beta + 1) + sorted[i](x w) + beta * sorted[i](x)
             let mut expr = gammabeta1.clone()
                 + E::cell(Column::LookupSorted(i), s1)
-                + E::beta() * E::cell(Column::LookupSorted(i), s2);
+                + E::from(BerkeleyChallengeTerm::Beta) * E::cell(Column::LookupSorted(i), s2);
             if generate_feature_flags {
                 expr = E::IfFeature(
                     FeatureFlag::LookupsPerRow(i as isize),

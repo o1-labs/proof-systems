@@ -1,6 +1,7 @@
 use crate::{
     circuits::{
         berkeley_columns,
+        berkeley_columns::BerkeleyChallengeTerm,
         constraints::FeatureFlags,
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
@@ -21,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::{self, Debug, Display, Formatter},
+    fmt::{self, Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
@@ -49,30 +50,6 @@ pub enum ExprError<Column> {
 
     #[error("runtime table not available")]
     MissingRuntime,
-}
-
-pub struct BerkeleyChallenges<F> {
-    /// The challenge alpha from the PLONK IOP.
-    pub alpha: F,
-    /// The challenge beta from the PLONK IOP.
-    pub beta: F,
-    /// The challenge gamma from the PLONK IOP.
-    pub gamma: F,
-    /// The challenge joint_combiner which is used to combine joint lookup tables.
-    pub joint_combiner: F,
-}
-
-impl<F: Field> Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
-    type Output = F;
-
-    fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
-        match challenge_term {
-            BerkeleyChallengeTerm::Alpha => &self.alpha,
-            BerkeleyChallengeTerm::Beta => &self.beta,
-            BerkeleyChallengeTerm::Gamma => &self.gamma,
-            BerkeleyChallengeTerm::JointCombiner => &self.joint_combiner,
-        }
-    }
 }
 
 /// The Challenge term that contains an alpha.
@@ -180,30 +157,6 @@ pub struct Variable<Column> {
 /// interactive protocol.
 /// TODO: we should generalize the expression type over challenges and constants.
 /// See <https://github.com/MinaProtocol/mina/issues/15287>
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BerkeleyChallengeTerm {
-    Alpha,
-    Beta,
-    Gamma,
-    JointCombiner,
-}
-
-impl Display for BerkeleyChallengeTerm {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        use BerkeleyChallengeTerm::*;
-        let str = match self {
-            Alpha => "alpha".to_string(),
-            Beta => "beta".to_string(),
-            Gamma => "gamma".to_string(),
-            JointCombiner => "joint_combiner".to_string(),
-        };
-        write!(f, "{}", str)
-    }
-}
-
-impl<'a> AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
-    const ALPHA: Self = Self::Alpha;
-}
 
 /// Define the constant terms an expression can use.
 /// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
@@ -1824,12 +1777,6 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
                 }
             }
         }
-    }
-}
-impl<F: FftField, Column: Copy> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
-    /// The expression `beta`.
-    pub fn beta() -> Self {
-        BerkeleyChallengeTerm::Beta.into()
     }
 }
 
@@ -3603,7 +3550,7 @@ pub mod test {
                 mds: &Vesta::sponge_params().mds,
                 zk_rows: 3,
             },
-            challenges: BerkeleyChallenges {
+            challenges: super::berkeley_columns::BerkeleyChallenges {
                 alpha: one,
                 beta: one,
                 gamma: one,

@@ -139,7 +139,10 @@
 //! - evaluate all polynomials at the evaluation points ζ and ζω (because we
 //! access the "next" row for the accumulator in the quotient polynomial).
 use ark_ff::{Field, PrimeField, Zero};
-use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner},
+};
 use std::{collections::BTreeMap, hash::Hash};
 
 use crate::{

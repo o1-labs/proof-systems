@@ -17,8 +17,9 @@ use ark_poly::{
 };
 use kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{l0_1, BerkeleyChallenges, Constants, Expr},
+        expr::{l0_1, Constants, Expr},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

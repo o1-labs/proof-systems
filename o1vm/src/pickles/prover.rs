@@ -3,8 +3,9 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::{
+        berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{l0_1, BerkeleyChallenges, Constants},
+        expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,

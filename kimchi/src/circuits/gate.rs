@@ -3,6 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
+        berkeley_columns::BerkeleyChallenges,
         constraints::ConstraintSystem,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
@@ -237,7 +238,7 @@ impl<F: PrimeField> CircuitGate<F> {
             zk_rows: cs.zk_rows,
         };
         //TODO : use generic challenges, since we do not need those here
-        let challenges = expr::BerkeleyChallenges {
+        let challenges = BerkeleyChallenges {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),

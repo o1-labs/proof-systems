@@ -4,9 +4,10 @@ use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{
             constraints::{crumb, ExprOps},
-            BerkeleyChallengeTerm, Cache,
+            Cache,
         },
         gate::{CircuitGate, Connect, GateType},
         lookup::{

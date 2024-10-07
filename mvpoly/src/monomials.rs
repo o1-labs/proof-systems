@@ -1,5 +1,8 @@
 use ark_ff::{One, PrimeField, Zero};
-use kimchi::circuits::expr::{BerkeleyChallengeTerm, ConstantExpr, Expr};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr},
+};
 use num_integer::binomial;
 use rand::RngCore;
 use std::{

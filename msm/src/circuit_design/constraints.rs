@@ -1,6 +1,7 @@
 use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{BerkeleyChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 use std::collections::BTreeMap;

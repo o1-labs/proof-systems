@@ -36,7 +36,8 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, BerkeleyChallengeTerm, Cache},
+        berkeley_columns::BerkeleyChallengeTerm,
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
         wires::GateWires,

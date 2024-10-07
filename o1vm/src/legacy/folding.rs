@@ -4,7 +4,7 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness,
 };
-use kimchi::circuits::{expr::BerkeleyChallengeTerm, gate::CurrOrNext};
+use kimchi::circuits::{berkeley_columns::BerkeleyChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::witness::Witness as GenericWitness;
 use poly_commitment::commitment::CommitmentCurve;
 use std::{array, ops::Index};
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn test_conversion() {
         use super::*;
-        use kimchi::circuits::expr::BerkeleyChallengeTerm;
+        use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
 
         // Check that the conversion from ChallengeTerm to Challenge works as expected
         assert_eq!(Challenge::Beta, BerkeleyChallengeTerm::Beta.into());
