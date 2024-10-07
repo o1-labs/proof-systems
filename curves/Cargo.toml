@@ -19,3 +19,7 @@ rand.workspace = true
 ark-algebra-test-templates.workspace = true
 ark-std.workspace = true
 ark-serialize.workspace = true
+
+[features]
+asm = []
+default = ["asm"]
