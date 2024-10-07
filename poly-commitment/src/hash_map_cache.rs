@@ -38,4 +38,8 @@ impl<Key: Hash + std::cmp::Eq, Value> HashMapCache<Key, Value> {
         // must live at least at most as long as the cache value.
         unsafe { &*inner_ptr }
     }
+
+    pub fn contains_key(&self, key: &Key) -> bool {
+        self.contents.lock().unwrap().contains_key(key)
+    }
 }
