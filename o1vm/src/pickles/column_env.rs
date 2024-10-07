@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::interpreters::mips::witness::SCRATCH_SIZE;
+use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 use kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
@@ -17,7 +17,10 @@ use super::proof::WitnessColumns;
 pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evaluations<F, Radix2EvaluationDomain<F>>>,
+    pub witness: &'a WitnessColumns<
+        Evaluations<F, Radix2EvaluationDomain<F>>,
+        [Evaluations<F, Radix2EvaluationDomain<F>>; N_MIPS_SEL_COLS],
+    >,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
