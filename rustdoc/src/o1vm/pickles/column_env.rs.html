@@ -173,10 +173,10 @@
 
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; Radix2EvaluationDomain&lt;F&gt; {
         <span class="kw">match </span>d {
-            Domain::D1 =&gt; <span class="self">self</span>.domain.d1,
-            Domain::D2 =&gt; <span class="self">self</span>.domain.d2,
-            Domain::D4 =&gt; <span class="self">self</span>.domain.d4,
             Domain::D8 =&gt; <span class="self">self</span>.domain.d8,
+            Domain::D1 | Domain::D2 | Domain::D4 =&gt; {
+                <span class="macro">panic!</span>(<span class="string">&quot;Not supposed to be in MIPS. All columns are evaluated on d8&quot;</span>)
+            }
         }
     }
 

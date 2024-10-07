@@ -279,6 +279,55 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -305,6 +354,14 @@
     proof::{Proof, ProofInputs, WitnessColumns},
 };
 <span class="kw">use </span><span class="kw">crate</span>::E;
+<span class="kw">use </span>thiserror::Error;
+
+<span class="doccomment">/// Errors that can arise when creating a proof
+</span><span class="attr">#[derive(Error, Debug, Clone)]
+</span><span class="kw">pub enum </span>ProverError {
+    <span class="attr">#[error(<span class="string">&quot;the provided constraint has degree {0} &gt; allowed {1}; expr: {2}&quot;</span>)]
+    </span>ConstraintDegreeTooHigh(u64, u64, String),
+}
 
 <span class="doccomment">/// Make a PlonKish proof for the given circuit. As inputs, we get the execution
 /// trace consisting of evaluations of polynomials over a certain domain
@@ -328,9 +385,9 @@
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
     inputs: ProofInputs&lt;G&gt;,
-    _constraints: <span class="kw-2">&amp;</span>[E&lt;G::ScalarField&gt;],
+    constraints: <span class="kw-2">&amp;</span>[E&lt;G::ScalarField&gt;],
     rng: <span class="kw-2">&amp;mut </span>RNG,
-) -&gt; Proof&lt;G&gt;
+) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;G&gt;, ProverError&gt;
 <span class="kw">where
     </span>&lt;G <span class="kw">as </span>AffineRepr&gt;::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -434,7 +491,7 @@
     </span><span class="kw">let </span>alpha: G::ScalarField = fq_sponge.challenge();
 
     <span class="kw">let </span>zk_rows = <span class="number">0</span>;
-    <span class="kw">let </span>_column_env: ColumnEnvironment&lt;<span class="lifetime">&#39;_</span>, G::ScalarField&gt; = {
+    <span class="kw">let </span>column_env: ColumnEnvironment&lt;<span class="lifetime">&#39;_</span>, G::ScalarField&gt; = {
         <span class="comment">// FIXME: use a proper Challenge structure
         </span><span class="kw">let </span>challenges = BerkeleyChallenges {
             alpha,
@@ -457,9 +514,50 @@
         }
     };
 
-    <span class="comment">// FIXME: add quotient polynomial
+    <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
+        <span class="comment">// Compute ∑ α^i constraint_i as an expression
+        </span><span class="kw">let </span>combined_expr =
+            E::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), (constraints).to_vec());
 
-    ////////////////////////////////////////////////////////////////////////////
+        <span class="comment">// We want to compute the quotient polynomial, i.e.
+        // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
+        // The sum of the expressions is called the &quot;constraint polynomial&quot;.
+        // We will use the evaluations points of the individual witness
+        // columns.
+        // Note that as the constraints might be of higher degree than N, the
+        // size of the set H we want the constraints to be verified on, we must
+        // have more than N evaluations points for each columns. This is handled
+        // in the ColumnEnvironment structure.
+        // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
+        // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
+        // 2N evaluation points to compute P as deg(P(X)) &lt;= 2N.
+        </span><span class="kw">let </span>expr_evaluation: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt; =
+            combined_expr.evaluations(<span class="kw-2">&amp;</span>column_env);
+
+        <span class="comment">// And we interpolate using the evaluations
+        </span><span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
+
+        <span class="kw">let </span>fail_final_q_division = || {
+            <span class="macro">panic!</span>(<span class="string">&quot;Division by vanishing poly must not fail at this point, we checked it before&quot;</span>)
+        };
+        <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
+        // by the vanishing polynomial, i.e. Z_H(X).
+        </span><span class="kw">let </span>(quotient, res) = expr_evaluation_interpolated
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap_or_else(fail_final_q_division);
+        <span class="comment">// As the constraints must be verified on H, the rest of the division
+        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+        // equal on H.
+        </span><span class="kw">if </span>!res.is_zero() {
+            fail_final_q_division();
+        }
+
+        quotient
+    };
+
+    <span class="kw">let </span>_t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">7</span>);
+
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
@@ -553,11 +651,11 @@
         rng,
     );
 
-    Proof {
+    <span class="prelude-val">Ok</span>(Proof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,
-    }
+    })
 }
 </code></pre></div></section></main></body></html>
