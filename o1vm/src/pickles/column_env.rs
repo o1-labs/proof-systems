@@ -71,10 +71,10 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
 
     fn get_domain(&self, d: Domain) -> Radix2EvaluationDomain<F> {
         match d {
-            Domain::D1 => self.domain.d1,
-            Domain::D2 => self.domain.d2,
-            Domain::D4 => self.domain.d4,
             Domain::D8 => self.domain.d8,
+            Domain::D1 | Domain::D2 | Domain::D4 => {
+                panic!("Not supposed to be in MIPS. All columns are evaluated on d8")
+            }
         }
     }
 
