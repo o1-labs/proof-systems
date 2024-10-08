@@ -324,8 +324,8 @@ fn create_test_constraint_system_ffadd(
     };
 
     let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
-    let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-    srs.add_lagrange_basis(cs.domain.d1);
+    let srs = SRS::<Vesta>::create(cs.domain.d1.size());
+    srs.get_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
@@ -1493,8 +1493,8 @@ fn test_ffadd_finalization() {
             .public(num_public_inputs)
             .build()
             .unwrap();
-        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.get_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();

@@ -395,8 +395,8 @@ fn test_xor_finalization() {
             .public(num_inputs)
             .build()
             .unwrap();
-        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.get_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
