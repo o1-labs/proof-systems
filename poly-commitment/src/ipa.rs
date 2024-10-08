@@ -607,7 +607,7 @@ where
             chunks.push(G::zero());
         }
 
-        PolyComm::<G> { chunks }
+        PolyComm::<G>::new(chunks)
     }
 
     fn commit(
