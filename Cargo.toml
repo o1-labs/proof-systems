@@ -2,6 +2,7 @@
 members = [
     "arrabbiata",
     "book",
+    "data-storage",
     "turshi",
     "curves",
     "groupmap",
