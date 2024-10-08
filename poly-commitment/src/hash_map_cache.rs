@@ -16,11 +16,11 @@ impl<Key: Hash + std::cmp::Eq, Value> HashMapCache<Key, Value> {
         }
     }
 
-    pub fn get_or_generate<'a, F: FnOnce() -> Value>(
-        &'a self,
+    pub fn get_or_generate<F: FnOnce() -> Value>(
+        &self,
         key: Key,
         generator: F,
-    ) -> &'a Value {
+    ) -> &Value {
         let mut hashmap = self.contents.lock().unwrap();
         let entry = (*hashmap).entry(key);
         let inner_ptr = match entry {
