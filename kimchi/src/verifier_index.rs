@@ -18,7 +18,7 @@ use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
-    commitment::{CommitmentCurve, PolyComm},
+    commitment::{absorb_commitment, CommitmentCurve, PolyComm},
     OpenProof, SRS as _,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -441,42 +441,42 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         // Always present
 
         for comm in sigma_comm.iter() {
-            fq_sponge.absorb_g(&comm.chunks);
+            absorb_commitment(&mut fq_sponge, comm);
         }
         for comm in coefficients_comm.iter() {
-            fq_sponge.absorb_g(&comm.chunks);
+            absorb_commitment(&mut fq_sponge, comm);
         }
-        fq_sponge.absorb_g(&generic_comm.chunks);
-        fq_sponge.absorb_g(&psm_comm.chunks);
-        fq_sponge.absorb_g(&complete_add_comm.chunks);
-        fq_sponge.absorb_g(&mul_comm.chunks);
-        fq_sponge.absorb_g(&emul_comm.chunks);
-        fq_sponge.absorb_g(&endomul_scalar_comm.chunks);
+        absorb_commitment(&mut fq_sponge, generic_comm);
+        absorb_commitment(&mut fq_sponge, psm_comm);
+        absorb_commitment(&mut fq_sponge, complete_add_comm);
+        absorb_commitment(&mut fq_sponge, mul_comm);
+        absorb_commitment(&mut fq_sponge, emul_comm);
+        absorb_commitment(&mut fq_sponge, endomul_scalar_comm);
 
         // Optional gates
 
         if let Some(range_check0_comm) = range_check0_comm {
-            fq_sponge.absorb_g(&range_check0_comm.chunks);
+            absorb_commitment(&mut fq_sponge, range_check0_comm);
         }
 
         if let Some(range_check1_comm) = range_check1_comm {
-            fq_sponge.absorb_g(&range_check1_comm.chunks);
+            absorb_commitment(&mut fq_sponge, range_check1_comm);
         }
 
         if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
-            fq_sponge.absorb_g(&foreign_field_mul_comm.chunks);
+            absorb_commitment(&mut fq_sponge, foreign_field_mul_comm);
         }
 
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
-            fq_sponge.absorb_g(&foreign_field_add_comm.chunks);
+            absorb_commitment(&mut fq_sponge, foreign_field_add_comm);
         }
 
         if let Some(xor_comm) = xor_comm {
-            fq_sponge.absorb_g(&xor_comm.chunks);
+            absorb_commitment(&mut fq_sponge, xor_comm);
         }
 
         if let Some(rot_comm) = rot_comm {
-            fq_sponge.absorb_g(&rot_comm.chunks);
+            absorb_commitment(&mut fq_sponge, rot_comm);
         }
 
         // Lookup index; optional
@@ -498,26 +498,26 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         }) = lookup_index
         {
             for entry in lookup_table {
-                fq_sponge.absorb_g(&entry.chunks);
+                absorb_commitment(&mut fq_sponge, entry);
             }
             if let Some(table_ids) = table_ids {
-                fq_sponge.absorb_g(&table_ids.chunks);
+                absorb_commitment(&mut fq_sponge, table_ids);
             }
             if let Some(runtime_tables_selector) = runtime_tables_selector {
-                fq_sponge.absorb_g(&runtime_tables_selector.chunks);
+                absorb_commitment(&mut fq_sponge, runtime_tables_selector);
             }
 
             if let Some(xor) = xor {
-                fq_sponge.absorb_g(&xor.chunks);
+                absorb_commitment(&mut fq_sponge, xor);
             }
             if let Some(lookup) = lookup {
-                fq_sponge.absorb_g(&lookup.chunks);
+                absorb_commitment(&mut fq_sponge, lookup);
             }
             if let Some(range_check) = range_check {
-                fq_sponge.absorb_g(&range_check.chunks);
+                absorb_commitment(&mut fq_sponge, range_check);
             }
             if let Some(ffmul) = ffmul {
-                fq_sponge.absorb_g(&ffmul.chunks);
+                absorb_commitment(&mut fq_sponge, ffmul);
             }
         }
         fq_sponge.digest_fq()
