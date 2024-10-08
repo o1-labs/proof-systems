@@ -15,8 +15,6 @@ use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 #[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
 pub enum Gadget {
     App,
-    // Permutation argument
-    PermutationArgument,
     // Two old gadgets
     /// Decompose a 255 bits scalar into 16 chunks of 16 bits.
     SixteenBitsDecomposition,
@@ -57,7 +55,6 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::PermutationArgument => "q_perm".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
                 Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
@@ -75,7 +72,6 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::PermutationArgument => "q_perm".to_string(),
                 Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
                 Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
                 Gadget::BitDecomposition => "q_bits".to_string(),
