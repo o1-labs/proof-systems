@@ -859,7 +859,7 @@
                     chunks.push(value);
                 }
 
-                <span class="prelude-val">Ok</span>(PolyComm { chunks })
+                <span class="prelude-val">Ok</span>(PolyComm::new(chunks))
             }
         }
 
@@ -877,7 +877,7 @@
         B: CanonicalDeserialize + CanonicalSerialize,
     {
         <span class="kw">let </span>chunks = <span class="self">self</span>.chunks.iter().map(|x| f(<span class="kw-2">*</span>x)).collect();
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 
     <span class="doccomment">/// Returns the number of chunks.
@@ -905,7 +905,7 @@
             .zip(other.chunks.iter())
             .map(|(x, y)| (<span class="kw-2">*</span>x, <span class="kw-2">*</span>y))
             .collect();
-        <span class="prelude-val">Some</span>(PolyComm { chunks })
+        <span class="prelude-val">Some</span>(PolyComm::new(chunks))
     }
 
     <span class="doccomment">/// Return only the first chunk
@@ -981,7 +981,7 @@
             };
             chunks.push(pt);
         }
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 }
 
@@ -1002,7 +1002,7 @@
             };
             chunks.push(pt);
         }
-        PolyComm { chunks }
+        PolyComm::new(chunks)
     }
 }
 

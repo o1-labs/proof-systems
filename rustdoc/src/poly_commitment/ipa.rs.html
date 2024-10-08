@@ -1850,7 +1850,7 @@
             chunks.push(G::zero());
         }
 
-        PolyComm::&lt;G&gt; { chunks }
+        PolyComm::&lt;G&gt;::new(chunks)
     }
 
     <span class="kw">fn </span>commit(
