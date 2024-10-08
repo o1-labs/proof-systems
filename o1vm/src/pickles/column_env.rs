@@ -10,6 +10,8 @@ use kimchi::circuits::{
 
 use super::proof::WitnessColumns;
 
+type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
+
 /// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
@@ -17,10 +19,7 @@ use super::proof::WitnessColumns;
 pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<
-        Evaluations<F, Radix2EvaluationDomain<F>>,
-        [Evaluations<F, Radix2EvaluationDomain<F>>; N_MIPS_SEL_COLS],
-    >,
+    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.

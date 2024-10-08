@@ -73,12 +73,10 @@ where
     ////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
+    type F<G> = DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>;
 
     let ProofInputs { evaluations } = inputs;
-    let polys: WitnessColumns<
-        DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>,
-        [DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>; N_MIPS_SEL_COLS],
-    > = {
+    let polys: WitnessColumns<F<G>, [F<G>; N_MIPS_SEL_COLS]> = {
         let WitnessColumns {
             scratch,
             instruction_counter,
@@ -92,8 +90,8 @@ where
         let selector: [Vec<<<G as AffineRepr>::Group as Group>::ScalarField>; N_MIPS_SEL_COLS] =
             array::from_fn(|i| {
                 let mut s_i = Vec::with_capacity(domain_size);
-                for j in 0..domain_size {
-                    s_i.push(if G::ScalarField::from(i as u64) == selector[j] {
+                for s in &selector {
+                    s_i.push(if G::ScalarField::from(i as u64) == *s {
                         G::ScalarField::one()
                     } else {
                         G::ScalarField::zero()
@@ -321,7 +319,7 @@ where
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
-    polynomials.extend(polys.selector.into_iter());
+    polynomials.extend(polys.selector);
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
