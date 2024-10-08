@@ -276,7 +276,7 @@ impl<
             quotient
         };
 
-        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).elems[0];
+        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
 
         Some(PairingProof {
             quotient,
@@ -310,11 +310,11 @@ impl<
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
-            .elems[0];
+            .chunks[0];
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
-            .elems[0]
+            .chunks[0]
             .into_group();
         let numerator_commitment_proj: <Pair::G1Affine as AffineRepr>::Group =
             { poly_commitment - eval_commitment - blinding_commitment };

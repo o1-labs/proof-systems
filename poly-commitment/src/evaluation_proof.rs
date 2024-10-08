@@ -95,8 +95,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                for j in 0..omegas.elems.len() {
-                    omega += &(omegas.elems[j] * scale);
+                for j in 0..omegas.chunks.len() {
+                    omega += &(omegas.chunks[j] * scale);
                     scale *= &polyscale;
                 }
             }
@@ -104,12 +104,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                for j in 0..omegas.elems.len() {
+                for j in 0..omegas.chunks.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm.add_poly(scale, segment);
 
-                    omega += &(omegas.elems[j] * scale);
+                    omega += &(omegas.chunks[j] * scale);
                     scale *= &polyscale;
                     offset += srs_length;
                 }
@@ -341,8 +341,8 @@ impl<G: CommitmentCurve> SRS<G> {
                     }
                 };
                 let chunked_polynomial =
-                    poly.to_chunked_polynomial(blinders.elems.len(), self.g.len());
-                let chunked_commitment = { self.commit_non_hiding(&poly, blinders.elems.len()) };
+                    poly.to_chunked_polynomial(blinders.chunks.len(), self.g.len());
+                let chunked_commitment = { self.commit_non_hiding(&poly, blinders.chunks.len()) };
                 let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
                     Ok(comm) => comm,
                     Err(err) => panic!("Error at index {i}: {err}"),

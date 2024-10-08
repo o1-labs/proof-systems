@@ -15,13 +15,13 @@ fn generate_poly_comm<RNG, F: PrimeField, C: SWCurveConfig<ScalarField = F>>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let elems: Vec<Affine<C>> = (0..n)
+    let chunks: Vec<Affine<C>> = (0..n)
         .map(|_| {
             let x = F::rand(rng);
             Affine::<C>::generator().mul_bigint(x.into_bigint()).into()
         })
         .collect();
-    PolyComm::new(elems)
+    PolyComm::new(chunks)
 }
 
 fn benchmark_polycomm_add(c: &mut Criterion) {

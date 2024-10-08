@@ -1153,7 +1153,7 @@ where
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                elems: vec![
+                chunks: vec![
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
             }
@@ -1189,7 +1189,7 @@ where
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.elems.len(),
+                    comm.chunks.len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -1224,7 +1224,7 @@ where
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
-            elems: vec![G::ScalarField::zero(); d1_size],
+            chunks: vec![G::ScalarField::zero(); d1_size],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1236,7 +1236,7 @@ where
             .collect::<Vec<_>>();
 
         let fixed_hiding = |d1_size: usize| PolyComm {
-            elems: vec![G::ScalarField::one(); d1_size],
+            chunks: vec![G::ScalarField::one(); d1_size],
         };
 
         //~ 1. Then, include:
@@ -1383,17 +1383,17 @@ where
                 if lcs.runtime_selector.is_some() {
                     let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
 
-                    let elems = runtime_comm
+                    let chunks = runtime_comm
                         .blinders
-                        .elems
+                        .chunks
                         .iter()
                         .map(|blinding| *joint_combiner * blinding + base_blinding)
                         .collect();
 
-                    PolyComm { elems }
+                    PolyComm { chunks }
                 } else {
-                    let elems = vec![base_blinding; num_chunks];
-                    PolyComm { elems }
+                    let chunks = vec![base_blinding; num_chunks];
+                    PolyComm { chunks }
                 }
             };
 
