@@ -97,8 +97,8 @@ pub struct Env<
     pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
 
     /// Keep track of the permutations
-    /// Each value of the array represents a mapping i -> x_i, where i in [n] and
-    /// x_i is the value at the previous step i.
+    /// Each value of the array represents a mapping i -> x_i, where i in `n`
+    /// and x_i is the value at the previous step i.
     ///
     /// When a value is "saved" at step `i`, the mapping from `i` is created,
     /// but set to `None`, meaning it has to be "loaded" later.
