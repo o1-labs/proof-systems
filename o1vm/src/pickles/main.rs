@@ -102,7 +102,6 @@ pub fn main() -> ExitCode {
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
-        // FIXME: add selectors
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
             .iter()
