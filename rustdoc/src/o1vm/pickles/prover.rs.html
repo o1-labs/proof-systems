@@ -329,8 +329,40 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
-<span class="kw">use </span>ark_ff::{PrimeField, Zero};
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
+
+<span class="kw">use </span>ark_ec::{AffineRepr, Group};
+<span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::{
     circuits::{
@@ -355,7 +387,7 @@
     column_env::ColumnEnvironment,
     proof::{Proof, ProofInputs, WitnessColumns},
 };
-<span class="kw">use </span><span class="kw">crate</span>::E;
+<span class="kw">use crate</span>::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Errors that can arise when creating a proof
@@ -402,51 +434,66 @@
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
+    </span><span class="kw">type </span>F&lt;G&gt; = DensePolynomial&lt;&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField&gt;;
 
-    // FIXME: add selectors
-    // FIXME: evaluate on a domain higher than d1 for the quotient polynomial.
-    </span><span class="kw">let </span>ProofInputs { evaluations } = inputs;
-    <span class="kw">let </span>polys = {
+    <span class="kw">let </span>ProofInputs { evaluations } = inputs;
+    <span class="kw">let </span>polys: WitnessColumns&lt;F&lt;G&gt;, [F&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            <span class="comment">// FIXME
-            </span>selector: <span class="kw">_</span>,
+            selector,
         } = evaluations;
+
+        <span class="kw">let </span>domain_size = domain.d1.size <span class="kw">as </span>usize;
+
+        <span class="comment">// Build the selectors
+        </span><span class="kw">let </span>selector: [Vec&lt;&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField&gt;; N_MIPS_SEL_COLS] =
+            array::from_fn(|i| {
+                <span class="kw">let </span><span class="kw-2">mut </span>s_i = Vec::with_capacity(domain_size);
+                <span class="kw">for </span>s <span class="kw">in </span><span class="kw-2">&amp;</span>selector {
+                    s_i.push(<span class="kw">if </span>G::ScalarField::from(i <span class="kw">as </span>u64) == <span class="kw-2">*</span>s {
+                        G::ScalarField::one()
+                    } <span class="kw">else </span>{
+                        G::ScalarField::zero()
+                    })
+                }
+                s_i
+            });
+
         <span class="kw">let </span>eval_col = |evals: Vec&lt;G::ScalarField&gt;| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.into_par_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>selector = selector.into_par_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
-            <span class="comment">// FIXME
-            </span>selector: eval_col(error),
+            selector: selector.try_into().unwrap(),
         }
     };
-    <span class="kw">let </span>commitments = {
+
+    <span class="kw">let </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;, [PolyComm&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            <span class="comment">// FIXME
-            </span>selector: <span class="kw">_</span>,
+            selector,
         } = <span class="kw-2">&amp;</span>polys;
         <span class="comment">// Note: we do not blind. We might want in the near future in case we
         // have a column with only zeroes.
         </span><span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, num_chunks);
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>selector = selector.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: comm(instruction_counter),
             error: comm(error),
-            <span class="comment">// FIXME
-            </span>selector: comm(error),
+            selector: selector.try_into().unwrap(),
         }
     };
 
@@ -459,19 +506,18 @@
             scratch,
             instruction_counter,
             error,
-            <span class="comment">// FIXME
-            </span>selector: <span class="kw">_</span>,
+            selector,
         } = <span class="kw-2">&amp;</span>polys;
         <span class="kw">let </span>eval_d8 =
             |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate_over_domain_by_ref(domain.d8);
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.into_par_iter().map(eval_d8).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>selector = selector.into_par_iter().map(eval_d8).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
-            <span class="comment">// FIXME
-            </span>selector: eval_d8(error),
+            selector: selector.try_into().unwrap(),
         }
     };
 
@@ -482,6 +528,9 @@
     }
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.instruction_counter);
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.error);
+    <span class="kw">for </span>comm <span class="kw">in </span>commitments.selector.iter() {
+        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
+    }
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -568,29 +617,33 @@
     <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
     <span class="kw">let </span>zeta_omega = zeta * omega;
 
-    <span class="comment">// FIXME: add selectors
-    </span><span class="kw">let </span>evals = |point| {
+    <span class="kw">let </span>evals = |point| {
         <span class="kw">let </span>WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            <span class="comment">// FIXME
-            </span>selector: <span class="kw">_</span>,
+            selector,
         } = <span class="kw-2">&amp;</span>polys;
         <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
         <span class="kw">let </span>scratch = scratch.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>selector = selector.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval(instruction_counter),
             error: eval(error),
-            <span class="comment">// FIXME
-            </span>selector: eval(error),
+            selector: selector.try_into().unwrap(),
         }
     };
     <span class="comment">// All evaluations at ζ
-    </span><span class="kw">let </span>zeta_evaluations = evals(<span class="kw-2">&amp;</span>zeta);
+    </span><span class="kw">let </span>zeta_evaluations: WitnessColumns&lt;
+        &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
+        [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
+    &gt; = evals(<span class="kw-2">&amp;</span>zeta);
     <span class="comment">// All evaluations at ζω
-    </span><span class="kw">let </span>zeta_omega_evaluations = evals(<span class="kw-2">&amp;</span>zeta_omega);
+    </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;
+        &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
+        [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
+    &gt; = evals(<span class="kw-2">&amp;</span>zeta_omega);
 
     <span class="comment">// Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
@@ -610,9 +663,16 @@
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.error);
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.error);
-    <span class="comment">// FIXME: add selectors
+    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+        .selector
+        .iter()
+        .zip(zeta_omega_evaluations.selector.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
 
-    ////////////////////////////////////////////////////////////////////////////
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
 
@@ -620,8 +680,8 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
-    <span class="comment">// FIXME: add selectors
-    </span><span class="kw">let </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
+    polynomials.extend(polys.selector);
+    <span class="kw">let </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
         .iter()
         .map(|poly| {
             (

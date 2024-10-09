@@ -98,10 +98,13 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-<span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE;
+<span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 <span class="kw">use </span>kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
@@ -110,6 +113,8 @@
 
 <span class="kw">use </span><span class="kw">super</span>::proof::WitnessColumns;
 
+<span class="kw">type </span>Evals&lt;F&gt; = Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;;
+
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
@@ -117,7 +122,7 @@
 </span><span class="kw">pub struct </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
     <span class="doccomment">/// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>WitnessColumns&lt;Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>WitnessColumns&lt;Evals&lt;F&gt;, [Evals&lt;F&gt;; N_MIPS_SEL_COLS]&gt;,
     <span class="doccomment">/// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -138,10 +143,7 @@
     // We do not want to keep kimchi_msm/generic prover
     </span><span class="kw">type </span>Column = kimchi_msm::columns::Column;
 
-    <span class="kw">fn </span>get_column(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evals&lt;F&gt;&gt; {
         <span class="kw">match </span><span class="kw-2">*</span>col {
             <span class="self">Self</span>::Column::Relation(i) =&gt; {
                 <span class="kw">if </span>i &lt; SCRATCH_SIZE {
@@ -157,9 +159,13 @@
                     <span class="macro">panic!</span>(<span class="string">&quot;We should not have that many relation columns&quot;</span>);
                 }
             }
-            <span class="self">Self</span>::Column::DynamicSelector(_i) =&gt; {
-                <span class="comment">// FIXME: add selectors
-                </span><span class="macro">panic!</span>(<span class="string">&quot;Not implemented yet&quot;</span>);
+            <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
+                <span class="macro">assert!</span>(
+                    i &lt; N_MIPS_SEL_COLS,
+                    <span class="string">&quot;We do not have that many dynamic selector columns&quot;
+                </span>);
+                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness.selector[i];
+                <span class="prelude-val">Some</span>(res)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;We should not have any other type of columns&quot;</span>)
