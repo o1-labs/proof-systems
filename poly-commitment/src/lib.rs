@@ -160,7 +160,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// - `srs`: the structured reference string used to commit
     /// to the polynomials
     /// - `group_map`: the group map
-    /// - `plnms`: the list of polynomials to commit to, with possible blinders.
+    /// - `plnms`: the list of polynomials to open, with possible blinders.
     /// The type is simply an alias to handle the polynomials in evaluations or
     /// coefficients forms.
     /// - `elm`: the evaluation points
