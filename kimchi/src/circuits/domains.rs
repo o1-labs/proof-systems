@@ -19,9 +19,10 @@ pub struct EvaluationDomains<F: FftField> {
 }
 
 impl<F: FftField> EvaluationDomains<F> {
-    /// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
-    /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
-    /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
+    /// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`),
+    /// `d4` (of size `4n`), and `d8` (of size `8n`). If generator of `d8` is
+    /// `g`, the generator of `d4` is `g^2`, the generator of `d2` is `g^4`, and
+    /// the generator of `d1` is `g^8`.
     pub fn create(n: usize) -> Result<Self, DomainCreationError> {
         let n = Domain::<F>::compute_size_of_domain(n)
             .ok_or(DomainCreationError::DomainSizeFailed(n))?;
@@ -33,7 +34,8 @@ impl<F: FftField> EvaluationDomains<F> {
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
-        // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
+        // (in evaluation form, the domain needs to grow as the degree of a
+        // polynomial grows)
         let d2 = Domain::<F>::new(2 * n).ok_or(DomainCreationError::DomainConstructionFailed(
             "d2".to_string(),
             2 * n,
@@ -47,7 +49,8 @@ impl<F: FftField> EvaluationDomains<F> {
             8 * n,
         ))?;
 
-        // ensure the relationship between the three domains in case the library's behavior changes
+        // ensure the relationship between the three domains in case the
+        // library's behavior changes
         assert_eq!(d2.group_gen.square(), d1.group_gen);
         assert_eq!(d4.group_gen.square(), d2.group_gen);
         assert_eq!(d8.group_gen.square(), d4.group_gen);
