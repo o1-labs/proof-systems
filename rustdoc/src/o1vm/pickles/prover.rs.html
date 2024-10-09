@@ -373,6 +373,17 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>ark_ec::{AffineRepr, Group};
@@ -401,6 +412,7 @@
 <span class="kw">use super</span>::{
     column_env::ColumnEnvironment,
     proof::{Proof, ProofInputs, WitnessColumns},
+    DEGREE_QUOTIENT_POLYNOMIAL,
 };
 <span class="kw">use crate</span>::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 <span class="kw">use </span>thiserror::Error;
@@ -632,7 +644,9 @@
         quotient
     };
 
-    <span class="kw">let </span>_t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">7</span>);
+    <span class="kw">let </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize);
+
+    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm);
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -678,6 +692,10 @@
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
+    <span class="comment">// Quotient poly evals
+    </span><span class="kw">let </span>quotient_zeta_eval = quotient_poly.evaluate(<span class="kw-2">&amp;</span>zeta);
+    <span class="kw">let </span>quotient_zeta_omega_eval = quotient_poly.evaluate(<span class="kw-2">&amp;</span>zeta_omega);
+
     <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
         .scratch
         .iter()
@@ -698,6 +716,8 @@
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    fr_sponge.absorb(<span class="kw-2">&amp;</span>quotient_zeta_eval);
+    fr_sponge.absorb(<span class="kw-2">&amp;</span>quotient_zeta_omega_eval);
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -708,6 +728,8 @@
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
+    polynomials.push(quotient_poly);
+
     <span class="kw">let </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
         .iter()
         .map(|poly| {

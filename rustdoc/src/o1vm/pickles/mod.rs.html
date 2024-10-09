@@ -18,6 +18,22 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This is the pickles flavor of the o1vm.
 //! The goal of this flavor is to run a version of the o1vm with selectors for
 //! each instruction using the Pasta curves and the IPA PCS.
@@ -35,6 +51,22 @@
 </span><span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
+
+<span class="doccomment">/// Maximum degree of the constraints.
+/// It does include the additional degree induced by the multiplication of the
+/// selectors.
+</span><span class="kw">pub const </span>MAXIMUM_DEGREE_CONSTRAINTS: u64 = <span class="number">6</span>;
+
+<span class="doccomment">/// Degree of the quotient polynomial. We do evaluate all polynomials on d8
+/// (because of the value of [MAXIMUM_DEGREE_CONSTRAINTS]), and therefore, we do
+/// have a degree 7 for the quotient polynomial.
+/// Used to keep track of the number of chunks we do have when we commit to the
+/// quotient polynomial.
+</span><span class="kw">pub const </span>DEGREE_QUOTIENT_POLYNOMIAL: u64 = <span class="number">7</span>;
+
+<span class="doccomment">/// Total number of constraints for all instructions, including the constraints
+/// added for the selectors.
+</span><span class="kw">pub const </span>TOTAL_NUMBER_OF_CONSTRAINTS: usize = <span class="number">463</span>;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
