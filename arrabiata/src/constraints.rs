@@ -1,7 +1,7 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
     columns::{Gadget, E},
-    interpreter::Side,
+    interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
 use ark_ff::{Field, PrimeField};
@@ -13,6 +13,7 @@ use log::debug;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
 
+#[derive(Clone, Debug)]
 pub struct Env<Fp: Field> {
     pub poseidon_mds: Vec<Vec<Fp>>,
     /// The parameter a is the coefficients of the elliptic curve in affine
@@ -316,5 +317,71 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         let res = is_same_point.clone() * lhs + (self.one() - is_same_point.clone()) * rhs;
         self.assert_zero(res);
         lambda
+    }
+}
+
+impl<F: PrimeField> Env<F> {
+    /// Get all the constraints for the IVC circuit, only.
+    ///
+    /// The following gadgets are used in the IVC circuit:
+    /// - [Instruction::PoseidonNextRow] to verify the challenges and the public
+    /// IO
+    /// - [Instruction::EllipticCurveScaling] and
+    /// [Instruction::EllipticCurveAddition] to accumulate the commitments
+    // FIXME: the IVC circuit might not be complete, yet. For instance, we might
+    // need to accumulate the challenges and add a row to verify the output of
+    // the computation of the challenges.
+    // FIXME: add a test checking that whatever the value given in parameter of
+    // the gadget, the constraints are the same
+    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<F>> {
+        // Copying the instance we got in parameter, and making it mutable to
+        // avoid modifying the original instance.
+        let mut env = self.clone();
+        // Resetting before running anything
+        env.reset();
+
+        let mut constraints = vec![];
+
+        // Poseidon constraints
+        // The constraints are the same for all the value given in parameter,
+        // therefore picking 0
+        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(0));
+        constraints.extend(env.constraints.clone());
+        env.reset();
+
+        // EC scaling
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0, 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        constraints.extend(env.constraints.clone());
+        env.reset();
+
+        // EC addition
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        constraints.extend(env.constraints.clone());
+        env.reset();
+
+        constraints
+    }
+
+    /// Get all the constraints for the IVC circuit and the application.
+    // FIXME: the application should be given as an argument to handle Rust
+    // zkApp. It is only for the PoC.
+    pub fn get_all_constraints(&self) -> Vec<E<F>> {
+        let mut constraints = self.get_all_constraints_for_ivc();
+
+        // Copying the instance we got in parameter, and making it mutable to
+        // avoid modifying the original instance.
+        let mut env = self.clone();
+        // Resetting before running anything
+        env.reset();
+
+        // Get the constraints for the application
+        interpreter::run_app(&mut env);
+        constraints.extend(env.constraints.clone());
+
+        constraints
     }
 }
