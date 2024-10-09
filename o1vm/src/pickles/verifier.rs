@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
-use crate::logup::LookupTableID;
 use ark_ff::{Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -29,7 +28,7 @@ use poly_commitment::{
     OpenProof, SRS,
 };
 
-use crate::{expr::E, proof::Proof, witness::Witness};
+use kimchi_msm::{expr::E, logup::LookupTableID, proof::Proof, witness::Witness};
 
 pub fn verify<
     G: KimchiCurve,
@@ -52,6 +51,7 @@ pub fn verify<
 ) -> bool
 where
     OpeningProof::SRS: Sync,
+
 {
     let Proof {
         proof_comms,
