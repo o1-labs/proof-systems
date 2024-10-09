@@ -26,6 +26,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use super::{
     column_env::ColumnEnvironment,
     proof::{Proof, ProofInputs, WitnessColumns},
+    DEGREE_QUOTIENT_POLYNOMIAL,
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use thiserror::Error;
@@ -257,7 +258,9 @@ where
         quotient
     };
 
-    let _t_comm = srs.commit_non_hiding(&quotient_poly, 7);
+    let t_comm = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
+
+    absorb_commitment(&mut fq_sponge, &t_comm);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -303,6 +306,10 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
+    // Quotient poly evals
+    let quotient_zeta_eval = quotient_poly.evaluate(&zeta);
+    let quotient_zeta_omega_eval = quotient_poly.evaluate(&zeta_omega);
+
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
         .iter()
@@ -323,6 +330,8 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    fr_sponge.absorb(&quotient_zeta_eval);
+    fr_sponge.absorb(&quotient_zeta_omega_eval);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -333,6 +342,8 @@ where
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
+    polynomials.push(quotient_poly);
+
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
