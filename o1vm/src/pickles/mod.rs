@@ -15,6 +15,7 @@
 pub mod column_env;
 pub mod proof;
 pub mod prover;
+pub mod verifier;
 
 /// Maximum degree of the constraints.
 /// It does include the additional degree induced by the multiplication of the
