@@ -558,13 +558,13 @@ where
 }
 
 /// Contains the batch evaluation
-// TODO: I think we should really change this name to something more correct
 pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>
 where
     G: AffineRepr,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 {
-    /// The sponge used to generate/absorb the challenges.
+    /// Sponge used to coin and absorb values and simulate
+    /// non-interactivity using the Fiat-Shamir transformation.
     pub sponge: EFqSponge,
     /// A list of evaluations, each supposed to correspond to a different
     /// polynomial.
@@ -572,11 +572,12 @@ where
     /// The actual evaluation points. Each field `evaluations` of each structure
     /// of `Evaluation` should have the same (outer) length.
     pub evaluation_points: Vec<G::ScalarField>,
-    /// scaling factor for evaluation point powers
+    /// A challenge to combine polynomials. Powers of this point will be used,
+    /// hence the name.
     pub polyscale: G::ScalarField,
-    /// scaling factor for polynomials
+    /// A challenge to aggregate multiple evaluation points.
     pub evalscale: G::ScalarField,
-    /// batched opening proof
+    /// The opening proof.
     pub opening: &'a OpeningProof,
     pub combined_inner_product: G::ScalarField,
 }

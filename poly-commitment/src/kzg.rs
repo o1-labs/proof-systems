@@ -382,12 +382,14 @@ impl<
 {
     /// Create a KZG proof.
     /// Parameters:
-    /// - `srs`: the structured reference string
-    /// - `plnms`: vector of polynomials with optional degree bound and
-    /// commitment randomness
+    /// - `srs`: the structured reference string used to commit
+    /// to the polynomials
+    /// - `plnms`: the list of polynomials to open.
+    /// The type is simply an alias to handle the polynomials in evaluations or
+    /// coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
-    /// elements for now, i.e. elm must be of size 2.
-    /// - `polyscale`: scaling factor
+    /// elements for now.
+    /// - `polyscale`: a challenge to batch the polynomials.
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
         plnms: PolynomialsToCombine<G, D>,
@@ -398,6 +400,7 @@ impl<
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();
 
         let quotient_poly = {
+            // This is where the condition on two points is enforced.
             let eval_polynomial = eval_polynomial(elm, &evals);
             let divisor_polynomial = divisor_polynomial(elm);
             let numerator_polynomial = &p - &eval_polynomial;
