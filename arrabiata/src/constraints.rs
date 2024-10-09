@@ -151,6 +151,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.idx_var = 0;
         self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
+        self.constraints.clear();
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
