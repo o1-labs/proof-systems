@@ -74,13 +74,13 @@ pub struct ProofEvaluations<
     ID: LookupTableID,
 > {
     /// Witness evaluations, including public inputs
-    pub(crate) witness_evals: Witness<N_WIT, PointEvaluations<F>>,
+    pub witness_evals: Witness<N_WIT, PointEvaluations<F>>,
     /// Evaluations of fixed selectors.
-    pub(crate) fixed_selectors_evals: Box<[PointEvaluations<F>; N_FSEL]>,
+    pub fixed_selectors_evals: Box<[PointEvaluations<F>; N_FSEL]>,
     /// Logup argument evaluations
-    pub(crate) logup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
+    pub logup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
     /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
-    pub(crate) ft_eval1: F,
+    pub ft_eval1: F,
 }
 
 /// The trait ColumnEvaluations is used by the verifier.
@@ -150,13 +150,13 @@ impl<
 pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Commitments to the N columns of the circuits, also called the 'witnesses'.
     /// If some columns are considered as public inputs, it is counted in the witness.
-    pub(crate) witness_comms: Witness<N_WIT, PolyComm<G>>,
+    pub witness_comms: Witness<N_WIT, PolyComm<G>>,
     /// Commitments to the polynomials used by the lookup argument, coined "logup".
     /// The values contains the chunked polynomials.
-    pub(crate) logup_comms: Option<LookupProof<PolyComm<G>, ID>>,
+    pub logup_comms: Option<LookupProof<PolyComm<G>, ID>>,
     /// Commitments to the quotient polynomial.
     /// The value contains the chunked polynomials.
-    pub(crate) t_comm: PolyComm<G>,
+    pub t_comm: PolyComm<G>,
 }
 
 #[derive(Debug, Clone)]
@@ -169,7 +169,7 @@ pub struct Proof<
     OpeningProof: OpenProof<G>,
     ID: LookupTableID,
 > {
-    pub(crate) proof_comms: ProofCommitments<N_WIT, G, ID>,
-    pub(crate) proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID>,
-    pub(crate) opening_proof: OpeningProof,
+    pub proof_comms: ProofCommitments<N_WIT, G, ID>,
+    pub proof_evals: ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, G::ScalarField, ID>,
+    pub opening_proof: OpeningProof,
 }
