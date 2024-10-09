@@ -1,5 +1,7 @@
-use ark_ec::AffineRepr;
-use ark_ff::{PrimeField, Zero};
+use std::array;
+
+use ark_ec::{AffineRepr, Group};
+use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::{
@@ -24,7 +26,7 @@ use super::{
     column_env::ColumnEnvironment,
     proof::{Proof, ProofInputs, WitnessColumns},
 };
-use crate::E;
+use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -71,51 +73,66 @@ where
     ////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
+    type F<G> = DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>;
 
-    // FIXME: add selectors
-    // FIXME: evaluate on a domain higher than d1 for the quotient polynomial.
     let ProofInputs { evaluations } = inputs;
-    let polys = {
+    let polys: WitnessColumns<F<G>, [F<G>; N_MIPS_SEL_COLS]> = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            // FIXME
-            selector: _,
+            selector,
         } = evaluations;
+
+        let domain_size = domain.d1.size as usize;
+
+        // Build the selectors
+        let selector: [Vec<<<G as AffineRepr>::Group as Group>::ScalarField>; N_MIPS_SEL_COLS] =
+            array::from_fn(|i| {
+                let mut s_i = Vec::with_capacity(domain_size);
+                for s in &selector {
+                    s_i.push(if G::ScalarField::from(i as u64) == *s {
+                        G::ScalarField::one()
+                    } else {
+                        G::ScalarField::zero()
+                    })
+                }
+                s_i
+            });
+
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
-            // FIXME
-            selector: eval_col(error),
+            selector: selector.try_into().unwrap(),
         }
     };
-    let commitments = {
+
+    let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]> = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            // FIXME
-            selector: _,
+            selector,
         } = &polys;
         // Note: we do not blind. We might want in the near future in case we
         // have a column with only zeroes.
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, num_chunks);
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
+        let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: comm(instruction_counter),
             error: comm(error),
-            // FIXME
-            selector: comm(error),
+            selector: selector.try_into().unwrap(),
         }
     };
 
@@ -128,19 +145,18 @@ where
             scratch,
             instruction_counter,
             error,
-            // FIXME
-            selector: _,
+            selector,
         } = &polys;
         let eval_d8 =
             |poly: &DensePolynomial<G::ScalarField>| poly.evaluate_over_domain_by_ref(domain.d8);
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
+        let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
-            // FIXME
-            selector: eval_d8(error),
+            selector: selector.try_into().unwrap(),
         }
     };
 
@@ -151,6 +167,9 @@ where
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
     absorb_commitment(&mut fq_sponge, &commitments.error);
+    for comm in commitments.selector.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -237,29 +256,33 @@ where
     let zeta = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * omega;
 
-    // FIXME: add selectors
     let evals = |point| {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
-            // FIXME
-            selector: _,
+            selector,
         } = &polys;
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
+        let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval(instruction_counter),
             error: eval(error),
-            // FIXME
-            selector: eval(error),
+            selector: selector.try_into().unwrap(),
         }
     };
     // All evaluations at ζ
-    let zeta_evaluations = evals(&zeta);
+    let zeta_evaluations: WitnessColumns<
+        <<G as AffineRepr>::Group as Group>::ScalarField,
+        [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
+    > = evals(&zeta);
     // All evaluations at ζω
-    let zeta_omega_evaluations = evals(&zeta_omega);
+    let zeta_omega_evaluations: WitnessColumns<
+        <<G as AffineRepr>::Group as Group>::ScalarField,
+        [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
+    > = evals(&zeta_omega);
 
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
@@ -279,7 +302,14 @@ where
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_evaluations.error);
     fr_sponge.absorb(&zeta_omega_evaluations.error);
-    // FIXME: add selectors
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .selector
+        .iter()
+        .zip(zeta_omega_evaluations.selector.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -289,7 +319,7 @@ where
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
-    // FIXME: add selectors
+    polynomials.extend(polys.selector);
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {

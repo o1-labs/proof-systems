@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::interpreters::mips::witness::SCRATCH_SIZE;
+use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 use kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
     domains::EvaluationDomains,
@@ -10,6 +10,8 @@ use kimchi::circuits::{
 
 use super::proof::WitnessColumns;
 
+type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
+
 /// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
@@ -17,7 +19,7 @@ use super::proof::WitnessColumns;
 pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evaluations<F, Radix2EvaluationDomain<F>>>,
+    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -38,10 +40,7 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
     // We do not want to keep kimchi_msm/generic prover
     type Column = kimchi_msm::columns::Column;
 
-    fn get_column(
-        &self,
-        col: &Self::Column,
-    ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
         match *col {
             Self::Column::Relation(i) => {
                 if i < SCRATCH_SIZE {
@@ -57,9 +56,13 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
                     panic!("We should not have that many relation columns");
                 }
             }
-            Self::Column::DynamicSelector(_i) => {
-                // FIXME: add selectors
-                panic!("Not implemented yet");
+            Self::Column::DynamicSelector(i) => {
+                assert!(
+                    i < N_MIPS_SEL_COLS,
+                    "We do not have that many dynamic selector columns"
+                );
+                let res = &self.witness.selector[i];
+                Some(res)
             }
             _ => {
                 panic!("We should not have any other type of columns")

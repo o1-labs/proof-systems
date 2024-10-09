@@ -1,15 +1,17 @@
 use kimchi::curve::KimchiCurve;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
-pub struct WitnessColumns<G> {
+use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
+
+pub struct WitnessColumns<G, S> {
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
-    pub selector: G,
+    pub selector: S,
 }
 
 pub struct ProofInputs<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
+    pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> ProofInputs<G> {
@@ -27,9 +29,9 @@ impl<G: KimchiCurve> ProofInputs<G> {
 
 // FIXME: should we blind the commitment?
 pub struct Proof<G: KimchiCurve> {
-    pub commitments: WitnessColumns<PolyComm<G>>,
-    pub zeta_evaluations: WitnessColumns<G::ScalarField>,
-    pub zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
+    pub commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
+    pub zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
+    pub zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     /// IPA opening proof
     pub opening_proof: OpeningProof<G>,
 }
