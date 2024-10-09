@@ -359,6 +359,20 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>ark_ec::{AffineRepr, Group};
@@ -374,6 +388,7 @@
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -436,6 +451,7 @@
     ////////////////////////////////////////////////////////////////////////////
     </span><span class="kw">type </span>F&lt;G&gt; = DensePolynomial&lt;&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField&gt;;
 
+    <span class="macro">debug!</span>(<span class="string">&quot;Prover: interpolating all columns, including the selectors&quot;</span>);
     <span class="kw">let </span>ProofInputs { evaluations } = inputs;
     <span class="kw">let </span>polys: WitnessColumns&lt;F&lt;G&gt;, [F&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
         <span class="kw">let </span>WitnessColumns {
@@ -476,6 +492,7 @@
         }
     };
 
+    <span class="macro">debug!</span>(<span class="string">&quot;Prover: committing to all columns, including the selectors&quot;</span>);
     <span class="kw">let </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;, [PolyComm&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
@@ -497,6 +514,7 @@
         }
     };
 
+    <span class="macro">debug!</span>(<span class="string">&quot;Prover: evaluating all columns, including the selectors, on d8&quot;</span>);
     <span class="comment">// We evaluate on a domain higher than d1 for the quotient polynomial.
     // Based on the regression test
     // `test_regression_constraints_with_selectors`, the highest degree is 6.
@@ -565,7 +583,15 @@
         }
     };
 
-    <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
+    <span class="macro">debug!</span>(<span class="string">&quot;Prover: computing the quotient polynomial&quot;</span>);
+    <span class="comment">// Hint:
+    // To debug individual constraint, you can revert the following commits that implement the
+    // check for individual constraints.
+    // ```
+    // git revert 8e87244a98d55b90d175ad389611a3c98bd16b34
+    // git revert 96d42c127ef025869c91e5fed680e0e383108706
+    // ```
+    </span><span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
         <span class="comment">// Compute ∑ α^i constraint_i as an expression
         </span><span class="kw">let </span>combined_expr =
             E::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), (constraints).to_vec());
@@ -612,7 +638,8 @@
     // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
-    </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    </span><span class="macro">debug!</span>(<span class="string">&quot;Prover: evaluating all columns, including the selectors, at ζ and ζω&quot;</span>);
+    <span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
     <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
     <span class="kw">let </span>zeta_omega = zeta * omega;
@@ -701,6 +728,7 @@
 
     <span class="kw">let </span>group_map = G::Map::setup();
 
+    <span class="macro">debug!</span>(<span class="string">&quot;Prover: computing the (batched) opening proof using the IPA PCS&quot;</span>);
     <span class="comment">// Computing the opening proof for the IPA PCS
     </span><span class="kw">let </span>opening_proof = OpeningProof::open::&lt;<span class="kw">_</span>, <span class="kw">_</span>, D&lt;G::ScalarField&gt;&gt;(
         srs,

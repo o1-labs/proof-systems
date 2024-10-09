@@ -144,7 +144,6 @@
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::expr::E;
@@ -249,8 +248,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
     <span class="kw">while </span>!mips_wit_env.halt {
         <span class="kw">let </span>_instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
-        <span class="comment">// FIXME: add selectors
-        </span><span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
+        <span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
             .scratch_state
             .iter()
             .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
@@ -272,7 +270,7 @@
         <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             <span class="comment">// FIXME
             </span><span class="kw">let </span>start_iteration = Instant::now();
-            <span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk&quot;</span>);
+            <span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk&quot;</span>);
             <span class="kw">let </span>_proof: <span class="prelude-ty">Result</span>&lt;Proof&lt;Vesta&gt;, prover::ProverError&gt; =
                 prover::prove::&lt;
                     Vesta,
