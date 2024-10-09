@@ -286,6 +286,7 @@ dependencies = [
  "poly-commitment",
  "rand",
  "rayon",
+ "serde",
  "strum",
  "strum_macros",
 ]
