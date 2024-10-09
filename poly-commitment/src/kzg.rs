@@ -392,7 +392,7 @@ impl<
     /// coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
     /// elements for now.
-    /// - `polyscale`: a challenge to combine the polynomials.
+    /// - `polyscale`: a challenge to batch the polynomials.
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
         plnms: PolynomialsToCombine<G, D>,
