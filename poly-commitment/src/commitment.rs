@@ -513,9 +513,7 @@ where
     /// A challenge to combine polynomials. Powers of this point will be used,
     /// hence the name.
     pub polyscale: G::ScalarField,
-    /// A challenge to build a randomized folded challenge (often named u) in
-    /// case of multiple evaluation points. In the case of multiple evaluation
-    /// points, powers of this point will be used, hence the name.
+    /// A challenge to aggregate multiple evaluation points.
     pub evalscale: G::ScalarField,
     /// The actual opening proof.
     pub opening: &'a OpeningProof,
