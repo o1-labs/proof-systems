@@ -1,11 +1,8 @@
 use std::array;
 
 use ark_ec::{AffineRepr, Group};
-use ark_ff::{PrimeField, Zero, One};
-use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D,
-};
+use ark_ff::{One, PrimeField, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
@@ -309,6 +306,10 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
+    // Quotient poly evals
+    let quotient_zeta_eval = quotient_poly.evaluate(&zeta);
+    let quotient_zeta_omega_eval = quotient_poly.evaluate(&zeta_omega);
+
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
         .iter()
@@ -329,6 +330,8 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    fr_sponge.absorb(&quotient_zeta_eval);
+    fr_sponge.absorb(&quotient_zeta_omega_eval);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -339,6 +342,7 @@ where
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
+
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
