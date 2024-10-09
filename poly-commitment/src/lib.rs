@@ -171,7 +171,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// name.
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.
-    /// - `rng`: a pseudo random number generator in case blinding is needed
+    /// - `rng`: a pseudo random number generator used for zero-knowledge
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
