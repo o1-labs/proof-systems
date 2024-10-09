@@ -3616,14 +3616,6 @@
 <a href="#3616" id="3616">3616</a>
 <a href="#3617" id="3617">3617</a>
 <a href="#3618" id="3618">3618</a>
-<a href="#3619" id="3619">3619</a>
-<a href="#3620" id="3620">3620</a>
-<a href="#3621" id="3621">3621</a>
-<a href="#3622" id="3622">3622</a>
-<a href="#3623" id="3623">3623</a>
-<a href="#3624" id="3624">3624</a>
-<a href="#3625" id="3625">3625</a>
-<a href="#3626" id="3626">3626</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3772,19 +3764,7 @@
     </span><span class="kw">pub </span>row: CurrOrNext,
 }
 
-<span class="doccomment">/// Define challenges the verifier coins during the interactive protocol.
-/// It has been defined initially to handle the PLONK IOP, hence:
-/// - `alpha` for the quotient polynomial
-/// - `beta` and `gamma` for the permutation challenges.
-/// The joint combiner is to handle vector lookups, initially designed to be
-/// used with PLOOKUP.
-/// The terms have no built-in semantic in the expression framework, and can be
-/// used for any other four challenges the verifier coins in other polynomial
-/// interactive protocol.
-/// TODO: we should generalize the expression type over challenges and constants.
-/// See &lt;https://github.com/MinaProtocol/mina/issues/15287&gt;
-
-/// Define the constant terms an expression can use.
+<span class="doccomment">/// Define the constant terms an expression can use.
 /// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
 /// permutation used by Poseidon for instance), or endomorphism coefficients
 /// (`EndoCoefficient` - used as an optimisation).
@@ -4477,28 +4457,6 @@
         <span class="kw">match </span><span class="self">self</span>.row {
             CurrOrNext::Curr =&gt; <span class="prelude-val">Ok</span>(point_evaluations.zeta),
             CurrOrNext::Next =&gt; <span class="prelude-val">Ok</span>(point_evaluations.zeta_omega),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;Column: FormattedOutput + Debug&gt; Variable&lt;Column&gt; {
-    <span class="kw">pub fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;var({:?}, {:?})&quot;</span>, <span class="self">self</span>.col, <span class="self">self</span>.row)
-    }
-
-    <span class="kw">pub fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>col = <span class="self">self</span>.col.latex(<span class="kw-2">&amp;mut </span>HashMap::new());
-        <span class="kw">match </span><span class="self">self</span>.row {
-            Curr =&gt; col,
-            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\tilde{{{col}}}&quot;</span>),
-        }
-    }
-
-    <span class="kw">pub fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>col = <span class="self">self</span>.col.text(<span class="kw-2">&amp;mut </span>HashMap::new());
-        <span class="kw">match </span><span class="self">self</span>.row {
-            Curr =&gt; <span class="macro">format!</span>(<span class="string">&quot;Curr({col})&quot;</span>),
-            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;Next({col})&quot;</span>),
         }
     }
 }
@@ -6508,6 +6466,32 @@
     }
 }
 
+<span class="kw">impl</span>&lt;Column: FormattedOutput + Debug&gt; FormattedOutput <span class="kw">for </span>Variable&lt;Column&gt; {
+    <span class="kw">fn </span>is_alpha(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;var({:?}, {:?})&quot;</span>, <span class="self">self</span>.col, <span class="self">self</span>.row)
+    }
+
+    <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
+        <span class="kw">let </span>col = <span class="self">self</span>.col.latex(<span class="kw-2">&amp;mut </span>HashMap::new());
+        <span class="kw">match </span><span class="self">self</span>.row {
+            Curr =&gt; col,
+            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\tilde{{{col}}}&quot;</span>),
+        }
+    }
+
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
+        <span class="kw">let </span>col = <span class="self">self</span>.col.text(<span class="kw-2">&amp;mut </span>HashMap::new());
+        <span class="kw">match </span><span class="self">self</span>.row {
+            Curr =&gt; <span class="macro">format!</span>(<span class="string">&quot;Curr({col})&quot;</span>),
+            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;Next({col})&quot;</span>),
+        }
+    }
+}
+
 <span class="kw">impl</span>&lt;T: FormattedOutput + Clone&gt; FormattedOutput <span class="kw">for </span>Operations&lt;T&gt; {
     <span class="kw">fn </span>is_alpha(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
@@ -6649,7 +6633,7 @@
                 });
                 res
             }
-            Atom(Cell(v)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, v.ocaml()),
+            Atom(Cell(v)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, v.ocaml(<span class="kw-2">&amp;mut </span>HashMap::new())),
             Atom(UnnormalizedLagrangeBasis(i)) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({}, {})&quot;</span>, i.zk_rows, i.offset)
             }
@@ -6713,7 +6697,7 @@
                 });
                 res
             }
-            Atom(Cell(v)) =&gt; v.latex(),
+            Atom(Cell(v)) =&gt; v.latex(<span class="kw-2">&amp;mut </span>HashMap::new()),
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
@@ -6760,7 +6744,7 @@
                 });
                 res
             }
-            Atom(Cell(v)) =&gt; v.text(),
+            Atom(Cell(v)) =&gt; v.text(<span class="kw-2">&amp;mut </span>HashMap::new()),
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
