@@ -145,9 +145,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
     };
 
     let ivc_instructions = [
-        Instruction::Poseidon(0),
-        Instruction::SixteenBitsDecomposition,
-        Instruction::BitDecompositionFrom16Bits(0),
+        Instruction::PoseidonNextRow(0),
         Instruction::EllipticCurveAddition(0),
         Instruction::EllipticCurveScaling(0, 0),
     ];
@@ -165,9 +163,7 @@ fn test_degree_of_constraints_ivc() {
         constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
     let ivc_instructions = [
-        Instruction::Poseidon(0),
-        Instruction::SixteenBitsDecomposition,
-        Instruction::BitDecompositionFrom16Bits(0),
+        Instruction::PoseidonNextRow(0),
         Instruction::EllipticCurveAddition(0),
         Instruction::EllipticCurveScaling(0, 0),
     ];
