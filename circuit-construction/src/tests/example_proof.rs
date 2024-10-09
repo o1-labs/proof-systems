@@ -53,7 +53,7 @@ fn test_example_circuit() {
     // create SRS
     let srs = {
         let mut srs = SRS::<Vesta>::create(1 << 7); // 2^7 = 128
-        srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
+        srs.get_lagrange_basis_from_domain_size(Radix2EvaluationDomain::new(srs.g.len()));
         Arc::new(srs)
     };
 
