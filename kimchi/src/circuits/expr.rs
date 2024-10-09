@@ -3007,8 +3007,8 @@ pub mod test {
         ];
         let index = {
             let constraint_system = ConstraintSystem::fp_for_testing(gates);
-            let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
-            srs.add_lagrange_basis(constraint_system.domain.d1);
+            let srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
+            srs.get_lagrange_basis(constraint_system.domain.d1);
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();

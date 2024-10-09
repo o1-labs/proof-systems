@@ -118,8 +118,8 @@ fn test_generic_gate_pairing() {
     .witness(witness)
     .public_inputs(public)
     .setup_with_custom_srs(|d1, usize| {
-        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, usize);
-        srs.full_srs.add_lagrange_basis(d1);
+        let srs = poly_commitment::pairing_proof::PairingSRS::create(x, usize);
+        srs.full_srs.get_lagrange_basis(d1);
         srs
     })
     .prove_and_verify::<BaseSponge, ScalarSponge>()

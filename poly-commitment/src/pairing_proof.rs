@@ -148,8 +148,9 @@ impl<
         self.full_srs.max_poly_size()
     }
 
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
-        self.full_srs.get_lagrange_basis(domain_size)
+    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.full_srs
+            .get_lagrange_basis_from_domain_size(domain_size)
     }
 
     fn blinding_commitment(&self) -> G {
@@ -349,9 +350,9 @@ mod tests {
 
         let x = ScalarField::rand(rng);
 
-        let mut srs = SRS::<G1>::create_trusted_setup(x, n);
+        let srs = SRS::<G1>::create_trusted_setup(x, n);
         let verifier_srs = SRS::<G2>::create_trusted_setup(x, 3);
-        srs.add_lagrange_basis(domain);
+        srs.get_lagrange_basis(domain);
 
         let srs = PairingSRS {
             full_srs: srs,

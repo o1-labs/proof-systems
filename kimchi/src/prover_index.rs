@@ -210,7 +210,7 @@ pub mod testing {
             override_srs_size,
             |d1: D<G::ScalarField>, size: usize| {
                 let log2_size = size.ilog2();
-                let mut srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
+                let srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
                     // TODO: we should trim it if it's smaller
                     precomputed_srs::get_srs()
                 } else {
@@ -218,7 +218,7 @@ pub mod testing {
                     SRS::<G>::create(size)
                 };
 
-                srs.add_lagrange_basis(d1);
+                srs.get_lagrange_basis(d1);
                 srs
             },
         )

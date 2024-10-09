@@ -3,6 +3,7 @@ mod combine;
 pub mod commitment;
 pub mod error;
 pub mod evaluation_proof;
+pub mod hash_map_cache;
 pub mod pairing_proof;
 pub mod srs;
 
@@ -29,7 +30,7 @@ pub trait SRS<G: CommitmentCurve> {
     fn max_poly_size(&self) -> usize;
 
     /// Retrieve the precomputed Lagrange basis for the given domain size
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>>;
+    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>>;
 
     /// Get the group element used for blinding commitments
     fn blinding_commitment(&self) -> G;
@@ -92,7 +93,7 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
 )];
 
 pub trait OpenProof<G: CommitmentCurve>: Sized {
-    type SRS: SRS<G>;
+    type SRS: SRS<G> + std::fmt::Debug;
 
     #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(

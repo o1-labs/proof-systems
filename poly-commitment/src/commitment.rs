@@ -506,8 +506,8 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         self.g.len()
     }
 
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
-        self.lagrange_bases.get(&domain_size)
+    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.get_lagrange_basis_from_domain_size(domain_size)
     }
 
     fn blinding_commitment(&self) -> G {
@@ -591,10 +591,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G> {
-        let basis = self
-            .lagrange_bases
-            .get(&domain.size())
-            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        let basis = self.get_lagrange_basis(domain);
         let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
             PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };
@@ -824,8 +821,8 @@ mod tests {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n);
-        srs.add_lagrange_basis(domain);
+        let srs = SRS::<VestaG>::create(n);
+        srs.get_lagrange_basis(domain);
 
         let num_chunks = domain.size() / srs.g.len();
 
@@ -838,7 +835,7 @@ mod tests {
             })
             .collect();
 
-        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
@@ -854,8 +851,8 @@ mod tests {
         let divisor = 4;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n / divisor);
-        srs.add_lagrange_basis(domain);
+        let srs = SRS::<VestaG>::create(n / divisor);
+        srs.get_lagrange_basis(domain);
 
         let num_chunks = domain.size() / srs.g.len();
         assert!(num_chunks == divisor);
@@ -869,7 +866,7 @@ mod tests {
             })
             .collect();
 
-        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
@@ -887,8 +884,8 @@ mod tests {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.add_lagrange_basis(domain);
+        let srs = SRS::<VestaG>::create(n / 2 + 1);
+        srs.get_lagrange_basis(domain);
 
         // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
@@ -903,7 +900,7 @@ mod tests {
             })
             .collect();
 
-        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
