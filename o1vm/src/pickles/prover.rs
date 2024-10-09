@@ -342,6 +342,7 @@ where
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
+    polynomials.push(quotient_poly);
 
     let polynomials: Vec<_> = polynomials
         .iter()
