@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use arrabiata::{
     constraints,
-    interpreter::{self, Instruction, InterpreterEnv},
+    interpreter::{self, Instruction},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
 };
 use mina_curves::pasta::fields::{Fp, Fq};
@@ -139,42 +139,26 @@ fn test_gadget_elliptic_curve_addition() {
 
 #[test]
 fn test_ivc_total_number_of_constraints_ivc() {
-    let mut constraints_fp = {
+    let constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
         constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
 
-    let ivc_instructions = [
-        Instruction::PoseidonNextRow(0),
-        Instruction::EllipticCurveAddition(0),
-        Instruction::EllipticCurveScaling(0, 0),
-    ];
-    ivc_instructions.iter().for_each(|instr| {
-        interpreter::run_ivc(&mut constraints_fp, *instr);
-        constraints_fp.reset();
-    });
-    assert_eq!(constraints_fp.constraints.len(), 28);
+    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    assert_eq!(constraints.len(), 28);
 }
 
 #[test]
 fn test_degree_of_constraints_ivc() {
-    let mut constraints_fp = {
+    let constraints_fp = {
         let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
         constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
     };
-    let ivc_instructions = [
-        Instruction::PoseidonNextRow(0),
-        Instruction::EllipticCurveAddition(0),
-        Instruction::EllipticCurveScaling(0, 0),
-    ];
 
-    ivc_instructions.iter().for_each(|instr| {
-        interpreter::run_ivc(&mut constraints_fp, *instr);
-        constraints_fp.reset();
-    });
+    let constraints = constraints_fp.get_all_constraints_for_ivc();
 
     let mut degree_per_constraints = HashMap::new();
-    constraints_fp.constraints.iter().for_each(|c| {
+    constraints.iter().for_each(|c| {
         let degree = c.degree(1, 0);
         let count = degree_per_constraints.entry(degree).or_insert(0);
         *count += 1;
