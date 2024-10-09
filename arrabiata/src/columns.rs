@@ -1,8 +1,11 @@
-use kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
-    expr::{CacheId, ConstantExpr, Expr, FormattedOutput},
+use ark_ff::Field;
+use kimchi::circuits::expr::{AlphaChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter, Result},
+    ops::Index,
 };
-use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 /// This enum represents the different gadgets that can be used in the circuit.
@@ -48,8 +51,64 @@ pub enum Column {
     X(usize),
 }
 
-// FIXME: We should use something different than BerkeleyChallengeTerm here
-pub type E<Fp> = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
+pub struct Challenges<F: Field> {
+    /// Challenge used to aggregate the constraints
+    pub alpha: F,
+
+    /// Both challenges used in the permutation argument
+    pub beta: F,
+    pub gamma: F,
+
+    /// Challenge to homogenize the constraints
+    pub homogenous_challenge: F,
+
+    /// Random coin used to aggregate witnesses while folding
+    pub r: F,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChallengeTerm {
+    /// Challenge used to aggregate the constraints
+    Alpha,
+    /// Both challenges used in the permutation argument
+    Beta,
+    Gamma,
+    /// Challenge to homogenize the constraints
+    HomogenousChallenge,
+    /// Random coin used to aggregate witnesses while folding
+    R,
+}
+
+impl Display for ChallengeTerm {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            ChallengeTerm::Alpha => write!(f, "alpha"),
+            ChallengeTerm::Beta => write!(f, "beta"),
+            ChallengeTerm::Gamma => write!(f, "gamma"),
+            ChallengeTerm::HomogenousChallenge => write!(f, "u"),
+            ChallengeTerm::R => write!(f, "r"),
+        }
+    }
+}
+impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
+    type Output = F;
+
+    fn index(&self, term: ChallengeTerm) -> &Self::Output {
+        match term {
+            ChallengeTerm::Alpha => &self.alpha,
+            ChallengeTerm::Beta => &self.beta,
+            ChallengeTerm::Gamma => &self.gamma,
+            ChallengeTerm::HomogenousChallenge => &self.homogenous_challenge,
+            ChallengeTerm::R => &self.r,
+        }
+    }
+}
+
+impl<'a> AlphaChallengeTerm<'a> for ChallengeTerm {
+    const ALPHA: Self = Self::Alpha;
+}
+
+pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
 
 // Code to allow for pretty printing of the expressions
 impl FormattedOutput for Column {

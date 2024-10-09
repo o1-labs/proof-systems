@@ -587,14 +587,6 @@ mod tests {
     use proptest::prelude::*;
     use rand::SeedableRng as _;
 
-    // TODO: move to mina-curves
-    prop_compose! {
-        pub fn arb_fp()(seed: [u8; 32]) -> Fp {
-            let rng = &mut rand::rngs::StdRng::from_seed(seed);
-            Fp::rand(rng)
-        }
-    }
-
     prop_compose! {
         fn arb_fp_vec(max: usize)(seed: [u8; 32], num in 0..max) -> Vec<Fp> {
             let rng = &mut rand::rngs::StdRng::from_seed(seed);
