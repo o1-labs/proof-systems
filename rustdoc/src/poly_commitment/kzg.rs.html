@@ -481,6 +481,9 @@
 <a href="#481" id="481">481</a>
 <a href="#482" id="482">482</a>
 <a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -865,12 +868,14 @@
 {
     <span class="doccomment">/// Create a KZG proof.
     /// Parameters:
-    /// - `srs`: the structured reference string
-    /// - `plnms`: vector of polynomials with optional degree bound and
-    /// commitment randomness
+    /// - `srs`: the structured reference string used to commit
+    /// to the polynomials
+    /// - `plnms`: the list of polynomials to open.
+    /// The type is simply an alias to handle the polynomials in evaluations or
+    /// coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
-    /// elements for now, i.e. elm must be of size 2.
-    /// - `polyscale`: scaling factor
+    /// elements for now.
+    /// - `polyscale`: a challenge to batch the polynomials.
     </span><span class="kw">pub fn </span>create&lt;D: EvaluationDomain&lt;F&gt;&gt;(
         srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,
         plnms: PolynomialsToCombine&lt;G, D&gt;,
@@ -881,7 +886,8 @@
         <span class="kw">let </span>evals: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|pt| p.evaluate(pt)).collect();
 
         <span class="kw">let </span>quotient_poly = {
-            <span class="kw">let </span>eval_polynomial = eval_polynomial(elm, <span class="kw-2">&amp;</span>evals);
+            <span class="comment">// This is where the condition on two points is enforced.
+            </span><span class="kw">let </span>eval_polynomial = eval_polynomial(elm, <span class="kw-2">&amp;</span>evals);
             <span class="kw">let </span>divisor_polynomial = divisor_polynomial(elm);
             <span class="kw">let </span>numerator_polynomial = <span class="kw-2">&amp;</span>p - <span class="kw-2">&amp;</span>eval_polynomial;
             <span class="kw">let </span>(quotient, remainder) = DenseOrSparsePolynomial::divide_with_q_and_r(

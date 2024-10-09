@@ -1232,15 +1232,6 @@
 <a href="#1232" id="1232">1232</a>
 <a href="#1233" id="1233">1233</a>
 <a href="#1234" id="1234">1234</a>
-<a href="#1235" id="1235">1235</a>
-<a href="#1236" id="1236">1236</a>
-<a href="#1237" id="1237">1237</a>
-<a href="#1238" id="1238">1238</a>
-<a href="#1239" id="1239">1239</a>
-<a href="#1240" id="1240">1240</a>
-<a href="#1241" id="1241">1241</a>
-<a href="#1242" id="1242">1242</a>
-<a href="#1243" id="1243">1243</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the polynomial commitment scheme
 //! called the Inner Product Argument (IPA) as described in [Efficient
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
@@ -2060,24 +2051,15 @@
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
-    <span class="doccomment">/// This function opens polynomials in batch at several points
-    /// - plnms: batch of polynomials to open commitments for
-    /// - elm: evaluation point vector to open the commitments at
-    /// - polyscale: used to combine polynomials for opening commitments in batch
-    /// (we will open the \sum_i polyscale^i * plnms.(i))
-    /// - evalscale: used to combine evaluations to open on only one point
-    /// - sponge: parameters for the random oracle argument
-    /// - rng: used for blinders for the zk property
-    /// A slight modification to the original protocol is done
-    /// when absorbing the first prover message.
-    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    #[allow(clippy::type_complexity)]
+    <span class="attr">#[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
+    </span><span class="comment">// NB: a slight modification to the original protocol is done when absorbing
+    // the first prover message to improve the efficiency in a recursive
+    // setting.
     </span><span class="kw">pub fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         group_map: <span class="kw-2">&amp;</span>G::Map,
-        <span class="comment">// TODO(mimoo): create a type for that entry
-        </span>plnms: PolynomialsToCombine&lt;G, D&gt;,
+        plnms: PolynomialsToCombine&lt;G, D&gt;,
         elm: <span class="kw-2">&amp;</span>[G::ScalarField],
         polyscale: G::ScalarField,
         evalscale: G::ScalarField,

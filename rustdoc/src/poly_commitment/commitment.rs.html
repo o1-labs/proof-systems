@@ -695,6 +695,7 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1255,13 +1256,13 @@
 }
 
 <span class="doccomment">/// Contains the batch evaluation
-</span><span class="comment">// TODO: I think we should really change this name to something more correct
 </span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, OpeningProof&gt;
 <span class="kw">where
     </span>G: AffineRepr,
     EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
 {
-    <span class="doccomment">/// The sponge used to generate/absorb the challenges.
+    <span class="doccomment">/// Sponge used to coin and absorb values and simulate
+    /// non-interactivity using the Fiat-Shamir transformation.
     </span><span class="kw">pub </span>sponge: EFqSponge,
     <span class="doccomment">/// A list of evaluations, each supposed to correspond to a different
     /// polynomial.
@@ -1269,11 +1270,12 @@
     <span class="doccomment">/// The actual evaluation points. Each field `evaluations` of each structure
     /// of `Evaluation` should have the same (outer) length.
     </span><span class="kw">pub </span>evaluation_points: Vec&lt;G::ScalarField&gt;,
-    <span class="doccomment">/// scaling factor for evaluation point powers
+    <span class="doccomment">/// A challenge to combine polynomials. Powers of this point will be used,
+    /// hence the name.
     </span><span class="kw">pub </span>polyscale: G::ScalarField,
-    <span class="doccomment">/// scaling factor for polynomials
+    <span class="doccomment">/// A challenge to aggregate multiple evaluation points.
     </span><span class="kw">pub </span>evalscale: G::ScalarField,
-    <span class="doccomment">/// batched opening proof
+    <span class="doccomment">/// The opening proof.
     </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OpeningProof,
     <span class="kw">pub </span>combined_inner_product: G::ScalarField,
 }
