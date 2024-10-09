@@ -165,10 +165,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// coefficients forms.
     /// - `elm`: the evaluation points
     /// - `polyscale`: a challenge to bacth the polynomials.
-    /// - `evalscale`: a challenge to build a randomized folded challenge (often
-    /// refered as u) in case of multiple evaluation points. In the case of
-    /// multiple evaluation points, powers of this point will be used, hence the
-    /// name.
+    /// - `evalscale`: a challenge to bacth the evaluation points
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator used for zero-knowledge
