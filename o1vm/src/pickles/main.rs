@@ -102,7 +102,6 @@ pub fn main() -> ExitCode {
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
-        // FIXME: add selectors
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
             .iter()
@@ -125,7 +124,7 @@ pub fn main() -> ExitCode {
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
             let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
+            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
             let _proof: Result<Proof<Vesta>, prover::ProverError> =
                 prover::prove::<
                     Vesta,
