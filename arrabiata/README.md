@@ -91,3 +91,56 @@ circuit for now -->
 
 - The name is not only used as a reference to Kimchi and Pickles, but also to
   the mathematician [Aryabhata](https://en.wikipedia.org/wiki/Aryabhata).
+
+## Documentation and design
+
+```
++------------------------------------------+                 -----------------------
+|            Instance n                    |                 |     Instance n + 2  |
+|            ----------                    |                 |     ----------      |
+|               Vesta                      |                 |       Vesta         |
+|       (scalar field = Fp)                |                 | (scalar field = Fp) |
+|       (base field   = Fq)                |                 | (base field   = Fq) |
+|                                          |                 | Challenges:         |
+|          Generate as output              |                 |   - α_p (cstraints) |
+|          ------------------              |                 |   - β_p (perm)      |
+| Challenges:           Commitments:       |                 |   - γ_p (perm)      |
+|   - α_p (cstraints)    - Cross-terms     |                 |   - r_p (folding)   |
+|   - β_p (perm)         - Witness columns |                 |   - u_p (homogenize)|
+|   - γ_p (perm)                           |                 -----------------------
+|   - r_p (folding)                        |
+|   - u_p (homogenize)                     |
+| Fiat-Shamir:                             |
+|   - digest of all messages read until    |
+| now -> o_p                               |
+|                                          |
+|             Receive in IO                |
+|             --------------               |
+| - TODO                                   |
+|                                          |
+|             Responsibility               |
+|             --------------               |
+| - Aggregate witness columns              |
+| from instance n - 2):                    |
+| C_(n - 2)_{1, ..., N}                    |
+| - Aggregate error terms                  |
+| from instance n - 2 with cross terms of  |
+| instance n - 2                           |
+| - Verify FS challenges (α, β, γ, r, u)   |
+| of instance n - 2                        |
++------------------------------------------+
+         |                                                 ^
+         |             -----------------------             |
+         |             |     Instance n + 1  |             |
+         |             |     ----------      |             |
+         |             |       Pallas        |             |
+         |             | (scalar field = Fq) |             |
+         |-----------> | (base field   = Fp) | -------------
+                       | Challenges (in Fq): |
+  TODO: define msgs    |   - α_q (cstraints) |    TODO: define msgs
+   format to pass      |   - β_q (perm)      |     format to pass
+        IO             |   - γ_q (perm)      |          IO
+                       |   - r_q (folding)   |
+                       |   - u_q (homogenize)|
+                       -----------------------
+```

@@ -29,6 +29,13 @@ pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 /// The environment is run over big integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
+///
+/// FIXME:
+/// - When we are processing the instance (n + 2), the IVC circuit must verify
+/// challenges that have been generated at step n. For that, the IVC circuit
+/// must absorb commitments of the step n. The initial state before absorption
+/// must be the state of the sponge used at step n. Therefore, in the
+/// environment, we must keep track of the state.
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,

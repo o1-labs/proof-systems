@@ -92,6 +92,39 @@ pub fn main() {
         // FIXME: Check twice the updated commitments
         env.compute_and_update_previous_commitments();
 
+        // FIXME:
+        // Absorb all commitments in the sponge.
+
+        // FIXME:
+        // Coin chalenges β and γ for the permutation argument
+
+        // FIXME:
+        // Compute the accumulator for the permutation argument
+
+        // FIXME:
+        // Compute the cross-terms
+
+        // FIXME:
+        // Absorb the cross-terms
+
+        // FIXME:
+        // Coin challenge r to fold
+
+        // FIXME:
+        // Compute the accumulated witness
+
+        // FIXME:
+        // Compute the accumulation of the commitments to the witness columns
+
+        // FIXME:
+        // Compute the accumulation of the challenges
+
+        // FIXME:
+        // Compute the accumulation of the public inputs/selectors
+
+        // FIXME:
+        // Compute the accumulated error
+
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",
             i = env.current_iteration,
