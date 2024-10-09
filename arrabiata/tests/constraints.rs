@@ -153,7 +153,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
         interpreter::run_ivc(&mut constraints_fp, *instr);
         constraints_fp.reset();
     });
-    assert_eq!(constraints_fp.constraints.len(), 43);
+    assert_eq!(constraints_fp.constraints.len(), 28);
 }
 
 #[test]
@@ -180,11 +180,11 @@ fn test_degree_of_constraints_ivc() {
         *count += 1;
     });
 
-    assert_eq!(degree_per_constraints.get(&1), Some(&3));
-    assert_eq!(degree_per_constraints.get(&2), Some(&27));
+    assert_eq!(degree_per_constraints.get(&1), Some(&1));
+    assert_eq!(degree_per_constraints.get(&2), Some(&11));
     assert_eq!(degree_per_constraints.get(&3), Some(&1));
     assert_eq!(degree_per_constraints.get(&4), None);
-    assert_eq!(degree_per_constraints.get(&5), Some(&12));
+    assert_eq!(degree_per_constraints.get(&5), Some(&15));
 }
 
 #[test]
