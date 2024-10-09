@@ -843,28 +843,6 @@ impl<Column: Copy> Variable<Column> {
     }
 }
 
-impl<Column: FormattedOutput + Debug> Variable<Column> {
-    pub fn ocaml(&self) -> String {
-        format!("var({:?}, {:?})", self.col, self.row)
-    }
-
-    pub fn latex(&self) -> String {
-        let col = self.col.latex(&mut HashMap::new());
-        match self.row {
-            Curr => col,
-            Next => format!("\\tilde{{{col}}}"),
-        }
-    }
-
-    pub fn text(&self) -> String {
-        let col = self.col.text(&mut HashMap::new());
-        match self.row {
-            Curr => format!("Curr({col})"),
-            Next => format!("Next({col})"),
-        }
-    }
-}
-
 impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, ChallengeTerm> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
@@ -2870,6 +2848,32 @@ where
     }
 }
 
+impl<Column: FormattedOutput + Debug> FormattedOutput for Variable<Column> {
+    fn is_alpha(&self) -> bool {
+        false
+    }
+
+    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
+        format!("var({:?}, {:?})", self.col, self.row)
+    }
+
+    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
+        let col = self.col.latex(&mut HashMap::new());
+        match self.row {
+            Curr => col,
+            Next => format!("\\tilde{{{col}}}"),
+        }
+    }
+
+    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
+        let col = self.col.text(&mut HashMap::new());
+        match self.row {
+            Curr => format!("Curr({col})"),
+            Next => format!("Next({col})"),
+        }
+    }
+}
+
 impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     fn is_alpha(&self) -> bool {
         match self {
@@ -3011,7 +3015,7 @@ where
                 });
                 res
             }
-            Atom(Cell(v)) => format!("cell({})", v.ocaml()),
+            Atom(Cell(v)) => format!("cell({})", v.ocaml(&mut HashMap::new())),
             Atom(UnnormalizedLagrangeBasis(i)) => {
                 format!("unnormalized_lagrange_basis({}, {})", i.zk_rows, i.offset)
             }
@@ -3075,7 +3079,7 @@ where
                 });
                 res
             }
-            Atom(Cell(v)) => v.latex(),
+            Atom(Cell(v)) => v.latex(&mut HashMap::new()),
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: true,
                 offset: i,
@@ -3122,7 +3126,7 @@ where
                 });
                 res
             }
-            Atom(Cell(v)) => v.text(),
+            Atom(Cell(v)) => v.text(&mut HashMap::new()),
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: true,
                 offset: i,
