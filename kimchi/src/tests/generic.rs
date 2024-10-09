@@ -98,13 +98,8 @@ fn test_generic_gate_kzg() {
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-    use ark_ff::UniformRand;
-
     let public = vec![Fp::from(3u8); 5];
     let gates = create_circuit(0, public.len());
-
-    let rng = &mut rand::rngs::OsRng;
-    let x = Fp::rand(rng);
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
@@ -118,8 +113,8 @@ fn test_generic_gate_kzg() {
     .gates(gates)
     .witness(witness)
     .public_inputs(public)
-    .setup_with_custom_srs(|d1, usize| {
-        let mut srs = unsafe { poly_commitment::kzg::PairingSRS::create(x, usize) };
+    .setup_with_custom_srs(|d1, srs_size| {
+        let mut srs = poly_commitment::kzg::PairingSRS::create(srs_size);
         srs.full_srs.add_lagrange_basis(d1);
         srs
     })

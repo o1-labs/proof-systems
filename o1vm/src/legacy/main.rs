@@ -77,9 +77,8 @@ pub fn main() -> ExitCode {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let srs = {
-        let toxic_waste = Fp::rand(&mut rand::rngs::OsRng);
-
-        let mut srs = unsafe { poly_commitment::kzg::PairingSRS::create(toxic_waste, DOMAIN_SIZE) };
+        // FIXME: toxic waste is generated in `create`. This is unsafe for prod.
+        let mut srs = poly_commitment::kzg::PairingSRS::create(DOMAIN_SIZE);
         srs.full_srs.add_lagrange_basis(domain.d1);
         srs
     };

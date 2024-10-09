@@ -1,4 +1,3 @@
-use ark_ff::UniformRand;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use folding::{
     instance_witness::Foldable, Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv,
@@ -123,10 +122,8 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
     constrain_ivc::<Ff1, _>(&mut constraint_env);
     let constraints = constraint_env.get_relation_constraints();
 
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let toxic_waste = Fp::rand(&mut rng);
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = unsafe { PairingSRS::create(toxic_waste, 2) };
+    let mut srs = PairingSRS::create(2);
     srs.add_lagrange_basis(domain);
 
     let folding_compat_expresions: Vec<FoldingCompatibleExpr<TestConfig>> = constraints
