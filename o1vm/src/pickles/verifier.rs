@@ -51,7 +51,6 @@ pub fn verify<
 ) -> bool
 where
     OpeningProof::SRS: Sync,
-
 {
     let Proof {
         proof_comms,
