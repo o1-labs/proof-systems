@@ -387,7 +387,7 @@ impl<
     /// Parameters:
     /// - `srs`: the structured reference string used to commit
     /// to the polynomials
-    /// - `plnms`: the list of polynomials to commit to, with possible blinders.
+    /// - `plnms`: the list of polynomials to open.
     /// The type is simply an alias to handle the polynomials in evaluations or
     /// coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
