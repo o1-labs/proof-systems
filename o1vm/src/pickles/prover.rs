@@ -13,6 +13,7 @@ use kimchi::{
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
+use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -75,6 +76,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
     type F<G> = DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>;
 
+    debug!("Prover: interpolating all columns, including the selectors");
     let ProofInputs { evaluations } = inputs;
     let polys: WitnessColumns<F<G>, [F<G>; N_MIPS_SEL_COLS]> = {
         let WitnessColumns {
@@ -115,6 +117,7 @@ where
         }
     };
 
+    debug!("Prover: committing to all columns, including the selectors");
     let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]> = {
         let WitnessColumns {
             scratch,
@@ -136,6 +139,7 @@ where
         }
     };
 
+    debug!("Prover: evaluating all columns, including the selectors, on d8");
     // We evaluate on a domain higher than d1 for the quotient polynomial.
     // Based on the regression test
     // `test_regression_constraints_with_selectors`, the highest degree is 6.
@@ -204,6 +208,7 @@ where
         }
     };
 
+    debug!("Prover: computing the quotient polynomial");
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
@@ -251,6 +256,7 @@ where
     // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
+    debug!("Prover: evaluating all columns, including the selectors, at ζ and ζω");
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
     let zeta = zeta_chal.to_field(endo_r);
@@ -340,6 +346,7 @@ where
 
     let group_map = G::Map::setup();
 
+    debug!("Prover: computing the (batched) opening proof using the IPA PCS");
     // Computing the opening proof for the IPA PCS
     let opening_proof = OpeningProof::open::<_, _, D<G::ScalarField>>(
         srs,
