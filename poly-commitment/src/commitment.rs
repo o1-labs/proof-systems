@@ -515,7 +515,7 @@ where
     pub polyscale: G::ScalarField,
     /// A challenge to aggregate multiple evaluation points.
     pub evalscale: G::ScalarField,
-    /// The actual opening proof.
+    /// The opening proof.
     pub opening: &'a OpeningProof,
     pub combined_inner_product: G::ScalarField,
 }
