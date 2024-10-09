@@ -125,7 +125,7 @@ pub fn main() -> ExitCode {
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
             let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new branch new chunk");
+            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
             let _proof: Result<Proof<Vesta>, prover::ProverError> =
                 prover::prove::<
                     Vesta,
