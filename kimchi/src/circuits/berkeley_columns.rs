@@ -1,29 +1,52 @@
+//! This module defines the particular form of the expressions used in the Mina
+//! Berkeley hardfork. You can find more information in [this blog
+//! article](https://www.o1labs.org/blog/reintroducing-kimchi).
+//! This module is also a good starting point if you want to implement your own
+//! variant of Kimchi using the expression framework.
+//!
+//! The module uses the generic expression framework defined in the
+//! [crate::circuits::expr] module.
+//! The expressions define the polynomials that can be used to describe the
+//! constraints.
+//! It starts by defining the different challenges used by the PLONK IOP in
+//! [BerkeleyChallengeTerm] and [BerkeleyChallenges].
+//! It then defines the [Column] type which represents the different variables
+//! the polynomials are defined over.
+//!
+//! Two "environments" are after that defined: one for the lookup argument
+//! [LookupEnvironment], and one for the main argument [Environment], which
+//! contains the former.
+//! The trait [ColumnEnvironment] is then defined to provide the necessary
+//! primitives used to evaluate the quotient polynomial.
+
 use crate::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{CacheId, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
+        expr::{
+            CacheId, ColumnEnvironment, ColumnEvaluations, ConstantExpr, ConstantTerm, Constants,
+            Domain, Expr, ExprError, FormattedOutput,
+        },
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},
+        wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
-use serde::{Deserialize, Serialize};
-
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-
-use crate::circuits::expr::{ColumnEnvironment, Constants, Domain, FormattedOutput};
-
-use crate::circuits::wires::COLUMNS;
-
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// The challenge terms used in Berkeley
+/// The challenge terms used in Berkeley.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BerkeleyChallengeTerm {
+    /// Used to combine constraints
     Alpha,
+    /// The first challenge used in the permutation argument
     Beta,
+    /// The second challenge used in the permutation argument
     Gamma,
+    /// A challenge used to columns of a lookup table
     JointCombiner,
 }
 
@@ -45,13 +68,14 @@ impl<'a> super::expr::AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
 }
 
 pub struct BerkeleyChallenges<F> {
-    /// The challenge alpha from the PLONK IOP.
+    /// The challenge α from the PLONK IOP.
     pub alpha: F,
-    /// The challenge beta from the PLONK IOP.
+    /// The challenge β from the PLONK IOP.
     pub beta: F,
-    /// The challenge gamma from the PLONK IOP.
+    /// The challenge γ from the PLONK IOP.
     pub gamma: F,
-    /// The challenge joint_combiner which is used to combine joint lookup tables.
+    /// The challenge joint_combiner which is used to combine joint lookup
+    /// tables.
     pub joint_combiner: F,
 }
 
@@ -68,9 +92,16 @@ impl<F: ark_ff::Field> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChalle
     }
 }
 
+/// A type representing the variables involved in the constraints of the
+/// Berkeley hardfork.
+///
+/// In Berkeley, the constraints are defined over the following variables:
+/// - The [COLUMNS] witness columns.
+/// - The permutation polynomial, Z.
+/// - The public coefficients, `Coefficients`, which can be used for public
+/// values. For instance, it is used for the Poseidon round constants.
+/// - ...
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing one of the polynomials involved in the PLONK IOP, use in
-/// the Berkeley hardfork.
 pub enum Column {
     Witness(usize),
     Z,
