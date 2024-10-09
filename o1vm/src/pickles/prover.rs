@@ -209,6 +209,13 @@ where
     };
 
     debug!("Prover: computing the quotient polynomial");
+    // Hint:
+    // To debug individual constraint, you can revert the following commits that implement the
+    // check for individual constraints.
+    // ```
+    // git revert 8e87244a98d55b90d175ad389611a3c98bd16b34
+    // git revert 96d42c127ef025869c91e5fed680e0e383108706
+    // ```
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
