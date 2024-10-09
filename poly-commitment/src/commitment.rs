@@ -508,7 +508,6 @@ where
     pub evaluations: Vec<Evaluation<G>>,
     /// The actual evaluation points. Each field `evaluations` of each structure
     /// of `Evaluation` should have the same (outer) length.
-    /// A randomized folded challenge will be built using `evalscale`.
     pub evaluation_points: Vec<G::ScalarField>,
     /// A challenge to combine polynomials. Powers of this point will be used,
     /// hence the name.
