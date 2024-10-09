@@ -164,7 +164,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// The type is simply an alias to handle the polynomials in evaluations or
     /// coefficients forms.
     /// - `elm`: the evaluation points
-    /// - `polyscale`: a challenge to combine the polynomials.
+    /// - `polyscale`: a challenge to bacth the polynomials.
     /// - `evalscale`: a challenge to build a randomized folded challenge (often
     /// refered as u) in case of multiple evaluation points. In the case of
     /// multiple evaluation points, powers of this point will be used, hence the
