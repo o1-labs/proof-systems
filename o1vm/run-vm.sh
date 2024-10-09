@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-O1VM_FLAVOR="${O1VM_FLAVOR:-legacy}"
+O1VM_FLAVOR="${O1VM_FLAVOR:-pickles}"
 
 case ${O1VM_FLAVOR} in
     "legacy")
@@ -11,8 +11,8 @@ case ${O1VM_FLAVOR} in
         BINARY_FLAVOR="pickles_o1vm"
         ;;
     *)
-        echo "${BASH_SOURCE[0]}:${LINENO}: only flavors 'legacy' (default) and \
-'pickles' are supported for now. Use the environment variable \
+        echo "${BASH_SOURCE[0]}:${LINENO}: only flavors 'legacy' and \
+'pickles' (default) are supported for now. Use the environment variable \
 O1VM_FLAVOR to one of these values to run the flavor you would like";
         exit 1
         ;;
