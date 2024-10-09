@@ -123,6 +123,9 @@ pub fn main() {
         // Compute the accumulation of the public inputs/selectors
 
         // FIXME:
+        // Compute the accumulation of the blinders for the PCS
+
+        // FIXME:
         // Compute the accumulated error
 
         debug!(
