@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use arrabiata::{
     constraints,
     interpreter::{self, Instruction},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, columns::E,
 };
 use mina_curves::pasta::fields::{Fp, Fq};
 
@@ -196,4 +196,15 @@ fn test_gadget_bit_decomposition() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 17, 0);
+}
+
+#[test]
+fn test_integration_with_mvpoly_to_compute_cross_terms() {
+    let constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
+    };
+
+    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let _accumulated_constraint = E::combine_constraints(0..constraints.len() as u32, constraints);
 }
