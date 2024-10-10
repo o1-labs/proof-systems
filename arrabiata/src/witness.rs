@@ -18,7 +18,7 @@ use crate::{
     POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
-pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonNextRow(0);
+pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment that can be shared between IVC instances.
 ///
@@ -1048,12 +1048,12 @@ impl<
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            Instruction::PoseidonNextRow(i) => {
+            Instruction::Poseidon(i) => {
                 if i < POSEIDON_ROUNDS_FULL - 5 {
-                    Instruction::PoseidonNextRow(i + 5)
+                    Instruction::Poseidon(i + 5)
                 } else {
                     // FIXME: we continue absorbing
-                    Instruction::PoseidonNextRow(0)
+                    Instruction::Poseidon(0)
                 }
             }
             Instruction::EllipticCurveScaling(i_comm, bit) => {

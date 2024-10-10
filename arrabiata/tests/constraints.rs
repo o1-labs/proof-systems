@@ -84,7 +84,7 @@ fn helper_check_gadget_activated(instr: Instruction, gadget: Gadget) {
 
 #[test]
 fn test_gadget_poseidon_next_row() {
-    let instr = Instruction::PoseidonNextRow(0);
+    let instr = Instruction::Poseidon(0);
     helper_compute_constraints_gadget(instr, 15);
 
     let mut exp_degrees = HashMap::new();
@@ -94,10 +94,10 @@ fn test_gadget_poseidon_next_row() {
     helper_gadget_number_of_columns_used(instr, 15, 17);
 
     // We always have 2 additional public inputs, even if set to 0
-    let instr = Instruction::PoseidonNextRow(1);
+    let instr = Instruction::Poseidon(1);
     helper_gadget_number_of_columns_used(instr, 15, 17);
 
-    helper_check_gadget_activated(instr, Gadget::PoseidonNextRow);
+    helper_check_gadget_activated(instr, Gadget::Poseidon);
 }
 
 #[test]

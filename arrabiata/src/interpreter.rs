@@ -369,7 +369,7 @@ pub enum Instruction {
     /// to allow the computation of one additional round per row. In the current
     /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
     /// per row.
-    PoseidonNextRow(usize),
+    Poseidon(usize),
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
@@ -855,9 +855,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 env.write_column(pos, res)
             };
         }
-        Instruction::PoseidonNextRow(curr_round) => {
-            env.activate_gadget(Gadget::PoseidonNextRow);
-            debug!("Executing instruction PoseidonNextRow({curr_round})");
+        Instruction::Poseidon(curr_round) => {
+            env.activate_gadget(Gadget::Poseidon);
+            debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
                 // Values to be absorbed are 0 when when the round is not zero,
                 // i.e. when we are processing the rounds.

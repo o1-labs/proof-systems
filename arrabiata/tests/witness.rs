@@ -40,10 +40,10 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
         sponge.clone(),
     );
 
-    env.current_instruction = Instruction::PoseidonNextRow(0);
+    env.current_instruction = Instruction::Poseidon(0);
 
     (0..(POSEIDON_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(5 * i));
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(5 * i));
         env.reset();
     });
     let exp_output = {

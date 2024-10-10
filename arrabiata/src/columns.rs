@@ -26,7 +26,7 @@ pub enum Gadget {
     /// to allow the computation of one additional round per row. In the current
     /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
-    PoseidonNextRow,
+    Poseidon,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -103,7 +103,7 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
+                Gadget::Poseidon => "q_pos".to_string(),
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -116,7 +116,7 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
+                Gadget::Poseidon => "q_pos_next_row".to_string(),
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),
