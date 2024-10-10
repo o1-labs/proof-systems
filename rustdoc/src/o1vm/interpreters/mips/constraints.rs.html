@@ -649,6 +649,13 @@
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::{
         column::{
@@ -663,7 +670,7 @@
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-<span class="kw">use </span>ark_ff::{Field, One};
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -1277,12 +1284,19 @@
     /// Each selector must be a boolean.
     </span><span class="kw">pub fn </span>get_selector_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;Fp&gt;&gt; {
         <span class="kw">let </span>one = &lt;<span class="self">Self </span><span class="kw">as </span>InterpreterEnv&gt;::Variable::one();
-        (<span class="number">0</span>..N_MIPS_SEL_COLS)
+        <span class="kw">let </span><span class="kw-2">mut </span>enforce_bool: Vec&lt;E&lt;Fp&gt;&gt; = (<span class="number">0</span>..N_MIPS_SEL_COLS)
             .map(|i| {
                 <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
                 (var.clone() - one.clone()) * var.clone()
             })
-            .collect()
+            .collect();
+        <span class="kw">let </span>enforce_one_activation = (<span class="number">0</span>..N_MIPS_SEL_COLS).fold(E::&lt;Fp&gt;::zero(), |res, i| {
+            <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
+            res + var.clone()
+        });
+
+        enforce_bool.push(enforce_one_activation);
+        enforce_bool
     }
 
     <span class="kw">pub fn </span>get_selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; E&lt;Fp&gt; {
