@@ -25,7 +25,7 @@ pub const MIN_SRS_LOG2_SIZE: usize = 16;
 pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 
 /// The maximum number of columns that can be used in the circuit.
-pub const NUMBER_OF_COLUMNS: usize = 17;
+pub const NUMBER_OF_COLUMNS: usize = 15;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
