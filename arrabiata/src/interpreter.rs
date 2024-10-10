@@ -673,6 +673,27 @@ pub trait InterpreterEnv {
         _v2: Self::Variable,
         _side: Side,
     );
+
+    /// Save the value located in the position `pos` in the interpreter "cache"
+    /// to be loaded later.
+    ///
+    /// The interpreter "cache" is handled via a permutation argument.
+    ///
+    /// The returned value is the value saved in the cache.
+    fn save_value(&mut self, pos: Self::Position) -> Self::Variable;
+
+    /// Load the value saved in the CPU cache at the previous row `row`
+    /// at the column given by the position `pos`.
+    ///
+    /// If the value has been already loaded at a previous row, an exception is
+    /// raised. The value must be loaded only once as, under the hood, we use a
+    /// permutation argument.
+    /// The value is loaded in the current row at position `pos` and the value
+    /// is returned.
+    ///
+    /// If no value has been saved at the previous row `row`, an exception is
+    /// also raised. Values must have been saved before using [Self::save_value].
+    fn load_value(&mut self, row: usize, pos: Self::Position) -> Self::Variable;
 }
 
 /// Run the application
@@ -832,9 +853,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             env.activate_gadget(Gadget::EllipticCurveScaling);
             // When processing the first bit, we must load the scalar, and it
             // comes from previous computation.
-            if processing_bit == 0 {
-                env.activate_gadget(Gadget::PermutationArgument);
-            }
             // The two first columns are supposed to be used for the output.
             // It will be used to write the result of the scalar multiplication
             // in the next row.
@@ -976,7 +994,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            env.activate_gadget(Gadget::PermutationArgument);
             env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
@@ -1020,7 +1037,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::Poseidon(curr_round) => {
-            env.activate_gadget(Gadget::PermutationArgument);
             env.activate_gadget(Gadget::Poseidon);
             debug!("Executing instruction Poseidon({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
@@ -1102,7 +1118,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 // calls, like when we need to hash the public inputs, and the
                 // state might be from a previous place in the execution trace.
                 let state: Vec<E::Variable> = if curr_round == 0 {
-                    env.activate_gadget(Gadget::PermutationArgument);
                     round_input_positions
                         .iter()
                         .enumerate()
@@ -1162,16 +1177,12 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         .collect();
                     // If we are at the last round, we save the state in the
                     // environment.
-                    // It does require the permutation argument to be activated.
-                    // FIXME: activating the permutation argument has no effect
-                    // for now.
                     // FIXME/IMPROVEME: we might want to execute more Poseidon
                     // full hash in sequentially, and then save one row. For
                     // now, we will save the state at the end of the last round
                     // and reload it at the beginning of the next Poseidon full
                     // hash.
                     if round == POSEIDON_ROUNDS_FULL - 1 {
-                        env.activate_gadget(Gadget::PermutationArgument);
                         state.iter().enumerate().for_each(|(i, x)| {
                             unsafe { env.save_poseidon_state(x.clone(), i) };
                         });

@@ -8,15 +8,18 @@ use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Instant;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    time::Instant,
+};
 
 use crate::{
     columns::{Column, Gadget},
     interpreter::{Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PERMUTATION_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
@@ -92,6 +95,20 @@ pub struct Env<
     /// Contain the public state
     // FIXME: I don't like this design. Feel free to suggest a better solution
     pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
+
+    /// Keep track of the permutations
+    /// Each value of the array represents a mapping i -> x_i, where i in `n`
+    /// and x_i is the value at the previous step i.
+    ///
+    /// When a value is "saved" at step `i`, the mapping from `i` is created,
+    /// but set to `None`, meaning it has to be "loaded" later.
+    ///
+    /// TODO: The permutation itself should be part of a setup phase, where we
+    /// keep track of the the time we accessed the value.
+    ///
+    /// The permutations are supposed to be on the first
+    /// [NUMBER_OF_PERMUTATION_COLUMNS], and are only valid on the same column.
+    pub permutations: [HashMap<usize, (BigInt, Option<usize>)>; NUMBER_OF_PERMUTATION_COLUMNS],
 
     /// Selectors to activate the gadgets.
     /// The size of the outer vector must be equal to the number of gadgets in
@@ -411,10 +428,6 @@ where
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         let state = if self.current_iteration % 2 == 0 {
             self.sponge_e1[i].clone()
         } else {
@@ -454,10 +467,6 @@ where
     }
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = Fp::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
@@ -532,10 +541,6 @@ where
         pos_y: Self::Position,
         side: Side,
     ) -> (Self::Variable, Self::Variable) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         match self.current_instruction {
             Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // If we're processing the leftmost bit (i.e. bit == 0), we must load
@@ -640,10 +645,6 @@ where
         y: Self::Variable,
         side: Side,
     ) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         match side {
             Side::Left => {
                 self.temporary_accumulators.0 = (x, y);
@@ -801,6 +802,51 @@ where
         };
         (x3, y3)
     }
+
+    // FIXME: Not that it means "write_column" should be called before!!!!
+    // Do we want to change this interface????
+    // FIXME: Handle "next row"!!!!
+    fn save_value(&mut self, pos: Self::Position) -> Self::Variable {
+        let (Column::X(idx), curr_or_next) = pos else {
+            panic!("The 'cache' can only be used on private columns. To load public values, use a lookup argument")
+        };
+        assert_eq!(curr_or_next, CurrOrNext::Curr);
+        assert!(idx < NUMBER_OF_PERMUTATION_COLUMNS, "The permutation argument only works on the first {NUMBER_OF_PERMUTATION_COLUMNS} columns");
+        let permutation = &mut self.permutations[idx];
+        // This should never happen as we build from top to bottom, but we never
+        // know...
+        if let Entry::Vacant(e) = permutation.entry(idx) {
+            let v = self.state[idx].clone();
+            e.insert((v, None));
+        } else {
+            panic!("It seems that the index {idx} is already in the permutation, which should never happen has the execution trace is built from top to bottom")
+        };
+        self.state[idx].clone()
+    }
+
+    fn load_value(&mut self, row: usize, pos: Self::Position) -> Self::Variable {
+        let (Column::X(idx), _) = pos else {
+            panic!("The 'cache' can only be used on private columns. To load public values, use a lookup argument")
+        };
+        assert!(idx < NUMBER_OF_PERMUTATION_COLUMNS, "The permutation argument only works on the first {NUMBER_OF_PERMUTATION_COLUMNS} columns");
+        if let Some(v) = self.permutations[idx].get_mut(&row) {
+            match v {
+                (_, Some(row_prime)) => {
+                    panic!("It seems that the value saved at row {row} has been already read at step {row_prime}")
+                }
+                (res, None) => {
+                    let output = (*res).clone();
+                    *v = (output, Some(row))
+                }
+            }
+        } else {
+            panic!(
+                "No value has been saved at row {row} for the position {:?}",
+                pos
+            )
+        };
+        self.permutations[idx].get(&row).unwrap().0.clone()
+    }
 }
 
 impl<
@@ -912,6 +958,7 @@ impl<
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            permutations: std::array::from_fn(|_| HashMap::new()),
             selectors,
             challenges,
             current_instruction: IVC_STARTING_INSTRUCTION,

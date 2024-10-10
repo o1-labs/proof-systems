@@ -5,6 +5,9 @@ pub mod columns;
 pub mod constraints;
 pub mod interpreter;
 pub mod logup;
+/// Module to represent the values that will be loaded in the permutation
+/// argument
+pub mod permutation;
 pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod proof;
@@ -26,6 +29,9 @@ pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 
 /// The maximum number of columns that can be used in the circuit.
 pub const NUMBER_OF_COLUMNS: usize = 17;
+
+/// The number of columns used in the permutation argument
+pub const NUMBER_OF_PERMUTATION_COLUMNS: usize = 4;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
