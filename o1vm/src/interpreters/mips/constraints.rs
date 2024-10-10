@@ -12,7 +12,7 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -626,12 +626,19 @@ impl<Fp: Field> Env<Fp> {
     /// Each selector must be a boolean.
     pub fn get_selector_constraints(&self) -> Vec<E<Fp>> {
         let one = <Self as InterpreterEnv>::Variable::one();
-        (0..N_MIPS_SEL_COLS)
+        let mut enforce_bool: Vec<E<Fp>> = (0..N_MIPS_SEL_COLS)
             .map(|i| {
                 let var = self.variable(MIPSColumn::Selector(i));
                 (var.clone() - one.clone()) * var.clone()
             })
-            .collect()
+            .collect();
+        let enforce_one_activation = (0..N_MIPS_SEL_COLS).fold(E::<Fp>::zero(), |res, i| {
+            let var = self.variable(MIPSColumn::Selector(i));
+            res + var.clone()
+        });
+
+        enforce_bool.push(enforce_one_activation);
+        enforce_bool
     }
 
     pub fn get_selector(&self) -> E<Fp> {
