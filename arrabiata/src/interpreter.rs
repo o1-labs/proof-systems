@@ -678,9 +678,21 @@ pub trait InterpreterEnv {
     /// to be loaded later.
     ///
     /// The interpreter "cache" is handled via a permutation argument.
+    ///
+    /// The returned value is the value saved in the cache.
     fn save_value(&mut self, pos: Self::Position) -> Self::Variable;
 
-    /// Load the latest value saved in the CPU cache for the position `pos`.
+    /// Load the value saved in the CPU cache at the previous row `row`
+    /// at the column given by the position `pos`.
+    ///
+    /// If the value has been already loaded at a previous row, an exception is
+    /// raised. The value must be loaded only once as, under the hood, we use a
+    /// permutation argument.
+    /// The value is loaded in the current row at position `pos` and the value
+    /// is returned.
+    ///
+    /// If no value has been saved at the previous row `row`, an exception is
+    /// also raised. Values must have been saved before using [Self::save_value].
     fn load_value(&mut self, row: usize, pos: Self::Position) -> Self::Variable;
 }
 
