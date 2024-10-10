@@ -1,0 +1,18 @@
+FROM alpine
+
+# Add necessary utilities
+RUN apk add --no-cache shadow
+
+# Copy the files from the host to the Docker image
+# Assuming the files and folder are located 
+# in the same directory as the current Dockerfile on the host
+COPY op-program-db-for-latest-l2-block /tmp/cache-source/op-program-db-for-latest-l2-block
+COPY env-for-latest-l2-block.sh /tmp/cache-source/env-for-latest-l2-block.sh
+COPY snapshot-state-10000000.json /tmp/cache-source/snapshot-state-10000000.json
+COPY state.json /tmp/cache-source/state.json
+COPY meta.json /tmp/cache-source/meta.json
+COPY out.json /tmp/cache-source/out.json
+COPY cpu.pprof /tmp/cache-source/cpu.pprof
+
+# Command to copy the files to mounted volume and to keep the container running
+CMD ["/bin/sh", "-c", "cp -r /tmp/cache-source/* /tmp/cache/; tail -f /dev/null"]
