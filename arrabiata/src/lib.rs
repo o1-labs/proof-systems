@@ -63,11 +63,5 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 /// circuit.
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
-/// The number of bits per chunk in the bit decomposition.
-/// It is used to decompose the field elements of 255 bits into single bit.
-/// We use 17 rows of 15 bits decomposition.
-pub const BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK: usize = 15;
-pub const BIT_DECOMPOSITION_NUMBER_OF_CHUNKS: usize = 17;
-
 /// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;

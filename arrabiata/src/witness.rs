@@ -13,13 +13,12 @@ use std::time::Instant;
 use crate::{
     columns::{Column, Gadget},
     interpreter::{Instruction, InterpreterEnv, Side},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
-pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonNextRow(0);
 
 /// An environment that can be shared between IVC instances.
 ///
@@ -1049,56 +1048,12 @@ impl<
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
-            Instruction::BitDecomposition(i) => {
-                if i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS - 1 {
-                    Instruction::BitDecomposition(i + 1)
-                } else {
-                    Instruction::EllipticCurveScaling(0, 0)
-                }
-            }
-            Instruction::Poseidon(i) => {
-                if i < POSEIDON_ROUNDS_FULL - 4 {
-                    // We perform 4 rounds per row
-                    // FIXME: we can do 5 by using the "next row", see
-                    // PoseidonNextRow
-                    Instruction::Poseidon(i + 4)
-                } else {
-                    // If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(0)
-                    } else {
-                        // Otherwise, we continue absorbing
-                        Instruction::Poseidon(0)
-                    }
-                }
-            }
             Instruction::PoseidonNextRow(i) => {
                 if i < POSEIDON_ROUNDS_FULL - 5 {
                     Instruction::PoseidonNextRow(i + 5)
                 } else {
-                    // If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(0)
-                    } else {
-                        // Otherwise, we continue absorbing
-                        Instruction::PoseidonNextRow(0)
-                    }
-                }
-            }
-            Instruction::BitDecompositionFrom16Bits(i) => {
-                if i < 15 {
-                    Instruction::BitDecompositionFrom16Bits(i + 1)
-                } else {
-                    Instruction::Poseidon(0)
+                    // FIXME: we continue absorbing
+                    Instruction::PoseidonNextRow(0)
                 }
             }
             Instruction::EllipticCurveScaling(i_comm, bit) => {
