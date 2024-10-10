@@ -18,28 +18,15 @@ use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 #[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
 pub enum Gadget {
     App,
-    // Two old gadgets
-    /// Decompose a 255 bits scalar into 16 chunks of 16 bits.
-    SixteenBitsDecomposition,
-    /// Decompose a 16bits chunk into individual bits.
-    BitDecompositionFrom16Bits,
-    /// This gadget decomposes a 255 bits value into bits using 17 lines and 17
-    /// columns.
-    BitDecomposition,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
     EllipticCurveScaling,
     /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. The implementation does not use the "next row"
-    /// and is unsafe at the moment as no permutation argument is implemented.
-    Poseidon,
-    /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. Compared to the previous one (that might be
-    /// deprecated in the future), this implementation does use the "next row"
+    /// top-level documentation. This implementation does use the "next row"
     /// to allow the computation of one additional round per row. In the current
     /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
-    PoseidonNextRow,
+    Poseidon,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -114,13 +101,9 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
-                Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
-                Gadget::BitDecomposition => "q_bits".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
-                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -131,13 +114,9 @@ impl FormattedOutput for Column {
         match self {
             Column::Selector(sel) => match sel {
                 Gadget::App => "q_app".to_string(),
-                Gadget::SixteenBitsDecomposition => "q_16bits".to_string(),
-                Gadget::BitDecompositionFrom16Bits => "q_bit_from_16bits".to_string(),
-                Gadget::BitDecomposition => "q_bits".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
-                Gadget::PoseidonNextRow => "q_pos_next_row".to_string(),
+                Gadget::Poseidon => "q_pos_next_row".to_string(),
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),

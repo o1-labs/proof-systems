@@ -25,7 +25,6 @@
 //!     - [Gadget layout](#gadget-layout-1)
 //!   - [Elliptic curve scalar multiplication](#elliptic-curve-scalar-multiplication)
 //!     - [Gadget layout](#gadget-layout-2)
-//!   - [Bit composition instruction](#bit-composition-instruction)
 //! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
@@ -210,28 +209,6 @@
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ### Bit composition instruction (deprecated)
-//!
-//! Decomposing a 255 bits value into bits can also be done using
-//! [NUMBER_OF_COLUMNS] columns and [BIT_DECOMPOSITION_NUMBER_OF_CHUNKS] rows
-//! without lookups using the following layout:
-//!
-//! ```text
-//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | y  | x  | b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7  | b8  | b9  | b10 | b11 | b12 | b13 | b14 |
-//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- | --- | --- |
-//! | x0 | x  | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... | ... | ... | ... |
-//! | x1 | x0 | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... | ... | ... | ... |
-//! | x2 | x1 | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... | ... | ... | ... |
-//! | .. | .. | .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... | ... | ... | ... |
-//! | x16| x15| .. | .. | .. | .. | .. | .. | .. | ... | ... | ... | ... | ... | ... | ... | ... |
-//! ```
-//!
-//! where:
-//! - `x` is the input value                            14
-//! - for each row `i`, we have `x_i = x_{i - 1} << 15 - Σ  2^j b_{i * 15 + j}`
-//! - `b_i` is the i-th bit of the input value          j=0
-//!
 //! ## Handle the combinaison of constraints
 //!
 //! The prover will have to combine the constraints to generate the
@@ -361,12 +338,11 @@
 //! there.
 
 use crate::{
-    columns::Gadget, BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
-    BIT_DECOMPOSITION_NUMBER_OF_CHUNKS, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-    POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    columns::Gadget, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL,
+    POSEIDON_STATE_SIZE,
 };
 use ark_ff::{One, Zero};
-use log::{debug, error};
+use log::debug;
 use num_bigint::BigInt;
 
 /// A list of instruction/gadget implemented in the interpreter.
@@ -387,31 +363,13 @@ use num_bigint::BigInt;
 /// typed control-flow. We leave this for future work.
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
-    /// This gadget decomposes a 255 bits value into bits using 17 lines and 17
-    /// columns. The constructor parameter is the line number.
-    BitDecomposition(usize),
-    /// Decompose a 255 bits scalar into 16 chunks of 16 bits.
-    // FIXME: use the permutation argument, the "next row" or deprecate it.
-    // For now, the gadget is deprecated and should not be used.
-    SixteenBitsDecomposition,
-    /// Decompose a 16bits chunk into individual bits. The constructor parameter
-    /// is the index of the chunk (it is supposed to be less than 16, as there
-    /// are 16 chunks of 16 bits for a 255 bits scalar).
-    // FIXME: use the permutation argument, the "next row" or deprecate it.
-    // For now, the gadget is deprecated and should not be used.
-    BitDecompositionFrom16Bits(usize),
-    /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. The implementation does not use the "next row"
-    /// and is unsafe at the moment as no permutation argument is implemented.
-    // FIXME: use the permutation argument or deprecate it.
-    Poseidon(usize),
     /// This gadget implement the Poseidon hash instance described in the
     /// top-level documentation. Compared to the previous one (that might be
     /// deprecated in the future), this implementation does use the "next row"
     /// to allow the computation of one additional round per row. In the current
     /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
     /// per row.
-    PoseidonNextRow(usize),
+    Poseidon(usize),
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
@@ -707,124 +665,6 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// resulting constraints must be multiplied by the corresponding selectors.
 pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     match instr {
-        Instruction::SixteenBitsDecomposition => {
-            error!("This gadget is outdated. You should not use it");
-            env.activate_gadget(Gadget::SixteenBitsDecomposition);
-            // Decompositing the random coin in chunks of 16 bits. One row.
-            // FIXME: verify the combiner is correctly returned from the sponge.
-            let r = {
-                let pos = env.allocate();
-                env.coin_folding_combiner(pos)
-            };
-            let decomposition_16bits: Vec<E::Variable> = (0..16)
-                .map(|i| {
-                    let pos = env.allocate();
-                    env.range_check16(pos);
-                    unsafe { env.bitmask_be(&r, (i + 1) * 16, i * 16, pos) }
-                })
-                .collect();
-
-            let cstr = decomposition_16bits
-                .iter()
-                .enumerate()
-                .fold(r, |acc, (i, x)| {
-                    acc - env.constant(BigInt::from(1_usize) << (i * 16)) * x.clone()
-                });
-            env.assert_zero(cstr);
-        }
-        Instruction::BitDecompositionFrom16Bits(i) => {
-            error!("This gadget is outdated. You should not use it");
-            env.activate_gadget(Gadget::BitDecompositionFrom16Bits);
-            if i < 16 {
-                // FIXME: simulate a RW into a memory cell. Not necessarily
-                // constrained?
-                let sixteen_i = {
-                    let pos = env.allocate();
-                    unsafe { env.read_sixteen_bits_chunks_folding_combiner(pos, i as u32) }
-                };
-                let bit_decompo: Vec<E::Variable> = (0..16)
-                    .map(|j| {
-                        let pos = env.allocate();
-                        unsafe { env.bitmask_be(&sixteen_i, (j + 1) as u32, j as u32, pos) }
-                    })
-                    .collect();
-
-                // Contrain to be one or zero
-                bit_decompo
-                    .iter()
-                    .for_each(|x| env.constrain_boolean(x.clone()));
-
-                let cstr = bit_decompo
-                    .iter()
-                    .enumerate()
-                    .fold(sixteen_i, |acc, (i, x)| {
-                        acc - env.constant(BigInt::from(1_usize) << i) * x.clone()
-                    });
-                env.assert_zero(cstr);
-            } else {
-                panic!("Invalid index: it is supposed to be less than 16 as we fetch 16 chunks of 16bits.");
-            }
-        }
-        Instruction::BitDecomposition(i) => {
-            env.activate_gadget(Gadget::BitDecomposition);
-            assert!(
-                i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-                "Bit decomposition is on {BIT_DECOMPOSITION_NUMBER_OF_CHUNKS} rows"
-            );
-            // Decompositing the random coin in chunks of 15 bits.
-            // Step i is the decomposition of the bits between 15 * i and 15 * (i + 1).
-            // We make a constraint for each bit and we check that the sum of the
-            // bits is equal to the previous value.
-            let pos_x0 = env.allocate();
-            let pos_x1 = env.allocate();
-            // Temporary variable
-            // FIXME: use `load/save` to fetch the previous value
-            let r = env.coin_folding_combiner(pos_x0);
-            // previous value
-            let x0 = unsafe {
-                env.bitmask_be(
-                    &r,
-                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
-                    (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * i)
-                        .try_into()
-                        .unwrap(),
-                    pos_x0,
-                )
-            };
-            // new value
-            let x1 = unsafe {
-                env.bitmask_be(
-                    &r,
-                    MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(),
-                    (BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK * (i + 1))
-                        .try_into()
-                        .unwrap(),
-                    pos_x1,
-                )
-            };
-            let bits: Vec<E::Variable> = (0..BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK)
-                .map(|j| {
-                    let pos = env.allocate();
-                    let bit = unsafe {
-                        env.bitmask_be(&x0, (j + 1).try_into().unwrap(), j.try_into().unwrap(), pos)
-                    };
-                    env.constrain_boolean(bit.clone());
-                    bit
-                })
-                .collect();
-            let rhs = bits.iter().enumerate().fold(env.zero(), |acc, (j, b)| {
-                acc + env.constant(BigInt::from(1_usize) << j) * b.clone()
-            });
-            // x0 = x1 + \sum_{j=0}^{14} 2^j b_j
-            env.assert_equal(
-                x0,
-                x1.clone()
-                    * env.constant(
-                        BigInt::from(1_usize) << BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK,
-                    )
-                    + rhs,
-            );
-        }
         Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
@@ -1018,64 +858,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         Instruction::Poseidon(curr_round) => {
             env.activate_gadget(Gadget::Poseidon);
             debug!("Executing instruction Poseidon({curr_round})");
-            if curr_round < POSEIDON_ROUNDS_FULL {
-                let values_to_absorb: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE - 1)
-                    .map(|_i| {
-                        let pos = env.allocate_public_input();
-                        unsafe { env.fetch_value_to_absorb(pos, curr_round) }
-                    })
-                    .collect();
-                let state: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
-                    .map(|i| {
-                        let pos = env.allocate();
-                        let res = env.load_poseidon_state(pos, i);
-                        // Absorb value
-                        if i < POSEIDON_STATE_SIZE - 1 {
-                            res + values_to_absorb[i].clone()
-                        } else {
-                            res
-                        }
-                    })
-                    .collect();
-
-                let state = (0..4).fold(state, |state, i| {
-                    let state: Vec<E::Variable> =
-                        state.iter().map(|x| env.compute_x5(x.clone())).collect();
-
-                    let round = curr_round + i;
-
-                    let rcs: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
-                        .map(|i| {
-                            let pos = env.allocate_public_input();
-                            env.get_poseidon_round_constant(pos, round, i)
-                        })
-                        .collect();
-
-                    let state: Vec<E::Variable> = rcs
-                        .iter()
-                        .enumerate()
-                        .map(|(i, rc)| {
-                            let pos = env.allocate();
-                            let acc: E::Variable =
-                                state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
-                                    acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
-                                });
-                            env.write_column(pos, acc + rc.clone())
-                        })
-                        .collect();
-                    state
-                });
-
-                state.iter().enumerate().for_each(|(i, x)| {
-                    unsafe { env.save_poseidon_state(x.clone(), i) };
-                })
-            } else {
-                panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
-            }
-        }
-        Instruction::PoseidonNextRow(curr_round) => {
-            env.activate_gadget(Gadget::PoseidonNextRow);
-            debug!("Executing instruction PoseidonNextRow({curr_round})");
             if curr_round < POSEIDON_ROUNDS_FULL {
                 // Values to be absorbed are 0 when when the round is not zero,
                 // i.e. when we are processing the rounds.

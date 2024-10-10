@@ -328,7 +328,7 @@ impl<F: PrimeField> Env<F> {
     /// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
-    /// - [Instruction::PoseidonNextRow] to verify the challenges and the public
+    /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
@@ -349,7 +349,7 @@ impl<F: PrimeField> Env<F> {
         // Poseidon constraints
         // The constraints are the same for all the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(0));
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
