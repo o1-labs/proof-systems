@@ -275,13 +275,13 @@ pub struct LogupWitness<F, ID: LookupTableID> {
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
-    pub m: BTreeMap<ID, Vec<T>>,
+    pub(crate) m: BTreeMap<ID, Vec<T>>,
     /// The polynomial keeping the sum of each row
-    pub h: BTreeMap<ID, Vec<T>>,
+    pub(crate) h: BTreeMap<ID, Vec<T>>,
     /// The "running-sum" over the rows, coined `φ`
-    pub sum: T,
+    pub(crate) sum: T,
     /// All fixed lookup tables values, indexed by their ID
-    pub fixed_tables: BTreeMap<ID, T>,
+    pub(crate) fixed_tables: BTreeMap<ID, T>,
 }
 
 /// Iterator implementation to abstract the content of the structure.
