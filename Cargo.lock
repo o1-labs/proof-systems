@@ -1338,6 +1338,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "criterion",
  "hex",
  "mina-curves",
  "o1-utils",
