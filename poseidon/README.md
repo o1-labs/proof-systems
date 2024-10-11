@@ -28,19 +28,7 @@ To run the benchmark natively, do:
 cargo bench --bench=poseidon_bench
 ```
 
-It can also be run in WebAssembly (executed by Node.js), with the following prerequisites:
-
-- Add the `wasm32-wasi` target
-- Install `cargo-wasi`
-- Install the wasmer JS CLI
-
-```sh
-rustup target add wasm32-wasi
-cargo install cargo-wasi
-npm install -g @wasmer/cli
-```
-
-Now, you can run this and other benchmarks in Wasm, using the following from the repository root:
+The benchmark can also be run in WebAssembly (executed by Node.js), launched from the repository root:
 
 ```sh
 ./scripts/bench-wasm.sh --bench=poseidon_bench
