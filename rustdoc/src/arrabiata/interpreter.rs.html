@@ -933,34 +933,6 @@
 <a href="#933" id="933">933</a>
 <a href="#934" id="934">934</a>
 <a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.
@@ -1404,9 +1376,6 @@
     <span class="doccomment">/// Assert that the two variables are equal
     </span><span class="kw">fn </span>assert_equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable);
 
-    <span class="doccomment">/// Check if the variable is between [0, 2^16 - 1]
-    </span><span class="kw">fn </span>range_check16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Position);
-
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>constrain_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
@@ -1438,31 +1407,6 @@
 
     <span class="doccomment">/// Return the folding combiner
     </span><span class="kw">fn </span>coin_folding_combiner(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Get the 16bits chunks of the folding combiner, and save it into `pos`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints saying that it is actually the previous
-    /// computed value. We should do something like a runtime lookup/permutation
-    /// check. It is left for when the lookup is implemented.
-    </span><span class="kw">unsafe fn </span>read_sixteen_bits_chunks_folding_combiner(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        pos: <span class="self">Self</span>::Position,
-        i: u32,
-    ) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Read the i-th bit of the folding combiner, in little endian, and safe it
-    /// in the column given by `pos`.
-    ///
-    /// # Safety
-    ///
-    /// There is no check that the output is actually a boolean
-    </span><span class="kw">unsafe fn </span>read_bit_of_folding_combiner(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        pos: <span class="self">Self</span>::Position,
-        i: u64,
-    ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Compute the x^5 of the given variable
     </span><span class="kw">fn </span>compute_x5(<span class="kw-2">&amp;</span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
