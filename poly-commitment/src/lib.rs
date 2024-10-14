@@ -149,6 +149,15 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
+    /// Create an SRS of size `depth`.
+    ///
+    /// Warning: in the case of a trusted setup, as it is required for a
+    /// polynomial commitment scheme like KZG, a toxic waste is generated using
+    /// `rand::thread_rng()`. This is not the behavior you would expect in a
+    /// production environment.
+    /// However, we do accept this behavior for the sake of simplicity in the
+    /// interface, and this method will only be supposed to be used in tests in
+    /// this case.
     fn create(depth: usize) -> Self;
 
     fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>);
