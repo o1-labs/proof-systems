@@ -1,3 +1,6 @@
+//! This module describes the evaluation domains that can be used by the
+//! polynomials.
+
 use ark_ff::FftField;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use serde::{Deserialize, Serialize};
@@ -5,6 +8,8 @@ use serde_with::serde_as;
 
 use crate::error::DomainCreationError;
 
+/// The different multiplicaive domain sizes that can be used by the polynomials.
+/// We do support up to 8 times the size of the original domain for now.
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum Domain {
     D1 = 1,
