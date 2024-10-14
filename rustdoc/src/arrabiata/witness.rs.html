@@ -1084,67 +1084,6 @@
 <a href="#1084" id="1084">1084</a>
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1160,10 +1099,9 @@
 <span class="kw">use crate</span>::{
     columns::{Column, Gadget},
     interpreter::{Instruction, InterpreterEnv, Side},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 <span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
@@ -1558,10 +1496,6 @@
     }
 
     <span class="kw">fn </span>load_poseidon_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, i: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="macro">assert!</span>(
-            <span class="self">self</span>.selectors[Gadget::PermutationArgument <span class="kw">as </span>usize][<span class="self">self</span>.current_row],
-            <span class="string">&quot;The permutation argument should be activated&quot;
-        </span>);
         <span class="kw">let </span>state = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             <span class="self">self</span>.sponge_e1[i].clone()
         } <span class="kw">else </span>{
@@ -1601,10 +1535,6 @@
     }
 
     <span class="kw">unsafe fn </span>save_poseidon_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable, i: usize) {
-        <span class="macro">assert!</span>(
-            <span class="self">self</span>.selectors[Gadget::PermutationArgument <span class="kw">as </span>usize][<span class="self">self</span>.current_row],
-            <span class="string">&quot;The permutation argument should be activated&quot;
-        </span>);
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             <span class="kw">let </span>modulus: BigInt = Fp::modulus_biguint().into();
             <span class="self">self</span>.sponge_e1[i] = x.mod_floor(<span class="kw-2">&amp;</span>modulus)
@@ -1679,10 +1609,6 @@
         pos_y: <span class="self">Self</span>::Position,
         side: Side,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="macro">assert!</span>(
-            <span class="self">self</span>.selectors[Gadget::PermutationArgument <span class="kw">as </span>usize][<span class="self">self</span>.current_row],
-            <span class="string">&quot;The permutation argument should be activated&quot;
-        </span>);
         <span class="kw">match </span><span class="self">self</span>.current_instruction {
             Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {
                 <span class="comment">// If we&#39;re processing the leftmost bit (i.e. bit == 0), we must load
@@ -1787,10 +1713,6 @@
         y: <span class="self">Self</span>::Variable,
         side: Side,
     ) {
-        <span class="macro">assert!</span>(
-            <span class="self">self</span>.selectors[Gadget::PermutationArgument <span class="kw">as </span>usize][<span class="self">self</span>.current_row],
-            <span class="string">&quot;The permutation argument should be activated&quot;
-        </span>);
         <span class="kw">match </span>side {
             Side::Left =&gt; {
                 <span class="self">self</span>.temporary_accumulators.<span class="number">0 </span>= (x, y);
@@ -2212,56 +2134,12 @@
     /// ```
     </span><span class="kw">pub fn </span>fetch_next_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Instruction {
         <span class="kw">match </span><span class="self">self</span>.current_instruction {
-            Instruction::SixteenBitsDecomposition =&gt; Instruction::BitDecompositionFrom16Bits(<span class="number">0</span>),
-            Instruction::BitDecomposition(i) =&gt; {
-                <span class="kw">if </span>i &lt; BIT_DECOMPOSITION_NUMBER_OF_CHUNKS - <span class="number">1 </span>{
-                    Instruction::BitDecomposition(i + <span class="number">1</span>)
-                } <span class="kw">else </span>{
-                    Instruction::EllipticCurveScaling(<span class="number">0</span>, <span class="number">0</span>)
-                }
-            }
             Instruction::Poseidon(i) =&gt; {
-                <span class="kw">if </span>i &lt; POSEIDON_ROUNDS_FULL - <span class="number">4 </span>{
-                    <span class="comment">// We perform 4 rounds per row
-                    // FIXME: we can do 5 by using the &quot;next row&quot;, see
-                    // PoseidonNextRow
-                    </span>Instruction::Poseidon(i + <span class="number">4</span>)
-                } <span class="kw">else </span>{
-                    <span class="comment">// If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    </span><span class="kw">if </span><span class="self">self</span>.idx_values_to_absorb &gt;= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(<span class="number">0</span>)
-                    } <span class="kw">else </span>{
-                        <span class="comment">// Otherwise, we continue absorbing
-                        </span>Instruction::Poseidon(<span class="number">0</span>)
-                    }
-                }
-            }
-            Instruction::PoseidonNextRow(i) =&gt; {
                 <span class="kw">if </span>i &lt; POSEIDON_ROUNDS_FULL - <span class="number">5 </span>{
-                    Instruction::PoseidonNextRow(i + <span class="number">5</span>)
+                    Instruction::Poseidon(i + <span class="number">5</span>)
                 } <span class="kw">else </span>{
-                    <span class="comment">// If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    </span><span class="kw">if </span><span class="self">self</span>.idx_values_to_absorb &gt;= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(<span class="number">0</span>)
-                    } <span class="kw">else </span>{
-                        <span class="comment">// Otherwise, we continue absorbing
-                        </span>Instruction::PoseidonNextRow(<span class="number">0</span>)
-                    }
-                }
-            }
-            Instruction::BitDecompositionFrom16Bits(i) =&gt; {
-                <span class="kw">if </span>i &lt; <span class="number">15 </span>{
-                    Instruction::BitDecompositionFrom16Bits(i + <span class="number">1</span>)
-                } <span class="kw">else </span>{
-                    Instruction::Poseidon(<span class="number">0</span>)
+                    <span class="comment">// FIXME: we continue absorbing
+                    </span>Instruction::Poseidon(<span class="number">0</span>)
                 }
             }
             Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {

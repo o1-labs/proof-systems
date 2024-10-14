@@ -386,6 +386,10 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{columns::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     columns::{Gadget, E},
@@ -412,6 +416,7 @@
     <span class="kw">pub </span>idx_var_next_row: usize,
     <span class="kw">pub </span>idx_var_pi: usize,
     <span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    <span class="kw">pub </span>activated_gadget: <span class="prelude-ty">Option</span>&lt;Gadget&gt;,
 }
 
 <span class="kw">impl</span>&lt;Fp: PrimeField&gt; Env&lt;Fp&gt; {
@@ -425,6 +430,7 @@
             idx_var_next_row: <span class="number">0</span>,
             idx_var_pi: <span class="number">0</span>,
             constraints: Vec::new(),
+            activated_gadget: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -485,9 +491,9 @@
         res
     }
 
-    <span class="kw">fn </span>activate_gadget(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _gadget: Gadget) {
-        <span class="comment">// Nothing to do. It is only useful for the witness.
-    </span>}
+    <span class="kw">fn </span>activate_gadget(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gadget: Gadget) {
+        <span class="self">self</span>.activated_gadget = <span class="prelude-val">Some</span>(gadget);
+    }
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>degree = constraint.degree(<span class="number">1</span>, <span class="number">0</span>);
@@ -540,6 +546,7 @@
         <span class="self">self</span>.idx_var_next_row = <span class="number">0</span>;
         <span class="self">self</span>.idx_var_pi = <span class="number">0</span>;
         <span class="self">self</span>.constraints.clear();
+        <span class="self">self</span>.activated_gadget = <span class="prelude-val">None</span>;
     }
 
     <span class="kw">fn </span>coin_folding_combiner(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
@@ -713,7 +720,7 @@
     <span class="doccomment">/// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
-    /// - [Instruction::PoseidonNextRow] to verify the challenges and the public
+    /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
@@ -734,7 +741,7 @@
         <span class="comment">// Poseidon constraints
         // The constraints are the same for all the value given in parameter,
         // therefore picking 0
-        </span>interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::PoseidonNextRow(<span class="number">0</span>));
+        </span>interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::Poseidon(<span class="number">0</span>));
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -758,6 +765,7 @@
     <span class="doccomment">/// Get all the constraints for the IVC circuit and the application.
     </span><span class="comment">// FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
+    // FIXME: the selectors are not added for now.
     </span><span class="kw">pub fn </span>get_all_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="self">self</span>.get_all_constraints_for_ivc();
 

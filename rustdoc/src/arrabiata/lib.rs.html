@@ -65,12 +65,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
 
 <span class="kw">pub mod </span>column_env;
@@ -98,11 +92,11 @@
 </span><span class="kw">pub const </span>IVC_CIRCUIT_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">13</span>;
 
 <span class="doccomment">/// The maximum number of columns that can be used in the circuit.
-</span><span class="kw">pub const </span>NUMBER_OF_COLUMNS: usize = <span class="number">17</span>;
+</span><span class="kw">pub const </span>NUMBER_OF_COLUMNS: usize = <span class="number">15</span>;
 
 <span class="doccomment">/// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [crate::columns::Gadget::PoseidonNextRow]. In addition to
+/// using the gadget [crate::columns::Gadget::Poseidon]. In addition to
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 </span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">15 </span>+ <span class="number">2</span>;
@@ -135,12 +129,6 @@
 /// It is left for the future as at this time, we&#39;re still sketching the IVC
 /// circuit.
 </span><span class="kw">pub const </span>NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * <span class="number">2</span>;
-
-<span class="doccomment">/// The number of bits per chunk in the bit decomposition.
-/// It is used to decompose the field elements of 255 bits into single bit.
-/// We use 17 rows of 15 bits decomposition.
-</span><span class="kw">pub const </span>BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK: usize = <span class="number">15</span>;
-<span class="kw">pub const </span>BIT_DECOMPOSITION_NUMBER_OF_CHUNKS: usize = <span class="number">17</span>;
 
 <span class="doccomment">/// The number of selectors used in the circuit.
 </span><span class="kw">pub const </span>NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;
