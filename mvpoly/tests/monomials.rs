@@ -381,6 +381,36 @@ fn test_mvpoly_compute_cross_terms_degree_six() {
     assert_eq!(lhs, rhs);
 }
 
+// The cross-terms of a sum of polynomials is the sum of the cross-terms, per
+// power.
+#[test]
+fn test_mvpoly_pbt_cross_terms_addition() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+    let p2 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+    let p = p1.clone() + p2.clone();
+
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+
+    let cross_terms1 = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    let cross_terms2 = p2.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    let cross_terms = p.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    let cross_terms_sum =
+        cross_terms1
+            .iter()
+            .fold(cross_terms2.clone(), |mut acc, (power, term)| {
+                acc.entry(*power)
+                    .and_modify(|v| *v += term)
+                    .or_insert(*term);
+                acc
+            });
+    assert_eq!(cross_terms, cross_terms_sum);
+}
+
 #[test]
 fn test_mvpoly_compute_cross_terms_degree_seven() {
     let mut rng = o1_utils::tests::make_test_rng(None);
