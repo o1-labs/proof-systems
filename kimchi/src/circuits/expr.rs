@@ -3,6 +3,7 @@ use crate::{
         berkeley_columns,
         berkeley_columns::BerkeleyChallengeTerm,
         constraints::FeatureFlags,
+        domains::Domain,
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
@@ -990,14 +991,6 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.text_str())
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-pub enum Domain {
-    D1 = 1,
-    D2 = 2,
-    D4 = 4,
-    D8 = 8,
 }
 
 #[derive(Clone)]
