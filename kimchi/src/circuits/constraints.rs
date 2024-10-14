@@ -275,6 +275,20 @@ impl<F: PrimeField> ConstraintSystem<F> {
             .set(precomputations)
             .expect("Precomputation has been set before");
     }
+
+    /// test helpers
+    pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        let public = 0;
+        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        ConstraintSystem::<F>::create(gates)
+            .public(public)
+            .build()
+            .unwrap()
+    }
+
+    pub fn fp_for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        Self::for_testing(gates)
+    }
 }
 
 impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
@@ -929,24 +943,6 @@ pub mod tests {
     use super::*;
     use mina_curves::pasta::{Fp, Fq};
     use o1_utils::FieldHelpers;
-
-    impl<F: PrimeField> ConstraintSystem<F> {
-        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
-            let public = 0;
-            // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates)
-                .public(public)
-                .build()
-                .unwrap()
-        }
-    }
-
-    impl ConstraintSystem<Fp> {
-        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
-            Self::for_testing(gates)
-        }
-    }
 
     #[test]
     pub fn test_domains_computation_with_runtime_tables() {
