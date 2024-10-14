@@ -441,9 +441,6 @@ pub trait InterpreterEnv {
     /// Assert that the two variables are equal
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable);
 
-    /// Check if the variable is between [0, 2^16 - 1]
-    fn range_check16(&mut self, x: Self::Position);
-
     fn add_constraint(&mut self, x: Self::Variable);
 
     fn constrain_boolean(&mut self, x: Self::Variable);
@@ -475,31 +472,6 @@ pub trait InterpreterEnv {
 
     /// Return the folding combiner
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable;
-
-    /// Get the 16bits chunks of the folding combiner, and save it into `pos`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints saying that it is actually the previous
-    /// computed value. We should do something like a runtime lookup/permutation
-    /// check. It is left for when the lookup is implemented.
-    unsafe fn read_sixteen_bits_chunks_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u32,
-    ) -> Self::Variable;
-
-    /// Read the i-th bit of the folding combiner, in little endian, and safe it
-    /// in the column given by `pos`.
-    ///
-    /// # Safety
-    ///
-    /// There is no check that the output is actually a boolean
-    unsafe fn read_bit_of_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u64,
-    ) -> Self::Variable;
 
     /// Compute the x^5 of the given variable
     fn compute_x5(&self, x: Self::Variable) -> Self::Variable {

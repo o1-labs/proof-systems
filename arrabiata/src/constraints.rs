@@ -133,9 +133,6 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.read_position(pos)
     }
 
-    // FIXME
-    fn range_check16(&mut self, _x: Self::Position) {}
-
     fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let v = self.read_position(pos);
         let x = x.square();
@@ -158,23 +155,6 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        self.read_position(pos)
-    }
-
-    unsafe fn read_sixteen_bits_chunks_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        _i: u32,
-    ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
-    }
-
-    unsafe fn read_bit_of_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        _i: u64,
-    ) -> Self::Variable {
         self.read_position(pos)
     }
 

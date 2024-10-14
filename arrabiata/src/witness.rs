@@ -302,20 +302,6 @@ where
         assert_eq!(x, y);
     }
 
-    // FIXME: it should not be a check, but it should build the related logup
-    // values
-    // FIXME: we should have additional columns for the lookups.
-    // This will be implemented when the first version of the IVC is
-    // implemented and we can make recursive arguments
-    fn range_check16(&mut self, pos: Self::Position) {
-        let (col, _) = pos;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
-        let x = self.state[idx].clone();
-        assert!(x < BigInt::from(2_usize).pow(16));
-    }
-
     fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = x.clone() * x.clone();
         self.write_column(pos, res.clone());
@@ -387,26 +373,6 @@ where
         self.state[idx] = r.clone();
         self.r = r.clone();
         r
-    }
-
-    unsafe fn read_sixteen_bits_chunks_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u32,
-    ) -> Self::Variable {
-        let r = self.r.clone();
-        self.bitmask_be(&r, 16 * (i + 1), 16 * i, pos)
-    }
-
-    unsafe fn read_bit_of_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u64,
-    ) -> Self::Variable {
-        let r = self.r.clone();
-        let bit = (r >> i) & BigInt::from(1_usize);
-        self.write_column(pos, bit.clone());
-        bit
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
