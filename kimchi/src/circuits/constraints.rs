@@ -287,7 +287,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     pub fn fp_for_testing(gates: Vec<CircuitGate<F>>) -> Self {
-        //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
         Self::for_testing(gates)
     }
 }
