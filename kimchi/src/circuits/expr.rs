@@ -353,18 +353,8 @@ impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
     }
 }
 
-pub trait ToPolish<F, Column, ChallengeTerm> {
-    fn to_polish(
-        &self,
-        cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
-    );
-}
-
-impl<F: Copy, Column, ChallengeTerm: Copy> ToPolish<F, Column, ChallengeTerm>
-    for ConstantExprInner<F, ChallengeTerm>
-{
-    fn to_polish(
+impl<F: Copy, ChallengeTerm: Copy> ConstantExprInner<F, ChallengeTerm> {
+    fn to_polish<Column>(
         &self,
         _cache: &mut HashMap<CacheId, usize>,
         res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
@@ -376,10 +366,8 @@ impl<F: Copy, Column, ChallengeTerm: Copy> ToPolish<F, Column, ChallengeTerm>
     }
 }
 
-impl<F, Column, ChallengeTerm, T: ToPolish<F, Column, ChallengeTerm>>
-    ToPolish<F, Column, ChallengeTerm> for Operations<T>
-{
-    fn to_polish(
+impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm>> {
+    fn to_polish<Column>(
         &self,
         cache: &mut HashMap<CacheId, usize>,
         res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
