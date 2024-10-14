@@ -484,6 +484,7 @@
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -508,6 +509,7 @@
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>mina_poseidon::FqSponge;
+<span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
@@ -614,6 +616,26 @@
     </span><span class="kw">pub </span>verifier_srs: SRS&lt;Pair::G2Affine&gt;,
 }
 
+<span class="kw">impl</span>&lt;
+        F: PrimeField,
+        G: CommitmentCurve&lt;ScalarField = F&gt;,
+        G2: CommitmentCurve&lt;ScalarField = F&gt;,
+        Pair: Pairing&lt;G1Affine = G, G2Affine = G2&gt;,
+    &gt; PairingSRS&lt;Pair&gt;
+{
+    <span class="doccomment">/// Create a trusted setup for the KZG protocol.
+    /// The setup is created using a toxic waste `toxic_waste` and a depth
+    /// `depth`.
+    </span><span class="kw">fn </span>create_trusted_setup(toxic_waste: F, depth: usize) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>full_srs = <span class="kw">unsafe </span>{ SRS::create_trusted_setup(toxic_waste, depth) };
+        <span class="kw">let </span>verifier_srs = <span class="kw">unsafe </span>{ SRS::create_trusted_setup(toxic_waste, depth) };
+        <span class="self">Self </span>{
+            full_srs,
+            verifier_srs,
+        }
+    }
+}
+
 <span class="kw">impl</span>&lt;Pair: Pairing&gt; Default <span class="kw">for </span>PairingSRS&lt;Pair&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -628,28 +650,6 @@
         <span class="self">Self </span>{
             full_srs: <span class="self">self</span>.full_srs.clone(),
             verifier_srs: <span class="self">self</span>.verifier_srs.clone(),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;
-        F: PrimeField,
-        G: CommitmentCurve&lt;ScalarField = F&gt;,
-        G2: CommitmentCurve&lt;ScalarField = F&gt;,
-        Pair: Pairing&lt;G1Affine = G, G2Affine = G2&gt;,
-    &gt; PairingSRS&lt;Pair&gt;
-{
-    <span class="doccomment">/// Create a new SRS for the KZG protocol.
-    ///
-    /// # Safety
-    ///
-    /// The method is annotated as unsafe because it does use a method
-    /// generating the toxic waste. A safe method would be to load an existing
-    /// SRS where it is broadly accepted that the trapdoor is not recoverable.
-    </span><span class="kw">pub unsafe fn </span>create(x: F, n: usize) -&gt; <span class="self">Self </span>{
-        PairingSRS {
-            full_srs: <span class="kw">unsafe </span>{ SRS::create_trusted_setup(x, n) },
-            verifier_srs: <span class="kw">unsafe </span>{ SRS::create_trusted_setup(x, <span class="number">3</span>) },
         }
     }
 }
@@ -804,8 +804,10 @@
             .commit_evaluations_custom(domain, plnm, blinders)
     }
 
-    <span class="kw">fn </span>create(_depth: usize) -&gt; <span class="self">Self </span>{
-        <span class="macro">todo!</span>()
+    <span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
+        <span class="kw">let </span>toxic_waste = G::ScalarField::rand(<span class="kw-2">&amp;mut </span>rng);
+        <span class="self">Self</span>::create_trusted_setup(toxic_waste, depth)
     }
 
     <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;&lt;G&gt;::ScalarField&gt;) {

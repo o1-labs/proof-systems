@@ -77,9 +77,6 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
 </pre></div><pre class="rust"><code><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
@@ -106,10 +103,7 @@
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = {
-            <span class="kw">let </span>toxic_waste = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">unsafe </span>{ PairingSRS::create(toxic_waste, domain.d1.size <span class="kw">as </span>usize) }
-        };
+        <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = { PairingSRS::create(domain.d1.size <span class="kw">as </span>usize) };
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span><span class="kw-2">mut </span>inputs = ProofInputs::random(domain);

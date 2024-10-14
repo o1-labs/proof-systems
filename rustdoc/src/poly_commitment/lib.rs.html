@@ -208,6 +208,15 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
 <span class="kw">pub mod </span>error;
@@ -359,7 +368,16 @@
         blinders: <span class="kw-2">&amp;</span>PolyComm&lt;G::ScalarField&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BlindedCommitment&lt;G&gt;, CommitmentError&gt;;
 
-    <span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
+    <span class="doccomment">/// Create an SRS of size `depth`.
+    ///
+    /// Warning: in the case of a trusted setup, as it is required for a
+    /// polynomial commitment scheme like KZG, a toxic waste is generated using
+    /// `rand::thread_rng()`. This is not the behavior you would expect in a
+    /// production environment.
+    /// However, we do accept this behavior for the sake of simplicity in the
+    /// interface, and this method will only be supposed to be used in tests in
+    /// this case.
+    </span><span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
 
     <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;);
 
