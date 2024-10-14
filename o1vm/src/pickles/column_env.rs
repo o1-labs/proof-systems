@@ -1,14 +1,15 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
+use crate::{
+    interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
+    pickles::proof::WitnessColumns,
+};
 use kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    domains::EvaluationDomains,
-    expr::{ColumnEnvironment as TColumnEnvironment, Constants, Domain},
+    domains::{Domain, EvaluationDomains},
+    expr::{ColumnEnvironment as TColumnEnvironment, Constants},
 };
-
-use super::proof::WitnessColumns;
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 

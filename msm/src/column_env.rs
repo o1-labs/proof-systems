@@ -4,8 +4,8 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use crate::{logup, logup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    domains::EvaluationDomains,
-    expr::{ColumnEnvironment as TColumnEnvironment, Constants, Domain},
+    domains::{Domain, EvaluationDomains},
+    expr::{ColumnEnvironment as TColumnEnvironment, Constants},
 };
 
 /// The collection of polynomials (all in evaluation form) and constants
