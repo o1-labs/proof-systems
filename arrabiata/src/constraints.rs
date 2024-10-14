@@ -24,6 +24,7 @@ pub struct Env<Fp: Field> {
     pub idx_var_next_row: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
+    pub activated_gadget: Option<Gadget>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -37,6 +38,7 @@ impl<Fp: PrimeField> Env<Fp> {
             idx_var_next_row: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
+            activated_gadget: None,
         }
     }
 }
@@ -97,8 +99,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         res
     }
 
-    fn activate_gadget(&mut self, _gadget: Gadget) {
-        // Nothing to do. It is only useful for the witness.
+    fn activate_gadget(&mut self, gadget: Gadget) {
+        self.activated_gadget = Some(gadget);
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {
@@ -152,6 +154,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
         self.constraints.clear();
+        self.activated_gadget = None;
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
@@ -370,6 +373,7 @@ impl<F: PrimeField> Env<F> {
     /// Get all the constraints for the IVC circuit and the application.
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
+    // FIXME: the selectors are not added for now.
     pub fn get_all_constraints(&self) -> Vec<E<F>> {
         let mut constraints = self.get_all_constraints_for_ivc();
 
