@@ -181,8 +181,8 @@
 <span class="kw">use crate</span>::{logup, logup::LookupTableID, witness::Witness};
 <span class="kw">use </span>kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    domains::EvaluationDomains,
-    expr::{ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain},
+    domains::{Domain, EvaluationDomains},
+    expr::{ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants},
 };
 
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants

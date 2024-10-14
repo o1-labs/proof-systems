@@ -3609,18 +3609,12 @@
 <a href="#3609" id="3609">3609</a>
 <a href="#3610" id="3610">3610</a>
 <a href="#3611" id="3611">3611</a>
-<a href="#3612" id="3612">3612</a>
-<a href="#3613" id="3613">3613</a>
-<a href="#3614" id="3614">3614</a>
-<a href="#3615" id="3615">3615</a>
-<a href="#3616" id="3616">3616</a>
-<a href="#3617" id="3617">3617</a>
-<a href="#3618" id="3618">3618</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
         berkeley_columns::BerkeleyChallengeTerm,
         constraints::FeatureFlags,
+        domains::Domain,
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
@@ -4608,14 +4602,6 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.text_str())
     }
-}
-
-<span class="attr">#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-</span><span class="kw">pub enum </span>Domain {
-    D1 = <span class="number">1</span>,
-    D2 = <span class="number">2</span>,
-    D4 = <span class="number">4</span>,
-    D8 = <span class="number">8</span>,
 }
 
 <span class="attr">#[derive(Clone)]

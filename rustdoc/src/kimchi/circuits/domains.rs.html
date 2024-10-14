@@ -58,24 +58,46 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
-<span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>Domain};
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module describes the evaluation domains that can be used by the
+//! polynomials.
+
+</span><span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::DomainCreationError;
 
+<span class="doccomment">/// The different multiplicaive domain sizes that can be used by the polynomials.
+/// We do support up to 8 times the size of the original domain for now.
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+</span><span class="kw">pub enum </span>Domain {
+    D1 = <span class="number">1</span>,
+    D2 = <span class="number">2</span>,
+    D4 = <span class="number">4</span>,
+    D8 = <span class="number">8</span>,
+}
+
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>EvaluationDomains&lt;F: FftField&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>d1: Domain&lt;F&gt;, <span class="comment">// size n
+    </span><span class="kw">pub </span>d1: Radix2EvaluationDomain&lt;F&gt;, <span class="comment">// size n
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>d2: Domain&lt;F&gt;, <span class="comment">// size 2n
+    </span><span class="kw">pub </span>d2: Radix2EvaluationDomain&lt;F&gt;, <span class="comment">// size 2n
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>d4: Domain&lt;F&gt;, <span class="comment">// size 4n
+    </span><span class="kw">pub </span>d4: Radix2EvaluationDomain&lt;F&gt;, <span class="comment">// size 4n
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>d8: Domain&lt;F&gt;, <span class="comment">// size 8n
+    </span><span class="kw">pub </span>d8: Radix2EvaluationDomain&lt;F&gt;, <span class="comment">// size 8n
 </span>}
 
 <span class="kw">impl</span>&lt;F: FftField&gt; EvaluationDomains&lt;F&gt; {
@@ -84,30 +106,26 @@
     /// `g`, the generator of `d4` is `g^2`, the generator of `d2` is `g^4`, and
     /// the generator of `d1` is `g^8`.
     </span><span class="kw">pub fn </span>create(n: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, DomainCreationError&gt; {
-        <span class="kw">let </span>n = Domain::&lt;F&gt;::compute_size_of_domain(n)
+        <span class="kw">let </span>n = Radix2EvaluationDomain::&lt;F&gt;::compute_size_of_domain(n)
             .ok_or(DomainCreationError::DomainSizeFailed(n))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>d1 = Domain::&lt;F&gt;::new(n).ok_or(DomainCreationError::DomainConstructionFailed(
-            <span class="string">&quot;d1&quot;</span>.to_string(),
-            n,
-        ))<span class="question-mark">?</span>;
+        <span class="kw">let </span>d1 = Radix2EvaluationDomain::&lt;F&gt;::new(n).ok_or(
+            DomainCreationError::DomainConstructionFailed(<span class="string">&quot;d1&quot;</span>.to_string(), n),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a
         // polynomial grows)
-        </span><span class="kw">let </span>d2 = Domain::&lt;F&gt;::new(<span class="number">2 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
-            <span class="string">&quot;d2&quot;</span>.to_string(),
-            <span class="number">2 </span>* n,
-        ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>d4 = Domain::&lt;F&gt;::new(<span class="number">4 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
-            <span class="string">&quot;d4&quot;</span>.to_string(),
-            <span class="number">4 </span>* n,
-        ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>d8 = Domain::&lt;F&gt;::new(<span class="number">8 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
-            <span class="string">&quot;d8&quot;</span>.to_string(),
-            <span class="number">8 </span>* n,
-        ))<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>d2 = Radix2EvaluationDomain::&lt;F&gt;::new(<span class="number">2 </span>* n).ok_or(
+            DomainCreationError::DomainConstructionFailed(<span class="string">&quot;d2&quot;</span>.to_string(), <span class="number">2 </span>* n),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>d4 = Radix2EvaluationDomain::&lt;F&gt;::new(<span class="number">4 </span>* n).ok_or(
+            DomainCreationError::DomainConstructionFailed(<span class="string">&quot;d4&quot;</span>.to_string(), <span class="number">4 </span>* n),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>d8 = Radix2EvaluationDomain::&lt;F&gt;::new(<span class="number">8 </span>* n).ok_or(
+            DomainCreationError::DomainConstructionFailed(<span class="string">&quot;d8&quot;</span>.to_string(), <span class="number">8 </span>* n),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// ensure the relationship between the three domains in case the
         // library&#39;s behavior changes

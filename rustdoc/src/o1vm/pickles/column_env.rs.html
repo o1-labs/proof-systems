@@ -101,17 +101,19 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-<span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
+<span class="kw">use crate</span>::{
+    interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
+    pickles::proof::WitnessColumns,
+};
 <span class="kw">use </span>kimchi::circuits::{
     berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    domains::EvaluationDomains,
-    expr::{ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain},
+    domains::{Domain, EvaluationDomains},
+    expr::{ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants},
 };
-
-<span class="kw">use </span><span class="kw">super</span>::proof::WitnessColumns;
 
 <span class="kw">type </span>Evals&lt;F&gt; = Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;;
 
