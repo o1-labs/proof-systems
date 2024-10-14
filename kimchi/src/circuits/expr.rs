@@ -127,7 +127,7 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
 }
 
 // Compute the ith unnormalized lagrange basis
-fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
+pub fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
     let omega_i = if i < 0 {
         domain.group_gen.pow([-i as u64]).inverse().unwrap()
     } else {
@@ -3458,4 +3458,3 @@ pub mod prologue {
         FeatureFlag,
     };
 }
-
