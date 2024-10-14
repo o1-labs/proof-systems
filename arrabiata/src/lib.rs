@@ -25,11 +25,11 @@ pub const MIN_SRS_LOG2_SIZE: usize = 16;
 pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
 
 /// The maximum number of columns that can be used in the circuit.
-pub const NUMBER_OF_COLUMNS: usize = 17;
+pub const NUMBER_OF_COLUMNS: usize = 15;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [crate::columns::Gadget::PoseidonNextRow]. In addition to
+/// using the gadget [crate::columns::Gadget::Poseidon]. In addition to
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
@@ -62,12 +62,6 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 /// It is left for the future as at this time, we're still sketching the IVC
 /// circuit.
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
-
-/// The number of bits per chunk in the bit decomposition.
-/// It is used to decompose the field elements of 255 bits into single bit.
-/// We use 17 rows of 15 bits decomposition.
-pub const BIT_DECOMPOSITION_NUMBER_OF_BITS_PER_CHUNK: usize = 15;
-pub const BIT_DECOMPOSITION_NUMBER_OF_CHUNKS: usize = 17;
 
 /// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;

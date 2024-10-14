@@ -83,22 +83,8 @@ fn helper_check_gadget_activated(instr: Instruction, gadget: Gadget) {
 }
 
 #[test]
-fn test_gadget_poseidon() {
-    let instr = Instruction::Poseidon(0);
-    helper_compute_constraints_gadget(instr, 12);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(5, 12);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 15, 14);
-
-    helper_check_gadget_activated(instr, Gadget::Poseidon);
-}
-
-#[test]
 fn test_gadget_poseidon_next_row() {
-    let instr = Instruction::PoseidonNextRow(0);
+    let instr = Instruction::Poseidon(0);
     helper_compute_constraints_gadget(instr, 15);
 
     let mut exp_degrees = HashMap::new();
@@ -108,39 +94,10 @@ fn test_gadget_poseidon_next_row() {
     helper_gadget_number_of_columns_used(instr, 15, 17);
 
     // We always have 2 additional public inputs, even if set to 0
-    let instr = Instruction::PoseidonNextRow(1);
+    let instr = Instruction::Poseidon(1);
     helper_gadget_number_of_columns_used(instr, 15, 17);
 
-    helper_check_gadget_activated(instr, Gadget::PoseidonNextRow);
-}
-
-#[test]
-fn test_gadget_sixteen_bits_decomposition() {
-    let instr = Instruction::SixteenBitsDecomposition;
-    helper_compute_constraints_gadget(instr, 1);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
-
-    helper_check_gadget_activated(instr, Gadget::SixteenBitsDecomposition);
-}
-
-#[test]
-fn test_gadget_bit_decomposition_from_16bits() {
-    let instr = Instruction::BitDecompositionFrom16Bits(0);
-    helper_compute_constraints_gadget(instr, 17);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    exp_degrees.insert(2, 16);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
-
-    helper_check_gadget_activated(instr, Gadget::BitDecompositionFrom16Bits);
+    helper_check_gadget_activated(instr, Gadget::Poseidon);
 }
 
 #[test]
@@ -206,19 +163,4 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_gadget_number_of_columns_used(instr, 10, 0);
 
     helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
-}
-
-#[test]
-fn test_gadget_bit_decomposition() {
-    let instr = Instruction::BitDecomposition(0);
-    helper_compute_constraints_gadget(instr, 16);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    exp_degrees.insert(2, 15);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
-
-    helper_check_gadget_activated(instr, Gadget::BitDecomposition);
 }

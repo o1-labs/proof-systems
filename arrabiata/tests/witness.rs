@@ -2,7 +2,7 @@ use ark_ec::{AffineRepr, Group};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
     interpreter::{self, Instruction, InterpreterEnv},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
+    poseidon_3_60_0_5_5_fp,
     witness::Env,
     MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
@@ -40,10 +40,10 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
         sponge.clone(),
     );
 
-    env.current_instruction = Instruction::PoseidonNextRow(0);
+    env.current_instruction = Instruction::Poseidon(0);
 
     (0..(POSEIDON_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(5 * i));
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(5 * i));
         env.reset();
     });
     let exp_output = {
@@ -71,76 +71,6 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
 
     // Number of rows used by one full hash
     assert_eq!(env.current_row, 13);
-}
-
-#[test]
-fn test_unit_witness_poseidon_gadget_one_full_hash() {
-    let srs_log2_size = 6;
-    let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge.clone(),
-        sponge.clone(),
-    );
-
-    env.current_instruction = Instruction::Poseidon(0);
-
-    (0..(POSEIDON_ROUNDS_FULL / 4)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(4 * i));
-        env.reset();
-    });
-    let exp_output = {
-        let mut state = sponge
-            .clone()
-            .to_vec()
-            .iter()
-            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-        state[0] += env.srs_e2.h.x;
-        state[1] += env.srs_e2.h.y;
-        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
-            poseidon_3_60_0_5_5_fp::static_params(),
-            &mut state,
-        );
-        state
-            .iter()
-            .map(|x| x.to_biguint().into())
-            .collect::<Vec<_>>()
-    };
-    // Check correctness for current iteration
-    assert_eq!(env.sponge_e1.to_vec(), exp_output);
-    // Check the other sponge hasn't been modified
-    assert_eq!(env.sponge_e2, sponge.clone());
-
-    env.reset_for_next_iteration();
-    env.current_iteration += 1;
-
-    (0..(POSEIDON_ROUNDS_FULL / 4)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(4 * i));
-        env.reset();
-    });
-
-    let exp_output = {
-        let mut state = sponge
-            .clone()
-            .to_vec()
-            .iter()
-            .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-        state[0] += env.srs_e1.h.x;
-        state[1] += env.srs_e1.h.y;
-        poseidon_block_cipher::<Fq, PlonkSpongeConstants>(
-            poseidon_3_60_0_5_5_fq::static_params(),
-            &mut state,
-        );
-        state
-            .iter()
-            .map(|x| x.to_biguint().into())
-            .collect::<Vec<_>>()
-    };
-    // Check correctness for current iteration
-    assert_eq!(env.sponge_e2.to_vec(), exp_output);
 }
 
 #[test]
@@ -311,59 +241,4 @@ fn test_witness_elliptic_curve_scalar_multiplication() {
     // A random scalar
     let r: BigInt = Fp::rand(&mut rng).to_biguint().to_bigint().unwrap();
     helper_elliptic_curve_scalar_multiplication(r, &mut rng);
-}
-
-#[test]
-fn test_witness_bit_decomposition() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let srs_log2_size = 10;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] =
-        std::array::from_fn(|_i| Fp::rand(&mut rng).to_biguint().to_bigint().unwrap());
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
-
-    // The answer to everything
-    env.sponge_e1[0] = BigInt::from(42u64);
-
-    (0..17).for_each(|bit_idx| {
-        let instr = Instruction::BitDecomposition(bit_idx);
-        env.current_instruction = instr;
-        interpreter::run_ivc(&mut env, instr);
-        env.reset();
-    });
-
-    // Special case of 0
-    env.sponge_e1[0] = BigInt::from(0);
-
-    (0..17).for_each(|bit_idx| {
-        let instr = Instruction::BitDecomposition(bit_idx);
-        env.current_instruction = instr;
-        interpreter::run_ivc(&mut env, instr);
-        env.reset();
-    });
-
-    // Special case of 1
-    env.sponge_e1[0] = BigInt::from(1);
-
-    (0..17).for_each(|bit_idx| {
-        let instr = Instruction::BitDecomposition(bit_idx);
-        env.current_instruction = instr;
-        interpreter::run_ivc(&mut env, instr);
-        env.reset();
-    });
-
-    // Special case of (2 << 15) + 1
-    env.sponge_e1[0] = (BigInt::from(1) << 15) + 1;
-
-    (0..17).for_each(|bit_idx| {
-        let instr = Instruction::BitDecomposition(bit_idx);
-        env.current_instruction = instr;
-        interpreter::run_ivc(&mut env, instr);
-        env.reset();
-    });
 }
