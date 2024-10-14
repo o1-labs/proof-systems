@@ -29,8 +29,6 @@ use std::{
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
-use self::constraints::ExprOps;
-
 #[derive(Debug, Error)]
 pub enum ExprError<Column> {
     #[error("Empty stack")]
@@ -555,7 +553,10 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(&mut self, e: T) -> T {
+    pub fn cache<F: Field, ChallengeTerm, Column>(
+        &mut self,
+        e: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
+    ) -> Expr<ConstantExpr<F, ChallengeTerm>, Column> {
         e.cache(self)
     }
 }
@@ -3178,253 +3179,6 @@ where
     }
 }
 
-//
-// Constraints
-//
-
-/// A number of useful constraints
-pub mod constraints {
-    use o1_utils::Two;
-
-    use crate::circuits::argument::ArgumentData;
-    use std::fmt;
-
-    use super::*;
-    use crate::circuits::berkeley_columns::{coeff, witness};
-
-    /// This trait defines a common arithmetic operations interface
-    /// that can be used by constraints.  It allows us to reuse
-    /// constraint code for witness computation.
-    pub trait ExprOps<F, ChallengeTerm>:
-        Add<Output = Self>
-        + Sub<Output = Self>
-        + Neg<Output = Self>
-        + Mul<Output = Self>
-        + AddAssign<Self>
-        + MulAssign<Self>
-        + Clone
-        + Zero
-        + One
-        + From<u64>
-        + fmt::Debug
-        + fmt::Display
-    // Add more as necessary
-    where
-        Self: std::marker::Sized,
-    {
-        /// 2^pow
-        fn two_pow(pow: u64) -> Self;
-
-        /// 2^{LIMB_BITS}
-        fn two_to_limb() -> Self;
-
-        /// 2^{2 * LIMB_BITS}
-        fn two_to_2limb() -> Self;
-
-        /// 2^{3 * LIMB_BITS}
-        fn two_to_3limb() -> Self;
-
-        /// Double the value
-        fn double(&self) -> Self;
-
-        /// Compute the square of this value
-        fn square(&self) -> Self;
-
-        /// Raise the value to the given power
-        fn pow(&self, p: u64) -> Self;
-
-        /// Constrain to boolean
-        fn boolean(&self) -> Self;
-
-        /// Constrain to crumb (i.e. two bits)
-        fn crumb(&self) -> Self;
-
-        /// Create a literal
-        fn literal(x: F) -> Self;
-
-        // Witness variable
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
-
-        /// Coefficient
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
-
-        /// Create a constant
-        fn constant(expr: ConstantExpr<F, ChallengeTerm>, env: Option<&ArgumentData<F>>) -> Self;
-
-        /// Cache item
-        fn cache(&self, cache: &mut Cache) -> Self;
-    }
-    // TODO generalize with generic Column/challengeterm
-    // We need to create a trait for berkeley_columns::Environment
-    impl<F> ExprOps<F, BerkeleyChallengeTerm>
-        for Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>
-    where
-        F: PrimeField,
-        // TODO remove
-        Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>: std::fmt::Display,
-    {
-        fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                <F as Two<F>>::two_pow(pow),
-            )
-        }
-
-        fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_limb(),
-            )
-        }
-
-        fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_2limb(),
-            )
-        }
-
-        fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(
-                KimchiForeignElement::<F>::two_to_3limb(),
-            )
-        }
-
-        fn double(&self) -> Self {
-            Expr::double(self.clone())
-        }
-
-        fn square(&self) -> Self {
-            Expr::square(self.clone())
-        }
-
-        fn pow(&self, p: u64) -> Self {
-            Expr::pow(self.clone(), p)
-        }
-
-        fn boolean(&self) -> Self {
-            constraints::boolean(self)
-        }
-
-        fn crumb(&self) -> Self {
-            constraints::crumb(self)
-        }
-
-        fn literal(x: F) -> Self {
-            ConstantTerm::Literal(x).into()
-        }
-
-        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
-            witness(col, row)
-        }
-
-        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
-            coeff(col)
-        }
-
-        fn constant(
-            expr: ConstantExpr<F, BerkeleyChallengeTerm>,
-            _: Option<&ArgumentData<F>>,
-        ) -> Self {
-            Expr::from(expr)
-        }
-
-        fn cache(&self, cache: &mut Cache) -> Self {
-            Expr::Cache(cache.next_id(), Box::new(self.clone()))
-        }
-    }
-    // TODO generalize with generic Column/challengeterm
-    // We need to generalize argument.rs
-    impl<F: Field> ExprOps<F, BerkeleyChallengeTerm> for F {
-        fn two_pow(pow: u64) -> Self {
-            <F as Two<F>>::two_pow(pow)
-        }
-
-        fn two_to_limb() -> Self {
-            KimchiForeignElement::<F>::two_to_limb()
-        }
-
-        fn two_to_2limb() -> Self {
-            KimchiForeignElement::<F>::two_to_2limb()
-        }
-
-        fn two_to_3limb() -> Self {
-            KimchiForeignElement::<F>::two_to_3limb()
-        }
-
-        fn double(&self) -> Self {
-            *self * F::from(2u64)
-        }
-
-        fn square(&self) -> Self {
-            *self * *self
-        }
-
-        fn pow(&self, p: u64) -> Self {
-            self.pow([p])
-        }
-
-        fn boolean(&self) -> Self {
-            constraints::boolean(self)
-        }
-
-        fn crumb(&self) -> Self {
-            constraints::crumb(self)
-        }
-
-        fn literal(x: F) -> Self {
-            x
-        }
-
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
-            match env {
-                Some(data) => data.witness[(row, col)],
-                None => panic!("Missing witness"),
-            }
-        }
-
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
-            match env {
-                Some(data) => data.coeffs[col],
-                None => panic!("Missing coefficients"),
-            }
-        }
-
-        fn constant(
-            expr: ConstantExpr<F, BerkeleyChallengeTerm>,
-            env: Option<&ArgumentData<F>>,
-        ) -> Self {
-            match env {
-                Some(data) => expr.value(&data.constants, &data.challenges),
-                None => panic!("Missing constants"),
-            }
-        }
-
-        fn cache(&self, _: &mut Cache) -> Self {
-            *self
-        }
-    }
-
-    /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(b: &T) -> T {
-        b.square() - b.clone()
-    }
-
-    /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(x: &T) -> T {
-        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
-        x.clone()
-            * (x.clone() - 1u64.into())
-            * (x.clone() - 2u64.into())
-            * (x.clone() - 3u64.into())
-    }
-
-    /// lo + mi * 2^{LIMB_BITS}
-    pub fn compact_limb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(
-        lo: &T,
-        mi: &T,
-    ) -> T {
-        lo.clone() + mi.clone() * T::two_to_limb()
-    }
-}
-
 /// Auto clone macro - Helps make constraints more readable
 /// by eliminating requirement to .clone() all the time
 #[macro_export]
@@ -3464,10 +3218,9 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            berkeley_columns::{index, witness_curr, Environment, E},
+            berkeley_columns::{constraints::ExprOps, index, witness_curr, Environment, E},
             constraints::ConstraintSystem,
             domains::EvaluationDomains,
-            expr::constraints::ExprOps,
             gate::{CircuitGate, GateType},
             polynomials::generic::GenericGateSpec,
             wires::{Wire, COLUMNS},

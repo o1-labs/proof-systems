@@ -4,9 +4,9 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
+        berkeley_columns::{constraints::ExprOps, BerkeleyChallengeTerm},
         constraints::ConstraintSystem,
-        expr::{constraints::ExprOps, Cache},
+        expr::Cache,
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },

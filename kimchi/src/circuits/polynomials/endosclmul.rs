@@ -5,13 +5,12 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-        constraints::ConstraintSystem,
-        expr::{
-            self,
+        berkeley_columns::{
             constraints::{boolean, ExprOps},
-            Cache,
+            BerkeleyChallengeTerm, BerkeleyChallenges,
         },
+        constraints::ConstraintSystem,
+        expr::{self, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
     },

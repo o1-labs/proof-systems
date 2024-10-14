@@ -118,11 +118,11 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    berkeley_columns::BerkeleyChallengeTerm,
-    expr::{
+    berkeley_columns::{
         constraints::{crumb, ExprOps},
-        Cache,
+        BerkeleyChallengeTerm,
     },
+    expr::Cache,
     gate::GateType,
     polynomial::COLUMNS,
 };
