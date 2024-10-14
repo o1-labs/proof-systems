@@ -30,7 +30,7 @@ use std::{
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
-use self::constraints::ExprOps;
+use self::berkeley_columns::E;
 
 #[derive(Debug, Error)]
 pub enum ExprError<Column> {
@@ -3250,7 +3250,6 @@ pub mod test {
             berkeley_columns::{index, witness_curr, Environment, E},
             constraints::ConstraintSystem,
             domains::EvaluationDomains,
-            expr::constraints::ExprOps,
             gate::{CircuitGate, GateType},
             polynomials::generic::GenericGateSpec,
             wires::{Wire, COLUMNS},

@@ -157,7 +157,7 @@ pub fn range_check<F: PrimeField>(
 #[cfg(test)]
 mod test {
     use crate::{
-        circuits::expr::constraints::ExprOps, loc, snarky::api::SnarkyCircuit, FieldVar, RunState,
+        circuits::berkeley_columns::E, loc, snarky::api::SnarkyCircuit, FieldVar, RunState,
         SnarkyResult,
     };
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};

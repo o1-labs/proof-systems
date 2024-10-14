@@ -84,7 +84,7 @@ use crate::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges, Column, E},
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, Cache},
+        expr::{self, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
