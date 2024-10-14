@@ -2,7 +2,7 @@
 
 use crate::{
     circuits::{
-        expr::constraints::compact_limb,
+        berkeley_columns::constraints::compact_limb,
         polynomial::COLUMNS,
         polynomials::foreign_field_common::{
             BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,

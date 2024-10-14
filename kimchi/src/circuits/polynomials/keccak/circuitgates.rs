@@ -3,11 +3,11 @@ use crate::{
     auto_clone, auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
-        expr::{
+        berkeley_columns::{
             constraints::{boolean, ExprOps},
-            Cache,
+            BerkeleyChallengeTerm,
         },
+        expr::Cache,
         gate::GateType,
         polynomials::keccak::{constants::*, OFF},
     },

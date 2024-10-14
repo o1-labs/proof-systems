@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 //TODO use generic challenge
 use super::{
-    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    expr::{constraints::ExprOps, Cache, ConstantExpr, ConstantTerm, Constants},
+    berkeley_columns::{constraints::ExprOps, BerkeleyChallengeTerm, BerkeleyChallenges},
+    expr::{Cache, ConstantExpr, ConstantTerm, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };

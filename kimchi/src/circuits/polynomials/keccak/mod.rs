@@ -4,7 +4,7 @@ pub mod constants;
 pub mod gadget;
 pub mod witness;
 
-use crate::circuits::expr::constraints::ExprOps;
+use crate::circuits::berkeley_columns::constraints::ExprOps;
 use ark_ff::PrimeField;
 
 use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};

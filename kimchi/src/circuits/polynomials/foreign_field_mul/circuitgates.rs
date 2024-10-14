@@ -93,8 +93,8 @@ use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
-        expr::{constraints::ExprOps, Cache},
+        berkeley_columns::{constraints::ExprOps, BerkeleyChallengeTerm},
+        expr::Cache,
         gate::GateType,
     },
 };
