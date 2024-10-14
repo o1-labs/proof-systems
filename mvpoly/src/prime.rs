@@ -149,7 +149,6 @@ use std::{
 
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
@@ -328,8 +327,8 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
-    fn from_expr<Column: Into<usize>>(
-        expr: Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(
+        expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
     ) -> Self {
         use kimchi::circuits::expr::Operations::*;
 
@@ -805,28 +804,13 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Dense<F, N, D> {
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize>
-    From<ConstantExprInner<F, BerkeleyChallengeTerm>> for Dense<F, N, D>
+impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm>
+    From<ConstantExprInner<F, ChallengeTerm>> for Dense<F, N, D>
 {
-    fn from(expr: ConstantExprInner<F, BerkeleyChallengeTerm>) -> Self {
+    fn from(expr: ConstantExprInner<F, ChallengeTerm>) -> Self {
         match expr {
-            // The unimplemented methods might be implemented in the future if
-            // we move to the challenge into the type of the constant
-            // terms/expressions
-            // Unrolling for visibility
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Alpha) => {
-                unimplemented!("The challenge alpha is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Beta) => {
-                unimplemented!("The challenge beta is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Gamma) => {
-                unimplemented!("The challenge gamma is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::JointCombiner) => {
-                unimplemented!(
-                    "The challenge joint combiner is not supposed to be used in this context"
-                )
+            ConstantExprInner::Challenge(_) => {
+                unimplemented!("Challenges are not supposed to be used in this context for now")
             }
             ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
                 unimplemented!(
@@ -844,10 +828,10 @@ impl<F: PrimeField, const N: usize, const D: usize>
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize>
-    From<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>> for Dense<F, N, D>
+impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm: Clone>
+    From<Operations<ConstantExprInner<F, ChallengeTerm>>> for Dense<F, N, D>
 {
-    fn from(op: Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>) -> Self {
+    fn from(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
         use kimchi::circuits::expr::Operations::*;
         match op {
             Atom(op_const) => Self::from(op_const),
