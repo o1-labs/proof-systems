@@ -8,6 +8,8 @@ use std::{
 };
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
+use crate::NUMBER_OF_COLUMNS;
+
 /// This enum represents the different gadgets that can be used in the circuit.
 /// The selectors are defined at setup time, can take only the values `0` or
 /// `1` and are public.
@@ -38,16 +40,21 @@ pub enum Column {
 
 /// Convert a column to a usize. This is used by the library [mvpoly] when we
 /// need to compute the cross-terms.
-/// For now, we only support the conversion of the private inputs, i.e. the `X`
-/// variant.
-/// Also, for now, the [mvpoly] library expects the columns to be mapped to a
-/// prime number as the prime representation is used under the hood. This must
-/// be changed.
+/// For now, only the private inputs and the public inputs are converted,
+/// because there might not need to treat the selectors in the polynomial while
+/// computing the cross-terms (FIXME: check this later, but pretty sure it's the
+/// case).
+///
+/// Also, the [mvpoly::monomials] implementation of the trait [mvpoly::MVPoly]
+/// will be used, and the mapping here is consistent with the one expected by
+/// this implementation, i.e. we simply map to an increasing number starting at
+/// 0, without any gap.
 impl From<Column> for usize {
     fn from(val: Column) -> usize {
         match val {
             Column::X(i) => i,
-            _ => unimplemented!("Only the private inputs are supported for now"),
+            Column::PublicInput(i) => NUMBER_OF_COLUMNS + i,
+            Column::Selector(_) => unimplemented!("Selectors are not supported. This method is supposed to be called only to compute the cross-term and an optimisation is in progress to avoid the inclusion of the selectors in the multi-variate polynomial."),
         }
     }
 }
