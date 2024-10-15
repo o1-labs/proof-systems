@@ -154,7 +154,7 @@ use kimchi::circuits::{
 };
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
-use rand::RngCore;
+use rand::{Rng, RngCore};
 use std::ops::{Index, IndexMut};
 
 use crate::{
@@ -226,6 +226,9 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
     /// protocols. The user is responsible for providing its own secure
     /// polynomial random generator, if needed.
     ///
+    /// In addition to that, zeroes coefficients are added one every 10
+    /// monomials to be sure we do have some sparcity in the polynomial.
+    ///
     /// For now, the function is only used for testing.
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let mut prime_gen = PrimeNumberGenerator::new();
@@ -239,7 +242,8 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                     let degree = naive_prime_factors(*idx, &mut prime_gen)
                         .iter()
                         .fold(0, |acc, (_, d)| acc + d);
-                    if degree > max_degree {
+                    if degree > max_degree || rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
                         F::zero()
                     } else {
                         F::rand(rng)
@@ -247,9 +251,19 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 })
                 .collect::<Vec<F>>()
         } else {
-            normalized_indices.iter().map(|_| F::rand(rng)).collect()
+            normalized_indices
+                .iter()
+                .map(|_| {
+                    if rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
+                        F::zero()
+                    } else {
+                        F::rand(rng)
+                    }
+                })
+                .collect()
         };
-        Dense {
+        Self {
             coeff,
             normalized_indices,
         }
@@ -327,6 +341,21 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
+    fn from_variable<Column: Into<usize>>(var: Column) -> Self {
+        let mut res = Self::zero();
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        let var_usize: usize = var.into();
+        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
+        let inv_var = res
+            .normalized_indices
+            .iter()
+            .position(|&x| x == var_usize)
+            .unwrap();
+        res[inv_var] = F::one();
+        res
+    }
+
     fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(
         expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
     ) -> Self {
@@ -349,31 +378,31 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 }
             }
             Add(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 + p2
             }
             Sub(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 - p2
             }
             Mul(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 * p2
             }
             Double(p) => {
-                let p = Dense::from_expr(*p);
+                let p = Self::from_expr(*p);
                 p.double()
             }
             Square(p) => {
-                let p = Dense::from_expr(*p);
+                let p = Self::from_expr(*p);
                 p.clone() * p.clone()
             }
             Pow(c, e) => {
                 // FIXME: dummy implementation
-                let p = Dense::from_expr(*c);
+                let p = Self::from_expr(*c);
                 let mut result = p.clone();
                 for _ in 0..e {
                     result = result.clone() * p.clone();
@@ -486,7 +515,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     pub fn new() -> Self {
         let normalized_indices = Self::compute_normalized_indices();
-        Dense {
+        Self {
             coeff: vec![F::zero(); Self::dimension()],
             normalized_indices,
         }
@@ -505,21 +534,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             coeff,
             normalized_indices,
         }
-    }
-
-    pub fn from_variable<C: Into<usize>>(var: C) -> Self {
-        let mut res = Self::zero();
-        let mut prime_gen = PrimeNumberGenerator::new();
-        let primes = prime_gen.get_first_nth_primes(N);
-        let var_usize: usize = var.into();
-        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
-        let inv_var = res
-            .normalized_indices
-            .iter()
-            .position(|&x| x == var_usize)
-            .unwrap();
-        res[inv_var] = F::one();
-        res
     }
 
     pub fn number_of_variables(&self) -> usize {
@@ -651,7 +665,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        let mut result = Dense::new();
+        let mut result = Self::new();
         for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] - other.coeff[i];
         }
@@ -669,7 +683,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Den
             .zip(other.coeff.iter())
             .map(|(a, b)| *a - *b)
             .collect();
-        Dense::from_coeffs(coeffs)
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -823,7 +837,7 @@ impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm>
             }) => {
                 unimplemented!("The constant Mds is not supposed to be used in this context")
             }
-            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Dense::from(c),
+            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Self::from(c),
         }
     }
 }
@@ -842,7 +856,7 @@ impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm: Clone>
             Double(c1) => Self::from(*c1).double(),
             Pow(c, e) => {
                 // FIXME: dummy implementation
-                let p = Dense::from(*c);
+                let p = Self::from(*c);
                 let mut result = p.clone();
                 for _ in 0..e {
                     result = result.clone() * p.clone();

@@ -1,3 +1,15 @@
+//! This module contains the definition of the `MVPoly` trait, which is used to
+//! represent multi-variate polynomials.
+//!
+//! Different representations are provided in the sub-modules:
+//! - `monomials`: a representation based on monomials
+//! - `prime`: a representation based on a mapping from variables to prime
+//! numbers. This representation is unmaintained for now. We leave it
+//! for interested users.
+//!
+//! "Expressions", as defined in the [kimchi] crate, can be converted into a
+//! multi-variate polynomial using the `from_expr` method.
+
 use std::collections::HashMap;
 
 use ark_ff::PrimeField;
@@ -11,10 +23,16 @@ pub mod utils;
 
 /// Generic trait to represent a multi-variate polynomial
 pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
+    // Addition
     std::ops::Add<Self, Output = Self>
+    + for<'a> std::ops::Add<&'a Self, Output = Self>
+    // Mul
     + std::ops::Mul<Self, Output = Self>
+    // Negation
     + std::ops::Neg<Output = Self>
+    // Sub
     + std::ops::Sub<Self, Output = Self>
+    + for<'a> std::ops::Sub<&'a Self, Output = Self>
     + ark_ff::One
     + ark_ff::Zero
     + std::fmt::Debug
@@ -64,6 +82,17 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// This is a dummy implementation. A cache can be used for the monomials to
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
+
+
+    /// Build the univariate polynomial `x_i` from the variable `i`.
+    /// The conversion into the type `usize` is unspecified by this trait. It
+    /// is left to the trait implementation.
+    /// For instance, in the case of [crate::prime], the output must be a prime
+    /// number, starting at `2`. [crate::utils::PrimeNumberGenerator] can be
+    /// used.
+    /// For [crate::monomials], the output must be the index of the variable,
+    /// starting from `0`.
+    fn from_variable<Column: Into<usize>>(var: Column) -> Self;
 
     /// Build a value from an expression.
     /// This method aims to be used to be retro-compatible with what we call
