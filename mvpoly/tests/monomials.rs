@@ -101,17 +101,7 @@ fn test_degree_random_degree() {
 
 #[test]
 fn test_is_constant() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let c = Fp::rand(&mut rng);
-    let p = Sparse::<Fp, 4, 5>::from(c);
-    assert!(p.is_constant());
-
-    let p = Sparse::<Fp, 4, 5>::zero();
-    assert!(p.is_constant());
-
-    // This might be flaky
-    let p = unsafe { Sparse::<Fp, 4, 5>::random(&mut rng, None) };
-    assert!(!p.is_constant());
+    mvpoly::pbt::test_is_constant::<Fp, 4, 5, Sparse<Fp, 4, 5>>();
 }
 
 #[test]
