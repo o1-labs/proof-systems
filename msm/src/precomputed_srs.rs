@@ -2,9 +2,11 @@
 
 use crate::{Fp, BN254, DOMAIN_SIZE};
 use ark_ec::pairing::Pairing;
+use ark_ff::UniformRand;
 use ark_serialize::Write;
 use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
 use poly_commitment::{kzg::PairingSRS, SRS as _};
+use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::BufReader, path::PathBuf};
 
@@ -71,7 +73,9 @@ fn create_and_store_srs_with_path(
     srs_path: PathBuf,
 ) -> PairingSRS<BN254> {
     // We generate with a fixed-seed RNG, only used for testing.
-    let mut srs = PairingSRS::create(domain_size);
+    let mut rng = &mut StdRng::from_seed([42u8; 32]);
+    let trapdoor = Fp::rand(&mut rng);
+    let mut srs = PairingSRS::create_trusted_setup(trapdoor, domain_size);
 
     for sub_domain_size in 1..=domain_size {
         let domain = EvaluationDomains::<Fp>::create(sub_domain_size).unwrap();
