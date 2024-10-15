@@ -154,7 +154,7 @@ use kimchi::circuits::{
 };
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
-use rand::RngCore;
+use rand::{Rng, RngCore};
 use std::ops::{Index, IndexMut};
 
 use crate::{
@@ -226,6 +226,9 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
     /// protocols. The user is responsible for providing its own secure
     /// polynomial random generator, if needed.
     ///
+    /// In addition to that, zeroes coefficients are added one every 10
+    /// monomials to be sure we do have some sparcity in the polynomial.
+    ///
     /// For now, the function is only used for testing.
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let mut prime_gen = PrimeNumberGenerator::new();
@@ -239,7 +242,8 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                     let degree = naive_prime_factors(*idx, &mut prime_gen)
                         .iter()
                         .fold(0, |acc, (_, d)| acc + d);
-                    if degree > max_degree {
+                    if degree > max_degree || rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
                         F::zero()
                     } else {
                         F::rand(rng)
@@ -247,7 +251,17 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 })
                 .collect::<Vec<F>>()
         } else {
-            normalized_indices.iter().map(|_| F::rand(rng)).collect()
+            normalized_indices
+                .iter()
+                .map(|_| {
+                    if rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
+                        F::zero()
+                    } else {
+                        F::rand(rng)
+                    }
+                })
+                .collect()
         };
         Dense {
             coeff,
