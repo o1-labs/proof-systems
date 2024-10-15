@@ -599,11 +599,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        let mut result = Self::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] - other.coeff[i];
-        }
-        result
+        self + (-other)
     }
 }
 
@@ -611,13 +607,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Self::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
@@ -625,13 +615,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
@@ -639,13 +623,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &De
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
