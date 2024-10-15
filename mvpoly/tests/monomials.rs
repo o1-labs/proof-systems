@@ -466,14 +466,91 @@ fn test_build_from_variable() {
 
     let mut rng = o1_utils::tests::make_test_rng(None);
     let idx: usize = rng.gen_range(0..4);
-    let p = Sparse::<Fp, 4, 3>::from_variable(Variable {
-        col: Column::X(idx),
-        row: CurrOrNext::Curr,
-    });
+    let p = Sparse::<Fp, 4, 3>::from_variable::<Column>(
+        Variable {
+            col: Column::X(idx),
+            row: CurrOrNext::Curr,
+        },
+        None,
+    );
 
     let eval: [Fp; 4] = std::array::from_fn(|_i| Fp::rand(&mut rng));
 
     assert_eq!(p.eval(&eval), eval[idx]);
+}
+
+#[test]
+#[should_panic]
+fn test_build_from_variable_next_row_without_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+    let _p = Sparse::<Fp, 4, 3>::from_variable::<Column>(
+        Variable {
+            col: Column::X(idx),
+            row: CurrOrNext::Next,
+        },
+        None,
+    );
+}
+
+#[test]
+fn test_build_from_variable_next_row_with_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+
+    // Using next
+    {
+        let p = Sparse::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Next,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx + 4]);
+    }
+
+    // Still using current
+    {
+        let p = Sparse::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Curr,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx]);
+    }
 }
 
 /// As a reminder, here are the equations to compute the addition of two
@@ -599,7 +676,7 @@ fn test_from_expr_ec_addition() {
         // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
         let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
 
-        let p = Sparse::<Fp, 7, 2>::from_expr(expression);
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expression, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -612,7 +689,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
         let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
-        let p = Sparse::<Fp, 7, 2>::from_expr(expr);
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -624,7 +701,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
         let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
-        let p = Sparse::<Fp, 7, 2>::from_expr(expr);
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {

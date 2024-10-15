@@ -6,6 +6,7 @@ use kimchi::circuits::{
 };
 use mina_curves::pasta::Fp;
 use mvpoly::{prime::Dense, utils::PrimeNumberGenerator, MVPoly};
+use rand::Rng;
 
 #[test]
 fn test_vector_space_dimension() {
@@ -264,10 +265,13 @@ fn test_from_variable_column() {
         }
     }
 
-    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
-        col: Column::X(0),
-        row: CurrOrNext::Curr,
-    });
+    let p = Dense::<Fp, 4, 5>::from_variable::<Column>(
+        Variable {
+            col: Column::X(0),
+            row: CurrOrNext::Curr,
+        },
+        None,
+    );
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::one());
     assert_eq!(p[2], Fp::zero());
@@ -276,10 +280,13 @@ fn test_from_variable_column() {
     assert_eq!(p[5], Fp::zero());
 
     // Test for z variable (index 3)
-    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
-        col: Column::X(1),
-        row: CurrOrNext::Curr,
-    });
+    let p = Dense::<Fp, 4, 5>::from_variable::<Column>(
+        Variable {
+            col: Column::X(1),
+            row: CurrOrNext::Curr,
+        },
+        None,
+    );
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::zero());
     assert_eq!(p[2], Fp::one());
@@ -287,10 +294,13 @@ fn test_from_variable_column() {
     assert_eq!(p[4], Fp::zero());
 
     // Test for w variable (index 5)
-    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
-        col: Column::X(2),
-        row: CurrOrNext::Curr,
-    });
+    let p = Dense::<Fp, 4, 5>::from_variable::<Column>(
+        Variable {
+            col: Column::X(2),
+            row: CurrOrNext::Curr,
+        },
+        None,
+    );
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::zero());
     assert_eq!(p[2], Fp::zero());
@@ -459,7 +469,7 @@ fn test_from_expr_ec_addition() {
         // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
         let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
 
-        let p = Dense::<Fp, 7, 2>::from_expr(expression);
+        let p = Dense::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expression, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -472,7 +482,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
         let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
-        let p = Dense::<Fp, 7, 2>::from_expr(expr);
+        let p = Dense::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -484,7 +494,7 @@ fn test_from_expr_ec_addition() {
     {
         // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
         let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
-        let p = Dense::<Fp, 7, 2>::from_expr(expr);
+        let p = Dense::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
         let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
         let eval = p.eval(&random_evaluation);
         let exp_eval = {
@@ -616,4 +626,84 @@ fn test_add_monomial() {
 #[test]
 fn test_is_multilinear() {
     mvpoly::pbt::test_is_multilinear::<Fp, 6, 2, Dense<Fp, 6, 2>>();
+}
+
+#[test]
+#[should_panic]
+fn test_build_from_variable_next_row_without_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => {
+                    let mut prime_gen = PrimeNumberGenerator::new();
+                    prime_gen.get_nth_prime(i + 1)
+                }
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+    let _p = Dense::<Fp, 4, 3>::from_variable::<Column>(
+        Variable {
+            col: Column::X(idx),
+            row: CurrOrNext::Next,
+        },
+        None,
+    );
+}
+
+#[test]
+fn test_build_from_variable_next_row_with_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => {
+                    let mut prime_gen = PrimeNumberGenerator::new();
+                    prime_gen.get_nth_prime(i + 1)
+                }
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+
+    // Using next
+    {
+        let p = Dense::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Next,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx + 4]);
+    }
+
+    // Still using current
+    {
+        let p = Dense::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Curr,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx]);
+    }
 }

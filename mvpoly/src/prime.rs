@@ -338,24 +338,38 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
-    fn from_variable<Column: Into<usize>>(var: Variable<Column>) -> Self {
+    fn from_variable<Column: Into<usize>>(
+        var: Variable<Column>,
+        offset_next_row: Option<usize>,
+    ) -> Self {
         let Variable { col, row } = var;
-        assert_eq!(
-            row,
-            CurrOrNext::Curr,
-            "Only current row is supported for now. You cannot reference the next row"
-        );
-        let mut res = Self::zero();
+        if row == CurrOrNext::Next {
+            assert!(
+                offset_next_row.is_some(),
+                "The offset for the next row must be provided"
+            );
+        }
+        let offset = if row == CurrOrNext::Curr {
+            0
+        } else {
+            offset_next_row.unwrap()
+        };
+        let var_usize: usize = col.into();
+
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
-        let var_usize: usize = col.into();
         assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
-        let inv_var = res
+
+        let prime_idx = primes.iter().position(|&x| x == var_usize).unwrap();
+        let idx = prime_gen.get_nth_prime(prime_idx + offset + 1);
+
+        let mut res = Self::zero();
+        let inv_idx = res
             .normalized_indices
             .iter()
-            .position(|&x| x == var_usize)
+            .position(|&x| x == idx)
             .unwrap();
-        res[inv_var] = F::one();
+        res[inv_idx] = F::one();
         res
     }
 
