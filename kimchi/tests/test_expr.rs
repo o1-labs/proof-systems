@@ -3,12 +3,12 @@ use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
 use kimchi::{
     circuits::{
         berkeley_columns::{
-            index, witness_curr, BerkeleyChallengeTerm, BerkeleyChallenges, Environment, E,
+            index, witness, witness_curr, BerkeleyChallengeTerm, BerkeleyChallenges, Environment, E,
         },
         constraints::ConstraintSystem,
         domains::EvaluationDomains,
         expr::{constraints::ExprOps, *},
-        gate::{CircuitGate, GateType},
+        gate::{CircuitGate, CurrOrNext, GateType},
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
@@ -157,4 +157,35 @@ fn test_arithmetic_ops() {
         E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
     );
     assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
+}
+
+#[test]
+fn test_combining_constraints_does_not_increase_degree() {
+    // Combining two constraints of degree 2 gives a degree 2 combined
+    // constraint.
+    // In other words, using the challenge `alpha` doesn't increase the degree.
+    // Testing with Berkeley configuration
+
+    let mut expr1: E<Fp> = E::zero();
+    // (X0 + X1) * X2
+    expr1 += witness(0, CurrOrNext::Curr);
+    expr1 += witness(1, CurrOrNext::Curr);
+    expr1 *= witness(2, CurrOrNext::Curr);
+    assert_eq!(expr1.degree(1, 0), 2);
+
+    // (X2 + X0) * X1
+    let mut expr2: E<Fp> = E::zero();
+    expr2 += witness(2, CurrOrNext::Curr);
+    expr2 += witness(0, CurrOrNext::Curr);
+    expr2 *= witness(1, CurrOrNext::Curr);
+    assert_eq!(expr2.degree(1, 0), 2);
+
+    let combined_expr = Expr::combine_constraints(0..2, vec![expr1.clone(), expr2.clone()]);
+    assert_eq!(combined_expr.degree(1, 0), 2);
+
+    expr2 *= witness(3, CurrOrNext::Curr);
+    assert_eq!(expr2.degree(1, 0), 3);
+
+    let combined_expr = Expr::combine_constraints(0..2, vec![expr1.clone(), expr2.clone()]);
+    assert_eq!(combined_expr.degree(1, 0), 3);
 }
