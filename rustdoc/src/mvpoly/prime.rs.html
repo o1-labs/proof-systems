@@ -860,22 +860,6 @@
 <a href="#860" id="860">860</a>
 <a href="#861" id="861">861</a>
 <a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1027,7 +1011,6 @@
 
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
@@ -1206,8 +1189,8 @@
             })
     }
 
-    <span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;&gt;(
-        expr: Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;,
+    <span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;, ChallengeTerm: Clone&gt;(
+        expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>kimchi::circuits::expr::Operations::<span class="kw-2">*</span>;
 
@@ -1683,28 +1666,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt;
-    From&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, ChallengeTerm&gt;
+    From&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
 {
-    <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F, ChallengeTerm&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
-            <span class="comment">// The unimplemented methods might be implemented in the future if
-            // we move to the challenge into the type of the constant
-            // terms/expressions
-            // Unrolling for visibility
-            </span>ConstantExprInner::Challenge(BerkeleyChallengeTerm::Alpha) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The challenge alpha is not supposed to be used in this context&quot;</span>)
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Beta) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The challenge beta is not supposed to be used in this context&quot;</span>)
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Gamma) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The challenge gamma is not supposed to be used in this context&quot;</span>)
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::JointCombiner) =&gt; {
-                <span class="macro">unimplemented!</span>(
-                    <span class="string">&quot;The challenge joint combiner is not supposed to be used in this context&quot;
-                </span>)
+            ConstantExprInner::Challenge(<span class="kw">_</span>) =&gt; {
+                <span class="macro">unimplemented!</span>(<span class="string">&quot;Challenges are not supposed to be used in this context for now&quot;</span>)
             }
             ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) =&gt; {
                 <span class="macro">unimplemented!</span>(
@@ -1722,10 +1690,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt;
-    From&lt;Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, ChallengeTerm: Clone&gt;
+    From&lt;Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
 {
-    <span class="kw">fn </span>from(op: Operations&lt;ConstantExprInner&lt;F, BerkeleyChallengeTerm&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from(op: Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>kimchi::circuits::expr::Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span>op {
             Atom(op_const) =&gt; <span class="self">Self</span>::from(op_const),
