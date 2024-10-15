@@ -139,13 +139,19 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Clone of kimchi/precomputed_srs.rs but for MSM project with BN254
 
 </span><span class="kw">use crate</span>::{Fp, BN254, DOMAIN_SIZE};
 <span class="kw">use </span>ark_ec::pairing::Pairing;
+<span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>ark_serialize::Write;
 <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
 <span class="kw">use </span>poly_commitment::{kzg::PairingSRS, SRS <span class="kw">as _</span>};
+<span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{fs::File, io::BufReader, path::PathBuf};
 
@@ -212,7 +218,9 @@
     srs_path: PathBuf,
 ) -&gt; PairingSRS&lt;BN254&gt; {
     <span class="comment">// We generate with a fixed-seed RNG, only used for testing.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>srs = PairingSRS::create(domain_size);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">42u8</span>; <span class="number">32</span>]);
+    <span class="kw">let </span>trapdoor = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+    <span class="kw">let </span><span class="kw-2">mut </span>srs = PairingSRS::create_trusted_setup(trapdoor, domain_size);
 
     <span class="kw">for </span>sub_domain_size <span class="kw">in </span><span class="number">1</span>..=domain_size {
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(sub_domain_size).unwrap();

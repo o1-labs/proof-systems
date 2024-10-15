@@ -626,9 +626,9 @@
     <span class="doccomment">/// Create a trusted setup for the KZG protocol.
     /// The setup is created using a toxic waste `toxic_waste` and a depth
     /// `depth`.
-    </span><span class="kw">fn </span>create_trusted_setup(toxic_waste: F, depth: usize) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>create_trusted_setup(toxic_waste: F, depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>full_srs = <span class="kw">unsafe </span>{ SRS::create_trusted_setup(toxic_waste, depth) };
-        <span class="kw">let </span>verifier_srs = <span class="kw">unsafe </span>{ SRS::create_trusted_setup(toxic_waste, depth) };
+        <span class="kw">let </span>verifier_srs = <span class="kw">unsafe </span>{ SRS::create_trusted_setup(toxic_waste, <span class="number">3</span>) };
         <span class="self">Self </span>{
             full_srs,
             verifier_srs,
