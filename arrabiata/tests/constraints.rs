@@ -188,7 +188,8 @@ fn test_integration_with_mvpoly_to_compute_cross_terms() {
     let alpha_1 = Fp::rand(&mut rng);
     let alpha_2 = Fp::rand(&mut rng);
 
-    // Simulating some row evaluations. Only 15 columns for now.
+    // Simulating some row evaluations. Only 15 columns + 17 public inputs for
+    // now.
     let eval1: [Fp; NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS] =
         std::array::from_fn(|_| Fp::rand(&mut rng));
     let eval2: [Fp; NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS] =
@@ -197,13 +198,15 @@ fn test_integration_with_mvpoly_to_compute_cross_terms() {
     let polys = constraints
         .iter()
         .map(|c| {
-            println!("Converting into mvpoly the constraint: {:?}", c);
             // Adding one to the maximum degree to account for the variable α.
             Sparse::<
                     Fp,
                     { NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS },
                     { MAX_DEGREE as usize + 1 },
-                >::from_expr::<Column, ChallengeTerm>(c.clone())
+                >::from_expr::<Column, ChallengeTerm>(
+                    c.clone(),
+                    Some(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
+                )
         })
         .collect();
     let _cross_terms =
