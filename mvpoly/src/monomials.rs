@@ -427,8 +427,14 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         prime::Dense::random(rng, max_degree).into()
     }
 
-    // FIXME: use a better implementation, this is a temporary (working but not
-    // efficient) solution
+    fn from_variable<Column: Into<usize>>(var: Column) -> Self {
+        let var_usize: usize = var.into();
+        let mut monomials = HashMap::new();
+        let exponents: [usize; N] = std::array::from_fn(|i| if i == var_usize { 1 } else { 0 });
+        monomials.insert(exponents, F::one());
+        Self { monomials }
+    }
+
     fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(
         expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
     ) -> Self {

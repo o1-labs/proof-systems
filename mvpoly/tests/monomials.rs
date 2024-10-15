@@ -1,6 +1,7 @@
 use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
+use rand::Rng;
 
 #[test]
 fn test_mul_by_one() {
@@ -504,4 +505,28 @@ fn test_pbt_increase_number_of_variables_zero_one_cst() {
         let rhs: Sparse<Fp, 5, 2> = Sparse::<Fp, 5, 2>::from(c);
         assert_eq!(lhs, rhs);
     }
+}
+
+#[test]
+fn test_build_from_variable() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+    let p = Sparse::<Fp, 4, 3>::from_variable(Column::X(idx));
+
+    let eval: [Fp; 4] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+
+    assert_eq!(p.eval(&eval), eval[idx]);
 }

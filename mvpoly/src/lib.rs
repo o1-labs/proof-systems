@@ -77,6 +77,17 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
 
+
+    /// Build the univariate polynomial `x_i` from the variable `i`.
+    /// The conversion into the type `usize` is unspecified by this trait. It
+    /// is left to the trait implementation.
+    /// For instance, in the case of [mvpoly::prime], the output must be a prime
+    /// number, starting at `2`. [mvpoly::utils::PrimeNumberGenerator] can be
+    /// used.
+    /// For [mvpoly::monomials], the output must be the index of the variable,
+    /// starting from `0`.
+    fn from_variable<Column: Into<usize>>(var: Column) -> Self;
+
     /// Build a value from an expression.
     /// This method aims to be used to be retro-compatible with what we call
     /// "the expression framework".
