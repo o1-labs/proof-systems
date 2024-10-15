@@ -139,9 +139,9 @@ impl<
     /// Create a trusted setup for the KZG protocol.
     /// The setup is created using a toxic waste `toxic_waste` and a depth
     /// `depth`.
-    fn create_trusted_setup(toxic_waste: F, depth: usize) -> Self {
+    pub fn create_trusted_setup(toxic_waste: F, depth: usize) -> Self {
         let full_srs = unsafe { SRS::create_trusted_setup(toxic_waste, depth) };
-        let verifier_srs = unsafe { SRS::create_trusted_setup(toxic_waste, depth) };
+        let verifier_srs = unsafe { SRS::create_trusted_setup(toxic_waste, 3) };
         Self {
             full_srs,
             verifier_srs,
