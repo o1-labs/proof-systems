@@ -87,10 +87,10 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// Build the univariate polynomial `x_i` from the variable `i`.
     /// The conversion into the type `usize` is unspecified by this trait. It
     /// is left to the trait implementation.
-    /// For instance, in the case of [mvpoly::prime], the output must be a prime
-    /// number, starting at `2`. [mvpoly::utils::PrimeNumberGenerator] can be
+    /// For instance, in the case of [crate::prime], the output must be a prime
+    /// number, starting at `2`. [crate::utils::PrimeNumberGenerator] can be
     /// used.
-    /// For [mvpoly::monomials], the output must be the index of the variable,
+    /// For [crate::monomials], the output must be the index of the variable,
     /// starting from `0`.
     fn from_variable<Column: Into<usize>>(var: Column) -> Self;
 
