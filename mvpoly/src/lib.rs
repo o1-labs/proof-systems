@@ -13,7 +13,10 @@
 use std::collections::HashMap;
 
 use ark_ff::PrimeField;
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::{
+    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
+    gate::CurrOrNext,
+};
 use rand::RngCore;
 
 pub mod monomials;
@@ -94,12 +97,115 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// starting from `0`.
     fn from_variable<Column: Into<usize>>(var: Column) -> Self;
 
+    fn from_constant<ChallengeTerm: Clone>(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+        match op {
+            Atom(op_const) => {
+                match op_const {
+                    ConstantExprInner::Challenge(_) => {
+                        unimplemented!("Challenges are not supposed to be used in this context for now")
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
+                        unimplemented!(
+                            "The constant EndoCoefficient is not supposed to be used in this context"
+                        )
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::Mds {
+                        row: _row,
+                        col: _col,
+                    }) => {
+                        unimplemented!("The constant Mds is not supposed to be used in this context")
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Self::from(c),
+                }
+            }
+            Add(c1, c2) => Self::from_constant(*c1) + Self::from_constant(*c2),
+            Sub(c1, c2) => Self::from_constant(*c1) - Self::from_constant(*c2),
+            Mul(c1, c2) => Self::from_constant(*c1) * Self::from_constant(*c2),
+            Square(c) => Self::from_constant(*c.clone()) * Self::from_constant(*c),
+            Double(c1) => Self::from_constant(*c1).double(),
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from_constant(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
+
     /// Build a value from an expression.
     /// This method aims to be used to be retro-compatible with what we call
     /// "the expression framework".
     /// In the near future, the "expression framework" should be moved also into
     /// this library.
-    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>) -> Self;
+    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from_constant(c),
+                    ExprInner::Cell(Variable { col, row }) => {
+                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
+                        Self::from_variable(col)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Self::from_expr(*p);
+                p.double()
+            }
+            Square(p) => {
+                let p = Self::from_expr(*p);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from_expr(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
 
     /// Returns true if the polynomial is homogeneous (of degree `D`).
     /// As a reminder, a polynomial is homogeneous if all its monomials have the
