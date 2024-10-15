@@ -55,7 +55,7 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
+impl<F: Field> ArgumentEnv<F, E<F>> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
     pub fn create(
@@ -76,22 +76,22 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     }
 
     /// Witness cell (row, col)
-    pub fn witness(&self, row: CurrOrNext, col: usize) -> T {
-        T::witness(row, col, self.data.as_ref())
+    pub fn witness(&self, row: CurrOrNext, col: usize) -> E<F> {
+        E::<F>::witness(row, col, self.data.as_ref())
     }
 
     /// Witness cell on current row
-    pub fn witness_curr(&self, col: usize) -> T {
-        T::witness(Curr, col, self.data.as_ref())
+    pub fn witness_curr(&self, col: usize) -> E<F> {
+        E::<F>::witness(Curr, col, self.data.as_ref())
     }
 
     /// Witness cell on next row
-    pub fn witness_next(&self, col: usize) -> T {
-        T::witness(Next, col, self.data.as_ref())
+    pub fn witness_next(&self, col: usize) -> E<F> {
+        E::<F>::witness(Next, col, self.data.as_ref())
     }
 
     /// Witness cells in current row in an interval [from, to)
-    pub fn witness_curr_chunk(&self, from: usize, to: usize) -> Vec<T> {
+    pub fn witness_curr_chunk(&self, from: usize, to: usize) -> Vec<E<F>> {
         let mut chunk = Vec::with_capacity(to - from);
         for i in from..to {
             chunk.push(self.witness_curr(i));
@@ -100,7 +100,7 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     }
 
     /// Witness cells in next row in an interval [from, to)
-    pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<T> {
+    pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<E<F>> {
         let mut chunk = Vec::with_capacity(to - from);
         for i in from..to {
             chunk.push(self.witness_next(i));
@@ -109,12 +109,12 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     }
 
     /// Coefficient value at index idx
-    pub fn coeff(&self, idx: usize) -> T {
-        T::coeff(idx, self.data.as_ref())
+    pub fn coeff(&self, idx: usize) -> E<F> {
+        E::<F>::coeff(idx, self.data.as_ref())
     }
 
     /// Chunk of consecutive coefficients in an interval [from, to)
-    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<T> {
+    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<E<F>> {
         let mut chunk = Vec::with_capacity(to - from);
         for i in from..to {
             chunk.push(self.coeff(i));
@@ -123,21 +123,21 @@ impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     }
 
     /// Constant value (see [ConstantExpr] for supported constants)
-    pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> T {
-        T::constant(expr, self.data.as_ref())
+    pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> E<F> {
+        E::<F>::constant(expr, self.data.as_ref())
     }
 
     /// Helper to access endomorphism coefficient constant
-    pub fn endo_coefficient(&self) -> T {
-        T::constant(
+    pub fn endo_coefficient(&self) -> E<F> {
+        E::<F>::constant(
             ConstantExpr::from(ConstantTerm::EndoCoefficient),
             self.data.as_ref(),
         )
     }
 
     /// Helper to access maximum distance separable matrix constant at row, col
-    pub fn mds(&self, row: usize, col: usize) -> T {
-        T::constant(
+    pub fn mds(&self, row: usize, col: usize) -> E<F> {
+        E::<F>::constant(
             ConstantExpr::from(ConstantTerm::Mds { row, col }),
             self.data.as_ref(),
         )
@@ -185,10 +185,7 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T>;
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, cache: &mut Cache) -> Vec<E<F>>;
 
     /// Returns the set of constraints required to prove this argument.
     fn constraints(cache: &mut Cache) -> Vec<E<F>> {

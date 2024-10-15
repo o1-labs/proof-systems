@@ -176,10 +176,10 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
+    fn constraint_checks(
+        env: &ArgumentEnv<F, E<F>>,
         _cache: &mut Cache,
-    ) -> Vec<T> {
+    ) -> Vec<E<F>> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -190,7 +190,7 @@ where
         //    * Columns 7-14 are 2-bit crumb range constraints
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
-            .collect::<Vec<T>>();
+            .collect::<Vec<E<F>>>();
 
         // 2) Constrain that the combined limbs equals the value v stored in w(0):
         //
@@ -202,13 +202,13 @@ where
         //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
         //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  <- LSB
 
-        let mut power_of_2 = T::one();
-        let mut sum_of_limbs = T::zero();
+        let mut power_of_2 = E::<F>::one();
+        let mut sum_of_limbs = E::<F>::zero();
 
         // Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::from(4u64); // 2 bits
+            power_of_2 *= E::<F>::from(4u64); // 2 bits
         }
 
         // Sum 12-bit limbs
@@ -226,7 +226,7 @@ where
         constraints.push(
             env.coeff(0)
                 * (env.witness_next(1)
-                    - (env.witness_curr(0) + T::two_to_limb() * env.witness_next(0))),
+                    - (env.witness_curr(0) + E::<F>::two_to_limb() * env.witness_next(0))),
         );
 
         constraints
@@ -280,10 +280,7 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];
@@ -294,7 +291,7 @@ where
         constraints.append(
             &mut (7..COLUMNS)
                 .map(|i| crumb(&env.witness_curr(i)))
-                .collect::<Vec<T>>(),
+                .collect::<Vec<E<F>>>(),
         );
 
         // 2) Apply range constraints on limbs for Next row
@@ -302,7 +299,7 @@ where
         constraints.append(
             &mut (0..=2)
                 .map(|i| crumb(&env.witness_next(i)))
-                .collect::<Vec<T>>(),
+                .collect::<Vec<E<F>>>(),
         );
         //    * Columns 3-6 are 12-bit plookup range constraints for v0 and v1 (these
         //      are specified in the lookup gate)
@@ -310,7 +307,7 @@ where
         constraints.append(
             &mut (7..COLUMNS)
                 .map(|i| crumb(&env.witness_next(i)))
-                .collect::<Vec<T>>(),
+                .collect::<Vec<E<F>>>(),
         );
 
         // 2) Constrain that the combined limbs equals the value v2 stored in w(0) where
@@ -325,8 +322,8 @@ where
         //    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9
         //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 <- LSB
 
-        let mut power_of_2 = T::one();
-        let mut sum_of_limbs = T::zero();
+        let mut power_of_2 = E::<F>::one();
+        let mut sum_of_limbs = E::<F>::zero();
 
         // Next row: Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {

@@ -17,15 +17,15 @@ use std::marker::PhantomData;
 macro_rules! from_quarters {
     ($quarters:ident, $x:ident) => {
         $quarters($x, 0)
-            + T::two_pow(16) * $quarters($x, 1)
-            + T::two_pow(32) * $quarters($x, 2)
-            + T::two_pow(48) * $quarters($x, 3)
+            + E::<F>::two_pow(16) * $quarters($x, 1)
+            + E::<F>::two_pow(32) * $quarters($x, 2)
+            + E::<F>::two_pow(48) * $quarters($x, 3)
     };
     ($quarters:ident, $y:ident, $x:ident) => {
         $quarters($y, $x, 0)
-            + T::two_pow(16) * $quarters($y, $x, 1)
-            + T::two_pow(32) * $quarters($y, $x, 2)
-            + T::two_pow(48) * $quarters($y, $x, 3)
+            + E::<F>::two_pow(16) * $quarters($y, $x, 1)
+            + E::<F>::two_pow(32) * $quarters($y, $x, 2)
+            + E::<F>::two_pow(48) * $quarters($y, $x, 3)
     };
 }
 
@@ -33,21 +33,21 @@ macro_rules! from_quarters {
 macro_rules! from_shifts {
     ($shifts:ident, $i:ident) => {
         $shifts($i)
-            + T::two_pow(1) * $shifts(100 + $i)
-            + T::two_pow(2) * $shifts(200 + $i)
-            + T::two_pow(3) * $shifts(300 + $i)
+            + E::<F>::two_pow(1) * $shifts(100 + $i)
+            + E::<F>::two_pow(2) * $shifts(200 + $i)
+            + E::<F>::two_pow(3) * $shifts(300 + $i)
     };
     ($shifts:ident, $x:ident, $q:ident) => {
         $shifts(0, $x, $q)
-            + T::two_pow(1) * $shifts(1, $x, $q)
-            + T::two_pow(2) * $shifts(2, $x, $q)
-            + T::two_pow(3) * $shifts(3, $x, $q)
+            + E::<F>::two_pow(1) * $shifts(1, $x, $q)
+            + E::<F>::two_pow(2) * $shifts(2, $x, $q)
+            + E::<F>::two_pow(3) * $shifts(3, $x, $q)
     };
     ($shifts:ident, $y:ident, $x:ident, $q:ident) => {
         $shifts(0, $y, $x, $q)
-            + T::two_pow(1) * $shifts(1, $y, $x, $q)
-            + T::two_pow(2) * $shifts(2, $y, $x, $q)
-            + T::two_pow(3) * $shifts(3, $y, $x, $q)
+            + E::<F>::two_pow(1) * $shifts(1, $y, $x, $q)
+            + E::<F>::two_pow(2) * $shifts(2, $y, $x, $q)
+            + E::<F>::two_pow(3) * $shifts(3, $y, $x, $q)
     };
 }
 
@@ -89,10 +89,7 @@ where
     const CONSTRAINTS: u32 = 389;
 
     // Constraints for one round of the Keccak permutation function
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         let mut constraints = vec![];
 
         // DEFINE ROUND CONSTANT
@@ -166,11 +163,11 @@ where
         let state_g = grid!(100, env.witness_next_chunk(0, IOTA_STATE_G_LEN));
 
         // Define vectors containing witness expressions which are not in the layout for efficiency
-        let mut state_c: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
-        let mut state_d: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
-        let mut state_e: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
-        let mut state_b: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
-        let mut state_f: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
+        let mut state_c: Vec<Vec<E<F>>> = vec![vec![E::<F>::zero(); QUARTERS]; DIM];
+        let mut state_d: Vec<Vec<E<F>>> = vec![vec![E::<F>::zero(); QUARTERS]; DIM];
+        let mut state_e: Vec<Vec<Vec<E<F>>>> = vec![vec![vec![E::<F>::zero(); QUARTERS]; DIM]; DIM];
+        let mut state_b: Vec<Vec<Vec<E<F>>>> = vec![vec![vec![E::<F>::zero(); QUARTERS]; DIM]; DIM];
+        let mut state_f: Vec<Vec<Vec<E<F>>>> = vec![vec![vec![E::<F>::zero(); QUARTERS]; DIM]; DIM];
 
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
         for x in 0..DIM {
@@ -178,8 +175,9 @@ where
             let rem_c = from_quarters!(remainder_c, x);
             let rot_c = from_quarters!(dense_rot_c, x);
 
-            constraints
-                .push(word_c * T::two_pow(1) - (quotient_c(x) * T::two_pow(64) + rem_c.clone()));
+            constraints.push(
+                word_c * E::<F>::two_pow(1) - (quotient_c(x) * E::<F>::two_pow(64) + rem_c.clone()),
+            );
             constraints.push(rot_c - (quotient_c(x) + rem_c));
             constraints.push(boolean(&quotient_c(x)));
 
@@ -209,7 +207,8 @@ where
                 let rot_e = from_quarters!(dense_rot_e, y, x);
 
                 constraints.push(
-                    word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
+                    word_e * E::<F>::two_pow(*off)
+                        - (quo_e.clone() * E::<F>::two_pow(64) + rem_e.clone()),
                 );
                 constraints.push(rot_e - (quo_e.clone() + rem_e));
 
@@ -224,7 +223,7 @@ where
         for q in 0..QUARTERS {
             for x in 0..DIM {
                 for y in 0..DIM {
-                    let not = T::literal(F::from(0x1111111111111111u64))
+                    let not = E::<F>::literal(F::from(0x1111111111111111u64))
                         - shifts_b(0, y, (x + 1) % DIM, q);
                     let sum = not + shifts_b(0, y, (x + 2) % DIM, q);
                     let and = shifts_sum(1, y, x, q);
@@ -262,10 +261,7 @@ where
     const CONSTRAINTS: u32 = 532;
 
     // Constraints for the Keccak sponge
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         let mut constraints = vec![];
 
         // LOAD WITNESS

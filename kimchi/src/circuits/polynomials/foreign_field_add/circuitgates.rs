@@ -140,11 +140,8 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
-        let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
+        let foreign_modulus: [E<F>; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved
         // this reduces the number of copy constraints needed to check the operation
@@ -189,7 +186,7 @@ where
         let result_bot = compact_limb(&left_input_lo, &left_input_mi)
             + sign.clone() * compact_limb(&right_input_lo, &right_input_mi)
             - field_overflow.clone() * compact_limb(&foreign_modulus[0], &foreign_modulus[1])
-            - carry.clone() * T::two_to_2limb();
+            - carry.clone() * E::<F>::two_to_2limb();
         // r_top = a_2 + s * b_2 - q * f_2 + c
         let result_top = left_input_hi + sign * right_input_hi
             - field_overflow * foreign_modulus[2].clone()
@@ -205,7 +202,7 @@ where
 }
 
 // Auxiliary function to obtain the constraints to check a carry flag
-fn is_carry<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(flag: &T) -> T {
+fn is_carry<F: PrimeField>(flag: &E<F>) -> E<F> {
     // Carry bits are -1, 0, or 1.
-    flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
+    flag.clone() * (flag.clone() - E::<F>::one()) * (flag.clone() + E::<F>::one())
 }

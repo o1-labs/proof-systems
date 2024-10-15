@@ -733,8 +733,8 @@ pub mod testing {
 // CONSTRAINTS-RELATED
 
 /// Returns the expression corresponding to the literal "2"
-fn two<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
-    T::literal(2u64.into()) // 2
+fn two<F: Field>() -> E<F> {
+    E::<F>::literal(2u64.into()) // 2
 }
 
 /// Combines the constraints for the Cairo gates depending on its type
@@ -768,10 +768,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         let pc_ini = env.witness_curr(0); // copy from public input
         let ap_ini = env.witness_curr(1); // copy from public input
         let pc_fin = env.witness_curr(2); // copy from public input
@@ -785,7 +782,7 @@ where
         let fp0 = env.witness_next(2);
 
         // Initial claim
-        let mut constraints: Vec<T> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
+        let mut constraints: Vec<E<F>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
         constraints.push(fp0 - ap_ini); // fp0 = ini_ap
         constraints.push(pc0 - pc_ini); // pc0 = ini_pc
 
@@ -808,10 +805,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, cache: &mut Cache) -> Vec<E<F>> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = env.witness_curr(0);
         let ap = env.witness_curr(1);
@@ -846,11 +840,11 @@ where
         let f_opc_aeq = env.witness_next(14);
 
         // collect flags in its natural ordering
-        let flags: Vec<T> = (0..NUM_FLAGS - 1).map(|i| env.witness_next(i)).collect();
+        let flags: Vec<E<F>> = (0..NUM_FLAGS - 1).map(|i| env.witness_next(i)).collect();
 
         // LIST OF CONSTRAINTS
         // -------------------
-        let mut constraints: Vec<T> = vec![];
+        let mut constraints: Vec<E<F>> = vec![];
 
         // INSTRUCTIONS RELATED
 
@@ -859,7 +853,7 @@ where
         // * Check booleanity of all flags
         // fi * (1-fi) == 0 for i=[0..15)
         for flag in flags.iter().take(NUM_FLAGS - 1) {
-            constraints.push(flag.clone() * (T::one() - flag.clone()));
+            constraints.push(flag.clone() * (E::<F>::one() - flag.clone()));
         }
 
         // * Check no two flagbits of the same flagset are nonzero
@@ -869,22 +863,22 @@ where
         let pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
         let ap_up = cache.cache(f_ap_one + f_ap_add);
         let opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
-        constraints.push(op1_src.clone() * (T::one() - op1_src));
-        constraints.push(res_log.clone() * (T::one() - res_log));
-        constraints.push(pc_up.clone() * (T::one() - pc_up));
-        constraints.push(ap_up.clone() * (T::one() - ap_up));
-        constraints.push(opcode.clone() * (T::one() - opcode));
+        constraints.push(op1_src.clone() * (E::<F>::one() - op1_src));
+        constraints.push(res_log.clone() * (E::<F>::one() - res_log));
+        constraints.push(pc_up.clone() * (E::<F>::one() - pc_up));
+        constraints.push(ap_up.clone() * (E::<F>::one() - ap_up));
+        constraints.push(opcode.clone() * (E::<F>::one() - opcode));
 
         // * Shape of instruction
         let shape = {
-            let shift: T = cache.cache(two::<F, T>().pow(15)); // 2^15;
+            let shift: E<F> = cache.cache(two::<F, E<F>>().pow(15)); // 2^15;
             let double_shift = shift.double();
             let pow16 = cache.cache(double_shift); // 2^16
             let dst_sft = off_dst.clone() + shift.clone();
             let op0_sft = off_op0.clone() + shift.clone();
             let op1_sft = off_op1.clone() + shift;
             // recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
-            let mut aux: T = flags[14].clone();
+            let mut aux: E<F> = flags[14].clone();
             for i in (0..14).rev() {
                 aux = aux * two() + flags[i].clone();
             }
@@ -900,14 +894,16 @@ where
         // if dst_fp = 0 : dst_dir = ap + off_dst
         // if dst_fp = 1 : dst_dir = fp + off_dst
         constraints.push(
-            f_dst_fp.clone() * fp.clone() + (T::one() - f_dst_fp) * ap.clone() + off_dst - adr_dst,
+            f_dst_fp.clone() * fp.clone() + (E::<F>::one() - f_dst_fp) * ap.clone() + off_dst
+                - adr_dst,
         );
 
         // * First operand address
         // if op0_fp = 0 : op0_dir = ap + off_dst
         // if op0_fp = 1 : op0_dir = fp + off_dst
         constraints.push(
-            f_op0_fp.clone() * fp.clone() + (T::one() - f_op0_fp) * ap.clone() + off_op0 - adr_op0,
+            f_op0_fp.clone() * fp.clone() + (E::<F>::one() - f_op0_fp) * ap.clone() + off_op0
+                - adr_op0,
         );
 
         // * Second operand address
@@ -916,7 +912,7 @@ where
           - (f_op1_ap.clone() * ap                                                     // if op1_src == 4 : ap
           + f_op1_fp.clone() * fp.clone()                                                      // if op1_src == 2 : fp
           + f_op1_val.clone() * pc.clone()                                                     // if op1_src == 1 : pc
-          + (T::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() // if op1_src == 0 : op0
+          + (E::<F>::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() // if op1_src == 0 : op0
           + off_op1), //                                                                                        + off_op1
         );
 
@@ -924,10 +920,10 @@ where
 
         // * Check value of result
         constraints.push(
-            (T::one() - f_pc_jnz) * res.clone()                              // if pc_up != 4 : res = ..        // no res in conditional jumps
+            (E::<F>::one() - f_pc_jnz) * res.clone()                              // if pc_up != 4 : res = ..        // no res in conditional jumps
           - (f_res_mul.clone() * op0.clone() * op1.clone()                     //      if res_log = 2 : op0 * op1
           + f_res_add.clone() * (op0.clone() + op1.clone())                    //      if res_log = 1 : op0 + op1
-          + (T::one() - f_res_add - f_res_mul) * op1), //      if res_log = 0 : op1
+          + (E::<F>::one() - f_res_add - f_res_mul) * op1), //      if res_log = 0 : op1
         );
 
         // * Check storage of current fp for a call instruction
@@ -957,10 +953,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         // Load current row
         let f_pc_abs = env.witness_curr(7);
         let f_pc_rel = env.witness_curr(8);
@@ -988,7 +981,7 @@ where
         //  if ap_up == 1  : res
         //  if ap_up == 2  : 1
         // if opcode == 1  : 2
-        let mut constraints: Vec<T> =
+        let mut constraints: Vec<E<F>> =
             vec![apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.double())];
 
         // * Check next frame pointer
@@ -996,19 +989,19 @@ where
             fpup                                               //             next_fp =
                 - (f_opc_call.clone() * (ap + two())           // if opcode == 1      : ap + 2
                 + f_opc_ret.clone() * dst.clone()              // if opcode == 2      : dst
-                + (T::one() - f_opc_call - f_opc_ret) * fp ), // if opcode == 4 or 0 : fp
+                + (E::<F>::one() - f_opc_call - f_opc_ret) * fp ), // if opcode == 4 or 0 : fp
         );
 
         // * Check next program counter (pc update)
         constraints.push(
             f_pc_jnz.clone()
-                * (dst.clone() * res.clone() - T::one())
+                * (dst.clone() * res.clone() - E::<F>::one())
                 * (pcup.clone() - (pc.clone() + size.clone())),
         ); // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
         constraints.push(
             f_pc_jnz.clone() * dst * (pcup.clone() - (pc.clone() + op1))                         // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
-                    + (T::one() - f_pc_jnz.clone()) * pcup                                                       // <=> pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
-                        - (T::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) // <=> pc_up = 0              : next_pc = pc + size // common case
+                    + (E::<F>::one() - f_pc_jnz.clone()) * pcup                                                       // <=> pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
+                        - (E::<F>::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) // <=> pc_up = 0              : next_pc = pc + size // common case
                         - f_pc_abs * res.clone()                                                                    // <=> pc_up = 1              : next_pc = res       // absolute jump
                         - f_pc_rel * (pc + res), //                                                    <=> pc_up = 2              : next_pc = pc + res  // relative jump
         );
@@ -1027,10 +1020,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         // load computed updated registers
         let pcup = env.witness_curr(7);
         let apup = env.witness_curr(8);
@@ -1042,7 +1032,7 @@ where
 
         // * Check equality (like a copy constraint)
 
-        let constraints: Vec<T> = vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
+        let constraints: Vec<E<F>> = vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
 
         constraints
     }

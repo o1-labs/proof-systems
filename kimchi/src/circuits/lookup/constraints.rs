@@ -1,6 +1,6 @@
 use crate::{
     circuits::{
-        berkeley_columns::{BerkeleyChallengeTerm, Column},
+        berkeley_columns::{BerkeleyChallengeTerm, Column, E},
         expr::{prologue::*, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{

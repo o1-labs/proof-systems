@@ -556,7 +556,7 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(&mut self, e: T) -> T {
+    pub fn cache<F: Field, ChallengeTerm>(&mut self, e: E<F>) -> E<F> {
         e.cache(self)
     }
 }
@@ -3186,12 +3186,12 @@ pub mod constraints {
     use crate::circuits::berkeley_columns::{coeff, witness};
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(b: &T) -> T {
+    pub fn boolean<F: Field, ChallengeTerm>(b: &E<F>) -> E<F> {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(x: &T) -> T {
+    pub fn crumb<F: Field, ChallengeTerm>(x: &E<F>) -> E<F> {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -3200,11 +3200,8 @@ pub mod constraints {
     }
 
     /// lo + mi * 2^{LIMB_BITS}
-    pub fn compact_limb<F: Field, ChallengeTerm, T: ExprOps<F, ChallengeTerm>>(
-        lo: &T,
-        mi: &T,
-    ) -> T {
-        lo.clone() + mi.clone() * T::two_to_limb()
+    pub fn compact_limb<F: Field, ChallengeTerm>(lo: &E<F>, mi: &E<F>) -> E<F> {
+        lo.clone() + mi.clone() * E::<F>::two_to_limb()
     }
 }
 
@@ -3367,20 +3364,20 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
-            T::zero() + T::one()
+        fn test_1<F: Field>() -> E<F> {
+            E::<F>::zero() + E::<F>::one()
         }
         assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
         assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
-            T::one() + T::one()
+        fn test_2<F: Field>() -> E<F> {
+            E::<F>::one() + E::<F>::one()
         }
         assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
         assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
-            T::from(2u64) * x
+        fn test_3<F: Field>(x: E<F>) -> E<F> {
+            E::<F>::from(2u64) * x
         }
         assert_eq!(
             test_3::<Fp, E<Fp>>(E::from(3u64)),
@@ -3388,8 +3385,8 @@ pub mod test {
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
-            x.clone() * (x.square() + T::from(7u64))
+        fn test_4<F: Field>(x: E<F>) -> E<F> {
+            x.clone() * (x.square() + E::<F>::from(7u64))
         }
         assert_eq!(
             test_4::<Fp, E<Fp>>(E::from(5u64)),

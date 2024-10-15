@@ -4,7 +4,11 @@
 
 // TODO: write cargo specifications
 
-use crate::circuits::{berkeley_columns::Column, expr::prologue::*, gate::CurrOrNext};
+use crate::circuits::{
+    berkeley_columns::{Column, E},
+    expr::prologue::*,
+    gate::CurrOrNext,
+};
 
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
@@ -75,7 +79,7 @@ where
     //
     // runtime_table * selector_RT = 0
     //
-    let var = |x| E::cell(x, CurrOrNext::Curr);
+    let var = |x| E::<F>::cell(x, CurrOrNext::Curr);
 
     let rt_check = var(Column::LookupRuntimeTable) * var(Column::LookupRuntimeSelector);
 

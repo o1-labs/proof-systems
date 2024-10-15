@@ -151,11 +151,8 @@ where
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
-        let two = T::from(2u64);
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
+        let two = E::<F>::from(2u64);
         // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
         // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
         // out = out_0 + out_1 * 2^4 + out_2 * 2^8 + out_3 * 2^12 + next_out * 2^16
@@ -168,7 +165,7 @@ where
                     + two.clone().pow(16) * env.witness_next(i)
                     - env.witness_curr(i)
             })
-            .collect::<Vec<T>>()
+            .collect::<Vec<E<F>>>()
     }
 }
 
