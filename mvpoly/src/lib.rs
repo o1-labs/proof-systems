@@ -23,10 +23,16 @@ pub mod utils;
 
 /// Generic trait to represent a multi-variate polynomial
 pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
+    // Addition
     std::ops::Add<Self, Output = Self>
+    + for<'a> std::ops::Add<&'a Self, Output = Self>
+    // Mul
     + std::ops::Mul<Self, Output = Self>
+    // Negation
     + std::ops::Neg<Output = Self>
+    // Sub
     + std::ops::Sub<Self, Output = Self>
+    + for<'a> std::ops::Sub<&'a Self, Output = Self>
     + ark_ff::One
     + ark_ff::Zero
     + std::fmt::Debug
