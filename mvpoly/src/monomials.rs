@@ -222,7 +222,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sub for Sparse<F, N, D> {
             monomials
                 .entry(exponents)
                 .and_modify(|c| *c -= coeff)
-                .or_insert(coeff);
+                .or_insert(-coeff);
         });
         // Remove monomials with zero coefficients
         let monomials: HashMap<[usize; N], F> = monomials
@@ -246,7 +246,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sub<&Sparse<F, N, D>> for Sp
             monomials
                 .entry(*exponents)
                 .and_modify(|c| *c -= *coeff)
-                .or_insert(*coeff);
+                .or_insert(-*coeff);
         }
         // Remove monomials with zero coefficients
         let monomials: HashMap<[usize; N], F> = monomials
@@ -272,7 +272,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sub<Sparse<F, N, D>> for &Sp
             monomials
                 .entry(exponents)
                 .and_modify(|c| *c -= coeff)
-                .or_insert(coeff);
+                .or_insert(-coeff);
         }
         // Remove monomials with zero coefficients
         let monomials: HashMap<[usize; N], F> = monomials
@@ -298,7 +298,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Sub<&Sparse<F, N, D>> for &S
             monomials
                 .entry(*exponents)
                 .and_modify(|c| *c -= *coeff)
-                .or_insert(*coeff);
+                .or_insert(-*coeff);
         }
         // Remove monomials with zero coefficients
         let monomials: HashMap<[usize; N], F> = monomials
