@@ -1,13 +1,15 @@
-use num_bigint::BigInt;
-use std::collections::HashMap;
-
+use ark_ff::UniformRand;
 use arrabiata::{
-    columns::Gadget,
+    columns::{ChallengeTerm, Column, Gadget},
     constraints,
     interpreter::{self, Instruction},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAX_DEGREE, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS,
 };
 use mina_curves::pasta::fields::{Fp, Fq};
+use mvpoly::{monomials::Sparse, MVPoly};
+use num_bigint::BigInt;
+use std::collections::HashMap;
 
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
     let mut constraints_fp = {
@@ -163,4 +165,50 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_gadget_number_of_columns_used(instr, 10, 0);
 
     helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
+}
+
+// This test is mostly an example to show to compute the cross-terms when we do
+// have the expressions, and some evaluations.
+// It doesn't test anything in particular. It is mostly an "integration" test.
+#[test]
+fn test_integration_with_mvpoly_to_compute_cross_terms() {
+    let constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
+    };
+
+    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    // Simulating two homogenising values
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+
+    // Simulating two constraint combiners
+    let alpha_1 = Fp::rand(&mut rng);
+    let alpha_2 = Fp::rand(&mut rng);
+
+    // Simulating some row evaluations. Only 15 columns + 17 public inputs for
+    // now.
+    let eval1: [Fp; NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS] =
+        std::array::from_fn(|_| Fp::rand(&mut rng));
+    let eval2: [Fp; NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS] =
+        std::array::from_fn(|_| Fp::rand(&mut rng));
+
+    let polys = constraints
+        .iter()
+        .map(|c| {
+            // Adding one to the maximum degree to account for the variable α.
+            Sparse::<
+                    Fp,
+                    { NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS },
+                    { MAX_DEGREE as usize + 1 },
+                >::from_expr::<Column, ChallengeTerm>(
+                    c.clone(),
+                    Some(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
+                )
+        })
+        .collect();
+    let _cross_terms =
+        mvpoly::compute_combined_cross_terms(polys, alpha_1, alpha_2, eval1, eval2, u1, u2);
 }
