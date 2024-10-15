@@ -975,23 +975,23 @@ impl<C: From<u64> + Clone, Column: Clone> Expr<C, Column> {
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb(x: &Self) -> Self {
+    pub fn crumb(self) -> Self {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         Expr::Mul(
-            Box::new(x.clone()),
+            Box::new(self.clone()),
             Box::new(Expr::Mul(
                 Box::new(Expr::Mul(
                     Box::new(Expr::Sub(
-                        Box::new(x.clone()),
+                        Box::new(self.clone()),
                         Box::new(Self::from_cst(1u64)),
                     )),
                     Box::new(Expr::Sub(
-                        Box::new(x.clone()),
+                        Box::new(self.clone()),
                         Box::new(Self::from_cst(2u64)),
                     )),
                 )),
                 Box::new(Expr::Sub(
-                    Box::new(x.clone()),
+                    Box::new(self.clone()),
                     Box::new(Self::from_cst(3u64)),
                 )),
             )),
