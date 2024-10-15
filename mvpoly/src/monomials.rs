@@ -1,5 +1,12 @@
 use ark_ff::{One, PrimeField, Zero};
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::{
+    expr::{
+        ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner,
+        Operations::{self, *},
+        Variable,
+    },
+    gate::CurrOrNext,
+};
 use num_integer::binomial;
 use rand::RngCore;
 use std::{
@@ -438,7 +445,61 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
     fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(
         expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
     ) -> Self {
-        prime::Dense::from_expr(expr).into()
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from(c),
+                    ExprInner::Cell(Variable { col, row }) => {
+                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
+                        Self::from_variable(col)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Self::from_expr(*p);
+                p.double()
+            }
+            Square(p) => {
+                let p = Self::from_expr(*p);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from_expr(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module monomials is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module monomials is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
     }
 
     fn is_homogeneous(&self) -> bool {
@@ -626,5 +687,60 @@ impl<F: PrimeField, const N: usize, const D: usize, const M: usize> From<Sparse<
             monomials.insert(new_exponents, *coeff);
         });
         Ok(Sparse { monomials })
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm>
+    From<ConstantExprInner<F, ChallengeTerm>> for Sparse<F, N, D>
+{
+    fn from(expr: ConstantExprInner<F, ChallengeTerm>) -> Self {
+        match expr {
+            ConstantExprInner::Challenge(_) => {
+                unimplemented!("Challenges are not supposed to be used in this context for now")
+            }
+            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
+                unimplemented!(
+                    "The constant EndoCoefficient is not supposed to be used in this context"
+                )
+            }
+            ConstantExprInner::Constant(ConstantTerm::Mds {
+                row: _row,
+                col: _col,
+            }) => {
+                unimplemented!("The constant Mds is not supposed to be used in this context")
+            }
+            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Self::from(c),
+        }
+    }
+}
+
+impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm: Clone>
+    From<Operations<ConstantExprInner<F, ChallengeTerm>>> for Sparse<F, N, D>
+{
+    fn from(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+        match op {
+            Atom(op_const) => Self::from(op_const),
+            Add(c1, c2) => Self::from(*c1) + Self::from(*c2),
+            Sub(c1, c2) => Self::from(*c1) - Self::from(*c2),
+            Mul(c1, c2) => Self::from(*c1) * Self::from(*c2),
+            Square(c) => Self::from(*c.clone()) * Self::from(*c),
+            Double(c1) => Self::from(*c1).double(),
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The module monomials is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The module monomials is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
     }
 }

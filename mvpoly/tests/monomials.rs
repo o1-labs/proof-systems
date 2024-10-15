@@ -1,4 +1,9 @@
 use ark_ff::{Field, One, UniformRand, Zero};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
 use rand::Rng;
@@ -529,4 +534,164 @@ fn test_build_from_variable() {
     let eval: [Fp; 4] = std::array::from_fn(|_i| Fp::rand(&mut rng));
 
     assert_eq!(p.eval(&eval), eval[idx]);
+}
+
+/// As a reminder, here are the equations to compute the addition of two
+/// different points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let `P3 = (X3,
+/// Y3) = P1 + P2`.
+///
+/// ```text
+/// - λ = (Y1 - Y2) / (X1 - X2)
+/// - X3 = λ^2 - X1 - X2
+/// - Y3 = λ (X1 - X3) - Y1
+/// ```
+///
+/// Therefore, the addition of elliptic curve points can be computed using the
+/// following degree-2 constraints
+///
+/// ```text
+/// - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+/// - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+/// - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+/// ```
+#[test]
+fn test_from_expr_ec_addition() {
+    // Simulate a real usecase
+    // The following lines/design look similar to the ones we use in
+    // o1vm/arrabiata
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    struct Constraint {
+        idx: usize,
+    }
+
+    trait Interpreter {
+        type Position: Clone + Copy;
+
+        type Variable: Clone
+            + std::ops::Add<Self::Variable, Output = Self::Variable>
+            + std::ops::Sub<Self::Variable, Output = Self::Variable>
+            + std::ops::Mul<Self::Variable, Output = Self::Variable>;
+
+        fn allocate(&mut self) -> Self::Position;
+
+        // Simulate fetching/reading a value from outside
+        // In the case of the witness, it will be getting a value from the
+        // environment
+        fn fetch(&self, pos: Self::Position) -> Self::Variable;
+    }
+
+    impl Interpreter for Constraint {
+        type Position = Column;
+
+        type Variable = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
+
+        fn allocate(&mut self) -> Self::Position {
+            let col = Column::X(self.idx);
+            self.idx += 1;
+            col
+        }
+
+        fn fetch(&self, col: Self::Position) -> Self::Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        }
+    }
+
+    impl Constraint {
+        fn new() -> Self {
+            Self { idx: 0 }
+        }
+    }
+
+    let mut interpreter = Constraint::new();
+    // Constraints for elliptic curve addition, without handling the case of the
+    // point at infinity or double
+    let lambda = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let y1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let x3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    // Check we can convert into a Sparse polynomial.
+    // We have 7 variables, maximum degree 2.
+    // We test by evaluating at a random point.
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    {
+        // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+        let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
+
+        let p = Sparse::<Fp, 7, 2>::from_expr(expression);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[0] * (random_evaluation[1] - random_evaluation[2])
+                - (random_evaluation[3] - random_evaluation[4])
+        };
+        assert_eq!(eval, exp_eval);
+    }
+
+    {
+        // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+        let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
+        let p = Sparse::<Fp, 7, 2>::from_expr(expr);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[5] + random_evaluation[1] + random_evaluation[2]
+                - random_evaluation[0] * random_evaluation[0]
+        };
+        assert_eq!(eval, exp_eval);
+    }
+    {
+        // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+        let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
+        let p = Sparse::<Fp, 7, 2>::from_expr(expr);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[6]
+                - random_evaluation[0] * (random_evaluation[1] - random_evaluation[5])
+                + random_evaluation[3]
+        };
+        assert_eq!(eval, exp_eval);
+    }
 }
