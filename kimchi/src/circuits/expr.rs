@@ -165,9 +165,13 @@ pub enum ConstantTerm<F> {
 
 pub trait Literal: Sized + Clone {
     type F;
+
     fn literal(x: Self::F) -> Self;
+
     fn to_literal(self) -> Result<Self::F, Self>;
+
     fn to_literal_ref(&self) -> Option<&Self::F>;
+
     /// Obtains the representation of some constants as a literal.
     /// This is useful before converting Kimchi expressions with constants
     /// to folding compatible expressions.
@@ -176,15 +180,19 @@ pub trait Literal: Sized + Clone {
 
 impl<F: Field> Literal for F {
     type F = F;
+
     fn literal(x: Self::F) -> Self {
         x
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         Ok(self)
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
+
     fn as_literal(&self, _constants: &Constants<Self::F>) -> Self {
         *self
     }
@@ -291,9 +299,11 @@ impl<T> From<T> for Operations<T> {
 
 impl<T: Literal + Clone> Literal for Operations<T> {
     type F = T::F;
+
     fn literal(x: Self::F) -> Self {
         Self::Atom(T::literal(x))
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
             Self::Atom(x) => match x.to_literal() {
@@ -303,12 +313,14 @@ impl<T: Literal + Clone> Literal for Operations<T> {
             x => Err(x),
         }
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         match self {
             Self::Atom(x) => x.to_literal_ref(),
             _ => None,
         }
     }
+
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
         match self {
             Self::Atom(x) => Self::Atom(x.as_literal(constants)),
@@ -531,10 +543,6 @@ impl CacheId {
     fn latex_name(&self) -> String {
         format!("x_{{{}}}", self.0)
     }
-
-    fn text_name(&self) -> String {
-        format!("x[{}]", self.0)
-    }
 }
 
 impl Cache {
@@ -631,9 +639,11 @@ impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
 
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
+
     fn literal(x: Self::F) -> Self {
         ExprInner::Constant(T::literal(x))
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
             ExprInner::Constant(x) => match x.to_literal() {
@@ -643,12 +653,14 @@ impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
             x => Err(x),
         }
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         match self {
             ExprInner::Constant(x) => x.to_literal_ref(),
             _ => None,
         }
     }
+
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
         match self {
             ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
@@ -977,7 +989,8 @@ where
     ChallengeTerm: AlphaChallengeTerm<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.text_str())
+        let cache = &mut HashMap::new();
+        write!(f, "{}", self.text(cache))
     }
 }
 
@@ -2951,33 +2964,21 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     }
 }
 
-impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm>
-    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm> FormattedOutput
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 where
     F: PrimeField,
     ChallengeTerm: AlphaChallengeTerm<'a>,
 {
-    /// Converts the expression in OCaml code
-    pub fn ocaml_str(&self) -> String {
-        let mut env = HashMap::new();
-        let e = self.ocaml(&mut env);
-
-        let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
-
-        let mut res = String::new();
-        for (k, v) in env {
-            let rhs = v.ocaml_str();
-            let cached = format!("let {} = {rhs} in ", k.var_name());
-            res.push_str(&cached);
+    fn is_alpha(&self) -> bool {
+        use ExprInner::*;
+        use Operations::*;
+        match self {
+            Atom(Constant(x)) => x.is_alpha(),
+            _ => false,
         }
-
-        res.push_str(&e);
-        res
     }
-
+    /// Converts the expression in OCaml code
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
     fn ocaml(
@@ -3021,27 +3022,6 @@ where
                 )
             }
         }
-    }
-
-    /// Converts the expression in LaTeX
-    pub fn latex_str(&self) -> Vec<String> {
-        let mut env = HashMap::new();
-        let e = self.latex(&mut env);
-
-        let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
-
-        let mut res = vec![];
-        for (k, v) in env {
-            let mut rhs = v.latex_str();
-            let last = rhs.pop().expect("returned an empty expression");
-            res.push(format!("{} = {last}", k.latex_name()));
-            res.extend(rhs);
-        }
-        res.push(e);
-        res
     }
 
     fn latex(
@@ -3137,24 +3117,33 @@ where
             IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
+}
 
-    /// Converts the expression to a text string
-    pub fn text_str(&self) -> String {
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+where
+    F: PrimeField,
+    ChallengeTerm: AlphaChallengeTerm<'a>,
+{
+    /// Converts the expression in LaTeX
+    // It is only used by visual tooling like kimchi-visu
+    pub fn latex_str(&self) -> Vec<String> {
         let mut env = HashMap::new();
-        let e = self.text(&mut env);
+        let e = self.latex(&mut env);
 
         let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
+        // HashMap deliberately uses an unstable order; here we sort to ensure
+        // that the output is consistent when printing.
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
-        let mut res = String::new();
+        let mut res = vec![];
         for (k, v) in env {
-            let str = format!("{} = {}", k.text_name(), v.text_str());
-            res.push_str(&str);
+            let mut rhs = v.latex_str();
+            let last = rhs.pop().expect("returned an empty expression");
+            res.push(format!("{} = {last}", k.latex_name()));
+            res.extend(rhs);
         }
-
-        res.push_str(&e);
+        res.push(e);
         res
     }
 }
