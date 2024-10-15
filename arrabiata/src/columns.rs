@@ -8,6 +8,8 @@ use std::{
 };
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
+use crate::NUMBER_OF_COLUMNS;
+
 /// This enum represents the different gadgets that can be used in the circuit.
 /// The selectors are defined at setup time, can take only the values `0` or
 /// `1` and are public.
@@ -47,7 +49,8 @@ impl From<Column> for usize {
     fn from(val: Column) -> usize {
         match val {
             Column::X(i) => i,
-            _ => unimplemented!("Only the private inputs are supported for now"),
+            Column::PublicInput(i) => NUMBER_OF_COLUMNS + i,
+            Column::Selector(_) => unimplemented!("Selectors are not supported"),
         }
     }
 }
