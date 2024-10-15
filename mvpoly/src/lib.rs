@@ -10,14 +10,12 @@
 //! "Expressions", as defined in the [kimchi] crate, can be converted into a
 //! multi-variate polynomial using the `from_expr` method.
 
-use std::collections::HashMap;
-
 use ark_ff::PrimeField;
-use kimchi::circuits::{
-    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext,
+use kimchi::circuits::expr::{
+    ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable,
 };
 use rand::RngCore;
+use std::collections::HashMap;
 
 pub mod monomials;
 pub mod pbt;
@@ -95,7 +93,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// used.
     /// For [crate::monomials], the output must be the index of the variable,
     /// starting from `0`.
-    fn from_variable<Column: Into<usize>>(var: Column) -> Self;
+    fn from_variable<Column: Into<usize>>(var: Variable<Column>) -> Self;
 
     fn from_constant<ChallengeTerm: Clone>(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
         use kimchi::circuits::expr::Operations::*;
@@ -160,9 +158,8 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
                         unimplemented!("Not used in this context")
                     }
                     ExprInner::Constant(c) => Self::from_constant(c),
-                    ExprInner::Cell(Variable { col, row }) => {
-                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
-                        Self::from_variable(col)
+                    ExprInner::Cell(var) => {
+                        Self::from_variable(var)
                     }
                 }
             }

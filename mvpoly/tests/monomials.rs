@@ -476,7 +476,10 @@ fn test_build_from_variable() {
 
     let mut rng = o1_utils::tests::make_test_rng(None);
     let idx: usize = rng.gen_range(0..4);
-    let p = Sparse::<Fp, 4, 3>::from_variable(Column::X(idx));
+    let p = Sparse::<Fp, 4, 3>::from_variable(Variable {
+        col: Column::X(idx),
+        row: CurrOrNext::Curr,
+    });
 
     let eval: [Fp; 4] = std::array::from_fn(|_i| Fp::rand(&mut rng));
 

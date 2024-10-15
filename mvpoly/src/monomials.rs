@@ -1,4 +1,5 @@
 use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
 use rand::RngCore;
 use std::{
@@ -355,8 +356,14 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         prime::Dense::random(rng, max_degree).into()
     }
 
-    fn from_variable<Column: Into<usize>>(var: Column) -> Self {
-        let var_usize: usize = var.into();
+    fn from_variable<Column: Into<usize>>(var: Variable<Column>) -> Self {
+        let Variable { col, row } = var;
+        assert_eq!(
+            row,
+            CurrOrNext::Curr,
+            "Only current row is supported for now. You cannot reference the next row"
+        );
+        let var_usize: usize = col.into();
         let mut monomials = HashMap::new();
         let exponents: [usize; N] = std::array::from_fn(|i| if i == var_usize { 1 } else { 0 });
         monomials.insert(exponents, F::one());

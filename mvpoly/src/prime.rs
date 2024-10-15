@@ -148,6 +148,7 @@ use std::{
 };
 
 use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
 use rand::{Rng, RngCore};
@@ -337,11 +338,17 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
-    fn from_variable<Column: Into<usize>>(var: Column) -> Self {
+    fn from_variable<Column: Into<usize>>(var: Variable<Column>) -> Self {
+        let Variable { col, row } = var;
+        assert_eq!(
+            row,
+            CurrOrNext::Curr,
+            "Only current row is supported for now. You cannot reference the next row"
+        );
         let mut res = Self::zero();
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
-        let var_usize: usize = var.into();
+        let var_usize: usize = col.into();
         assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
         let inv_var = res
             .normalized_indices

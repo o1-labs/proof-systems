@@ -247,34 +247,6 @@ fn test_mul_by_scalar_with_from() {
 }
 
 #[test]
-fn test_from_variable() {
-    // Test for y variable (index 2)
-    let y = Dense::<Fp, 4, 5>::from_variable(2_usize);
-    assert_eq!(y[1], Fp::one());
-    assert_eq!(y[0], Fp::zero());
-    assert_eq!(y[2], Fp::zero());
-    assert_eq!(y[3], Fp::zero());
-    assert_eq!(y[4], Fp::zero());
-    assert_eq!(y[5], Fp::zero());
-
-    // Test for z variable (index 3)
-    let z = Dense::<Fp, 4, 5>::from_variable(3_usize);
-    assert_eq!(z[0], Fp::zero());
-    assert_eq!(z[1], Fp::zero());
-    assert_eq!(z[2], Fp::one());
-    assert_eq!(z[3], Fp::zero());
-    assert_eq!(z[4], Fp::zero());
-
-    // Test for w variable (index 5)
-    let w = Dense::<Fp, 4, 5>::from_variable(5_usize);
-    assert_eq!(w[0], Fp::zero());
-    assert_eq!(w[1], Fp::zero());
-    assert_eq!(w[2], Fp::zero());
-    assert_eq!(w[3], Fp::zero());
-    assert_eq!(w[4], Fp::one());
-}
-
-#[test]
 fn test_from_variable_column() {
     // Simulate a real usecase
     enum Column {
@@ -292,7 +264,10 @@ fn test_from_variable_column() {
         }
     }
 
-    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(0));
+    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
+        col: Column::X(0),
+        row: CurrOrNext::Curr,
+    });
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::one());
     assert_eq!(p[2], Fp::zero());
@@ -301,7 +276,10 @@ fn test_from_variable_column() {
     assert_eq!(p[5], Fp::zero());
 
     // Test for z variable (index 3)
-    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(1));
+    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
+        col: Column::X(1),
+        row: CurrOrNext::Curr,
+    });
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::zero());
     assert_eq!(p[2], Fp::one());
@@ -309,7 +287,10 @@ fn test_from_variable_column() {
     assert_eq!(p[4], Fp::zero());
 
     // Test for w variable (index 5)
-    let p = Dense::<Fp, 4, 5>::from_variable(Column::X(2));
+    let p = Dense::<Fp, 4, 5>::from_variable(Variable {
+        col: Column::X(2),
+        row: CurrOrNext::Curr,
+    });
     assert_eq!(p[0], Fp::zero());
     assert_eq!(p[1], Fp::zero());
     assert_eq!(p[2], Fp::zero());
@@ -582,10 +563,18 @@ fn test_is_constant() {
     let p = Dense::<Fp, 4, 5>::zero();
     assert!(p.is_constant());
 
-    let p = Dense::<Fp, 4, 5>::from_variable(2_usize);
+    let p = {
+        let mut res = Dense::<Fp, 4, 5>::zero();
+        res.add_monomial([1, 0, 0, 0], Fp::one());
+        res
+    };
     assert!(!p.is_constant());
 
-    let p = Dense::<Fp, 4, 5>::from_variable(3_usize);
+    let p = {
+        let mut res = Dense::<Fp, 4, 5>::zero();
+        res.add_monomial([0, 1, 0, 0], Fp::one());
+        res
+    };
     assert!(!p.is_constant());
 
     // This might be flaky
