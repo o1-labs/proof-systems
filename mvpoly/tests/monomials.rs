@@ -40,65 +40,12 @@ fn test_neg() {
 
 #[test]
 fn test_eval_pbt_add() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    {
-        let p3 = p1.clone() + p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    // For code coverage, using ref
-    {
-        let p3 = &p1 + p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    {
-        let p3 = &p1 + &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    {
-        let p3 = p1 + &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
+    mvpoly::pbt::test_eval_pbt_add::<Fp, 6, 4, Sparse<Fp, 6, 4>>();
 }
 
 #[test]
 fn test_eval_pbt_sub() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    {
-        let p3 = p1.clone() - p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = &p1 - p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = p1.clone() - &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = &p1 - &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
+    mvpoly::pbt::test_eval_pbt_sub::<Fp, 6, 4, Sparse<Fp, 6, 4>>();
 }
 
 #[test]
