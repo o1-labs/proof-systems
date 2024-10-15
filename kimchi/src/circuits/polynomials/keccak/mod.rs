@@ -101,11 +101,11 @@ impl Keccak {
     }
 
     /// Expands a u64 word into a vector of 4 sparse u64 quarters
-    pub fn expand_word<F: PrimeField>(word: u64) -> Vec<E<F>> {
+    pub fn expand_word<F: PrimeField>(word: u64) -> Vec<u64> {
         Self::decompose(word)
             .iter()
             .map(|q| E::<F>::literal(F::from(Self::expand(*q))))
-            .collect::<Vec<E<F>>>()
+            .collect::<Vec<u64>>()
     }
 
     /// Returns the expansion of the 4 dense decomposed quarters of a word where

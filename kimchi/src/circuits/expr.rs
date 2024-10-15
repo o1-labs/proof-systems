@@ -164,7 +164,7 @@ pub enum ConstantTerm<F> {
 }
 
 pub trait Literal: Sized + Clone {
-    type F;
+    type F: Field;
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
@@ -190,7 +190,7 @@ impl<F: Field> Literal for F {
     }
 }
 
-impl<F: Clone> Literal for ConstantTerm<F> {
+impl<F: Clone + Field> Literal for ConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         ConstantTerm::Literal(x)
@@ -226,7 +226,7 @@ pub enum ConstantExprInner<F, ChallengeTerm> {
     Constant(ConstantTerm<F>),
 }
 
-impl<'a, F: Clone, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
+impl<'a, F: Clone + Field, ChallengeTerm: AlphaChallengeTerm<'a>> Literal
     for ConstantExprInner<F, ChallengeTerm>
 {
     type F = F;
@@ -932,7 +932,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
     }
 }
 
-impl<C, Column> Expr<C, Column> {
+impl<C: From<u64> + Clone, Column: Clone> Expr<C, Column> {
     /// Convenience function for constructing cell variables.
     pub fn cell(col: Column, row: CurrOrNext) -> Expr<C, Column> {
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
@@ -946,9 +946,56 @@ impl<C, Column> Expr<C, Column> {
         Expr::Square(Box::new(self))
     }
 
+    pub fn from_cst(x: u64) -> Self {
+        Expr::Atom(ExprInner::Constant((x).into()))
+    }
+
+    pub fn one() -> Self {
+        Self::from_cst(1 as u64)
+    }
+
+    pub fn zero() -> Self {
+        Self::from_cst(0 as u64)
+    }
+
+    pub fn boolean(self) -> Self {
+        Expr::Mul(
+            Box::new(self.clone()),
+            Box::new(Expr::Sub(Box::new(self.clone()), Box::new(Self::one()))),
+        )
+    }
+
+    pub fn two_pow(exp: u64) -> Self {
+        Expr::Pow(Box::new(Self::from_cst(2 as u64)), exp)
+    }
+
     /// Convenience function for constructing constant expressions.
     pub fn constant(c: C) -> Expr<C, Column> {
         Expr::Atom(ExprInner::Constant(c))
+    }
+
+    /// Crumb constraint for 2-bit value x
+    pub fn crumb(x: &Self) -> Self {
+        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
+        Expr::Mul(
+            Box::new(x.clone()),
+            Box::new(Expr::Mul(
+                Box::new(Expr::Mul(
+                    Box::new(Expr::Sub(
+                        Box::new(x.clone()),
+                        Box::new(Self::from_cst(1u64)),
+                    )),
+                    Box::new(Expr::Sub(
+                        Box::new(x.clone()),
+                        Box::new(Self::from_cst(2u64)),
+                    )),
+                )),
+                Box::new(Expr::Sub(
+                    Box::new(x.clone()),
+                    Box::new(Self::from_cst(3u64)),
+                )),
+            )),
+        )
     }
 
     /// Return the degree of the expression.
@@ -990,6 +1037,31 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.text_str())
+    }
+}
+
+impl<T: Literal> Operations<T> {
+    pub fn two_to_limb() -> Self {
+        Self::literal(KimchiForeignElement::<T::F>::two_to_limb())
+    }
+
+    pub fn two_to_2limb() -> Self {
+        Self::literal(KimchiForeignElement::<T::F>::two_to_2limb())
+    }
+
+    pub fn two_to_3limb() -> Self {
+        Self::literal(KimchiForeignElement::<T::F>::two_to_3limb())
+    }
+
+    /// lo + mi * 2^{LIMB_BITS}
+    pub fn compact_limb(lo: &Self, mi: &Self) -> Self {
+        Self::Add(
+            Box::new(lo.clone()),
+            Box::new(Self::Mul(
+                Box::new(mi.clone()),
+                Box::new(Self::two_to_limb()),
+            )),
+        )
     }
 }
 

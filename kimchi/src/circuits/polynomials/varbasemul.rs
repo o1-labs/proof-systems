@@ -231,7 +231,7 @@ fn single_bit<F: FftField>(
 ) -> Vec<E<F>> {
     let b_sign = b.double() - E::<F>::one();
 
-    let s1_squared = cache.cache(s1.clone() * s1.clone());
+    let s1_squared = cache.cache::<F, BerkeleyChallengeTerm>(s1.clone() * s1.clone());
 
     // s1 = (input.y - (2b - 1) * base.y) / (input.x - base.x)
     // s2 = 2*input.y / (2*input.x + base.x – s1^2) - s1
@@ -239,8 +239,8 @@ fn single_bit<F: FftField>(
     // output.y = (input.x – output.x) * s2 - input.y
 
     let rx = s1_squared.clone() - input.x.clone() - base.x.clone();
-    let t = cache.cache(input.x.clone() - rx);
-    let u = cache.cache(input.y.double() - t.clone() * s1.clone());
+    let t = cache.cache::<F, BerkeleyChallengeTerm>(input.x.clone() - rx);
+    let u = cache.cache::<F, BerkeleyChallengeTerm>(input.y.double() - t.clone() * s1.clone());
     // s2 = u / t
 
     // output.x = base.x + s2^2 - s1^2
@@ -282,7 +282,7 @@ trait FromWitness<F>
 where
     F: PrimeField,
 {
-    fn new_from_env(&self, env: &ArgumentEnv<F,E<F>>) -> E<Fs>;
+    fn new_from_env(&self, env: &ArgumentEnv<F, E<F>>) -> E<F>;
 }
 
 impl<F> FromWitness<F> for Variable
@@ -416,7 +416,7 @@ where
             ss,
             n_prev,
             n_next,
-        } = Layout::create().new_from_env::<F, E<F>>(env);
+        } = Layout::create().new_from_env::<F>(env);
 
         // n'
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4

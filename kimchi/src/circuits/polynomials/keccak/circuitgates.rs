@@ -179,7 +179,7 @@ where
                 word_c * E::<F>::two_pow(1) - (quotient_c(x) * E::<F>::two_pow(64) + rem_c.clone()),
             );
             constraints.push(rot_c - (quotient_c(x) + rem_c));
-            constraints.push(boolean(&quotient_c(x)));
+            constraints.push(boolean::<F, BerkeleyChallengeTerm>(&quotient_c(x)));
 
             for q in 0..QUARTERS {
                 state_c[x][q] = state_a(0, x, q)

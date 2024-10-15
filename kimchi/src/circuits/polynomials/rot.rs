@@ -215,7 +215,7 @@ where
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
-            .map(|i| crumb(&env.witness_curr(i)))
+            .map(|i| crumb::<F, BerkeleyChallengeTerm>(&env.witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
         // NOTE:

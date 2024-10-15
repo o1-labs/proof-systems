@@ -185,10 +185,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks(
-        env: &ArgumentEnv<F, E<F>>,
-        cache: &mut Cache,
-    ) -> Vec<E<F>> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, cache: &mut Cache) -> Vec<E<F>> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);
@@ -210,14 +207,17 @@ where
         let s3 = env.witness_curr(10);
 
         let endo_minus_1 = env.endo_coefficient() - E::<F>::one();
-        let xq1 = cache.cache((E::<F>::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-        let xq2 = cache.cache((E::<F>::one() + b3.clone() * endo_minus_1) * xt);
+        let xq1 = cache.cache::<F, BerkeleyChallengeTerm>(
+            (E::<F>::one() + b1.clone() * endo_minus_1.clone()) * xt.clone(),
+        );
+        let xq2 = cache
+            .cache::<F, BerkeleyChallengeTerm>((E::<F>::one() + b3.clone() * endo_minus_1) * xt);
 
         let yq1 = (b2.double() - E::<F>::one()) * yt.clone();
         let yq2 = (b4.double() - E::<F>::one()) * yt;
 
-        let s1_squared = cache.cache(s1.square());
-        let s3_squared = cache.cache(s3.square());
+        let s1_squared = cache.cache::<F, BerkeleyChallengeTerm>(s1.square());
+        let s3_squared = cache.cache::<F, BerkeleyChallengeTerm>(s3.square());
 
         // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
         let n = env.witness_curr(6);
@@ -227,11 +227,11 @@ where
                 + b4.clone()
                 - n_next;
 
-        let xp_xr = cache.cache(xp.clone() - xr.clone());
-        let xr_xs = cache.cache(xr.clone() - xs.clone());
+        let xp_xr = cache.cache::<F, BerkeleyChallengeTerm>(xp.clone() - xr.clone());
+        let xr_xs = cache.cache::<F, BerkeleyChallengeTerm>(xr.clone() - xs.clone());
 
-        let ys_yr = cache.cache(ys + yr.clone());
-        let yr_yp = cache.cache(yr.clone() + yp.clone());
+        let ys_yr = cache.cache::<F, BerkeleyChallengeTerm>(ys + yr.clone());
+        let yr_yp = cache.cache::<F, BerkeleyChallengeTerm>(yr.clone() + yp.clone());
 
         vec![
             // verify booleanity of the scalar bits

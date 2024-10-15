@@ -858,11 +858,13 @@ where
 
         // * Check no two flagbits of the same flagset are nonzero
         // TODO(querolita): perhaps these are redundant considering all of the logics below
-        let op1_src = cache.cache(f_op1_ap.clone() + f_op1_fp.clone() + f_op1_val.clone());
-        let res_log = cache.cache(f_res_mul.clone() + f_res_add.clone());
-        let pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
-        let ap_up = cache.cache(f_ap_one + f_ap_add);
-        let opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
+        let op1_src = cache.cache::<F,BerkeleyChallengeTerm>::<F, BerkeleyChallengeTerm>(
+            f_op1_ap.clone() + f_op1_fp.clone() + f_op1_val.clone(),
+        );
+        let res_log = cache.cache::<F,BerkeleyChallengeTerm>(f_res_mul.clone() + f_res_add.clone());
+        let pc_up = cache.cache::<F,BerkeleyChallengeTerm>(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
+        let ap_up = cache.cache::<F,BerkeleyChallengeTerm>(f_ap_one + f_ap_add);
+        let opcode = cache.cache::<F,BerkeleyChallengeTerm>(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
         constraints.push(op1_src.clone() * (E::<F>::one() - op1_src));
         constraints.push(res_log.clone() * (E::<F>::one() - res_log));
         constraints.push(pc_up.clone() * (E::<F>::one() - pc_up));
@@ -871,9 +873,9 @@ where
 
         // * Shape of instruction
         let shape = {
-            let shift: E<F> = cache.cache(two::<F, E<F>>().pow(15)); // 2^15;
+            let shift: E<F> = cache.cache::<F,BerkeleyChallengeTerm>(two::<F>().pow(15)); // 2^15;
             let double_shift = shift.double();
-            let pow16 = cache.cache(double_shift); // 2^16
+            let pow16 = cache.cache::<F,BerkeleyChallengeTerm>(double_shift); // 2^16
             let dst_sft = off_dst.clone() + shift.clone();
             let op0_sft = off_op0.clone() + shift.clone();
             let op1_sft = off_op1.clone() + shift;

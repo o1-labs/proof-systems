@@ -359,7 +359,7 @@ where
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(
+                    cache.cache::<F, BerkeleyChallengeTerm>(
                         env.witness_curr(i)
                             .pow(u64::from(PlonkSpongeConstantsKimchi::PERM_SBOX)),
                     )

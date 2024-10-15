@@ -176,10 +176,7 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks(
-        env: &ArgumentEnv<F, E<F>>,
-        _cache: &mut Cache,
-    ) -> Vec<E<F>> {
+    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, _cache: &mut Cache) -> Vec<E<F>> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -189,7 +186,7 @@ where
         //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         let mut constraints = (7..COLUMNS)
-            .map(|i| crumb(&env.witness_curr(i)))
+            .map(|i| crumb::<F, BerkeleyChallengeTerm>(&env.witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
         // 2) Constrain that the combined limbs equals the value v stored in w(0):

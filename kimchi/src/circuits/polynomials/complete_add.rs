@@ -120,8 +120,8 @@ where
         // This variable is used to constrain same_x
         let x21_inv = env.witness_curr(10);
 
-        let x21 = cache.cache(x2.clone() - x1.clone());
-        let y21 = cache.cache(y2 - y1.clone());
+        let x21 = cache.cache::<F, BerkeleyChallengeTerm>(x2.clone() - x1.clone());
+        let y21 = cache.cache::<F, BerkeleyChallengeTerm>(y2 - y1.clone());
 
         // same_x is now constrained
         let mut res = zero_check(x21.clone(), x21_inv, same_x.clone());
@@ -132,7 +132,7 @@ where
         // else:
         //   (x2 - x1) * s = y2 - y1
         {
-            let x1_squared = cache.cache(x1.clone() * x1.clone());
+            let x1_squared = cache.cache::<F, BerkeleyChallengeTerm>(x1.clone() * x1.clone());
             let dbl_case = s.double() * y1.clone() - x1_squared.double() - x1_squared;
             let add_case = x21 * s.clone() - y21.clone();
 

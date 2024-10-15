@@ -188,7 +188,9 @@ where
         let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
-        let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+        let c_funcs: [_; 8] = array::from_fn(|i| {
+            cache.cache::<F, BerkeleyChallengeTerm>(polynomial(&c_coeffs[..], &xs[i]))
+        });
         let d_funcs: [_; 8] =
             array::from_fn(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
