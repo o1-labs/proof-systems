@@ -263,7 +263,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 })
                 .collect()
         };
-        Dense {
+        Self {
             coeff,
             normalized_indices,
         }
@@ -378,31 +378,31 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 }
             }
             Add(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 + p2
             }
             Sub(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 - p2
             }
             Mul(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
+                let p1 = Self::from_expr(*e1);
+                let p2 = Self::from_expr(*e2);
                 p1 * p2
             }
             Double(p) => {
-                let p = Dense::from_expr(*p);
+                let p = Self::from_expr(*p);
                 p.double()
             }
             Square(p) => {
-                let p = Dense::from_expr(*p);
+                let p = Self::from_expr(*p);
                 p.clone() * p.clone()
             }
             Pow(c, e) => {
                 // FIXME: dummy implementation
-                let p = Dense::from_expr(*c);
+                let p = Self::from_expr(*c);
                 let mut result = p.clone();
                 for _ in 0..e {
                     result = result.clone() * p.clone();
@@ -515,7 +515,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     pub fn new() -> Self {
         let normalized_indices = Self::compute_normalized_indices();
-        Dense {
+        Self {
             coeff: vec![F::zero(); Self::dimension()],
             normalized_indices,
         }
@@ -665,7 +665,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        let mut result = Dense::new();
+        let mut result = Self::new();
         for i in 0..self.coeff.len() {
             result.coeff[i] = self.coeff[i] - other.coeff[i];
         }
@@ -683,7 +683,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Den
             .zip(other.coeff.iter())
             .map(|(a, b)| *a - *b)
             .collect();
-        Dense::from_coeffs(coeffs)
+        Self::from_coeffs(coeffs)
     }
 }
 
@@ -837,7 +837,7 @@ impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm>
             }) => {
                 unimplemented!("The constant Mds is not supposed to be used in this context")
             }
-            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Dense::from(c),
+            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Self::from(c),
         }
     }
 }
@@ -856,7 +856,7 @@ impl<F: PrimeField, const N: usize, const D: usize, ChallengeTerm: Clone>
             Double(c1) => Self::from(*c1).double(),
             Pow(c, e) => {
                 // FIXME: dummy implementation
-                let p = Dense::from(*c);
+                let p = Self::from(*c);
                 let mut result = p.clone();
                 for _ in 0..e {
                     result = result.clone() * p.clone();
