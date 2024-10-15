@@ -753,113 +753,6 @@
 <a href="#753" id="753">753</a>
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1010,13 +903,9 @@
 };
 
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
-<span class="kw">use </span>kimchi::circuits::{
-    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext,
-};
 <span class="kw">use </span>num_integer::binomial;
 <span class="kw">use </span>o1_utils::FieldHelpers;
-<span class="kw">use </span>rand::RngCore;
+<span class="kw">use </span>rand::{Rng, RngCore};
 <span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use crate</span>::{
@@ -1088,6 +977,9 @@
     /// protocols. The user is responsible for providing its own secure
     /// polynomial random generator, if needed.
     ///
+    /// In addition to that, zeroes coefficients are added one every 10
+    /// monomials to be sure we do have some sparcity in the polynomial.
+    ///
     /// For now, the function is only used for testing.
     </span><span class="kw">unsafe fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG, max_degree: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
@@ -1101,17 +993,28 @@
                     <span class="kw">let </span>degree = naive_prime_factors(<span class="kw-2">*</span>idx, <span class="kw-2">&amp;mut </span>prime_gen)
                         .iter()
                         .fold(<span class="number">0</span>, |acc, (<span class="kw">_</span>, d)| acc + d);
-                    <span class="kw">if </span>degree &gt; max_degree {
-                        F::zero()
+                    <span class="kw">if </span>degree &gt; max_degree || rng.gen_range(<span class="number">0</span>..<span class="number">10</span>) == <span class="number">0 </span>{
+                        <span class="comment">// Adding zero coefficients one every 10 monomials
+                        </span>F::zero()
                     } <span class="kw">else </span>{
                         F::rand(rng)
                     }
                 })
                 .collect::&lt;Vec&lt;F&gt;&gt;()
         } <span class="kw">else </span>{
-            normalized_indices.iter().map(|<span class="kw">_</span>| F::rand(rng)).collect()
+            normalized_indices
+                .iter()
+                .map(|<span class="kw">_</span>| {
+                    <span class="kw">if </span>rng.gen_range(<span class="number">0</span>..<span class="number">10</span>) == <span class="number">0 </span>{
+                        <span class="comment">// Adding zero coefficients one every 10 monomials
+                        </span>F::zero()
+                    } <span class="kw">else </span>{
+                        F::rand(rng)
+                    }
+                })
+                .collect()
         };
-        Dense {
+        <span class="self">Self </span>{
             coeff,
             normalized_indices,
         }
@@ -1189,66 +1092,19 @@
             })
     }
 
-    <span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;, ChallengeTerm: Clone&gt;(
-        expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>kimchi::circuits::expr::Operations::<span class="kw-2">*</span>;
-
-        <span class="kw">match </span>expr {
-            Atom(op_const) =&gt; {
-                <span class="kw">match </span>op_const {
-                    ExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
-                        <span class="macro">unimplemented!</span>(<span class="string">&quot;Not used in this context&quot;</span>)
-                    }
-                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
-                        <span class="macro">unimplemented!</span>(<span class="string">&quot;Not used in this context&quot;</span>)
-                    }
-                    ExprInner::Constant(c) =&gt; <span class="self">Self</span>::from(c),
-                    ExprInner::Cell(Variable { col, row }) =&gt; {
-                        <span class="macro">assert_eq!</span>(row, CurrOrNext::Curr, <span class="string">&quot;Only current row is supported for now. You cannot reference the next row&quot;</span>);
-                        <span class="self">Self</span>::from_variable(col)
-                    }
-                }
-            }
-            Add(e1, e2) =&gt; {
-                <span class="kw">let </span>p1 = Dense::from_expr(<span class="kw-2">*</span>e1);
-                <span class="kw">let </span>p2 = Dense::from_expr(<span class="kw-2">*</span>e2);
-                p1 + p2
-            }
-            Sub(e1, e2) =&gt; {
-                <span class="kw">let </span>p1 = Dense::from_expr(<span class="kw-2">*</span>e1);
-                <span class="kw">let </span>p2 = Dense::from_expr(<span class="kw-2">*</span>e2);
-                p1 - p2
-            }
-            Mul(e1, e2) =&gt; {
-                <span class="kw">let </span>p1 = Dense::from_expr(<span class="kw-2">*</span>e1);
-                <span class="kw">let </span>p2 = Dense::from_expr(<span class="kw-2">*</span>e2);
-                p1 * p2
-            }
-            Double(p) =&gt; {
-                <span class="kw">let </span>p = Dense::from_expr(<span class="kw-2">*</span>p);
-                p.double()
-            }
-            Square(p) =&gt; {
-                <span class="kw">let </span>p = Dense::from_expr(<span class="kw-2">*</span>p);
-                p.clone() * p.clone()
-            }
-            Pow(c, e) =&gt; {
-                <span class="comment">// FIXME: dummy implementation
-                </span><span class="kw">let </span>p = Dense::from_expr(<span class="kw-2">*</span>c);
-                <span class="kw">let </span><span class="kw-2">mut </span>result = p.clone();
-                <span class="kw">for _ in </span><span class="number">0</span>..e {
-                    result = result.clone() * p.clone();
-                }
-                result
-            }
-            Cache(_c, <span class="kw">_</span>) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor&quot;</span>)
-            }
-            IfFeature(_c, _t, _f) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor&quot;</span>)
-            }
-        }
+    <span class="kw">fn </span>from_variable&lt;Column: Into&lt;usize&gt;&gt;(var: Column) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">Self</span>::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
+        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
+        <span class="kw">let </span>var_usize: usize = var.into();
+        <span class="macro">assert!</span>(primes.contains(<span class="kw-2">&amp;</span>var_usize), <span class="string">&quot;The usize representation of the variable must be a prime number, and unique for each variable&quot;</span>);
+        <span class="kw">let </span>inv_var = res
+            .normalized_indices
+            .iter()
+            .position(|<span class="kw-2">&amp;</span>x| x == var_usize)
+            .unwrap();
+        res[inv_var] = F::one();
+        res
     }
 
     <span class="kw">fn </span>is_homogeneous(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -1348,7 +1204,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize&gt; Dense&lt;F, N, D&gt; {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>normalized_indices = <span class="self">Self</span>::compute_normalized_indices();
-        Dense {
+        <span class="self">Self </span>{
             coeff: <span class="macro">vec!</span>[F::zero(); <span class="self">Self</span>::dimension()],
             normalized_indices,
         }
@@ -1367,21 +1223,6 @@
             coeff,
             normalized_indices,
         }
-    }
-
-    <span class="kw">pub fn </span>from_variable&lt;C: Into&lt;usize&gt;&gt;(var: C) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">Self</span>::zero();
-        <span class="kw">let </span><span class="kw-2">mut </span>prime_gen = PrimeNumberGenerator::new();
-        <span class="kw">let </span>primes = prime_gen.get_first_nth_primes(N);
-        <span class="kw">let </span>var_usize: usize = var.into();
-        <span class="macro">assert!</span>(primes.contains(<span class="kw-2">&amp;</span>var_usize), <span class="string">&quot;The usize representation of the variable must be a prime number, and unique for each variable&quot;</span>);
-        <span class="kw">let </span>inv_var = res
-            .normalized_indices
-            .iter()
-            .position(|<span class="kw-2">&amp;</span>x| x == var_usize)
-            .unwrap();
-        res[inv_var] = F::one();
-        res
     }
 
     <span class="kw">pub fn </span>number_of_variables(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -1513,7 +1354,7 @@
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Dense::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">Self</span>::new();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.coeff.len() {
             result.coeff[i] = <span class="self">self</span>.coeff[i] - other.coeff[i];
         }
@@ -1531,7 +1372,7 @@
             .zip(other.coeff.iter())
             .map(|(a, b)| <span class="kw-2">*</span>a - <span class="kw-2">*</span>b)
             .collect();
-        Dense::from_coeffs(coeffs)
+        <span class="self">Self</span>::from_coeffs(coeffs)
     }
 }
 
@@ -1663,61 +1504,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">Self</span>::zero();
         result.coeff[<span class="number">0</span>] = value;
         result
-    }
-}
-
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, ChallengeTerm&gt;
-    From&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
-{
-    <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F, ChallengeTerm&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>expr {
-            ConstantExprInner::Challenge(<span class="kw">_</span>) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;Challenges are not supposed to be used in this context for now&quot;</span>)
-            }
-            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) =&gt; {
-                <span class="macro">unimplemented!</span>(
-                    <span class="string">&quot;The constant EndoCoefficient is not supposed to be used in this context&quot;
-                </span>)
-            }
-            ConstantExprInner::Constant(ConstantTerm::Mds {
-                row: _row,
-                col: _col,
-            }) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The constant Mds is not supposed to be used in this context&quot;</span>)
-            }
-            ConstantExprInner::Constant(ConstantTerm::Literal(c)) =&gt; Dense::from(c),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, ChallengeTerm: Clone&gt;
-    From&lt;Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;&gt; <span class="kw">for </span>Dense&lt;F, N, D&gt;
-{
-    <span class="kw">fn </span>from(op: Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>kimchi::circuits::expr::Operations::<span class="kw-2">*</span>;
-        <span class="kw">match </span>op {
-            Atom(op_const) =&gt; <span class="self">Self</span>::from(op_const),
-            Add(c1, c2) =&gt; <span class="self">Self</span>::from(<span class="kw-2">*</span>c1) + <span class="self">Self</span>::from(<span class="kw-2">*</span>c2),
-            Sub(c1, c2) =&gt; <span class="self">Self</span>::from(<span class="kw-2">*</span>c1) - <span class="self">Self</span>::from(<span class="kw-2">*</span>c2),
-            Mul(c1, c2) =&gt; <span class="self">Self</span>::from(<span class="kw-2">*</span>c1) * <span class="self">Self</span>::from(<span class="kw-2">*</span>c2),
-            Square(c) =&gt; <span class="self">Self</span>::from(<span class="kw-2">*</span>c.clone()) * <span class="self">Self</span>::from(<span class="kw-2">*</span>c),
-            Double(c1) =&gt; <span class="self">Self</span>::from(<span class="kw-2">*</span>c1).double(),
-            Pow(c, e) =&gt; {
-                <span class="comment">// FIXME: dummy implementation
-                </span><span class="kw">let </span>p = Dense::from(<span class="kw-2">*</span>c);
-                <span class="kw">let </span><span class="kw-2">mut </span>result = p.clone();
-                <span class="kw">for _ in </span><span class="number">0</span>..e {
-                    result = result.clone() * p.clone();
-                }
-                result
-            }
-            Cache(_c, <span class="kw">_</span>) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor&quot;</span>)
-            }
-            IfFeature(_c, _t, _f) =&gt; {
-                <span class="macro">unimplemented!</span>(<span class="string">&quot;The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor&quot;</span>)
-            }
-        }
     }
 }
 

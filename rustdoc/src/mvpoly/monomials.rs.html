@@ -621,9 +621,7 @@
 <a href="#621" id="621">621</a>
 <a href="#622" id="622">622</a>
 <a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>num_integer::binomial;
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>std::{
@@ -846,7 +844,7 @@
             monomials
                 .entry(exponents)
                 .and_modify(|c| <span class="kw-2">*</span>c -= coeff)
-                .or_insert(coeff);
+                .or_insert(-coeff);
         });
         <span class="comment">// Remove monomials with zero coefficients
         </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
@@ -870,7 +868,7 @@
             monomials
                 .entry(<span class="kw-2">*</span>exponents)
                 .and_modify(|c| <span class="kw-2">*</span>c -= <span class="kw-2">*</span>coeff)
-                .or_insert(<span class="kw-2">*</span>coeff);
+                .or_insert(-<span class="kw-2">*</span>coeff);
         }
         <span class="comment">// Remove monomials with zero coefficients
         </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
@@ -896,7 +894,7 @@
             monomials
                 .entry(exponents)
                 .and_modify(|c| <span class="kw-2">*</span>c -= coeff)
-                .or_insert(coeff);
+                .or_insert(-coeff);
         }
         <span class="comment">// Remove monomials with zero coefficients
         </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
@@ -922,7 +920,7 @@
             monomials
                 .entry(<span class="kw-2">*</span>exponents)
                 .and_modify(|c| <span class="kw-2">*</span>c -= <span class="kw-2">*</span>coeff)
-                .or_insert(<span class="kw-2">*</span>coeff);
+                .or_insert(-<span class="kw-2">*</span>coeff);
         }
         <span class="comment">// Remove monomials with zero coefficients
         </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
@@ -1051,12 +1049,12 @@
         </span>prime::Dense::random(rng, max_degree).into()
     }
 
-    <span class="comment">// FIXME: use a better implementation, this is a temporary (working but not
-    // efficient) solution
-    </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;, ChallengeTerm: Clone&gt;(
-        expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        prime::Dense::from_expr(expr).into()
+    <span class="kw">fn </span>from_variable&lt;Column: Into&lt;usize&gt;&gt;(var: Column) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>var_usize: usize = var.into();
+        <span class="kw">let </span><span class="kw-2">mut </span>monomials = HashMap::new();
+        <span class="kw">let </span>exponents: [usize; N] = std::array::from_fn(|i| <span class="kw">if </span>i == var_usize { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>});
+        monomials.insert(exponents, F::one());
+        <span class="self">Self </span>{ monomials }
     }
 
     <span class="kw">fn </span>is_homogeneous(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
