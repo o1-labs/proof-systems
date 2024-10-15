@@ -36,6 +36,22 @@ pub enum Column {
     X(usize),
 }
 
+/// Convert a column to a usize. This is used by the library [mvpoly] when we
+/// need to compute the cross-terms.
+/// For now, we only support the conversion of the private inputs, i.e. the `X`
+/// variant.
+/// Also, for now, the [mvpoly] library expects the columns to be mapped to a
+/// prime number as the prime representation is used under the hood. This must
+/// be changed.
+impl From<Column> for usize {
+    fn from(val: Column) -> usize {
+        match val {
+            Column::X(i) => i,
+            _ => unimplemented!("Only the private inputs are supported for now"),
+        }
+    }
+}
+
 pub struct Challenges<F: Field> {
     /// Challenge used to aggregate the constraints
     pub alpha: F,
