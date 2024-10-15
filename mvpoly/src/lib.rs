@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use ark_ff::PrimeField;
-use kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
-    expr::{ConstantExpr, Expr},
-};
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 use rand::RngCore;
 
 pub mod monomials;
@@ -73,7 +70,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// "the expression framework".
     /// In the near future, the "expression framework" should be moved also into
     /// this library.
-    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>) -> Self;
+    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>) -> Self;
 
     /// Returns true if the polynomial is homogeneous (of degree `D`).
     /// As a reminder, a polynomial is homogeneous if all its monomials have the
