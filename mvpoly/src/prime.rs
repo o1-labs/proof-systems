@@ -714,20 +714,30 @@ impl<F: PrimeField, const N: usize, const D: usize> Eq for Dense<F, N, D> {}
 impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut prime_gen = PrimeNumberGenerator::new();
-        self.coeff.iter().enumerate().for_each(|(i, c)| {
+        let primes = prime_gen.get_first_nth_primes(N);
+        let coeff: Vec<_> = self
+            .coeff
+            .iter()
+            .enumerate()
+            .filter(|(_i, c)| *c != &F::zero())
+            .collect();
+        // Print 0 if the polynomial is zero
+        if coeff.is_empty() {
+            write!(f, "0").unwrap();
+            return Ok(());
+        }
+        let l = coeff.len();
+        coeff.into_iter().for_each(|(i, c)| {
             let normalized_idx = self.normalized_indices[i];
-            if normalized_idx == 1 {
+            if normalized_idx == 1 && *c != F::one() {
                 write!(f, "{}", c.to_biguint()).unwrap();
             } else {
                 let prime_decomposition = naive_prime_factors(normalized_idx, &mut prime_gen);
-                write!(f, "{}", c.to_biguint()).unwrap();
+                if *c != F::one() {
+                    write!(f, "{}", c.to_biguint()).unwrap();
+                }
                 prime_decomposition.iter().for_each(|(p, d)| {
-                    // FIXME: not correct
-                    let inv_p = self
-                        .normalized_indices
-                        .iter()
-                        .position(|&x| x == *p)
-                        .unwrap();
+                    let inv_p = primes.iter().position(|&x| x == *p).unwrap();
                     if *d > 1 {
                         write!(f, "x_{}^{}", inv_p, d).unwrap();
                     } else {
@@ -735,7 +745,9 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
                     }
                 });
             }
-            if i != self.coeff.len() - 1 {
+            // Avoid printing the last `+` or if the polynomial is a single
+            // monomial
+            if i != l - 1 && l != 1 {
                 write!(f, " + ").unwrap();
             }
         });
