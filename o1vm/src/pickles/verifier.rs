@@ -1,19 +1,16 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
-use ark_ff::{Field, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as R2D,
-};
+use ark_ec::{AffineRepr, Group};
+use ark_ff::{PrimeField, Zero};
 use rand::thread_rng;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
         domains::EvaluationDomains,
-        expr::{Constants, Expr, PolishToken},
+        expr::{ColumnEvaluations, Constants, Expr, ExprError, PolishToken},
+        gate::CurrOrNext,
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -25,31 +22,72 @@ use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
-    OpenProof, SRS,
+    ipa::OpeningProof,
+    OpenProof
 };
 
-use kimchi_msm::{logup::LookupTableID, witness::Witness};
-use super::proof::Proof;
-use crate::E;
+use super::{
+    column_env::get_all_columns,
+    proof::{Proof, WitnessColumns},
+};
+use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
+use kimchi_msm::columns::Column;
+
+type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
+type EvaluationColumns<G> = WitnessColumns<
+    <<G as AffineRepr>::Group as Group>::ScalarField,
+    [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
+>;
+
+// TODO: Move and perhaps derive some traits for these
+struct ColumnEval<'a, G: AffineRepr> {
+    commitment: &'a CommitmentColumns<G>,
+    zeta_eval: &'a EvaluationColumns<G>,
+    zeta_omega_eval: &'a EvaluationColumns<G>,
+}
+
+impl<G: AffineRepr> ColumnEvaluations<<G as AffineRepr>::ScalarField> for ColumnEval<'_, G> {
+    type Column = Column;
+    fn evaluate(
+        &self,
+        col: Self::Column,
+    ) -> Result<PointEvaluations<<G as AffineRepr>::ScalarField>, ExprError<Self::Column>> {
+        let ColumnEval {
+            commitment: _,
+            zeta_eval,
+            zeta_omega_eval,
+        } = self;
+        if let Some(&zeta) = zeta_eval.get_column(&col) {
+            if let Some(&zeta_omega) = zeta_omega_eval.get_column(&col) {
+                Ok(PointEvaluations { zeta, zeta_omega })
+            } else {
+                Err(ExprError::MissingEvaluation(col, CurrOrNext::Next))
+            }
+        } else {
+            Err(ExprError::MissingEvaluation(col, CurrOrNext::Curr))
+        }
+    }
+}
 
 pub fn verify<
     G: KimchiCurve,
-    OpeningProof: Proof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 >(
     domain: EvaluationDomains<G::ScalarField>,
-    srs: &SRS<G>,
+    srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &Vec<E<G::ScalarField>>,
     proof: &Proof<G>,
 ) -> bool
 where
-    SRS<G>: Sync,
+    <G as AffineRepr>::BaseField: PrimeField,
 {
     let Proof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        quotient_commitment,
+        quotient_evaluations,
         opening_proof,
     } = proof;
 
@@ -67,7 +105,7 @@ where
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
     absorb_commitment(&mut fq_sponge, &commitments.error);
-    for comm in commitments.selectors.iter() {
+    for comm in commitments.selector.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
 
@@ -78,7 +116,7 @@ where
     // Quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
 
-    absorb_commitment(&mut fq_sponge, &commitments.t_comm);
+    absorb_commitment(&mut fq_sponge, quotient_commitment);
 
     // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -87,21 +125,14 @@ where
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    let mut coms_and_evaluations: Vec<Evaluation<_>> = vec![];
+    let column_eval = ColumnEval {
+        commitment: commitments,
+        zeta_eval: zeta_evaluations,
+        zeta_omega_eval: zeta_omega_evaluations,
+    };
 
-    coms_and_evaluations.extend(
-        (&commitments)
-            .into_iter()
-            .zip(&zeta_evaluations)
-            .zip(zeta_omega_evaluations)
-            .map(|(commitment, (eval_zeta, eval_zeta_omega))| Evaluation {
-                commitment: commitment.clone(),
-                evaluations: vec![vec![eval_zeta], vec![eval_zeta_omega]],
-            }),
-    );
-
-    // -- Absorb all coms_and_evaluations
-    let fq_sponge_before_coms_and_evaluations = fq_sponge.clone();
+    // -- Absorb all commitments_and_evaluations
+    let fq_sponge_before_commitments_and_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
@@ -117,19 +148,12 @@ where
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_evaluations.error);
     fr_sponge.absorb(&zeta_omega_evaluations.error);
+    fr_sponge.absorb_multiple(&zeta_evaluations.selector);
+    fr_sponge.absorb_multiple(&zeta_omega_evaluations.selector);
+    fr_sponge.absorb(&quotient_evaluations.zeta);
+    fr_sponge.absorb(&quotient_evaluations.zeta_omega);
+    // FIXME: Add selector evaluations (DONE) and quotient evaluations
 
-    // Compute [ft(X)] = \
-    //   (1 - ζ^n) *
-    //    ([t_0(X)] + ζ^n [t_1(X)] + ... + ζ^{kn} [t_{k}(X)])
-    let ft_comm = {
-        let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
-        let chunked_t_comm = commitments
-            .t_comm
-            .chunk_commitment(evaluation_point_to_domain_size);
-        // (1 - ζ^n)
-        let minus_vanishing_poly_at_zeta = -domain.d1.vanishing_polynomial().evaluate(&zeta);
-        chunked_t_comm.scale(minus_vanishing_poly_at_zeta)
-    };
     // FIXME: use a proper Challenge structure
     let challenges = BerkeleyChallenges {
         alpha,
@@ -149,24 +173,42 @@ where
 
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
-    // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
-    let ft_eval0 = -PolishToken::evaluate(
+
+    // FIXME: Add these to the final check!!!!!
+
+    // FIXME: Fixup absorbs so they match in prover.rs
+
+    let quotient_eval_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,
         zeta,
-        evaluations,
+        &column_eval,
         &constants,
         &challenges,
     )
-    .unwrap();
+    .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta"));
+
+    let quotient_eval_zeta_omega = PolishToken::evaluate(
+        combined_expr.to_polish().as_slice(),
+        domain.d1,
+        zeta_omega,
+        &column_eval,
+        &constants,
+        &challenges,
+    )
+    .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta_omega"));
+
+    // Check the actual quotient works. combined_expr(eval) [ == quotient_eval_*] = quotient(eval) [== Given by prover (new field) -- chunked] * vanishing_poly(eval) [== x^n - 1 == zeta^(d1.size()) - 1]
 
     // Fixme add ft eval to the proof
-    coms_and_evaluations.push(Evaluation {
-        commitment: ft_comm,
-        evaluations: vec![vec![ft_eval0], vec![zeta_omega_evaluations.ft]],
-    });
-
-    fr_sponge.absorb(zeta_omega_evaluations.ft_eval1);
+    /*     coms_and_evaluations.push(Evaluation {
+           commitment: ft_comm,
+           evaluations: vec![vec![ft_eval0], vec![zeta_omega_evaluations.ft]],
+       });
+    */
+    fr_sponge.absorb(&quotient_eval_zeta);
+    fr_sponge.absorb(&quotient_eval_zeta_omega);
+    // fr_sponge.absorb(zeta_omega_evaluations.ft_eval1);
     // -- End absorb all coms_and_evaluations
 
     let v_chal = fr_sponge.challenge();
@@ -174,8 +216,35 @@ where
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
+    let evaluations = {
+        let all_columns = get_all_columns();
+
+        let mut evaluations = Vec::with_capacity(all_columns.len());
+
+        all_columns.into_iter()
+            .for_each(
+                |column| {
+                    let point_evaluations = column_eval
+                        .evaluate(column)
+                        .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`")); // FIXME: Finish message (DONE)
+
+                    let commitment = column_eval
+                        .commitment
+                        .get_column(&column)
+                        .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`")) // FIXME: Finish message (DONE)
+                        .clone();
+
+                    evaluations.push(Evaluation {
+                        commitment,
+                        evaluations: vec![vec![point_evaluations.zeta], vec![point_evaluations.zeta_omega]],
+                    })
+        });
+
+        evaluations
+    };
+
     let combined_inner_product = {
-        let es: Vec<_> = coms_and_evaluations
+        let es: Vec<_> = evaluations
             .iter()
             .map(|Evaluation { evaluations, .. }| evaluations.clone())
             .collect();
@@ -184,8 +253,8 @@ where
     };
 
     let batch = BatchEvaluationProof {
-        sponge: fq_sponge_before_coms_and_evaluations,
-        evaluations: coms_and_evaluations,
+        sponge: fq_sponge_before_commitments_and_evaluations,
+        evaluations: evaluations,
         evaluation_points: vec![zeta, zeta_omega],
         polyscale: v,
         evalscale: u,
