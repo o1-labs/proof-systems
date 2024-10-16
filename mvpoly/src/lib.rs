@@ -290,6 +290,8 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
 /// Therefore, `N` is the maximum number of variables of the polynomials and `D - 1`
 /// is the maximum degree of the polynomials, `D` being the the degree of the
 /// combined polynomial when including the combiner.
+///
+/// The number of keys in the output is always `D`.
 pub fn compute_combined_cross_terms<
     F: PrimeField,
     const N: usize,
@@ -309,13 +311,19 @@ pub fn compute_combined_cross_terms<
         let cross_terms_poly: HashMap<usize, F> = poly.compute_cross_terms(&eval1, &eval2, u1, u2);
         cross_terms_poly.into_iter().for_each(|(p, value)| {
             // Computing α^i * value, and adding it to the same power of r
-            let alpha_i = combiner1.pow([i as u64]);
-            let entry = cross_terms.entry(p).or_insert_with(F::zero);
-            *entry += alpha_i * value;
+            // Handling 0^0 = 1
+            let entry = cross_terms.entry(p).or_insert(F::zero());
+            if combiner1 != F::zero() {
+                let alpha_i = combiner1.pow([i as u64]);
+                *entry += alpha_i * value;
+            };
             // Computing α'^i * value, and adding it to the next power of r
-            let alpha_i = combiner2.pow([i as u64]);
+            // Handling 0^0 = 1
             let entry_prime = cross_terms.entry(p + 1).or_insert_with(F::zero);
-            *entry_prime += alpha_i * value;
+            if combiner2 != F::zero() {
+                let alpha_i = combiner2.pow([i as u64]);
+                *entry_prime += alpha_i * value;
+            };
         });
     });
     cross_terms
