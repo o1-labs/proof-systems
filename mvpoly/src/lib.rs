@@ -261,3 +261,70 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// variable in each monomial is of maximum degree 1.
     fn is_multilinear(&self) -> bool;
 }
+
+/// Compute the cross terms of a list of polynomials. The polynomials are
+/// linearly combined using the power of a combiner, often called `α`.
+/// Powers of the combiner are considered as an additional variable of the
+/// multi-variate polynomials, therefore increasing the degree of the sum of all
+/// polynomials by one. In other words, if we combine (M + 1) polynomials
+/// `P_1(X_1, ..., X_N)`, ..., `P_{M + 1}(X_1, ..., X_N)`, we will compute the
+/// cross-terms of the polynomial:
+///
+/// ```text
+/// P(X_1, ..., X_N, α_1, ..., α_M) =     P_1(X_1, ..., X_N)
+///                                 + α_1 P_2(X_1, ..., X_N)
+///                                 + ...
+///                                 + α_M P_{M + 1}(X_1, ..., X_N)
+/// ```
+///
+/// We notice that we simply do have a shifted linear combination of the
+/// polynomials. Based on the property that the cross-terms of a sum of
+/// polynomials is the sum of the cross-terms of the individual polynomials, and
+/// that shifting a polynomial with a new variable simply requires to shift the
+/// power of cross-terms by one and multiply by the evaluation at the new point,
+/// we get a simple algorithm.
+///
+/// All polynomials are supposed to be given as multivariate polynomials of the
+/// same degree and the same number of variables, even if they do not have the
+/// same number of variables nor the same degree.
+/// Therefore, `N` is the maximum number of variables of the polynomials and `D - 1`
+/// is the maximum degree of the polynomials, `D` being the the degree of the
+/// combined polynomial when including the combiner.
+///
+/// The number of keys in the output is always `D`.
+pub fn compute_combined_cross_terms<
+    F: PrimeField,
+    const N: usize,
+    const D: usize,
+    T: MVPoly<F, N, D>,
+>(
+    polys: Vec<T>,
+    combiner1: F,
+    combiner2: F,
+    eval1: [F; N],
+    eval2: [F; N],
+    u1: F,
+    u2: F,
+) -> HashMap<usize, F> {
+    let mut cross_terms = HashMap::new();
+    polys.into_iter().enumerate().for_each(|(i, poly)| {
+        let cross_terms_poly: HashMap<usize, F> = poly.compute_cross_terms(&eval1, &eval2, u1, u2);
+        cross_terms_poly.into_iter().for_each(|(p, value)| {
+            // Computing α^i * value, and adding it to the same power of r
+            // Handling 0^0 = 1
+            let entry = cross_terms.entry(p).or_insert(F::zero());
+            if combiner1 != F::zero() {
+                let alpha_i = combiner1.pow([i as u64]);
+                *entry += alpha_i * value;
+            };
+            // Computing α'^i * value, and adding it to the next power of r
+            // Handling 0^0 = 1
+            let entry_prime = cross_terms.entry(p + 1).or_insert_with(F::zero);
+            if combiner2 != F::zero() {
+                let alpha_i = combiner2.pow([i as u64]);
+                *entry_prime += alpha_i * value;
+            };
+        });
+    });
+    cross_terms
+}
