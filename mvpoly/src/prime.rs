@@ -636,8 +636,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let coeffs = self.coeff.iter().map(|c| -*c).collect();
-        Self::from_coeffs(coeffs)
+        -&self
     }
 }
 

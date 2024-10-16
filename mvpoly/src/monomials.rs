@@ -135,12 +135,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Neg for Sparse<F, N, D> {
     type Output = Sparse<F, N, D>;
 
     fn neg(self) -> Self::Output {
-        let monomials: HashMap<[usize; N], F> = self
-            .monomials
-            .into_iter()
-            .map(|(exponents, coeff)| (exponents, -coeff))
-            .collect();
-        Sparse::<F, N, D> { monomials }
+        -&self
     }
 }
 
