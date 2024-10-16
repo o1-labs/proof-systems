@@ -490,66 +490,6 @@
 <a href="#490" id="490">490</a>
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>num_integer::binomial;
 <span class="kw">use </span>rand::RngCore;
@@ -580,25 +520,7 @@
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>monomials = <span class="self">self</span>.monomials.clone();
-        <span class="kw">for </span>(exponents, coeff) <span class="kw">in </span>other.monomials {
-            monomials
-                .entry(exponents)
-                .and_modify(|c| <span class="kw-2">*</span>c += coeff)
-                .or_insert(coeff);
-        }
-        <span class="comment">// Remove monomials with zero coefficients
-        </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
-            .into_iter()
-            .filter(|(<span class="kw">_</span>, coeff)| !coeff.is_zero())
-            .collect();
-        <span class="comment">// Handle the case where the result is zero because we want a unique
-        // representation
-        </span><span class="kw">if </span>monomials.is_empty() {
-            <span class="self">Self</span>::zero()
-        } <span class="kw">else </span>{
-            Sparse::&lt;F, N, D&gt; { monomials }
-        }
+        <span class="kw-2">&amp;</span><span class="self">self </span>+ <span class="kw-2">&amp;</span>other
     }
 }
 
@@ -606,25 +528,7 @@
     <span class="kw">type </span>Output = Sparse&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>Sparse&lt;F, N, D&gt;) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">let </span><span class="kw-2">mut </span>monomials = <span class="self">self</span>.monomials.clone();
-        <span class="kw">for </span>(exponents, coeff) <span class="kw">in </span><span class="kw-2">&amp;</span>other.monomials {
-            monomials
-                .entry(<span class="kw-2">*</span>exponents)
-                .and_modify(|c| <span class="kw-2">*</span>c += <span class="kw-2">*</span>coeff)
-                .or_insert(<span class="kw-2">*</span>coeff);
-        }
-        <span class="comment">// Remove monomials with zero coefficients
-        </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
-            .into_iter()
-            .filter(|(<span class="kw">_</span>, coeff)| !coeff.is_zero())
-            .collect();
-        <span class="comment">// Handle the case where the result is zero because we want a unique
-        // representation
-        </span><span class="kw">if </span>monomials.is_empty() {
-            <span class="self">Self</span>::zero()
-        } <span class="kw">else </span>{
-            Sparse::&lt;F, N, D&gt; { monomials }
-        }
+        <span class="kw-2">&amp;</span><span class="self">self </span>+ other
     }
 }
 
@@ -632,28 +536,9 @@
     <span class="kw">type </span>Output = Sparse&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: Sparse&lt;F, N, D&gt;) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">let </span><span class="kw-2">mut </span>monomials = <span class="self">self</span>.monomials.clone();
-        <span class="kw">for </span>(exponents, coeff) <span class="kw">in </span>other.monomials {
-            monomials
-                .entry(exponents)
-                .and_modify(|c| <span class="kw-2">*</span>c += coeff)
-                .or_insert(coeff);
-        }
-        <span class="comment">// Remove monomials with zero coefficients
-        </span><span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = monomials
-            .into_iter()
-            .filter(|(<span class="kw">_</span>, coeff)| !coeff.is_zero())
-            .collect();
-        <span class="comment">// Handle the case where the result is zero because we want a unique
-        // representation
-        </span><span class="kw">if </span>monomials.is_empty() {
-            Sparse::&lt;F, N, D&gt;::zero()
-        } <span class="kw">else </span>{
-            Sparse::&lt;F, N, D&gt; { monomials }
-        }
+        <span class="self">self </span>+ <span class="kw-2">&amp;</span>other
     }
 }
-
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, F: PrimeField&gt; Add&lt;<span class="kw-2">&amp;</span>Sparse&lt;F, N, D&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span>Sparse&lt;F, N, D&gt; {
     <span class="kw">type </span>Output = Sparse&lt;F, N, D&gt;;
 
@@ -742,13 +627,8 @@
     <span class="kw">type </span>Output = Sparse&lt;F, N, D&gt;;
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">let </span>monomials: HashMap&lt;[usize; N], F&gt; = <span class="self">self
-            </span>.monomials
-            .into_iter()
-            .map(|(exponents, coeff)| (exponents, -coeff))
-            .collect();
-        Sparse::&lt;F, N, D&gt; { monomials }
-    }
+        -<span class="kw-2">&amp;</span><span class="self">self
+    </span>}
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>D: usize, F: PrimeField&gt; Neg <span class="kw">for </span><span class="kw-2">&amp;</span>Sparse&lt;F, N, D&gt; {
