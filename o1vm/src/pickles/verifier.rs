@@ -23,7 +23,7 @@ use poly_commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
     ipa::OpeningProof,
-    OpenProof
+    OpenProof,
 };
 
 use super::{
@@ -221,23 +221,24 @@ where
 
         let mut evaluations = Vec::with_capacity(all_columns.len());
 
-        all_columns.into_iter()
-            .for_each(
-                |column| {
-                    let point_evaluations = column_eval
-                        .evaluate(column)
-                        .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`")); // FIXME: Finish message (DONE)
+        all_columns.into_iter().for_each(|column| {
+            let point_evaluations = column_eval
+                .evaluate(column)
+                .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`")); // FIXME: Finish message (DONE)
 
-                    let commitment = column_eval
-                        .commitment
-                        .get_column(&column)
-                        .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`")) // FIXME: Finish message (DONE)
-                        .clone();
+            let commitment = column_eval
+                .commitment
+                .get_column(&column)
+                .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`")) // FIXME: Finish message (DONE)
+                .clone();
 
-                    evaluations.push(Evaluation {
-                        commitment,
-                        evaluations: vec![vec![point_evaluations.zeta], vec![point_evaluations.zeta_omega]],
-                    })
+            evaluations.push(Evaluation {
+                commitment,
+                evaluations: vec![
+                    vec![point_evaluations.zeta],
+                    vec![point_evaluations.zeta_omega],
+                ],
+            })
         });
 
         evaluations
