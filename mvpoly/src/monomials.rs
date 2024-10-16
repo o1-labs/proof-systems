@@ -28,25 +28,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Add for Sparse<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let mut monomials = self.monomials.clone();
-        for (exponents, coeff) in other.monomials {
-            monomials
-                .entry(exponents)
-                .and_modify(|c| *c += coeff)
-                .or_insert(coeff);
-        }
-        // Remove monomials with zero coefficients
-        let monomials: HashMap<[usize; N], F> = monomials
-            .into_iter()
-            .filter(|(_, coeff)| !coeff.is_zero())
-            .collect();
-        // Handle the case where the result is zero because we want a unique
-        // representation
-        if monomials.is_empty() {
-            Self::zero()
-        } else {
-            Sparse::<F, N, D> { monomials }
-        }
+        &self + &other
     }
 }
 
@@ -54,25 +36,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Add<&Sparse<F, N, D>> for Sp
     type Output = Sparse<F, N, D>;
 
     fn add(self, other: &Sparse<F, N, D>) -> Self::Output {
-        let mut monomials = self.monomials.clone();
-        for (exponents, coeff) in &other.monomials {
-            monomials
-                .entry(*exponents)
-                .and_modify(|c| *c += *coeff)
-                .or_insert(*coeff);
-        }
-        // Remove monomials with zero coefficients
-        let monomials: HashMap<[usize; N], F> = monomials
-            .into_iter()
-            .filter(|(_, coeff)| !coeff.is_zero())
-            .collect();
-        // Handle the case where the result is zero because we want a unique
-        // representation
-        if monomials.is_empty() {
-            Self::zero()
-        } else {
-            Sparse::<F, N, D> { monomials }
-        }
+        &self + other
     }
 }
 
@@ -80,28 +44,9 @@ impl<const N: usize, const D: usize, F: PrimeField> Add<Sparse<F, N, D>> for &Sp
     type Output = Sparse<F, N, D>;
 
     fn add(self, other: Sparse<F, N, D>) -> Self::Output {
-        let mut monomials = self.monomials.clone();
-        for (exponents, coeff) in other.monomials {
-            monomials
-                .entry(exponents)
-                .and_modify(|c| *c += coeff)
-                .or_insert(coeff);
-        }
-        // Remove monomials with zero coefficients
-        let monomials: HashMap<[usize; N], F> = monomials
-            .into_iter()
-            .filter(|(_, coeff)| !coeff.is_zero())
-            .collect();
-        // Handle the case where the result is zero because we want a unique
-        // representation
-        if monomials.is_empty() {
-            Sparse::<F, N, D>::zero()
-        } else {
-            Sparse::<F, N, D> { monomials }
-        }
+        self + &other
     }
 }
-
 impl<const N: usize, const D: usize, F: PrimeField> Add<&Sparse<F, N, D>> for &Sparse<F, N, D> {
     type Output = Sparse<F, N, D>;
 
@@ -190,12 +135,7 @@ impl<const N: usize, const D: usize, F: PrimeField> Neg for Sparse<F, N, D> {
     type Output = Sparse<F, N, D>;
 
     fn neg(self) -> Self::Output {
-        let monomials: HashMap<[usize; N], F> = self
-            .monomials
-            .into_iter()
-            .map(|(exponents, coeff)| (exponents, -coeff))
-            .collect();
-        Sparse::<F, N, D> { monomials }
+        -&self
     }
 }
 

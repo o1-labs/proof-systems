@@ -542,13 +542,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add for Dense<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Self::from_coeffs(coeffs)
+        &self + &other
     }
 }
 
@@ -556,13 +550,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Self::from_coeffs(coeffs)
+        &self + other
     }
 }
 
@@ -570,13 +558,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + &other
     }
 }
 
@@ -632,8 +614,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let coeffs = self.coeff.iter().map(|c| -*c).collect();
-        Self::from_coeffs(coeffs)
+        -&self
     }
 }
 
