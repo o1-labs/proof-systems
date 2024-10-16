@@ -345,17 +345,16 @@ where
     polynomials.push(quotient_poly);
 
     // Preparing the polynomials for the opening proof
-    let polynomials: Vec<_> =
-        polynomials
-            .iter()
-            .map(|poly| {
-                (
-                    DensePolynomialOrEvaluations::DensePolynomial(poly),
-                    // We do not have any blinder, therefore we set to 0.
-                    PolyComm::new(vec![G::ScalarField::zero()]),
-                )
-            })
-            .collect();
+    let polynomials: Vec<_> = polynomials
+        .iter()
+        .map(|poly| {
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(poly),
+                // We do not have any blinder, therefore we set to 0.
+                PolyComm::new(vec![G::ScalarField::zero()]),
+            )
+        })
+        .collect();
     // FIXME: Push the quotient polynomial with t_comm (DONE)
 
     // poly scale

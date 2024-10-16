@@ -1,7 +1,4 @@
-use kimchi::{
-    curve::KimchiCurve,
-    proof::PointEvaluations,
-};
+use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
 use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
