@@ -10,7 +10,10 @@ use std::{
 
 use crate::{
     prime,
-    utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
+    utils::{
+        compute_indices_nested_loop, compute_indices_nested_loop_upper_bound, naive_prime_factors,
+        PrimeNumberGenerator,
+    },
     MVPoly,
 };
 
@@ -353,15 +356,8 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let degree = max_degree.unwrap_or(D);
         // Generating all monomials with degree <= degree^N
-        let nested_loops_indices: Vec<Vec<usize>> = compute_indices_nested_loop(vec![degree; N]);
-        // Filtering the monomials with degree <= degree
-        let exponents: Vec<Vec<usize>> = nested_loops_indices
-            .into_iter()
-            .filter(|indices| {
-                let sum = indices.iter().sum::<usize>();
-                sum <= degree
-            })
-            .collect();
+        let exponents: Vec<Vec<usize>> =
+            compute_indices_nested_loop_upper_bound(vec![degree; N], degree);
         // We add 10% of zeroes.
         let exponents: Vec<_> = exponents
             .into_iter()

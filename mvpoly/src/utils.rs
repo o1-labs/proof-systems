@@ -272,3 +272,35 @@ pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usi
         })
         .collect()
 }
+
+/// Same than `compute_indices_nested_loop` but with an upper bound on the sum
+/// of the indices.
+///
+/// It is useful when the number of nested loop is large and the size of the
+/// loops is large as well. `filter_map` is used to avoid computing the indices
+/// that are not needed and avoid a `capacity_overflow` error.
+pub fn compute_indices_nested_loop_upper_bound(
+    nested_loop_sizes: Vec<usize>,
+    upper_bound: usize,
+) -> Vec<Vec<usize>> {
+    let n = nested_loop_sizes.iter().product();
+    (0..n)
+        .filter_map(|i| {
+            let mut div = 1;
+            // Compute indices for the loop, step i
+            let indices: Vec<usize> = nested_loop_sizes
+                .iter()
+                .map(|n_i| {
+                    let k = (i / div) % n_i;
+                    div *= n_i;
+                    k
+                })
+                .collect();
+            if indices.iter().sum::<usize>() <= upper_bound {
+                Some(indices)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
