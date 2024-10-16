@@ -12,6 +12,7 @@ use kimchi::{
     curve::KimchiCurve,
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
+    proof::PointEvaluations,
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -258,9 +259,8 @@ where
         quotient
     };
 
-    let t_comm = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
-
-    absorb_commitment(&mut fq_sponge, &t_comm);
+    let quotient_commitment = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
+    absorb_commitment(&mut fq_sponge, &quotient_commitment);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -300,15 +300,16 @@ where
         [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
     > = evals(&zeta_omega);
 
+    let quotient_evaluations = PointEvaluations {
+        zeta: quotient_poly.evaluate(&zeta),
+        zeta_omega: quotient_poly.evaluate(&zeta_omega),
+    };
+
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
-
-    // Quotient poly evals
-    let quotient_zeta_eval = quotient_poly.evaluate(&zeta);
-    let quotient_zeta_omega_eval = quotient_poly.evaluate(&zeta_omega);
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
@@ -330,30 +331,32 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&quotient_zeta_eval);
-    fr_sponge.absorb(&quotient_zeta_omega_eval);
+    fr_sponge.absorb(&quotient_evaluations.zeta);
+    fr_sponge.absorb(&quotient_evaluations.zeta_omega);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
 
-    // Preparing the polynomials for the opening proof
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
     polynomials.push(quotient_poly);
 
-    let polynomials: Vec<_> = polynomials
-        .iter()
-        .map(|poly| {
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 0.
-                PolyComm::new(vec![G::ScalarField::zero()]),
-            )
-        })
-        .collect();
+    // Preparing the polynomials for the opening proof
+    let polynomials: Vec<_> =
+        polynomials
+            .iter()
+            .map(|poly| {
+                (
+                    DensePolynomialOrEvaluations::DensePolynomial(poly),
+                    // We do not have any blinder, therefore we set to 0.
+                    PolyComm::new(vec![G::ScalarField::zero()]),
+                )
+            })
+            .collect();
+    // FIXME: Push the quotient polynomial with t_comm (DONE)
 
     // poly scale
     let v_chal = fr_sponge.challenge();
@@ -378,9 +381,11 @@ where
     );
 
     Ok(Proof {
-        commitments,
-        zeta_evaluations,
+        commitments,      /* FIXME: Add t_comm somehow -> Rename to quotient_commitment (DONE) */
+        zeta_evaluations, /* FIXME: Add quotient evaluations (DONE) */
         zeta_omega_evaluations,
+        quotient_commitment,
+        quotient_evaluations,
         opening_proof,
     })
 }

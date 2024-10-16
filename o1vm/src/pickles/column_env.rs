@@ -1,5 +1,6 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi_msm::columns::Column;
 
 use crate::{
     interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
@@ -13,12 +14,12 @@ use kimchi::circuits::{
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
-/// The collection of polynomials (all in evaluation form) and constants
+/// The collection f polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
 pub struct ColumnEnvironment<'a, F: FftField> {
-    /// The witness column polynomials. Includes relation columns and dynamic
+    /// The witness coluomn polynomials. Includes relation columns and dynamic
     /// selector columns.
     pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
@@ -34,41 +35,58 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
 }
 
-impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
-    for ColumnEnvironment<'a, F>
-{
-    // FIXME: do we change to the MIPS column type?
-    // We do not want to keep kimchi_msm/generic prover
-    type Column = kimchi_msm::columns::Column;
+pub fn get_all_columns() -> Vec<Column> {
+    let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + N_MIPS_SEL_COLS);
+    for i in 0..SCRATCH_SIZE {
+        cols.push(Column::Relation(i));
+    }
+    for i in 0..N_MIPS_SEL_COLS {
+        cols.push(Column::DynamicSelector(i));
+    }
+    cols
+}
 
-    fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
+impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
+    pub fn get_column(&self, col: &Column) -> Option<&G> {
         match *col {
-            Self::Column::Relation(i) => {
+            Column::Relation(i) => {
                 if i < SCRATCH_SIZE {
-                    let res = &self.witness.scratch[i];
+                    let res = &self.scratch[i];
                     Some(res)
                 } else if i == SCRATCH_SIZE {
-                    let res = &self.witness.instruction_counter;
+                    let res = &self.instruction_counter;
                     Some(res)
                 } else if i == SCRATCH_SIZE + 1 {
-                    let res = &self.witness.error;
+                    let res = &self.error;
                     Some(res)
                 } else {
                     panic!("We should not have that many relation columns");
                 }
             }
-            Self::Column::DynamicSelector(i) => {
+            Column::DynamicSelector(i) => {
                 assert!(
                     i < N_MIPS_SEL_COLS,
                     "We do not have that many dynamic selector columns"
                 );
-                let res = &self.witness.selector[i];
+                let res = &self.selector[i];
                 Some(res)
             }
             _ => {
                 panic!("We should not have any other type of columns")
             }
         }
+    }
+}
+
+impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
+    for ColumnEnvironment<'a, F>
+{
+    // FIXME: do we change to the MIPS column type?
+    // We do not want to keep kimchi_msm/generic prover
+    type Column = Column;
+
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
+        self.witness.get_column(col)
     }
 
     fn get_domain(&self, d: Domain) -> Radix2EvaluationDomain<F> {
