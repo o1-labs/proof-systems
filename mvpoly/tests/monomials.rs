@@ -712,3 +712,33 @@ fn test_from_expr_ec_addition() {
         assert_eq!(eval, exp_eval);
     }
 }
+
+#[test]
+fn test_compute_combined_cross_terms_expected_nb_of_cross_terms() {
+    mvpoly::pbt::test_compute_combined_cross_terms_expected_nb_of_cross_terms::<
+        Fp,
+        4,
+        2,
+        Sparse<Fp, 4, 2>,
+    >();
+    mvpoly::pbt::test_compute_combined_cross_terms_expected_nb_of_cross_terms::<
+        Fp,
+        6,
+        3,
+        Sparse<Fp, 6, 3>,
+    >();
+    mvpoly::pbt::test_compute_combined_cross_terms_expected_nb_of_cross_terms::<
+        Fp,
+        4,
+        8,
+        Sparse<Fp, 4, 8>,
+    >();
+}
+
+#[test]
+fn test_compute_combined_cross_terms_right_alpha_null() {
+    mvpoly::pbt::test_compute_combined_cross_terms_right_alpha_null::<Fp, 15, 2, Sparse<Fp, 15, 2>>(
+    );
+    mvpoly::pbt::test_compute_combined_cross_terms_right_alpha_null::<Fp, 6, 3, Sparse<Fp, 6, 3>>();
+    mvpoly::pbt::test_compute_combined_cross_terms_right_alpha_null::<Fp, 4, 8, Sparse<Fp, 4, 8>>();
+}
