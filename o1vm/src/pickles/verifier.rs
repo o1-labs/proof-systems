@@ -4,6 +4,7 @@
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{Field, One, PrimeField, Zero};
 use rand::thread_rng;
+use log::debug;
 
 use kimchi::{
     circuits::{
@@ -148,8 +149,14 @@ where
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_evaluations.error);
     fr_sponge.absorb(&zeta_omega_evaluations.error);
-    fr_sponge.absorb_multiple(&zeta_evaluations.selector);
-    fr_sponge.absorb_multiple(&zeta_omega_evaluations.selector);
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .selector
+        .iter()
+        .zip(zeta_omega_evaluations.selector.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
     fr_sponge.absorb(&quotient_evaluations.zeta);
     fr_sponge.absorb(&quotient_evaluations.zeta_omega);
 
@@ -192,9 +199,6 @@ where
         &challenges,
     )
     .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta_omega"));
-
-    fr_sponge.absorb(&quotient_eval_zeta);
-    fr_sponge.absorb(&quotient_eval_zeta_omega);
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -245,7 +249,7 @@ where
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_commitments_and_evaluations,
-        evaluations: evaluations,
+        evaluations,
         evaluation_points: vec![zeta, zeta_omega],
         polyscale: v,
         evalscale: u,
@@ -257,6 +261,6 @@ where
 
     // Check the actual quotient works.
     (quotient_eval_zeta
-        == quotient_evaluations.zeta * zeta.pow([domain.d1.size]) - G::ScalarField::one())
+        == quotient_evaluations.zeta * (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
         && OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }

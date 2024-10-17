@@ -36,8 +36,8 @@ pub struct ColumnEnvironment<'a, F: FftField> {
 }
 
 pub fn get_all_columns() -> Vec<Column> {
-    let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + N_MIPS_SEL_COLS);
-    for i in 0..SCRATCH_SIZE {
+    let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + 2 + N_MIPS_SEL_COLS);
+    for i in 0..SCRATCH_SIZE + 2 {
         cols.push(Column::Relation(i));
     }
     for i in 0..N_MIPS_SEL_COLS {
