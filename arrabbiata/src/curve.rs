@@ -8,8 +8,23 @@
 use ark_ec::short_weierstrass::Affine;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
-use mina_poseidon::poseidon::ArithmeticSpongeParams;
+use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 use poly_commitment::commitment::{CommitmentCurve, EndoCurve};
+
+#[derive(Clone)]
+pub struct PlonkSpongeConstants {}
+
+impl SpongeConstants for PlonkSpongeConstants {
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+    const PERM_ROUNDS_FULL: usize = 60;
+    const PERM_ROUNDS_PARTIAL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_SBOX: u32 = 5;
+    const PERM_FULL_MDS: bool = true;
+    const PERM_INITIAL_ARK: bool = false;
+}
 
 /// Represents additional information that a curve needs in order to be used
 /// with Arrabbiata.
