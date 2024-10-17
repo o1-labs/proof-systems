@@ -39,7 +39,6 @@ type EvaluationColumns<G> = WitnessColumns<
     [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
 >;
 
-// TODO: Move and perhaps derive some traits for these
 struct ColumnEval<'a, G: AffineRepr> {
     commitment: &'a CommitmentColumns<G>,
     zeta_eval: &'a EvaluationColumns<G>,
@@ -152,7 +151,6 @@ where
     fr_sponge.absorb_multiple(&zeta_omega_evaluations.selector);
     fr_sponge.absorb(&quotient_evaluations.zeta);
     fr_sponge.absorb(&quotient_evaluations.zeta_omega);
-    // FIXME: Add selector evaluations (DONE) and quotient evaluations
 
     // FIXME: use a proper Challenge structure
     let challenges = BerkeleyChallenges {
@@ -173,10 +171,6 @@ where
 
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
-
-    // FIXME: Add these to the final check!!!!! (DONE)
-
-    // FIXME: Fixup absorbs so they match in prover.rs (DONE)
 
     let quotient_eval_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
@@ -214,12 +208,12 @@ where
         all_columns.into_iter().for_each(|column| {
             let point_evaluations = column_eval
                 .evaluate(column)
-                .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`")); // FIXME: Finish message (DONE)
+                .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`"));
 
             let commitment = column_eval
                 .commitment
                 .get_column(&column)
-                .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`")) // FIXME: Finish message (DONE)
+                .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`"))
                 .clone();
 
             evaluations.push(Evaluation {

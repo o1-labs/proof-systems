@@ -259,7 +259,8 @@ where
         quotient
     };
 
-    let quotient_commitment = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
+    let quotient_commitment =
+        srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
     absorb_commitment(&mut fq_sponge, &quotient_commitment);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -355,7 +356,6 @@ where
             )
         })
         .collect();
-    // FIXME: Push the quotient polynomial with t_comm (DONE)
 
     // poly scale
     let v_chal = fr_sponge.challenge();
@@ -380,8 +380,8 @@ where
     );
 
     Ok(Proof {
-        commitments,      /* FIXME: Add t_comm somehow -> Rename to quotient_commitment (DONE) */
-        zeta_evaluations, /* FIXME: Add quotient evaluations (DONE) */
+        commitments,
+        zeta_evaluations,
         zeta_omega_evaluations,
         quotient_commitment,
         quotient_evaluations,
