@@ -75,6 +75,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
+    //FIXME: change vec to array
     constraints: &Vec<E<G::ScalarField>>,
     proof: &Proof<G>,
 ) -> bool
