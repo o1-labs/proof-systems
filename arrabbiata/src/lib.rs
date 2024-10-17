@@ -3,6 +3,7 @@ use strum::EnumCount as _;
 pub mod column_env;
 pub mod columns;
 pub mod constraints;
+pub mod curve;
 pub mod interpreter;
 pub mod logup;
 pub mod poseidon_3_60_0_5_5_fp;

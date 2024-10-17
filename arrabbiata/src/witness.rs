@@ -1,4 +1,4 @@
-use ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
+use ark_ec::models::short_weierstrass::SWCurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -6,12 +6,13 @@ use log::{debug, info};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
     columns::{Column, Gadget},
+    curve::ArrabbiataCurve,
     interpreter::{Instruction, InterpreterEnv, Side},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
     NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
@@ -31,8 +32,8 @@ pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: AffineRepr<ScalarField = Fp, BaseField = Fq>,
-    E2: AffineRepr<ScalarField = Fq, BaseField = Fp>,
+    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
 > {
     // ----------------
     // Setup related (domains + SRS)
@@ -184,8 +185,8 @@ pub struct Env<
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
-        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
+        E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
     <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
@@ -755,8 +756,8 @@ where
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
-        E1: CommitmentCurve<ScalarField = Fp, BaseField = Fq>,
-        E2: CommitmentCurve<ScalarField = Fq, BaseField = Fp>,
+        E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, E1, E2>
 {
     pub fn new(
