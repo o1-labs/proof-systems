@@ -563,3 +563,33 @@ pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVP
         assert!(!p.is_multilinear());
     }
 }
+
+pub fn test_is_constant<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let c = F::rand(&mut rng);
+    let p = T::from(c);
+    assert!(p.is_constant());
+
+    let p = T::zero();
+    assert!(p.is_constant());
+
+    let p = {
+        let mut res = T::zero();
+        let monomial: [usize; N] = std::array::from_fn(|i| if i == 0 { 1 } else { 0 });
+        res.add_monomial(monomial, F::one());
+        res
+    };
+    assert!(!p.is_constant());
+
+    let p = {
+        let mut res = T::zero();
+        let monomial: [usize; N] = std::array::from_fn(|i| if i == 1 { 1 } else { 0 });
+        res.add_monomial(monomial, F::one());
+        res
+    };
+    assert!(!p.is_constant());
+
+    // This might be flaky
+    let p = unsafe { T::random(&mut rng, None) };
+    assert!(!p.is_constant());
+}

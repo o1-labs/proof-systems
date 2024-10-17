@@ -148,6 +148,7 @@ use std::{
 };
 
 use ark_ff::{One, PrimeField, Zero};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
 use rand::{Rng, RngCore};
@@ -337,18 +338,38 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
-    fn from_variable<Column: Into<usize>>(var: Column) -> Self {
-        let mut res = Self::zero();
+    fn from_variable<Column: Into<usize>>(
+        var: Variable<Column>,
+        offset_next_row: Option<usize>,
+    ) -> Self {
+        let Variable { col, row } = var;
+        if row == CurrOrNext::Next {
+            assert!(
+                offset_next_row.is_some(),
+                "The offset for the next row must be provided"
+            );
+        }
+        let offset = if row == CurrOrNext::Curr {
+            0
+        } else {
+            offset_next_row.unwrap()
+        };
+        let var_usize: usize = col.into();
+
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);
-        let var_usize: usize = var.into();
         assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
-        let inv_var = res
+
+        let prime_idx = primes.iter().position(|&x| x == var_usize).unwrap();
+        let idx = prime_gen.get_nth_prime(prime_idx + offset + 1);
+
+        let mut res = Self::zero();
+        let inv_idx = res
             .normalized_indices
             .iter()
-            .position(|&x| x == var_usize)
+            .position(|&x| x == idx)
             .unwrap();
-        res[inv_var] = F::one();
+        res[inv_idx] = F::one();
         res
     }
 
@@ -674,20 +695,30 @@ impl<F: PrimeField, const N: usize, const D: usize> Eq for Dense<F, N, D> {}
 impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut prime_gen = PrimeNumberGenerator::new();
-        self.coeff.iter().enumerate().for_each(|(i, c)| {
+        let primes = prime_gen.get_first_nth_primes(N);
+        let coeff: Vec<_> = self
+            .coeff
+            .iter()
+            .enumerate()
+            .filter(|(_i, c)| *c != &F::zero())
+            .collect();
+        // Print 0 if the polynomial is zero
+        if coeff.is_empty() {
+            write!(f, "0").unwrap();
+            return Ok(());
+        }
+        let l = coeff.len();
+        coeff.into_iter().for_each(|(i, c)| {
             let normalized_idx = self.normalized_indices[i];
-            if normalized_idx == 1 {
+            if normalized_idx == 1 && *c != F::one() {
                 write!(f, "{}", c.to_biguint()).unwrap();
             } else {
                 let prime_decomposition = naive_prime_factors(normalized_idx, &mut prime_gen);
-                write!(f, "{}", c.to_biguint()).unwrap();
+                if *c != F::one() {
+                    write!(f, "{}", c.to_biguint()).unwrap();
+                }
                 prime_decomposition.iter().for_each(|(p, d)| {
-                    // FIXME: not correct
-                    let inv_p = self
-                        .normalized_indices
-                        .iter()
-                        .position(|&x| x == *p)
-                        .unwrap();
+                    let inv_p = primes.iter().position(|&x| x == *p).unwrap();
                     if *d > 1 {
                         write!(f, "x_{}^{}", inv_p, d).unwrap();
                     } else {
@@ -695,7 +726,9 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
                     }
                 });
             }
-            if i != self.coeff.len() - 1 {
+            // Avoid printing the last `+` or if the polynomial is a single
+            // monomial
+            if i != l - 1 && l != 1 {
                 write!(f, " + ").unwrap();
             }
         });

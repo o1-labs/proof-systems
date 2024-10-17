@@ -10,14 +10,12 @@
 //! "Expressions", as defined in the [kimchi] crate, can be converted into a
 //! multi-variate polynomial using the `from_expr` method.
 
-use std::collections::HashMap;
-
 use ark_ff::PrimeField;
-use kimchi::circuits::{
-    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext,
+use kimchi::circuits::expr::{
+    ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable,
 };
 use rand::RngCore;
+use std::collections::HashMap;
 
 pub mod monomials;
 pub mod pbt;
@@ -86,7 +84,6 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
 
-
     /// Build the univariate polynomial `x_i` from the variable `i`.
     /// The conversion into the type `usize` is unspecified by this trait. It
     /// is left to the trait implementation.
@@ -95,7 +92,12 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// used.
     /// For [crate::monomials], the output must be the index of the variable,
     /// starting from `0`.
-    fn from_variable<Column: Into<usize>>(var: Column) -> Self;
+    ///
+    /// The parameter `offset_next_row` is an optional argument that is used to
+    /// support the case where the "next row" is used. In this case, the type
+    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// N should be at least `8 = 2 * 4`).
+    fn from_variable<Column: Into<usize>>(var: Variable<Column>, offset_next_row: Option<usize>) -> Self;
 
     fn from_constant<ChallengeTerm: Clone>(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
         use kimchi::circuits::expr::Operations::*;
@@ -147,7 +149,16 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// "the expression framework".
     /// In the near future, the "expression framework" should be moved also into
     /// this library.
-    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>) -> Self {
+    ///
+    /// The mapping from variable to the user is left unspecified by this trait
+    /// and is left to the implementation. The conversion of a variable into an
+    /// index is done by the trait requirement `Into<usize>` on the column type.
+    ///
+    /// The parameter `offset_next_row` is an optional argument that is used to
+    /// support the case where the "next row" is used. In this case, the type
+    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// N should be at least `8 = 2 * 4`).
+    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>, offset_next_row: Option<usize>) -> Self {
         use kimchi::circuits::expr::Operations::*;
 
         match expr {
@@ -160,38 +171,37 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
                         unimplemented!("Not used in this context")
                     }
                     ExprInner::Constant(c) => Self::from_constant(c),
-                    ExprInner::Cell(Variable { col, row }) => {
-                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
-                        Self::from_variable(col)
+                    ExprInner::Cell(var) => {
+                        Self::from_variable::<Column>(var, offset_next_row)
                     }
                 }
             }
             Add(e1, e2) => {
-                let p1 = Self::from_expr(*e1);
-                let p2 = Self::from_expr(*e2);
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
                 p1 + p2
             }
             Sub(e1, e2) => {
-                let p1 = Self::from_expr(*e1);
-                let p2 = Self::from_expr(*e2);
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
                 p1 - p2
             }
             Mul(e1, e2) => {
-                let p1 = Self::from_expr(*e1);
-                let p2 = Self::from_expr(*e2);
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
                 p1 * p2
             }
             Double(p) => {
-                let p = Self::from_expr(*p);
+                let p = Self::from_expr::<Column, ChallengeTerm>(*p, offset_next_row);
                 p.double()
             }
             Square(p) => {
-                let p = Self::from_expr(*p);
+                let p = Self::from_expr::<Column, ChallengeTerm>(*p, offset_next_row);
                 p.clone() * p.clone()
             }
             Pow(c, e) => {
                 // FIXME: dummy implementation
-                let p = Self::from_expr(*c);
+                let p = Self::from_expr::<Column, ChallengeTerm>(*c, offset_next_row);
                 let mut result = p.clone();
                 for _ in 0..e {
                     result = result.clone() * p.clone();
