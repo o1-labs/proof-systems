@@ -2,7 +2,7 @@
 #![allow(clippy::boxed_local)]
 
 use ark_ec::{AffineRepr, Group};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, Zero /* One */};
 use rand::thread_rng;
 
 use kimchi::{
@@ -174,9 +174,9 @@ where
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
 
-    // FIXME: Add these to the final check!!!!!
+    // FIXME: Add these to the final check!!!!! (DONE)
 
-    // FIXME: Fixup absorbs so they match in prover.rs
+    // FIXME: Fixup absorbs so they match in prover.rs (DONE)
 
     let quotient_eval_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
@@ -198,18 +198,18 @@ where
     )
     .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta_omega"));
 
-    // Check the actual quotient works. combined_expr(eval) [ == quotient_eval_*] = quotient(eval) [== Given by prover (new field) -- chunked] * vanishing_poly(eval) [== x^n - 1 == zeta^(d1.size()) - 1]
+    // Check the actual quotient works.
+    //
+    // combined_expr(eval) [ == quotient_eval_*]
+    // =
+    // quotient(eval) [== Given by prover (new field) -- chunked]
+    // *
+    // vanishing_poly(eval) [== x^n - 1 == zeta^(d1.size()) - 1]
+    // FIXME: This should probably use some sort of proof assert, not just panic.
+    /* assert!(quotient_eval_zeta == quotient_evaluations * (pow(zeta, d1.size()) - G::ScalarField::one()), "The prover lied!"); */
 
-    // Fixme add ft eval to the proof
-    /*     coms_and_evaluations.push(Evaluation {
-           commitment: ft_comm,
-           evaluations: vec![vec![ft_eval0], vec![zeta_omega_evaluations.ft]],
-       });
-    */
     fr_sponge.absorb(&quotient_eval_zeta);
     fr_sponge.absorb(&quotient_eval_zeta_omega);
-    // fr_sponge.absorb(zeta_omega_evaluations.ft_eval1);
-    // -- End absorb all coms_and_evaluations
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -239,6 +239,14 @@ where
                     vec![point_evaluations.zeta_omega],
                 ],
             })
+        });
+
+        evaluations.push(Evaluation {
+            commitment: quotient_commitment.clone(),
+            evaluations: vec![
+                vec![quotient_eval_zeta],
+                vec![quotient_eval_zeta_omega],
+            ],
         });
 
         evaluations
