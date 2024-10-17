@@ -32,6 +32,13 @@ pub trait ArrabiataCurve: CommitmentCurve + EndoCurve {
     /// A human readable name.
     const NAME: &'static str;
 
+    // FIXME: use this in the codebase.
+    // We might want to use different sponge constants for different curves.
+    // For now, it does use the same constants for both curves.
+    type SpongeConstants: SpongeConstants;
+
+    const SPONGE_CONSTANTS: Self::SpongeConstants;
+
     /// Provides the sponge params to be used with this curve.
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
@@ -49,6 +56,10 @@ pub trait ArrabiataCurve: CommitmentCurve + EndoCurve {
 
 impl ArrabiataCurve for Affine<PallasParameters> {
     const NAME: &'static str = "pallas";
+
+    type SpongeConstants = PlonkSpongeConstants;
+
+    const SPONGE_CONSTANTS: Self::SpongeConstants = PlonkSpongeConstants {};
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         crate::poseidon_3_60_0_5_5_fq::static_params()
@@ -69,6 +80,10 @@ impl ArrabiataCurve for Affine<PallasParameters> {
 
 impl ArrabiataCurve for Affine<VestaParameters> {
     const NAME: &'static str = "vesta";
+
+    type SpongeConstants = PlonkSpongeConstants;
+
+    const SPONGE_CONSTANTS: Self::SpongeConstants = PlonkSpongeConstants {};
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         crate::poseidon_3_60_0_5_5_fp::static_params()
