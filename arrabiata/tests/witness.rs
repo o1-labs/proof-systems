@@ -1,10 +1,11 @@
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{PrimeField, UniformRand};
 use arrabiata::{
+    curve::PlonkSpongeConstants,
     interpreter::{self, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp,
     witness::Env,
-    MAXIMUM_FIELD_SIZE_IN_BITS, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    MAXIMUM_FIELD_SIZE_IN_BITS,
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, ProjectivePallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
@@ -13,26 +14,11 @@ use o1_utils::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use rand::{CryptoRng, RngCore};
 
-// Used by the mina_poseidon library. Only for testing.
-#[derive(Clone)]
-pub struct PlonkSpongeConstants {}
-
-impl SpongeConstants for PlonkSpongeConstants {
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = POSEIDON_STATE_SIZE;
-    const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize = POSEIDON_ROUNDS_FULL;
-    const PERM_ROUNDS_PARTIAL: usize = 0;
-    const PERM_HALF_ROUNDS_FULL: usize = 0;
-    const PERM_SBOX: u32 = 5;
-    const PERM_FULL_MDS: bool = true;
-    const PERM_INITIAL_ARK: bool = false;
-}
-
 #[test]
 fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
     let srs_log2_size = 6;
-    let sponge: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),
@@ -42,7 +28,7 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
 
     env.current_instruction = Instruction::Poseidon(0);
 
-    (0..(POSEIDON_ROUNDS_FULL / 5)).for_each(|i| {
+    (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
         interpreter::run_ivc(&mut env, Instruction::Poseidon(5 * i));
         env.reset();
     });
@@ -76,7 +62,8 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
 #[test]
 fn test_unit_witness_elliptic_curve_addition() {
     let srs_log2_size = 6;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),
@@ -150,7 +137,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 fn test_witness_double_elliptic_curve_point() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let srs_log2_size = 6;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        std::array::from_fn(|_i| BigInt::from(42u64));
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),
@@ -186,7 +174,8 @@ where
     RNG: RngCore + CryptoRng,
 {
     let srs_log2_size = 10;
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| r.clone());
+    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        std::array::from_fn(|_i| r.clone());
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         srs_log2_size,
         BigInt::from(1u64),

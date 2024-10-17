@@ -3,6 +3,7 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
+use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
@@ -12,11 +13,10 @@ use std::time::Instant;
 
 use crate::{
     columns::{Column, Gadget},
-    curve::ArrabiataCurve,
+    curve::{ArrabiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
@@ -119,8 +119,8 @@ pub struct Env<
     /// public IO.
     // IMPROVEME: use a list of BigInt? It might be faster as the CPU will
     // already have in its cache the values, and we can use a flat array
-    pub sponge_e1: [BigInt; POSEIDON_STATE_SIZE],
-    pub sponge_e2: [BigInt; POSEIDON_STATE_SIZE],
+    pub sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+    pub sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
     /// The current iteration of the IVC
     pub current_iteration: u64,
@@ -763,23 +763,25 @@ impl<
     pub fn new(
         srs_log2_size: usize,
         z0: BigInt,
-        sponge_e1: [BigInt; 3],
-        sponge_e2: [BigInt; 3],
+        sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+        sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     ) -> Self {
         {
             assert!(Fp::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             let modulus_fp = Fp::modulus_biguint();
+            let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
-                (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))
+                (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
                     == BigUint::from(1_u64),
-                "The modulus of Fp should be coprime with {POSEIDON_ALPHA}"
+                "The modulus of Fp should be coprime with {alpha}"
             );
             let modulus_fq = Fq::modulus_biguint();
+            let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
-                (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(POSEIDON_ALPHA))
+                (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
                     == BigUint::from(1_u64),
-                "The modulus of Fq should be coprime with {POSEIDON_ALPHA}"
+                "The modulus of Fq should be coprime with {alpha}"
             );
         }
         let srs_size = 1 << srs_log2_size;
@@ -1016,7 +1018,7 @@ impl<
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
             Instruction::Poseidon(i) => {
-                if i < POSEIDON_ROUNDS_FULL - 5 {
+                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
                     Instruction::Poseidon(i + 5)
                 } else {
                     // FIXME: we continue absorbing
