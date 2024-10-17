@@ -347,7 +347,11 @@ where
             self.witness[i][self.current_row] = x.clone();
         });
         // We increment the row
-        // TODO: should we check that we are not going over the domain size?
+        if self.current_iteration % 2 == 0 {
+            assert!(self.current_row <= self.domain_fp.d1.size.try_into().unwrap());
+        } else {
+            assert!(self.current_row <= self.domain_fq.d1.size.try_into().unwrap());
+        }
         self.current_row += 1;
         // We reset the indices for the variables
         self.idx_var = 0;
