@@ -1,0 +1,73 @@
+//! This file defines a trait similar to [kimchi::curve::KimchiCurve] for Pallas and
+//! Vesta. It aims to define all the parameters that are needed by a curve to be
+//! used in Arrabiata. For instance, the sponge parameters, the endomorphism
+//! coefficients, etc.
+//! The goal of this trait is to parametrize the whole library with the
+//! different curves.
+
+use ark_ec::short_weierstrass::Affine;
+use kimchi::curve::{pallas_endos, vesta_endos};
+use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
+use mina_poseidon::poseidon::ArithmeticSpongeParams;
+use poly_commitment::commitment::{CommitmentCurve, EndoCurve};
+
+/// Represents additional information that a curve needs in order to be used
+/// with Arrabiata.
+pub trait ArrabiataCurve: CommitmentCurve + EndoCurve {
+    /// A human readable name.
+    const NAME: &'static str;
+
+    /// Provides the sponge params to be used with this curve.
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
+
+    /// Provides the sponge params to be used with the other curve.
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField>;
+
+    /// Provides the coefficients for the curve endomorphism, called (q,r) in
+    /// some places.
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField);
+
+    /// Provides the coefficient for the curve endomorphism over the other
+    /// field, called q in some places.
+    fn other_curve_endo() -> &'static Self::ScalarField;
+}
+
+impl ArrabiataCurve for Affine<PallasParameters> {
+    const NAME: &'static str = "pallas";
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        crate::poseidon_3_60_0_5_5_fq::static_params()
+    }
+
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+        crate::poseidon_3_60_0_5_5_fp::static_params()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        pallas_endos()
+    }
+
+    fn other_curve_endo() -> &'static Self::ScalarField {
+        &vesta_endos().0
+    }
+}
+
+impl ArrabiataCurve for Affine<VestaParameters> {
+    const NAME: &'static str = "vesta";
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        crate::poseidon_3_60_0_5_5_fp::static_params()
+    }
+
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+        crate::poseidon_3_60_0_5_5_fq::static_params()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        vesta_endos()
+    }
+
+    fn other_curve_endo() -> &'static Self::ScalarField {
+        &pallas_endos().0
+    }
+}
