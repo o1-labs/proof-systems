@@ -2,7 +2,7 @@
 #![allow(clippy::boxed_local)]
 
 use ark_ec::{AffineRepr, Group};
-use ark_ff::{PrimeField, Zero /* One */};
+use ark_ff::{Field, One, PrimeField, Zero};
 use rand::thread_rng;
 
 use kimchi::{
@@ -198,16 +198,6 @@ where
     )
     .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta_omega"));
 
-    // Check the actual quotient works.
-    //
-    // combined_expr(eval) [ == quotient_eval_*]
-    // =
-    // quotient(eval) [== Given by prover (new field) -- chunked]
-    // *
-    // vanishing_poly(eval) [== x^n - 1 == zeta^(d1.size()) - 1]
-    // FIXME: This should probably use some sort of proof assert, not just panic.
-    /* assert!(quotient_eval_zeta == quotient_evaluations * (pow(zeta, d1.size()) - G::ScalarField::one()), "The prover lied!"); */
-
     fr_sponge.absorb(&quotient_eval_zeta);
     fr_sponge.absorb(&quotient_eval_zeta_omega);
 
@@ -219,7 +209,7 @@ where
     let evaluations = {
         let all_columns = get_all_columns();
 
-        let mut evaluations = Vec::with_capacity(all_columns.len());
+        let mut evaluations = Vec::with_capacity(all_columns.len() + 1); // +1 for the quotient
 
         all_columns.into_iter().for_each(|column| {
             let point_evaluations = column_eval
@@ -243,10 +233,7 @@ where
 
         evaluations.push(Evaluation {
             commitment: quotient_commitment.clone(),
-            evaluations: vec![
-                vec![quotient_eval_zeta],
-                vec![quotient_eval_zeta_omega],
-            ],
+            evaluations: vec![vec![quotient_eval_zeta], vec![quotient_eval_zeta_omega]],
         });
 
         evaluations
@@ -272,5 +259,9 @@ where
     };
 
     let group_map = G::Map::setup();
-    OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
+
+    // Check the actual quotient works.
+    (quotient_eval_zeta
+        == quotient_evaluations.zeta * zeta.pow([domain.d1.size]) - G::ScalarField::one())
+        && OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
