@@ -14,9 +14,9 @@ use crate::{
     columns::{Column, Gadget},
     curve::ArrabbiataCurve,
     interpreter::{Instruction, InterpreterEnv, Side},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
-    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
+    POSEIDON_STATE_SIZE,
 };
 
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
@@ -392,11 +392,11 @@ where
         i: usize,
     ) -> Self::Variable {
         let rc = if self.current_iteration % 2 == 0 {
-            poseidon_3_60_0_5_5_fp::static_params().round_constants[round][i]
+            E1::sponge_params().round_constants[round][i]
                 .to_biguint()
                 .into()
         } else {
-            poseidon_3_60_0_5_5_fq::static_params().round_constants[round][i]
+            E2::sponge_params().round_constants[round][i]
                 .to_biguint()
                 .into()
         };
@@ -405,13 +405,9 @@ where
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
         if self.current_iteration % 2 == 0 {
-            poseidon_3_60_0_5_5_fp::static_params().mds[i][j]
-                .to_biguint()
-                .into()
+            E1::sponge_params().mds[i][j].to_biguint().into()
         } else {
-            poseidon_3_60_0_5_5_fq::static_params().mds[i][j]
-                .to_biguint()
-                .into()
+            E2::sponge_params().mds[i][j].to_biguint().into()
         }
     }
 
