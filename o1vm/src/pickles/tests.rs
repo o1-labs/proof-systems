@@ -1,14 +1,29 @@
+use super::super::interpreters::mips::witness::SCRATCH_SIZE;
+use super::proof::{ProofInputs, WitnessColumns};
+use super::prover::prove;
+use crate::pickles::verifier::verify;
 use crate::{
     interpreters::mips::{
         constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
     },
     pickles::{MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
+use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
+use kimchi::circuits::gate::CurrOrNext;
+use kimchi::circuits::{domains::EvaluationDomains, expr::Expr};
+use kimchi_msm::columns::Column;
 use kimchi_msm::expr::E;
+use log::debug;
 use mina_curves::pasta::Fp;
+use mina_curves::pasta::Fq;
+use mina_curves::pasta::Pallas;
+use mina_curves::pasta::PallasParameters;
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
+use mina_poseidon::sponge::{DefaultFqSponge, DefaultFrSponge};
+use o1_utils::tests::make_test_rng;
+use poly_commitment::SRS;
 use strum::{EnumCount, IntoEnumIterator};
-
 #[test]
 fn test_regression_constraints_with_selectors() {
     let constraints = {
@@ -55,4 +70,84 @@ fn test_regression_selectors_for_instructions() {
     constraints
         .iter()
         .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
+}
+
+#[test]
+fn test_small_circuit() {
+    /*   domain: EvaluationDomains<G::ScalarField>,
+       srs: &SRS<G>,
+       inputs: ProofInputs<G>,
+       constraints: &[E<G::ScalarField>],
+       rng: &mut RNG,
+    */
+    debug!("0");
+    let domain = EvaluationDomains::<Fq>::create(8).unwrap();
+    let srs = SRS::create(8);
+    let proof_input = ProofInputs::<Pallas> {
+        evaluations: WitnessColumns {
+            scratch: std::array::from_fn(|_| {
+                vec![
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                    Fq::one(),
+                ]
+            }),
+            instruction_counter: vec![
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+                Fq::one(),
+            ],
+            error: vec![
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((SCRATCH_SIZE + 1) as u64),
+            ],
+            selector: vec![
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+                Fq::zero(),
+            ],
+        },
+    };
+    debug!("1");
+    let mut expr = Expr::literal(Fq::zero());
+    for i in 0..SCRATCH_SIZE {
+        expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
+    }
+    expr *= Expr::cell(Column::DynamicSelector(0), CurrOrNext::Curr);
+    let mut rng = make_test_rng(None);
+    type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
+    type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
+
+    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+        domain,
+        &srs,
+        proof_input,
+        &[expr.clone()],
+        &mut rng,
+    )
+    .unwrap();
+    let verif =
+        verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
+    assert!(verif, "fdsf");
 }
