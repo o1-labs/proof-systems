@@ -5,6 +5,8 @@ use crate::{
     interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
+use ark_ec::{short_weierstrass::SWCurveConfig, CurveConfig};
+use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -12,12 +14,12 @@ use kimchi::circuits::{
 use log::debug;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
+use poly_commitment::commitment::CommitmentCurve;
 
 #[derive(Clone, Debug)]
 pub struct Env<C: ArrabbiataCurve> {
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
-    // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
     pub a: BigInt,
     pub idx_var: usize,
     pub idx_var_next_row: usize,
@@ -26,9 +28,13 @@ pub struct Env<C: ArrabbiataCurve> {
     pub activated_gadget: Option<Gadget>,
 }
 
-impl<C: ArrabbiataCurve> Env<C> {
-    pub fn new(a: BigInt) -> Self {
+impl<C: ArrabbiataCurve> Env<C>
+where
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    pub fn new() -> Self {
         // This check might not be useful
+        let a: BigInt = <C as CommitmentCurve>::Params::COEFF_A.to_biguint().into();
         assert!(
             a < C::ScalarField::modulus_biguint().into(),
             "a is too large"
@@ -369,5 +375,14 @@ impl<C: ArrabbiataCurve> Env<C> {
         constraints.extend(env.constraints.clone());
 
         constraints
+    }
+}
+
+impl<C: ArrabbiataCurve> Default for Env<C>
+where
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }

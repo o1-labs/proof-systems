@@ -4,22 +4,21 @@ use arrabbiata::{
     interpreter::{self, Instruction},
 };
 use mina_curves::pasta::{curves::vesta::Vesta, Pallas};
-use num_bigint::BigInt;
 use std::collections::HashMap;
 
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
-    let mut constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let mut constraints_fp = constraints::Env::<Vesta>::new();
 
     interpreter::run_ivc(&mut constraints_fp, instr);
     assert_eq!(constraints_fp.constraints.len(), exp_constraints);
 
-    let mut constraints_fq = constraints::Env::<Pallas>::new(BigInt::from(0_usize));
+    let mut constraints_fq = constraints::Env::<Pallas>::new();
     interpreter::run_ivc(&mut constraints_fq, instr);
     assert_eq!(constraints_fq.constraints.len(), exp_constraints);
 }
 
 fn helper_check_expected_degree_constraints(instr: Instruction, exp_degrees: HashMap<u64, usize>) {
-    let mut constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let mut constraints_fp = constraints::Env::<Vesta>::new();
     interpreter::run_ivc(&mut constraints_fp, instr);
 
     let mut actual_degrees: HashMap<u64, usize> = HashMap::new();
@@ -48,7 +47,7 @@ fn helper_gadget_number_of_columns_used(
     exp_nb_columns: usize,
     exp_nb_public_input: usize,
 ) {
-    let mut constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let mut constraints_fp = constraints::Env::<Vesta>::new();
     interpreter::run_ivc(&mut constraints_fp, instr);
 
     let nb_columns = constraints_fp.idx_var;
@@ -59,7 +58,7 @@ fn helper_gadget_number_of_columns_used(
 }
 
 fn helper_check_gadget_activated(instr: Instruction, gadget: Gadget) {
-    let mut constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let mut constraints_fp = constraints::Env::<Vesta>::new();
     interpreter::run_ivc(&mut constraints_fp, instr);
 
     assert_eq!(constraints_fp.activated_gadget, Some(gadget));
@@ -100,7 +99,7 @@ fn test_gadget_elliptic_curve_addition() {
 
 #[test]
 fn test_ivc_total_number_of_constraints_ivc() {
-    let constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let constraints_fp = constraints::Env::<Vesta>::new();
 
     let constraints = constraints_fp.get_all_constraints_for_ivc();
     assert_eq!(constraints.len(), 28);
@@ -108,7 +107,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
 
 #[test]
 fn test_degree_of_constraints_ivc() {
-    let constraints_fp = constraints::Env::<Vesta>::new(BigInt::from(0_usize));
+    let constraints_fp = constraints::Env::<Vesta>::new();
 
     let constraints = constraints_fp.get_all_constraints_for_ivc();
 
