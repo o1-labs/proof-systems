@@ -1,10 +1,10 @@
 use super::{columns::Column, interpreter::InterpreterEnv};
 use crate::{
     columns::{Gadget, E},
+    curve::ArrabiataCurve,
     interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-use ark_ff::{Field, PrimeField};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -14,8 +14,8 @@ use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
 
 #[derive(Clone, Debug)]
-pub struct Env<Fp: Field> {
-    pub poseidon_mds: Vec<Vec<Fp>>,
+pub struct Env<C: ArrabiataCurve> {
+    pub poseidon_mds: Vec<Vec<C::ScalarField>>,
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
@@ -23,14 +23,17 @@ pub struct Env<Fp: Field> {
     pub idx_var: usize,
     pub idx_var_next_row: usize,
     pub idx_var_pi: usize,
-    pub constraints: Vec<E<Fp>>,
+    pub constraints: Vec<E<C::ScalarField>>,
     pub activated_gadget: Option<Gadget>,
 }
 
-impl<Fp: PrimeField> Env<Fp> {
-    pub fn new(poseidon_mds: Vec<Vec<Fp>>, a: BigInt) -> Self {
+impl<C: ArrabiataCurve> Env<C> {
+    pub fn new(poseidon_mds: Vec<Vec<C::ScalarField>>, a: BigInt) -> Self {
         // This check might not be useful
-        assert!(a < Fp::modulus_biguint().into(), "a is too large");
+        assert!(
+            a < C::ScalarField::modulus_biguint().into(),
+            "a is too large"
+        );
         Self {
             poseidon_mds,
             a,
@@ -48,10 +51,10 @@ impl<Fp: PrimeField> Env<Fp> {
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
+impl<C: ArrabiataCurve> InterpreterEnv for Env<C> {
     type Position = (Column, CurrOrNext);
 
-    type Variable = E<Fp>;
+    type Variable = E<C::ScalarField>;
 
     fn allocate(&mut self) -> Self::Position {
         assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
@@ -81,7 +84,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
 
     fn constant(&self, value: BigInt) -> Self::Variable {
         let v = value.to_biguint().unwrap();
-        let v = Fp::from_biguint(&v).unwrap();
+        let v = C::ScalarField::from_biguint(&v).unwrap();
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
     }
@@ -304,7 +307,7 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
     }
 }
 
-impl<F: PrimeField> Env<F> {
+impl<C: ArrabiataCurve> Env<C> {
     /// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
@@ -317,7 +320,7 @@ impl<F: PrimeField> Env<F> {
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<F>> {
+    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<C::ScalarField>> {
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         let mut env = self.clone();
@@ -354,7 +357,7 @@ impl<F: PrimeField> Env<F> {
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
-    pub fn get_all_constraints(&self) -> Vec<E<F>> {
+    pub fn get_all_constraints(&self) -> Vec<E<C::ScalarField>> {
         let mut constraints = self.get_all_constraints_for_ivc();
 
         // Copying the instance we got in parameter, and making it mutable to
