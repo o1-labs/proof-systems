@@ -74,13 +74,6 @@ fn test_regression_selectors_for_instructions() {
 
 #[test]
 fn test_small_circuit() {
-    /*   domain: EvaluationDomains<G::ScalarField>,
-       srs: &SRS<G>,
-       inputs: ProofInputs<G>,
-       constraints: &[E<G::ScalarField>],
-       rng: &mut RNG,
-    */
-    debug!("0");
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
     let proof_input = ProofInputs::<Pallas> {
@@ -129,9 +122,8 @@ fn test_small_circuit() {
             ],
         },
     };
-    debug!("1");
     let mut expr = Expr::literal(Fq::zero());
-    for i in 0..SCRATCH_SIZE {
+    for i in 0..SCRATCH_SIZE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
     expr *= Expr::cell(Column::DynamicSelector(0), CurrOrNext::Curr);
