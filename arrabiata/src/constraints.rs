@@ -15,7 +15,6 @@ use o1_utils::FieldHelpers;
 
 #[derive(Clone, Debug)]
 pub struct Env<C: ArrabiataCurve> {
-    pub poseidon_mds: Vec<Vec<C::ScalarField>>,
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     // FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
@@ -28,14 +27,13 @@ pub struct Env<C: ArrabiataCurve> {
 }
 
 impl<C: ArrabiataCurve> Env<C> {
-    pub fn new(poseidon_mds: Vec<Vec<C::ScalarField>>, a: BigInt) -> Self {
+    pub fn new(a: BigInt) -> Self {
         // This check might not be useful
         assert!(
             a < C::ScalarField::modulus_biguint().into(),
             "a is too large"
         );
         Self {
-            poseidon_mds,
             a,
             idx_var: 0,
             idx_var_next_row: 0,
@@ -183,7 +181,7 @@ impl<C: ArrabiataCurve> InterpreterEnv for Env<C> {
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
-        let v = self.poseidon_mds[i][j];
+        let v = C::sponge_params().mds[i][j];
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
     }
