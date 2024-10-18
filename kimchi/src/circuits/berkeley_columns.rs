@@ -416,15 +416,15 @@ impl<F: FftField> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
     }
 }
 
-pub fn boolean(x: E<F>) -> E<F> {
+pub fn boolean<F: FftField>(x: E<F>) -> E<F> {
     x.boolean()
 }
 
-pub fn crumb(x: E<F>) -> E<F> {
+pub fn crumb<F: FftField>(x: E<F>) -> E<F> {
     x.crumb()
 }
 
 /// lo + mi * 2^{LIMB_BITS}
-pub fn compact_limb<F: Field>(lo: &E<F>, mi: &E<F>) -> E<F> {
+pub fn compact_limb<F: FftField>(lo: &E<F>, mi: &E<F>) -> E<F> {
     lo.clone() + mi.clone() * E::<F>::two_to_limb()
 }

@@ -3170,7 +3170,7 @@ pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{
+    pub use crate::circuits::{
         berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},
         FeatureFlag,
     };
