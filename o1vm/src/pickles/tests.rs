@@ -1,26 +1,23 @@
-use super::super::interpreters::mips::witness::SCRATCH_SIZE;
-use super::proof::{ProofInputs, WitnessColumns};
-use super::prover::prove;
-use crate::pickles::verifier::verify;
+use super::{
+    super::interpreters::mips::witness::SCRATCH_SIZE,
+    proof::{ProofInputs, WitnessColumns},
+    prover::prove,
+};
 use crate::{
     interpreters::mips::{
         constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
     },
-    pickles::{MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
 use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
-use kimchi::circuits::gate::CurrOrNext;
-use kimchi::circuits::{domains::EvaluationDomains, expr::Expr};
-use kimchi_msm::columns::Column;
-use kimchi_msm::expr::E;
-use log::debug;
-use mina_curves::pasta::Fp;
-use mina_curves::pasta::Fq;
-use mina_curves::pasta::Pallas;
-use mina_curves::pasta::PallasParameters;
-use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
-use mina_poseidon::sponge::{DefaultFqSponge, DefaultFrSponge};
+use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
+use kimchi_msm::{columns::Column, expr::E};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
 use strum::{EnumCount, IntoEnumIterator};
@@ -141,5 +138,5 @@ fn test_small_circuit() {
     .unwrap();
     let verif =
         verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
-    assert!(verif, "fdsf");
+    assert!(verif, "Verification fails");
 }

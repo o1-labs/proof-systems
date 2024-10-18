@@ -4,7 +4,6 @@
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{Field, One, PrimeField, Zero};
 use rand::thread_rng;
-use log::debug;
 
 use kimchi::{
     circuits::{
