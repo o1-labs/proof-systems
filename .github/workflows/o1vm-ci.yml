@@ -69,5 +69,6 @@ jobs:
         run: |
           eval $(opam env)
           cd o1vm
+          touch rpcs.sh
           unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
           O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
