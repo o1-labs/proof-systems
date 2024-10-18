@@ -42,3 +42,6 @@ or 6).
 - [ ] Compute cross-terms with the existing expressions and commit to it + pass
       as public input
 - [ ] Compute challenge r
+
+- [ ] For message passing, in particular the challenges, we can use a
+  decomposition of the scalar, see Pickles.
