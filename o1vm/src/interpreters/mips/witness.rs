@@ -1250,7 +1250,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             let s: State = State {
                 pc: self.registers.current_instruction_pointer,
                 next_pc: self.registers.next_instruction_pointer,
-                step: self.instruction_counter,
+                step: self.normalized_instruction_counter(),
                 registers: self.registers.general_purpose,
                 lo: self.registers.lo,
                 hi: self.registers.hi,
