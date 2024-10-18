@@ -19,8 +19,8 @@ O1VM_FLAVOR to one of these values to run the flavor you would like"
 esac
 
 if [ -d "op-program-db-for-latest-l2-block" ] && [ -f "snapshot-state-10000000.json" ]; then
-    export OP_PROGRAM_DATA_DIR="./op-program-db-for-latest-l2-block"
-    export ZKVM_STATE_FILENAME="./snapshot-state-10000000.json"
+    export OP_PROGRAM_DATA_DIR="$(pwd)/op-program-db-for-latest-l2-block"
+    export ZKVM_STATE_FILENAME="$(pwd)/snapshot-state-10000000.json"
     # We need to set the L1 and L2 RPC endpoints for op-program to run successfully
     # Then start simple HTTP server: python3 -m http.server 8765
     # And execute: O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
