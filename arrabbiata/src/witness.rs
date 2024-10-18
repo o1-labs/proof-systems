@@ -1,15 +1,18 @@
-use ark_ec::models::short_weierstrass::SWCurveConfig;
+use ark_ec::{models::short_weierstrass::SWCurveConfig, CurveConfig};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
-use mina_poseidon::constants::SpongeConstants;
+use mina_poseidon::{
+    constants::SpongeConstants,
+    sponge::{DefaultFqSponge, FqSponge},
+};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 use crate::{
     columns::{Column, Gadget},
@@ -34,7 +37,10 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-> {
+> where
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
@@ -189,8 +195,8 @@ impl<
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
-    <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
-    <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -755,6 +761,9 @@ impl<
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, E1, E2>
+where
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(
         srs_log2_size: usize,
@@ -1047,5 +1056,23 @@ impl<
             }
             Instruction::NoOp => Instruction::NoOp,
         }
+    }
+
+    // TODO:
+    // - decide how we will structure the constraints -> selectors, etc.
+    // - for each row, only use the activated constraint
+    // - keep the cross-terms in the environment.
+    // - use alpha and alpha' from the env. It should have been coined before.
+    pub fn compute_cross_terms(&self) -> HashMap<usize, Fp> {
+        HashMap::new()
+    }
+
+    pub fn absorb_commitments(&mut self) {
+        // FIXME: should be from the environment
+        let old_state = BigInt::from(42);
+        let sponge_e1: DefaultFqSponge<E1::Params, E1::SpongeConstants> =
+            DefaultFqSponge::new(E1::SPONGE_CONSTANTS);
+        let sponge_e2: DefaultFqSponge<E2::Params, E2::SpongeConstants> =
+            DefaultFqSponge::new(E2::SPONGE_CONSTANTS);
     }
 }
