@@ -59,7 +59,7 @@ pub fn main() -> ExitCode {
         )
     });
 
-    let mut po: PreImageOracle = PreImageOracle::create(&configuration.host);
+    let mut po = PreImageOracle::create(&configuration.host);
     let _child = po.start();
 
     // Initialize some data used for statistical computations
