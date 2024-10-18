@@ -5,8 +5,6 @@
 //! which apply only in some points (rows) of the domain.
 //! For more info, read book/src/kimchi/arguments.md
 
-use std::marker::PhantomData;
-
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
@@ -72,17 +70,17 @@ impl<F: Field> ArgumentEnv<F> {
 
     /// Witness cell (row, col)
     pub fn witness(&self, row: CurrOrNext, col: usize) -> E<F> {
-        T::witness(row, col, self.data.as_ref())
+        E::<F>::witness(row, col, self.data.as_ref())
     }
 
     /// Witness cell on current row
     pub fn witness_curr(&self, col: usize) -> E<F> {
-        T::witness(Curr, col, self.data.as_ref())
+        E::<F>::witness(Curr, col, self.data.as_ref())
     }
 
     /// Witness cell on next row
     pub fn witness_next(&self, col: usize) -> E<F> {
-        T::witness(Next, col, self.data.as_ref())
+        E::<F>::witness(Next, col, self.data.as_ref())
     }
 
     /// Witness cells in current row in an interval [from, to)
@@ -105,7 +103,7 @@ impl<F: Field> ArgumentEnv<F> {
 
     /// Coefficient value at index idx
     pub fn coeff(&self, idx: usize) -> E<F> {
-        T::coeff(idx, self.data.as_ref())
+        E::<F>::coeff(idx, self.data.as_ref())
     }
 
     /// Chunk of consecutive coefficients in an interval [from, to)
@@ -119,7 +117,7 @@ impl<F: Field> ArgumentEnv<F> {
 
     /// Constant value (see [ConstantExpr] for supported constants)
     pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> E<F> {
-        T::constant(expr, self.data.as_ref())
+        E::<F>::constant(expr, self.data.as_ref())
     }
 
     /// Helper to access endomorphism coefficient constant

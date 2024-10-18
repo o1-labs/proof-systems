@@ -99,7 +99,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraint_checks(env: &ArgumentEnv<F, E<F>>, cache: &mut Cache) -> Vec<E<F>> {
+    fn constraint_checks(env: &ArgumentEnv<F>, cache: &mut Cache) -> Vec<E<F>> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);
         let y1 = env.witness_curr(1);

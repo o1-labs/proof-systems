@@ -93,12 +93,12 @@ use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
-        expr::{constraints::ExprOps, Cache},
+        berkeley_columns::E,
+        expr::Cache,
         gate::GateType,
     },
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
 use std::{array, marker::PhantomData};
 
 /// Compute non-zero intermediate products
@@ -106,12 +106,12 @@ use std::{array, marker::PhantomData};
 /// For more details see the "Intermediate products" Section of
 /// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 ///
-pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
-    left_input: &[T; 3],
-    right_input: &[T; 3],
-    quotient: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 3] {
+pub fn compute_intermediate_products<F: PrimeField>(
+    left_input: &[E<F>; 3],
+    right_input: &[E<F>; 3],
+    quotient: &[E<F>; 3],
+    neg_foreign_field_modulus: &[E<F>; 3],
+) -> [E<F>; 3] {
     auto_clone_array!(left_input);
     auto_clone_array!(right_input);
     auto_clone_array!(quotient);
@@ -136,13 +136,13 @@ pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F, BerkeleyChalle
 }
 
 // Compute native modulus values
-pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
-    left_input: &[T; 3],
-    right_input: &[T; 3],
-    quotient: &[T; 3],
-    remainder: &[T; 2],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 5] {
+pub fn compute_native_modulus_values<F: PrimeField>(
+    left_input: &[E<F>; 3],
+    right_input: &[E<F>; 3],
+    quotient: &[E<F>; 3],
+    remainder: &[E<F>; 2],
+    neg_foreign_field_modulus: &[E<F>; 3],
+) -> [E<F>; 5] {
     auto_clone_array!(left_input);
     auto_clone_array!(right_input);
     auto_clone_array!(quotient);
@@ -151,34 +151,38 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F, BerkeleyChalle
 
     [
         // an = 2^2L * a2 + 2^L * a1 + a0
-        T::two_to_2limb() * left_input(2) + T::two_to_limb() * left_input(1) + left_input(0),
+        E::<F>::two_to_2limb() * left_input(2)
+            + E::<F>::two_to_limb() * left_input(1)
+            + left_input(0),
         // bn = 2^2L * b2 + 2^L * b1 + b0
-        T::two_to_2limb() * right_input(2) + T::two_to_limb() * right_input(1) + right_input(0),
+        E::<F>::two_to_2limb() * right_input(2)
+            + E::<F>::two_to_limb() * right_input(1)
+            + right_input(0),
         // qn = 2^2L * q2 + 2^L * q1 + b0
-        T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
+        E::<F>::two_to_2limb() * quotient(2) + E::<F>::two_to_limb() * quotient(1) + quotient(0),
         // rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
-        T::two_to_2limb() * remainder(1) + remainder(0),
+        E::<F>::two_to_2limb() * remainder(1) + remainder(0),
         // f'n = 2^2L * f'2 + 2^L * f'1 + f'0
-        T::two_to_2limb() * neg_foreign_field_modulus(2)
-            + T::two_to_limb() * neg_foreign_field_modulus(1)
+        E::<F>::two_to_2limb() * neg_foreign_field_modulus(2)
+            + E::<F>::two_to_limb() * neg_foreign_field_modulus(1)
             + neg_foreign_field_modulus(0),
     ]
 }
 
 /// Composes the 91-bit carry1 value from its parts
-pub fn compose_carry<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(carry: &[T; 11]) -> T {
+pub fn compose_carry<F: PrimeField>(carry: &[E<F>; 11]) -> E<F> {
     auto_clone_array!(carry);
     carry(0)
-        + T::two_pow(12) * carry(1)
-        + T::two_pow(2 * 12) * carry(2)
-        + T::two_pow(3 * 12) * carry(3)
-        + T::two_pow(4 * 12) * carry(4)
-        + T::two_pow(5 * 12) * carry(5)
-        + T::two_pow(6 * 12) * carry(6)
-        + T::two_pow(7 * 12) * carry(7)
-        + T::two_pow(86) * carry(8)
-        + T::two_pow(88) * carry(9)
-        + T::two_pow(90) * carry(10)
+        + E::<F>::two_pow(12) * carry(1)
+        + E::<F>::two_pow(2 * 12) * carry(2)
+        + E::<F>::two_pow(3 * 12) * carry(3)
+        + E::<F>::two_pow(4 * 12) * carry(4)
+        + E::<F>::two_pow(5 * 12) * carry(5)
+        + E::<F>::two_pow(6 * 12) * carry(6)
+        + E::<F>::two_pow(7 * 12) * carry(7)
+        + E::<F>::two_pow(86) * carry(8)
+        + E::<F>::two_pow(88) * carry(9)
+        + E::<F>::two_pow(90) * carry(10)
 }
 
 // ForeignFieldMul - foreign field multiplication gate
@@ -195,10 +199,7 @@ where
     const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F>, _cache: &mut Cache) -> Vec<E<F>> {
         let mut constraints = vec![];
 
         //
@@ -296,7 +297,8 @@ where
             );
 
         // bound = x2 + 2^88 - f2 - 1
-        let bound = quotient[2].clone() + T::two_to_limb() - hi_foreign_field_modulus - T::one();
+        let bound =
+            quotient[2].clone() + E::<F>::two_to_limb() - hi_foreign_field_modulus - E::<F>::one();
 
         // Define the constraints
         //   For more the details on each constraint please see the
@@ -320,16 +322,16 @@ where
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
         // RFC: corresponds to C2
-        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
-        let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
+        let product1_hi = E::<F>::two_to_limb() * product1_hi_1 + product1_hi_0;
+        let product1 = E::<F>::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(1) - product1);
 
         // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - r01. That is, that
         //         2^2L * carry0 = rhs
         // RFC: Corresponds to C4
         constraints.push(
-            T::two_to_2limb() * carry0.clone()
-                - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
+            E::<F>::two_to_2limb() * carry0.clone()
+                - (products(0) + E::<F>::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
         // C5: Native modulus constraint a_n * b_n + q_n * f'_n - q_n * 2^264 = r_n
@@ -337,7 +339,7 @@ where
         constraints.push(
             left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
                 - remainder_n
-                - quotient_n * T::two_to_3limb(),
+                - quotient_n * E::<F>::two_to_3limb(),
         );
 
         // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
@@ -359,7 +361,8 @@ where
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         // RFC: Corresponds to C6
         constraints.push(
-            T::two_to_limb() * carry1 - (products(2) + product1_hi + carry0 - remainder[1].clone()),
+            E::<F>::two_to_limb() * carry1
+                - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C11: Constrain that q'2 is correct

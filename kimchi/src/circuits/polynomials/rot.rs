@@ -4,11 +4,8 @@ use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
-        expr::{
-            constraints::{crumb, ExprOps},
-            Cache,
-        },
+        berkeley_columns::{crumb, E},
+        expr::Cache,
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
@@ -20,7 +17,7 @@ use crate::{
     },
     variable_map,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField, Zero};
 use std::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -214,20 +211,17 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F>, _cache: &mut Cache) -> Vec<E<F>> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
-            .collect::<Vec<T>>();
+            .collect::<Vec<E<F>>>();
 
         // NOTE:
         // If we ever want to make this gate more generic, the power of two for the length
         // could be a coefficient of the gate instead of a fixed value in the constraints.
-        let two_to_64 = T::two_pow(64);
+        let two_to_64 = E::<F>::two_pow(64);
 
         let word = env.witness_curr(0);
         let rotated = env.witness_curr(1);
@@ -244,19 +238,19 @@ where
         constraints.push(rotated - (shifted + excess.clone()));
 
         // Compute the bound from the crumbs and limbs
-        let mut power_of_2 = T::one();
-        let mut bound = T::zero();
+        let mut power_of_2 = E::<F>::one();
+        let mut bound = E::<F>::zero();
 
         // Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::two_pow(2); // 2 bits
+            power_of_2 *= E::<F>::two_pow(2); // 2 bits
         }
 
         // Sum 12-bit limbs
         for i in (3..=6).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::two_pow(12); // 12 bits
+            power_of_2 *= E::<F>::two_pow(12); // 12 bits
         }
 
         // Check that excess < 2^rot by checking that bound < 2^64

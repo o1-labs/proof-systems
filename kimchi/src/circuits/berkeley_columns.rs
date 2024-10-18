@@ -21,19 +21,23 @@
 
 use crate::{
     circuits::{
+        argument::ArgumentData,
         domains::{Domain, EvaluationDomains},
         expr::{
-            CacheId, ColumnEnvironment, ColumnEvaluations, ConstantExpr, ConstantTerm, Constants,
-            Expr, ExprError, FormattedOutput,
+            Cache, CacheId, ColumnEnvironment, ColumnEvaluations, ConstantExpr, ConstantTerm,
+            Constants, Expr, ExprError, FormattedOutput,
         },
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},
+        polynomials::foreign_field_common::KimchiForeignElement,
         wires::COLUMNS,
     },
+    o1_utils::Two,
     proof::{PointEvaluations, ProofEvaluations},
 };
-use ark_ff::FftField;
+use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::foreign_field::ForeignFieldHelpers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -361,10 +365,66 @@ pub fn witness_next<F>(i: usize) -> E<F> {
 }
 
 /// Handy function to quickly create an expression for a gate.
-pub fn index<F>(g: GateType) -> E<F> {
+pub fn index<F: PrimeField>(g: GateType) -> E<F> {
     E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
 }
 
-pub fn coeff<F>(i: usize) -> E<F> {
+pub fn coeff<F: PrimeField>(i: usize) -> E<F> {
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+}
+
+// Replace ExprOps. Please clean me.
+impl<F: FftField> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
+    pub fn two_pow(pow: u64) -> Self {
+        Self::literal(<F as Two<F>>::two_pow(pow))
+    }
+
+    pub fn two_to_limb() -> Self {
+        Self::literal(KimchiForeignElement::<F>::two_to_limb())
+    }
+
+    pub fn two_to_2limb() -> Self {
+        Self::literal(KimchiForeignElement::<F>::two_to_2limb())
+    }
+
+    pub fn two_to_3limb() -> Self {
+        Self::literal(KimchiForeignElement::<F>::two_to_3limb())
+    }
+
+    pub fn boolean(&self) -> Self {
+        self.square() - self.clone()
+    }
+
+    pub fn crumb(&self) -> Self {
+        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
+        self.clone()
+            * (self.clone() - 1u64.into())
+            * (self.clone() - 2u64.into())
+            * (self.clone() - 3u64.into())
+    }
+
+    pub fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        witness(col, row)
+    }
+
+    pub fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        coeff(col)
+    }
+
+    pub fn cache(&self, cache: &mut Cache) -> Self {
+        Expr::Cache(cache.next_id(), Box::new(self.clone()))
+    }
+}
+
+pub fn boolean(x: E<F>) -> E<F> {
+    x.boolean()
+}
+
+pub fn crumb(x: E<F>) -> E<F> {
+    x.crumb()
+}
+
+/// lo + mi * 2^{LIMB_BITS}
+pub fn compact_limb<F: Field>(lo: &E<F>, mi: &E<F>) -> E<F> {
+    lo.clone() + mi.clone() * E::<F>::two_to_limb()
 }

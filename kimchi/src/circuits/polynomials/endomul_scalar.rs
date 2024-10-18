@@ -4,15 +4,15 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
+        berkeley_columns::E,
         constraints::ConstraintSystem,
-        expr::{constraints::ExprOps, Cache},
+        expr::Cache,
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
     curve::KimchiCurve,
 };
-use ark_ff::{BitIteratorLE, Field, PrimeField};
+use ark_ff::{BitIteratorLE, Field, PrimeField, Zero};
 use std::{array, marker::PhantomData};
 
 impl<F: PrimeField> CircuitGate<F> {
@@ -50,11 +50,10 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &T) -> T {
-    coeffs
-        .iter()
-        .rev()
-        .fold(T::zero(), |acc, c| acc * x.clone() + T::literal(*c))
+fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
+    coeffs.iter().rev().fold(E::<F>::zero(), |acc, c| {
+        acc * x.clone() + E::<F>::literal(*c)
+    })
 }
 
 //~ We give constraints for the endomul scalar computation.
@@ -167,10 +166,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F>, cache: &mut Cache) -> Vec<E<F>> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);
@@ -189,7 +185,7 @@ where
         ];
 
         let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
-        let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
+        let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
         let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));

@@ -5,20 +5,16 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
+        berkeley_columns::{boolean, BerkeleyChallenges, E},
         constraints::ConstraintSystem,
-        expr::{
-            self,
-            constraints::{boolean, ExprOps},
-            Cache,
-        },
+        expr::{self, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
     },
     curve::KimchiCurve,
     proof::{PointEvaluations, ProofEvaluations},
 };
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, One, PrimeField};
 use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
@@ -189,10 +185,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F>, cache: &mut Cache) -> Vec<E<F>> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);
@@ -213,12 +206,12 @@ where
         let s1 = env.witness_curr(9);
         let s3 = env.witness_curr(10);
 
-        let endo_minus_1 = env.endo_coefficient() - T::one();
-        let xq1 = cache.cache((T::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-        let xq2 = cache.cache((T::one() + b3.clone() * endo_minus_1) * xt);
+        let endo_minus_1 = env.endo_coefficient() - E::<F>::one();
+        let xq1 = cache.cache((E::<F>::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        let xq2 = cache.cache((E::<F>::one() + b3.clone() * endo_minus_1) * xt);
 
-        let yq1 = (b2.double() - T::one()) * yt.clone();
-        let yq2 = (b4.double() - T::one()) * yt;
+        let yq1 = (b2.double() - E::<F>::one()) * yt.clone();
+        let yq2 = (b4.double() - E::<F>::one()) * yt;
 
         let s1_squared = cache.cache(s1.square());
         let s3_squared = cache.cache(s3.square());

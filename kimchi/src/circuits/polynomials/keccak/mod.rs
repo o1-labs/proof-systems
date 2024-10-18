@@ -4,11 +4,10 @@ pub mod constants;
 pub mod gadget;
 pub mod witness;
 
-use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
 use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};
-use super::super::berkeley_columns::BerkeleyChallengeTerm;
+use super::super::berkeley_columns::E;
 
 #[macro_export]
 macro_rules! grid {
@@ -102,11 +101,11 @@ impl Keccak {
     }
 
     /// Expands a u64 word into a vector of 4 sparse u64 quarters
-    pub fn expand_word<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(word: u64) -> Vec<T> {
+    pub fn expand_word<F: PrimeField>(word: u64) -> Vec<E<F>> {
         Self::decompose(word)
             .iter()
-            .map(|q| T::literal(F::from(Self::expand(*q))))
-            .collect::<Vec<T>>()
+            .map(|q| E::<F>::literal(F::from(Self::expand(*q))))
+            .collect::<Vec<E<F>>>()
     }
 
     /// Returns the expansion of the 4 dense decomposed quarters of a word where

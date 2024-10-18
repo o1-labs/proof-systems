@@ -1,6 +1,6 @@
 use super::{constraint_system::KimchiConstraint, runner::Constraint};
 use crate::{circuits::polynomial::COLUMNS, FieldVar, RunState, SnarkyResult};
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::{BigInteger, Field, PrimeField};
 use itertools::Itertools;
 use std::borrow::Cow;
 
@@ -156,10 +156,7 @@ pub fn range_check<F: PrimeField>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        circuits::expr::constraints::ExprOps, loc, snarky::api::SnarkyCircuit, FieldVar, RunState,
-        SnarkyResult,
-    };
+    use crate::{loc, snarky::api::SnarkyCircuit, FieldVar, RunState, SnarkyResult};
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,

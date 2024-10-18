@@ -14,7 +14,7 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, Zero};
 use o1_utils::hasher::CryptoDigest;
 use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
