@@ -28,7 +28,7 @@ if [ -d "op-program-db-for-latest-l2-block" ] && [ -f "snapshot-state-10000000.j
     export L2_RPC="http://localhost:8765"
 fi
 
-cargo run --bin ${BINARY_FLAVOR} \
+RUST_BACKTRACE=1 cargo run --bin ${BINARY_FLAVOR} \
     --all-features \
     --release \
     -p o1vm -- \
