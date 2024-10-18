@@ -982,6 +982,10 @@ pub trait InterpreterEnv {
 
     /// Reset the environment to handle the next instruction
     fn reset(&mut self);
+
+    ///Print the witness values when instantiated with witness
+    /// Does nothing when instantiated with constraints
+    fn debug(&mut self);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {

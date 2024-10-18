@@ -619,6 +619,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.lookups.clear();
         self.selector = None;
     }
+
+    fn debug(&mut self) {}
 }
 
 impl<Fp: Field> Env<Fp> {

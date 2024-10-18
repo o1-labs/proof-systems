@@ -23,10 +23,12 @@ use crate::{
     lookups::Lookup,
     preimage_oracle::PreImageOracleT,
 };
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use core::panic;
+use kimchi::o1_utils::FieldHelpers;
 use kimchi::o1_utils::Two;
 use log::{debug, info};
+use num_bigint::BigInt;
 use std::{
     array,
     fs::File,
@@ -71,7 +73,7 @@ impl SyscallEnv {
 /// machine has access to its internal state and some external memory. In
 /// addition to that, it has access to the environment of the Keccak interpreter
 /// that is used to verify the preimage requested during the execution.
-pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
+pub struct Env<Fp: PrimeField, PreImageOracle: PreImageOracleT> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
@@ -132,7 +134,7 @@ fn memory_size(total: usize) -> String {
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -834,9 +836,23 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         self.scratch_state = fresh_scratch_state();
         self.selector = N_MIPS_SEL_COLS;
     }
+
+    fn debug(&mut self) {
+        let (inst, _) = &self.decode_instruction();
+        if &Instruction::RType(RTypeInstruction::SyscallOther) == inst {
+            let witness_value: BigInt = self.scratch_state[self.scratch_state_idx - 1]
+                .to_biguint()
+                .into();
+            println!(
+                "scratch[{}]= {} ",
+                self.scratch_state_idx - 1,
+                witness_value
+            )
+        }
+    }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;

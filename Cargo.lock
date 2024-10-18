@@ -1907,6 +1907,7 @@ dependencies = [
  "log",
  "mina-curves",
  "mina-poseidon",
+ "num-bigint",
  "os_pipe",
  "poly-commitment",
  "rand",
