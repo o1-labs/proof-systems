@@ -12,7 +12,7 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -632,9 +632,9 @@ impl<Fp: Field> Env<Fp> {
                 (var.clone() - one.clone()) * var.clone()
             })
             .collect();
-        let enforce_one_activation = (0..N_MIPS_SEL_COLS).fold(E::<Fp>::zero(), |res, i| {
+        let enforce_one_activation = (0..N_MIPS_SEL_COLS).fold(E::<Fp>::one(), |res, i| {
             let var = self.variable(MIPSColumn::Selector(i));
-            res + var.clone()
+            res - var.clone()
         });
 
         enforce_bool.push(enforce_one_activation);
