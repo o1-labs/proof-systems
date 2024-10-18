@@ -97,6 +97,8 @@ pub fn main() {
 
         // FIXME:
         // Absorb all commitments in the sponge.
+        // Q: what is the initial state of the sponge?
+        // Q: where do we get it. We should keep it in the env.
 
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
