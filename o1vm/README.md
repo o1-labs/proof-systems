@@ -169,3 +169,9 @@ O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
 ```
 
 - Don't forget to stop the HTTP server after you are done.
+
+- You can clean the cached data by executing the following command:
+
+```shell
+./clear-e2e-testing-cache.sh
+```
