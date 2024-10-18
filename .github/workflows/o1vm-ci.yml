@@ -61,15 +61,13 @@ jobs:
         run: |
           python -m http.server 8765 &
 
-      - name: Unzip the cached data
-        run: |
-          unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
-
       #
       # Tests
       #
 
-      - name: Execeute o1vm with cached data in E2E flavor
+      - name: Unzip the cached data and execeute o1vm in E2E flavor
         run: |
           eval $(opam env)
+          cd o1vm
+          unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
           O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
