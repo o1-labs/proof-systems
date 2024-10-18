@@ -20,6 +20,11 @@ esac
 
 if [ -f "snapshot-state-10000000.json" ]; then
     ZKVM_STATE_FILENAME="./snapshot-state-10000000.json"
+    # We need to set the L1 and L2 RPC endpoints for op-program to run successfully
+    # Then start simple HTTP server: python3 -m http.server 8765
+    # And execute: O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
+    L1_RPC="http://localhost:8765"
+    L2_RPC="http://localhost:8765"
 fi
 
 cargo run --bin ${BINARY_FLAVOR} \
@@ -32,7 +37,6 @@ cargo run --bin ${BINARY_FLAVOR} \
     --proof-at never \
     --stop-at "${STOP_AT:-never}" \
     --input "${ZKVM_STATE_FILENAME:-./state.json}" \
-    --preimage-oracle "${PREIMAGE_ORACLE_IMPLEMENTATION:-network}" \
     -- \
     ./ethereum-optimism/op-program/bin/op-program \
     --log.level DEBUG \

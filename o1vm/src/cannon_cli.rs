@@ -62,14 +62,6 @@ pub fn main_cli() -> clap::Command {
                 .default_value("never")
                 .value_parser(step_frequency_parser),
         )
-        .arg(
-            Arg::new("preimage-oracle")
-                .long("preimage-oracle")
-                .value_name("IMPLEMENTATION")
-                .help("Select the preimage oracle implementation")
-                .default_value("network")
-                .value_parser(["network", "disk"]),
-        )
 }
 
 pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
@@ -104,8 +96,6 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
         })
     };
 
-    let preimage_oracle = cli.get_one::<String>("preimage-oracle").unwrap();
-
     VmConfiguration {
         input_state_file: input_state_file.to_string(),
         output_state_file: output_state_file.to_string(),
@@ -118,6 +108,5 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
         snapshot_fmt: snapshot_fmt.to_string(),
         pprof_cpu: *pprof_cpu,
         host,
-        preimage_oracle: preimage_oracle.to_string(),
     }
 }

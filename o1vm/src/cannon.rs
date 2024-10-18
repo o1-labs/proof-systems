@@ -215,7 +215,6 @@ pub struct VmConfiguration {
     pub snapshot_fmt: String,
     pub pprof_cpu: bool,
     pub host: Option<HostProgram>,
-    pub preimage_oracle: String,
 }
 
 #[derive(Debug, Clone)]

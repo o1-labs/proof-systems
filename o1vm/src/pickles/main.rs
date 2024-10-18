@@ -59,12 +59,7 @@ pub fn main() -> ExitCode {
         )
     });
 
-    // TODO: Implement the Disk preimage oracle
-    let mut po: PreImageOracle = match configuration.preimage_oracle.as_str() {
-        "network" => PreImageOracle::create(&configuration.host),
-        // "disk" => PreImageOracle::create(&configuration.host),
-        _ => panic!("Unknown preimage oracle implementation"),
-    };
+    let mut po: PreImageOracle = PreImageOracle::create(&configuration.host);
     let _child = po.start();
 
     // Initialize some data used for statistical computations

@@ -1,4 +1,4 @@
-## o1VM: a zero-knowledge virtual machine
+# o1VM: a zero-knowledge virtual machine
 
 This crate contains an implementation of different components used to build a
 zero-knowledge virtual machine. For now, the implementation is specialised for
@@ -54,7 +54,7 @@ gvm install go1.21
 gvm use go1.21s
 ```
 
-You also will need to install the [Foundry](https://getfoundry.sh/) toolkit 
+You also will need to install the [Foundry](https://getfoundry.sh/) toolkit
 in order to utilize applicaitons like `cast`.
 
 ```shell
@@ -64,6 +64,7 @@ foundryup
 You will also need to install jq with your favorite packet manager.
 
 eg. on Ubuntu
+
 ```shell
 sudo apt-get install jq
 ```
@@ -71,11 +72,13 @@ sudo apt-get install jq
 ## Running the Optimism demo
 
 Start by initializing the submodules:
+
 ```bash
 git submodule init && git submodule update
 ```
 
 Create an executable `rpcs.sh` file like:
+
 ```bash
 #!/usr/bin/env bash
 export L1_RPC=http://xxxxxxxxx
@@ -86,29 +89,34 @@ export L1_BEACON_RPC=http://xxxxxxxxx
 
 If you just want to test the state transition between the latest finalized L2
 block and its predecessor:
+
 ```bash
 ./run-code.sh
 ```
 
 By default this will also create a script named `env-for-latest-l2-block.sh` with a
 snapshot of all the information that you need to rerun the same test again:
+
 ```bash
 FILENAME=env-for-latest-l2-block.sh bash run-code.sh
 ```
 
 Alternatively, you also have the option to test the state transition between a
 specific block and its predecessor:
+
 ```bash
 # Set -n to the desired block transition you want to test.
 ./setenv-for-l2-block.sh -n 12826645
 ```
 
 In this case, you can run the demo using the following format:
+
 ```bash
 FILENAME=env-for-l2-block-12826645.sh bash run-code.sh
 ```
 
 In either case, `run-code.sh` will:
+
 1. Generate the initial state.
 2. Execute the OP program.
 3. Execute the OP program through the Cannon MIPS VM.
@@ -117,6 +125,7 @@ In either case, `run-code.sh` will:
 ## Flavors
 
 Different versions/flavors of the o1vm are available.
+
 - [legacy](./src/legacy/mod.rs) - to be deprecated.
 - [pickles](./src/pickles/mod.rs) (currently the default)
 
@@ -126,6 +135,7 @@ environment variable `O1VM_FLAVOR`.
 ## Testing the preimage read
 
 Run:
+
 ```bash
 ./test_preimage_read.sh [OP_DB_DIRECTORY] [NETWORK_NAME]
 ```
@@ -134,3 +144,28 @@ The default value for `OP_DB_DIRECTORY` would be the one from
 `setenv-for-latest-l2-block.sh` if the parameter is omitted.
 
 The `NETWORK_NAME` defaults to `sepolia`.
+
+## Running the o1vm with cached data
+
+If you want to run the o1vm with cached data, you can use the following steps:
+
+- Make sure you have [Docker Engine](https://docs.docker.com/engine/install/) and [Python3](https://www.python.org/downloads/) installed on your machine.
+- Fetch the cached data by executing the following command (it might take some time):
+
+```shell
+./fetch-e2e-testing-cache.sh
+```
+
+- In another terminal session start the simple HTTP server:
+
+```shell
+python3 -m http.server 8765
+```
+
+- Then run the o1vm with the following command:
+
+```shell
+O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
+```
+
+- Don't forget to stop the HTTP server after you are done.
