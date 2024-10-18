@@ -57,6 +57,18 @@ jobs:
           python-version: "3.13"
           check-latest: true
 
+      - name: Install the Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "^1.21"
+
+      - name: Install the Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build the OP program
+        run: |
+          make -C ./ethereum-optimism/op-program op-program
+
       - name: Start the local HTTP server
         run: |
           python -m http.server 8765 &
