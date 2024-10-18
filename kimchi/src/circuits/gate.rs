@@ -245,12 +245,8 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: F::one(),
         };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<F, F>::create(
-            argument_witness,
-            self.coeffs.clone(),
-            constants,
-            challenges,
-        );
+        let env =
+            ArgumentEnv::<F>::create(argument_witness, self.coeffs.clone(), constants, challenges);
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.

@@ -157,6 +157,7 @@ pub fn range_check<F: PrimeField>(
 #[cfg(test)]
 mod test {
     use crate::{loc, snarky::api::SnarkyCircuit, FieldVar, RunState, SnarkyResult};
+    use ark_ff::Field;
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
@@ -215,7 +216,7 @@ mod test {
 
         // prove a different execution
         {
-            let private_input = Fp::from(2).pow(88) - Fp::from(1);
+            let private_input = Fp::from(2).pow(&[88]) - Fp::from(1);
             let debug = true;
             let (proof, _public_output) = prover_index
                 .prove::<BaseSponge, ScalarSponge>((), private_input, debug)

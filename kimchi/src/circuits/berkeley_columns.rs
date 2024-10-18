@@ -416,11 +416,11 @@ impl<F: FftField> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
     }
 }
 
-pub fn boolean<F: FftField>(x: E<F>) -> E<F> {
+pub fn boolean<F: FftField>(x: &E<F>) -> E<F> {
     x.boolean()
 }
 
-pub fn crumb<F: FftField>(x: E<F>) -> E<F> {
+pub fn crumb<F: FftField>(x: &E<F>) -> E<F> {
     x.crumb()
 }
 

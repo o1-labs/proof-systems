@@ -2,7 +2,6 @@
 
 use crate::{
     circuits::{
-        berkeley_columns::compact_limb,
         polynomial::COLUMNS,
         polynomials::foreign_field_common::{
             BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
@@ -15,6 +14,11 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
 use std::array;
+
+/// lo + mi * 2^{LIMB_BITS}
+fn compact_limb<F: PrimeField>(lo: &F, mi: &F) -> F {
+    lo.clone() + mi.clone() * F::two_to_limb()
+}
 
 /// All foreign field operations allowed
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
