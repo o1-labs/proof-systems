@@ -670,7 +670,7 @@
     lookups::{Lookup, LookupTableIDs},
     E,
 };
-<span class="kw">use </span>ark_ff::{Field, One, Zero};
+<span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -1290,9 +1290,9 @@
                 (var.clone() - one.clone()) * var.clone()
             })
             .collect();
-        <span class="kw">let </span>enforce_one_activation = (<span class="number">0</span>..N_MIPS_SEL_COLS).fold(E::&lt;Fp&gt;::zero(), |res, i| {
+        <span class="kw">let </span>enforce_one_activation = (<span class="number">0</span>..N_MIPS_SEL_COLS).fold(E::&lt;Fp&gt;::one(), |res, i| {
             <span class="kw">let </span>var = <span class="self">self</span>.variable(MIPSColumn::Selector(i));
-            res + var.clone()
+            res - var.clone()
         });
 
         enforce_bool.push(enforce_one_activation);
