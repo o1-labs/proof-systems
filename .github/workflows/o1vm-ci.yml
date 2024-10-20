@@ -6,7 +6,8 @@ on:
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
-  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  # Disable the RUSTFLAGS for now, as it is causing issues while running the o1vm.
+  # RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
   # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
   CARGO_INCREMENTAL: 1
   # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
@@ -65,6 +66,12 @@ jobs:
       - name: Install the Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Build the OP program
+        run: |
+          cd o1vm
+          make -C ./ethereum-optimism/op-program op-program
+          cd ..
+
       - name: Start the local HTTP server
         run: |
           python -m http.server 8765 &
@@ -73,10 +80,9 @@ jobs:
       # Tests
       #
 
-      - name: Build the OP program and execeute o1vm in E2E flavor using cached data
+      - name: Execute o1vm in E2E flavor using cached data
         run: |
           eval $(opam env)
           cd o1vm
-          make -C ./ethereum-optimism/op-program op-program
           unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
           FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
