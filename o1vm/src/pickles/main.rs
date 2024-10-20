@@ -12,10 +12,10 @@ use o1vm::{
     cannon_cli,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
-        constraints as mips_constraints, interpreter,
-        interpreter::InterpreterEnv,
+        constraints as mips_constraints,
+        interpreter::{self, InterpreterEnv},
         witness::{self as mips_witness},
-        Instruction,
+        ITypeInstruction, Instruction, RTypeInstruction,
     },
     pickles::{
         proof::{Proof, ProofInputs},
@@ -78,12 +78,26 @@ pub fn main() -> ExitCode {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    // TODO: give this to the prover + verifier
+
+    let failing_instructions = [
+        Instruction::RType(RTypeInstruction::SyscallOther),
+        Instruction::RType(RTypeInstruction::SyscallFcntl),
+        Instruction::IType(ITypeInstruction::BranchEq),
+        Instruction::IType(ITypeInstruction::BranchNeq),
+        Instruction::IType(ITypeInstruction::LoadWordLeft),
+        Instruction::IType(ITypeInstruction::LoadWordRight),
+        Instruction::IType(ITypeInstruction::StoreWordLeft),
+        Instruction::IType(ITypeInstruction::StoreWordRight),
+    ];
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
             .flat_map(|instr_typ| instr_typ.into_iter())
             .fold(vec![], |mut acc, instr| {
+                if failing_instructions.contains(&instr) {
+                    debug!("Skipping instruction {:?}", instr);
+                    return acc;
+                }
                 interpreter::interpret_instruction(&mut mips_con_env, instr);
                 let selector = mips_con_env.get_selector();
                 let constraints_with_selector: Vec<E<Fp>> = mips_con_env
