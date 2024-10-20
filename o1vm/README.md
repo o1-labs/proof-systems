@@ -165,7 +165,7 @@ python3 -m http.server 8765
 - Then run the o1vm with the following command:
 
 ```shell
-O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
+FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
 ```
 
 - Don't forget to stop the HTTP server after you are done.
