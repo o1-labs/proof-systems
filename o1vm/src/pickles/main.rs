@@ -78,6 +78,17 @@ pub fn main() -> ExitCode {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
+    // FIXME: fix the failing instructions, and add them.
+    let all_instructions: Vec<_> = Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .collect();
+    println!(
+        "All instructions: {:?}",
+        all_instructions
+            .into_iter()
+            .map(|i| (i, usize::from(i) - N_MIPS_REL_COLS))
+            .collect::<Vec<_>>()
+    );
 
     let failing_instructions = [
         Instruction::RType(RTypeInstruction::SyscallOther),
@@ -89,6 +100,13 @@ pub fn main() -> ExitCode {
         Instruction::IType(ITypeInstruction::StoreWordLeft),
         Instruction::IType(ITypeInstruction::StoreWordRight),
     ];
+    println!(
+        "Failing instructions: {:?}",
+        failing_instructions
+            .into_iter()
+            .map(|i| (i, usize::from(i) - N_MIPS_REL_COLS))
+            .collect::<Vec<_>>()
+    );
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
