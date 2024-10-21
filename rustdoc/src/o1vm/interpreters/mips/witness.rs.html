@@ -2570,7 +2570,7 @@
             <span class="kw">let </span>s: State = State {
                 pc: <span class="self">self</span>.registers.current_instruction_pointer,
                 next_pc: <span class="self">self</span>.registers.next_instruction_pointer,
-                step: <span class="self">self</span>.instruction_counter,
+                step: <span class="self">self</span>.normalized_instruction_counter(),
                 registers: <span class="self">self</span>.registers.general_purpose,
                 lo: <span class="self">self</span>.registers.lo,
                 hi: <span class="self">self</span>.registers.hi,
