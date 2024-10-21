@@ -73,6 +73,9 @@ where
     <G as AffineRepr>::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
+    
+        &inputs.witness17();
+    
     let num_chunks = 1;
     let omega = domain.d1.group_gen;
 
