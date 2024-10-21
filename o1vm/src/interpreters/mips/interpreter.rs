@@ -701,10 +701,12 @@ pub trait InterpreterEnv {
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
         let res = {
             let pos = self.alloc_scratch();
+            self.debug();
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
             let pos = self.alloc_scratch();
+            self.debug();
             unsafe { self.inverse_or_zero(x, pos) }
         };
         // If x = 0, then res = 1 and x_inv_or_zero = 0
@@ -1447,8 +1449,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
+            env.debug();
             let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
+            env.debug();
             let is_sysclone = env.equal(&syscall_num, &Env::constant(SYSCALL_CLONE));
+            env.debug();
             let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
             let v1 = Env::constant(0);
             env.write_register(&Env::constant(2), v0);
