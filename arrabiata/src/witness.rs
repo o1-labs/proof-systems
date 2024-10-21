@@ -1052,4 +1052,16 @@ impl<
             Instruction::NoOp => Instruction::NoOp,
         }
     }
+
+    // TODO:
+    // - decide how we will structure the constraints -> selectors, etc.
+    // - for each row, only use the activated constraint
+    // - keep the cross-terms in the environment.
+    // - use alpha and alpha' from the env. It should have been coined before.
+    pub fn compute_cross_terms(&self) -> HashMap<usize, Fp> {}
+
+    pub fn absorb_commitments(&mut self) {
+        let old_state = BigInt::from(0);
+        if env.current_iteration % 2 == 0 {}
+    }
 }
