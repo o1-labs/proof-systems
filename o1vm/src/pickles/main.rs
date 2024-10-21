@@ -32,6 +32,13 @@ use mina_curves::pasta::{Fp, Vesta};
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn main() -> ExitCode {
+    /*
+    Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .for_each(|instr| {
+            let sel_idx: usize = instr.into();
+            println!("{:?} -> {}", instr, sel_idx - N_MIPS_REL_COLS)
+        }); */
     let cli = cannon_cli::main_cli();
 
     let mut rng = rand::thread_rng();
