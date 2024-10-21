@@ -156,16 +156,16 @@ If you want to run the o1vm with cached data, you can use the following steps:
 ./fetch-e2e-testing-cache.sh
 ```
 
-- In another terminal session start the simple HTTP server:
+- Start the simple HTTP server (in background or in another terminal session):
 
 ```shell
-python3 -m http.server 8765
+python3 -m http.server 8765 &
 ```
 
 - Then run the o1vm with the following command:
 
 ```shell
-FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=10000000" ./run-code.sh
+FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh
 ```
 
 - Don't forget to stop the HTTP server after you are done.

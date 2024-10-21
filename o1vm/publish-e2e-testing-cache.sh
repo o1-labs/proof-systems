@@ -14,7 +14,7 @@ echo "Preparing the file system..."
 echo ""
 zip -r -q o1vm-e2e-testing-cache.zip op-program-db-for-latest-l2-block \
   env-for-latest-l2-block.sh \
-  snapshot-state-10000000.json \
+  snapshot-state-3000000.json \
   state.json \
   meta.json \
   out.json \
