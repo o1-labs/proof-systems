@@ -1,0 +1,38 @@
+main:
+  # Initialise
+  addu $t1, $zero, 1    # Initial 0
+  addu $t2, $zero, 1    # Initial 1
+  addu $t4, $zero, 5    # Counter
+  addu $t5, $zero, 1    # Constant
+loop:
+  addu $t3, $t1, $t2	  # Add
+  xor $t1, $t2, $zero   # Write t2 to t1
+  xor $t2, $t3, $zero   # Write t3 to t2
+  subu $t4, $t4, $t5    # Decrement counter
+  bne $t4, $zero, loop  # Backward branch
+  beq  $t4, $zero, exit # Forward branch
+  nop                   # Padding for forward branch
+  nop
+  nop
+exit:
+  li $v0, 10            # Sets $v0 to "10" to select exit syscall
+  syscall               # Exit
+
+other_test:
+  sub $t5, $t2, $t3	# Subtract
+  sw $t5, Z		# Store the answer in Z (declared at the bottom)
+
+  # Run the print_string syscall which has code 4
+  li $v0,4		          # Code for syscall: print_string
+  la $a0, msg	        # Pointer to string (load the address of msg)
+  syscall
+  sw $0, msg
+  la $a0, msg2	        # Pointer to string (load the address of msg)
+  j $a0
+  syscall
+
+.data
+value:  .word 12
+Z:      .word 0
+msg:    .asciiz "Hello World!\n"
+msg2:   .asciiz "Hello World again!\n"
