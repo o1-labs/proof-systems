@@ -12,6 +12,7 @@ use kimchi::{
     curve::KimchiCurve,
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
+    proof::PointEvaluations,
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -240,27 +241,27 @@ where
         // And we interpolate using the evaluations
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        let fail_final_q_division = || {
-            panic!("Division by vanishing poly must not fail at this point, we checked it before")
-        };
+        let fail_final_q_division = || panic!("Fail division by vanishing poly");
+        let fail_remainder_not_zero =
+            || panic!("The constraints are not satisifed since the remainder is not zero");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = expr_evaluation_interpolated
+        let (quotient, rem) = expr_evaluation_interpolated
             .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.
-        if !res.is_zero() {
-            fail_final_q_division();
+        if !rem.is_zero() {
+            fail_remainder_not_zero();
         }
 
         quotient
     };
 
-    let t_comm = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
-
-    absorb_commitment(&mut fq_sponge, &t_comm);
+    let quotient_commitment =
+        srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
+    absorb_commitment(&mut fq_sponge, &quotient_commitment);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -300,15 +301,16 @@ where
         [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
     > = evals(&zeta_omega);
 
+    let quotient_evaluations = PointEvaluations {
+        zeta: quotient_poly.evaluate(&zeta),
+        zeta_omega: quotient_poly.evaluate(&zeta_omega),
+    };
+
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
-
-    // Quotient poly evals
-    let quotient_zeta_eval = quotient_poly.evaluate(&zeta);
-    let quotient_zeta_omega_eval = quotient_poly.evaluate(&zeta_omega);
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
@@ -330,20 +332,20 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&quotient_zeta_eval);
-    fr_sponge.absorb(&quotient_zeta_omega_eval);
+    fr_sponge.absorb(&quotient_evaluations.zeta);
+    fr_sponge.absorb(&quotient_evaluations.zeta_omega);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
 
-    // Preparing the polynomials for the opening proof
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
     polynomials.push(quotient_poly);
 
+    // Preparing the polynomials for the opening proof
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
@@ -381,6 +383,8 @@ where
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        quotient_commitment,
+        quotient_evaluations,
         opening_proof,
     })
 }
