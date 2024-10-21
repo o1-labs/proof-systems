@@ -3,6 +3,13 @@ name: o1vm CI
 on:
   workflow_dispatch:
   pull_request:
+    paths:
+      - "o1vm/**"
+  push:
+    branches:
+      - master
+    paths:
+      - "o1vm/**"
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
