@@ -88,28 +88,68 @@ pub fn test_neg<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D
     assert_eq!(zero, neg_zero);
 }
 
-pub fn test_eval_pbt_add<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+pub fn test_eval_pbt_add<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>()
+where
+    for<'a> &'a T: std::ops::Add<T, Output = T> + std::ops::Add<&'a T, Output = T>,
+{
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_evaluation: [F; N] = std::array::from_fn(|_| F::rand(&mut rng));
     let p1 = unsafe { T::random(&mut rng, None) };
     let p2 = unsafe { T::random(&mut rng, None) };
-    let p3 = p1.clone() + p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 + eval_p2);
+    {
+        let p3 = p1.clone() + p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    {
+        let p3 = p1.clone() + &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    {
+        let p3 = &p1 + p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
+    {
+        let p3 = &p1 + &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 + eval_p2);
+    }
 }
 
-pub fn test_eval_pbt_sub<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+pub fn test_eval_pbt_sub<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>()
+where
+    for<'a> &'a T: std::ops::Sub<T, Output = T> + std::ops::Sub<&'a T, Output = T>,
+{
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_evaluation: [F; N] = std::array::from_fn(|_| F::rand(&mut rng));
     let p1 = unsafe { T::random(&mut rng, None) };
     let p2 = unsafe { T::random(&mut rng, None) };
-    let p3 = p1.clone() - p2.clone();
     let eval_p1 = p1.eval(&random_evaluation);
     let eval_p2 = p2.eval(&random_evaluation);
-    let eval_p3 = p3.eval(&random_evaluation);
-    assert_eq!(eval_p3, eval_p1 - eval_p2);
+    {
+        let p3 = p1.clone() - p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = p1.clone() - &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = &p1 - p2.clone();
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
+    {
+        let p3 = &p1 - &p2;
+        let eval_p3 = p3.eval(&random_evaluation);
+        assert_eq!(eval_p3, eval_p1 - eval_p2);
+    }
 }
 
 pub fn test_eval_pbt_mul_by_scalar<
@@ -522,4 +562,34 @@ pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVP
         let p = unsafe { T::random(&mut rng, None) };
         assert!(!p.is_multilinear());
     }
+}
+
+pub fn test_is_constant<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let c = F::rand(&mut rng);
+    let p = T::from(c);
+    assert!(p.is_constant());
+
+    let p = T::zero();
+    assert!(p.is_constant());
+
+    let p = {
+        let mut res = T::zero();
+        let monomial: [usize; N] = std::array::from_fn(|i| if i == 0 { 1 } else { 0 });
+        res.add_monomial(monomial, F::one());
+        res
+    };
+    assert!(!p.is_constant());
+
+    let p = {
+        let mut res = T::zero();
+        let monomial: [usize; N] = std::array::from_fn(|i| if i == 1 { 1 } else { 0 });
+        res.add_monomial(monomial, F::one());
+        res
+    };
+    assert!(!p.is_constant());
+
+    // This might be flaky
+    let p = unsafe { T::random(&mut rng, None) };
+    assert!(!p.is_constant());
 }

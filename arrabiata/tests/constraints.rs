@@ -2,6 +2,7 @@ use num_bigint::BigInt;
 use std::collections::HashMap;
 
 use arrabiata::{
+    columns::Gadget,
     constraints,
     interpreter::{self, Instruction},
     poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq,
@@ -71,21 +72,19 @@ fn helper_gadget_number_of_columns_used(
     assert_eq!(nb_public_input, exp_nb_public_input);
 }
 
-#[test]
-fn test_gadget_poseidon() {
-    let instr = Instruction::Poseidon(0);
-    helper_compute_constraints_gadget(instr, 12);
+fn helper_check_gadget_activated(instr: Instruction, gadget: Gadget) {
+    let mut constraints_fp = {
+        let poseidon_mds = poseidon_3_60_0_5_5_fp::static_params().mds.clone();
+        constraints::Env::<Fp>::new(poseidon_mds.to_vec(), BigInt::from(0_usize))
+    };
+    interpreter::run_ivc(&mut constraints_fp, instr);
 
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(5, 12);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 15, 14);
+    assert_eq!(constraints_fp.activated_gadget, Some(gadget));
 }
 
 #[test]
 fn test_gadget_poseidon_next_row() {
-    let instr = Instruction::PoseidonNextRow(0);
+    let instr = Instruction::Poseidon(0);
     helper_compute_constraints_gadget(instr, 15);
 
     let mut exp_degrees = HashMap::new();
@@ -95,33 +94,10 @@ fn test_gadget_poseidon_next_row() {
     helper_gadget_number_of_columns_used(instr, 15, 17);
 
     // We always have 2 additional public inputs, even if set to 0
-    let instr = Instruction::PoseidonNextRow(1);
+    let instr = Instruction::Poseidon(1);
     helper_gadget_number_of_columns_used(instr, 15, 17);
-}
 
-#[test]
-fn test_gadget_sixteen_bits_decomposition() {
-    let instr = Instruction::SixteenBitsDecomposition;
-    helper_compute_constraints_gadget(instr, 1);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
-}
-
-#[test]
-fn test_gadget_bit_decomposition_from_16bits() {
-    let instr = Instruction::BitDecompositionFrom16Bits(0);
-    helper_compute_constraints_gadget(instr, 17);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    exp_degrees.insert(2, 16);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
+    helper_check_gadget_activated(instr, Gadget::Poseidon);
 }
 
 #[test]
@@ -135,6 +111,8 @@ fn test_gadget_elliptic_curve_addition() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 8, 0);
+
+    helper_check_gadget_activated(instr, Gadget::EllipticCurveAddition);
 }
 
 #[test]
@@ -183,17 +161,6 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 10, 0);
-}
 
-#[test]
-fn test_gadget_bit_decomposition() {
-    let instr = Instruction::BitDecomposition(0);
-    helper_compute_constraints_gadget(instr, 16);
-
-    let mut exp_degrees = HashMap::new();
-    exp_degrees.insert(1, 1);
-    exp_degrees.insert(2, 15);
-    helper_check_expected_degree_constraints(instr, exp_degrees);
-
-    helper_gadget_number_of_columns_used(instr, 17, 0);
+    helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
 }

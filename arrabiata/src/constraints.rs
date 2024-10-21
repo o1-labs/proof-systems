@@ -24,6 +24,7 @@ pub struct Env<Fp: Field> {
     pub idx_var_next_row: usize,
     pub idx_var_pi: usize,
     pub constraints: Vec<E<Fp>>,
+    pub activated_gadget: Option<Gadget>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -37,6 +38,7 @@ impl<Fp: PrimeField> Env<Fp> {
             idx_var_next_row: 0,
             idx_var_pi: 0,
             constraints: Vec::new(),
+            activated_gadget: None,
         }
     }
 }
@@ -97,8 +99,8 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         res
     }
 
-    fn activate_gadget(&mut self, _gadget: Gadget) {
-        // Nothing to do. It is only useful for the witness.
+    fn activate_gadget(&mut self, gadget: Gadget) {
+        self.activated_gadget = Some(gadget);
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {
@@ -131,9 +133,6 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.read_position(pos)
     }
 
-    // FIXME
-    fn range_check16(&mut self, _x: Self::Position) {}
-
     fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let v = self.read_position(pos);
         let x = x.square();
@@ -152,26 +151,10 @@ impl<Fp: PrimeField> InterpreterEnv for Env<Fp> {
         self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
         self.constraints.clear();
+        self.activated_gadget = None;
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        self.read_position(pos)
-    }
-
-    unsafe fn read_sixteen_bits_chunks_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        _i: u32,
-    ) -> Self::Variable {
-        let (col, row) = pos;
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
-    }
-
-    unsafe fn read_bit_of_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        _i: u64,
-    ) -> Self::Variable {
         self.read_position(pos)
     }
 
@@ -325,7 +308,7 @@ impl<F: PrimeField> Env<F> {
     /// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
-    /// - [Instruction::PoseidonNextRow] to verify the challenges and the public
+    /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
@@ -346,7 +329,7 @@ impl<F: PrimeField> Env<F> {
         // Poseidon constraints
         // The constraints are the same for all the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::PoseidonNextRow(0));
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -370,6 +353,7 @@ impl<F: PrimeField> Env<F> {
     /// Get all the constraints for the IVC circuit and the application.
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
+    // FIXME: the selectors are not added for now.
     pub fn get_all_constraints(&self) -> Vec<E<F>> {
         let mut constraints = self.get_all_constraints_for_ivc();
 

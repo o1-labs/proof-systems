@@ -1,11 +1,21 @@
-use std::collections::HashMap;
+//! This module contains the definition of the `MVPoly` trait, which is used to
+//! represent multi-variate polynomials.
+//!
+//! Different representations are provided in the sub-modules:
+//! - `monomials`: a representation based on monomials
+//! - `prime`: a representation based on a mapping from variables to prime
+//! numbers. This representation is unmaintained for now. We leave it
+//! for interested users.
+//!
+//! "Expressions", as defined in the [kimchi] crate, can be converted into a
+//! multi-variate polynomial using the `from_expr` method.
 
 use ark_ff::PrimeField;
-use kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
-    expr::{ConstantExpr, Expr},
+use kimchi::circuits::expr::{
+    ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable,
 };
 use rand::RngCore;
+use std::collections::HashMap;
 
 pub mod monomials;
 pub mod pbt;
@@ -14,10 +24,16 @@ pub mod utils;
 
 /// Generic trait to represent a multi-variate polynomial
 pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
+    // Addition
     std::ops::Add<Self, Output = Self>
+    + for<'a> std::ops::Add<&'a Self, Output = Self>
+    // Mul
     + std::ops::Mul<Self, Output = Self>
+    // Negation
     + std::ops::Neg<Output = Self>
+    // Sub
     + std::ops::Sub<Self, Output = Self>
+    + for<'a> std::ops::Sub<&'a Self, Output = Self>
     + ark_ff::One
     + ark_ff::Zero
     + std::fmt::Debug
@@ -68,12 +84,138 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// speed up the computation.
     fn eval(&self, x: &[F; N]) -> F;
 
+    /// Build the univariate polynomial `x_i` from the variable `i`.
+    /// The conversion into the type `usize` is unspecified by this trait. It
+    /// is left to the trait implementation.
+    /// For instance, in the case of [crate::prime], the output must be a prime
+    /// number, starting at `2`. [crate::utils::PrimeNumberGenerator] can be
+    /// used.
+    /// For [crate::monomials], the output must be the index of the variable,
+    /// starting from `0`.
+    ///
+    /// The parameter `offset_next_row` is an optional argument that is used to
+    /// support the case where the "next row" is used. In this case, the type
+    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// N should be at least `8 = 2 * 4`).
+    fn from_variable<Column: Into<usize>>(var: Variable<Column>, offset_next_row: Option<usize>) -> Self;
+
+    fn from_constant<ChallengeTerm: Clone>(op: Operations<ConstantExprInner<F, ChallengeTerm>>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+        match op {
+            Atom(op_const) => {
+                match op_const {
+                    ConstantExprInner::Challenge(_) => {
+                        unimplemented!("Challenges are not supposed to be used in this context for now")
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
+                        unimplemented!(
+                            "The constant EndoCoefficient is not supposed to be used in this context"
+                        )
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::Mds {
+                        row: _row,
+                        col: _col,
+                    }) => {
+                        unimplemented!("The constant Mds is not supposed to be used in this context")
+                    }
+                    ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Self::from(c),
+                }
+            }
+            Add(c1, c2) => Self::from_constant(*c1) + Self::from_constant(*c2),
+            Sub(c1, c2) => Self::from_constant(*c1) - Self::from_constant(*c2),
+            Mul(c1, c2) => Self::from_constant(*c1) * Self::from_constant(*c2),
+            Square(c) => Self::from_constant(*c.clone()) * Self::from_constant(*c),
+            Double(c1) => Self::from_constant(*c1).double(),
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from_constant(*c);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
+
     /// Build a value from an expression.
     /// This method aims to be used to be retro-compatible with what we call
     /// "the expression framework".
     /// In the near future, the "expression framework" should be moved also into
     /// this library.
-    fn from_expr<Column: Into<usize>>(expr: Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>) -> Self;
+    ///
+    /// The mapping from variable to the user is left unspecified by this trait
+    /// and is left to the implementation. The conversion of a variable into an
+    /// index is done by the trait requirement `Into<usize>` on the column type.
+    ///
+    /// The parameter `offset_next_row` is an optional argument that is used to
+    /// support the case where the "next row" is used. In this case, the type
+    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// N should be at least `8 = 2 * 4`).
+    fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>, offset_next_row: Option<usize>) -> Self {
+        use kimchi::circuits::expr::Operations::*;
+
+        match expr {
+            Atom(op_const) => {
+                match op_const {
+                    ExprInner::UnnormalizedLagrangeBasis(_) => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                        unimplemented!("Not used in this context")
+                    }
+                    ExprInner::Constant(c) => Self::from_constant(c),
+                    ExprInner::Cell(var) => {
+                        Self::from_variable::<Column>(var, offset_next_row)
+                    }
+                }
+            }
+            Add(e1, e2) => {
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
+                p1 + p2
+            }
+            Sub(e1, e2) => {
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
+                p1 - p2
+            }
+            Mul(e1, e2) => {
+                let p1 = Self::from_expr::<Column, ChallengeTerm>(*e1, offset_next_row);
+                let p2 = Self::from_expr::<Column, ChallengeTerm>(*e2, offset_next_row);
+                p1 * p2
+            }
+            Double(p) => {
+                let p = Self::from_expr::<Column, ChallengeTerm>(*p, offset_next_row);
+                p.double()
+            }
+            Square(p) => {
+                let p = Self::from_expr::<Column, ChallengeTerm>(*p, offset_next_row);
+                p.clone() * p.clone()
+            }
+            Pow(c, e) => {
+                // FIXME: dummy implementation
+                let p = Self::from_expr::<Column, ChallengeTerm>(*c, offset_next_row);
+                let mut result = p.clone();
+                for _ in 0..e {
+                    result = result.clone() * p.clone();
+                }
+                result
+            }
+            Cache(_c, _) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            IfFeature(_c, _t, _f) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+        }
+    }
 
     /// Returns true if the polynomial is homogeneous (of degree `D`).
     /// As a reminder, a polynomial is homogeneous if all its monomials have the

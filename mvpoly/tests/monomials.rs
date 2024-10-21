@@ -1,6 +1,12 @@
 use ark_ff::{Field, One, UniformRand, Zero};
+use kimchi::circuits::{
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 use mina_curves::pasta::Fp;
 use mvpoly::{monomials::Sparse, MVPoly};
+use rand::Rng;
 
 #[test]
 fn test_mul_by_one() {
@@ -34,65 +40,12 @@ fn test_neg() {
 
 #[test]
 fn test_eval_pbt_add() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    {
-        let p3 = p1.clone() + p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    // For code coverage, using ref
-    {
-        let p3 = &p1 + p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    {
-        let p3 = &p1 + &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
-    {
-        let p3 = p1 + &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 + eval_p2);
-    }
+    mvpoly::pbt::test_eval_pbt_add::<Fp, 6, 4, Sparse<Fp, 6, 4>>();
 }
 
 #[test]
 fn test_eval_pbt_sub() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let random_evaluation: [Fp; 6] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let p1 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let p2 = unsafe { Sparse::<Fp, 6, 4>::random(&mut rng, None) };
-    let eval_p1 = p1.eval(&random_evaluation);
-    let eval_p2 = p2.eval(&random_evaluation);
-    {
-        let p3 = p1.clone() - p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = &p1 - p2.clone();
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = p1.clone() - &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
-    {
-        let p3 = &p1 - &p2;
-        let eval_p3 = p3.eval(&random_evaluation);
-        assert_eq!(eval_p3, eval_p1 - eval_p2);
-    }
+    mvpoly::pbt::test_eval_pbt_sub::<Fp, 6, 4, Sparse<Fp, 6, 4>>();
 }
 
 #[test]
@@ -148,17 +101,7 @@ fn test_degree_random_degree() {
 
 #[test]
 fn test_is_constant() {
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let c = Fp::rand(&mut rng);
-    let p = Sparse::<Fp, 4, 5>::from(c);
-    assert!(p.is_constant());
-
-    let p = Sparse::<Fp, 4, 5>::zero();
-    assert!(p.is_constant());
-
-    // This might be flaky
-    let p = unsafe { Sparse::<Fp, 4, 5>::random(&mut rng, None) };
-    assert!(!p.is_constant());
+    mvpoly::pbt::test_is_constant::<Fp, 4, 5, Sparse<Fp, 4, 5>>();
 }
 
 #[test]
@@ -381,6 +324,36 @@ fn test_mvpoly_compute_cross_terms_degree_six() {
     assert_eq!(lhs, rhs);
 }
 
+// The cross-terms of a sum of polynomials is the sum of the cross-terms, per
+// power.
+#[test]
+fn test_mvpoly_pbt_cross_terms_addition() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+    let p2 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+    let p = p1.clone() + p2.clone();
+
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+
+    let cross_terms1 = p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    let cross_terms2 = p2.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    let cross_terms = p.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+
+    let cross_terms_sum =
+        cross_terms1
+            .iter()
+            .fold(cross_terms2.clone(), |mut acc, (power, term)| {
+                acc.entry(*power)
+                    .and_modify(|v| *v += term)
+                    .or_insert(*term);
+                acc
+            });
+    assert_eq!(cross_terms, cross_terms_sum);
+}
+
 #[test]
 fn test_mvpoly_compute_cross_terms_degree_seven() {
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -473,5 +446,269 @@ fn test_pbt_increase_number_of_variables_zero_one_cst() {
         };
         let rhs: Sparse<Fp, 5, 2> = Sparse::<Fp, 5, 2>::from(c);
         assert_eq!(lhs, rhs);
+    }
+}
+
+#[test]
+fn test_build_from_variable() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+    let p = Sparse::<Fp, 4, 3>::from_variable::<Column>(
+        Variable {
+            col: Column::X(idx),
+            row: CurrOrNext::Curr,
+        },
+        None,
+    );
+
+    let eval: [Fp; 4] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+
+    assert_eq!(p.eval(&eval), eval[idx]);
+}
+
+#[test]
+#[should_panic]
+fn test_build_from_variable_next_row_without_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+    let _p = Sparse::<Fp, 4, 3>::from_variable::<Column>(
+        Variable {
+            col: Column::X(idx),
+            row: CurrOrNext::Next,
+        },
+        None,
+    );
+}
+
+#[test]
+fn test_build_from_variable_next_row_with_offset_given() {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let idx: usize = rng.gen_range(0..4);
+
+    // Using next
+    {
+        let p = Sparse::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Next,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx + 4]);
+    }
+
+    // Still using current
+    {
+        let p = Sparse::<Fp, 8, 3>::from_variable::<Column>(
+            Variable {
+                col: Column::X(idx),
+                row: CurrOrNext::Curr,
+            },
+            Some(4),
+        );
+
+        let eval: [Fp; 8] = std::array::from_fn(|_i| Fp::rand(&mut rng));
+        assert_eq!(p.eval(&eval), eval[idx]);
+    }
+}
+
+/// As a reminder, here are the equations to compute the addition of two
+/// different points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let `P3 = (X3,
+/// Y3) = P1 + P2`.
+///
+/// ```text
+/// - λ = (Y1 - Y2) / (X1 - X2)
+/// - X3 = λ^2 - X1 - X2
+/// - Y3 = λ (X1 - X3) - Y1
+/// ```
+///
+/// Therefore, the addition of elliptic curve points can be computed using the
+/// following degree-2 constraints
+///
+/// ```text
+/// - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+/// - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+/// - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+/// ```
+#[test]
+fn test_from_expr_ec_addition() {
+    // Simulate a real usecase
+    // The following lines/design look similar to the ones we use in
+    // o1vm/arrabiata
+    #[derive(Clone, Copy, PartialEq)]
+    enum Column {
+        X(usize),
+    }
+
+    impl From<Column> for usize {
+        fn from(val: Column) -> usize {
+            match val {
+                Column::X(i) => i,
+            }
+        }
+    }
+
+    struct Constraint {
+        idx: usize,
+    }
+
+    trait Interpreter {
+        type Position: Clone + Copy;
+
+        type Variable: Clone
+            + std::ops::Add<Self::Variable, Output = Self::Variable>
+            + std::ops::Sub<Self::Variable, Output = Self::Variable>
+            + std::ops::Mul<Self::Variable, Output = Self::Variable>;
+
+        fn allocate(&mut self) -> Self::Position;
+
+        // Simulate fetching/reading a value from outside
+        // In the case of the witness, it will be getting a value from the
+        // environment
+        fn fetch(&self, pos: Self::Position) -> Self::Variable;
+    }
+
+    impl Interpreter for Constraint {
+        type Position = Column;
+
+        type Variable = Expr<ConstantExpr<Fp, BerkeleyChallengeTerm>, Column>;
+
+        fn allocate(&mut self) -> Self::Position {
+            let col = Column::X(self.idx);
+            self.idx += 1;
+            col
+        }
+
+        fn fetch(&self, col: Self::Position) -> Self::Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        }
+    }
+
+    impl Constraint {
+        fn new() -> Self {
+            Self { idx: 0 }
+        }
+    }
+
+    let mut interpreter = Constraint::new();
+    // Constraints for elliptic curve addition, without handling the case of the
+    // point at infinity or double
+    let lambda = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let x2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let y1 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y2 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    let x3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+    let y3 = {
+        let pos = interpreter.allocate();
+        interpreter.fetch(pos)
+    };
+
+    // Check we can convert into a Sparse polynomial.
+    // We have 7 variables, maximum degree 2.
+    // We test by evaluating at a random point.
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    {
+        // - Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
+        let expression = lambda.clone() * (x1.clone() - x2.clone()) - (y1.clone() - y2.clone());
+
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expression, None);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[0] * (random_evaluation[1] - random_evaluation[2])
+                - (random_evaluation[3] - random_evaluation[4])
+        };
+        assert_eq!(eval, exp_eval);
+    }
+
+    {
+        // - Constraint 2: X3 + X1 + X2 - λ^2 = 0
+        let expr = x3.clone() + x1.clone() + x2.clone() - lambda.clone() * lambda.clone();
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[5] + random_evaluation[1] + random_evaluation[2]
+                - random_evaluation[0] * random_evaluation[0]
+        };
+        assert_eq!(eval, exp_eval);
+    }
+    {
+        // - Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
+        let expr = y3.clone() - lambda.clone() * (x1.clone() - x3.clone()) + y1.clone();
+        let p = Sparse::<Fp, 7, 2>::from_expr::<Column, BerkeleyChallengeTerm>(expr, None);
+        let random_evaluation: [Fp; 7] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval = p.eval(&random_evaluation);
+        let exp_eval = {
+            random_evaluation[6]
+                - random_evaluation[0] * (random_evaluation[1] - random_evaluation[5])
+                + random_evaluation[3]
+        };
+        assert_eq!(eval, exp_eval);
     }
 }

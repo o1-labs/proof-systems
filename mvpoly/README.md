@@ -1,4 +1,4 @@
-## MVPoly: symbolic interpreter of multivariate polynomials
+# MVPoly: play with multi-variate poynomials
 
 This library aims to provide algorithms and different representations to
 manipulate multivariate polynomials.

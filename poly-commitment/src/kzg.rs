@@ -22,6 +22,7 @@ use ark_poly::{
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use mina_poseidon::FqSponge;
+use rand::thread_rng;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -128,6 +129,26 @@ pub struct PairingSRS<Pair: Pairing> {
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
+impl<
+        F: PrimeField,
+        G: CommitmentCurve<ScalarField = F>,
+        G2: CommitmentCurve<ScalarField = F>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
+    > PairingSRS<Pair>
+{
+    /// Create a trusted setup for the KZG protocol.
+    /// The setup is created using a toxic waste `toxic_waste` and a depth
+    /// `depth`.
+    pub fn create_trusted_setup(toxic_waste: F, depth: usize) -> Self {
+        let full_srs = unsafe { SRS::create_trusted_setup(toxic_waste, depth) };
+        let verifier_srs = unsafe { SRS::create_trusted_setup(toxic_waste, 3) };
+        Self {
+            full_srs,
+            verifier_srs,
+        }
+    }
+}
+
 impl<Pair: Pairing> Default for PairingSRS<Pair> {
     fn default() -> Self {
         Self {
@@ -142,28 +163,6 @@ impl<Pair: Pairing> Clone for PairingSRS<Pair> {
         Self {
             full_srs: self.full_srs.clone(),
             verifier_srs: self.verifier_srs.clone(),
-        }
-    }
-}
-
-impl<
-        F: PrimeField,
-        G: CommitmentCurve<ScalarField = F>,
-        G2: CommitmentCurve<ScalarField = F>,
-        Pair: Pairing<G1Affine = G, G2Affine = G2>,
-    > PairingSRS<Pair>
-{
-    /// Create a new SRS for the KZG protocol.
-    ///
-    /// # Safety
-    ///
-    /// The method is annotated as unsafe because it does use a method
-    /// generating the toxic waste. A safe method would be to load an existing
-    /// SRS where it is broadly accepted that the trapdoor is not recoverable.
-    pub unsafe fn create(x: F, n: usize) -> Self {
-        PairingSRS {
-            full_srs: unsafe { SRS::create_trusted_setup(x, n) },
-            verifier_srs: unsafe { SRS::create_trusted_setup(x, 3) },
         }
     }
 }
@@ -318,8 +317,10 @@ impl<
             .commit_evaluations_custom(domain, plnm, blinders)
     }
 
-    fn create(_depth: usize) -> Self {
-        todo!()
+    fn create(depth: usize) -> Self {
+        let mut rng = thread_rng();
+        let toxic_waste = G::ScalarField::rand(&mut rng);
+        Self::create_trusted_setup(toxic_waste, depth)
     }
 
     fn add_lagrange_basis(&mut self, domain: D<<G>::ScalarField>) {

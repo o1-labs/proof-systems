@@ -3,6 +3,7 @@ use crate::{
         berkeley_columns,
         berkeley_columns::BerkeleyChallengeTerm,
         constraints::FeatureFlags,
+        domains::Domain,
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
@@ -127,7 +128,7 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
 }
 
 // Compute the ith unnormalized lagrange basis
-fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
+pub fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
     let omega_i = if i < 0 {
         domain.group_gen.pow([-i as u64]).inverse().unwrap()
     } else {
@@ -164,9 +165,13 @@ pub enum ConstantTerm<F> {
 
 pub trait Literal: Sized + Clone {
     type F;
+
     fn literal(x: Self::F) -> Self;
+
     fn to_literal(self) -> Result<Self::F, Self>;
+
     fn to_literal_ref(&self) -> Option<&Self::F>;
+
     /// Obtains the representation of some constants as a literal.
     /// This is useful before converting Kimchi expressions with constants
     /// to folding compatible expressions.
@@ -175,15 +180,19 @@ pub trait Literal: Sized + Clone {
 
 impl<F: Field> Literal for F {
     type F = F;
+
     fn literal(x: Self::F) -> Self {
         x
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         Ok(self)
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
+
     fn as_literal(&self, _constants: &Constants<Self::F>) -> Self {
         *self
     }
@@ -290,9 +299,11 @@ impl<T> From<T> for Operations<T> {
 
 impl<T: Literal + Clone> Literal for Operations<T> {
     type F = T::F;
+
     fn literal(x: Self::F) -> Self {
         Self::Atom(T::literal(x))
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
             Self::Atom(x) => match x.to_literal() {
@@ -302,12 +313,14 @@ impl<T: Literal + Clone> Literal for Operations<T> {
             x => Err(x),
         }
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         match self {
             Self::Atom(x) => x.to_literal_ref(),
             _ => None,
         }
     }
+
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
         match self {
             Self::Atom(x) => Self::Atom(x.as_literal(constants)),
@@ -352,18 +365,8 @@ impl<'a, F, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
     }
 }
 
-pub trait ToPolish<F, Column, ChallengeTerm> {
-    fn to_polish(
-        &self,
-        cache: &mut HashMap<CacheId, usize>,
-        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
-    );
-}
-
-impl<F: Copy, Column, ChallengeTerm: Copy> ToPolish<F, Column, ChallengeTerm>
-    for ConstantExprInner<F, ChallengeTerm>
-{
-    fn to_polish(
+impl<F: Copy, ChallengeTerm: Copy> ConstantExprInner<F, ChallengeTerm> {
+    fn to_polish<Column>(
         &self,
         _cache: &mut HashMap<CacheId, usize>,
         res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
@@ -375,10 +378,8 @@ impl<F: Copy, Column, ChallengeTerm: Copy> ToPolish<F, Column, ChallengeTerm>
     }
 }
 
-impl<F, Column, ChallengeTerm, T: ToPolish<F, Column, ChallengeTerm>>
-    ToPolish<F, Column, ChallengeTerm> for Operations<T>
-{
-    fn to_polish(
+impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm>> {
+    fn to_polish<Column>(
         &self,
         cache: &mut HashMap<CacheId, usize>,
         res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
@@ -542,10 +543,6 @@ impl CacheId {
     fn latex_name(&self) -> String {
         format!("x_{{{}}}", self.0)
     }
-
-    fn text_name(&self) -> String {
-        format!("x[{}]", self.0)
-    }
 }
 
 impl Cache {
@@ -642,9 +639,11 @@ impl<'a, F, Column, ChallengeTerm: AlphaChallengeTerm<'a>> From<ChallengeTerm>
 
 impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
+
     fn literal(x: Self::F) -> Self {
         ExprInner::Constant(T::literal(x))
     }
+
     fn to_literal(self) -> Result<Self::F, Self> {
         match self {
             ExprInner::Constant(x) => match x.to_literal() {
@@ -654,12 +653,14 @@ impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
             x => Err(x),
         }
     }
+
     fn to_literal_ref(&self) -> Option<&Self::F> {
         match self {
             ExprInner::Constant(x) => x.to_literal_ref(),
             _ => None,
         }
     }
+
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
         match self {
             ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
@@ -988,16 +989,9 @@ where
     ChallengeTerm: AlphaChallengeTerm<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.text_str())
+        let cache = &mut HashMap::new();
+        write!(f, "{}", self.text(cache))
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-pub enum Domain {
-    D1 = 1,
-    D2 = 2,
-    D4 = 4,
-    D8 = 8,
 }
 
 #[derive(Clone)]
@@ -2970,33 +2964,21 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     }
 }
 
-impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm>
-    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm> FormattedOutput
+    for Expr<ConstantExpr<F, ChallengeTerm>, Column>
 where
     F: PrimeField,
     ChallengeTerm: AlphaChallengeTerm<'a>,
 {
-    /// Converts the expression in OCaml code
-    pub fn ocaml_str(&self) -> String {
-        let mut env = HashMap::new();
-        let e = self.ocaml(&mut env);
-
-        let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
-
-        let mut res = String::new();
-        for (k, v) in env {
-            let rhs = v.ocaml_str();
-            let cached = format!("let {} = {rhs} in ", k.var_name());
-            res.push_str(&cached);
+    fn is_alpha(&self) -> bool {
+        use ExprInner::*;
+        use Operations::*;
+        match self {
+            Atom(Constant(x)) => x.is_alpha(),
+            _ => false,
         }
-
-        res.push_str(&e);
-        res
     }
-
+    /// Converts the expression in OCaml code
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
     fn ocaml(
@@ -3040,27 +3022,6 @@ where
                 )
             }
         }
-    }
-
-    /// Converts the expression in LaTeX
-    pub fn latex_str(&self) -> Vec<String> {
-        let mut env = HashMap::new();
-        let e = self.latex(&mut env);
-
-        let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
-
-        let mut res = vec![];
-        for (k, v) in env {
-            let mut rhs = v.latex_str();
-            let last = rhs.pop().expect("returned an empty expression");
-            res.push(format!("{} = {last}", k.latex_name()));
-            res.extend(rhs);
-        }
-        res.push(e);
-        res
     }
 
     fn latex(
@@ -3156,24 +3117,33 @@ where
             IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
+}
 
-    /// Converts the expression to a text string
-    pub fn text_str(&self) -> String {
+impl<'a, F, Column: FormattedOutput + Debug + Clone, ChallengeTerm>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+where
+    F: PrimeField,
+    ChallengeTerm: AlphaChallengeTerm<'a>,
+{
+    /// Converts the expression in LaTeX
+    // It is only used by visual tooling like kimchi-visu
+    pub fn latex_str(&self) -> Vec<String> {
         let mut env = HashMap::new();
-        let e = self.text(&mut env);
+        let e = self.latex(&mut env);
 
         let mut env: Vec<_> = env.into_iter().collect();
-        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
-        // consistent when printing.
+        // HashMap deliberately uses an unstable order; here we sort to ensure
+        // that the output is consistent when printing.
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
-        let mut res = String::new();
+        let mut res = vec![];
         for (k, v) in env {
-            let str = format!("{} = {}", k.text_name(), v.text_str());
-            res.push_str(&str);
+            let mut rhs = v.latex_str();
+            let last = rhs.pop().expect("returned an empty expression");
+            res.push(format!("{} = {last}", k.latex_name()));
+            res.extend(rhs);
         }
-
-        res.push_str(&e);
+        res.push(e);
         res
     }
 }
@@ -3457,162 +3427,4 @@ pub mod prologue {
         berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},
         FeatureFlag,
     };
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use crate::{
-        circuits::{
-            berkeley_columns::{index, witness_curr, Environment, E},
-            constraints::ConstraintSystem,
-            domains::EvaluationDomains,
-            expr::constraints::ExprOps,
-            gate::{CircuitGate, GateType},
-            polynomials::generic::GenericGateSpec,
-            wires::{Wire, COLUMNS},
-        },
-        curve::KimchiCurve,
-        prover_index::ProverIndex,
-    };
-    use ark_ff::UniformRand;
-    use mina_curves::pasta::{Fp, Pallas, Vesta};
-    use poly_commitment::{
-        ipa::{endos, OpeningProof, SRS},
-        SRS as _,
-    };
-    use rand::{prelude::StdRng, SeedableRng};
-    use std::{array, sync::Arc};
-
-    #[test]
-    #[should_panic]
-    fn test_failed_linearize() {
-        // w0 * w1
-        let mut expr: E<Fp> = E::zero();
-        expr += witness_curr(0);
-        expr *= witness_curr(1);
-
-        // since none of w0 or w1 is evaluated this should panic
-        let evaluated = HashSet::new();
-        expr.linearize(evaluated).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_degree_tracking() {
-        // The selector CompleteAdd has degree n-1 (so can be tracked with n evaluations in the domain d1 of size n).
-        // Raising a polynomial of degree n-1 to the power 8 makes it degree 8*(n-1) (and so it needs `8(n-1) + 1` evaluations).
-        // Since `d8` is of size `8n`, we are still good with that many evaluations to track the new polynomial.
-        // Raising it to the power 9 pushes us out of the domain d8, which will panic.
-        let mut expr: E<Fp> = E::zero();
-        expr += index(GateType::CompleteAdd);
-        let expr = expr.pow(9);
-
-        // create a dummy env
-        let one = Fp::from(1u32);
-        let gates = vec![
-            CircuitGate::create_generic_gadget(
-                Wire::for_row(0),
-                GenericGateSpec::Const(1u32.into()),
-                None,
-            ),
-            CircuitGate::create_generic_gadget(
-                Wire::for_row(1),
-                GenericGateSpec::Const(1u32.into()),
-                None,
-            ),
-        ];
-        let index = {
-            let constraint_system = ConstraintSystem::fp_for_testing(gates);
-            let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
-            srs.add_lagrange_basis(constraint_system.domain.d1);
-            let srs = Arc::new(srs);
-
-            let (endo_q, _endo_r) = endos::<Pallas>();
-            ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
-        };
-
-        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
-        let permutation = DensePolynomial::zero();
-        let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
-
-        let env = Environment {
-            constants: Constants {
-                endo_coefficient: one,
-                mds: &Vesta::sponge_params().mds,
-                zk_rows: 3,
-            },
-            challenges: super::berkeley_columns::BerkeleyChallenges {
-                alpha: one,
-                beta: one,
-                gamma: one,
-                joint_combiner: one,
-            },
-            witness: &domain_evals.d8.this.w,
-            coefficient: &index.column_evaluations.coefficients8,
-            vanishes_on_zero_knowledge_and_previous_rows: &index
-                .cs
-                .precomputations()
-                .vanishes_on_zero_knowledge_and_previous_rows,
-            z: &domain_evals.d8.this.z,
-            l0_1: l0_1(index.cs.domain.d1),
-            domain: index.cs.domain,
-            index: HashMap::new(),
-            lookup: None,
-        };
-
-        // this should panic as we don't have a domain large enough
-        expr.evaluations(&env);
-    }
-
-    #[test]
-    fn test_unnormalized_lagrange_basis() {
-        let zk_rows = 3;
-        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + zk_rows)
-            .expect("failed to create evaluation domain");
-        let rng = &mut StdRng::from_seed([17u8; 32]);
-
-        // Check that both ways of computing lagrange basis give the same result
-        let d1_size: i32 = domain.d1.size().try_into().expect("domain size too big");
-        for i in 1..d1_size {
-            let pt = Fp::rand(rng);
-            assert_eq!(
-                unnormalized_lagrange_basis(&domain.d1, d1_size - i, &pt),
-                unnormalized_lagrange_basis(&domain.d1, -i, &pt)
-            );
-        }
-    }
-
-    #[test]
-    fn test_arithmetic_ops() {
-        fn test_1<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
-            T::zero() + T::one()
-        }
-        assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
-        assert_eq!(test_1::<Fp, Fp>(), Fp::one());
-
-        fn test_2<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
-            T::one() + T::one()
-        }
-        assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
-        assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
-
-        fn test_3<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
-            T::from(2u64) * x
-        }
-        assert_eq!(
-            test_3::<Fp, E<Fp>>(E::from(3u64)),
-            E::from(2u64) * E::from(3u64)
-        );
-        assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
-
-        fn test_4<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(x: T) -> T {
-            x.clone() * (x.square() + T::from(7u64))
-        }
-        assert_eq!(
-            test_4::<Fp, E<Fp>>(E::from(5u64)),
-            E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
-        );
-        assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
-    }
 }

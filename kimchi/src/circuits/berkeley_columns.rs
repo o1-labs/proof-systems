@@ -21,10 +21,10 @@
 
 use crate::{
     circuits::{
-        domains::EvaluationDomains,
+        domains::{Domain, EvaluationDomains},
         expr::{
             CacheId, ColumnEnvironment, ColumnEvaluations, ConstantExpr, ConstantTerm, Constants,
-            Domain, Expr, ExprError, FormattedOutput,
+            Expr, ExprError, FormattedOutput,
         },
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},

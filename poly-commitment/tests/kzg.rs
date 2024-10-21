@@ -11,7 +11,7 @@ use poly_commitment::{
     commitment::Evaluation,
     ipa::{DensePolynomialOrEvaluations, SRS},
     kzg::{combine_evaluations, KZGProof, PairingSRS},
-    PolyComm, SRS as _,
+    pbt_srs, PolyComm, SRS as _,
 };
 
 #[test]
@@ -210,12 +210,8 @@ fn test_kzg_proof() {
 fn check_srs_g2_valid_and_serializes() {
     type BN254 = Bn<Config>;
     type BN254G2BaseField = <G2 as AffineRepr>::BaseField;
-    type Fp = ark_bn254::Fr;
 
-    let mut rng = o1_utils::tests::make_test_rng(None);
-
-    let x = Fp::rand(&mut rng);
-    let srs: PairingSRS<BN254> = unsafe { PairingSRS::create(x, 1 << 5) };
+    let srs: PairingSRS<BN254> = PairingSRS::create(1 << 5);
 
     let mut vec: Vec<u8> = vec![0u8; 1024];
 
@@ -237,4 +233,14 @@ fn check_srs_g2_valid_and_serializes() {
             CanonicalDeserialize::deserialize_compressed(vec.as_slice()).unwrap();
         assert!(expected == actual_y, "serialization failed");
     }
+}
+
+// Testing how many chunks are generated with different polynomial sizes and
+// different number of chunks requested.
+#[test]
+fn test_regression_commit_non_hiding_expected_number_of_chunks() {
+    type BN254 = Bn<Config>;
+    type Srs = PairingSRS<BN254>;
+
+    pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks::<G1, Srs>();
 }

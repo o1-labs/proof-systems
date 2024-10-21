@@ -13,10 +13,9 @@ use std::time::Instant;
 use crate::{
     columns::{Column, Gadget},
     interpreter::{Instruction, InterpreterEnv, Side},
-    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, BIT_DECOMPOSITION_NUMBER_OF_CHUNKS,
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO, POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
@@ -303,20 +302,6 @@ where
         assert_eq!(x, y);
     }
 
-    // FIXME: it should not be a check, but it should build the related logup
-    // values
-    // FIXME: we should have additional columns for the lookups.
-    // This will be implemented when the first version of the IVC is
-    // implemented and we can make recursive arguments
-    fn range_check16(&mut self, pos: Self::Position) {
-        let (col, _) = pos;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
-        let x = self.state[idx].clone();
-        assert!(x < BigInt::from(2_usize).pow(16));
-    }
-
     fn square(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = x.clone() * x.clone();
         self.write_column(pos, res.clone());
@@ -390,31 +375,7 @@ where
         r
     }
 
-    unsafe fn read_sixteen_bits_chunks_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u32,
-    ) -> Self::Variable {
-        let r = self.r.clone();
-        self.bitmask_be(&r, 16 * (i + 1), 16 * i, pos)
-    }
-
-    unsafe fn read_bit_of_folding_combiner(
-        &mut self,
-        pos: Self::Position,
-        i: u64,
-    ) -> Self::Variable {
-        let r = self.r.clone();
-        let bit = (r >> i) & BigInt::from(1_usize);
-        self.write_column(pos, bit.clone());
-        bit
-    }
-
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         let state = if self.current_iteration % 2 == 0 {
             self.sponge_e1[i].clone()
         } else {
@@ -454,10 +415,6 @@ where
     }
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = Fp::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
@@ -532,10 +489,6 @@ where
         pos_y: Self::Position,
         side: Side,
     ) -> (Self::Variable, Self::Variable) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         match self.current_instruction {
             Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // If we're processing the leftmost bit (i.e. bit == 0), we must load
@@ -640,10 +593,6 @@ where
         y: Self::Variable,
         side: Side,
     ) {
-        assert!(
-            self.selectors[Gadget::PermutationArgument as usize][self.current_row],
-            "The permutation argument should be activated"
-        );
         match side {
             Side::Left => {
                 self.temporary_accumulators.0 = (x, y);
@@ -1065,55 +1014,11 @@ impl<
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            Instruction::SixteenBitsDecomposition => Instruction::BitDecompositionFrom16Bits(0),
-            Instruction::BitDecomposition(i) => {
-                if i < BIT_DECOMPOSITION_NUMBER_OF_CHUNKS - 1 {
-                    Instruction::BitDecomposition(i + 1)
-                } else {
-                    Instruction::EllipticCurveScaling(0, 0)
-                }
-            }
             Instruction::Poseidon(i) => {
-                if i < POSEIDON_ROUNDS_FULL - 4 {
-                    // We perform 4 rounds per row
-                    // FIXME: we can do 5 by using the "next row", see
-                    // PoseidonNextRow
-                    Instruction::Poseidon(i + 4)
-                } else {
-                    // If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(0)
-                    } else {
-                        // Otherwise, we continue absorbing
-                        Instruction::Poseidon(0)
-                    }
-                }
-            }
-            Instruction::PoseidonNextRow(i) => {
                 if i < POSEIDON_ROUNDS_FULL - 5 {
-                    Instruction::PoseidonNextRow(i + 5)
+                    Instruction::Poseidon(i + 5)
                 } else {
-                    // If we absorbed all the elements, we go to the next instruction
-                    // In this case, it is the decomposition of the folding combiner
-                    // FIXME: it is not the correct next instruction.
-                    // We must check the computed value is the one given as a
-                    // public input.
-                    if self.idx_values_to_absorb >= NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO {
-                        Instruction::BitDecomposition(0)
-                    } else {
-                        // Otherwise, we continue absorbing
-                        Instruction::PoseidonNextRow(0)
-                    }
-                }
-            }
-            Instruction::BitDecompositionFrom16Bits(i) => {
-                if i < 15 {
-                    Instruction::BitDecompositionFrom16Bits(i + 1)
-                } else {
+                    // FIXME: we continue absorbing
                     Instruction::Poseidon(0)
                 }
             }

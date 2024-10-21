@@ -148,14 +148,10 @@ use std::{
 };
 
 use ark_ff::{One, PrimeField, Zero};
-use kimchi::circuits::{
-    berkeley_columns::BerkeleyChallengeTerm,
-    expr::{ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext,
-};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
 use o1_utils::FieldHelpers;
-use rand::RngCore;
+use rand::{Rng, RngCore};
 use std::ops::{Index, IndexMut};
 
 use crate::{
@@ -227,6 +223,9 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
     /// protocols. The user is responsible for providing its own secure
     /// polynomial random generator, if needed.
     ///
+    /// In addition to that, zeroes coefficients are added one every 10
+    /// monomials to be sure we do have some sparcity in the polynomial.
+    ///
     /// For now, the function is only used for testing.
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
         let mut prime_gen = PrimeNumberGenerator::new();
@@ -240,7 +239,8 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                     let degree = naive_prime_factors(*idx, &mut prime_gen)
                         .iter()
                         .fold(0, |acc, (_, d)| acc + d);
-                    if degree > max_degree {
+                    if degree > max_degree || rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
                         F::zero()
                     } else {
                         F::rand(rng)
@@ -248,9 +248,19 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
                 })
                 .collect::<Vec<F>>()
         } else {
-            normalized_indices.iter().map(|_| F::rand(rng)).collect()
+            normalized_indices
+                .iter()
+                .map(|_| {
+                    if rng.gen_range(0..10) == 0 {
+                        // Adding zero coefficients one every 10 monomials
+                        F::zero()
+                    } else {
+                        F::rand(rng)
+                    }
+                })
+                .collect()
         };
-        Dense {
+        Self {
             coeff,
             normalized_indices,
         }
@@ -328,66 +338,39 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
             })
     }
 
-    fn from_expr<Column: Into<usize>>(
-        expr: Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    fn from_variable<Column: Into<usize>>(
+        var: Variable<Column>,
+        offset_next_row: Option<usize>,
     ) -> Self {
-        use kimchi::circuits::expr::Operations::*;
-
-        match expr {
-            Atom(op_const) => {
-                match op_const {
-                    ExprInner::UnnormalizedLagrangeBasis(_) => {
-                        unimplemented!("Not used in this context")
-                    }
-                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
-                        unimplemented!("Not used in this context")
-                    }
-                    ExprInner::Constant(c) => Self::from(c),
-                    ExprInner::Cell(Variable { col, row }) => {
-                        assert_eq!(row, CurrOrNext::Curr, "Only current row is supported for now. You cannot reference the next row");
-                        Self::from_variable(col)
-                    }
-                }
-            }
-            Add(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
-                p1 + p2
-            }
-            Sub(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
-                p1 - p2
-            }
-            Mul(e1, e2) => {
-                let p1 = Dense::from_expr(*e1);
-                let p2 = Dense::from_expr(*e2);
-                p1 * p2
-            }
-            Double(p) => {
-                let p = Dense::from_expr(*p);
-                p.double()
-            }
-            Square(p) => {
-                let p = Dense::from_expr(*p);
-                p.clone() * p.clone()
-            }
-            Pow(c, e) => {
-                // FIXME: dummy implementation
-                let p = Dense::from_expr(*c);
-                let mut result = p.clone();
-                for _ in 0..e {
-                    result = result.clone() * p.clone();
-                }
-                result
-            }
-            Cache(_c, _) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
-            IfFeature(_c, _t, _f) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
+        let Variable { col, row } = var;
+        if row == CurrOrNext::Next {
+            assert!(
+                offset_next_row.is_some(),
+                "The offset for the next row must be provided"
+            );
         }
+        let offset = if row == CurrOrNext::Curr {
+            0
+        } else {
+            offset_next_row.unwrap()
+        };
+        let var_usize: usize = col.into();
+
+        let mut prime_gen = PrimeNumberGenerator::new();
+        let primes = prime_gen.get_first_nth_primes(N);
+        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
+
+        let prime_idx = primes.iter().position(|&x| x == var_usize).unwrap();
+        let idx = prime_gen.get_nth_prime(prime_idx + offset + 1);
+
+        let mut res = Self::zero();
+        let inv_idx = res
+            .normalized_indices
+            .iter()
+            .position(|&x| x == idx)
+            .unwrap();
+        res[inv_idx] = F::one();
+        res
     }
 
     fn is_homogeneous(&self) -> bool {
@@ -487,7 +470,7 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
 impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
     pub fn new() -> Self {
         let normalized_indices = Self::compute_normalized_indices();
-        Dense {
+        Self {
             coeff: vec![F::zero(); Self::dimension()],
             normalized_indices,
         }
@@ -506,21 +489,6 @@ impl<F: PrimeField, const N: usize, const D: usize> Dense<F, N, D> {
             coeff,
             normalized_indices,
         }
-    }
-
-    pub fn from_variable<C: Into<usize>>(var: C) -> Self {
-        let mut res = Self::zero();
-        let mut prime_gen = PrimeNumberGenerator::new();
-        let primes = prime_gen.get_first_nth_primes(N);
-        let var_usize: usize = var.into();
-        assert!(primes.contains(&var_usize), "The usize representation of the variable must be a prime number, and unique for each variable");
-        let inv_var = res
-            .normalized_indices
-            .iter()
-            .position(|&x| x == var_usize)
-            .unwrap();
-        res[inv_var] = F::one();
-        res
     }
 
     pub fn number_of_variables(&self) -> usize {
@@ -595,13 +563,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add for Dense<F, N, D> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Self::from_coeffs(coeffs)
+        &self + &other
     }
 }
 
@@ -609,13 +571,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Self::from_coeffs(coeffs)
+        &self + other
     }
 }
 
@@ -623,13 +579,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Add<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn add(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a + *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + &other
     }
 }
 
@@ -652,11 +602,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub for Dense<F, N, D> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        let mut result = Dense::new();
-        for i in 0..self.coeff.len() {
-            result.coeff[i] = self.coeff[i] - other.coeff[i];
-        }
-        result
+        self + (-other)
     }
 }
 
@@ -664,13 +610,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
@@ -678,13 +618,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<Dense<F, N, D>> for &Den
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
@@ -692,13 +626,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Sub<&Dense<F, N, D>> for &De
     type Output = Dense<F, N, D>;
 
     fn sub(self, other: &Dense<F, N, D>) -> Dense<F, N, D> {
-        let coeffs = self
-            .coeff
-            .iter()
-            .zip(other.coeff.iter())
-            .map(|(a, b)| *a - *b)
-            .collect();
-        Dense::from_coeffs(coeffs)
+        self + (-other)
     }
 }
 
@@ -707,8 +635,7 @@ impl<F: PrimeField, const N: usize, const D: usize> Neg for Dense<F, N, D> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let coeffs = self.coeff.iter().map(|c| -*c).collect();
-        Self::from_coeffs(coeffs)
+        -&self
     }
 }
 
@@ -768,20 +695,30 @@ impl<F: PrimeField, const N: usize, const D: usize> Eq for Dense<F, N, D> {}
 impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut prime_gen = PrimeNumberGenerator::new();
-        self.coeff.iter().enumerate().for_each(|(i, c)| {
+        let primes = prime_gen.get_first_nth_primes(N);
+        let coeff: Vec<_> = self
+            .coeff
+            .iter()
+            .enumerate()
+            .filter(|(_i, c)| *c != &F::zero())
+            .collect();
+        // Print 0 if the polynomial is zero
+        if coeff.is_empty() {
+            write!(f, "0").unwrap();
+            return Ok(());
+        }
+        let l = coeff.len();
+        coeff.into_iter().for_each(|(i, c)| {
             let normalized_idx = self.normalized_indices[i];
-            if normalized_idx == 1 {
+            if normalized_idx == 1 && *c != F::one() {
                 write!(f, "{}", c.to_biguint()).unwrap();
             } else {
                 let prime_decomposition = naive_prime_factors(normalized_idx, &mut prime_gen);
-                write!(f, "{}", c.to_biguint()).unwrap();
+                if *c != F::one() {
+                    write!(f, "{}", c.to_biguint()).unwrap();
+                }
                 prime_decomposition.iter().for_each(|(p, d)| {
-                    // FIXME: not correct
-                    let inv_p = self
-                        .normalized_indices
-                        .iter()
-                        .position(|&x| x == *p)
-                        .unwrap();
+                    let inv_p = primes.iter().position(|&x| x == *p).unwrap();
                     if *d > 1 {
                         write!(f, "x_{}^{}", inv_p, d).unwrap();
                     } else {
@@ -789,7 +726,9 @@ impl<F: PrimeField, const N: usize, const D: usize> Debug for Dense<F, N, D> {
                     }
                 });
             }
-            if i != self.coeff.len() - 1 {
+            // Avoid printing the last `+` or if the polynomial is a single
+            // monomial
+            if i != l - 1 && l != 1 {
                 write!(f, " + ").unwrap();
             }
         });
@@ -802,76 +741,6 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Dense<F, N, D> {
         let mut result = Self::zero();
         result.coeff[0] = value;
         result
-    }
-}
-
-impl<F: PrimeField, const N: usize, const D: usize>
-    From<ConstantExprInner<F, BerkeleyChallengeTerm>> for Dense<F, N, D>
-{
-    fn from(expr: ConstantExprInner<F, BerkeleyChallengeTerm>) -> Self {
-        match expr {
-            // The unimplemented methods might be implemented in the future if
-            // we move to the challenge into the type of the constant
-            // terms/expressions
-            // Unrolling for visibility
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Alpha) => {
-                unimplemented!("The challenge alpha is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Beta) => {
-                unimplemented!("The challenge beta is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::Gamma) => {
-                unimplemented!("The challenge gamma is not supposed to be used in this context")
-            }
-            ConstantExprInner::Challenge(BerkeleyChallengeTerm::JointCombiner) => {
-                unimplemented!(
-                    "The challenge joint combiner is not supposed to be used in this context"
-                )
-            }
-            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient) => {
-                unimplemented!(
-                    "The constant EndoCoefficient is not supposed to be used in this context"
-                )
-            }
-            ConstantExprInner::Constant(ConstantTerm::Mds {
-                row: _row,
-                col: _col,
-            }) => {
-                unimplemented!("The constant Mds is not supposed to be used in this context")
-            }
-            ConstantExprInner::Constant(ConstantTerm::Literal(c)) => Dense::from(c),
-        }
-    }
-}
-
-impl<F: PrimeField, const N: usize, const D: usize>
-    From<Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>> for Dense<F, N, D>
-{
-    fn from(op: Operations<ConstantExprInner<F, BerkeleyChallengeTerm>>) -> Self {
-        use kimchi::circuits::expr::Operations::*;
-        match op {
-            Atom(op_const) => Self::from(op_const),
-            Add(c1, c2) => Self::from(*c1) + Self::from(*c2),
-            Sub(c1, c2) => Self::from(*c1) - Self::from(*c2),
-            Mul(c1, c2) => Self::from(*c1) * Self::from(*c2),
-            Square(c) => Self::from(*c.clone()) * Self::from(*c),
-            Double(c1) => Self::from(*c1).double(),
-            Pow(c, e) => {
-                // FIXME: dummy implementation
-                let p = Dense::from(*c);
-                let mut result = p.clone();
-                for _ in 0..e {
-                    result = result.clone() * p.clone();
-                }
-                result
-            }
-            Cache(_c, _) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
-            IfFeature(_c, _t, _f) => {
-                unimplemented!("The module prime is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
-            }
-        }
     }
 }
 
