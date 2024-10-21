@@ -47,8 +47,26 @@ impl<G: KimchiCurve> ProofInputs<G> {
                 println!("scratch[{}]= {}", i, self.evaluations.scratch[i][fst_met])
             }
             let x = self.evaluations.scratch[16][fst_met]
+            // 0x1810
                 - G::ScalarField::from((8 + 16 + 16 * 256) as u64);
             let inv_or_zero = self.evaluations.scratch[21][fst_met];
+            if x * inv_or_zero == -G::ScalarField::ONE {
+                println!("!!!!!!!!")
+            }
+            if x * inv_or_zero == G::ScalarField::ONE {
+                println!("111111111111111")
+            }
+            if x * inv_or_zero == G::ScalarField::ZERO {
+                println!("000000000000")
+            } else {
+                println!("x*x_inv={}", x * inv_or_zero)
+            }
+            // secind equal
+            println!("second equality");
+            let x = self.evaluations.scratch[16][fst_met]
+// 0xcd0f
+    - G::ScalarField::from((13 + 12*16 + 15 * 256 * 16) as u64);
+            let inv_or_zero = self.evaluations.scratch[19][fst_met];
             if x * inv_or_zero == -G::ScalarField::ONE {
                 println!("!!!!!!!!")
             }
