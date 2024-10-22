@@ -253,7 +253,8 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                     (*(idx.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
                 tmp.unwrap()
             };
-            self.registers_write_index[idx as usize] = value.to_biguint().to_u64_digits()[0]
+            self.registers_write_index[idx as usize] =
+                *value.to_biguint().to_u64_digits().get(0).unwrap_or(&0);
         } else if *if_is_true == Fp::zero() {
             // No-op
         } else {
@@ -280,9 +281,13 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_page_idx = self.get_memory_page_index(page);
-        self.memory[memory_page_idx].1[page_address] = value.to_biguint().to_u64_digits()[0]
-            .try_into()
-            .expect("push_memory values fit in a u8");
+        self.memory[memory_page_idx].1[page_address] = {
+            let tmp: Result<u32, _> =
+                (*(value.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        }
+        .try_into()
+        .expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -305,7 +310,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
         self.memory_write_index[memory_write_index_page_idx].1[page_address] =
-            value.to_biguint().to_u64_digits()[0];
+            *(value.to_biguint().to_u64_digits().get(0).unwrap_or(&0));
     }
 
     fn constant(x: u32) -> Self::Variable {
