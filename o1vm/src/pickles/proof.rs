@@ -1,8 +1,10 @@
+use crate::interpreters::mips::{
+    column::N_MIPS_SEL_COLS,
+    interpreter::{SYSCALL_BRK, SYSCALL_CLONE},
+};
 use ark_ff::Field;
 use kimchi::curve::KimchiCurve;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
-
-use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
 
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
@@ -31,23 +33,26 @@ impl<G: KimchiCurve> ProofInputs<G> {
         let mut count = 0;
         for i in 0..self.evaluations.selector.len() {
             if G::ScalarField::from(17 as u64) == self.evaluations.selector[i] && count < 5 {
-                count += 1;
+                // count += 1;
                 for j in &l {
                     println!("scratch[{}]= {}", j, self.evaluations.scratch[*j][i])
                 }
-                // second equal
-
-                let x = self.evaluations.scratch[16][i]
-    // 0xcd0f
-- G::ScalarField::from((13 + 12*16 + 15 * 256 * 16) as u64);
+                // x16 - 0xcd0f
+                let x =
+                    self.evaluations.scratch[16][i] - G::ScalarField::from((SYSCALL_BRK) as u64);
                 let inv_or_zero = self.evaluations.scratch[19][i];
-                println!("x*x_inv cd0f cst={}", x * inv_or_zero);
-
-                let x = self.evaluations.scratch[16][i]
-            // 0x1810
-                - G::ScalarField::from((8 + 16 + 16 * 256) as u64);
+                println!("x*x_inv_or_zero cd0f cst={}", x * inv_or_zero);
+                if x * inv_or_zero == -G::ScalarField::from(1 as u64) {
+                    println!("is -1")
+                }
+                // x16 - 0x1810
+                let x =
+                    self.evaluations.scratch[16][i] - G::ScalarField::from((SYSCALL_CLONE) as u64);
                 let inv_or_zero = self.evaluations.scratch[21][i];
                 println!("x*x_inv 1810cst={}", x * inv_or_zero);
+                if x * inv_or_zero == -G::ScalarField::from(1 as u64) {
+                    println!("is -1")
+                }
             }
         }
     }
