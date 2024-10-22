@@ -60,13 +60,12 @@ pub enum SInstruction {
 )]
 pub enum BInstruction {
     #[default]
-    BranchEq, // beq
-    BranchEqZero,              // beqz
-    BranchNeq,                 // bne
-    BranchLessThan,            // blt
-    BranchGreaterThan,         // bgt
-    BranchLessThanUnsigned,    // bltu
-    BranchGreaterThanUnsigned, // bgtu
+    BranchEq,                 // beq
+    BranchNeq,                // bne
+    BranchLessThan,           // blt
+    BranchGe,                 // bge
+    BranchLessThanUnsigned,   // bltu
+    BranchGreaterThanEqual    // bgeu
 }
 
 #[derive(
