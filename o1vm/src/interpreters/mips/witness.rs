@@ -191,7 +191,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let idx = idx.to_biguint().to_u64_digits()[0];
+        let idx = {
+            let tmp: Result<u32, _> =
+                (*(idx.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = self.registers[idx as usize] as u64;
         self.write_column(output, res);
         res.into()
@@ -205,7 +209,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
     ) {
         let value: u32 = (value.to_biguint().to_u64_digits()[0]).try_into().unwrap();
         if *if_is_true == Fp::one() {
-            let idx = idx.to_biguint().to_u64_digits()[0];
+            let idx = {
+                let tmp: Result<u32, _> =
+                    (*(idx.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+                tmp.unwrap()
+            };
             self.registers[idx as usize] = value
         } else if *if_is_true == Fp::zero() {
             // No-op
@@ -219,7 +227,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let idx = idx.to_biguint().to_u64_digits()[0];
+        let idx = {
+            let tmp: Result<u32, _> =
+                (*(idx.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = self.registers_write_index[idx as usize];
         self.write_column(output, res);
         res.into()
@@ -232,7 +244,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         if_is_true: &Self::Variable,
     ) {
         if *if_is_true == Fp::one() {
-            let idx = idx.to_biguint().to_u64_digits()[0];
+            let idx = {
+                let tmp: Result<u32, _> =
+                    (*(idx.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+                tmp.unwrap()
+            };
             self.registers_write_index[idx as usize] = value.to_biguint().to_u64_digits()[0]
         } else if *if_is_true == Fp::zero() {
             // No-op
