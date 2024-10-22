@@ -33,4 +33,10 @@ pub enum Instruction {
     // tail offset -
     // auipc x1, offset[31 : 12] + offset[11]
     Tail,
+
+    AddImmediate, // addi
+    StoreWord,    // sw
+    LoadWord,     // lw
+    Multiply,     // mul
+    Move,         // mv
 }
