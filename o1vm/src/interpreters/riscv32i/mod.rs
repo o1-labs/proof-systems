@@ -1,6 +1,8 @@
 pub mod column;
+pub mod constraints;
 pub mod interpreter;
 pub mod registers;
+pub mod witness;
 
 /// The minimal number of columns required for the VM
 // FIXME: this is not correct
