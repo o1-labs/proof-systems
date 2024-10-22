@@ -46,6 +46,9 @@ pub enum IInstruction {
     ShiftRightArithmeticImmediate, // srai
     SetLessThanImmediate,          // slti
     SetLessThanImmediateUnsigned,  // sltiu
+
+    AddImmediate, // addi
+    XorImmediate, // xori
 }
 
 #[derive(
@@ -64,12 +67,11 @@ pub enum SInstruction {
 pub enum BInstruction {
     #[default]
     BranchEq, // beq
-    BranchEqZero,              // beqz
-    BranchNeq,                 // bne
-    BranchLessThan,            // blt
-    BranchGreaterThan,         // bgt
-    BranchLessThanUnsigned,    // bltu
-    BranchGreaterThanUnsigned, // bgtu
+    BranchNeq,              // bne
+    BranchLessThan,         // blt
+    BranchGe,               // bge
+    BranchLessThanUnsigned, // bltu
+    BranchGreaterThanEqual, // bgeu
 }
 
 #[derive(
