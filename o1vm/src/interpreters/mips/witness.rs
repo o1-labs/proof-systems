@@ -1286,9 +1286,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             let insn = self.get_opcode().unwrap();
 
             // Approximate instruction per seconds
-            let how_many_steps = (step as usize)
-                .checked_sub(start.step)
-                .unwrap_or_else(|| panic!("Step counter overflowed: {} - {}", step, start.step));
+            let how_many_steps = step as usize - start.step;
 
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
 

@@ -13,6 +13,9 @@ on:
         "curves/**",
         "poseidon/**",
         "poly-commitment/",
+        "internal-tracing/**",
+        "srs/**",
+        "utils/**",
       ]
   push:
     branches:
@@ -27,6 +30,9 @@ on:
         "curves/**",
         "poseidon/**",
         "poly-commitment/",
+        "internal-tracing/**",
+        "srs/**",
+        "utils/**",
       ]
 
 env:
