@@ -1,9 +1,4 @@
-use elf::{
-    endian::{AnyEndian, LittleEndian},
-    note::{Note, NoteGnuBuildId},
-    section::SectionHeader,
-    ElfBytes,
-};
+use elf::{endian::LittleEndian, ElfBytes};
 
 #[test]
 fn test_elf() {
