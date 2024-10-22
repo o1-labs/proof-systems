@@ -433,7 +433,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = if x < y { 1 } else { 0 };
         let res = res as u64;
         self.write_column(position, res);
@@ -451,7 +455,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = if (x as i32) < (y as i32) { 1 } else { 0 };
         let res = res as u64;
         self.write_column(position, res);
@@ -469,7 +477,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x & y;
         let res = res as u64;
         self.write_column(position, res);
@@ -487,7 +499,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = !(x | y);
         let res = res as u64;
         self.write_column(position, res);
@@ -505,7 +521,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x | y;
         let res = res as u64;
         self.write_column(position, res);
@@ -523,7 +543,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x ^ y;
         let res = res as u64;
         self.write_column(position, res);
@@ -542,7 +566,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
         let res = x.overflowing_add(y);
         let (res_, overflow) = (res.0 as u64, res.1 as u64);
@@ -563,7 +591,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_sub
         let res = x.overflowing_sub(y);
         let (res_, underflow) = (res.0 as u64, res.1 as u64);
@@ -583,7 +615,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = ((x as i32) * (y as i32)) as u32;
         let res = res as u64;
         self.write_column(position, res);
@@ -602,7 +638,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let mul = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
@@ -625,7 +665,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let mul = (x as u64) * (y as u64);
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
@@ -648,7 +692,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let q = ((x as i32) / (y as i32)) as u32;
         let r = ((x as i32) % (y as i32)) as u32;
         let q = q as u64;
@@ -670,7 +718,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let y: u32 = (y.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let q = x / y;
         let r = x % y;
         let q = q as u64;
