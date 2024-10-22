@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+// FIXME:
+pub const REGISTER_CURRENT_IP: usize = 33;
+pub const REGISTER_NEXT_IP: usize = 34;
+pub const REGISTER_HEAP_POINTER: usize = 35;
+
 /// This represents the internal state of the virtual machine.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
