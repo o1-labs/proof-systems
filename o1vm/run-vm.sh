@@ -18,7 +18,8 @@ O1VM_FLAVOR to one of these values to run the flavor you would like"
     ;;
 esac
 
-if [ -d "op-program-db-for-latest-l2-block" ] && [ -f "snapshot-state-3000000.json" ]; then
+if [ "${RUN_WITH_CACHED_DATA:-}" == "y" ]; then
+    echo "Setting the environment variables to use the cached data"
     export OP_PROGRAM_DATA_DIR="$(pwd)/op-program-db-for-latest-l2-block"
     export ZKVM_STATE_FILENAME="$(pwd)/snapshot-state-3000000.json"
     # We need to set the L1 and L2 RPC endpoints for op-program to run successfully
@@ -26,7 +27,7 @@ if [ -d "op-program-db-for-latest-l2-block" ] && [ -f "snapshot-state-3000000.js
     export L2_RPC="http://localhost:8765"
 fi
 
-RUST_BACKTRACE=full cargo run --bin ${BINARY_FLAVOR} \
+cargo run --bin ${BINARY_FLAVOR} \
     --all-features \
     --release \
     -p o1vm -- \

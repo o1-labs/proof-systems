@@ -4,12 +4,30 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "o1vm/**"
+      [
+        "o1vm/**",
+        "folding/**",
+        "groupmap/**",
+        "kimchi/**",
+        "msm/**",
+        "curves/**",
+        "poseidon/**",
+        "poly-commitment/",
+      ]
   push:
     branches:
       - master
     paths:
-      - "o1vm/**"
+      [
+        "o1vm/**",
+        "folding/**",
+        "groupmap/**",
+        "kimchi/**",
+        "msm/**",
+        "curves/**",
+        "poseidon/**",
+        "poly-commitment/",
+      ]
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
@@ -93,4 +111,4 @@ jobs:
           eval $(opam env)
           cd o1vm
           unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
-          FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh
+          RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh
