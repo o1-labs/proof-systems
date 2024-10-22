@@ -86,6 +86,7 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
     let proof_fmt = cli.get_one::<String>("proof-fmt").unwrap();
     let snapshot_fmt = cli.get_one::<String>("snapshot-fmt").unwrap();
     let pprof_cpu = cli.get_one::<bool>("pprof-cpu").unwrap();
+    let toolchain = cli.get_one::<Toolchain>("toolchain").unwrap();
 
     let host_spec = cli
         .get_many::<String>("host")
@@ -117,5 +118,6 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
         snapshot_fmt: snapshot_fmt.to_string(),
         pprof_cpu: *pprof_cpu,
         host,
+        toolchain: toolchain.clone(),
     }
 }
