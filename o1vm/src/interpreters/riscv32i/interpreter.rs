@@ -38,6 +38,12 @@ pub enum RInstruction {
 )]
 pub enum IInstruction {
     #[default]
+    LoadByte, // lb
+    LoadHalf, // lh
+    LoadWord, // lw
+    LoadByteUnsigned, // lbu
+    LoadHalfUnsigned, // lhu
+
     ShiftLeftLogicalImmediate, // slli
     ShiftRightLogicalImmediate,    // srli
     ShiftRightArithmeticImmediate, // srai
