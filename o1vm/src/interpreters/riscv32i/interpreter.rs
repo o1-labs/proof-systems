@@ -39,16 +39,20 @@ pub enum RInstruction {
 pub enum IInstruction {
     #[default]
     LoadByte, // lb
-    LoadHalf,         // lh
-    LoadWord,         // lw
+    LoadHalf, // lh
+    LoadWord, // lw
     LoadByteUnsigned, // lbu
     LoadHalfUnsigned, // lhu
 
-    ShiftLeftLogicalImmediate,     // slli
+    ShiftLeftLogicalImmediate, // slli
     ShiftRightLogicalImmediate,    // srli
     ShiftRightArithmeticImmediate, // srai
     SetLessThanImmediate,          // slti
     SetLessThanImmediateUnsigned,  // sltiu
+
+    AddImmediate, // addi
+    XorImmediate, // xori
+
 }
 
 #[derive(
@@ -66,12 +70,12 @@ pub enum SInstruction {
 )]
 pub enum BInstruction {
     #[default]
-    BranchEq, // beq
-    BranchNeq,              // bne
-    BranchLessThan,         // blt
-    BranchGe,               // bge
-    BranchLessThanUnsigned, // bltu
-    BranchGreaterThanEqual, // bgeu
+    BranchEq,                 // beq
+    BranchNeq,                // bne
+    BranchLessThan,           // blt
+    BranchGe,                 // bge
+    BranchLessThanUnsigned,   // bltu
+    BranchGreaterThanEqual    // bgeu
 }
 
 #[derive(
