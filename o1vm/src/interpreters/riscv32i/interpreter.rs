@@ -5,44 +5,86 @@ use ark_ff::{One, Zero};
 
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 
-// FIXME: split in the future in instruction types?
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
+pub enum Instruction {
+    RType(RInstruction),
+    IType(IInstruction),
+    SType(SInstruction),
+    BType(BInstruction),
+    UType(UInstruction),
+    JType(JInstruction),
+}
+
+// See https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf for the order
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
-pub enum Instruction {
+pub enum RInstruction {
+    #[default]
+    Add, // add
+    Sub,                  // sub
+    ShiftLeftLogical,     // sll
+    SetLessThan,          // slt
+    SetLessThanUnsigned,  // sltu
+    Xor,                  // xor
+    ShiftRightLogical,    // srl
+    ShiftRightArithmetic, // sra
+    And,                  // and
+    Or,                   // or
+}
+
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum IInstruction {
+    #[default]
+    ShiftLeftLogicalImmediate, // slli
+    ShiftRightLogicalImmediate,    // srli
+    ShiftRightArithmeticImmediate, // srai
+    SetLessThanImmediate,          // slti
+    SetLessThanImmediateUnsigned,  // sltiu
+}
+
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum SInstruction {
+    #[default]
+    StoreByte, // sb
+    StoreHalf, // sh
+    StoreWord, // sw
+}
+
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum BInstruction {
     #[default]
     BranchEq, // beq
-    BranchEqZero,  // beqz
-    BranchNeq,     // bne
-    BranchLeqZero, // blez
-    BranchGtZero,  // bgtz
-    BranchLtZero,  // bltz
-    BranchGeqZero, // bgez
+    BranchEqZero,              // beqz
+    BranchNeq,                 // bne
+    BranchLessThan,            // blt
+    BranchGreaterThan,         // bgt
+    BranchLessThanUnsigned,    // bltu
+    BranchGreaterThanUnsigned, // bgtu
+}
 
-    // Pseudo instruction
-    // j offset -> jal x0, offset - Jump
-    Jump, // j
-    // jal offset -> jal x1, offset - Jump and Link
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum UInstruction {
+    #[default]
+    LoadUpperImmediate, // lui
+    AddUpperImmediate, // auipc
+}
+
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum JInstruction {
+    #[default]
     JumpAndLink, // jal
-    // jr rs -> jalr x0, 0(rs) - Jump Register
-    JumpRegister, // jr
-    // jalr rs -> jalr x1, 0(rs) - Jump and Link Register
-    JumpAndLinkRegister, // jalr
-    // jalr x0, 0(x1) - Return from Subroutine
-    Return, // ret
-    // call x0, offset - Call far-away subroutine
-    // auipc x1, offset[31 : 12] + offset[11]
-    // jalr x1, offset[11:0](x1)
-    Call, // call
-    // tail offset -
-    // auipc x1, offset[31 : 12] + offset[11]
-    Tail,
-
-    AddImmediate, // addi
-    StoreWord,    // sw
-    LoadWord,     // lw
-    Multiply,     // mul
-    Move,         // mv
+    Jump, // jalr
 }
 
 pub trait InterpreterEnv {

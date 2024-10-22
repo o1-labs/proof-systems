@@ -1,9 +1,16 @@
+use super::{
+    interpreter::{
+        BInstruction, IInstruction, Instruction,
+        Instruction::{BType, IType, JType, RType, SType, UType},
+        RInstruction, SInstruction, UInstruction,
+    },
+    INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
+};
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
 };
-
-use super::{interpreter::Instruction, INSTRUCTION_SET_SIZE, SCRATCH_SIZE};
+use strum::EnumCount;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Column {
@@ -34,7 +41,40 @@ impl From<Column> for usize {
 
 impl From<Instruction> for usize {
     fn from(instr: Instruction) -> usize {
-        SCRATCH_SIZE + 1 + instr as usize
+        match instr {
+            RType(rtype) => SCRATCH_SIZE + 1 + rtype as usize,
+            IType(itype) => SCRATCH_SIZE + 1 + RInstruction::COUNT + itype as usize,
+            SType(stype) => {
+                SCRATCH_SIZE + 1 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
+            }
+            BType(btype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + btype as usize
+            }
+            UType(utype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + BInstruction::COUNT
+                    + utype as usize
+            }
+            JType(jtype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + BInstruction::COUNT
+                    + UInstruction::COUNT
+                    + jtype as usize
+            }
+        }
     }
 }
 
