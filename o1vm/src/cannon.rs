@@ -147,6 +147,25 @@ pub enum StepFrequency {
     Range(u64, Option<u64>),
 }
 
+#[derive(Clone)]
+/// The supported toolchain in o1vm.
+pub enum Toolchain {
+    /// The interpreter implementation is in
+    /// [crate::interpreters::mips::interpreter]
+    MIPS,
+    /// The interpreter implementation is in
+    /// [crate::interpreters::riscv32i::interpreter]
+    RiscV32i,
+}
+
+pub fn toolchain_parser(s: &str) -> std::result::Result<Toolchain, String> {
+    match s {
+        "mips" => Ok(Toolchain::MIPS),
+        "riscv32i" => Ok(Toolchain::RiscV32i),
+        s => Err(format!("Unsupported toolchain {s}")),
+    }
+}
+
 // Simple parser for Cannon's "frequency format"
 // A frequency input is either
 // - never/always

@@ -11,6 +11,13 @@ pub fn main_cli() -> clap::Command {
         .arg(arg!(--meta <FILE> "metadata file").default_value("meta.json"))
         // The CLI arguments below this line are ignored at this point
         .arg(
+            Arg::new("toolchain")
+                .long("toolchain")
+                .value_name("TOOLCHAIN")
+                .default_value("mips")
+                .value_parser(toolchain_parser),
+        )
+        .arg(
             Arg::new("proof-at")
                 .short('p')
                 .long("proof-at")
