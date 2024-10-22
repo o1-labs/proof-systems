@@ -143,3 +143,14 @@ The default value for `OP_DB_DIRECTORY` would be the one from
 `setenv-for-latest-l2-block.sh` if the parameter is omitted.
 
 The `NETWORK_NAME` defaults to `sepolia`.
+
+## Testing RISCV32i
+
+See `./tests/test_riscv_elf.rs`.
+You can run it by using:
+```
+cargo nextest run "test_elf" --all-features --release --nocapture -p o1vm
+```
+
+The file `basic.elf` comes from
+[here](https://github.com/ultraembedded/riscv/blob/master/isa_sim/images/basic.elf)
