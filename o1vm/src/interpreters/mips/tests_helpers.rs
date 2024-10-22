@@ -7,9 +7,9 @@ use crate::{
     },
     preimage_oracle::PreImageOracleT,
 };
+use kimchi::o1_utils::FieldHelpers;
 use rand::{CryptoRng, Rng, RngCore};
 use std::{fs, path::PathBuf};
-
 // FIXME: we should parametrize the tests with different fields.
 use ark_bn254::Fr as Fp;
 
@@ -114,7 +114,16 @@ pub(crate) fn write_instruction(
     instruction_parts: InstructionParts,
 ) {
     let instr = instruction_parts.encode();
-    let instr_pointer: u32 = env.get_instruction_pointer().try_into().unwrap();
+    let instr_pointer: u32 = {
+        let tmp: Result<u32, _> = (*(env
+            .get_instruction_pointer()
+            .to_biguint()
+            .to_u64_digits()
+            .first()
+            .unwrap_or(&0)))
+        .try_into();
+        tmp.unwrap()
+    };
     let page = instr_pointer >> PAGE_ADDRESS_SIZE;
     let page_address = (instr_pointer & PAGE_ADDRESS_MASK) as usize;
     env.memory[page as usize].1[page_address] = ((instr >> 24) & 0xFF) as u8;

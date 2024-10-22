@@ -23,8 +23,9 @@ use crate::{
     lookups::Lookup,
     preimage_oracle::PreImageOracleT,
 };
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use core::panic;
+use kimchi::o1_utils::FieldHelpers;
 use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
@@ -71,7 +72,7 @@ impl SyscallEnv {
 /// machine has access to its internal state and some external memory. In
 /// addition to that, it has access to the environment of the Keccak interpreter
 /// that is used to verify the preimage requested during the execution.
-pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
+pub struct Env<Fp: PrimeField, PreImageOracle: PreImageOracleT> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
@@ -132,7 +133,7 @@ fn memory_size(total: usize) -> String {
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -141,8 +142,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         Column::ScratchState(scratch_idx)
     }
 
-    type Variable = u64;
-
+    type Variable = Fp;
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!()
     }
@@ -159,7 +159,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn check_is_zero(assert_equals_zero: &Self::Variable) {
-        assert_eq!(*assert_equals_zero, 0);
+        assert_eq!(*assert_equals_zero, Fp::zero());
     }
 
     fn check_equal(x: &Self::Variable, y: &Self::Variable) {
@@ -167,7 +167,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn check_boolean(x: &Self::Variable) {
-        if !(*x == 0 || *x == 1) {
+        if !(*x == Fp::zero() || *x == Fp::one()) {
             panic!("The value {} is not a boolean", *x);
         }
     }
@@ -178,7 +178,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn instruction_counter(&self) -> Self::Variable {
-        self.instruction_counter
+        self.instruction_counter.into()
     }
 
     fn increase_instruction_counter(&mut self) {
@@ -190,9 +190,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let res = self.registers[*idx as usize] as u64;
+        let idx = {
+            let tmp: Result<u32, _> =
+                (*(idx.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let res = self.registers[idx as usize] as u64;
         self.write_column(output, res);
-        res
+        res.into()
     }
 
     unsafe fn push_register_if(
@@ -201,10 +206,19 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         value: Self::Variable,
         if_is_true: &Self::Variable,
     ) {
-        let value: u32 = value.try_into().unwrap();
-        if *if_is_true == 1 {
-            self.registers[*idx as usize] = value
-        } else if *if_is_true == 0 {
+        let value: u32 = {
+            let tmp: Result<u32, _> =
+                (*(value.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        if *if_is_true == Fp::one() {
+            let idx = {
+                let tmp: Result<u32, _> =
+                    (*(idx.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+                tmp.unwrap()
+            };
+            self.registers[idx as usize] = value
+        } else if *if_is_true == Fp::zero() {
             // No-op
         } else {
             panic!("Bad value for flag in push_register: {}", *if_is_true);
@@ -216,9 +230,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let res = self.registers_write_index[*idx as usize];
+        let idx = {
+            let tmp: Result<u32, _> =
+                (*(idx.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let res = self.registers_write_index[idx as usize];
         self.write_column(output, res);
-        res
+        res.into()
     }
 
     unsafe fn push_register_access_if(
@@ -227,9 +246,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         value: Self::Variable,
         if_is_true: &Self::Variable,
     ) {
-        if *if_is_true == 1 {
-            self.registers_write_index[*idx as usize] = value
-        } else if *if_is_true == 0 {
+        if *if_is_true == Fp::one() {
+            let idx = {
+                let tmp: Result<u32, _> =
+                    (*(idx.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+                tmp.unwrap()
+            };
+            self.registers_write_index[idx as usize] =
+                *value.to_biguint().to_u64_digits().first().unwrap_or(&0);
+        } else if *if_is_true == Fp::zero() {
             // No-op
         } else {
             panic!("Bad value for flag in push_register: {}", *if_is_true);
@@ -241,7 +266,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let addr: u32 = (*addr).try_into().unwrap();
+        let addr: u32 = (addr.to_biguint().to_u64_digits()[0]).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_page_idx = self.get_memory_page_index(page);
@@ -251,12 +276,17 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
-        let addr: u32 = (*addr).try_into().unwrap();
+        let addr: u32 = (addr.to_biguint().to_u64_digits()[0]).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_page_idx = self.get_memory_page_index(page);
-        self.memory[memory_page_idx].1[page_address] =
-            value.try_into().expect("push_memory values fit in a u8");
+        self.memory[memory_page_idx].1[page_address] = {
+            let tmp: Result<u32, _> =
+                (*(value.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        }
+        .try_into()
+        .expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -264,25 +294,26 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let addr: u32 = (*addr).try_into().unwrap();
+        let addr: u32 = (addr.to_biguint().to_u64_digits()[0]).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
         let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
         self.write_column(output, value);
-        value
+        value.into()
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
-        let addr = *addr as u32;
+        let addr = addr.to_biguint().to_u64_digits()[0] as u32;
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
-        self.memory_write_index[memory_write_index_page_idx].1[page_address] = value;
+        self.memory_write_index[memory_write_index_page_idx].1[page_address] =
+            *(value.to_biguint().to_u64_digits().first().unwrap_or(&0));
     }
 
     fn constant(x: u32) -> Self::Variable {
-        x as u64
+        (x as u64).into()
     }
 
     unsafe fn bitmask(
@@ -292,11 +323,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn shift_left(
@@ -305,12 +340,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let by: u32 = (*by).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x << by;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn shift_right(
@@ -319,12 +362,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let by: u32 = (*by).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x >> by;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn shift_right_arithmetic(
@@ -333,18 +384,26 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let by: u32 = (*by).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = ((x as i32) >> by) as u32;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        let res = if *x == 0 { 1 } else { 0 };
+        let res = if *x == Fp::zero() { 1 } else { 0 };
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn inverse_or_zero(
@@ -352,12 +411,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        if *x == 0 {
+        if *x == Fp::zero() {
             self.write_column(position, 0);
-            0
+            (0_u64).into()
         } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
-            1 // Placeholder value
+            self.write_field_column(position, x.inverse().unwrap());
+            (1_u64).into() // Placeholder value
         }
     }
 
@@ -373,12 +432,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = if x < y { 1 } else { 0 };
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn test_less_than_signed(
@@ -387,12 +454,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = if (x as i32) < (y as i32) { 1 } else { 0 };
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn and_witness(
@@ -401,12 +476,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x & y;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn nor_witness(
@@ -415,12 +498,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = !(x | y);
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn or_witness(
@@ -429,12 +520,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x | y;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn xor_witness(
@@ -443,12 +542,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x ^ y;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn add_witness(
@@ -458,14 +565,22 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         out_position: Self::Position,
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
         let res = x.overflowing_add(y);
         let (res_, overflow) = (res.0 as u64, res.1 as u64);
         self.write_column(out_position, res_);
         self.write_column(overflow_position, overflow);
-        (res_, overflow)
+        (res_.into(), overflow.into())
     }
 
     unsafe fn sub_witness(
@@ -475,14 +590,22 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         out_position: Self::Position,
         underflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_sub
         let res = x.overflowing_sub(y);
         let (res_, underflow) = (res.0 as u64, res.1 as u64);
         self.write_column(out_position, res_);
         self.write_column(underflow_position, underflow);
-        (res_, underflow)
+        (res_.into(), underflow.into())
     }
 
     unsafe fn mul_signed_witness(
@@ -491,12 +614,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = ((x as i32) * (y as i32)) as u32;
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn mul_hi_lo_signed(
@@ -506,8 +637,16 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let mul = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
@@ -515,7 +654,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let lo = lo as u64;
         self.write_column(position_hi, hi);
         self.write_column(position_lo, lo);
-        (hi, lo)
+        (hi.into(), lo.into())
     }
 
     unsafe fn mul_hi_lo(
@@ -525,8 +664,16 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let mul = (x as u64) * (y as u64);
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
@@ -534,7 +681,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let lo = lo as u64;
         self.write_column(position_hi, hi);
         self.write_column(position_lo, lo);
-        (hi, lo)
+        (hi.into(), lo.into())
     }
 
     unsafe fn divmod_signed(
@@ -544,15 +691,23 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         position_quotient: Self::Position,
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let q = ((x as i32) / (y as i32)) as u32;
         let r = ((x as i32) % (y as i32)) as u32;
         let q = q as u64;
         let r = r as u64;
         self.write_column(position_quotient, q);
         self.write_column(position_remainder, r);
-        (q, r)
+        (q.into(), r.into())
     }
 
     unsafe fn divmod(
@@ -562,15 +717,23 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         position_quotient: Self::Position,
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
+        let y: u32 = {
+            let tmp: Result<u32, _> =
+                (*(y.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let q = x / y;
         let r = x % y;
         let q = q as u64;
         let r = r as u64;
         self.write_column(position_quotient, q);
         self.write_column(position_remainder, r);
-        (q, r)
+        (q.into(), r.into())
     }
 
     unsafe fn count_leading_zeros(
@@ -578,11 +741,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x.leading_zeros();
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     unsafe fn count_leading_ones(
@@ -590,22 +757,26 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
+        let x: u32 = {
+            let tmp: Result<u32, _> =
+                (*(x.to_biguint().to_u64_digits().first().unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x.leading_ones();
         let res = res as u64;
         self.write_column(position, res);
-        res
+        res.into()
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        self.write_column(position, *x);
+        self.write_field_column(position, *x);
         *x
     }
 
     fn set_halted(&mut self, flag: Self::Variable) {
-        if flag == 0 {
+        if flag == Fp::zero() {
             self.halt = false
-        } else if flag == 1 {
+        } else if flag == Fp::one() {
             self.halt = true
         } else {
             panic!("Bad value for flag in set_halted: {}", flag);
@@ -626,6 +797,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
+        let addr_u64 = addr.to_biguint().to_u64_digits()[0];
+        let len_u64 = len.to_biguint().to_u64_digits()[0];
         // The beginning of the syscall
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
@@ -649,16 +822,17 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let preimage_len = preimage.len();
         let preimage_offset = self.registers.preimage_offset as u64;
 
-        let max_read_len =
-            std::cmp::min(preimage_offset + len, (preimage_len + LENGTH_SIZE) as u64)
-                - preimage_offset;
+        let max_read_len = std::cmp::min(
+            preimage_offset + len_u64,
+            (preimage_len + LENGTH_SIZE) as u64,
+        ) - preimage_offset;
 
         // We read at most 4 bytes, ensuring that we respect word alignment.
         // Here, if the address is not aligned, the first call will read < 4
         // but the next calls will be 4 bytes (because the actual address would
         // be updated with the offset) until reaching the end of the preimage
         // (where the last call could be less than 4 bytes).
-        let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
+        let actual_read_len = std::cmp::min(max_read_len, 4 - (addr_u64 & 3));
 
         // This variable will contain the amount of bytes read which belong to
         // the actual preimage
@@ -683,8 +857,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
                 // TODO: Proabably, the scratch state of MIPS_LENGTH_BYTES_OFF
                 // is redundant with lines below
                 unsafe {
-                    self.push_memory(&(*addr + i), length_byte as u64);
-                    self.push_memory_access(&(*addr + i), self.next_instruction_counter());
+                    self.push_memory(&(*addr + Fp::from(i)), (length_byte as u64).into());
+                    self.push_memory_access(
+                        &(*addr + Fp::from(i)),
+                        self.next_instruction_counter().into(),
+                    );
                 }
             } else {
                 // Compute the byte index in the chunk of at most 4 bytes read
@@ -710,8 +887,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
                 // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
                 // is redundant with lines below
                 unsafe {
-                    self.push_memory(&(*addr + i), preimage_byte as u64);
-                    self.push_memory_access(&(*addr + i), self.next_instruction_counter());
+                    self.push_memory(&(*addr + Fp::from(i)), (preimage_byte as u64).into());
+                    self.push_memory_access(
+                        &(*addr + Fp::from(i)),
+                        self.next_instruction_counter().into(),
+                    );
                 }
             }
         }
@@ -781,25 +961,31 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
             // Reset PreimageCounter column will be done in the next call
         }
-        actual_read_len
+        actual_read_len.into()
     }
 
     fn request_hint_write(&mut self, addr: &Self::Variable, len: &Self::Variable) {
+        let len = len.to_biguint().to_u64_digits()[0];
         let mut last_hint = match std::mem::take(&mut self.syscall_env.last_hint) {
             Some(mut last_hint) => {
-                last_hint.reserve(*len as usize);
+                last_hint.reserve(len as usize);
                 last_hint
             }
-            None => Vec::with_capacity(*len as usize),
+            None => Vec::with_capacity(len as usize),
         };
 
         // This should really be handled by the keccak oracle.
-        for i in 0..*len {
+        for i in 0..len {
             // Push memory access
-            unsafe { self.push_memory_access(&(*addr + i), self.next_instruction_counter()) };
+            unsafe {
+                self.push_memory_access(
+                    &(*addr + Fp::from(i)),
+                    self.next_instruction_counter().into(),
+                )
+            };
             // Fetch the value without allocating witness columns
             let value = {
-                let addr: u32 = (*addr).try_into().unwrap();
+                let addr: u32 = (addr.to_biguint().to_u64_digits()[0]).try_into().unwrap();
                 let page = addr >> PAGE_ADDRESS_SIZE;
                 let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
                 let memory_page_idx = self.get_memory_page_index(page);
@@ -833,7 +1019,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
