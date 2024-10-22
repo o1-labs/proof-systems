@@ -3,7 +3,7 @@
 This crate contains an implementation of different components used to build a
 zero-knowledge virtual machine. For now, the implementation is specialised for
 the ISA MIPS used by [Cannon](https://github.com/ethereum-optimism/cannon) and
-the RiscV32i ISA defined in [this
+the RISC-V32i ISA defined in [this
 specification](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf).
 In the future, the codebase will be generalised to handle more ISA and more
 programs.
@@ -130,7 +130,7 @@ environment variable `O1VM_FLAVOR`.
 Different toolchains/architectures are supported. You can select the toolchain you want to use by using `O1VM_TOOLCHAIN`.
 The two supported values are:
 - `mips`: the MIPS instruction set implemented by Cannon
-- `riscv32i`: the 32bits architecture of RiscV described [here](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf)
+- `riscv32i`: the 32bits architecture of RISC-V described [here](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf)
 
 ## Testing the preimage read
 
