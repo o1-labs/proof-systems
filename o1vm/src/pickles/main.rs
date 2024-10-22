@@ -10,6 +10,7 @@ use mina_poseidon::{
 use o1vm::{
     cannon::{self, Meta, Start, State, Toolchain, VmConfiguration},
     cannon_cli,
+    interpreters::riscv32i::interpreter,
     pickles::{
         proof::{Proof, ProofInputs},
         prover,
@@ -179,11 +180,40 @@ pub fn run_riscv32i(
     _configuration: VmConfiguration,
     _meta: Meta,
     _start: Start,
-    _state: State,
+    state: State,
     _domain_fp: EvaluationDomains<Fp>,
     _srs: SRS<Vesta>,
 ) {
+    use o1vm::interpreters::riscv32i::{
+        column::E,
+        constraints,
+        interpreter::{Instruction, InterpreterEnv},
+        witness,
+    };
 
-    // Initialize the environments
-    // let mut riscv32i_wit_env = witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut witness_env = witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state);
+
+    let _constraints = {
+        let mut constraint_env = constraints::Env::<Fp>::default();
+        let mut constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(vec![], |mut acc, instr| {
+                interpreter::interpret_instruction(&mut constraint_env, instr);
+                let selector = constraint_env.get_selector();
+                let constraints_with_selector: Vec<E<Fp>> = constraint_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                constraint_env.reset();
+                acc
+            });
+        constraints.extend(constraint_env.get_selector_constraints());
+        constraints
+    };
+
+    while !witness_env.halt {
+        let _instr: Instruction = witness_env.step();
+    }
 }

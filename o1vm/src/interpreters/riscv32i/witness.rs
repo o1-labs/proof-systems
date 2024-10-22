@@ -3,11 +3,11 @@
 
 use super::{
     column::Column,
-    interpreter::{Instruction, InterpreterEnv},
+    interpreter::{self, Instruction, InterpreterEnv, RInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
-use crate::lookups::Lookup;
+use crate::{cannon::State, lookups::Lookup};
 use ark_ff::Field;
 use std::array;
 
@@ -546,6 +546,90 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 }
 
 impl<Fp: Field> Env<Fp> {
+    pub fn create(page_size: usize, state: State) -> Self {
+        let initial_instruction_pointer = state.pc;
+        let next_instruction_pointer = state.next_pc;
+
+        let selector = INSTRUCTION_SET_SIZE;
+
+        let mut initial_memory: Vec<(u32, Vec<u8>)> = state
+            .memory
+            .into_iter()
+            // Check that the conversion from page data is correct
+            .map(|page| (page.index, page.data))
+            .collect();
+
+        for (_address, initial_memory) in initial_memory.iter_mut() {
+            initial_memory.extend((0..(page_size - initial_memory.len())).map(|_| 0u8));
+            assert_eq!(initial_memory.len(), page_size);
+        }
+
+        let memory_offsets = initial_memory
+            .iter()
+            .map(|(offset, _)| *offset)
+            .collect::<Vec<_>>();
+
+        let initial_registers = {
+            Registers {
+                general_purpose: state.registers,
+                current_instruction_pointer: initial_instruction_pointer,
+                next_instruction_pointer,
+                heap_pointer: state.heap,
+            }
+        };
+
+        Env {
+            instruction_counter: state.step,
+            memory: initial_memory.clone(),
+            last_memory_accesses: [0usize; 3],
+            memory_write_index: memory_offsets
+                .iter()
+                .map(|offset| (*offset, vec![0u64; page_size]))
+                .collect(),
+            last_memory_write_index_accesses: [0usize; 3],
+            registers: initial_registers.clone(),
+            registers_write_index: Registers::default(),
+            scratch_state_idx: 0,
+            scratch_state: fresh_scratch_state(),
+            halt: state.exited,
+            selector,
+        }
+    }
+
+    pub fn next_instruction_counter(&self) -> u64 {
+        (self.normalized_instruction_counter() + 1) * MAX_ACC
+    }
+
+    pub fn decode_instruction(&mut self) -> (Instruction, u32) {
+        let instruction =
+            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                    << 16)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                    << 8)
+                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+        (Instruction::RType(RInstruction::Add), instruction)
+    }
+
+    pub fn step(&mut self) -> Instruction {
+        self.reset_scratch_state();
+        let (opcode, _instruction) = self.decode_instruction();
+
+        interpreter::interpret_instruction(self, opcode);
+
+        self.instruction_counter = self.next_instruction_counter();
+
+        // Integer division by MAX_ACC to obtain the actual instruction count
+        if self.halt {
+            println!(
+                "Halted at step={} instruction={:?}",
+                self.normalized_instruction_counter(),
+                opcode
+            );
+        }
+        opcode
+    }
+
     pub fn reset_scratch_state(&mut self) {
         self.scratch_state_idx = 0;
         self.scratch_state = fresh_scratch_state();
