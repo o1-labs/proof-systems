@@ -207,7 +207,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         value: Self::Variable,
         if_is_true: &Self::Variable,
     ) {
-        let value: u32 = (value.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let value: u32 = {
+            let tmp: Result<u32, _> =
+                (*(value.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         if *if_is_true == Fp::one() {
             let idx = {
                 let tmp: Result<u32, _> =
