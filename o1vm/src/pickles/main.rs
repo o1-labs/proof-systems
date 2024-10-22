@@ -8,15 +8,8 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
-    cannon::{self, Meta, Start, State},
+    cannon::{self, Meta, Start, State, Toolchain, VmConfiguration},
     cannon_cli,
-    interpreters::mips::{
-        column::N_MIPS_REL_COLS,
-        constraints as mips_constraints,
-        interpreter::{self, InterpreterEnv},
-        witness::{self as mips_witness},
-        ITypeInstruction, Instruction, RTypeInstruction,
-    },
     pickles::{
         proof::{Proof, ProofInputs},
         prover,
@@ -34,9 +27,7 @@ pub const DOMAIN_SIZE: usize = 1 << 15;
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
 
-    let mut rng = rand::thread_rng();
-
-    let configuration = cannon_cli::read_configuration(&cli.get_matches());
+    let configuration: VmConfiguration = cannon_cli::read_configuration(&cli.get_matches());
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
@@ -59,9 +50,6 @@ pub fn main() -> ExitCode {
         )
     });
 
-    let mut po = PreImageOracle::create(&configuration.host);
-    let _child = po.start();
-
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
@@ -74,9 +62,38 @@ pub fn main() -> ExitCode {
         srs
     };
 
+    match configuration.toolchain {
+        Toolchain::MIPS => run_mips(configuration, meta, start, state, domain_fp, srs),
+        Toolchain::RiscV32i => run_riscv32i(configuration, meta, start, state, domain_fp, srs),
+    }
+
+    // TODO: Logic
+    ExitCode::SUCCESS
+}
+
+pub fn run_mips(
+    configuration: VmConfiguration,
+    meta: Meta,
+    start: Start,
+    state: State,
+    domain_fp: EvaluationDomains<Fp>,
+    srs: SRS<Vesta>,
+) {
+    use o1vm::interpreters::mips::{
+        column::N_MIPS_REL_COLS,
+        constraints,
+        interpreter::{self, InterpreterEnv},
+        witness, ITypeInstruction, Instruction, RTypeInstruction,
+    };
+
+    let mut rng = rand::thread_rng();
+
+    let mut po = PreImageOracle::create(&configuration.host);
+    let _child = po.start();
+
     // Initialize the environments
     let mut mips_wit_env =
-        mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
+        witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
     // FIXME: This is a hack to skip some instructions that have failing constraints.
     // It might be related to env.equal.
@@ -91,7 +108,7 @@ pub fn main() -> ExitCode {
         Instruction::IType(ITypeInstruction::StoreWordRight),
     ];
     let constraints = {
-        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
+        let mut mips_con_env = constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
             .flat_map(|instr_typ| instr_typ.into_iter())
             .fold(vec![], |mut acc, instr| {
@@ -156,6 +173,17 @@ pub fn main() -> ExitCode {
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-    // TODO: Logic
-    ExitCode::SUCCESS
+}
+
+pub fn run_riscv32i(
+    _configuration: VmConfiguration,
+    _meta: Meta,
+    _start: Start,
+    _state: State,
+    _domain_fp: EvaluationDomains<Fp>,
+    _srs: SRS<Vesta>,
+) {
+
+    // Initialize the environments
+    // let mut riscv32i_wit_env = witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
 }
