@@ -337,7 +337,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let by: u32 = (by.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x << by;
         let res = res as u64;
         self.write_column(position, res);
@@ -355,7 +359,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let by: u32 = (by.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = x >> by;
         let res = res as u64;
         self.write_column(position, res);
@@ -373,7 +381,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 (*(x.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
             tmp.unwrap()
         };
-        let by: u32 = (by.to_biguint().to_u64_digits()[0]).try_into().unwrap();
+        let by: u32 = {
+            let tmp: Result<u32, _> =
+                (*(by.to_biguint().to_u64_digits().get(0).unwrap_or(&0))).try_into();
+            tmp.unwrap()
+        };
         let res = ((x as i32) >> by) as u32;
         let res = res as u64;
         self.write_column(position, res);
