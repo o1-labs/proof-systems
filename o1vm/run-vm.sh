@@ -18,6 +18,8 @@ O1VM_FLAVOR to one of these values to run the flavor you would like";
         ;;
     esac
 
+O1VM_TOOLCHAIN="${O1VM_TOOLCHAIN:-mips}"
+
 cargo run --bin ${BINARY_FLAVOR} \
     --all-features \
     --release \
@@ -28,6 +30,7 @@ cargo run --bin ${BINARY_FLAVOR} \
       --proof-at never \
       --stop-at "${STOP_AT:-never}" \
       --input "${ZKVM_STATE_FILENAME:-./state.json}" \
+      --toolchain "${O1VM_TOOLCHAIN}" \
       -- \
       ./ethereum-optimism/op-program/bin/op-program \
       --log.level DEBUG \
