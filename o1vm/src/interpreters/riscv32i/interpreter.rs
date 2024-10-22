@@ -29,8 +29,8 @@ pub enum RInstruction {
     Xor,                  // xor
     ShiftRightLogical,    // srl
     ShiftRightArithmetic, // sra
-    And,                  // and
     Or,                   // or
+    And,                  // and
 }
 
 #[derive(
@@ -52,7 +52,7 @@ pub enum IInstruction {
 
     AddImmediate, // addi
     XorImmediate, // xori
-
+    OrImmediate,  // ori
 }
 
 #[derive(
