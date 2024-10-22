@@ -79,4 +79,4 @@ impl From<Instruction> for usize {
 }
 
 // FIXME: other challenges
-pub(crate) type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
