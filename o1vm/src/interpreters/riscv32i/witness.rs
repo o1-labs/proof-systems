@@ -3,7 +3,7 @@
 
 use super::{
     column::Column,
-    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction},
+    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction, SInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -635,6 +635,14 @@ impl<Fp: Field> Env<Fp> {
                     0b100 => Instruction::IType(IInstruction::LoadByteUnsigned),
                     0b101 => Instruction::IType(IInstruction::LoadHalfUnsigned),
                     _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::SType(SInstruction::StoreByte),
+                    0b001 => Instruction::SType(SInstruction::StoreHalf),
+                    0b010 => Instruction::SType(SInstruction::StoreWord),
+                    _ => panic!("Unknown SType instruction with full inst {}", instruction),
                 },
                 _ => panic!("Unknown instruction with full inst {}", instruction),
             }
