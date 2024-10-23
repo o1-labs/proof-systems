@@ -2,14 +2,21 @@ use crate::cannon::*;
 use clap::{arg, value_parser, Arg, ArgAction};
 
 pub fn main_cli() -> clap::Command {
-    let app_name = "zkvm";
+    let app_name = "o1vm";
     clap::Command::new(app_name)
         .version("0.1")
-        .about("MIPS-based zkvm")
+        .about("o1vm - a generic purpose zero-knowledge virtual machine")
         .arg(arg!(--input <FILE> "initial state file").default_value("state.json"))
         .arg(arg!(--output <FILE> "output state file").default_value("out.json"))
         .arg(arg!(--meta <FILE> "metadata file").default_value("meta.json"))
         // The CLI arguments below this line are ignored at this point
+        .arg(
+            Arg::new("toolchain")
+                .long("toolchain")
+                .value_name("TOOLCHAIN")
+                .default_value("mips")
+                .value_parser(toolchain_parser),
+        )
         .arg(
             Arg::new("proof-at")
                 .short('p')
@@ -79,6 +86,7 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
     let proof_fmt = cli.get_one::<String>("proof-fmt").unwrap();
     let snapshot_fmt = cli.get_one::<String>("snapshot-fmt").unwrap();
     let pprof_cpu = cli.get_one::<bool>("pprof-cpu").unwrap();
+    let toolchain = cli.get_one::<Toolchain>("toolchain").unwrap();
 
     let host_spec = cli
         .get_many::<String>("host")
@@ -110,5 +118,6 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
         snapshot_fmt: snapshot_fmt.to_string(),
         pprof_cpu: *pprof_cpu,
         host,
+        toolchain: toolchain.clone(),
     }
 }

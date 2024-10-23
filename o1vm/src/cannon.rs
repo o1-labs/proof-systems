@@ -6,6 +6,8 @@ use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Read, Write};
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
 
 pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
@@ -147,6 +149,31 @@ pub enum StepFrequency {
     Range(u64, Option<u64>),
 }
 
+#[derive(Clone, Debug, EnumIter, Display)]
+/// The supported toolchain in o1vm.
+pub enum Toolchain {
+    /// The interpreter implementation is in
+    /// [crate::interpreters::mips::interpreter]
+    MIPS,
+    /// The interpreter implementation is in
+    /// [crate::interpreters::riscv32i::interpreter]
+    RiscV32i,
+}
+
+pub fn toolchain_parser(s: &str) -> std::result::Result<Toolchain, String> {
+    match s {
+        "mips" => Ok(Toolchain::MIPS),
+        "riscv32i" => Ok(Toolchain::RiscV32i),
+        s => Err(format!(
+            "Unsupported toolchain {s}. Available toolchains are {}",
+            Toolchain::iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )),
+    }
+}
+
 // Simple parser for Cannon's "frequency format"
 // A frequency input is either
 // - never/always
@@ -215,6 +242,7 @@ pub struct VmConfiguration {
     pub snapshot_fmt: String,
     pub pprof_cpu: bool,
     pub host: Option<HostProgram>,
+    pub toolchain: Toolchain,
 }
 
 #[derive(Debug, Clone)]

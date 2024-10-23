@@ -2,8 +2,10 @@
 
 This crate contains an implementation of different components used to build a
 zero-knowledge virtual machine. For now, the implementation is specialised for
-the ISA MIPS used by [Cannon](https://github.com/ethereum-optimism/cannon). In
-the future, the codebase will be generalised to handle more ISA and more
+the ISA MIPS used by [Cannon](https://github.com/ethereum-optimism/cannon) and
+the RISC-V32i ISA defined in [this
+specification](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf).
+In the future, the codebase will be generalised to handle more ISA and more
 programs.
 
 ## Description
@@ -123,6 +125,13 @@ Different versions/flavors of the o1vm are available.
 You can select the flavor you want to run with `run-code.sh` by using the
 environment variable `O1VM_FLAVOR`.
 
+## Toolchains
+
+Different toolchains/architectures are supported. You can select the toolchain you want to use by using `O1VM_TOOLCHAIN`.
+The two supported values are:
+- `mips`: the MIPS instruction set implemented by Cannon
+- `riscv32i`: the 32bits architecture of RISC-V described [here](https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf)
+
 ## Testing the preimage read
 
 Run:
@@ -134,3 +143,14 @@ The default value for `OP_DB_DIRECTORY` would be the one from
 `setenv-for-latest-l2-block.sh` if the parameter is omitted.
 
 The `NETWORK_NAME` defaults to `sepolia`.
+
+## Testing RISCV32i
+
+See `./tests/test_riscv_elf.rs`.
+You can run it by using:
+```
+cargo nextest run "test_elf" --all-features --release --nocapture -p o1vm
+```
+
+The file `basic.elf` comes from
+[here](https://github.com/ultraembedded/riscv/blob/master/isa_sim/images/basic.elf)
