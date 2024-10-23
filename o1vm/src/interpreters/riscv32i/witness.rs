@@ -3,7 +3,7 @@
 
 use super::{
     column::Column,
-    interpreter::{self, Instruction, InterpreterEnv, RInstruction},
+    interpreter::{self, Instruction, InterpreterEnv, UInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -602,13 +602,21 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
         let instruction =
-            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
-                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
-                    << 16)
-                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
-                    << 8)
-                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
-        (Instruction::RType(RInstruction::Add), instruction)
+        ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+            | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                << 16)
+            | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                << 8)
+            | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+        let opcode = {
+            match instruction & 0b1111111 {
+                0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
+                0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
+                _ =>  panic!("Unknown instruction"),
+            }
+        };
+        (opcode, instruction)
+
     }
 
     pub fn step(&mut self) -> Instruction {

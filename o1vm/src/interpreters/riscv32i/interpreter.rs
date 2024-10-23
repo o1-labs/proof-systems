@@ -20,6 +20,7 @@ pub enum Instruction {
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
+
 pub enum RInstruction {
     #[default]
     Add, // add
