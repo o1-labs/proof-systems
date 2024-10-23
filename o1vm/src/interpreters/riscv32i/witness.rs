@@ -3,7 +3,7 @@
 
 use super::{
     column::Column,
-    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction, SInstruction},
+    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction, SInstruction, RInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -655,13 +655,45 @@ impl<Fp: Field> Env<Fp> {
                     0b111 => Instruction::IType(IInstruction::AndImmediate),
                     0b001 => Instruction::IType(IInstruction::ShiftLeftLogicalImmediate),
                     0b101 => 
-                    match (instruction >> 30) & 0x1 // bit 30 for func7
+                    match (instruction >> 30) & 0x1 // bit 30 in simm component of IType
                     {
                         0b0 => Instruction::IType(IInstruction::ShiftRightLogicalImmediate),
                         0b1 => Instruction::IType(IInstruction::ShiftRightArithmeticImmediate),
                         _ => panic!("Unknown IType in shift right instructions with full inst {}", instruction),
                     },
                     _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0110011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => 
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                        0b0 => Instruction::RType(RInstruction::Add),
+                        0b1 => Instruction::RType(RInstruction::Sub),
+                        _ => panic!("Unknown RType in add/sub instructions with full inst {}", instruction),
+                    },
+                    0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
+                    0b010 => Instruction::RType(RInstruction::SetLessThan),
+                    0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
+                    0b100 => Instruction::RType(RInstruction::Xor),
+                    0b101 =>
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                        0b0 => Instruction::RType(RInstruction::ShiftRightLogical),
+                        0b1 => Instruction::RType(RInstruction::ShiftRightArithmetic),
+                        _ => panic!("Unknown RType in shift right instructions with full inst {}", instruction),
+                    },
+                    0b110 => Instruction::RType(RInstruction::Or),
+                    0b111 => Instruction::RType(RInstruction::And),
+                    _ => panic!("Unknown RType 0110011 instruction with full inst {}", instruction),
+                },
+                0b0001111 => 
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::RType(RInstruction::Fence),
+                    0b001 => Instruction::RType(RInstruction::FenceI),
+                    _ => panic!("Unknown RType 0001111 (Fence) instruction with full inst {}", instruction),
                 },
                 _ => panic!("Unknown instruction with full inst {}", instruction),
             }
