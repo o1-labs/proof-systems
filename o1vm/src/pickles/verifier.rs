@@ -179,7 +179,7 @@ where
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
 
-    let quotient_eval_zeta = PolishToken::evaluate(
+    let numerator_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,
         zeta,
@@ -188,16 +188,6 @@ where
         &challenges,
     )
     .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta"));
-
-    let quotient_eval_zeta_omega = PolishToken::evaluate(
-        combined_expr.to_polish().as_slice(),
-        domain.d1,
-        zeta_omega,
-        &column_eval,
-        &constants,
-        &challenges,
-    )
-    .unwrap_or_else(|_| panic!("Could not evaluate quotient polynomial at zeta_omega"));
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -229,11 +219,6 @@ where
             })
         });
 
-        evaluations.push(Evaluation {
-            commitment: quotient_commitment.clone(),
-            evaluations: vec![vec![quotient_eval_zeta], vec![quotient_eval_zeta_omega]],
-        });
-
         evaluations
     };
 
@@ -259,7 +244,7 @@ where
     let group_map = G::Map::setup();
 
     // Check the actual quotient works.
-    (quotient_eval_zeta
-        == quotient_evaluations.zeta * (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
+    (quotient_evaluations.zeta
+        == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
         && OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }

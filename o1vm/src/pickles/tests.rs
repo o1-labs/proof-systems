@@ -69,6 +69,14 @@ fn test_regression_selectors_for_instructions() {
         .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
 }
 
+fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
+    let mut ret = Vec::with_capacity(n);
+    for i in 0..n {
+        ret.push(Fq::from(i as u64))
+    }
+    ret
+}
+
 #[test]
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
@@ -76,54 +84,27 @@ fn test_small_circuit() {
     let proof_input = ProofInputs::<Pallas> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| {
-                vec![
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                    Fq::one(),
-                ]
+                zero_to_n_minus_one(8)
             }),
-            instruction_counter: vec![
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-                Fq::one(),
-            ],
+            instruction_counter: zero_to_n_minus_one(8).into_iter().map(|x| x + Fq::one()).collect(),
             error: vec![
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
-                -Fq::from((SCRATCH_SIZE + 1) as u64),
+                -Fq::from((0 * SCRATCH_SIZE + 1) as u64),
+                -Fq::from((1 * SCRATCH_SIZE + 2) as u64),
+                -Fq::from((2 * SCRATCH_SIZE + 3) as u64),
+                -Fq::from((3 * SCRATCH_SIZE + 4) as u64),
+                -Fq::from((4 * SCRATCH_SIZE + 5) as u64),
+                -Fq::from((5 * SCRATCH_SIZE + 6) as u64),
+                -Fq::from((6 * SCRATCH_SIZE + 7) as u64),
+                -Fq::from((7 * SCRATCH_SIZE + 8) as u64),
             ],
-            selector: vec![
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-                Fq::zero(),
-            ],
+            selector: zero_to_n_minus_one(8),
         },
     };
     let mut expr = Expr::literal(Fq::zero());
     for i in 0..SCRATCH_SIZE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
-    expr *= Expr::cell(Column::DynamicSelector(0), CurrOrNext::Curr);
+    /* expr *= Expr::cell(Column::DynamicSelector(0), CurrOrNext::Curr); */
     let mut rng = make_test_rng(None);
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
@@ -136,6 +117,7 @@ fn test_small_circuit() {
         &mut rng,
     )
     .unwrap();
+    
     let verif =
         verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
     assert!(verif, "Verification fails");
