@@ -11,7 +11,7 @@ pub enum Instruction {
     RType(RInstruction),
     IType(IInstruction),
     SType(SInstruction),
-    BType(BInstruction),
+    SBType(SBInstruction),
     UType(UInstruction),
     UJType(UJInstruction),
 }
@@ -70,7 +70,7 @@ pub enum SInstruction {
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
-pub enum BInstruction {
+pub enum SBInstruction {
     #[default]
     BranchEq, // beq
     BranchNeq,              // bne
@@ -125,10 +125,10 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
-            Instruction::BType(_) => {
-                let mut iter_contents = Vec::with_capacity(BInstruction::COUNT);
-                for btype in BInstruction::iter() {
-                    iter_contents.push(Instruction::BType(btype));
+            Instruction::SBType(_) => {
+                let mut iter_contents = Vec::with_capacity(SBInstruction::COUNT);
+                for SBType in SBInstruction::iter() {
+                    iter_contents.push(Instruction::SBType(SBType));
                 }
                 iter_contents.into_iter()
             }
