@@ -3,7 +3,7 @@
 
 use super::{
     column::Column,
-    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction},
+    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -616,7 +616,7 @@ impl<Fp: Field> Env<Fp> {
                 0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
                 0b1100111 => Instruction::UJType(UJInstruction::JumpAndLinkRegister),
                 0b1100011 =>
-                match (instruction >> 12) & 0x7 // bits 12-14
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
                 {
                     0b000 => Instruction::SBType(SBInstruction::BranchEq),
                     0b001 => Instruction::SBType(SBInstruction::BranchNeq),
@@ -625,6 +625,16 @@ impl<Fp: Field> Env<Fp> {
                     0b110 => Instruction::SBType(SBInstruction::BranchLessThanUnsigned),
                     0b111 => Instruction::SBType(SBInstruction::BranchGreaterThanEqualUnsigned),
                     _ => panic!("Unknown SBType instruction with full inst {}", instruction),
+                },
+                0b0000011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::LoadByte),
+                    0b001 => Instruction::IType(IInstruction::LoadHalf),
+                    0b010 => Instruction::IType(IInstruction::LoadWord),
+                    0b100 => Instruction::IType(IInstruction::LoadByteUnsigned),
+                    0b101 => Instruction::IType(IInstruction::LoadHalfUnsigned),
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
                 },
                 _ => panic!("Unknown instruction with full inst {}", instruction),
             }
