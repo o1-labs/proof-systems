@@ -55,6 +55,7 @@ pub enum IInstruction {
     AddImmediate, // addi
     XorImmediate, // xori
     OrImmediate,  // ori
+    AndImmediate, // andi
 }
 
 #[derive(

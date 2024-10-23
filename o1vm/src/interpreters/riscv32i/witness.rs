@@ -644,6 +644,25 @@ impl<Fp: Field> Env<Fp> {
                     0b010 => Instruction::SType(SInstruction::StoreWord),
                     _ => panic!("Unknown SType instruction with full inst {}", instruction),
                 },
+                0b0010011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::AddImmediate),
+                    0b010 => Instruction::IType(IInstruction::SetLessThanImmediate),
+                    0b011 => Instruction::IType(IInstruction::SetLessThanImmediateUnsigned),
+                    0b100 => Instruction::IType(IInstruction::XorImmediate),
+                    0b110 => Instruction::IType(IInstruction::OrImmediate),
+                    0b111 => Instruction::IType(IInstruction::AndImmediate),
+                    0b001 => Instruction::IType(IInstruction::ShiftLeftLogicalImmediate),
+                    0b101 => 
+                    match (instruction >> 30) & 0x1 // bit 30 for func7
+                    {
+                        0b0 => Instruction::IType(IInstruction::ShiftRightLogicalImmediate),
+                        0b1 => Instruction::IType(IInstruction::ShiftRightArithmeticImmediate),
+                        _ => panic!("Unknown IType in shift right instructions with full inst {}", instruction),
+                    },
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
                 _ => panic!("Unknown instruction with full inst {}", instruction),
             }
         };
