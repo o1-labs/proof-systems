@@ -3,7 +3,7 @@
 
 use super::{
     column::Column,
-    interpreter::{self, Instruction, InterpreterEnv, UInstruction},
+    interpreter::{self, Instruction, InterpreterEnv, UInstruction, UJInstruction},
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -612,6 +612,8 @@ impl<Fp: Field> Env<Fp> {
             match instruction & 0b1111111 {
                 0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
                 0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
+                0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
+                0b1100111 => Instruction::UJType(UJInstruction::JumpAndLinkRegister),
                 _ =>  panic!("Unknown instruction"),
             }
         };

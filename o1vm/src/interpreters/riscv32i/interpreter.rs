@@ -13,7 +13,7 @@ pub enum Instruction {
     SType(SInstruction),
     BType(BInstruction),
     UType(UInstruction),
-    JType(JInstruction),
+    UJType(UJInstruction),
 }
 
 // See https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf for the order
@@ -92,10 +92,10 @@ pub enum UInstruction {
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
-pub enum JInstruction {
+pub enum UJInstruction {
     #[default]
     JumpAndLink, // jal
-    Jump, // jalr
+    JumpAndLinkRegister, // jalr
 }
 
 impl IntoIterator for Instruction {
@@ -139,10 +139,10 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
-            Instruction::JType(_) => {
-                let mut iter_contents = Vec::with_capacity(JInstruction::COUNT);
-                for jtype in JInstruction::iter() {
-                    iter_contents.push(Instruction::JType(jtype));
+            Instruction::UJType(_) => {
+                let mut iter_contents = Vec::with_capacity(UJInstruction::COUNT);
+                for ujtype in UJInstruction::iter() {
+                    iter_contents.push(Instruction::UJType(ujtype));
                 }
                 iter_contents.into_iter()
             }
