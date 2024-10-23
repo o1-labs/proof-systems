@@ -47,13 +47,13 @@ impl From<Instruction> for usize {
             SType(stype) => {
                 SCRATCH_SIZE + 1 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
             }
-            SBType(SBType) => {
+            SBType(sbtype) => {
                 SCRATCH_SIZE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT
                     + SInstruction::COUNT
-                    + SBType as usize
+                    + sbtype as usize
             }
             UType(utype) => {
                 SCRATCH_SIZE

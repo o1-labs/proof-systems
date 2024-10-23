@@ -127,8 +127,8 @@ impl IntoIterator for Instruction {
             }
             Instruction::SBType(_) => {
                 let mut iter_contents = Vec::with_capacity(SBInstruction::COUNT);
-                for SBType in SBInstruction::iter() {
-                    iter_contents.push(Instruction::SBType(SBType));
+                for sbtype in SBInstruction::iter() {
+                    iter_contents.push(Instruction::SBType(sbtype));
                 }
                 iter_contents.into_iter()
             }
