@@ -29,6 +29,8 @@ pub enum RInstruction {
     ShiftRightArithmetic, // sra
     Or,                   // or
     And,                  // and
+    Fence,                // fence
+    FenceI,               // fence.i
 }
 
 #[derive(
