@@ -609,14 +609,24 @@ impl<Fp: Field> Env<Fp> {
                 << 8)
             | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let opcode = {
-            match instruction & 0b1111111 {
+            match instruction & 0b1111111 // bits 0-6
+            {
                 0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
                 0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
                 0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
                 0b1100111 => Instruction::UJType(UJInstruction::JumpAndLinkRegister),
-                0b1100011 => Instruction::SBType(SBInstruction::BranchEq),
-
-                _ =>  panic!("Unknown instruction"),
+                0b1100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14
+                {
+                    0b000 => Instruction::SBType(SBInstruction::BranchEq),
+                    0b001 => Instruction::SBType(SBInstruction::BranchNeq),
+                    0b100 => Instruction::SBType(SBInstruction::BranchLessThan),
+                    0b101 => Instruction::SBType(SBInstruction::BranchGreaterThanEqual),
+                    0b110 => Instruction::SBType(SBInstruction::BranchLessThanUnsigned),
+                    0b111 => Instruction::SBType(SBInstruction::BranchGreaterThanEqualUnsigned),
+                    _ => panic!("Unknown SBType instruction with full inst {}", instruction),
+                },
+                _ => panic!("Unknown instruction with full inst {}", instruction),
             }
         };
         (opcode, instruction)

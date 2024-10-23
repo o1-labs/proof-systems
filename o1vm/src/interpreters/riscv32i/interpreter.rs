@@ -75,9 +75,9 @@ pub enum SBInstruction {
     BranchEq, // beq
     BranchNeq,              // bne
     BranchLessThan,         // blt
-    BranchGe,               // bge
+    BranchGreaterThanEqual,               // bge
     BranchLessThanUnsigned, // bltu
-    BranchGreaterThanEqual, // bgeu
+    BranchGreaterThanEqualUnsigned, // bgeu
 }
 
 #[derive(
