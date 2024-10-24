@@ -83,16 +83,9 @@ fn test_small_circuit() {
                 .into_iter()
                 .map(|x| x + Fq::one())
                 .collect(),
-            error: vec![
-                -Fq::from((0 * SCRATCH_SIZE + 1) as u64),
-                -Fq::from((1 * SCRATCH_SIZE + 2) as u64),
-                -Fq::from((2 * SCRATCH_SIZE + 3) as u64),
-                -Fq::from((3 * SCRATCH_SIZE + 4) as u64),
-                -Fq::from((4 * SCRATCH_SIZE + 5) as u64),
-                -Fq::from((5 * SCRATCH_SIZE + 6) as u64),
-                -Fq::from((6 * SCRATCH_SIZE + 7) as u64),
-                -Fq::from((7 * SCRATCH_SIZE + 8) as u64),
-            ],
+            error: (0..8)
+                .map(|i| Fq::from((i * SCRATCH_SIZE + (i + 1)) as u32))
+                .collect(),
             selector: zero_to_n_minus_one(8),
         },
     };
