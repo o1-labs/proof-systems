@@ -213,6 +213,22 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        let x_inv_or_zero = {
+            let pos = self.alloc_scratch();
+            unsafe { self.inverse_or_zero(x, pos) }
+        };
+        // If x = 0, then res = 1 and x_inv_or_zero = 0
+        // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
+        self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
+        self.add_constraint(x.clone() * res.clone());
+        res
+    }
+
     unsafe fn inverse_or_zero(
         &mut self,
         _x: &Self::Variable,

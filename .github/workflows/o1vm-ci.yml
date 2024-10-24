@@ -1,0 +1,120 @@
+name: o1vm CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      [
+        "o1vm/**",
+        "folding/**",
+        "groupmap/**",
+        "kimchi/**",
+        "msm/**",
+        "curves/**",
+        "poseidon/**",
+        "poly-commitment/",
+        "internal-tracing/**",
+        "srs/**",
+        "utils/**",
+      ]
+  push:
+    branches:
+      - master
+    paths:
+      [
+        "o1vm/**",
+        "folding/**",
+        "groupmap/**",
+        "kimchi/**",
+        "msm/**",
+        "curves/**",
+        "poseidon/**",
+        "poly-commitment/",
+        "internal-tracing/**",
+        "srs/**",
+        "utils/**",
+      ]
+
+env:
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#release
+  # Disable for the time being since it fails with the "attempt to multiply with overflow" error.
+  # Known issue yeat to be fixed.
+  # RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
+  CARGO_INCREMENTAL: 1
+  # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+  CARGO_TERM_COLOR: always
+  # 30 MB of stack for Keccak tests
+  RUST_MIN_STACK: 31457280
+
+jobs:
+  run_o1vm_with_cached_data:
+    name: Run o1vm with cached data
+    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
+    # Only in this configuration we enable tests with the code coverage data gathering.
+    runs-on: ["ubuntu-latest"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ["1.74"]
+        # FIXME: currently not available for 5.0.0.
+        # It might be related to boxroot dependency, and we would need to bump
+        # up the ocaml-rs dependency
+        ocaml_version: ["4.14"]
+    services:
+      o1vm-e2e-testing-cache:
+        image: o1labs/proof-systems:o1vm-e2e-testing-cache
+        volumes:
+          - /tmp:/tmp/cache
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Apply the Rust smart cacheing
+        uses: Swatinem/rust-cache@v2
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
+      - name: Install the Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          check-latest: true
+
+      - name: Install the Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21.0"
+
+      - name: Install the Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build the OP program
+        run: |
+          cd o1vm
+          make -C ./ethereum-optimism/op-program op-program
+          cd ..
+
+      - name: Start the local HTTP server
+        run: |
+          python -m http.server 8765 &
+
+      #
+      # Tests
+      #
+
+      - name: Execute o1vm in E2E flavor using cached data
+        run: |
+          eval $(opam env)
+          cd o1vm
+          unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
+          RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh
