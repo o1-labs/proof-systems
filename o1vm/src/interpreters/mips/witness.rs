@@ -362,9 +362,26 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
-        // To avoid subtraction overflow in the witness interpreter for u32
-
-        self.is_zero(&(*x - *y))
+        // We replicate is_zero(x-y), but working on field elt,
+        // to avoid subtraction overflow in the witness interpreter for u32
+        let to_zero_test = Fp::from(*x) - Fp::from(*y);
+        let res = {
+            let pos = self.alloc_scratch();
+            let is_zero: u64 = if to_zero_test == Fp::zero() { 1 } else { 0 };
+            self.write_column(pos, is_zero);
+            is_zero
+        };
+        let _to_zero_test_inv_or_zero = {
+            let pos = self.alloc_scratch();
+            let inv_or_zero = if to_zero_test == Fp::zero() {
+                Fp::zero()
+            } else {
+                Fp::inverse(&to_zero_test).unwrap()
+            };
+            self.write_field_column(pos, inv_or_zero);
+            1 // Placeholder value
+        };
+        res
     }
 
     unsafe fn test_less_than(
