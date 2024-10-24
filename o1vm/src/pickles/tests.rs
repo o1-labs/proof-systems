@@ -70,23 +70,19 @@ fn test_regression_selectors_for_instructions() {
 }
 
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
-    let mut ret = Vec::with_capacity(n);
-    for i in 0..n {
-        ret.push(Fq::from(i as u64))
-    }
-    ret
+    (0..n).map(|i| Fq::from((i) as u32)).collect()
 }
-
 #[test]
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
     let proof_input = ProofInputs::<Pallas> {
         evaluations: WitnessColumns {
-            scratch: std::array::from_fn(|_| {
-                zero_to_n_minus_one(8)
-            }),
-            instruction_counter: zero_to_n_minus_one(8).into_iter().map(|x| x + Fq::one()).collect(),
+            scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
+            instruction_counter: zero_to_n_minus_one(8)
+                .into_iter()
+                .map(|x| x + Fq::one())
+                .collect(),
             error: vec![
                 -Fq::from((0 * SCRATCH_SIZE + 1) as u64),
                 -Fq::from((1 * SCRATCH_SIZE + 2) as u64),
@@ -117,7 +113,7 @@ fn test_small_circuit() {
         &mut rng,
     )
     .unwrap();
-    
+
     let verif =
         verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
     assert!(verif, "Verification fails");
