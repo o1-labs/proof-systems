@@ -698,21 +698,7 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
-        let res = {
-            let pos = self.alloc_scratch();
-            unsafe { self.test_zero(x, pos) }
-        };
-        let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
-            unsafe { self.inverse_or_zero(x, pos) }
-        };
-        // If x = 0, then res = 1 and x_inv_or_zero = 0
-        // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
-        self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
-        self.add_constraint(x.clone() * res.clone());
-        res
-    }
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable;
 
     /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable;

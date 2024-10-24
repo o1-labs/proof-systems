@@ -361,6 +361,23 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        // write the result
+        let pos = self.alloc_scratch();
+        let res = if *x == 0 { 1 } else { 0 };
+        self.write_column(pos, res);
+        // write the non deterministic advice inv_or_zero
+        let pos = self.alloc_scratch();
+        let inv_or_zero = if *x == 0 {
+            Fp::zero()
+        } else {
+            Fp::inverse(&Fp::from(*x)).unwrap()
+        };
+        self.write_field_column(pos, inv_or_zero);
+        // return the result
+        res
+    }
+
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
         // We replicate is_zero(x-y), but working on field elt,
         // to avoid subtraction overflow in the witness interpreter for u32
