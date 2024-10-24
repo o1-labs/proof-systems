@@ -70,7 +70,7 @@ fn test_regression_selectors_for_instructions() {
 }
 
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
-    (0..n).map(|i| Fq::from((i) as u32)).collect()
+    (0..n).map(|i| Fq::from((i) as u64)).collect()
 }
 #[test]
 fn test_small_circuit() {
@@ -84,7 +84,7 @@ fn test_small_circuit() {
                 .map(|x| x + Fq::one())
                 .collect(),
             error: (0..8)
-                .map(|i| Fq::from((i * SCRATCH_SIZE + (i + 1)) as u32))
+                .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
                 .collect(),
             selector: zero_to_n_minus_one(8),
         },
