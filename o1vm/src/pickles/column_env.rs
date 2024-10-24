@@ -11,6 +11,7 @@ use kimchi::circuits::{
     domains::{Domain, EvaluationDomains},
     expr::{ColumnEnvironment as TColumnEnvironment, Constants},
 };
+use std::cmp::Ordering;
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
@@ -37,7 +38,7 @@ pub struct ColumnEnvironment<'a, F: FftField> {
 
 pub fn get_all_columns() -> Vec<Column> {
     let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + 2 + N_MIPS_SEL_COLS);
-    for i in 0..SCRATCH_SIZE + 2 {
+    for i in 0..SCRATCH_SIZE + 1 {
         cols.push(Column::Relation(i));
     }
     for i in 0..N_MIPS_SEL_COLS {
@@ -49,20 +50,11 @@ pub fn get_all_columns() -> Vec<Column> {
 impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
     pub fn get_column(&self, col: &Column) -> Option<&G> {
         match *col {
-            Column::Relation(i) => {
-                if i < SCRATCH_SIZE {
-                    let res = &self.scratch[i];
-                    Some(res)
-                } else if i == SCRATCH_SIZE {
-                    let res = &self.instruction_counter;
-                    Some(res)
-                } else if i == SCRATCH_SIZE + 1 {
-                    let res = &self.error;
-                    Some(res)
-                } else {
-                    panic!("We should not have that many relation columns");
-                }
-            }
+            Column::Relation(i) => match i.cmp(&SCRATCH_SIZE) {
+                Ordering::Less => Some(&self.scratch[i]),
+                Ordering::Equal => Some(&self.instruction_counter),
+                Ordering::Greater => panic!("We should not have that many relation columns"),
+            },
             Column::DynamicSelector(i) => {
                 assert!(
                     i < N_MIPS_SEL_COLS,

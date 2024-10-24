@@ -1,4 +1,3 @@
-use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
@@ -110,8 +109,6 @@ pub fn main() -> ExitCode {
             .evaluations
             .instruction_counter
             .push(Fp::from(mips_wit_env.instruction_counter));
-        // FIXME: Might be another value
-        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
 
         curr_proof_inputs
             .evaluations
