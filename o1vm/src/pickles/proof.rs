@@ -29,7 +29,6 @@ impl<G: KimchiCurve> ProofInputs<G> {
     }
 }
 
-
 // FIXME: should we blind the commitment?
 #[derive(Debug)]
 pub struct Proof<G: KimchiCurve> {
