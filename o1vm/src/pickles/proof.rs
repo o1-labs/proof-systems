@@ -7,7 +7,6 @@ use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,
-    pub error: G,
     pub selector: S,
 }
 
@@ -21,7 +20,6 @@ impl<G: KimchiCurve> ProofInputs<G> {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
                 instruction_counter: Vec::with_capacity(domain_size),
-                error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),
             },
         }

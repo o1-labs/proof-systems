@@ -85,7 +85,6 @@ where
         let WitnessColumns {
             scratch,
             instruction_counter,
-            error,
             selector,
         } = evaluations;
 
@@ -115,7 +114,6 @@ where
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
-            error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
         }
     };
@@ -125,7 +123,6 @@ where
         let WitnessColumns {
             scratch,
             instruction_counter,
-            error,
             selector,
         } = &polys;
         // Note: We add a constant blinder in case we have a column with only zeroes.
@@ -144,7 +141,6 @@ where
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: comm(instruction_counter),
-            error: comm(error),
             selector: selector.try_into().unwrap(),
         }
     };
@@ -158,7 +154,6 @@ where
         let WitnessColumns {
             scratch,
             instruction_counter,
-            error,
             selector,
         } = &polys;
         let eval_d8 =
@@ -169,7 +164,6 @@ where
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
-            error: eval_d8(error),
             selector: selector.try_into().unwrap(),
         }
     };
@@ -180,7 +174,6 @@ where
         absorb_commitment(&mut fq_sponge, comm)
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
-    absorb_commitment(&mut fq_sponge, &commitments.error);
     for comm in commitments.selector.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
@@ -294,7 +287,6 @@ where
         let WitnessColumns {
             scratch,
             instruction_counter,
-            error,
             selector,
         } = &polys;
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
@@ -303,7 +295,6 @@ where
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval(instruction_counter),
-            error: eval(error),
             selector: selector.try_into().unwrap(),
         }
     };
@@ -350,8 +341,6 @@ where
     }
     fr_sponge.absorb(&zeta_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_evaluations.error);
-    fr_sponge.absorb(&zeta_omega_evaluations.error);
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .selector
         .iter()
@@ -374,7 +363,6 @@ where
 
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
-    polynomials.push(polys.error);
     polynomials.extend(polys.selector);
 
     // Preparing the polynomials for the opening proof

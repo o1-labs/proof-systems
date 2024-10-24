@@ -11,7 +11,7 @@ use crate::{
     },
     pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
-use ark_ff::{One, Zero};
+use ark_ff::Zero;
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::{columns::Column, expr::E};
@@ -82,18 +82,18 @@ fn test_small_circuit() {
     let proof_input = ProofInputs::<Pallas> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
-            instruction_counter: zero_to_n_minus_one(8)
-                .into_iter()
-                .map(|x| x + Fq::one())
-                .collect(),
-            error: (0..8)
-                .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
-                .collect(),
+            // Note that the instruction counter is not
+            // used as intended.
+            // See the constraint we apply.
+            instruction_counter: (0..8).map(|i| -Fq::from(i * SCRATCH_SIZE as u64)).collect(),
+            // Selector will be ignored
             selector: zero_to_n_minus_one(8),
         },
     };
+    // The constraint we check adds the scratch
+    // and the instruction counter together.
     let mut expr = Expr::zero();
-    for i in 0..SCRATCH_SIZE + 2 {
+    for i in 0..SCRATCH_SIZE + 1 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
     let mut rng = make_test_rng(None);

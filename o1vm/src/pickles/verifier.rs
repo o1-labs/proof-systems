@@ -2,7 +2,6 @@
 
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{Field, One, PrimeField, Zero};
-use itertools::Itertools;
 use rand::thread_rng;
 
 use kimchi::{
@@ -104,7 +103,6 @@ where
         absorb_commitment(&mut fq_sponge, comm)
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
-    absorb_commitment(&mut fq_sponge, &commitments.error);
     for comm in commitments.selector.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
@@ -146,8 +144,6 @@ where
     }
     fr_sponge.absorb(&zeta_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_evaluations.error);
-    fr_sponge.absorb(&zeta_omega_evaluations.error);
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .selector
         .iter()
