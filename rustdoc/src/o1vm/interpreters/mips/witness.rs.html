@@ -1318,6 +1318,7 @@
 <a href="#1318" id="1318">1318</a>
 <a href="#1319" id="1319">1319</a>
 <a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
 <span class="kw">use crate</span>::{
     cannon::{
@@ -2607,6 +2608,7 @@
 
             <span class="comment">// Approximate instruction per seconds
             </span><span class="kw">let </span>how_many_steps = step <span class="kw">as </span>usize - start.step;
+
             <span class="kw">let </span>ips = how_many_steps <span class="kw">as </span>f64 / elapsed.as_secs() <span class="kw">as </span>f64;
 
             <span class="kw">let </span>pages = <span class="self">self</span>.memory.len();

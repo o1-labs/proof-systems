@@ -110,8 +110,6 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::<span class="kw-2">*</span>;
 <span class="kw">use </span>clap::{arg, value_parser, Arg, ArgAction};
 
@@ -180,9 +178,7 @@
 
 <span class="kw">pub fn </span>read_configuration(cli: <span class="kw-2">&amp;</span>clap::ArgMatches) -&gt; VmConfiguration {
     <span class="kw">let </span>input_state_file = cli.get_one::&lt;String&gt;(<span class="string">&quot;input&quot;</span>).unwrap();
-
     <span class="kw">let </span>output_state_file = cli.get_one::&lt;String&gt;(<span class="string">&quot;output&quot;</span>).unwrap();
-
     <span class="kw">let </span>metadata_file = cli.get_one::&lt;String&gt;(<span class="string">&quot;meta&quot;</span>).unwrap();
 
     <span class="kw">let </span>proof_at = cli.get_one::&lt;StepFrequency&gt;(<span class="string">&quot;proof-at&quot;</span>).unwrap();
