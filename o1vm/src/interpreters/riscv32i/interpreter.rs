@@ -76,10 +76,10 @@ pub enum SInstruction {
 pub enum SBInstruction {
     #[default]
     BranchEq, // beq
-    BranchNeq,              // bne
-    BranchLessThan,         // blt
-    BranchGreaterThanEqual,               // bge
-    BranchLessThanUnsigned, // bltu
+    BranchNeq,                      // bne
+    BranchLessThan,                 // blt
+    BranchGreaterThanEqual,         // bge
+    BranchLessThanUnsigned,         // bltu
     BranchGreaterThanEqualUnsigned, // bgeu
 }
 

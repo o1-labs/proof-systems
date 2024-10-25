@@ -3,7 +3,10 @@
 
 use super::{
     column::Column,
-    interpreter::{self, SBInstruction, Instruction, InterpreterEnv, UInstruction, UJInstruction, IInstruction, SInstruction, RInstruction},
+    interpreter::{
+        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
+        UInstruction, UJInstruction,
+    },
     registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
@@ -602,12 +605,12 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
         let instruction =
-        ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
-            | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
-                << 16)
-            | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
-                << 8)
-            | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                    << 16)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                    << 8)
+                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {

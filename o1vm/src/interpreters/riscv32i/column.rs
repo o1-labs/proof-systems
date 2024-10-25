@@ -1,8 +1,8 @@
 use super::{
     interpreter::{
-        SBInstruction, IInstruction, Instruction,
-        Instruction::{SBType, IType, UJType, RType, SType, UType},
-        RInstruction, SInstruction, UInstruction,
+        IInstruction, Instruction,
+        Instruction::{IType, RType, SBType, SType, UJType, UType},
+        RInstruction, SBInstruction, SInstruction, UInstruction,
     },
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
