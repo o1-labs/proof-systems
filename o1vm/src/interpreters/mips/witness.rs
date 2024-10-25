@@ -1287,6 +1287,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
             // Approximate instruction per seconds
             let how_many_steps = step as usize - start.step;
+
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
 
             let pages = self.memory.len();

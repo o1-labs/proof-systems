@@ -66,9 +66,7 @@ pub fn main_cli() -> clap::Command {
 
 pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
     let input_state_file = cli.get_one::<String>("input").unwrap();
-
     let output_state_file = cli.get_one::<String>("output").unwrap();
-
     let metadata_file = cli.get_one::<String>("meta").unwrap();
 
     let proof_at = cli.get_one::<StepFrequency>("proof-at").unwrap();
