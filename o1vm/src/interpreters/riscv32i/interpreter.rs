@@ -965,6 +965,20 @@ pub trait InterpreterEnv {
     fn reset(&mut self);
 }
 
+
+pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
+    env.activate_selector(instr);
+
+    match instr {
+        Instruction::RType(rtype) => interpret_rtype(env, rtype),
+        Instruction::IType(itype) => interpret_itype(env, itype),
+        Instruction::SType(stype) => interpret_stype(env, stype),
+        Instruction::SBType(sbtype) => interpret_sbtype(env, sbtype),
+        Instruction::UType(utype) => interpret_utype(env, utype),
+        Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
+    }
+}
+
 pub fn interpret_rtype<Env: InterpreterEnv>(_env: &mut Env, _instr: RInstruction) {
     unimplemented!("interpret_rtype")
 }
@@ -987,17 +1001,4 @@ pub fn interpret_utype<Env: InterpreterEnv>(_env: &mut Env, _instr: UInstruction
 
 pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstruction) {
     unimplemented!("interpret_ujtype")
-}
-
-pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
-    env.activate_selector(instr);
-
-    match instr {
-        Instruction::RType(rtype) => interpret_rtype(env, rtype),
-        Instruction::IType(itype) => interpret_itype(env, itype),
-        Instruction::SType(stype) => interpret_stype(env, stype),
-        Instruction::SBType(sbtype) => interpret_sbtype(env, sbtype),
-        Instruction::UType(utype) => interpret_utype(env, utype),
-        Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
-    }
 }
