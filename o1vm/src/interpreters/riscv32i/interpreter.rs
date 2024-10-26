@@ -1458,9 +1458,50 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
-
-        _ => {
-            panic!("interpret_itype")
+        IInstruction::AddImmediate => {
+            // addi: x[rd] = x[rs1] + sext(immediate)
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let overflow_scratch = env.alloc_scratch();
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe {
+                let (local_rd, _overflow) =
+                    env.add_witness(&local_rs1, &local_imm, rd_scratch, overflow_scratch);
+                local_rd
+            };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::XorImmediate => {
+            // xori: x[rd] = x[rs1] ^ sext(immediate)
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::OrImmediate => {
+            // ori: x[rd] = x[rs1] | sext(immediate)
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::AndImmediate => {
+            // andi: x[rd] = x[rs1] & sext(immediate)
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     };
 }
