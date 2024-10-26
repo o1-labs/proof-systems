@@ -1079,6 +1079,25 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
+        RInstruction::Sub => {
+            /* sub: x[rd] = x[rs1] - x[rs2] */
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+            let underflow_scratch = env.alloc_scratch();
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe {
+                let (local_rd, _underflow) =
+                    env.sub_witness(&local_rs1, &local_rs2, rd_scratch, underflow_scratch);
+                local_rd
+            };
+            env.write_register(&rd, local_rd);
+
+            // range check result is 32 bits
+            // env.range_check32(&x_rd, 32);
+            // TODO implement range_check 32
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
         _ => panic!("unimplemented r type instruction {}", instr),
     };
 }
