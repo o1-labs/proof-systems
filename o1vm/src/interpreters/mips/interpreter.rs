@@ -557,19 +557,19 @@ pub trait InterpreterEnv {
     // Adds a lookup to the ByteLookup table for each byte of a 32-bit value
     fn lookup_32bits(&mut self, value: &Self::Variable) {
         self.add_lookup(Lookup::read_one(
-            LookupTableIDs::ByteLookup,
-            vec![
-                value.clone(),
-                value.clone() + Self::constant(1 << 8),
-                value.clone() + Self::constant(1 << 16),
-                value.clone() + Self::constant(1 << 24),
-            ],
+            LookupTableIDs::RangeCheck32Lookup,
+            vec![value.clone()],
         ));
     }
 
-    /// Range checks with 4 lookups to the ByteLookup table that a value
-    fn range_check32(&mut self, value: &Self::Variable) {
+    /// Range checks with 32 bit lookup to the Range32Lookup table that a value
+    /// is at most 2^`bits`-1  (bits <= 32).
+    fn range_check32(&mut self, value: &Self::Variable, bits: u32) {
+        assert!(bits <= 32);
         self.lookup_32bits(value);
+
+        // Second, check upperbound: value + 2^32 - 2^bits < 2^32
+        self.lookup_32bits(&(value.clone() + Self::constant64(1u64 << 32) - Self::constant64(1u64 << bits)));
     }
 
     fn range_check64(&mut self, _value: &Self::Variable) {
@@ -633,6 +633,8 @@ pub trait InterpreterEnv {
     }
 
     fn constant(x: u32) -> Self::Variable;
+
+    fn constant64(x: u64) -> Self::Variable;
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.

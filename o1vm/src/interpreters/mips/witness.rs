@@ -285,6 +285,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         x as u64
     }
 
+    fn constant64(x: u64) -> Self::Variable {
+        x
+    }
+
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,
