@@ -1171,7 +1171,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
             let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_right_arithmetic(&local_rs1, &local_rs2, rd_scratch) };
+            let local_rd =
+                unsafe { env.shift_right_arithmetic(&local_rs1, &local_rs2, rd_scratch) };
             env.write_register(&rd, local_rd);
             // range check result is 32 bits
             // env.range_check32(&x_rd, 32);
@@ -1205,7 +1206,22 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
-        _ => panic!("unimplemented r type instruction {}", instr),
+        RInstruction::Fence => {
+            /* fence: no-op */
+            // https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#fence
+            // need to understand IO device in o1 vm
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // Fence(Store, Fetch)
+        }
+        RInstruction::FenceI => {
+            /* fence.i: no-op */
+            // https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#fence-i
+            // need to understand IO device in o1 vm
+            // t = CSRs[csr]; CSRs[csr] = x[rs1]; x[rd] = t
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
     };
 }
 
