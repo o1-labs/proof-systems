@@ -1012,37 +1012,37 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
      */
     let rd = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 11, 7, pos) }
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
     };
     env.range_check8(&rd, 5);
 
     let funct3 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 14, 12, pos) }
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
     };
     env.range_check8(&funct3, 3);
 
     let rs1 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 19, 15, pos) }
+        unsafe { env.bitmask(&instruction, 20, 15, pos) }
     };
     env.range_check8(&rs1, 5);
 
     let rs2 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 24, 20, pos) }
+        unsafe { env.bitmask(&instruction, 25, 20, pos) }
     };
     env.range_check8(&rs2, 5);
 
     let funct2 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 26, 25, pos) }
+        unsafe { env.bitmask(&instruction, 27, 25, pos) }
     };
     env.range_check8(&funct2, 2);
 
     let funct5 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 31, 27, pos) }
+        unsafe { env.bitmask(&instruction, 32, 27, pos) }
     };
     env.range_check8(&funct5, 5);
 
@@ -1225,8 +1225,51 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
     };
 }
 
-pub fn interpret_itype<Env: InterpreterEnv>(_env: &mut Env, _instr: IInstruction) {
-    unimplemented!("interpret_itype")
+pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, _instr: IInstruction) {
+    /* fetch instruction pointer from the program state */
+    let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
+    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    /* read instruction from ip address */
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    /* verify opcode is 7 bits */
+    env.range_check8(&opcode, 7);
+
+    /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
+    https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
+     */
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
+
+    let funct3 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
+    };
+    env.range_check8(&funct3, 3);
+
+    let rs1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 15, pos) }
+    };
+    env.range_check8(&rs1, 5);
 }
 
 pub fn interpret_stype<Env: InterpreterEnv>(_env: &mut Env, _instr: SInstruction) {
