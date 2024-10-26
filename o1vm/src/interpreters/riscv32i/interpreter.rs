@@ -1225,7 +1225,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
     };
 }
 
-pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, _instr: IInstruction) {
+pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) {
     /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
     /* compute the next instruction ptr and add one, as well record raml lookup */
@@ -1270,6 +1270,31 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, _instr: IInstruction)
         unsafe { env.bitmask(&instruction, 20, 15, pos) }
     };
     env.range_check8(&rs1, 5);
+
+    let imm = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 20, pos) }
+    };
+    env.range_check16(&imm, 11);
+
+    // check correctness of decomposition of I type function
+    env.add_constraint(
+        instruction
+        - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+        - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
+        - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+        - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+        - (imm.clone() * Env::constant(1 << 20)), // imm at bits 20-31
+    );
+
+    match instr {
+        IInstruction::LoadByte => {
+            panic!("interpret load byte immediate")
+        }
+        _ => {
+            panic!("interpret_itype")
+        }
+    };
 }
 
 pub fn interpret_stype<Env: InterpreterEnv>(_env: &mut Env, _instr: SInstruction) {
