@@ -604,6 +604,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
+        /* https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf */
         let instruction =
             ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
                 | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)

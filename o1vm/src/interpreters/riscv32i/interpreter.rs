@@ -1,12 +1,14 @@
 use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::{EnumCount, EnumIter};
+use strum_macros::{Display, EnumCount, EnumIter};
 
 use crate::lookups::{Lookup, LookupTableIDs};
 use ark_ff::{One, Zero};
 
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd, Display,
+)]
 pub enum Instruction {
     RType(RInstruction),
     IType(IInstruction),
@@ -18,7 +20,7 @@ pub enum Instruction {
 
 // See https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf for the order
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 
 pub enum RInstruction {
@@ -38,7 +40,7 @@ pub enum RInstruction {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 pub enum IInstruction {
     #[default]
@@ -61,7 +63,7 @@ pub enum IInstruction {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 pub enum SInstruction {
     #[default]
@@ -71,7 +73,7 @@ pub enum SInstruction {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 pub enum SBInstruction {
     #[default]
@@ -84,7 +86,7 @@ pub enum SBInstruction {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 pub enum UInstruction {
     #[default]
@@ -93,7 +95,7 @@ pub enum UInstruction {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd, Display,
 )]
 pub enum UJInstruction {
     #[default]
@@ -965,10 +967,10 @@ pub trait InterpreterEnv {
     fn reset(&mut self);
 }
 
-
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
     env.activate_selector(instr);
 
+    /* https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html */
     match instr {
         Instruction::RType(rtype) => interpret_rtype(env, rtype),
         Instruction::IType(itype) => interpret_itype(env, itype),
@@ -979,8 +981,106 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
     }
 }
 
-pub fn interpret_rtype<Env: InterpreterEnv>(_env: &mut Env, _instr: RInstruction) {
-    unimplemented!("interpret_rtype")
+pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) {
+    /* fetch instruction pointer from the program state */
+    let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+
+    /* read instruction from ip address */
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    /* verify opcode is 7 bits */
+    env.range_check8(&opcode, 7);
+
+    /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
+    https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
+     */
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 11, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
+
+    let funct3 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 14, 12, pos) }
+    };
+    env.range_check8(&funct3, 3);
+
+    let rs1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 19, 15, pos) }
+    };
+    env.range_check8(&rs1, 5);
+
+    let rs2 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 24, 20, pos) }
+    };
+    env.range_check8(&rs2, 5);
+
+    let funct2 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 25, pos) }
+    };
+    env.range_check8(&funct2, 2);
+
+    let funct5 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 31, 27, pos) }
+    };
+    env.range_check8(&funct5, 5);
+
+    // Check correctness of decomposition for R-type instruction
+    env.add_constraint(
+        instruction
+    - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+    - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
+    - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+    - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+    - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
+    - (funct2.clone() * Env::constant(1 << 25))   // funct7 at bits 25-26
+    - (funct5.clone() * Env::constant(1 << 27)), // funct5 at bits 27-31
+    );
+
+    // XLEN = 32
+    match instr {
+        RInstruction::Add => {
+            /* add: x[rd] = x[rs1] + x[rs2] */
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+            let overflow_scratch = env.alloc_scratch();
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe {
+                let (local_rd, _overflow) =
+                    env.add_witness(&local_rs1, &local_rs2, rd_scratch, overflow_scratch);
+                local_rd
+            };
+            env.write_register(&rd, local_rd);
+
+            // range check result is 32 bits
+            // env.range_check32(&x_rd, 32);
+            // TODO implement range_check 32
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        _ => panic!("unimplemented r type instruction {}", instr),
+    };
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(_env: &mut Env, _instr: IInstruction) {
