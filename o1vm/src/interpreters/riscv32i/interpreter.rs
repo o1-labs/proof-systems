@@ -1071,6 +1071,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
                     env.add_witness(&local_rs1, &local_rs2, rd_scratch, overflow_scratch);
                 local_rd
             };
+            // FIXME range check result is 32 bits
             env.write_register(&rd, local_rd);
 
             // range check result is 32 bits
