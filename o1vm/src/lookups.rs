@@ -51,6 +51,8 @@ pub enum LookupTableIDs {
     SyscallLookup = 9,
     /// Input/Output of Keccak steps
     KeccakStepLookup = 10,
+    /// Single-column table of 2^32 entries with the sparse representation of all values
+    RangeCheck32Lookup = 11,
 }
 
 impl LookupTableID for LookupTableIDs {
@@ -71,6 +73,7 @@ impl LookupTableID for LookupTableIDs {
             8 => RegisterLookup,
             9 => SyscallLookup,
             10 => KeccakStepLookup,
+            11 => RangeCheck32Lookup,
             _ => panic!("Invalid table ID"),
         }
     }
@@ -82,6 +85,7 @@ impl LookupTableID for LookupTableIDs {
             AtMost4Lookup => 5,
             ByteLookup => 1 << 8,
             RangeCheck16Lookup | SparseLookup | ResetLookup => 1 << 16,
+            RangeCheck32Lookup => 1 << 32,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => {
                 panic!("RAM Tables do not have a fixed length")
             }
@@ -91,7 +95,7 @@ impl LookupTableID for LookupTableIDs {
     fn is_fixed(&self) -> bool {
         match self {
             PadLookup | RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
-            | SparseLookup | ResetLookup => true,
+            | SparseLookup | ResetLookup | RangeCheck32Lookup => true,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => false,
         }
     }
@@ -117,6 +121,7 @@ impl LookupTableID for LookupTableIDs {
             Self::RegisterLookup,
             Self::SyscallLookup,
             Self::KeccakStepLookup,
+            Self::RangeCheck32Lookup,
         ]
     }
 }
@@ -139,6 +144,8 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_sparse() -> LookupTable<F>;
     /// Returns the reset table
     fn table_reset() -> LookupTable<F>;
+    /// Returns the range check 32 table
+    fn table_range_check_32() -> LookupTable<F>;
 }
 
 impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
@@ -154,6 +161,13 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         match id {
             RoundConstantsLookup | AtMost4Lookup | ByteLookup | RangeCheck16Lookup
             | ResetLookup => {
+                if idx < id.length() && table.entries[idx] == value {
+                    Some(idx)
+                } else {
+                    None
+                }
+            }
+            RangeCheck32Lookup => {
                 if idx < id.length() && table.entries[idx] == value {
                     Some(idx)
                 } else {
@@ -272,6 +286,15 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
                     ]
                 })
+                .collect(),
+        }
+    }
+
+    fn table_range_check_32() -> Self {
+        Self {
+            table_id: RangeCheck32Lookup,
+            entries: (0..RangeCheck32Lookup.length())
+                .map(|i| vec![F::from(i as u32)])
                 .collect(),
         }
     }

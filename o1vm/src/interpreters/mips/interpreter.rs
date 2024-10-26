@@ -554,6 +554,24 @@ pub trait InterpreterEnv {
         self.lookup_2bits(value);
     }
 
+    // Adds a lookup to the ByteLookup table for each byte of a 32-bit value
+    fn lookup_32bits(&mut self, value: &Self::Variable) {
+        self.add_lookup(Lookup::read_one(
+            LookupTableIDs::ByteLookup,
+            vec![
+                value.clone(),
+                value.clone() + Self::constant(1 << 8),
+                value.clone() + Self::constant(1 << 16),
+                value.clone() + Self::constant(1 << 24),
+            ],
+        ));
+    }
+
+    /// Range checks with 4 lookups to the ByteLookup table that a value
+    fn range_check32(&mut self, value: &Self::Variable) {
+        self.lookup_32bits(value);
+    }
+
     fn range_check64(&mut self, _value: &Self::Variable) {
         // TODO
     }
