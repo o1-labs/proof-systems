@@ -168,6 +168,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         Self::Variable::constant(Operations::from(Literal(Fp::from(x))))
     }
 
+    fn constant64(x: u64) -> Self::Variable {
+        Self::Variable::constant(Operations::from(Literal(Fp::from(x))))
+    }
+
     unsafe fn bitmask(
         &mut self,
         _x: &Self::Variable,
