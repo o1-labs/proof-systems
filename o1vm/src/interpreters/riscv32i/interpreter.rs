@@ -1229,7 +1229,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
     /* compute the next instruction ptr and add one, as well record raml lookup */
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -1289,7 +1289,24 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     match instr {
         IInstruction::LoadByte => {
-            panic!("interpret load byte immediate")
+            // x[rd] = sext(M[x[rs1] + sext(offset)][7:0])
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs1 = env.sign_extend(&local_rs1, 32);
+            let local_imm = env.sign_extend(&imm, 11);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // Add a range check here for address
+            let value = env.read_memory(&address);
+            let value = env.sign_extend(&value, 8);
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         _ => {
             panic!("interpret_itype")
