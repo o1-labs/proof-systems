@@ -1438,6 +1438,26 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
+        IInstruction::SetLessThanImmediate => {
+            // slti: x[rd] = (x[rs1] < sext(immediate)) ? 1 : 0
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe { env.test_less_than_signed(&local_rs1, &local_imm, rd_scratch) };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::SetLessThanImmediateUnsigned => {
+            // sltiu: x[rd] = (x[rs1] < (u)sext(immediate)) ? 1 : 0
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 11);
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe { env.test_less_than(&local_rs1, &local_imm, rd_scratch) };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
 
         _ => {
             panic!("interpret_itype")
