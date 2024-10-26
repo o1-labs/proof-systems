@@ -569,7 +569,9 @@ pub trait InterpreterEnv {
         self.lookup_32bits(value);
 
         // Second, check upperbound: value + 2^32 - 2^bits < 2^32
-        self.lookup_32bits(&(value.clone() + Self::constant64(1u64 << 32) - Self::constant64(1u64 << bits)));
+        self.lookup_32bits(
+            &(value.clone() + Self::constant64(1u64 << 32) - Self::constant64(1u64 << bits)),
+        );
     }
 
     fn range_check64(&mut self, _value: &Self::Variable) {
