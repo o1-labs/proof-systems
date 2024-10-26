@@ -1,5 +1,3 @@
-use core::panic;
-
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount, EnumIter};
 
@@ -1573,34 +1571,35 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         - (imm5_11.clone() * Env::constant(1 << 25)), // imm5_11 at bits 25-31
     );
 
+    let local_rs1 = env.read_register(&rs1);
+    let local_imm0_4 = env.sign_extend(&imm0_4, 5);
+    let local_imm5_11 = env.sign_extend(&imm5_11, 7);
+    let local_imm0_11 = {
+        let pos = env.alloc_scratch();
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm5_11 =
+            unsafe { env.shift_left(&local_imm5_11, &Env::constant(5), shift_pos) };
+        let local_imm0_11 = unsafe { env.or_witness(&shifted_imm5_11, &local_imm0_4, pos) };
+        env.sign_extend(&local_imm0_11, 12)
+    };
+    let address = {
+        let address_scratch = env.alloc_scratch();
+        let overflow_scratch = env.alloc_scratch();
+        let (address, _overflow) = unsafe {
+            env.add_witness(
+                &local_rs1,
+                &local_imm0_11,
+                address_scratch,
+                overflow_scratch,
+            )
+        };
+        address
+    };
+    let local_rs2 = env.read_register(&rs2);
+
     match instr {
         SInstruction::StoreByte => {
             // sb: M[x[rs1] + sext(offset)] = x[rs2][7:0]
-            let local_rs1 = env.read_register(&rs1);
-            let local_imm0_4 = env.sign_extend(&imm0_4, 5);
-            let local_imm5_11 = env.sign_extend(&imm5_11, 7);
-            let local_imm0_11 = {
-                let pos = env.alloc_scratch();
-                let shift_pos = env.alloc_scratch();
-                let shifted_imm5_11 =
-                    unsafe { env.shift_left(&local_imm5_11, &Env::constant(5), shift_pos) };
-                let local_imm0_11 = unsafe { env.or_witness(&shifted_imm5_11, &local_imm0_4, pos) };
-                env.sign_extend(&local_imm0_11, 12)
-            };
-            let address = {
-                let address_scratch = env.alloc_scratch();
-                let overflow_scratch = env.alloc_scratch();
-                let (address, _overflow) = unsafe {
-                    env.add_witness(
-                        &local_rs1,
-                        &local_imm0_11,
-                        address_scratch,
-                        overflow_scratch,
-                    )
-                };
-                address
-            };
-            let local_rs2 = env.read_register(&rs2);
             let v0 = {
                 let value_scratch = env.alloc_scratch();
                 unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
@@ -1612,8 +1611,40 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
-        _ => {
-            panic!("interpret_stype not implemented for {:?}", instr);
+        SInstruction::StoreHalf => {
+            // sh: M[x[rs1] + sext(offset)] = x[rs2][15:0]
+            let v0 = {
+                let value_scratch = env.alloc_scratch();
+                unsafe { env.bitmask(&local_rs2, 16, 0, value_scratch) }
+            };
+
+            env.lookup_16bits(&v0);
+            env.write_memory(&address, v0);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        SInstruction::StoreWord => {
+            // sw: M[x[rs1] + sext(offset)] = x[rs2][31:0]
+            let [v0, v1] = [
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 16, 0, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 32, 16, value_scratch) }
+                },
+            ];
+
+            env.lookup_16bits(&v0);
+            env.lookup_16bits(&v1);
+            // write 16 bits at a time
+            env.write_memory(&address, v0);
+            env.write_memory(&(address.clone() + Env::constant(2u32)), v1);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     };
 }
