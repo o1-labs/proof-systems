@@ -275,6 +275,7 @@
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -339,14 +340,15 @@
         <span class="kw">match </span>value {
             <span class="number">0 </span>=&gt; PadLookup,
             <span class="number">1 </span>=&gt; RoundConstantsLookup,
-            <span class="number">2 </span>=&gt; ByteLookup,
-            <span class="number">3 </span>=&gt; RangeCheck16Lookup,
-            <span class="number">4 </span>=&gt; SparseLookup,
-            <span class="number">5 </span>=&gt; ResetLookup,
-            <span class="number">6 </span>=&gt; MemoryLookup,
-            <span class="number">7 </span>=&gt; RegisterLookup,
-            <span class="number">8 </span>=&gt; SyscallLookup,
-            <span class="number">9 </span>=&gt; KeccakStepLookup,
+            <span class="number">2 </span>=&gt; AtMost4Lookup,
+            <span class="number">3 </span>=&gt; ByteLookup,
+            <span class="number">4 </span>=&gt; RangeCheck16Lookup,
+            <span class="number">5 </span>=&gt; SparseLookup,
+            <span class="number">6 </span>=&gt; ResetLookup,
+            <span class="number">7 </span>=&gt; MemoryLookup,
+            <span class="number">8 </span>=&gt; RegisterLookup,
+            <span class="number">9 </span>=&gt; SyscallLookup,
+            <span class="number">10 </span>=&gt; KeccakStepLookup,
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid table ID&quot;</span>),
         }
     }
