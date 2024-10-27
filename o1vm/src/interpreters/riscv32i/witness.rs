@@ -709,6 +709,7 @@ impl<Fp: Field> Env<Fp> {
         (opcode, instruction)
     }
 
+    /// Execute a single step in the RISCV32i program
     pub fn step(&mut self) -> Instruction {
         self.reset_scratch_state();
         let (opcode, _instruction) = self.decode_instruction();
