@@ -1,4 +1,5 @@
 use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
+use log::debug;
 use std::{collections::HashMap, path::Path};
 
 use crate::cannon::State;
@@ -14,6 +15,7 @@ use crate::cannon::State;
 // return a structure specifically built for the o1vm, and not tight to Cannon.
 // This is only to get somethign done quickly.
 pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
+    debug!("Start parsing the ELF file to load a RISCV32i compatible state");
     let file_data = std::fs::read(path).expect("Could not read file.");
     let slice = file_data.as_slice();
     let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
@@ -42,10 +44,22 @@ pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
         })
         .collect();
 
+    debug!("Loading the text section, which contains the executable code.");
     // Getting the executable code.
-    let _text_section = sections_by_name
+    let text_section = sections_by_name
         .get(".text")
         .expect("Should have .text section");
+    let (text_section_data, _) = file
+        .section_data(text_section)
+        .expect("Failed to read data from .text section");
+
+    // FIXME: compute initial page and final page, and write the data in it.
+    let code_section_starting_address = text_section.sh_addr as usize;
+    let code_section_size = text_section.sh_size as usize;
+    // Note: the end address contains the last instruction, but the last byte to
+    // read if code_section_end_address + 3 as instructions are 4 bytes long.
+    let code_section_end_address = code_section_starting_address + code_section_size;
+    debug!("The executable code starts at address 0x{:x}, has size 0x{:x} bytes, and ends at address 0x{:x}.", code_section_starting_address, code_section_size, code_section_end_address);
 
     // FIXME: we're lucky that RISCV32i and MIPS have the same number of
     // registers.
