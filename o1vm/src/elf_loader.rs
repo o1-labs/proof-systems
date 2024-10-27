@@ -43,7 +43,7 @@ pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
         .collect();
 
     // Getting the executable code.
-    let text_section = sections_by_name
+    let _text_section = sections_by_name
         .get(".text")
         .expect("Should have .text section");
 
@@ -56,9 +56,9 @@ pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
     // FIXME: it is only because we share the same structure for the state.
     let preimage_offset = 0;
 
-    // FIXME: this is not correct. We should load 69932 as it is the _start
-    // smbol.
-    let pc: u32 = text_section.sh_addr as u32;
+    // Entry point of the program
+    let pc: u32 = file.ehdr.e_entry as u32;
+    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported.");
     let next_pc: u32 = pc + 4u32;
 
     let state = State {

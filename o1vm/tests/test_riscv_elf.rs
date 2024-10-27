@@ -17,7 +17,7 @@ fn test_correctly_parsing_elf() {
     println!("Path: {:?}", path);
     let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
     // This is the output we get by running objdump -d fibonacci
-    assert_eq!(state.pc, 69844);
+    assert_eq!(state.pc, 69932);
 }
 
 #[test]
