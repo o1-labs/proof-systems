@@ -10,10 +10,9 @@ use o1vm::interpreters::riscv32i::{
 // We must export the code used in this test in a function that can be called by
 // the o1vm at load time.
 fn test_correctly_parsing_elf() {
-    let executable_name = "fibonacci";
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/".to_owned() + executable_name,
+        "resources/programs/riscv32i/fibonacci",
     ));
     let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
     // This is the output we get by running objdump -d fibonacci
