@@ -618,7 +618,6 @@ impl<Fp: Field> Env<Fp> {
                 0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
                 0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
                 0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
-                0b1100111 => Instruction::UJType(UJInstruction::JumpAndLinkRegister),
                 0b1100011 =>
                 match (instruction >> 12) & 0x7 // bits 12-14 for func3
                 {
@@ -630,6 +629,7 @@ impl<Fp: Field> Env<Fp> {
                     0b111 => Instruction::SBType(SBInstruction::BranchGreaterThanEqualUnsigned),
                     _ => panic!("Unknown SBType instruction with full inst {}", instruction),
                 },
+                0b1100111 => Instruction::IType(IInstruction::JumpAndLinkRegister),
                 0b0000011 =>
                 match (instruction >> 12) & 0x7 // bits 12-14 for func3
                 {

@@ -60,6 +60,8 @@ pub enum IInstruction {
     XorImmediate, // xori
     OrImmediate,  // ori
     AndImmediate, // andi
+
+    JumpAndLinkRegister, // jalr
 }
 
 #[derive(
@@ -100,7 +102,6 @@ pub enum UInstruction {
 pub enum UJInstruction {
     #[default]
     JumpAndLink, // jal
-    JumpAndLinkRegister, // jalr
 }
 
 impl IntoIterator for Instruction {
@@ -971,6 +972,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
     env.activate_selector(instr);
 
     /* https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html */
+    /* as a general note each inst has an equation description, each operation in the equation needs a witness inst */
     match instr {
         Instruction::RType(rtype) => interpret_rtype(env, rtype),
         Instruction::IType(itype) => interpret_itype(env, itype),
@@ -1502,6 +1504,29 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::JumpAndLinkRegister => {
+            // jalr: t =pc+4; pc=(x[rs1]+sext(offset))&∼1; x[rd]=t
+            let local_t = instruction_pointer.clone() + Env::constant(4u32);
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_rs1_plus_imm = {
+                let pos = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (local_rs1_plus_imm, _overflow) =
+                    unsafe { env.add_witness(&local_rs1, &local_imm, pos, overflow_scratch) };
+                local_rs1_plus_imm
+            };
+
+            let not_1 = Env::constant(!1u32);
+            let local_pc = {
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&local_rs1_plus_imm, &not_1, pos) }
+            };
+
+            env.set_instruction_pointer(local_pc.clone());
+            env.write_register(&rd, local_t);
+            env.set_instruction_pointer(local_pc.clone() + Env::constant(4u32));
         }
     };
 }
@@ -2040,68 +2065,145 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
 }
 
 pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction) {
-        /* fetch instruction pointer from the program state */
-        let instruction_pointer = env.get_instruction_pointer();
-        /* compute the next instruction ptr and add one, as well record raml lookup */
-        let next_instruction_pointer = env.get_next_instruction_pointer();
-        /* read instruction from ip address */
-        let instruction = {
-            let v0 = env.read_memory(&instruction_pointer);
-            let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
-            let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-            let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-            (v0 * Env::constant(1 << 24))
-                + (v1 * Env::constant(1 << 16))
-                + (v2 * Env::constant(1 << 8))
-                + v3
-        };
-        /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-        let opcode = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 7, 0, pos) }
-        };
-        /* verify opcode is 7 bits */
-        env.range_check8(&opcode, 7);
-    
-        let rd = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 12, 7, pos) }
-        };
-        env.range_check8(&rd, 5);
+    /* fetch instruction pointer from the program state */
+    let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+    /* read instruction from ip address */
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    /* verify opcode is 7 bits */
+    env.range_check8(&opcode, 7);
 
-        let imm12_19 = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 20, 12, pos) }
-        };
-        env.range_check8(&imm12_19, 8);
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
 
-        let imm11 = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 21, 20, pos) }
-        };
-        env.range_check8(&imm11, 1);
+    let imm12_19 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 12, pos) }
+    };
+    env.range_check8(&imm12_19, 8);
 
-        let imm1_10 = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 31, 21, pos) }
-        };
-        env.range_check8(&imm1_10, 10);
+    let imm11 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 20, pos) }
+    };
+    env.range_check8(&imm11, 1);
 
-        let imm20 = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 32, 31, pos) }
-        };
-        env.range_check8(&imm20, 1);
+    let imm1_10 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 31, 21, pos) }
+    };
+    env.range_check8(&imm1_10, 10);
 
-        // check correctness of decomposition of UJ type function
-        env.add_constraint(
-            instruction
+    let imm20 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 31, pos) }
+    };
+    env.range_check8(&imm20, 1);
+
+    // check correctness of decomposition of UJ type function
+    env.add_constraint(
+        instruction
             - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
             - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
             - (imm12_19.clone() * Env::constant(1 << 12)) // imm12_19 at bits 12-19
             - (imm11.clone() * Env::constant(1 << 20))    // imm11 at bits 20
             - (imm1_10.clone() * Env::constant(1 << 21))  // imm1_10 at bits 21-30
             - (imm20.clone() * Env::constant(1 << 31)), // imm20 at bits 31
-        );
+    );
 
+    // index at 1 because there is no sign bit
+    let imm1_11 = {
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm11 = unsafe { env.shift_left(&imm11, &Env::constant(11), shift_pos) };
+        let imm1_11 = env.sign_extend(&shifted_imm11.clone(), 11);
+
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm1_10 = unsafe { env.shift_left(&imm1_10, &Env::constant(1), shift_pos) };
+        let imm1_10 = env.sign_extend(&shifted_imm1_10, 10);
+
+        let pos = env.alloc_scratch();
+        let imm1_11 = unsafe { env.or_witness(&imm1_11, &imm1_10.clone(), pos) };
+        env.sign_extend(&imm1_11, 11)
+    };
+
+    let imm12_20 = {
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm12_19 = unsafe { env.shift_left(&imm12_19, &Env::constant(12), shift_pos) };
+        let imm12_19 = env.sign_extend(&shifted_imm12_19, 19);
+
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm20 = unsafe { env.shift_left(&imm20, &Env::constant(20), shift_pos) };
+        let imm20 = env.sign_extend(&shifted_imm20, 20);
+
+        let pos = env.alloc_scratch();
+        let imm12_20 = unsafe { env.or_witness(&imm12_19, &imm20, pos) };
+        env.sign_extend(&imm12_20, 21)
+    };
+
+    let imm1_20 = {
+        let pos = env.alloc_scratch();
+        let imm12_20 = unsafe { env.shift_left(&imm12_20, &Env::constant(12), pos) };
+
+        let pos = env.alloc_scratch();
+        let imm1_20 = unsafe { env.or_witness(&imm1_11, &imm12_20, pos) };
+        env.sign_extend(&imm1_20, 32)
+    };
+
+    match instr {
+        UJInstruction::JumpAndLink => {
+            // jal: x[rd] = pc+4; pc += sext(offset)
+            let local_pc = env.get_instruction_pointer();
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (local_rd, _) = unsafe {
+                    env.add_witness(&local_pc, &Env::constant(4u32), pos, overflow_scratch)
+                };
+                local_rd
+            };
+            let offset = imm1_20.clone();
+            let next_instruction_pointer = {
+                let pos = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (next_instruction_pointer, _overflow) = unsafe {
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
+                };
+                next_instruction_pointer
+            };
+            let new_instruction_pointer = {
+                let pos = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (new_instruction_pointer, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &Env::constant(4u32),
+                        pos,
+                        overflow_scratch,
+                    )
+                };
+                new_instruction_pointer
+            };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(new_instruction_pointer.clone());
+        }
+    }
 }
