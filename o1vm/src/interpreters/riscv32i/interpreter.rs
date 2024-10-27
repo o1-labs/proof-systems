@@ -1441,7 +1441,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::SetLessThanImmediate => {
             // slti: x[rd] = (x[rs1] < sext(immediate)) ? 1 : 0
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 11);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.test_less_than_signed(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1461,7 +1461,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AddImmediate => {
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 11);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
             let overflow_scratch = env.alloc_scratch();
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe {
@@ -1476,7 +1476,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::XorImmediate => {
             // xori: x[rd] = x[rs1] ^ sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 11);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1486,7 +1486,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::OrImmediate => {
             // ori: x[rd] = x[rs1] | sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 11);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1496,7 +1496,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AndImmediate => {
             // andi: x[rd] = x[rs1] & sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 11);
+            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1649,8 +1649,220 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
     };
 }
 
-pub fn interpret_sbtype<Env: InterpreterEnv>(_env: &mut Env, _instr: SBInstruction) {
-    unimplemented!("interpret_sbtype")
+pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction) {
+    /* fetch instruction pointer from the program state */
+    let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+    /* read instruction from ip address */
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    /* verify opcode is 7 bits */
+    env.range_check8(&opcode, 7);
+
+    let imm11 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 8, 7, pos) }
+    };
+    env.range_check8(&imm11, 1);
+
+    let imm0_4 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 8, pos) }
+    };
+    env.range_check8(&imm0_4, 4);
+
+    let funct3 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
+    };
+    env.range_check8(&funct3, 3);
+
+    let rs1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 15, pos) }
+    };
+    env.range_check8(&rs1, 5);
+
+    let rs2 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 25, 20, pos) }
+    };
+    env.range_check8(&rs2, 5);
+
+    let imm5_10 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 31, 25, pos) }
+    };
+    env.range_check8(&imm5_10, 6);
+
+    let imm12 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 31, pos) }
+    };
+    env.range_check8(&imm12, 1);
+
+    // check correctness of decomposition of SB type function
+    env.add_constraint(
+        instruction
+        - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+        - (imm11.clone() * Env::constant(1 << 7))     // imm11 at bits 7
+        - (imm0_4.clone() * Env::constant(1 << 8))    // imm0_4 at bits 8-11
+        - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+        - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+        - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
+        - (imm5_10.clone() * Env::constant(1 << 25))  // imm5_10 at bits 25-30
+        - (imm12.clone() * Env::constant(1 << 31)), // imm12 at bits 31
+    );
+
+    let imm0_10 = {
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm5_10 = unsafe { env.shift_left(&imm5_10, &Env::constant(5), shift_pos) };
+
+        let pos = env.alloc_scratch();
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm1_4 = unsafe { env.shift_left(&imm0_4, &Env::constant(1), shift_pos) };
+        let imm0_10 = unsafe { env.or_witness(&shifted_imm5_10, &shifted_imm1_4, pos) };
+        env.sign_extend(&imm0_10, 13)
+    };
+
+    let imm11_12 = {
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm12 = unsafe { env.shift_left(&imm12, &Env::constant(12), shift_pos) };
+
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm11 = unsafe { env.shift_left(&imm11, &Env::constant(11), shift_pos) };
+
+        let pos = env.alloc_scratch();
+        let imm11_12 = unsafe { env.or_witness(&shifted_imm12, &shifted_imm11, pos) };
+        env.sign_extend(&imm11_12, 13)
+    };
+
+    let imm0_12 = {
+        let pos = env.alloc_scratch();
+        let imm0_12 = unsafe { env.or_witness(&imm11_12, &imm0_10, pos) };
+        env.sign_extend(&imm0_12, 13)
+    };
+
+    match instr {
+        SBInstruction::BranchEq => {
+            // beq: if (x[rs1] == x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let equal = env.equal(&local_rs1, &local_rs2);
+
+            let offset = (equal.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+        SBInstruction::BranchNeq => {
+            // bne: if (x[rs1] != x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let not_equal = env.equal(&local_rs1, &local_rs2);
+
+            let offset = (Env::constant(1) - not_equal.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+        SBInstruction::BranchLessThan => {
+            // blt: if (x[rs1] < x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let rd_scratch = env.alloc_scratch();
+            let less_than =
+                unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) };
+
+            let offset = (less_than.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+        SBInstruction::BranchGreaterThanEqual => {
+            // bge: if (x[rs1] >= x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let rd_scratch = env.alloc_scratch();
+            let less_than =
+                unsafe { env.test_less_than_signed(&local_rs2, &local_rs1, rd_scratch) };
+
+            // greater than equal is the negation of less than
+            let offset = (Env::constant(1) - less_than.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+        SBInstruction::BranchLessThanUnsigned => {
+            // bltu: if (x[rs1] <u x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let rd_scratch = env.alloc_scratch();
+            let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
+
+            let offset = (less_than.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+        SBInstruction::BranchGreaterThanEqualUnsigned => {
+            // bgeu: if (x[rs1] >=u x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let rd_scratch = env.alloc_scratch();
+            let less_than = unsafe { env.test_less_than(&local_rs2, &local_rs1, rd_scratch) };
+
+            // greater than equal is the negation of less than
+            let offset = (Env::constant(1) - less_than.clone()) * imm0_12;
+
+            let next_instruction_pointer = next_instruction_pointer.clone() + offset.clone();
+            let new_instruction_pointer =
+                next_instruction_pointer.clone() + offset.clone() + Env::constant(4u32);
+
+            env.set_instruction_pointer(new_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer.clone());
+        }
+    };
 }
 
 pub fn interpret_utype<Env: InterpreterEnv>(_env: &mut Env, _instr: UInstruction) {
