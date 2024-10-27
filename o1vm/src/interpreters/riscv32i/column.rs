@@ -16,6 +16,7 @@ use strum::EnumCount;
 pub enum Column {
     ScratchState(usize),
     InstructionCounter,
+    Error,
     Selector(usize),
 }
 
@@ -28,12 +29,13 @@ impl From<Column> for usize {
                 i
             }
             Column::InstructionCounter => SCRATCH_SIZE,
+            Column::Error => SCRATCH_SIZE + 1,
             Column::Selector(s) => {
                 assert!(
                     s < INSTRUCTION_SET_SIZE,
                     "There is only {INSTRUCTION_SET_SIZE}"
                 );
-                SCRATCH_SIZE + 1 + s
+                SCRATCH_SIZE + 2 + s
             }
         }
     }
@@ -42,14 +44,14 @@ impl From<Column> for usize {
 impl From<Instruction> for usize {
     fn from(instr: Instruction) -> usize {
         match instr {
-            RType(rtype) => SCRATCH_SIZE + 1 + rtype as usize,
-            IType(itype) => SCRATCH_SIZE + 1 + RInstruction::COUNT + itype as usize,
+            RType(rtype) => SCRATCH_SIZE + 2 + rtype as usize,
+            IType(itype) => SCRATCH_SIZE + 2 + RInstruction::COUNT + itype as usize,
             SType(stype) => {
-                SCRATCH_SIZE + 1 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
+                SCRATCH_SIZE + 2 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
             }
             SBType(sbtype) => {
                 SCRATCH_SIZE
-                    + 1
+                    + 2
                     + RInstruction::COUNT
                     + IInstruction::COUNT
                     + SInstruction::COUNT
@@ -57,7 +59,7 @@ impl From<Instruction> for usize {
             }
             UType(utype) => {
                 SCRATCH_SIZE
-                    + 1
+                    + 2
                     + RInstruction::COUNT
                     + IInstruction::COUNT
                     + SInstruction::COUNT
@@ -66,7 +68,7 @@ impl From<Instruction> for usize {
             }
             UJType(ujtype) => {
                 SCRATCH_SIZE
-                    + 1
+                    + 2
                     + RInstruction::COUNT
                     + IInstruction::COUNT
                     + SInstruction::COUNT
