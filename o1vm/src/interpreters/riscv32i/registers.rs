@@ -3,7 +3,6 @@ use std::ops::{Index, IndexMut};
 use serde::{Deserialize, Serialize};
 
 pub const N_GP_REGISTERS: usize = 32;
-// FIXME:
 pub const REGISTER_CURRENT_IP: usize = N_GP_REGISTERS + 1;
 pub const REGISTER_NEXT_IP: usize = N_GP_REGISTERS + 2;
 pub const REGISTER_HEAP_POINTER: usize = N_GP_REGISTERS + 3;
