@@ -2,16 +2,16 @@ use elf::{endian::LittleEndian, ElfBytes};
 
 #[test]
 fn test_elf() {
+    let executable_name = "fibonacci";
     let curr_dir = std::env::current_dir().unwrap();
     println!("Path: {:?}", curr_dir);
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/test.elf",
+        "resources/programs/riscv32i/".to_owned() + executable_name,
     ));
     println!("Path: {:?}", path);
     let file_data = std::fs::read(path).expect("Could not read file.");
     let slice = file_data.as_slice();
-    let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open test1");
-
+    let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
     // (st is for symbol table/type)
     // (sh is for section header)
     // (shdrs is for section headers)
@@ -27,6 +27,7 @@ fn test_elf() {
 
     // Checking it is RISC-V
     assert_eq!(file.ehdr.e_machine, 243);
+
     file.segments()
         .unwrap()
         .iter()
