@@ -51,14 +51,20 @@ fn test_elf() {
         })
         .collect();
 
+    // FIXME: handle empty code... Should not happen but we never know.
+    let text_section = with_names.get(".text").expect("Should have .text section");
+    // FIXME: handle empty data. Ignoring for now.
+    let data_section = with_names.get(".data");
+
+    println!("Text section: {:?}", text_section);
+    println!("Data section: {:?}", data_section);
+
     with_names.iter().for_each(|(name, shdr)| {
         println!("Section header: {:?} {:?}", name, shdr);
     });
 
     // The code is located in the .text section (starting at address 69844).
     // This is where the executable code is.
-
-    // println!("Section headers: {:?}", with_names);
 
     // file.segments()
     //     .unwrap()
