@@ -2,13 +2,13 @@ use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
 use std::{collections::HashMap, path::Path};
 
 /// Parse an ELF file and return the parsed data as a structure that is expected
-/// by the o1vm.
+/// by the o1vm RISCV32i edition.
 // FIXME: check the e_machine. Even though it can be modified, let's check that
 // we only load supported toolchain and supported architecture. We should use
 // Toolchain defined in cannon.rs
 // FIXME: parametrize by an architecture. We should return a state depending on the
 // architecture. In the meantime, we can have parse_riscv32i and parse_mips.
-pub fn parse_elf(path: &Path) -> Result<u64, String> {
+pub fn parse_riscv32i(path: &Path) -> Result<u64, String> {
     let file_data = std::fs::read(path).expect("Could not read file.");
     let slice = file_data.as_slice();
     let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");

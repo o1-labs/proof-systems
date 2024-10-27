@@ -15,7 +15,7 @@ fn test_correctly_parsing_elf() {
         "resources/programs/riscv32i/".to_owned() + executable_name,
     ));
     println!("Path: {:?}", path);
-    let text_section_start = o1vm::elf_loader::parse_elf(&path);
+    let text_section_start = o1vm::elf_loader::parse_riscv32i(&path);
     // This is the output we get by running objdump -d fibonacci
     assert_eq!(text_section_start.unwrap(), 69844);
 }
