@@ -612,6 +612,10 @@ impl<Fp: Field> Env<Fp> {
                 | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+        println!(
+            "Decoding instruction at address {:x} with value {:x}",
+            self.registers.current_instruction_pointer, instruction
+        );
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {
