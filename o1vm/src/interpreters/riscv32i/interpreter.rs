@@ -1771,12 +1771,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (next_instruction_pointer, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        pos,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
                 };
                 next_instruction_pointer
             };
@@ -1797,7 +1792,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(new_instruction_pointer.clone());
-
         }
         SBInstruction::BranchNeq => {
             // bne: if (x[rs1] != x[rs2]) pc += sext(offset)
@@ -1812,12 +1806,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (next_instruction_pointer, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        pos,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
                 };
                 next_instruction_pointer
             };
@@ -1838,7 +1827,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(new_instruction_pointer.clone());
-
         }
         SBInstruction::BranchLessThan => {
             // blt: if (x[rs1] < x[rs2]) pc += sext(offset)
@@ -1855,12 +1843,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (next_instruction_pointer, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        pos,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
                 };
                 next_instruction_pointer
             };
@@ -1881,7 +1864,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(new_instruction_pointer.clone());
-
         }
         SBInstruction::BranchGreaterThanEqual => {
             // bge: if (x[rs1] >= x[rs2]) pc += sext(offset)
@@ -1916,12 +1898,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (next_instruction_pointer, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        pos,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
                 };
                 next_instruction_pointer
             };
@@ -1942,7 +1919,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(new_instruction_pointer.clone());
-
         }
         SBInstruction::BranchGreaterThanEqualUnsigned => {
             // bgeu: if (x[rs1] >=u x[rs2]) pc += sext(offset)
@@ -1959,12 +1935,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (next_instruction_pointer, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        pos,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&next_instruction_pointer, &offset, pos, overflow_scratch)
                 };
                 next_instruction_pointer
             };
