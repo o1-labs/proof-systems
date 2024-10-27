@@ -613,9 +613,10 @@ impl<Fp: Field> Env<Fp> {
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         println!(
-            "Decoding instruction at address {:x} with value {:x}",
+            "Decoding instruction at address {:b} with value {:b}, with opcode",
             self.registers.current_instruction_pointer, instruction
         );
+        let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {
@@ -703,9 +704,11 @@ impl<Fp: Field> Env<Fp> {
                     0b001 => Instruction::RType(RInstruction::FenceI),
                     _ => panic!("Unknown RType 0001111 (Fence) instruction with full inst {}", instruction),
                 },
-                _ => panic!("Unknown instruction with full inst {}", instruction),
+                _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
             }
         };
+        // display the opcode
+        println!("Decoded instruction {:?} with opcode {:?}", instruction, opcode);
         (opcode, instruction)
     }
 
