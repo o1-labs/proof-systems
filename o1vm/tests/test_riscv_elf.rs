@@ -1,4 +1,5 @@
 use o1vm::interpreters::riscv32i::interpreter::{IInstruction, Instruction, RInstruction};
+
 use std::collections::HashMap;
 
 use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
@@ -42,12 +43,13 @@ fn test_elf() {
     // https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
     println!("ELF header: {:?}", file.ehdr);
 
+    println!("Entry point: {:?}", file.ehdr.e_entry);
+
     // Checking it is RISC-V
     assert_eq!(file.ehdr.e_machine, 243);
 
     println!("-----------------------");
 
-    // Get the section header table alongside its string table
     let (shdrs_opt, strtab_opt) = file
         .section_headers_with_strtab()
         .expect("shdrs offsets should be valid");
@@ -57,7 +59,7 @@ fn test_elf() {
     );
 
     // Parse the shdrs and collect them into a map keyed on their zero-copied name
-    let with_names: HashMap<&str, SectionHeader> = shdrs
+    let sections_by_name: HashMap<&str, SectionHeader> = shdrs
         .iter()
         .map(|shdr| {
             (
@@ -69,15 +71,39 @@ fn test_elf() {
         })
         .collect();
 
+    // read all symbols
+    let symtab = file.symbol_table().expect("Failed to read symbol table");
+
+    println!("Symbol table: {:?}", symtab);
+
+    // First, we need to get the executable code. The executable code is located in the .text section.
     // FIXME: handle empty code... Should not happen but we never know.
-    let text_section = with_names.get(".text").expect("Should have .text section");
+    let text_section = sections_by_name
+        .get(".text")
+        .expect("Should have .text section");
+
+    let (text_data, _) = file
+        .section_data(text_section)
+        .expect("Failed to read data from .text section");
+
+    // The initial address of the text section is located in the sh_addr field.
+    let text_section_start = text_section.sh_addr;
+    println!("Text section header address: {:?}", text_section_start);
+    println!("Text section size: {:?}", text_section.sh_size);
+    println!(
+        "Text section end address: {:?}",
+        text_section_start + text_section.sh_size
+    );
+    println!("Data bytes at start of text section: {:?}", text_section);
+    println!("First bytes of text section: {:?}", &text_data[0..4]);
+
     // FIXME: handle empty data. Ignoring for now.
-    let data_section = with_names.get(".data");
+    let data_section = sections_by_name.get(".data");
 
     println!("Text section: {:?}", text_section);
     println!("Data section: {:?}", data_section);
 
-    with_names.iter().for_each(|(name, shdr)| {
+    sections_by_name.iter().for_each(|(name, shdr)| {
         println!("Section header: {:?} {:?}", name, shdr);
     });
 
