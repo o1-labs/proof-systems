@@ -12,7 +12,6 @@ use o1vm::interpreters::riscv32i::{
 fn test_correctly_parsing_elf() {
     let executable_name = "fibonacci";
     let curr_dir = std::env::current_dir().unwrap();
-    println!("Path: {:?}", curr_dir);
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32i/".to_owned() + executable_name,
     ));
