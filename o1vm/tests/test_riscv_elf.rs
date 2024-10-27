@@ -3,6 +3,23 @@ use std::collections::HashMap;
 use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
 
 #[test]
+// This test is used to check that the elf loader is working correctly.
+// We must export the code used in this test in a function that can be called by
+// the o1vm at load time.
+fn test_correctly_parsing_elf() {
+    let executable_name = "fibonacci";
+    let curr_dir = std::env::current_dir().unwrap();
+    println!("Path: {:?}", curr_dir);
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32i/".to_owned() + executable_name,
+    ));
+    println!("Path: {:?}", path);
+    let text_section_start = o1vm::elf_loader::parse_elf(&path);
+    // This is the output we get by running objdump -d fibonacci
+    assert_eq!(text_section_start.unwrap(), 69844);
+}
+
+#[test]
 fn test_elf() {
     let executable_name = "fibonacci";
     let curr_dir = std::env::current_dir().unwrap();

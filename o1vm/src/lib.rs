@@ -4,6 +4,10 @@ pub mod cannon;
 /// A CLI mimicking the Cannon CLI.
 pub mod cannon_cli;
 
+/// Basic ELF loader to read binary files and extract the ELF sections, like the
+/// code and data.
+pub mod elf_loader;
+
 pub mod interpreters;
 
 /// Legacy implementation of the recursive proof composition.
