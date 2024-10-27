@@ -1,4 +1,6 @@
-use elf::{endian::LittleEndian, ElfBytes};
+use std::collections::HashMap;
+
+use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
 
 #[test]
 fn test_elf() {
@@ -21,15 +23,54 @@ fn test_elf() {
     // List all segments in the program header, see Program Header in
     // https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
     println!("ELF header: {:?}", file.ehdr);
-    let (shdrs_opt, strtab_opt) = file.section_headers_with_strtab().unwrap();
-    println!("Section headers: {:?}", shdrs_opt);
-    println!("Section str: {:?}", strtab_opt);
 
     // Checking it is RISC-V
     assert_eq!(file.ehdr.e_machine, 243);
 
-    file.segments()
-        .unwrap()
+    println!("-----------------------");
+
+    // Get the section header table alongside its string table
+    let (shdrs_opt, strtab_opt) = file
+        .section_headers_with_strtab()
+        .expect("shdrs offsets should be valid");
+    let (shdrs, strtab) = (
+        shdrs_opt.expect("Should have shdrs"),
+        strtab_opt.expect("Should have strtab"),
+    );
+
+    // Parse the shdrs and collect them into a map keyed on their zero-copied name
+    let with_names: HashMap<&str, SectionHeader> = shdrs
         .iter()
-        .for_each(|h| println!("header: {:?}", h));
+        .map(|shdr| {
+            (
+                strtab
+                    .get(shdr.sh_name as usize)
+                    .expect("Failed to get section name"),
+                shdr,
+            )
+        })
+        .collect();
+
+    with_names.iter().for_each(|(name, shdr)| {
+        println!("Section header: {:?} {:?}", name, shdr);
+    });
+
+    // The code is located in the .text section (starting at address 69844).
+    // This is where the executable code is.
+
+    // println!("Section headers: {:?}", with_names);
+
+    // file.segments()
+    //     .unwrap()
+    //     .iter()
+    //     .for_each(|h| println!("header: {:?}", h));
+
+    // let executable_code = file
+    //     .segments()
+    //     .unwrap()
+    //     .iter()
+    //     .find(|h| h.p_flags == 0x04)
+    //     .unwrap();
+
+    // println!("Executable code: {:?}", executable_code);
 }
