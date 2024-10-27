@@ -1,6 +1,8 @@
 use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
 use std::{collections::HashMap, path::Path};
 
+use crate::cannon::State;
+
 /// Parse an ELF file and return the parsed data as a structure that is expected
 /// by the o1vm RISCV32i edition.
 // FIXME: check the e_machine. Even though it can be modified, let's check that
@@ -8,7 +10,10 @@ use std::{collections::HashMap, path::Path};
 // Toolchain defined in cannon.rs
 // FIXME: parametrize by an architecture. We should return a state depending on the
 // architecture. In the meantime, we can have parse_riscv32i and parse_mips.
-pub fn parse_riscv32i(path: &Path) -> Result<u64, String> {
+// FIXME: for now, we return a State structure, either for RISCV32i or MIPS. We should
+// return a structure specifically built for the o1vm, and not tight to Cannon.
+// This is only to get somethign done quickly.
+pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
     let file_data = std::fs::read(path).expect("Could not read file.");
     let slice = file_data.as_slice();
     let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
@@ -42,8 +47,43 @@ pub fn parse_riscv32i(path: &Path) -> Result<u64, String> {
         .get(".text")
         .expect("Should have .text section");
 
-    // The initial address of the text section is located in the sh_addr field.
-    let text_section_start = text_section.sh_addr;
+    // FIXME: we're lucky that RISCV32i and MIPS have the same number of
+    // registers.
+    let registers: [u32; 32] = [0; 32];
 
-    Ok(text_section_start)
+    // FIXME: it is only because we share the same structure for the state.
+    let preimage_key: [u8; 32] = [0; 32];
+    // FIXME: it is only because we share the same structure for the state.
+    let preimage_offset = 0;
+
+    // FIXME: this is not correct. We should load 69932 as it is the _start
+    // smbol.
+    let pc: u32 = text_section.sh_addr as u32;
+    let next_pc: u32 = pc + 4u32;
+
+    let state = State {
+        // FIXME: initialize correct above with the data and text section
+        memory: vec![],
+        // FIXME: only because Cannon related
+        preimage_key,
+        // FIXME: only because Cannon related
+        preimage_offset,
+        pc,
+        next_pc,
+        // FIXME: only because Cannon related
+        lo: 0,
+        // FIXME: only because Cannon related
+        hi: 0,
+        heap: 0,
+        exit: 0,
+        exited: false,
+        step: 0,
+        registers,
+        // FIXME: only because Cannon related
+        last_hint: None,
+        // FIXME: only because Cannon related
+        preimage: None,
+    };
+
+    Ok(state)
 }
