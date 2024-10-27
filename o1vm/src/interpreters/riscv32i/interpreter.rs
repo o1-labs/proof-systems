@@ -1866,52 +1866,82 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 }
 
 pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) {
-        /* fetch instruction pointer from the program state */
-        let instruction_pointer = env.get_instruction_pointer();
-        /* compute the next instruction ptr and add one, as well record raml lookup */
-        let next_instruction_pointer = env.get_next_instruction_pointer();
-        /* read instruction from ip address */
-        let instruction = {
-            let v0 = env.read_memory(&instruction_pointer);
-            let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
-            let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-            let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-            (v0 * Env::constant(1 << 24))
-                + (v1 * Env::constant(1 << 16))
-                + (v2 * Env::constant(1 << 8))
-                + v3
-        };
-        /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-        let opcode = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 7, 0, pos) }
-        };
-        /* verify opcode is 7 bits */
-        env.range_check8(&opcode, 7);
+    /* fetch instruction pointer from the program state */
+    let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+    /* read instruction from ip address */
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    /* verify opcode is 7 bits */
+    env.range_check8(&opcode, 7);
 
-        let rd = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 12, 7, pos) }
-        };
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
 
-        env.range_check8(&rd, 5);
+    env.range_check8(&rd, 5);
 
-        let imm = {
-            let pos = env.alloc_scratch();
-            unsafe { env.bitmask(&instruction, 32, 12, pos) }
-        };
+    let imm = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 12, pos) }
+    };
 
-        env.range_check64(imm.clone()); // this is not implemented yet, can also be done with 32
+    env.range_check64(&imm); // this is not implemented yet, can also be done with 32
 
-        // check correctness of decomposition of U type function
-        env.add_constraint(
-            instruction
+    // check correctness of decomposition of U type function
+    env.add_constraint(
+        instruction
             - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
             - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
             - (imm.clone() * Env::constant(1 << 12)), // imm at bits 12-31
-        );
+    );
 
+    match instr {
+        UInstruction::LoadUpperImmediate => {
+            // lui: x[rd] = sext(immediate[31:12] << 12)
+            let local_imm = {
+                let pos = env.alloc_scratch();
+                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                env.sign_extend(&shifted_imm, 32)
+            };
+            env.write_register(&rd, local_imm);
 
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        UInstruction::AddUpperImmediate => {
+            // auipc: x[rd] = pc + sext(immediate[31:12] << 12)
+            let local_imm = {
+                let pos = env.alloc_scratch();
+                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                env.sign_extend(&shifted_imm, 32)
+            };
+            let local_pc = env.get_instruction_pointer();
+            let pos = env.alloc_scratch();
+            let overflow_pos = env.alloc_scratch();
+            let (local_rd, _) =
+                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) };
+            env.write_register(&rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+    }
 }
 
 pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstruction) {
