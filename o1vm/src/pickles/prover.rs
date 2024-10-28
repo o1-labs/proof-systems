@@ -367,7 +367,7 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 1, 
+                // We do not have any blinder, therefore we set to 1,
                 // since otherwise we might commit to the zero polynomial
                 // and that would be bad!
                 PolyComm::new(vec![G::ScalarField::one()]),
