@@ -129,7 +129,15 @@ where
         } = &polys;
         // Note: we do not blind. We might want in the near future in case we
         // have a column with only zeroes.
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, num_chunks);
+        let comm = |poly: &DensePolynomial<G::ScalarField>| {
+            srs.commit_custom(
+                poly,
+                num_chunks,
+                &PolyComm::new(vec![G::ScalarField::one()]),
+            )
+            .unwrap()
+            .commitment
+        };
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
@@ -260,8 +268,14 @@ where
         quotient
     };
 
-    let quotient_commitment =
-        srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
+    let quotient_commitment = srs
+        .commit_custom(
+            &quotient_poly,
+            DEGREE_QUOTIENT_POLYNOMIAL as usize,
+            &PolyComm::new(vec![G::ScalarField::one(); 7]),
+        )
+        .unwrap()
+        .commitment;
     absorb_commitment(&mut fq_sponge, &quotient_commitment);
 
     ////////////////////////////////////////////////////////////////////////////
