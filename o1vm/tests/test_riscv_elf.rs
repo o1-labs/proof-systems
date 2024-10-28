@@ -1,6 +1,6 @@
 use mina_curves::pasta::Fp;
 use o1vm::interpreters::riscv32i::{
-    interpreter::{IInstruction, Instruction, RInstruction},
+    interpreter::{IInstruction, Instruction, RInstruction, SInstruction},
     witness::Env,
     PAGE_SIZE,
 };
@@ -42,14 +42,13 @@ fn test_fibonacci() {
     assert_eq!(witness.registers.current_instruction_pointer, 69936);
     assert_eq!(witness.registers.next_instruction_pointer, 69940);
 
-    // let second_instruction = witness.step();
-    // println!("Second instruction: {:?}", second_instruction);
-    // assert_eq!(
-    //     second_instruction,
-    //     Instruction::IType(IInstruction::AddImmediate)
-    // );
-    // assert_eq!(witness.registers.current_instruction_pointer, 69940);
-    // assert_eq!(witness.registers.next_instruction_pointer, 69944);
+    let second_instruction = witness.step();
+    assert_eq!(
+        second_instruction,
+        Instruction::SType(SInstruction::StoreWord)
+    );
+    assert_eq!(witness.registers.current_instruction_pointer, 69940);
+    assert_eq!(witness.registers.next_instruction_pointer, 69944);
 }
 
 #[test]
