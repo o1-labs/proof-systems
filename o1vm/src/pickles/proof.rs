@@ -11,7 +11,6 @@ pub struct WitnessColumns<G, S> {
     pub selector: S,
 }
 
-#[derive(Debug)]
 pub struct ProofInputs<G: KimchiCurve> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
 }
@@ -30,7 +29,6 @@ impl<G: KimchiCurve> ProofInputs<G> {
 }
 
 // FIXME: should we blind the commitment?
-#[derive(Debug)]
 pub struct Proof<G: KimchiCurve> {
     pub commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
     pub zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,

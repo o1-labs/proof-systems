@@ -93,7 +93,6 @@ fn test_small_circuit() {
     for i in 0..SCRATCH_SIZE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
-    /* expr *= Expr::cell(Column::DynamicSelector(0), CurrOrNext::Curr); */
     let mut rng = make_test_rng(None);
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;

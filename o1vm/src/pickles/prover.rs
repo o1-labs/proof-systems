@@ -127,8 +127,7 @@ where
             error,
             selector,
         } = &polys;
-        // Note: we do not blind. We might want in the near future in case we
-        // have a column with only zeroes.
+        // Note: We add a constant blinder in case we have a column with only zeroes.
         let comm = |poly: &DensePolynomial<G::ScalarField>| {
             srs.commit_custom(
                 poly,
@@ -277,9 +276,8 @@ where
                 DEGREE_QUOTIENT_POLYNOMIAL as usize
             ]),
         )
-        .unwrap()
-        .commitment;
-    absorb_commitment(&mut fq_sponge, &quotient_commitment);
+        .unwrap();
+    absorb_commitment(&mut fq_sponge, &quotient_commitment.commitment);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -369,19 +367,18 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 0.
+                // We do not have any blinder, therefore we set to 1, 
+                // since otherwise we might commit to the zero polynomial
+                // and that would be bad!
                 PolyComm::new(vec![G::ScalarField::one()]),
             )
         })
         .collect();
-    // we handle the quotient separately bc of the nb of blinders = num chunks
+    // we handle the quotient separately because the number of blinders =
+    // number of chunks, which is different for just the quotient polynomial.
     polynomials.push((
         DensePolynomialOrEvaluations::DensePolynomial(&quotient_poly),
-        // We do not have any blinder, therefore we set to 0.
-        PolyComm::new(vec![
-            G::ScalarField::one();
-            DEGREE_QUOTIENT_POLYNOMIAL as usize
-        ]),
+        quotient_commitment.blinders,
     ));
 
     // poly scale
@@ -410,7 +407,7 @@ where
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
-        quotient_commitment,
+        quotient_commitment: quotient_commitment.commitment,
         quotient_evaluations,
         opening_proof,
     })

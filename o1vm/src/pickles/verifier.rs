@@ -1,4 +1,3 @@
-#![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
 use ark_ec::{AffineRepr, Group};
