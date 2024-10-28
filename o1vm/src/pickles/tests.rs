@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::{
     super::interpreters::mips::witness::SCRATCH_SIZE,
     proof::{ProofInputs, WitnessColumns},
@@ -13,6 +15,7 @@ use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::{columns::Column, expr::E};
+use log::debug;
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -89,11 +92,12 @@ fn test_small_circuit() {
             selector: zero_to_n_minus_one(8),
         },
     };
-    let mut expr = Expr::literal(Fq::zero());
+    let mut expr = Expr::zero();
     for i in 0..SCRATCH_SIZE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
     let mut rng = make_test_rng(None);
+
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
@@ -106,7 +110,10 @@ fn test_small_circuit() {
     )
     .unwrap();
 
+    let instant_before_verification = Instant::now();
     let verif =
         verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
+    let instant_after_verification = Instant::now();
+    debug!("Verification took: {}", (instant_after_verification - instant_before_verification).as_millis());
     assert!(verif, "Verification fails");
 }
