@@ -16,4 +16,5 @@ else
     ./run-op-program.sh
     ./run-cannon.sh
 fi
+
 ./run-vm.sh

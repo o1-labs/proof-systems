@@ -272,7 +272,10 @@ where
         .commit_custom(
             &quotient_poly,
             DEGREE_QUOTIENT_POLYNOMIAL as usize,
-            &PolyComm::new(vec![G::ScalarField::one(); 7]),
+            &PolyComm::new(vec![
+                G::ScalarField::one();
+                DEGREE_QUOTIENT_POLYNOMIAL as usize
+            ]),
         )
         .unwrap()
         .commitment;
@@ -359,19 +362,27 @@ where
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
-    polynomials.push(quotient_poly);
 
     // Preparing the polynomials for the opening proof
-    let polynomials: Vec<_> = polynomials
+    let mut polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
                 // We do not have any blinder, therefore we set to 0.
-                PolyComm::new(vec![G::ScalarField::zero()]),
+                PolyComm::new(vec![G::ScalarField::one()]),
             )
         })
         .collect();
+    // we handle the quotient separately bc of the nb of blinders = num chunks
+    polynomials.push((
+        DensePolynomialOrEvaluations::DensePolynomial(&quotient_poly),
+        // We do not have any blinder, therefore we set to 0.
+        PolyComm::new(vec![
+            G::ScalarField::one();
+            DEGREE_QUOTIENT_POLYNOMIAL as usize
+        ]),
+    ));
 
     // poly scale
     let v_chal = fr_sponge.challenge();

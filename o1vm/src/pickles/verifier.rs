@@ -218,7 +218,13 @@ where
                 ],
             })
         });
-
+        evaluations.push(Evaluation {
+            commitment: proof.quotient_commitment.clone(),
+            evaluations: vec![
+                vec![quotient_evaluations.zeta],
+                vec![quotient_evaluations.zeta_omega],
+            ],
+        });
         evaluations
     };
 
