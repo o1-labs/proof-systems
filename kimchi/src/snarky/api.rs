@@ -147,8 +147,14 @@ where
 
         // TODO: return error instead of panicking
         let proof: ProverProof<Circuit::Curve, Circuit::Proof> =
-            ProverProof::create::<EFqSponge, EFrSponge>(&group_map, witness.0, &[], &self.index)
-                .unwrap();
+            ProverProof::create::<EFqSponge, EFrSponge, _>(
+                &group_map,
+                witness.0,
+                &[],
+                &self.index,
+                &mut rand::rngs::OsRng,
+            )
+            .unwrap();
 
         // return proof + public output
         Ok((proof, Box::new(public_output)))
@@ -312,10 +318,10 @@ pub trait SnarkyCircuit: Sized {
 
         // create SRS (for vesta, as the circuit is in Fp)
         // let mut srs = SRS::<Self::Curve>::create(cs.domain.d1.size as usize);
-        let mut srs = <<Self::Proof as OpenProof<Self::Curve>>::SRS as SRS<Self::Curve>>::create(
+        let srs = <<Self::Proof as OpenProof<Self::Curve>>::SRS as SRS<Self::Curve>>::create(
             cs.domain.d1.size as usize,
         );
-        srs.add_lagrange_basis(cs.domain.d1);
+        srs.get_lagrange_basis(cs.domain.d1);
         let srs = std::sync::Arc::new(srs);
 
         debug!("using an SRS of size {}", srs.size());

@@ -13,7 +13,6 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use poly_commitment::ipa::endos;
-use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -47,7 +46,7 @@ fn endomul_scalar_test() {
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let rng = &mut StdRng::from_seed([0; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     //let start = Instant::now();
     for _ in 0..num_scalars {

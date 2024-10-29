@@ -9,7 +9,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::SRS as _;
+use poly_commitment::SRS;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -114,8 +114,8 @@ fn test_generic_gate_kzg() {
     .witness(witness)
     .public_inputs(public)
     .setup_with_custom_srs(|d1, srs_size| {
-        let mut srs = poly_commitment::kzg::PairingSRS::create(srs_size);
-        srs.full_srs.add_lagrange_basis(d1);
+        let srs = poly_commitment::kzg::PairingSRS::create(srs_size);
+        srs.full_srs.get_lagrange_basis(d1);
         srs
     })
     .prove_and_verify::<BaseSponge, ScalarSponge>()

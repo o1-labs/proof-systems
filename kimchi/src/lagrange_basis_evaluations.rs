@@ -228,8 +228,8 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
                 chunked_evals[i * max_poly_size + j] = x_pow;
                 x_pow *= x;
             }
-            // This uses the same trick as `poly_commitment::srs::SRS::add_lagrange_basis`,
-            // but applied to field elements instead of group elements.
+            // This uses the same trick as `poly_commitment::srs::SRS::lagrange_basis`, but
+            // applied to field elements instead of group elements.
             domain.ifft_in_place(&mut chunked_evals);
             // Check that the number of coefficients after iFFT is as expected
             assert_eq!(
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_evaluation() {
-        let mut rng = o1_utils::tests::make_test_rng(None);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let domain_log_size = rng.gen_range(1..10);
         let n = 1 << domain_log_size;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
@@ -332,12 +332,12 @@ mod tests {
         let evals = {
             let mut e = vec![];
             for _ in 0..n {
-                e.push(Fp::rand(&mut rng));
+                e.push(Fp::rand(rng));
             }
             Evaluations::from_vec_and_domain(e, domain)
         };
 
-        let x = Fp::rand(&mut rng);
+        let x = Fp::rand(rng);
 
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_evaluation_boolean() {
-        let mut rng = o1_utils::tests::make_test_rng(None);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let domain_log_size = rng.gen_range(1..10);
         let n = 1 << domain_log_size;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
@@ -356,7 +356,7 @@ mod tests {
         let evals = {
             let mut e = vec![];
             for _ in 0..n {
-                e.push(if bool::rand(&mut rng) {
+                e.push(if bool::rand(rng) {
                     Fp::one()
                 } else {
                     Fp::zero()
@@ -365,7 +365,7 @@ mod tests {
             Evaluations::from_vec_and_domain(e, domain)
         };
 
-        let x = Fp::rand(&mut rng);
+        let x = Fp::rand(rng);
 
         let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 

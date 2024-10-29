@@ -35,6 +35,7 @@ use rand::thread_rng;
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
+#[derive(Debug)]
 pub struct Context<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The [VerifierIndex] associated to the proof
     pub verifier_index: &'a VerifierIndex<G, OpeningProof>,
@@ -812,8 +813,7 @@ where
         }
         let lgr_comm = verifier_index
             .srs()
-            .get_lagrange_basis(verifier_index.domain.size())
-            .expect("pre-computed committed lagrange bases not found");
+            .get_lagrange_basis(verifier_index.domain);
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
         if public_input.is_empty() {
             PolyComm::new(vec![verifier_index.srs().blinding_commitment(); chunk_size])

@@ -11,6 +11,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+
 /// Represents a foreign field element
 #[derive(Clone, PartialEq, Eq)]
 /// Represents a foreign field element
@@ -190,7 +191,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignFieldHelpers<F, B>
         F::from(2u64).pow([2 * B as u64])
     }
 
-    fn two_to_3limb() -> F {
+    fn two_to_3limb() -> F { // Self?
         F::from(2u64).pow([3 * B as u64])
     }
 }

@@ -78,8 +78,8 @@ pub fn main() -> ExitCode {
 
     let srs = {
         // FIXME: toxic waste is generated in `create`. This is unsafe for prod.
-        let mut srs = poly_commitment::kzg::PairingSRS::create(DOMAIN_SIZE);
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        let srs = poly_commitment::kzg::PairingSRS::create(DOMAIN_SIZE);
+        srs.get_lagrange_basis(domain.d1);
         srs
     };
 

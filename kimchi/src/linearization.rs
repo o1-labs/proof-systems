@@ -5,9 +5,8 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         berkeley_columns::BerkeleyChallengeTerm,
-        expr::{self},
+        expr, lookup,
         lookup::{
-            self,
             constraints::LookupConfiguration,
             lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
         },

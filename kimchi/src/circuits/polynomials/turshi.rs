@@ -93,7 +93,6 @@ use crate::{
 };
 use ark_ff::{FftField, Field, PrimeField};
 use log::error;
-use rand::{prelude::StdRng, SeedableRng};
 use std::{array, marker::PhantomData};
 use turshi::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -216,7 +215,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let linearized = constraints.linearize(polys).unwrap();
 
         // Setup proof evaluations
-        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
         let evals = ProofEvaluations::dummy_with_witness_evaluations(curr, next);
 
         // Setup circuit constants

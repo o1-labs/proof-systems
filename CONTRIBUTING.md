@@ -14,8 +14,8 @@ We have a list of easy task to start contributing. [Start over there](https://gi
 
 ## Setting up the project
 
-Make sure you have the GNU `make` utility installed since we use it to streamline various tasks.  
-Windows users may need to use the `WSL` to run `make` commands.  
+Make sure you have the GNU `make` utility installed since we use it to streamline various tasks.
+Windows users may need to use the `WSL` to run `make` commands.
 For the complete list of `make` targets, please refer to the [Makefile](Makefile).
 
 After the repository being cloned, run:
@@ -102,7 +102,7 @@ Note: cargo can automatically fix some lints. To do so, add `--fix` to the `CARG
 CARGO_EXTRA_ARGS="--fix" make lint
 ```
 
-Formatting and lints are enforced by GitHub PR checks, so please be sure to have any errors produced by the above tools fixed before pushing the code to your pull request branch.  
+Formatting and lints are enforced by GitHub PR checks, so please be sure to have any errors produced by the above tools fixed before pushing the code to your pull request branch.
 Please refer to [CI](.github/workflows/ci.yml) workflow to see all PR checks.
 
 ## Branching policy

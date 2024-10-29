@@ -31,14 +31,17 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion.workspace = true
 serde_json.workspace = true
 hex.workspace = true
+criterion = { version = "0.3", default-features = false, features = [
+  "cargo_bench_support",
+  "html_reports",
+] }
 
 [features]
 default = []
-ocaml_types = [ "ocaml", "ocaml-gen", ]
+ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]
-name = "poseidon"
+name = "poseidon_bench"
 harness = false
