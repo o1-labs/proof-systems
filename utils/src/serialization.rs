@@ -129,7 +129,6 @@ where
     }
 }
 
-
 /// A generic regression serialization test for serialization via
 /// `CanonicalSerialize` and `CanonicalDeserialize`.
 pub fn test_generic_serialization_regression_canonical<

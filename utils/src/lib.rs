@@ -21,7 +21,7 @@ pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
 pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, RandomField, Two};
-pub use foreign_field::{ForeignElement};
+pub use foreign_field::ForeignElement;
 
 /// Utils only for testing
 pub mod tests {

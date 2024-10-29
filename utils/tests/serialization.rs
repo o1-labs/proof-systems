@@ -1,9 +1,8 @@
-use o1_utils::serialization::{
-    test_generic_serialization_regression_canonical,
-    test_generic_serialization_regression_serde,
-};
 use ark_ec::short_weierstrass::SWCurveConfig;
 use mina_curves::pasta::{Pallas, PallasParameters, Vesta, VestaParameters};
+use o1_utils::serialization::{
+    test_generic_serialization_regression_canonical, test_generic_serialization_regression_serde,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -16,22 +15,22 @@ pub fn ser_regression_canonical_bigint() {
         (
             Fp::from(5u64),
             vec![
-                5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0,
+                5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
             ],
         ),
         (
             Fp::from((1u64 << 62) + 7u64),
             vec![
-                7, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0,
+                7, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0,
             ],
         ),
         (
             Fp::from((1u64 << 30) * 13u64 * 7u64 * 5u64 * 3u64 + 7u64),
             vec![
-                7, 0, 0, 64, 85, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0,
+                7, 0, 0, 64, 85, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0,
             ],
         ),
         (
@@ -39,8 +38,8 @@ pub fn ser_regression_canonical_bigint() {
                 * Fp::from((1u64 << 63) + 13u64)
                 * Fp::from((1u64 << 63) + 17u64),
             vec![
-                11, 6, 0, 0, 0, 0, 0, 128, 215, 0, 0, 0, 0, 0, 0, 64, 9, 0, 0, 0, 0, 0, 0, 32,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                11, 6, 0, 0, 0, 0, 0, 128, 215, 0, 0, 0, 0, 0, 0, 64, 9, 0, 0, 0, 0, 0, 0, 32, 0,
+                0, 0, 0, 0, 0, 0, 0,
             ],
         ),
     ];
@@ -68,9 +67,9 @@ pub fn ser_regression_canonical_pasta() {
 
     // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
     let buf_expected: Vec<u8> = vec![
-        146, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        146, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
     test_generic_serialization_regression_serde(data_expected, buf_expected);
