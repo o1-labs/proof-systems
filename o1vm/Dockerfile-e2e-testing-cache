@@ -1,0 +1,12 @@
+FROM alpine
+
+# Add necessary utilities
+RUN apk add --no-cache shadow unzip zip
+
+# Copy the files from the host to the Docker image
+# Assuming the files and folder are located 
+# in the same directory as the current Dockerfile on the host
+COPY o1vm-e2e-testing-cache.zip /tmp/cache-source/o1vm-e2e-testing-cache.zip
+
+# Command to copy the files to mounted volume
+CMD ["/bin/sh", "-c", "cp -r /tmp/cache-source/* /tmp/cache/"]

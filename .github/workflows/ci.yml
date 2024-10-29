@@ -78,8 +78,6 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
-        os: ["ubuntu-latest"]
-        node: [20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -96,7 +94,7 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Rust Cache
+      - name: Apply the Rust smart cacheing
         uses: Swatinem/rust-cache@v2
 
       - name: Use shared OCaml setting up steps

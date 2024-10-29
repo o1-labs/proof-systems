@@ -10,6 +10,10 @@ set -u
 
 source $FILENAME
 
-./run-op-program.sh
-./run-cannon.sh
+if [ "${RUN_WITH_CACHED_DATA:-}" == "y" ]; then
+    echo "The Op-Program and the Cannon apps were not executed because the cached data usage was requested"
+else
+    ./run-op-program.sh
+    ./run-cannon.sh
+fi
 ./run-vm.sh
