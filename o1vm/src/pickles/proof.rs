@@ -34,7 +34,7 @@ pub struct Proof<G: KimchiCurve> {
     pub zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     pub zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     pub quotient_commitment: PolyComm<G>,
-    pub quotient_evaluations: PointEvaluations<G::ScalarField>,
+    pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
     /// IPA opening proof
     pub opening_proof: OpeningProof<G>,
 }

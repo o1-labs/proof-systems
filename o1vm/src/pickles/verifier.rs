@@ -2,6 +2,7 @@
 
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{Field, One, PrimeField, Zero};
+use itertools::Itertools;
 use rand::thread_rng;
 
 use kimchi::{
@@ -155,8 +156,14 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&quotient_evaluations.zeta);
-    fr_sponge.absorb(&quotient_evaluations.zeta_omega);
+    for (quotient_zeta_eval, quotient_zeta_omega_eval) in quotient_evaluations
+        .zeta
+        .iter()
+        .zip(quotient_evaluations.zeta_omega.iter())
+    {
+        fr_sponge.absorb(quotient_zeta_eval);
+        fr_sponge.absorb(quotient_zeta_omega_eval);
+    }
 
     // FIXME: use a proper Challenge structure
     let challenges = BerkeleyChallenges {
@@ -220,8 +227,8 @@ where
         evaluations.push(Evaluation {
             commitment: proof.quotient_commitment.clone(),
             evaluations: vec![
-                vec![quotient_evaluations.zeta],
-                vec![quotient_evaluations.zeta_omega],
+                quotient_evaluations.zeta.clone(),
+                quotient_evaluations.zeta_omega.clone(),
             ],
         });
         evaluations
@@ -249,7 +256,14 @@ where
     let group_map = G::Map::setup();
 
     // Check the actual quotient works.
-    (quotient_evaluations.zeta
-        == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
+    let (quotient_zeta, _) = quotient_evaluations.zeta.iter().fold(
+        (G::ScalarField::zero(), G::ScalarField::one()),
+        |(res, zeta_i_n), chunk| {
+            let res = res + zeta_i_n * chunk;
+            let zeta_i_n = zeta_i_n * zeta.pow([domain.d1.size]);
+            (res, zeta_i_n)
+        },
+    );
+    (quotient_zeta == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
         && OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }

@@ -16,6 +16,7 @@ use kimchi::{
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     ipa::{DensePolynomialOrEvaluations, OpeningProof, SRS},
@@ -318,9 +319,19 @@ where
         [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
     > = evals(&zeta_omega);
 
+    let chunked_quotient = quotient_poly
+        .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize);
     let quotient_evaluations = PointEvaluations {
-        zeta: quotient_poly.evaluate(&zeta),
-        zeta_omega: quotient_poly.evaluate(&zeta_omega),
+        zeta: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(&zeta))
+            .collect::<Vec<_>>(),
+        zeta_omega: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(&zeta_omega))
+            .collect(),
     };
 
     // Absorbing evaluations with a sponge for the other field
@@ -349,9 +360,14 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&quotient_evaluations.zeta);
-    fr_sponge.absorb(&quotient_evaluations.zeta_omega);
-
+    for (quotient_zeta_eval, quotient_zeta_omega_eval) in quotient_evaluations
+        .zeta
+        .iter()
+        .zip(quotient_evaluations.zeta_omega.iter())
+    {
+        fr_sponge.absorb(quotient_zeta_eval);
+        fr_sponge.absorb(quotient_zeta_omega_eval);
+    }
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
