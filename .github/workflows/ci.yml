@@ -78,6 +78,7 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
+        node: [20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
