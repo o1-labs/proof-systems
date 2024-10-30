@@ -2,7 +2,6 @@
 
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{Field, One, PrimeField, Zero};
-use itertools::Itertools;
 use rand::thread_rng;
 
 use kimchi::{

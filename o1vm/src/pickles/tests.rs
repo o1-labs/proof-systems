@@ -115,7 +115,7 @@ fn test_small_circuit() {
         verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
     let instant_after_verification = Instant::now();
     debug!(
-        "Verification took: {}",
+        "Verification took: {} ms",
         (instant_after_verification - instant_before_verification).as_millis()
     );
     assert!(verif, "Verification fails");

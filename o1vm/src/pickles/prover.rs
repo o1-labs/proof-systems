@@ -128,7 +128,7 @@ where
             error,
             selector,
         } = &polys;
-        // Note: We add a constant blinder in case we have a column with only zeroes.
+
         let comm = |poly: &DensePolynomial<G::ScalarField>| {
             srs.commit_custom(
                 poly,
@@ -383,9 +383,7 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 1,
-                // since otherwise we might commit to the zero polynomial
-                // and that would be bad!
+                // We do not have any blinder, therefore we set to 1.
                 PolyComm::new(vec![G::ScalarField::one()]),
             )
         })
