@@ -15,7 +15,7 @@ use o1vm::{
         constraints as mips_constraints,
         interpreter::{self, InterpreterEnv},
         witness::{self as mips_witness},
-        ITypeInstruction, Instruction, RTypeInstruction,
+        Instruction,
     },
     pickles::{
         proof::{Proof, ProofInputs},
@@ -78,27 +78,11 @@ pub fn main() -> ExitCode {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    // FIXME: This is a hack to skip some instructions that have failing constraints.
-    // It might be related to env.equal.
-    let failing_instructions = [
-        Instruction::RType(RTypeInstruction::SyscallOther),
-        Instruction::RType(RTypeInstruction::SyscallFcntl),
-        Instruction::IType(ITypeInstruction::BranchEq),
-        Instruction::IType(ITypeInstruction::BranchNeq),
-        Instruction::IType(ITypeInstruction::LoadWordLeft),
-        Instruction::IType(ITypeInstruction::LoadWordRight),
-        Instruction::IType(ITypeInstruction::StoreWordLeft),
-        Instruction::IType(ITypeInstruction::StoreWordRight),
-    ];
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
             .flat_map(|instr_typ| instr_typ.into_iter())
             .fold(vec![], |mut acc, instr| {
-                if failing_instructions.contains(&instr) {
-                    debug!("Skipping instruction {:?}", instr);
-                    return acc;
-                }
                 interpreter::interpret_instruction(&mut mips_con_env, instr);
                 let selector = mips_con_env.get_selector();
                 let constraints_with_selector: Vec<E<Fp>> = mips_con_env
