@@ -2673,20 +2673,6 @@
 <a href="#2673" id="2673">2673</a>
 <a href="#2674" id="2674">2674</a>
 <a href="#2675" id="2675">2675</a>
-<a href="#2676" id="2676">2676</a>
-<a href="#2677" id="2677">2677</a>
-<a href="#2678" id="2678">2678</a>
-<a href="#2679" id="2679">2679</a>
-<a href="#2680" id="2680">2680</a>
-<a href="#2681" id="2681">2681</a>
-<a href="#2682" id="2682">2682</a>
-<a href="#2683" id="2683">2683</a>
-<a href="#2684" id="2684">2684</a>
-<a href="#2685" id="2685">2685</a>
-<a href="#2686" id="2686">2686</a>
-<a href="#2687" id="2687">2687</a>
-<a href="#2688" id="2688">2688</a>
-<a href="#2689" id="2689">2689</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -3387,21 +3373,7 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = {
-            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-            <span class="kw">unsafe </span>{ <span class="self">self</span>.test_zero(x, pos) }
-        };
-        <span class="kw">let </span>x_inv_or_zero = {
-            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-            <span class="kw">unsafe </span>{ <span class="self">self</span>.inverse_or_zero(x, pos) }
-        };
-        <span class="comment">// If x = 0, then res = 1 and x_inv_or_zero = 0
-        // If x &lt;&gt; 0, then res = 0 and x_inv_or_zero = x^(-1)
-        </span><span class="self">self</span>.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - <span class="self">Self</span>::constant(<span class="number">1</span>));
-        <span class="self">self</span>.add_constraint(x.clone() * res.clone());
-        res
-    }
+    <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
     </span><span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
