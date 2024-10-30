@@ -1,4 +1,4 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
@@ -103,9 +103,20 @@ pub fn main() -> ExitCode {
                     .into_iter()
                     .map(|c| selector.clone() * c)
                     .collect();
-                acc.extend(constraints_with_selector);
+                // we want to iterate on the vector of the biggest length.
+                let (big, small) = if constraints_with_selector.len() > acc.len() {
+                    (constraints_with_selector, acc)
+                } else {
+                    (acc, constraints_with_selector)
+                };
+                // add the constraints together
+                let res = big
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, cst)| cst + small.get(i).unwrap_or(&E::<Fp>::zero()).clone())
+                    .collect();
                 mips_con_env.reset();
-                acc
+                res
             });
         constraints.extend(mips_con_env.get_selector_constraints());
         constraints
