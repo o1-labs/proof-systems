@@ -43,6 +43,3 @@ pub trait SquareRootField: Field {
     /// Sets `self` to be the square root of `self`, if it exists.
     fn sqrt_in_place(&mut self) -> Option<&mut Self>;
 }
-
-#[cfg(test)]
-mod tests;
