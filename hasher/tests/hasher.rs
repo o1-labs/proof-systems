@@ -1,4 +1,4 @@
-use crate::{create_kimchi, create_legacy, Fp, Hashable, Hasher, ROInput};
+use mina_hasher::{create_kimchi, create_legacy, Fp, Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::{fs::File, path::PathBuf};
