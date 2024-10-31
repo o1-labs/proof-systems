@@ -35,12 +35,16 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::curve::KimchiCurve;
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 <span class="kw">use </span>poly_commitment::{ipa::OpeningProof, PolyComm};
 
 <span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::column::N_MIPS_SEL_COLS;
 
-<span class="kw">pub struct </span>WitnessColumns&lt;G, S&gt; {
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>WitnessColumns&lt;G, S&gt; {
     <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
@@ -69,6 +73,8 @@
     <span class="kw">pub </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;, [PolyComm&lt;G&gt;; N_MIPS_SEL_COLS]&gt;,
     <span class="kw">pub </span>zeta_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt;,
     <span class="kw">pub </span>zeta_omega_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt;,
+    <span class="kw">pub </span>quotient_commitment: PolyComm&lt;G&gt;,
+    <span class="kw">pub </span>quotient_evaluations: PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;,
     <span class="doccomment">/// IPA opening proof
     </span><span class="kw">pub </span>opening_proof: OpeningProof&lt;G&gt;,
 }

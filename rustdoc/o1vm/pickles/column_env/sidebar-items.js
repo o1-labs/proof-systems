@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ColumnEnvironment"]};
+window.SIDEBAR_ITEMS = {"fn":["get_all_columns"],"struct":["ColumnEnvironment"]};

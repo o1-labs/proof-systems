@@ -384,6 +384,48 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>ark_ec::{AffineRepr, Group};
@@ -398,9 +440,11 @@
     curve::KimchiCurve,
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
+    proof::PointEvaluations,
 };
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+<span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     ipa::{DensePolynomialOrEvaluations, OpeningProof, SRS},
@@ -512,9 +556,16 @@
             error,
             selector,
         } = <span class="kw-2">&amp;</span>polys;
-        <span class="comment">// Note: we do not blind. We might want in the near future in case we
-        // have a column with only zeroes.
-        </span><span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, num_chunks);
+
+        <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| {
+            srs.commit_custom(
+                poly,
+                num_chunks,
+                <span class="kw-2">&amp;</span>PolyComm::new(<span class="macro">vec!</span>[G::ScalarField::one()]),
+            )
+            .unwrap()
+            .commitment
+        };
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>selector = selector.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -626,27 +677,36 @@
         <span class="comment">// And we interpolate using the evaluations
         </span><span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        <span class="kw">let </span>fail_final_q_division = || {
-            <span class="macro">panic!</span>(<span class="string">&quot;Division by vanishing poly must not fail at this point, we checked it before&quot;</span>)
-        };
+        <span class="kw">let </span>fail_final_q_division = || <span class="macro">panic!</span>(<span class="string">&quot;Fail division by vanishing poly&quot;</span>);
+        <span class="kw">let </span>fail_remainder_not_zero =
+            || <span class="macro">panic!</span>(<span class="string">&quot;The constraints are not satisifed since the remainder is not zero&quot;</span>);
         <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        </span><span class="kw">let </span>(quotient, res) = expr_evaluation_interpolated
-            .divide_by_vanishing_poly(domain.d1)
+        </span><span class="kw">let </span>(quotient, rem) = expr_evaluation_interpolated
+            <span class="comment">// FIXME: Should this be d8?
+            </span>.divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
         <span class="comment">// As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.
-        </span><span class="kw">if </span>!res.is_zero() {
-            fail_final_q_division();
+        </span><span class="kw">if </span>!rem.is_zero() {
+            fail_remainder_not_zero();
         }
 
         quotient
     };
 
-    <span class="kw">let </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize);
-
-    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm);
+    <span class="kw">let </span>quotient_commitment = srs
+        .commit_custom(
+            <span class="kw-2">&amp;</span>quotient_poly,
+            DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize,
+            <span class="kw-2">&amp;</span>PolyComm::new(<span class="macro">vec!</span>[
+                G::ScalarField::one();
+                DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize
+            ]),
+        )
+        .unwrap();
+    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>quotient_commitment.commitment);
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -680,21 +740,33 @@
         &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
         [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
     &gt; = evals(<span class="kw-2">&amp;</span>zeta);
+
     <span class="comment">// All evaluations at ζω
     </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;
         &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
         [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
     &gt; = evals(<span class="kw-2">&amp;</span>zeta_omega);
 
+    <span class="kw">let </span>chunked_quotient = quotient_poly
+        .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize, domain.d1.size <span class="kw">as </span>usize);
+    <span class="kw">let </span>quotient_evaluations = PointEvaluations {
+        zeta: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        zeta_omega: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta_omega))
+            .collect(),
+    };
+
     <span class="comment">// Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
     </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
-
-    <span class="comment">// Quotient poly evals
-    </span><span class="kw">let </span>quotient_zeta_eval = quotient_poly.evaluate(<span class="kw-2">&amp;</span>zeta);
-    <span class="kw">let </span>quotient_zeta_omega_eval = quotient_poly.evaluate(<span class="kw-2">&amp;</span>zeta_omega);
 
     <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
         .scratch
@@ -716,30 +788,40 @@
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(<span class="kw-2">&amp;</span>quotient_zeta_eval);
-    fr_sponge.absorb(<span class="kw-2">&amp;</span>quotient_zeta_omega_eval);
-
+    <span class="kw">for </span>(quotient_zeta_eval, quotient_zeta_omega_eval) <span class="kw">in </span>quotient_evaluations
+        .zeta
+        .iter()
+        .zip(quotient_evaluations.zeta_omega.iter())
+    {
+        fr_sponge.absorb(quotient_zeta_eval);
+        fr_sponge.absorb(quotient_zeta_omega_eval);
+    }
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
 
-    // Preparing the polynomials for the opening proof
     </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
-    polynomials.push(quotient_poly);
 
-    <span class="kw">let </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
+    <span class="comment">// Preparing the polynomials for the opening proof
+    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
         .iter()
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                <span class="comment">// We do not have any blinder, therefore we set to 0.
-                </span>PolyComm::new(<span class="macro">vec!</span>[G::ScalarField::zero()]),
+                <span class="comment">// We do not have any blinder, therefore we set to 1.
+                </span>PolyComm::new(<span class="macro">vec!</span>[G::ScalarField::one()]),
             )
         })
         .collect();
+    <span class="comment">// we handle the quotient separately because the number of blinders =
+    // number of chunks, which is different for just the quotient polynomial.
+    </span>polynomials.push((
+        DensePolynomialOrEvaluations::DensePolynomial(<span class="kw-2">&amp;</span>quotient_poly),
+        quotient_commitment.blinders,
+    ));
 
     <span class="comment">// poly scale
     </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
@@ -767,6 +849,8 @@
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        quotient_commitment: quotient_commitment.commitment,
+        quotient_evaluations,
         opening_proof,
     })
 }

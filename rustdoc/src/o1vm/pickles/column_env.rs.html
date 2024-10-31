@@ -102,8 +102,27 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
+<span class="kw">use </span>kimchi_msm::columns::Column;
 
 <span class="kw">use crate</span>::{
     interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
@@ -138,41 +157,58 @@
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; TColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, BerkeleyChallengeTerm, BerkeleyChallenges&lt;F&gt;&gt;
-    <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;
-{
-    <span class="comment">// FIXME: do we change to the MIPS column type?
-    // We do not want to keep kimchi_msm/generic prover
-    </span><span class="kw">type </span>Column = kimchi_msm::columns::Column;
+<span class="kw">pub fn </span>get_all_columns() -&gt; Vec&lt;Column&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>cols = Vec::&lt;Column&gt;::with_capacity(SCRATCH_SIZE + <span class="number">2 </span>+ N_MIPS_SEL_COLS);
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SCRATCH_SIZE + <span class="number">2 </span>{
+        cols.push(Column::Relation(i));
+    }
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_MIPS_SEL_COLS {
+        cols.push(Column::DynamicSelector(i));
+    }
+    cols
+}
 
-    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evals&lt;F&gt;&gt; {
+<span class="kw">impl</span>&lt;G&gt; WitnessColumns&lt;G, [G; N_MIPS_SEL_COLS]&gt; {
+    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>G&gt; {
         <span class="kw">match </span><span class="kw-2">*</span>col {
-            <span class="self">Self</span>::Column::Relation(i) =&gt; {
+            Column::Relation(i) =&gt; {
                 <span class="kw">if </span>i &lt; SCRATCH_SIZE {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness.scratch[i];
+                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.scratch[i];
                     <span class="prelude-val">Some</span>(res)
                 } <span class="kw">else if </span>i == SCRATCH_SIZE {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness.instruction_counter;
+                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.instruction_counter;
                     <span class="prelude-val">Some</span>(res)
                 } <span class="kw">else if </span>i == SCRATCH_SIZE + <span class="number">1 </span>{
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness.error;
+                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.error;
                     <span class="prelude-val">Some</span>(res)
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">&quot;We should not have that many relation columns&quot;</span>);
                 }
             }
-            <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
+            Column::DynamicSelector(i) =&gt; {
                 <span class="macro">assert!</span>(
                     i &lt; N_MIPS_SEL_COLS,
                     <span class="string">&quot;We do not have that many dynamic selector columns&quot;
                 </span>);
-                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness.selector[i];
+                <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.selector[i];
                 <span class="prelude-val">Some</span>(res)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;We should not have any other type of columns&quot;</span>)
             }
         }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; TColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, BerkeleyChallengeTerm, BerkeleyChallenges&lt;F&gt;&gt;
+    <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;
+{
+    <span class="comment">// FIXME: do we change to the MIPS column type?
+    // We do not want to keep kimchi_msm/generic prover
+    </span><span class="kw">type </span>Column = Column;
+
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evals&lt;F&gt;&gt; {
+        <span class="self">self</span>.witness.get_column(col)
     }
 
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; Radix2EvaluationDomain&lt;F&gt; {

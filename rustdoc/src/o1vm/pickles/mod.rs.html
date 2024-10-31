@@ -34,6 +34,7 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This is the pickles flavor of the o1vm.
 //! The goal of this flavor is to run a version of the o1vm with selectors for
 //! each instruction using the Pasta curves and the IPA PCS.
@@ -51,6 +52,7 @@
 </span><span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
+<span class="kw">pub mod </span>verifier;
 
 <span class="doccomment">/// Maximum degree of the constraints.
 /// It does include the additional degree induced by the multiplication of the
