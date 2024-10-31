@@ -17,10 +17,7 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::{
-        proof::{Proof, ProofInputs},
-        prover,
-    },
+    pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -124,19 +121,26 @@ pub fn main() -> ExitCode {
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let _proof: Result<Proof<Vesta>, prover::ProverError> =
-                prover::prove::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                    _,
-                >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
+            let proof = prover::prove::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                _,
+            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+            .unwrap();
             // FIXME: check that the proof is correct. This is for testing purposes.
             // Leaving like this for now.
             debug!(
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
             );
+            let verif = verifier::verify::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+            >(domain_fp, &srs, &constraints, &proof);
+            assert!(verif);
+
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }

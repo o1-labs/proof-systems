@@ -12,9 +12,11 @@ use kimchi::{
     curve::KimchiCurve,
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
+    proof::PointEvaluations,
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     ipa::{DensePolynomialOrEvaluations, OpeningProof, SRS},
@@ -126,9 +128,16 @@ where
             error,
             selector,
         } = &polys;
-        // Note: we do not blind. We might want in the near future in case we
-        // have a column with only zeroes.
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, num_chunks);
+
+        let comm = |poly: &DensePolynomial<G::ScalarField>| {
+            srs.commit_custom(
+                poly,
+                num_chunks,
+                &PolyComm::new(vec![G::ScalarField::one()]),
+            )
+            .unwrap()
+            .commitment
+        };
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
@@ -240,27 +249,36 @@ where
         // And we interpolate using the evaluations
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        let fail_final_q_division = || {
-            panic!("Division by vanishing poly must not fail at this point, we checked it before")
-        };
+        let fail_final_q_division = || panic!("Fail division by vanishing poly");
+        let fail_remainder_not_zero =
+            || panic!("The constraints are not satisifed since the remainder is not zero");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = expr_evaluation_interpolated
+        let (quotient, rem) = expr_evaluation_interpolated
+            // FIXME: Should this be d8?
             .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.
-        if !res.is_zero() {
-            fail_final_q_division();
+        if !rem.is_zero() {
+            fail_remainder_not_zero();
         }
 
         quotient
     };
 
-    let t_comm = srs.commit_non_hiding(&quotient_poly, DEGREE_QUOTIENT_POLYNOMIAL as usize);
-
-    absorb_commitment(&mut fq_sponge, &t_comm);
+    let quotient_commitment = srs
+        .commit_custom(
+            &quotient_poly,
+            DEGREE_QUOTIENT_POLYNOMIAL as usize,
+            &PolyComm::new(vec![
+                G::ScalarField::one();
+                DEGREE_QUOTIENT_POLYNOMIAL as usize
+            ]),
+        )
+        .unwrap();
+    absorb_commitment(&mut fq_sponge, &quotient_commitment.commitment);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at ζ and ζω
@@ -294,21 +312,33 @@ where
         <<G as AffineRepr>::Group as Group>::ScalarField,
         [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
     > = evals(&zeta);
+
     // All evaluations at ζω
     let zeta_omega_evaluations: WitnessColumns<
         <<G as AffineRepr>::Group as Group>::ScalarField,
         [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
     > = evals(&zeta_omega);
 
+    let chunked_quotient = quotient_poly
+        .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize);
+    let quotient_evaluations = PointEvaluations {
+        zeta: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(&zeta))
+            .collect::<Vec<_>>(),
+        zeta_omega: chunked_quotient
+            .polys
+            .iter()
+            .map(|p| p.evaluate(&zeta_omega))
+            .collect(),
+    };
+
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
-
-    // Quotient poly evals
-    let quotient_zeta_eval = quotient_poly.evaluate(&zeta);
-    let quotient_zeta_omega_eval = quotient_poly.evaluate(&zeta_omega);
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
@@ -330,30 +360,40 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&quotient_zeta_eval);
-    fr_sponge.absorb(&quotient_zeta_omega_eval);
-
+    for (quotient_zeta_eval, quotient_zeta_omega_eval) in quotient_evaluations
+        .zeta
+        .iter()
+        .zip(quotient_evaluations.zeta_omega.iter())
+    {
+        fr_sponge.absorb(quotient_zeta_eval);
+        fr_sponge.absorb(quotient_zeta_omega_eval);
+    }
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
 
-    // Preparing the polynomials for the opening proof
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);
-    polynomials.push(quotient_poly);
 
-    let polynomials: Vec<_> = polynomials
+    // Preparing the polynomials for the opening proof
+    let mut polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 0.
-                PolyComm::new(vec![G::ScalarField::zero()]),
+                // We do not have any blinder, therefore we set to 1.
+                PolyComm::new(vec![G::ScalarField::one()]),
             )
         })
         .collect();
+    // we handle the quotient separately because the number of blinders =
+    // number of chunks, which is different for just the quotient polynomial.
+    polynomials.push((
+        DensePolynomialOrEvaluations::DensePolynomial(&quotient_poly),
+        quotient_commitment.blinders,
+    ));
 
     // poly scale
     let v_chal = fr_sponge.challenge();
@@ -381,6 +421,8 @@ where
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        quotient_commitment: quotient_commitment.commitment,
+        quotient_evaluations,
         opening_proof,
     })
 }

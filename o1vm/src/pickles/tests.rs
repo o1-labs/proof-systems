@@ -1,14 +1,29 @@
+use std::time::Instant;
+
+use super::{
+    super::interpreters::mips::witness::SCRATCH_SIZE,
+    proof::{ProofInputs, WitnessColumns},
+    prover::prove,
+};
 use crate::{
     interpreters::mips::{
         constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
     },
-    pickles::{MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
+use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
-use kimchi_msm::expr::E;
-use mina_curves::pasta::Fp;
+use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
+use kimchi_msm::{columns::Column, expr::E};
+use log::debug;
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use o1_utils::tests::make_test_rng;
+use poly_commitment::SRS;
 use strum::{EnumCount, IntoEnumIterator};
-
 #[test]
 fn test_regression_constraints_with_selectors() {
     let constraints = {
@@ -55,4 +70,53 @@ fn test_regression_selectors_for_instructions() {
     constraints
         .iter()
         .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
+}
+
+fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
+    (0..n).map(|i| Fq::from((i) as u64)).collect()
+}
+#[test]
+fn test_small_circuit() {
+    let domain = EvaluationDomains::<Fq>::create(8).unwrap();
+    let srs = SRS::create(8);
+    let proof_input = ProofInputs::<Pallas> {
+        evaluations: WitnessColumns {
+            scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
+            instruction_counter: zero_to_n_minus_one(8)
+                .into_iter()
+                .map(|x| x + Fq::one())
+                .collect(),
+            error: (0..8)
+                .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
+                .collect(),
+            selector: zero_to_n_minus_one(8),
+        },
+    };
+    let mut expr = Expr::zero();
+    for i in 0..SCRATCH_SIZE + 2 {
+        expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
+    }
+    let mut rng = make_test_rng(None);
+
+    type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
+    type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
+
+    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+        domain,
+        &srs,
+        proof_input,
+        &[expr.clone()],
+        &mut rng,
+    )
+    .unwrap();
+
+    let instant_before_verification = Instant::now();
+    let verif =
+        verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
+    let instant_after_verification = Instant::now();
+    debug!(
+        "Verification took: {} ms",
+        (instant_after_verification - instant_before_verification).as_millis()
+    );
+    assert!(verif, "Verification fails");
 }
