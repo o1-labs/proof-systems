@@ -1,14 +1,13 @@
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
+use crate::{helper::*, word::CairoWord};
+use ark_ff::Field;
+use core::iter::repeat;
 use std::{
     fmt::{Display, Formatter, Result},
     ops::{Index, IndexMut},
 };
-
-use crate::{helper::*, word::CairoWord};
-use ark_ff::Field;
-use core::iter::repeat;
 
 /// This data structure stores the memory of the program
 pub struct CairoMemory<F> {

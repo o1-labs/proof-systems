@@ -12,11 +12,11 @@ use ark_ff::Field;
 #[derive(Clone, Copy)]
 pub struct CairoState<F> {
     /// Program counter: points to address in memory
-    pc: F,
+    pub pc: F,
     /// Allocation pointer: points to first free space in memory
-    ap: F,
+    pub ap: F,
     /// Frame pointer: points to the beginning of the stack in memory (for arguments)
-    fp: F,
+    pub fp: F,
 }
 
 /// This trait contains functions to obtain the Cairo pointers (program counter, allocation pointer and frame pointer)
@@ -56,21 +56,21 @@ impl<F: Field> Pointers<F> for CairoState<F> {
 /// A structure to store auxiliary variables throughout computation
 pub struct CairoContext<F> {
     /// Destination
-    dst: Option<F>,
+    pub dst: Option<F>,
     /// First operand
-    op0: Option<F>,
+    pub op0: Option<F>,
     /// Second operand
-    op1: Option<F>,
+    pub op1: Option<F>,
     /// Result
-    res: Option<F>,
+    pub res: Option<F>,
     /// Destination address
-    adr_dst: F,
+    pub adr_dst: F,
     /// First operand address
-    adr_op0: F,
+    pub adr_op0: F,
     /// Second operand address
-    adr_op1: F,
+    pub adr_op1: F,
     /// Size of the instruction
-    size: F,
+    pub size: F,
 }
 
 impl<F: Field> Default for CairoContext<F> {
@@ -249,14 +249,14 @@ impl<F: Field> FlagBits<F> for CairoInstruction<F> {
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F> {
     /// state of the computation
-    mem: &'a mut CairoMemory<F>,
+    pub mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
     /// current pointers
-    curr: CairoState<F>,
+    pub curr: CairoState<F>,
     /// (if any) next pointers
-    next: Option<CairoState<F>>,
+    pub next: Option<CairoState<F>>,
     /// state auxiliary variables
-    vars: CairoContext<F>,
+    pub vars: CairoContext<F>,
 }
 
 impl<'a, F: Field> CairoStep<'a, F> {
@@ -490,15 +490,15 @@ impl<'a, F: Field> CairoStep<'a, F> {
 /// This struct stores the needed information to run a program
 pub struct CairoProgram<'a, F> {
     /// total number of steps
-    steps: F,
+    pub steps: F,
     /// full execution memory
-    mem: &'a mut CairoMemory<F>,
+    pub mem: &'a mut CairoMemory<F>,
     /// initial computation registers
-    ini: CairoState<F>,
+    pub ini: CairoState<F>,
     /// final computation pointers
-    fin: CairoState<F>,
+    pub fin: CairoState<F>,
     /// execution trace as a vector of [CairoInstruction]
-    trace: Vec<CairoInstruction<F>>,
+    pub trace: Vec<CairoInstruction<F>>,
 }
 
 impl<'a, F: Field> CairoProgram<'a, F> {
@@ -572,129 +572,5 @@ impl<'a, F: Field> CairoProgram<'a, F> {
         }
         self.steps = F::from(n);
         self.fin = CairoState::new(curr.pc, curr.ap, curr.fp);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use mina_curves::pasta::Fp as F;
-
-    #[test]
-    fn test_cairo_step() {
-        // This tests that CairoStep works for a 2 word instruction
-        //    tempvar x = 10;
-        let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
-            .iter()
-            .map(|&i: &i64| F::from(i))
-            .collect();
-        let mut mem = CairoMemory::new(instrs);
-        // Need to know how to find out
-        // Is it final ap and/or final fp? Will write to starkware guys to learn about this
-        mem.write(F::from(4u32), F::from(7u32));
-        mem.write(F::from(5u32), F::from(7u32));
-        let ptrs = CairoState::new(F::from(1u32), F::from(6u32), F::from(6u32));
-        let mut step = CairoStep::new(&mut mem, ptrs);
-
-        step.execute();
-        assert_eq!(step.next.unwrap().pc, F::from(3u32));
-        assert_eq!(step.next.unwrap().ap, F::from(7u32));
-        assert_eq!(step.next.unwrap().fp, F::from(6u32));
-
-        println!("{}", step.mem);
-    }
-
-    #[test]
-    fn test_cairo_program() {
-        let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
-            .iter()
-            .map(|&i: &i64| F::from(i))
-            .collect();
-        let mut mem = CairoMemory::<F>::new(instrs);
-        // Need to know how to find out
-        // Is it final ap and/or final fp? Will write to starkware guys to learn about this
-        mem.write(F::from(4u32), F::from(7u32)); //beginning of output
-        mem.write(F::from(5u32), F::from(7u32)); //end of output
-        let prog = CairoProgram::new(&mut mem, 1);
-        println!("{}", prog.mem);
-    }
-
-    #[test]
-    fn test_cairo_output() {
-        // This is a test for a longer program, involving builtins, imports and outputs
-        // One can generate more tests here: https://www.cairo-lang.org/playground/
-        /*
-        %builtins output
-        from starkware.cairo.common.serialize import serialize_word
-        func main{output_ptr : felt*}():
-            tempvar x = 10
-            tempvar y = x + x
-            tempvar z = y * y + x
-            serialize_word(x)
-            serialize_word(y)
-            serialize_word(z)
-            return ()
-        end
-        */
-        let instrs = [
-            0x400380007ffc7ffd,
-            0x482680017ffc8000,
-            1,
-            0x208b7fff7fff7ffe,
-            0x480680017fff8000,
-            10,
-            0x48307fff7fff8000,
-            0x48507fff7fff8000,
-            0x48307ffd7fff8000,
-            0x480a7ffd7fff8000,
-            0x48127ffb7fff8000,
-            0x1104800180018000,
-            -11,
-            0x48127ff87fff8000,
-            0x1104800180018000,
-            -14,
-            0x48127ff67fff8000,
-            0x1104800180018000,
-            -17,
-            0x208b7fff7fff7ffe,
-            /*41, // beginning of outputs
-            44,   // end of outputs
-            44,   // input
-            */
-        ]
-        .iter()
-        .map(|&i: &i64| F::from(i))
-        .collect();
-
-        let mut mem = CairoMemory::<F>::new(instrs);
-        // Need to know how to find out
-        mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
-        mem.write(F::from(22u32), F::from(44u32)); // end of outputs
-        mem.write(F::from(23u32), F::from(44u32)); //end of program
-        let prog = CairoProgram::new(&mut mem, 5);
-        assert_eq!(prog.fin().pc, F::from(20u32));
-        assert_eq!(prog.fin().ap, F::from(41u32));
-        assert_eq!(prog.fin().fp, F::from(24u32));
-        println!("{}", prog.mem);
-        assert_eq!(prog.mem.read(F::from(24u32)).unwrap(), F::from(10u32));
-        assert_eq!(prog.mem.read(F::from(25u32)).unwrap(), F::from(20u32));
-        assert_eq!(prog.mem.read(F::from(26u32)).unwrap(), F::from(400u32));
-        assert_eq!(prog.mem.read(F::from(27u32)).unwrap(), F::from(410u32));
-        assert_eq!(prog.mem.read(F::from(28u32)).unwrap(), F::from(41u32));
-        assert_eq!(prog.mem.read(F::from(29u32)).unwrap(), F::from(10u32));
-        assert_eq!(prog.mem.read(F::from(30u32)).unwrap(), F::from(24u32));
-        assert_eq!(prog.mem.read(F::from(31u32)).unwrap(), F::from(14u32));
-        assert_eq!(prog.mem.read(F::from(32u32)).unwrap(), F::from(42u32));
-        assert_eq!(prog.mem.read(F::from(33u32)).unwrap(), F::from(20u32));
-        assert_eq!(prog.mem.read(F::from(34u32)).unwrap(), F::from(24u32));
-        assert_eq!(prog.mem.read(F::from(35u32)).unwrap(), F::from(17u32));
-        assert_eq!(prog.mem.read(F::from(36u32)).unwrap(), F::from(43u32));
-        assert_eq!(prog.mem.read(F::from(37u32)).unwrap(), F::from(410u32));
-        assert_eq!(prog.mem.read(F::from(38u32)).unwrap(), F::from(24u32));
-        assert_eq!(prog.mem.read(F::from(39u32)).unwrap(), F::from(20u32));
-        assert_eq!(prog.mem.read(F::from(40u32)).unwrap(), F::from(44u32));
-        assert_eq!(prog.mem.read(F::from(41u32)).unwrap(), F::from(10u32));
-        assert_eq!(prog.mem.read(F::from(42u32)).unwrap(), F::from(20u32));
-        assert_eq!(prog.mem.read(F::from(43u32)).unwrap(), F::from(410u32));
     }
 }
