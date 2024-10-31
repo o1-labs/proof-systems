@@ -59,7 +59,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<G>,
+    inputs: ProofInputs<G::ScalarField>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
 ) -> Result<Proof<G>, ProverError>

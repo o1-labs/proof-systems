@@ -10,12 +10,12 @@ pub struct WitnessColumns<G, S> {
     pub selector: S,
 }
 
-pub struct ProofInputs<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+pub struct ProofInputs<F: Field> {
+    pub evaluations: WitnessColumns<Vec<F>, Vec<F>>,
 }
 
-pub struct NotInversedProofInputs<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<ToInverseOrNot<G::ScalarField>>, Vec<G::ScalarField>>,
+pub struct NotInversedProofInputs<F: Field> {
+    pub evaluations: WitnessColumns<Vec<ToInverseOrNot<F>>, Vec<F>>,
 }
 
 impl<G: KimchiCurve> ProofInputs<G> {
