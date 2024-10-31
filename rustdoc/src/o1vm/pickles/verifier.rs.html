@@ -258,17 +258,7 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-</pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::boxed_local)]
-
-</span><span class="kw">use </span>ark_ec::{AffineRepr, Group};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineRepr, Group};
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>rand::thread_rng;
 
@@ -467,39 +457,33 @@
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>evaluations = {
-        <span class="kw">let </span>all_columns = get_all_columns();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>evaluations = Vec::with_capacity(all_columns.len() + <span class="number">1</span>); <span class="comment">// +1 for the quotient
-
-        </span>all_columns.into_iter().for_each(|column| {
-            <span class="kw">let </span>point_evaluations = column_eval
-                .evaluate(column)
-                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Could not get `evaluations` for `Evaluation`&quot;</span>));
-
+    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = get_all_columns()
+        .into_iter()
+        .map(|column| {
             <span class="kw">let </span>commitment = column_eval
                 .commitment
                 .get_column(<span class="kw-2">&amp;</span>column)
                 .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Could not get `commitment` for `Evaluation`&quot;</span>))
                 .clone();
 
-            evaluations.push(Evaluation {
+            <span class="kw">let </span>evaluations = column_eval
+                .evaluate(column)
+                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Could not get `evaluations` for `Evaluation`&quot;</span>));
+
+            Evaluation {
                 commitment,
-                evaluations: <span class="macro">vec!</span>[
-                    <span class="macro">vec!</span>[point_evaluations.zeta],
-                    <span class="macro">vec!</span>[point_evaluations.zeta_omega],
-                ],
-            })
-        });
-        evaluations.push(Evaluation {
-            commitment: proof.quotient_commitment.clone(),
-            evaluations: <span class="macro">vec!</span>[
-                quotient_evaluations.zeta.clone(),
-                quotient_evaluations.zeta_omega.clone(),
-            ],
-        });
-        evaluations
-    };
+                evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[evaluations.zeta], <span class="macro">vec!</span>[evaluations.zeta_omega]],
+            }
+        })
+        .collect();
+
+    evaluations.push(Evaluation {
+        commitment: proof.quotient_commitment.clone(),
+        evaluations: <span class="macro">vec!</span>[
+            quotient_evaluations.zeta.clone(),
+            quotient_evaluations.zeta_omega.clone(),
+        ],
+    });
 
     <span class="kw">let </span>combined_inner_product = {
         <span class="kw">let </span>es: Vec&lt;<span class="kw">_</span>&gt; = evaluations

@@ -37,14 +37,12 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 <span class="kw">use </span>poly_commitment::{ipa::OpeningProof, PolyComm};
 
 <span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::column::N_MIPS_SEL_COLS;
 
-<span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>WitnessColumns&lt;G, S&gt; {
+<span class="kw">pub struct </span>WitnessColumns&lt;G, S&gt; {
     <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::interpreters::mips::witness::SCRATCH_SIZE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
