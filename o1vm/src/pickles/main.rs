@@ -106,7 +106,7 @@ pub fn main() -> ExitCode {
             .iter()
             .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
         {
-            scratch_chunk.push(*scratch);
+            scratch_chunk.push(scratch.to_field());
         }
         curr_proof_inputs
             .evaluations

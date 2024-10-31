@@ -3,7 +3,7 @@ use crate::{
     interpreters::mips::{
         interpreter::{debugging::InstructionParts, InterpreterEnv},
         registers::Registers,
-        witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
+        witness::{Env as WEnv, SyscallEnv, ToInverseOrNot, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracleT,
 };
@@ -87,7 +87,7 @@ where
         registers: Registers::default(),
         registers_write_index: Registers::default(),
         scratch_state_idx: 0,
-        scratch_state: [Fp::from(0); SCRATCH_SIZE],
+        scratch_state: [ToInverseOrNot::NotToInverse(Fp::from(0)); SCRATCH_SIZE],
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related

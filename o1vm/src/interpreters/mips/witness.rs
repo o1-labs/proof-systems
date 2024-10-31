@@ -65,6 +65,25 @@ impl SyscallEnv {
         }
     }
 }
+// This enum will populate the scracth state
+// The purpose is to perform a batch inversion at the end
+// We symbolically mark the inversion instead of computing them
+#[derive(Clone, Copy)]
+pub enum ToInverseOrNot<Fp> {
+    ToInverse(Fp),
+    NotToInverse(Fp),
+}
+
+impl<Fp: Field> ToInverseOrNot<Fp> {
+    pub fn to_field(self) -> Fp {
+        match self {
+            ToInverseOrNot::NotToInverse(x) => x,
+            ToInverseOrNot::ToInverse(x) => {
+                Fp::inverse(&x).expect("A zero value was marked as ToInverse")
+            }
+        }
+    }
+}
 
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
@@ -80,7 +99,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
-    pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state: [ToInverseOrNot<Fp>; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -92,8 +111,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
-    array::from_fn(|_| Fp::zero())
+fn fresh_scratch_state<Fp: Field, const N: usize>() -> [ToInverseOrNot<Fp>; N] {
+    array::from_fn(|_| ToInverseOrNot::NotToInverse(Fp::zero()))
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
@@ -952,7 +971,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::ScratchState(idx) => {
+                self.scratch_state[idx] = ToInverseOrNot::NotToInverse(value)
+            }
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }
