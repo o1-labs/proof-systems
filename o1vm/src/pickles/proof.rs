@@ -15,7 +15,10 @@ pub struct ProofInputs<F: Field> {
 }
 
 pub struct NotInversedProofInputs<F: Field> {
-    pub evaluations: WitnessColumns<Vec<ToInverseOrNot<F>>, Vec<F>>,
+    pub scratch: [Vec<ToInverseOrNot<F>>; crate::interpreters::mips::witness::SCRATCH_SIZE],
+    pub instruction_counter: Vec<F>,
+    pub error: Vec<F>,
+    pub selector: Vec<F>,
 }
 
 impl<G: KimchiCurve> ProofInputs<G> {
