@@ -3,7 +3,6 @@ use poly_commitment::{ipa::OpeningProof, PolyComm};
 
 use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
 
-#[derive(Debug)]
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,

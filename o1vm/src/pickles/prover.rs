@@ -46,13 +46,12 @@ pub enum ProverError {
 ///
 /// The proof is made of the following steps:
 /// 1. For each column, we create a commitment and absorb it in the sponge.
-/// 2. FIXME: we compute the quotient polynomial.
+/// 2. We compute the quotient polynomial.
 /// 3. We evaluate each polynomial (columns + quotient) to two challenges ζ and ζω.
 /// 4. We make a batch opening proof using the IPA PCS.
 ///
 /// The final proof consists of the opening proof, the commitments and the
 /// evaluations at ζ and ζω.
-// TODO: we might need blinders when the evaluation of columns are zeroes.
 pub fn prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
