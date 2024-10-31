@@ -1,8 +1,8 @@
 //! This module checks serialization/regression for types defined within the crate.
 
-use crate::{commitment::CommitmentCurve, srs::SRS, SRS as _};
 use ark_ff::UniformRand;
 use o1_utils::serialization::test_generic_serialization_regression_serde;
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS, SRS as _};
 
 #[test]
 pub fn ser_regression_canonical_srs() {
@@ -62,9 +62,9 @@ pub fn ser_regression_canonical_srs() {
 
 #[test]
 pub fn ser_regression_canonical_polycomm() {
-    use crate::{commitment::BlindedCommitment, srs::SRS};
     use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
     use mina_curves::pasta::{Fp, Vesta};
+    use poly_commitment::{commitment::BlindedCommitment, srs::SRS};
 
     let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
@@ -103,9 +103,9 @@ pub fn ser_regression_canonical_polycomm() {
 
 #[test]
 pub fn ser_regression_canonical_opening_proof() {
-    use crate::evaluation_proof::OpeningProof;
     use groupmap::GroupMap;
     use mina_curves::pasta::Vesta;
+    use poly_commitment::evaluation_proof::OpeningProof;
 
     let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
@@ -113,7 +113,10 @@ pub fn ser_regression_canonical_opening_proof() {
     let srs = SRS::<Vesta>::create(1 << 7);
 
     let data_expected: OpeningProof<Vesta> =
-        crate::tests::commitment::generate_random_opening_proof(rng, &group_map, &srs).0[0]
+        poly_commitment::commitment::test_common::generate_random_opening_proof(
+            rng, &group_map, &srs,
+        )
+        .0[0]
             .proof
             .clone();
 

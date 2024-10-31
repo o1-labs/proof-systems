@@ -1,12 +1,6 @@
 //! This module tests polynomial commitments, batched openings and
 //! verification of a batch of batched opening proofs of polynomial commitments
 
-use crate::{
-    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
-    evaluation_proof::DensePolynomialOrEvaluations,
-    srs::SRS,
-    SRS as _,
-};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
@@ -16,6 +10,12 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
 };
 use o1_utils::ExtendedDensePolynomial as _;
+use poly_commitment::{
+    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    evaluation_proof::DensePolynomialOrEvaluations,
+    srs::SRS,
+    SRS as _,
+};
 use rand::Rng;
 use std::time::{Duration, Instant};
 

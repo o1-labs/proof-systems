@@ -7,9 +7,6 @@ pub mod hash_map_cache;
 pub mod pairing_proof;
 pub mod srs;
 
-#[cfg(test)]
-mod tests;
-
 pub use commitment::PolyComm;
 
 use crate::{

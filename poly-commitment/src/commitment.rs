@@ -803,214 +803,6 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 }
 
 //
-// Tests
-//
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::srs::SRS;
-    use ark_poly::{DenseUVPolynomial, Polynomial, Radix2EvaluationDomain};
-    use mina_curves::pasta::{Fp, Vesta as VestaG};
-    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
-    use std::array;
-
-    #[test]
-    fn test_lagrange_commitments() {
-        let n = 64;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n);
-        srs.get_lagrange_basis(domain);
-
-        let num_chunks = domain.size() / srs.g.len();
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    // This tests with two chunks.
-    fn test_chunked_lagrange_commitments() {
-        let n = 64;
-        let divisor = 4;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n / divisor);
-        srs.get_lagrange_basis(domain);
-
-        let num_chunks = domain.size() / srs.g.len();
-        assert!(num_chunks == divisor);
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    // TODO @volhovm I don't understand what this test does and
-    // whether it is worth leaving.
-    /// Same as test_chunked_lagrange_commitments, but with a slight
-    /// offset in the SRS
-    fn test_offset_chunked_lagrange_commitments() {
-        let n = 64;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.get_lagrange_basis(domain);
-
-        // Is this even taken into account?...
-        let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
-        assert!(num_chunks == 2);
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks) // this requires max = Some(64)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    fn test_opening_proof() {
-        // create two polynomials
-        let coeffs: [Fp; 10] = array::from_fn(|i| Fp::from(i as u32));
-        let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
-        let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
-
-        // create an SRS
-        let srs = SRS::<VestaG>::create(20);
-        let rng = &mut o1_utils::tests::make_test_rng(None);
-
-        // commit the two polynomials
-        let commitment1 = srs.commit(&poly1, 1, rng);
-        let commitment2 = srs.commit(&poly2, 1, rng);
-
-        // create an aggregated opening proof
-        let (u, v) = (Fp::rand(rng), Fp::rand(rng));
-        let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge =
-            DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
-
-        let polys: Vec<(
-            DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
-            PolyComm<_>,
-        )> = vec![
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(&poly1),
-                commitment1.blinders,
-            ),
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(&poly2),
-                commitment2.blinders,
-            ),
-        ];
-        let elm = vec![Fp::rand(rng), Fp::rand(rng)];
-
-        let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
-
-        // evaluate the polynomials at these two points
-        let poly1_chunked_evals = vec![
-            poly1
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly1
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
-
-        fn sum(c: &[Fp]) -> Fp {
-            c.iter().fold(Fp::zero(), |a, &b| a + b)
-        }
-
-        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
-
-        let poly2_chunked_evals = vec![
-            poly2
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly2
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
-
-        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
-
-        let evaluations = vec![
-            Evaluation {
-                commitment: commitment1.commitment,
-                evaluations: poly1_chunked_evals,
-            },
-            Evaluation {
-                commitment: commitment2.commitment,
-                evaluations: poly2_chunked_evals,
-            },
-        ];
-
-        let combined_inner_product = {
-            let es: Vec<_> = evaluations
-                .iter()
-                .map(|Evaluation { evaluations, .. }| evaluations.clone())
-                .collect();
-            combined_inner_product(&v, &u, &es)
-        };
-
-        // verify the proof
-        let mut batch = vec![BatchEvaluationProof {
-            sponge,
-            evaluation_points: elm.clone(),
-            polyscale: v,
-            evalscale: u,
-            evaluations,
-            opening: &opening_proof,
-            combined_inner_product,
-        }];
-
-        assert!(srs.verify(&group_map, &mut batch, rng));
-    }
-}
-
-//
 // OCaml types
 //
 
@@ -1141,5 +933,229 @@ pub mod caml {
                 sg: caml.sg.into(),
             }
         }
+    }
+}
+
+pub mod test_common {
+    use super::*;
+
+    use crate::{
+        commitment::{
+            combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
+            Evaluation, PolyComm,
+        },
+        evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
+        srs::SRS,
+        SRS as SRSTrait,
+    };
+    use ark_ff::{UniformRand, Zero};
+    use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
+    use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+    use mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
+    };
+    use rand::{CryptoRng, Rng};
+    use std::{
+        iter::Iterator,
+        time::{Duration, Instant},
+    };
+
+    // Note: Because the current API uses large tuples of types, I re-create types
+    // in this test to facilitate aggregated proofs and batch verification of proofs.
+    // TODO: improve the polynomial commitment API
+
+    /// A commitment
+    pub struct Commitment {
+        /// the commitment itself, potentially in chunks
+        chunked_commitment: PolyComm<Vesta>,
+    }
+
+    /// An evaluated commitment (given a number of evaluation points)
+    pub struct EvaluatedCommitment {
+        /// the commitment
+        commit: Commitment,
+        /// the chunked evaluations given in the same order as the evaluation points
+        chunked_evals: Vec<ChunkedCommitmentEvaluation>,
+    }
+
+    /// A polynomial commitment evaluated at a point. Since a commitment can be chunked, the evaluations can also be chunked.
+    pub type ChunkedCommitmentEvaluation = Vec<Fp>;
+
+    mod prover {
+        use super::*;
+
+        /// This struct represents a commitment with associated secret information
+        pub struct CommitmentAndSecrets {
+            /// the commitment evaluated at some points
+            pub eval_commit: EvaluatedCommitment,
+            /// the polynomial
+            pub poly: DensePolynomial<Fp>,
+            /// the blinding part
+            pub chunked_blinding: PolyComm<Fp>,
+        }
+    }
+
+    /// This struct represents an aggregated evaluation proof for a number of polynomial commitments, as well as a number of evaluation points.
+    pub struct AggregatedEvaluationProof {
+        /// a number of evaluation points
+        eval_points: Vec<Fp>,
+        /// a number of commitments evaluated at these evaluation points
+        eval_commitments: Vec<EvaluatedCommitment>,
+        /// the random value used to separate polynomials
+        polymask: Fp,
+        /// the random value used to separate evaluations
+        evalmask: Fp,
+        /// an Fq-sponge
+        fq_sponge: DefaultFqSponge<VestaParameters, SC>,
+        /// the actual evaluation proof
+        pub proof: OpeningProof<Vesta>,
+    }
+
+    impl AggregatedEvaluationProof {
+        /// This function converts an aggregated evaluation proof into something the verify API understands
+        pub fn verify_type(
+            &self,
+        ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
+        {
+            let mut coms = vec![];
+            for eval_com in &self.eval_commitments {
+                assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
+                coms.push(Evaluation {
+                    commitment: eval_com.commit.chunked_commitment.clone(),
+                    evaluations: eval_com.chunked_evals.clone(),
+                });
+            }
+
+            let combined_inner_product = {
+                let es: Vec<_> = coms
+                    .iter()
+                    .map(|Evaluation { evaluations, .. }| evaluations.clone())
+                    .collect();
+                combined_inner_product(&self.polymask, &self.evalmask, &es)
+            };
+
+            BatchEvaluationProof {
+                sponge: self.fq_sponge.clone(),
+                evaluation_points: self.eval_points.clone(),
+                polyscale: self.polymask,
+                evalscale: self.evalmask,
+                evaluations: coms,
+                opening: &self.proof,
+                combined_inner_product,
+            }
+        }
+    }
+
+    pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
+        mut rng: &mut RNG,
+        group_map: &<Vesta as CommitmentCurve>::Map,
+        srs: &SRS<Vesta>,
+    ) -> (Vec<AggregatedEvaluationProof>, Duration, Duration) {
+        let num_chunks = 1;
+
+        let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+
+        let mut time_commit = Duration::new(0, 0);
+        let mut time_open = Duration::new(0, 0);
+
+        // create 7 distinct "aggregated evaluation proofs"
+        let mut proofs = vec![];
+        for _ in 0..7 {
+            // generate 7 random evaluation points
+            let eval_points: Vec<Fp> = (0..7).map(|_| Fp::rand(&mut rng)).collect();
+
+            // create 11 polynomials of random degree (of at most 500)
+            // and commit to them
+            let mut commitments = vec![];
+            for _ in 0..11 {
+                let len: usize = rng.gen();
+                let len = len % 500;
+                // TODO @volhovm maybe remove the second case.
+                // every other polynomial is upperbounded
+                let poly = if len == 0 {
+                    DensePolynomial::<Fp>::zero()
+                } else {
+                    DensePolynomial::<Fp>::rand(len, &mut rng)
+                };
+
+                // create commitments for each polynomial, and evaluate each polynomial at the 7 random points
+                let timer = Instant::now();
+                let BlindedCommitment {
+                    commitment: chunked_commitment,
+                    blinders: chunked_blinding,
+                } = srs.commit(&poly, num_chunks, &mut rng);
+                time_commit += timer.elapsed();
+
+                let mut chunked_evals = vec![];
+                for point in eval_points.clone() {
+                    let n = poly.len();
+                    let num_chunks = if n == 0 {
+                        1
+                    } else {
+                        n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
+                    };
+                    chunked_evals.push(
+                        poly.to_chunked_polynomial(num_chunks, srs.g.len())
+                            .evaluate_chunks(point),
+                    );
+                }
+
+                let commit = Commitment { chunked_commitment };
+
+                let eval_commit = EvaluatedCommitment {
+                    commit,
+                    chunked_evals,
+                };
+
+                commitments.push(prover::CommitmentAndSecrets {
+                    eval_commit,
+                    poly,
+                    chunked_blinding,
+                });
+            }
+
+            // create aggregated evaluation proof
+            #[allow(clippy::type_complexity)]
+            let mut polynomials: Vec<(
+                DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
+                PolyComm<_>,
+            )> = vec![];
+            for c in &commitments {
+                polynomials.push((
+                    DensePolynomialOrEvaluations::DensePolynomial(&c.poly),
+                    c.chunked_blinding.clone(),
+                ));
+            }
+
+            let polymask = Fp::rand(&mut rng);
+            let evalmask = Fp::rand(&mut rng);
+
+            let timer = Instant::now();
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+                group_map,
+                &polynomials,
+                &eval_points.clone(),
+                polymask,
+                evalmask,
+                fq_sponge.clone(),
+                &mut rng,
+            );
+            time_open += timer.elapsed();
+
+            // prepare for batch verification
+            let eval_commitments = commitments.into_iter().map(|c| c.eval_commit).collect();
+            proofs.push(AggregatedEvaluationProof {
+                eval_points,
+                eval_commitments,
+                polymask,
+                evalmask,
+                fq_sponge: fq_sponge.clone(),
+                proof,
+            });
+        }
+
+        (proofs, time_commit, time_open)
     }
 }
