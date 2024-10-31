@@ -134,12 +134,19 @@ pub fn main() -> ExitCode {
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
             );
-            let verif = verifier::verify::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-            >(domain_fp, &srs, &constraints, &proof);
-            assert!(verif);
+            {
+                let start_iteration = Instant::now();
+                let verif = verifier::verify::<
+                    Vesta,
+                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                >(domain_fp, &srs, &constraints, &proof);
+                debug!(
+                    "Verification done in {elapsed} μs",
+                    elapsed = start_iteration.elapsed().as_micros()
+                );
+                assert!(verif);
+            }
 
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
