@@ -199,39 +199,33 @@ where
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
-    let evaluations = {
-        let all_columns = get_all_columns();
-
-        let mut evaluations = Vec::with_capacity(all_columns.len() + 1); // +1 for the quotient
-
-        all_columns.into_iter().for_each(|column| {
-            let point_evaluations = column_eval
-                .evaluate(column)
-                .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`"));
-
+    let mut evaluations: Vec<_> = get_all_columns()
+        .into_iter()
+        .map(|column| {
             let commitment = column_eval
                 .commitment
                 .get_column(&column)
                 .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`"))
                 .clone();
 
-            evaluations.push(Evaluation {
+            let evaluations = column_eval
+                .evaluate(column)
+                .unwrap_or_else(|_| panic!("Could not get `evaluations` for `Evaluation`"));
+
+            Evaluation {
                 commitment,
-                evaluations: vec![
-                    vec![point_evaluations.zeta],
-                    vec![point_evaluations.zeta_omega],
-                ],
-            })
-        });
-        evaluations.push(Evaluation {
-            commitment: proof.quotient_commitment.clone(),
-            evaluations: vec![
-                quotient_evaluations.zeta.clone(),
-                quotient_evaluations.zeta_omega.clone(),
-            ],
-        });
-        evaluations
-    };
+                evaluations: vec![vec![evaluations.zeta], vec![evaluations.zeta_omega]],
+            }
+        })
+        .collect();
+
+    evaluations.push(Evaluation {
+        commitment: proof.quotient_commitment.clone(),
+        evaluations: vec![
+            quotient_evaluations.zeta.clone(),
+            quotient_evaluations.zeta_omega.clone(),
+        ],
+    });
 
     let combined_inner_product = {
         let es: Vec<_> = evaluations
