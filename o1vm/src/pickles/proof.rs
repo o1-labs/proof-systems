@@ -1,7 +1,7 @@
 use kimchi::curve::KimchiCurve;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
-use crate::interpreters::mips::column::N_MIPS_SEL_COLS;
+use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::ToInverseOrNot};
 
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; crate::interpreters::mips::witness::SCRATCH_SIZE],
@@ -12,6 +12,10 @@ pub struct WitnessColumns<G, S> {
 
 pub struct ProofInputs<G: KimchiCurve> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+}
+
+pub struct NotInversedProofInputs<G: KimchiCurve> {
+    pub evaluations: WitnessColumns<Vec<ToInverseOrNot<G::ScalarField>>, Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> ProofInputs<G> {
