@@ -375,7 +375,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             self.write_column(position, 0);
             0
         } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
+            self.write_field_inverse_column(position, Fp::from(*x));
             1 // Placeholder value
         }
     }
@@ -387,12 +387,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         self.write_column(pos, res);
         // write the non deterministic advice inv_or_zero
         let pos = self.alloc_scratch();
-        let inv_or_zero = if *x == 0 {
-            Fp::zero()
+        // write invere or zero
+        if *x == 0 {
+            self.write_column(pos, 0);
         } else {
-            Fp::inverse(&Fp::from(*x)).unwrap()
-        };
-        self.write_field_column(pos, inv_or_zero);
+            self.write_field_inverse_column(pos, Fp::from(*x));
+        }
         // return the result
         res
     }
@@ -974,6 +974,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             Column::ScratchState(idx) => {
                 self.scratch_state[idx] = ToInverseOrNot::NotToInverse(value)
             }
+            Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
+            Column::Selector(s) => self.selector = s,
+        }
+    }
+
+    pub fn write_field_inverse_column(&mut self, column: Column, value: Fp) {
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx] = ToInverseOrNot::ToInverse(value),
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }
