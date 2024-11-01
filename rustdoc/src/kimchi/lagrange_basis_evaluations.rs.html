@@ -604,8 +604,8 @@
                 chunked_evals[i * max_poly_size + j] = x_pow;
                 x_pow <span class="kw-2">*</span>= x;
             }
-            <span class="comment">// This uses the same trick as `poly_commitment::srs::SRS::add_lagrange_basis`,
-            // but applied to field elements instead of group elements.
+            <span class="comment">// This uses the same trick as `poly_commitment::srs::SRS::lagrange_basis`, but
+            // applied to field elements instead of group elements.
             </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>chunked_evals);
             <span class="comment">// Check that the number of coefficients after iFFT is as expected
             </span><span class="macro">assert_eq!</span>(
@@ -700,7 +700,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_evaluation() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
         <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
         <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
@@ -708,12 +708,12 @@
         <span class="kw">let </span>evals = {
             <span class="kw">let </span><span class="kw-2">mut </span>e = <span class="macro">vec!</span>[];
             <span class="kw">for _ in </span><span class="number">0</span>..n {
-                e.push(Fp::rand(<span class="kw-2">&amp;mut </span>rng));
+                e.push(Fp::rand(rng));
             }
             Evaluations::from_vec_and_domain(e, domain)
         };
 
-        <span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>x = Fp::rand(rng);
 
         <span class="kw">let </span>evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
@@ -724,7 +724,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_evaluation_boolean() {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>domain_log_size = rng.gen_range(<span class="number">1</span>..<span class="number">10</span>);
         <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; domain_log_size;
         <span class="kw">let </span>domain = Radix2EvaluationDomain::new(n).unwrap();
@@ -732,7 +732,7 @@
         <span class="kw">let </span>evals = {
             <span class="kw">let </span><span class="kw-2">mut </span>e = <span class="macro">vec!</span>[];
             <span class="kw">for _ in </span><span class="number">0</span>..n {
-                e.push(<span class="kw">if </span>bool::rand(<span class="kw-2">&amp;mut </span>rng) {
+                e.push(<span class="kw">if </span>bool::rand(rng) {
                     Fp::one()
                 } <span class="kw">else </span>{
                     Fp::zero()
@@ -741,7 +741,7 @@
             Evaluations::from_vec_and_domain(e, domain)
         };
 
-        <span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>x = Fp::rand(rng);
 
         <span class="kw">let </span>evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 

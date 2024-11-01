@@ -103,8 +103,8 @@
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = { PairingSRS::create(domain.d1.size <span class="kw">as </span>usize) };
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = { PairingSRS::create(domain.d1.size <span class="kw">as </span>usize) };
+        srs.full_srs.get_lagrange_basis(domain.d1);
 
         <span class="kw">let </span><span class="kw-2">mut </span>inputs = ProofInputs::random(domain);
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];

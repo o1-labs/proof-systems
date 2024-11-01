@@ -235,7 +235,7 @@
     poseidon::{ArithmeticSponge <span class="kw">as </span>Poseidon, ArithmeticSpongeParams, Sponge <span class="kw">as _</span>},
 };
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>rand::{prelude::<span class="kw-2">*</span>, Rng};
+<span class="kw">use </span>rand::Rng;
 <span class="kw">use </span>serde::Serialize;
 
 <span class="comment">//
@@ -282,13 +282,13 @@
 
 <span class="doccomment">/// creates a set of test vectors
 </span><span class="kw">pub fn </span>generate(mode: Mode, param_type: ParamType) -&gt; TestVectors {
-    <span class="kw">let </span><span class="kw-2">mut </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
+    <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>o1_utils::tests::make_test_rng(<span class="prelude-val">Some</span>([<span class="number">0u8</span>; <span class="number">32</span>]));
     <span class="kw">let </span><span class="kw-2">mut </span>test_vectors = <span class="macro">vec!</span>[];
 
     <span class="comment">// generate inputs of different lengths
     </span><span class="kw">for </span>length <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>{
         <span class="comment">// generate input &amp; hash
-        </span><span class="kw">let </span>input = rand_fields(<span class="kw-2">&amp;mut </span>rng, length);
+        </span><span class="kw">let </span>input = rand_fields(rng, length);
         <span class="kw">let </span>output = <span class="kw">match </span>param_type {
             ParamType::Legacy =&gt; poseidon::&lt;constants::PlonkSpongeConstantsLegacy&gt;(
                 <span class="kw-2">&amp;</span>input,
@@ -348,7 +348,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>poseidon_test_vectors_regression() {
         <span class="kw">use </span>mina_poseidon::pasta;
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
+        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>o1_utils::tests::make_test_rng(<span class="prelude-val">Some</span>([<span class="number">0u8</span>; <span class="number">32</span>]));
 
         <span class="comment">// Values are generated w.r.t. the following commit:
         // 1494cf973d40fb276465929eb7db1952c5de7bdc
@@ -421,7 +421,7 @@
 
             <span class="kw">for </span>length <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>{
                 <span class="comment">// generate input &amp; hash
-                </span><span class="kw">let </span>input = rand_fields(<span class="kw-2">&amp;mut </span>rng, length);
+                </span><span class="kw">let </span>input = rand_fields(rng, length);
                 <span class="kw">let </span>output = <span class="kw">match </span>param_type {
                     ParamType::Legacy =&gt; poseidon::&lt;constants::PlonkSpongeConstantsLegacy&gt;(
                         <span class="kw-2">&amp;</span>input,

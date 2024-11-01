@@ -1046,7 +1046,6 @@
 <a href="#1046" id="1046">1046</a>
 <a href="#1047" id="1047">1047</a>
 <a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1142,7 +1141,6 @@
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
 <span class="kw">use </span>log::error;
-<span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>std::{array, marker::PhantomData};
 <span class="kw">use </span>turshi::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -1265,7 +1263,7 @@
         </span><span class="kw">let </span>linearized = constraints.linearize(polys).unwrap();
 
         <span class="comment">// Setup proof evaluations
-        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
+        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
         <span class="kw">let </span>evals = ProofEvaluations::dummy_with_witness_evaluations(curr, next);
 
         <span class="comment">// Setup circuit constants

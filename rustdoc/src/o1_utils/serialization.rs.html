@@ -127,11 +127,97 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for serializing and deserializing
 //! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
 
-</span><span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+</span><span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
 <span class="kw">use </span>serde_with::Bytes;
+<span class="kw">use </span>std::io::BufReader;
 
 <span class="comment">//
 // Serialization with serde
@@ -255,5 +341,89 @@
         </span>};
         T::deserialize_uncompressed_unchecked(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(serde::de::Error::custom)
     }
+}
+
+<span class="doccomment">/// A generic regression serialization test for serialization via
+/// `CanonicalSerialize` and `CanonicalDeserialize`.
+</span><span class="kw">pub fn </span>test_generic_serialization_regression_canonical&lt;
+    T: CanonicalSerialize + CanonicalDeserialize + std::cmp::PartialEq + std::fmt::Debug,
+&gt;(
+    data_expected: T,
+    buf_expected: Vec&lt;u8&gt;,
+) {
+    <span class="comment">// Step 1: serialize `data_expected` and check if it&#39;s equal to `buf_expected`
+
+    </span><span class="kw">let </span><span class="kw-2">mut </span>buf_written: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
+    data_expected
+        .serialize_compressed(<span class="kw-2">&amp;mut </span>buf_written)
+        .expect(<span class="string">&quot;Given value could not be serialized&quot;</span>);
+    (buf_written.as_mut_slice())
+        .flush()
+        .expect(<span class="string">&quot;Failed to flush buffer&quot;</span>);
+    <span class="macro">assert!</span>(
+            buf_written == buf_expected,
+            <span class="string">&quot;Canonical: serialized (written) representation of {data_expected:?}...\n {buf_written:?}\n does not match the expected one...\n {buf_expected:?}&quot;
+        </span>);
+
+    <span class="comment">// Step 2: deserialize `buf_expected` and check if it&#39;s equal to `data_expected`
+
+    </span><span class="kw">let </span>reader = BufReader::new(buf_expected.as_slice());
+    <span class="kw">let </span>data_read: T =
+        T::deserialize_compressed(reader).expect(<span class="string">&quot;Could not deseralize given bytevector&quot;</span>);
+
+    <span class="macro">assert!</span>(
+            data_read == data_expected,
+            <span class="string">&quot;Canonical: deserialized value...\n {data_read:?}\n does not match the expected one...\n {data_expected:?}&quot;
+        </span>);
+}
+
+<span class="doccomment">/// A generic regression serialization test for serialization via `serde`.
+</span><span class="kw">pub fn </span>test_generic_serialization_regression_serde&lt;
+    T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;a</span>&gt; + std::cmp::PartialEq + std::fmt::Debug,
+&gt;(
+    data_expected: T,
+    buf_expected: Vec&lt;u8&gt;,
+) {
+    <span class="comment">// Step 1: serialize `data_expected` and check if it&#39;s equal to `buf_expected`
+
+    </span><span class="kw">let </span><span class="kw-2">mut </span>buf_written: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">0</span>; buf_expected.len()];
+    <span class="kw">let </span>serialized_bytes =
+        rmp_serde::to_vec(<span class="kw-2">&amp;</span>data_expected).expect(<span class="string">&quot;Given value could not be serialized&quot;</span>);
+    (buf_written.as_mut_slice())
+        .write_all(<span class="kw-2">&amp;</span>serialized_bytes)
+        .expect(<span class="string">&quot;Failed to write buffer&quot;</span>);
+    (buf_written.as_mut_slice())
+        .flush()
+        .expect(<span class="string">&quot;Failed to flush buffer&quot;</span>);
+    <span class="macro">assert!</span>(
+        buf_written.len() == buf_expected.len(),
+        <span class="string">&quot;Buffers length must be equal by design&quot;
+    </span>);
+    <span class="kw">if </span>buf_written != buf_expected {
+        <span class="kw">let </span><span class="kw-2">mut </span>first_distinct_byte_ix = <span class="number">0</span>;
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..buf_written.len() {
+            <span class="kw">if </span>buf_written[i] != buf_expected[i] {
+                first_distinct_byte_ix = i;
+                <span class="kw">break</span>;
+            }
+        }
+        <span class="macro">panic!</span>(
+            <span class="string">&quot;Serde: serialized (written) representation of {data_expected:?}...\n {buf_written:?}\n does not match the expected one...\n {buf_expected:?}\nFirst distinct byte: #{first_distinct_byte_ix}: {} vs {}\n (total length is {})&quot;</span>,
+            buf_written[first_distinct_byte_ix],
+            buf_expected[first_distinct_byte_ix],
+            buf_written.len()
+
+    );
+    }
+
+    <span class="comment">// Step 2: deserialize `buf_expected` and check if it&#39;s equal to `data_expected`
+
+    </span><span class="kw">let </span>reader = BufReader::new(buf_expected.as_slice());
+    <span class="kw">let </span>data_read: T = rmp_serde::from_read(reader).expect(<span class="string">&quot;Could not deseralize given bytevector&quot;</span>);
+
+    <span class="macro">assert!</span>(
+            data_read == data_expected,
+            <span class="string">&quot;Serde: deserialized value...\n {data_read:?}\n does not match the expected one...\n {data_expected:?}&quot;
+        </span>);
 }
 </code></pre></div></section></main></body></html>

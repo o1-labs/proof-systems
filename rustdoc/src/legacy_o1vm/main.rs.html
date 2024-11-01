@@ -409,8 +409,8 @@
 
     <span class="kw">let </span>srs = {
         <span class="comment">// FIXME: toxic waste is generated in `create`. This is unsafe for prod.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>srs = poly_commitment::kzg::PairingSRS::create(DOMAIN_SIZE);
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        </span><span class="kw">let </span>srs = poly_commitment::kzg::PairingSRS::create(DOMAIN_SIZE);
+        srs.get_lagrange_basis(domain.d1);
         srs
     };
 

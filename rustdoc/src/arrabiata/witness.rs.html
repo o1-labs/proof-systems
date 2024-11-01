@@ -1840,20 +1840,20 @@
         <span class="macro">info!</span>(<span class="string">&quot;Create an SRS of size {srs_log2_size} for the first curve&quot;</span>);
         <span class="kw">let </span>srs_e1: SRS&lt;E1&gt; = {
             <span class="kw">let </span>start = Instant::now();
-            <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::create(srs_size);
+            <span class="kw">let </span>srs = SRS::create(srs_size);
             <span class="macro">debug!</span>(<span class="string">&quot;SRS for E1 created in {:?}&quot;</span>, start.elapsed());
             <span class="kw">let </span>start = Instant::now();
-            srs.add_lagrange_basis(domain_fp.d1);
+            srs.get_lagrange_basis(domain_fp.d1);
             <span class="macro">debug!</span>(<span class="string">&quot;Lagrange basis for E1 added in {:?}&quot;</span>, start.elapsed());
             srs
         };
         <span class="macro">info!</span>(<span class="string">&quot;Create an SRS of size {srs_log2_size} for the second curve&quot;</span>);
         <span class="kw">let </span>srs_e2: SRS&lt;E2&gt; = {
             <span class="kw">let </span>start = Instant::now();
-            <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::create(srs_size);
+            <span class="kw">let </span>srs = SRS::create(srs_size);
             <span class="macro">debug!</span>(<span class="string">&quot;SRS for E2 created in {:?}&quot;</span>, start.elapsed());
             <span class="kw">let </span>start = Instant::now();
-            srs.add_lagrange_basis(domain_fq.d1);
+            srs.get_lagrange_basis(domain_fq.d1);
             <span class="macro">debug!</span>(<span class="string">&quot;Lagrange basis for E2 added in {:?}&quot;</span>, start.elapsed());
             srs
         };

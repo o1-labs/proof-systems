@@ -1784,6 +1784,9 @@
 <a href="#1784" id="1784">1784</a>
 <a href="#1785" id="1785">1785</a>
 <a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1835,6 +1838,7 @@
     ipa::DensePolynomialOrEvaluations,
     OpenProof, SRS <span class="kw">as _</span>,
 };
+<span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::{array, collections::HashMap};
 
@@ -1920,22 +1924,25 @@
     </span><span class="kw">pub fn </span>create&lt;
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         EFrSponge: FrSponge&lt;G::ScalarField&gt;,
+        RNG: RngCore + CryptoRng,
     &gt;(
         groupmap: <span class="kw-2">&amp;</span>G::Map,
         witness: [Vec&lt;G::ScalarField&gt;; COLUMNS],
         runtime_tables: <span class="kw-2">&amp;</span>[RuntimeTable&lt;G::ScalarField&gt;],
         index: <span class="kw-2">&amp;</span>ProverIndex&lt;G, OpeningProof&gt;,
+        rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;
     <span class="kw">where
         </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
     {
-        <span class="self">Self</span>::create_recursive::&lt;EFqSponge, EFrSponge&gt;(
+        <span class="self">Self</span>::create_recursive::&lt;EFqSponge, EFrSponge, RNG&gt;(
             groupmap,
             witness,
             runtime_tables,
             index,
             Vec::new(),
             <span class="prelude-val">None</span>,
+            rng,
         )
     }
 
@@ -1953,6 +1960,7 @@
     </span><span class="kw">pub fn </span>create_recursive&lt;
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         EFrSponge: FrSponge&lt;G::ScalarField&gt;,
+        RNG: RngCore + CryptoRng,
     &gt;(
         group_map: <span class="kw-2">&amp;</span>G::Map,
         <span class="kw-2">mut </span>witness: [Vec&lt;G::ScalarField&gt;; COLUMNS],
@@ -1960,6 +1968,7 @@
         index: <span class="kw-2">&amp;</span>ProverIndex&lt;G, OpeningProof&gt;,
         prev_challenges: Vec&lt;RecursionChallenge&lt;G&gt;&gt;,
         blinders: <span class="prelude-ty">Option</span>&lt;[<span class="prelude-ty">Option</span>&lt;PolyComm&lt;G::ScalarField&gt;&gt;; COLUMNS]&gt;,
+        rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;
     <span class="kw">where
         </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
@@ -1974,9 +1983,6 @@
         </span>} <span class="kw">else </span>{
             d1_size / index.max_poly_size
         };
-
-        <span class="comment">// TODO: rng should be passed as arg
-        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::OsRng;
 
         <span class="comment">// Verify the circuit satisfiability by the computed witness (baring plookup constraints)
         // Catch mistakes before proof generation.

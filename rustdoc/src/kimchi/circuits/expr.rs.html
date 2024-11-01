@@ -3428,6 +3428,10 @@
 <a href="#3428" id="3428">3428</a>
 <a href="#3429" id="3429">3429</a>
 <a href="#3430" id="3430">3430</a>
+<a href="#3431" id="3431">3431</a>
+<a href="#3432" id="3432">3432</a>
+<a href="#3433" id="3433">3433</a>
+<a href="#3434" id="3434">3434</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3453,7 +3457,8 @@
 <span class="kw">use </span>std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::{<span class="self">self</span>, Debug, Display},
+    fmt,
+    fmt::{Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
@@ -6173,7 +6178,10 @@
         <span class="kw">match </span><span class="self">self </span>{
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_bigint()),
+            Literal(x) =&gt; <span class="macro">format!</span>(
+                <span class="string">&quot;field(\&quot;{:#066X}\&quot;)&quot;</span>,
+                Into::&lt;num_bigint::BigUint&gt;::into(x.into_bigint())
+            ),
         }
     }
 

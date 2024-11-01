@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["ser"],"struct":["SerdeAs","SerdeAsUnchecked"]};
+window.SIDEBAR_ITEMS = {"fn":["test_generic_serialization_regression_canonical","test_generic_serialization_regression_serde"],"mod":["ser"],"struct":["SerdeAs","SerdeAsUnchecked"]};

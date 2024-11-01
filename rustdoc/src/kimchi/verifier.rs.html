@@ -1285,7 +1285,8 @@
 <span class="doccomment">/// The result of a proof verification.
 </span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, VerifyError&gt;;
 
-<span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     <span class="doccomment">/// The [VerifierIndex] associated to the proof
     </span><span class="kw">pub </span>verifier_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>VerifierIndex&lt;G, OpeningProof&gt;,
 
@@ -2062,8 +2063,7 @@
         }
         <span class="kw">let </span>lgr_comm = verifier_index
             .srs()
-            .get_lagrange_basis(verifier_index.domain.size())
-            .expect(<span class="string">&quot;pre-computed committed lagrange bases not found&quot;</span>);
+            .get_lagrange_basis(verifier_index.domain);
         <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(verifier_index.public).collect();
         <span class="kw">if </span>public_input.is_empty() {
             PolyComm::new(<span class="macro">vec!</span>[verifier_index.srs().blinding_commitment(); chunk_size])

@@ -217,10 +217,13 @@
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>combine;
 <span class="kw">pub mod </span>commitment;
 <span class="kw">pub mod </span>error;
-
+<span class="kw">pub mod </span>hash_map_cache;
 <span class="kw">pub mod </span>ipa;
 <span class="kw">pub mod </span>kzg;
 
@@ -245,9 +248,6 @@
 <span class="kw">pub trait </span>SRS&lt;G: CommitmentCurve&gt;: Clone + Sized {
     <span class="doccomment">/// The maximum polynomial degree that can be committed to
     </span><span class="kw">fn </span>max_poly_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
-
-    <span class="doccomment">/// Retrieve the precomputed Lagrange basis for the given domain size
-    </span><span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;&gt;;
 
     <span class="doccomment">/// Get the group element used for blinding commitments
     </span><span class="kw">fn </span>blinding_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G;
@@ -379,7 +379,12 @@
     /// this case.
     </span><span class="kw">fn </span>create(depth: usize) -&gt; <span class="self">Self</span>;
 
-    <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;);
+    <span class="doccomment">/// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    </span><span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;;
+
+    <span class="doccomment">/// Same as `get_lagrange_basis` but only using the domain size.
+    </span><span class="kw">fn </span>get_lagrange_basis_from_domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;;
 
     <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
@@ -394,7 +399,7 @@
 )];
 
 <span class="kw">pub trait </span>OpenProof&lt;G: CommitmentCurve&gt;: Sized + Clone {
-    <span class="kw">type </span>SRS: SRS&lt;G&gt;;
+    <span class="kw">type </span>SRS: SRS&lt;G&gt; + std::fmt::Debug;
 
     <span class="doccomment">/// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:
@@ -410,6 +415,7 @@
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator used for zero-knowledge
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,

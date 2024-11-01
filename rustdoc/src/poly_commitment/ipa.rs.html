@@ -1190,10 +1190,6 @@
 <a href="#1190" id="1190">1190</a>
 <a href="#1191" id="1191">1191</a>
 <a href="#1192" id="1192">1192</a>
-<a href="#1193" id="1193">1193</a>
-<a href="#1194" id="1194">1194</a>
-<a href="#1195" id="1195">1195</a>
-<a href="#1196" id="1196">1196</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the polynomial commitment scheme
 //! called the Inner Product Argument (IPA) as described in [Efficient
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
@@ -1205,6 +1201,7 @@
         CommitmentCurve, <span class="kw-2">*</span>,
     },
     error::CommitmentError,
+    hash_map_cache::HashMapCache,
     BlindedCommitment, PolyComm, PolynomialsToCombine, SRS <span class="kw">as </span>SRSTrait,
 };
 <span class="kw">use </span>ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
@@ -1225,7 +1222,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::{cmp::min, collections::HashMap, iter::Iterator, ops::AddAssign};
+<span class="kw">use </span>std::{cmp::min, iter::Iterator, ops::AddAssign};
 
 <span class="doccomment">/// A formal sum of the form
 /// `s_0 * p_0 + ... s_n * p_n`
@@ -1407,7 +1404,7 @@
 }
 
 <span class="attr">#[serde_as]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>SRS&lt;G&gt; {
     <span class="doccomment">/// The vector of group elements for committing to polynomials in
@@ -1423,7 +1420,7 @@
     // values
     </span><span class="doccomment">/// Commitments to Lagrange bases, per domain size
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>lagrange_bases: HashMap&lt;usize, Vec&lt;PolyComm&lt;G&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>lagrange_bases: HashMapCache&lt;usize, Vec&lt;PolyComm&lt;G&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;G&gt; PartialEq <span class="kw">for </span>SRS&lt;G&gt;
@@ -1689,7 +1686,7 @@
         <span class="self">Self </span>{
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 }
@@ -1726,7 +1723,7 @@
         <span class="self">Self </span>{
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 }
@@ -1738,10 +1735,6 @@
     <span class="doccomment">/// The maximum polynomial degree that can be committed to
     </span><span class="kw">fn </span>max_poly_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.g.len()
-    }
-
-    <span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;&gt; {
-        <span class="self">self</span>.lagrange_bases.get(<span class="kw-2">&amp;</span>domain_size)
     }
 
     <span class="kw">fn </span>blinding_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G {
@@ -1829,10 +1822,7 @@
         domain: D&lt;G::ScalarField&gt;,
         plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
     ) -&gt; PolyComm&lt;G&gt; {
-        <span class="kw">let </span>basis = <span class="self">self
-            </span>.lagrange_bases
-            .get(<span class="kw-2">&amp;</span>domain.size())
-            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, domain.size()));
+        <span class="kw">let </span>basis = <span class="self">self</span>.get_lagrange_basis(domain);
         <span class="kw">let </span>commit_evaluations = |evals: <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt;, basis: <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;| {
             PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>basis.iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()[..], <span class="kw-2">&amp;</span>evals[..])
         };
@@ -1891,120 +1881,19 @@
         <span class="self">Self </span>{
             g,
             h,
-            lagrange_bases: HashMap::new(),
+            lagrange_bases: HashMapCache::new(),
         }
     }
 
-    <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;&lt;G&gt;::ScalarField&gt;) {
-        <span class="kw">let </span>n = domain.size();
+    <span class="kw">fn </span>get_lagrange_basis_from_domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt; {
+        <span class="self">self</span>.lagrange_bases.get_or_generate(domain_size, || {
+            <span class="self">self</span>.lagrange_basis(D::new(domain_size).unwrap())
+        })
+    }
 
-        <span class="kw">if </span><span class="self">self</span>.lagrange_bases.contains_key(<span class="kw-2">&amp;</span>n) {
-            <span class="kw">return</span>;
-        }
-
-        <span class="comment">// Let V be a vector space over the field F.
-        //
-        // Given
-        // - a domain [ 1, w, w^2, ..., w^{n - 1} ]
-        // - a vector v := [ v_0, ..., v_{n - 1} ] in V^n
-        //
-        // the FFT algorithm computes the matrix application
-        //
-        // u = M(w) * v
-        //
-        // where
-        // M(w) =
-        //   1 1       1           ... 1
-        //   1 w       w^2         ... w^{n-1}
-        //   ...
-        //   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}
-        //
-        // The IFFT algorithm computes
-        //
-        // v = M(w)^{-1} * u
-        //
-        // Let&#39;s see how we can use this algorithm to compute the lagrange basis
-        // commitments.
-        //
-        // Let V be the vector space F[x] of polynomials in x over F.
-        // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
-        // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
-        //
-        // Consider the rows of M(w) * v. Let me write out the matrix and vector
-        // so you can see more easily.
-        //
-        //   | 1 1       1           ... 1               |   | L_0     |
-        //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
-        //   | ...                                       |   | ...     |
-        //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
-        //
-        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it&#39;s the polynomial
-        // that has the value 1 on every element of the domain.
-        // In other words, it&#39;s the polynomial 1.
-        //
-        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it&#39;s the
-        // polynomial which has value w^i on w^i.
-        // In other words, it&#39;s the polynomial x.
-        //
-        // In general, you can see that row i is in fact the polynomial x^i.
-        //
-        // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
-        //
-        // Therefore, the IFFT algorithm, when applied to the vector u (the
-        // standard monomial basis) will yield the vector v of the (normalized)
-        // Lagrange polynomials.
-        //
-        // Now, because the polynomial commitment scheme is additively
-        // homomorphic, and because the commitment to the polynomial x^i is just
-        // self.g[i], we can obtain commitments to the normalized Lagrange
-        // polynomials by applying IFFT to the vector self.g[0..n].
-        //
-        //
-        // Further still, we can do the same trick for &#39;chunked&#39; polynomials.
-        //
-        // Recall that a chunked polynomial is some f of degree k*n - 1 with
-        // f(x) = f_0(x) + x^n f_1(x) + ... + x^{(k-1) n} f_{k-1}(x)
-        // where each f_i has degree n-1.
-        //
-        // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
-        // then we effectively &#39;zero out&#39; any polynomial terms higher than
-        // x^{n-1}, leaving us with the &#39;partial Lagrange polynomials&#39; that
-        // contribute to f_0.
-        //
-        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0]
-        // with n leading zeros &#39;zeroes out&#39; all terms except the &#39;partial
-        // Lagrange polynomials&#39; that contribute to f_1, and likewise for each
-        // f_i.
-        //
-        // By computing each of these, and recollecting the terms as a vector of
-        // polynomial commitments, we obtain a chunked commitment to the L_i
-        // polynomials.
-        </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
-        <span class="kw">let </span>num_elems = (n + srs_size - <span class="number">1</span>) / srs_size;
-        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(num_elems);
-
-        <span class="comment">// For each chunk
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
-            <span class="comment">// Initialize the vector with zero curve points
-            </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group&gt; = <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::zero(); n];
-            <span class="comment">// Overwrite the terms corresponding to that chunk with the SRS curve points
-            </span><span class="kw">let </span>start_offset = i * srs_size;
-            <span class="kw">let </span>num_terms = min((i + <span class="number">1</span>) * srs_size, n) - start_offset;
-            <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..num_terms {
-                lg[start_offset + j] = <span class="self">self</span>.g[j].into_group()
-            }
-            <span class="comment">// Apply the IFFT
-            </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
-            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of chunks
-            </span>chunks.push(&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::normalize_batch(lg.as_mut_slice()));
-        }
-
-        <span class="kw">let </span>chunked_commitments: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
-            .map(|i| PolyComm {
-                chunks: chunks.iter().map(|v| v[i]).collect(),
-            })
-            .collect();
-        <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
+    <span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt; {
+        <span class="self">self</span>.lagrange_bases
+            .get_or_generate(domain.size(), || <span class="self">self</span>.lagrange_basis(domain))
     }
 
     <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -2224,10 +2113,113 @@
             sg: g0,
         }
     }
+
+    <span class="kw">fn </span>lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) -&gt; Vec&lt;PolyComm&lt;G&gt;&gt; {
+        <span class="kw">let </span>n = domain.size();
+
+        <span class="comment">// Let V be a vector space over the field F.
+        //
+        // Given
+        // - a domain [ 1, w, w^2, ..., w^{n - 1} ]
+        // - a vector v := [ v_0, ..., v_{n - 1} ] in V^n
+        //
+        // the FFT algorithm computes the matrix application
+        //
+        // u = M(w) * v
+        //
+        // where
+        // M(w) =
+        //   1 1       1           ... 1
+        //   1 w       w^2         ... w^{n-1}
+        //   ...
+        //   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}
+        //
+        // The IFFT algorithm computes
+        //
+        // v = M(w)^{-1} * u
+        //
+        // Let&#39;s see how we can use this algorithm to compute the lagrange basis
+        // commitments.
+        //
+        // Let V be the vector space F[x] of polynomials in x over F.
+        // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
+        // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
+        //
+        // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
+        // can see more easily.
+        //
+        //   | 1 1       1           ... 1               |   | L_0     |
+        //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
+        //   | ...                                       |   | ...     |
+        //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
+        //
+        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it&#39;s the polynomial
+        // that has the value 1 on every element of the domain.
+        // In other words, it&#39;s the polynomial 1.
+        //
+        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it&#39;s the
+        // polynomial which has value w^i on w^i.
+        // In other words, it&#39;s the polynomial x.
+        //
+        // In general, you can see that row i is in fact the polynomial x^i.
+        //
+        // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
+        //
+        // Therefore, the IFFT algorithm, when applied to the vector u (the standard
+        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        //
+        // Now, because the polynomial commitment scheme is additively homomorphic, and
+        // because the commitment to the polynomial x^i is just self.g[i], we can obtain
+        // commitments to the normalized Lagrange polynomials by applying IFFT to the
+        // vector self.g[0..n].
+        //
+        //
+        // Further still, we can do the same trick for &#39;chunked&#39; polynomials.
+        //
+        // Recall that a chunked polynomial is some f of degree k*n - 1 with
+        // f(x) = f_0(x) + x^n f_1(x) + ... + x^{(k-1) n} f_{k-1}(x)
+        // where each f_i has degree n-1.
+        //
+        // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
+        // then we effectively &#39;zero out&#39; any polynomial terms higher than x^{n-1}, leaving
+        // us with the &#39;partial Lagrange polynomials&#39; that contribute to f_0.
+        //
+        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n leading
+        // zeros &#39;zeroes out&#39; all terms except the &#39;partial Lagrange polynomials&#39; that
+        // contribute to f_1, and likewise for each f_i.
+        //
+        // By computing each of these, and recollecting the terms as a vector of polynomial
+        // commitments, we obtain a chunked commitment to the L_i polynomials.
+        </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
+        <span class="kw">let </span>num_elems = (n + srs_size - <span class="number">1</span>) / srs_size;
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(num_elems);
+
+        <span class="comment">// For each chunk
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
+            <span class="comment">// Initialize the vector with zero curve points
+            </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group&gt; = <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::zero(); n];
+            <span class="comment">// Overwrite the terms corresponding to that chunk with the SRS curve points
+            </span><span class="kw">let </span>start_offset = i * srs_size;
+            <span class="kw">let </span>num_terms = min((i + <span class="number">1</span>) * srs_size, n) - start_offset;
+            <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..num_terms {
+                lg[start_offset + j] = <span class="self">self</span>.g[j].into_group()
+            }
+            <span class="comment">// Apply the IFFT
+            </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
+            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of elems chunks
+            </span>chunks.push(&lt;G <span class="kw">as </span>AffineRepr&gt;::Group::normalize_batch(lg.as_mut_slice()));
+        }
+
+        (<span class="number">0</span>..n)
+            .map(|i| PolyComm {
+                chunks: chunks.iter().map(|v| v[i]).collect(),
+            })
+            .collect()
+    }
 }
 
 <span class="attr">#[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>OpeningProof&lt;G: AffineRepr&gt; {
     <span class="doccomment">/// Vector of rounds of L &amp; R commitments

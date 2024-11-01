@@ -194,6 +194,7 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb
@@ -387,7 +388,8 @@
     }
 
     <span class="kw">fn </span>two_to_3limb() -&gt; F {
-        F::from(<span class="number">2u64</span>).pow([<span class="number">3 </span>* B <span class="kw">as </span>u64])
+        <span class="comment">// Self?
+        </span>F::from(<span class="number">2u64</span>).pow([<span class="number">3 </span>* B <span class="kw">as </span>u64])
     }
 }
 </code></pre></div></section></main></body></html>

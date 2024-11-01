@@ -222,8 +222,8 @@
 
     <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
     <span class="kw">let </span>srs: SRS&lt;Vesta&gt; = {
-        <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::create(DOMAIN_SIZE);
-        srs.add_lagrange_basis(domain_fp.d1);
+        <span class="kw">let </span>srs = SRS::create(DOMAIN_SIZE);
+        srs.get_lagrange_basis(domain_fp.d1);
         srs
     };
 

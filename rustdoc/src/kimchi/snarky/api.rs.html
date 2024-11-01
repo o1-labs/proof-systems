@@ -339,6 +339,12 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The main interface to using Snarky.
 //!
 //! To use Snarky, simply implements the [SnarkyCircuit] trait.
@@ -488,8 +494,14 @@
 
         <span class="comment">// TODO: return error instead of panicking
         </span><span class="kw">let </span>proof: ProverProof&lt;Circuit::Curve, Circuit::Proof&gt; =
-            ProverProof::create::&lt;EFqSponge, EFrSponge&gt;(<span class="kw-2">&amp;</span>group_map, witness.<span class="number">0</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="self">self</span>.index)
-                .unwrap();
+            ProverProof::create::&lt;EFqSponge, EFrSponge, <span class="kw">_</span>&gt;(
+                <span class="kw-2">&amp;</span>group_map,
+                witness.<span class="number">0</span>,
+                <span class="kw-2">&amp;</span>[],
+                <span class="kw-2">&amp;</span><span class="self">self</span>.index,
+                <span class="kw-2">&amp;mut </span>rand::rngs::OsRng,
+            )
+            .unwrap();
 
         <span class="comment">// return proof + public output
         </span><span class="prelude-val">Ok</span>((proof, Box::new(public_output)))
@@ -653,10 +665,10 @@
 
         <span class="comment">// create SRS (for vesta, as the circuit is in Fp)
         // let mut srs = SRS::&lt;Self::Curve&gt;::create(cs.domain.d1.size as usize);
-        </span><span class="kw">let </span><span class="kw-2">mut </span>srs = &lt;&lt;<span class="self">Self</span>::Proof <span class="kw">as </span>OpenProof&lt;<span class="self">Self</span>::Curve&gt;&gt;::SRS <span class="kw">as </span>SRS&lt;<span class="self">Self</span>::Curve&gt;&gt;::create(
+        </span><span class="kw">let </span>srs = &lt;&lt;<span class="self">Self</span>::Proof <span class="kw">as </span>OpenProof&lt;<span class="self">Self</span>::Curve&gt;&gt;::SRS <span class="kw">as </span>SRS&lt;<span class="self">Self</span>::Curve&gt;&gt;::create(
             cs.domain.d1.size <span class="kw">as </span>usize,
         );
-        srs.add_lagrange_basis(cs.domain.d1);
+        srs.get_lagrange_basis(cs.domain.d1);
         <span class="kw">let </span>srs = std::sync::Arc::new(srs);
 
         <span class="macro">debug!</span>(<span class="string">&quot;using an SRS of size {}&quot;</span>, srs.size());

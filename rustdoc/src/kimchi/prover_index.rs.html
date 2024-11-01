@@ -457,7 +457,7 @@
             override_srs_size,
             |d1: D&lt;G::ScalarField&gt;, size: usize| {
                 <span class="kw">let </span>log2_size = size.ilog2();
-                <span class="kw">let </span><span class="kw-2">mut </span>srs = <span class="kw">if </span>log2_size &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
+                <span class="kw">let </span>srs = <span class="kw">if </span>log2_size &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
                     <span class="comment">// TODO: we should trim it if it&#39;s smaller
                     </span>precomputed_srs::get_srs_test()
                 } <span class="kw">else </span>{
@@ -465,7 +465,7 @@
                     </span>SRS::&lt;G&gt;::create(size)
                 };
 
-                srs.add_lagrange_basis(d1);
+                srs.get_lagrange_basis(d1);
                 srs
             },
         )

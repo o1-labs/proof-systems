@@ -485,6 +485,7 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -601,7 +602,7 @@
     }
 }
 
-<span class="attr">#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+<span class="attr">#[derive(Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="doccomment">/// Define a structured reference string (i.e. SRS) for the KZG protocol.
 /// The SRS consists of powers of an element `g^x` for some toxic waste `x`.
 ///
@@ -727,8 +728,13 @@
         <span class="self">self</span>.full_srs.max_poly_size()
     }
 
-    <span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;&gt; {
-        <span class="self">self</span>.full_srs.get_lagrange_basis(domain_size)
+    <span class="kw">fn </span>get_lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt; {
+        <span class="self">self</span>.full_srs.get_lagrange_basis(domain)
+    }
+
+    <span class="kw">fn </span>get_lagrange_basis_from_domain_size(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_size: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt; {
+        <span class="self">self</span>.full_srs
+            .get_lagrange_basis_from_domain_size(domain_size)
     }
 
     <span class="kw">fn </span>blinding_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G {
@@ -808,10 +814,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="kw">let </span>toxic_waste = G::ScalarField::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="self">Self</span>::create_trusted_setup(toxic_waste, depth)
-    }
-
-    <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;&lt;G&gt;::ScalarField&gt;) {
-        <span class="self">self</span>.full_srs.add_lagrange_basis(domain);
     }
 
     <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {

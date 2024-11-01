@@ -937,6 +937,30 @@
 <a href="#937" id="937">937</a>
 <a href="#938" id="938">938</a>
 <a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -946,7 +970,7 @@
         gate::{CircuitGate, GateType},
         lookup::{
             index::LookupConstraintSystem,
-            lookups::LookupFeatures,
+            lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
@@ -967,7 +991,7 @@
 <span class="kw">use </span>poly_commitment::OpenProof;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::{array, sync::Arc};
+<span class="kw">use </span>std::{array, default::Default, sync::Arc};
 
 <span class="comment">//
 // ConstraintSystem
@@ -995,6 +1019,30 @@
     </span><span class="kw">pub </span>rot: bool,
     <span class="doccomment">/// Lookup features
     </span><span class="kw">pub </span>lookup_features: LookupFeatures,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>FeatureFlags {
+    <span class="doccomment">/// Returns an instance with all features disabled.
+    </span><span class="kw">fn </span>default() -&gt; FeatureFlags {
+        FeatureFlags {
+            range_check0: <span class="bool-val">false</span>,
+            range_check1: <span class="bool-val">false</span>,
+            lookup_features: LookupFeatures {
+                patterns: LookupPatterns {
+                    xor: <span class="bool-val">false</span>,
+                    lookup: <span class="bool-val">false</span>,
+                    range_check: <span class="bool-val">false</span>,
+                    foreign_field_mul: <span class="bool-val">false</span>,
+                },
+                joint_lookup_used: <span class="bool-val">false</span>,
+                uses_runtime_tables: <span class="bool-val">false</span>,
+            },
+            foreign_field_add: <span class="bool-val">false</span>,
+            foreign_field_mul: <span class="bool-val">false</span>,
+            xor: <span class="bool-val">false</span>,
+            rot: <span class="bool-val">false</span>,
+        }
+    }
 }
 
 <span class="doccomment">/// The polynomials representing evaluated columns, in coefficient form.

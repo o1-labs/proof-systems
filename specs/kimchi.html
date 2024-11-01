@@ -1254,8 +1254,8 @@ the savings of one row and a few constraints of difference.</p>
 <pre><code class="language-text">left_input * right_input = quotient * foreign_field_modulus + remainder
 </code></pre>
 <h5 id="documentation-1"><a class="header" href="#documentation-1">Documentation</a></h5>
-<p>For more details please see the <a href="../kimchi/foreign_field_add.html">Foreign Field Multiplication</a>
-chapter or the original <a href="https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md">Foreign Field Multiplication RFC</a></p>
+<p>For more details please see the <a href="../kimchi/foreign_field_mul.html">Foreign Field Multiplication</a>
+chapter or the original <a href="https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md">Foreign Field Multiplication RFC</a>.</p>
 <h5 id="notations"><a class="header" href="#notations">Notations</a></h5>
 <p>For clarity, we use more descriptive variable names in the code than in
 the RFC, which uses mathematical notations.</p>
@@ -1938,7 +1938,7 @@ You can find these operations under the <a href="#proof-creation">proof creation
 <p>A proof consists of the following data structures:</p>
 <pre><code class="language-rs">/// Evaluations of a polynomial at 2 points
 #[serde_as]
-#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug, PartialEq)]
 #[cfg_attr(
     feature = &quot;ocaml_types&quot;,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -1963,7 +1963,7 @@ pub struct PointEvaluations&lt;Evals&gt; {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they
 /// are single-sized#[serde_as]
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProofEvaluations&lt;Evals&gt; {
     /// public input polynomials
     pub public: Option&lt;Evals&gt;,
@@ -2032,7 +2032,7 @@ pub struct ProofEvaluations&lt;Evals&gt; {
 
 /// Commitments linked to the lookup feature
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct LookupCommitments&lt;G: AffineRepr&gt; {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
@@ -2045,7 +2045,7 @@ pub struct LookupCommitments&lt;G: AffineRepr&gt; {
 
 /// All the commitments that the prover creates as part of the proof.
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverCommitments&lt;G: AffineRepr&gt; {
     /// The commitments to the witness (execution trace)
@@ -2061,7 +2061,7 @@ pub struct ProverCommitments&lt;G: AffineRepr&gt; {
 /// The proof that the prover creates from a
 /// [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverProof&lt;G: AffineRepr, OpeningProof&gt; {
     /// All the polynomial commitments required in the proof
@@ -2088,7 +2088,7 @@ pub struct ProverProof&lt;G: AffineRepr, OpeningProof&gt; {
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct RecursionChallenge&lt;G&gt;
 where
