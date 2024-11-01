@@ -1,6 +1,8 @@
 use mina_curves::pasta::Fp;
 use o1vm::interpreters::riscv32i::{
-    interpreter::{CustomInstructionIter, IInstruction, Instruction, RInstruction, CustomInstruction},
+    interpreter::{
+        CustomInstruction, CustomInstructionIter, IInstruction, Instruction, RInstruction,
+    },
     witness::Env,
     PAGE_SIZE,
 };

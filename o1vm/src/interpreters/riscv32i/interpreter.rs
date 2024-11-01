@@ -1386,7 +1386,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     };
     env.range_check8(&rd, 5);
 
-
     let funct3 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 15, 12, pos) }
@@ -1593,7 +1592,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AddImmediate => {
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             let overflow_scratch = env.alloc_scratch();
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe {
@@ -1641,14 +1640,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             let (local_t, _overflow) = {
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
-                unsafe { env.add_witness(&instruction_pointer.clone(), &Env::constant(4u32), pos, overflow_scratch) }
+                unsafe {
+                    env.add_witness(
+                        &instruction_pointer.clone(),
+                        &Env::constant(4u32),
+                        pos,
+                        overflow_scratch,
+                    )
+                }
             };
             // print local t
             println!("local t: {:?}", local_t);
             let local_rs1 = env.read_register(&rs1);
             println!("local rs1: {:?}", local_rs1);
             print!("local pre sign extend imm: {:?}", imm);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             print!("local imm: {:?}", local_imm);
             let local_rs1_plus_imm = {
                 let pos = env.alloc_scratch();
@@ -1668,7 +1674,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
             env.set_instruction_pointer(local_pc.clone());
             env.write_register(&rd, local_t);
-            
+
             env.set_next_instruction_pointer(local_pc.clone() + Env::constant(4u32));
             println!("JALR done");
         }
