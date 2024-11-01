@@ -254,7 +254,6 @@ where
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
         let (quotient, rem) = expr_evaluation_interpolated
-            // FIXME: Should this be d8?
             .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
         // As the constraints must be verified on H, the rest of the division

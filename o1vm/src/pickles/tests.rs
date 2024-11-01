@@ -111,8 +111,7 @@ fn test_small_circuit() {
     .unwrap();
 
     let instant_before_verification = Instant::now();
-    let verif =
-        verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &vec![expr.clone()], &proof);
+    let verif = verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof);
     let instant_after_verification = Instant::now();
     debug!(
         "Verification took: {} ms",

@@ -69,8 +69,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
-    //FIXME: change vec to array
-    constraints: &Vec<E<G::ScalarField>>,
+    constraints: &[E<G::ScalarField>],
     proof: &Proof<G>,
 ) -> bool
 where
@@ -177,7 +176,7 @@ where
     };
 
     let combined_expr =
-        Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+        Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_vec());
 
     let numerator_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
