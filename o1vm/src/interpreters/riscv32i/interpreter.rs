@@ -1117,10 +1117,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
@@ -1360,11 +1360,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
+
     println!("finished parsing iinstruction");
 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
@@ -1692,11 +1693,12 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
+
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
@@ -1835,10 +1837,10 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
@@ -2146,11 +2148,12 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
+
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
@@ -2225,11 +2228,12 @@ pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v0 * Env::constant(1 << 24))
-            + (v1 * Env::constant(1 << 16))
-            + (v2 * Env::constant(1 << 8))
-            + v3
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
     };
+
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
