@@ -254,11 +254,7 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineRepr, Group};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>rand::thread_rng;
 
@@ -291,23 +287,20 @@
 <span class="kw">use </span>kimchi_msm::columns::Column;
 
 <span class="kw">type </span>CommitmentColumns&lt;G&gt; = WitnessColumns&lt;PolyComm&lt;G&gt;, [PolyComm&lt;G&gt;; N_MIPS_SEL_COLS]&gt;;
-<span class="kw">type </span>EvaluationColumns&lt;G&gt; = WitnessColumns&lt;
-    &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
-    [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
-&gt;;
+<span class="kw">type </span>EvaluationColumns&lt;F&gt; = WitnessColumns&lt;F, [F; N_MIPS_SEL_COLS]&gt;;
 
 <span class="kw">struct </span>ColumnEval&lt;<span class="lifetime">&#39;a</span>, G: AffineRepr&gt; {
     commitment: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CommitmentColumns&lt;G&gt;,
-    zeta_eval: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>EvaluationColumns&lt;G&gt;,
-    zeta_omega_eval: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>EvaluationColumns&lt;G&gt;,
+    zeta_eval: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>EvaluationColumns&lt;G::ScalarField&gt;,
+    zeta_omega_eval: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>EvaluationColumns&lt;G::ScalarField&gt;,
 }
 
-<span class="kw">impl</span>&lt;G: AffineRepr&gt; ColumnEvaluations&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt; <span class="kw">for </span>ColumnEval&lt;<span class="lifetime">&#39;_</span>, G&gt; {
+<span class="kw">impl</span>&lt;G: AffineRepr&gt; ColumnEvaluations&lt;G::ScalarField&gt; <span class="kw">for </span>ColumnEval&lt;<span class="lifetime">&#39;_</span>, G&gt; {
     <span class="kw">type </span>Column = Column;
     <span class="kw">fn </span>evaluate(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         col: <span class="self">Self</span>::Column,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;G::ScalarField&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
         <span class="kw">let </span>ColumnEval {
             commitment: <span class="kw">_</span>,
             zeta_eval,
@@ -332,8 +325,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>&lt;OpeningProof&lt;G&gt; <span class="kw">as </span>OpenProof&lt;G&gt;&gt;::SRS,
-    <span class="comment">//FIXME: change vec to array
-    </span>constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
+    constraints: <span class="kw-2">&amp;</span>[E&lt;G::ScalarField&gt;],
     proof: <span class="kw-2">&amp;</span>Proof&lt;G&gt;,
 ) -&gt; bool
 <span class="kw">where
@@ -440,7 +432,7 @@
     };
 
     <span class="kw">let </span>combined_expr =
-        Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
+        Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.to_vec());
 
     <span class="kw">let </span>numerator_zeta = PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),

@@ -420,14 +420,8 @@
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
-<span class="kw">use </span>ark_ec::{AffineRepr, Group};
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::{
@@ -492,7 +486,7 @@
     rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;G&gt;, ProverError&gt;
 <span class="kw">where
-    </span>&lt;G <span class="kw">as </span>AffineRepr&gt;::BaseField: PrimeField,
+    </span>G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
     <span class="kw">let </span>num_chunks = <span class="number">1</span>;
@@ -503,11 +497,13 @@
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
-    </span><span class="kw">type </span>F&lt;G&gt; = DensePolynomial&lt;&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField&gt;;
 
-    <span class="macro">debug!</span>(<span class="string">&quot;Prover: interpolating all columns, including the selectors&quot;</span>);
+    </span><span class="macro">debug!</span>(<span class="string">&quot;Prover: interpolating all columns, including the selectors&quot;</span>);
     <span class="kw">let </span>ProofInputs { evaluations } = inputs;
-    <span class="kw">let </span>polys: WitnessColumns&lt;F&lt;G&gt;, [F&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
+    <span class="kw">let </span>polys: WitnessColumns&lt;
+        DensePolynomial&lt;G::ScalarField&gt;,
+        [DensePolynomial&lt;G::ScalarField&gt;; N_MIPS_SEL_COLS],
+    &gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
             instruction_counter,
@@ -518,18 +514,17 @@
         <span class="kw">let </span>domain_size = domain.d1.size <span class="kw">as </span>usize;
 
         <span class="comment">// Build the selectors
-        </span><span class="kw">let </span>selector: [Vec&lt;&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField&gt;; N_MIPS_SEL_COLS] =
-            array::from_fn(|i| {
-                <span class="kw">let </span><span class="kw-2">mut </span>s_i = Vec::with_capacity(domain_size);
-                <span class="kw">for </span>s <span class="kw">in </span><span class="kw-2">&amp;</span>selector {
-                    s_i.push(<span class="kw">if </span>G::ScalarField::from(i <span class="kw">as </span>u64) == <span class="kw-2">*</span>s {
-                        G::ScalarField::one()
-                    } <span class="kw">else </span>{
-                        G::ScalarField::zero()
-                    })
-                }
-                s_i
-            });
+        </span><span class="kw">let </span>selector: [Vec&lt;G::ScalarField&gt;; N_MIPS_SEL_COLS] = array::from_fn(|i| {
+            <span class="kw">let </span><span class="kw-2">mut </span>s_i = Vec::with_capacity(domain_size);
+            <span class="kw">for </span>s <span class="kw">in </span><span class="kw-2">&amp;</span>selector {
+                s_i.push(<span class="kw">if </span>G::ScalarField::from(i <span class="kw">as </span>u64) == <span class="kw-2">*</span>s {
+                    G::ScalarField::one()
+                } <span class="kw">else </span>{
+                    G::ScalarField::zero()
+                })
+            }
+            s_i
+        });
 
         <span class="kw">let </span>eval_col = |evals: Vec&lt;G::ScalarField&gt;| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain.d1)
@@ -681,8 +676,7 @@
         <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
         </span><span class="kw">let </span>(quotient, rem) = expr_evaluation_interpolated
-            <span class="comment">// FIXME: Should this be d8?
-            </span>.divide_by_vanishing_poly(domain.d1)
+            .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
         <span class="comment">// As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
@@ -734,16 +728,12 @@
         }
     };
     <span class="comment">// All evaluations at ζ
-    </span><span class="kw">let </span>zeta_evaluations: WitnessColumns&lt;
-        &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
-        [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
-    &gt; = evals(<span class="kw-2">&amp;</span>zeta);
+    </span><span class="kw">let </span>zeta_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
+        evals(<span class="kw-2">&amp;</span>zeta);
 
     <span class="comment">// All evaluations at ζω
-    </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;
-        &lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField,
-        [&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::Group <span class="kw">as </span>Group&gt;::ScalarField; N_MIPS_SEL_COLS],
-    &gt; = evals(<span class="kw-2">&amp;</span>zeta_omega);
+    </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
+        evals(<span class="kw-2">&amp;</span>zeta_omega);
 
     <span class="kw">let </span>chunked_quotient = quotient_poly
         .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize, domain.d1.size <span class="kw">as </span>usize);
