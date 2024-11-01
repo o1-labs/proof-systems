@@ -18,7 +18,7 @@ use o1vm::{
         Instruction,
     },
     pickles::{
-        proof::{Proof, ProofInputs},
+        proof::{NotInversedProofInputs, Proof, ProofInputs},
         prover,
     },
     preimage_oracle::PreImageOracle,
@@ -98,46 +98,53 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Fp> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: NotInversedProofInputs<Fp> =
+        NotInversedProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
             .iter()
-            .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+            .zip(curr_proof_inputs.scratch.iter_mut())
         {
-            scratch_chunk.push(scratch.to_field());
+            scratch_chunk.push(*scratch);
         }
         curr_proof_inputs
-            .evaluations
             .instruction_counter
             .push(Fp::from(mips_wit_env.instruction_counter));
         // FIXME: Might be another value
-        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
+        curr_proof_inputs.error.push(Fp::rand(&mut rng));
 
         curr_proof_inputs
-            .evaluations
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
-        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+        if curr_proof_inputs.instruction_counter.len() == DOMAIN_SIZE {
+            // Perform the batch inversion on the input
+            let curr_proof_inputs_inversed: ProofInputs<Fp> = curr_proof_inputs.into();
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let _proof: Result<Proof<Vesta>, prover::ProverError> =
-                prover::prove::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                    _,
-                >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
+            let _proof: Result<Proof<Vesta>, prover::ProverError> = prover::prove::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                _,
+            >(
+                domain_fp,
+                &srs,
+                curr_proof_inputs_inversed,
+                &constraints,
+                &mut rng,
+            );
+            println!("a proof has passed");
             // FIXME: check that the proof is correct. This is for testing purposes.
             // Leaving like this for now.
             debug!(
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
             );
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            curr_proof_inputs = NotInversedProofInputs::new(DOMAIN_SIZE);
         }
     }
     // TODO: Logic
