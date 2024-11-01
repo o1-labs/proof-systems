@@ -708,18 +708,25 @@ impl<Fp: Field> Env<Fp> {
             }
         };
         // display the opcode
-        println!("Decoded instruction {:?} with opcode {:?}", instruction, opcode);
+        println!(
+            "Decoded instruction {:?} with opcode {:?}",
+            instruction, opcode
+        );
         (opcode, instruction)
     }
 
     /// Execute a single step in the RISCV32i program
     pub fn step(&mut self) -> Instruction {
         self.reset_scratch_state();
+        println!("Before decode");
         let (opcode, _instruction) = self.decode_instruction();
+        println!("After decode");
 
         interpreter::interpret_instruction(self, opcode);
 
+        println!("Before ic set");
         self.instruction_counter = self.next_instruction_counter();
+        println!("After ic set");
 
         // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {

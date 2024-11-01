@@ -14,6 +14,7 @@ pub enum Instruction {
     SBType(SBInstruction),
     UType(UInstruction),
     UJType(UJInstruction),
+    CustomType(CustomInstruction),
 }
 
 // See https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf for the order
@@ -102,6 +103,14 @@ pub enum UJInstruction {
     JumpAndLink, // jal
 }
 
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum CustomInstruction {
+    #[default]
+    Invalid, // a custom instruction that we will use to halt execution
+}
+
 impl IntoIterator for Instruction {
     type Item = Instruction;
     type IntoIter = std::vec::IntoIter<Instruction>;
@@ -150,6 +159,11 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
+            Instruction::CustomType(_) => {
+                let mut iter_contents = Vec::with_capacity(CustomInstruction::COUNT);
+                iter_contents.push(Instruction::CustomType(CustomInstruction::Invalid));
+                iter_contents.into_iter()
+            }
         }
     }
 }
@@ -163,6 +177,7 @@ impl std::fmt::Display for Instruction {
             Instruction::SBType(sbtype) => write!(f, "{}", sbtype),
             Instruction::UType(utype) => write!(f, "{}", utype),
             Instruction::UJType(ujtype) => write!(f, "{}", ujtype),
+            Instruction::CustomType(custom) => write!(f, "{}", custom),
         }
     }
 }
@@ -244,6 +259,14 @@ impl std::fmt::Display for UJInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UJInstruction::JumpAndLink => write!(f, "jal"),
+        }
+    }
+}
+
+impl std::fmt::Display for CustomInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CustomInstruction::Invalid => write!(f, "invalid"),
         }
     }
 }
@@ -1066,6 +1089,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 
     /* https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html */
     /* as a general note each inst has an equation description, each operation in the equation needs a witness inst */
+    println!("Interpreting instruction {:?}", instr);
     match instr {
         Instruction::RType(rtype) => interpret_rtype(env, rtype),
         Instruction::IType(itype) => interpret_itype(env, itype),
@@ -1073,7 +1097,12 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::SBType(sbtype) => interpret_sbtype(env, sbtype),
         Instruction::UType(utype) => interpret_utype(env, utype),
         Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
+        Instruction::CustomType(customtype) => interpret_customtype(env, customtype),
     }
+}
+
+pub fn interpret_customtype<Env: InterpreterEnv>(env: &mut Env, _instr: CustomInstruction) {
+    env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) {
@@ -1336,6 +1365,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             + (v2 * Env::constant(1 << 8))
             + v3
     };
+    println!("finished parsing iinstruction");
 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
@@ -1345,6 +1375,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
+    println!("finished parsing opcode");
+
     /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
     https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
      */
@@ -1353,6 +1385,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         unsafe { env.bitmask(&instruction, 12, 7, pos) }
     };
     env.range_check8(&rd, 5);
+
 
     let funct3 = {
         let pos = env.alloc_scratch();
@@ -1368,7 +1401,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     let imm = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 20, pos) }
+        unsafe { env.bitmask(&instruction, 31, 20, pos) }
     };
     env.range_check16(&imm, 11);
 
@@ -1381,6 +1414,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
         - (imm.clone() * Env::constant(1 << 20)), // imm at bits 20-31
     );
+
+    // print out the immediate and the opcode
+    println!("imm: {:?}", imm);
+    println!("opcode: {:?}", opcode);
 
     match instr {
         IInstruction::LoadByte => {
@@ -1600,9 +1637,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         }
         IInstruction::JumpAndLinkRegister => {
             // jalr: t =pc+4; pc=(x[rs1]+sext(offset))&∼1; x[rd]=t
-            let local_t = instruction_pointer.clone() + Env::constant(4u32);
+            println!("JALR");
+            let (local_t, _overflow) = {
+                let pos = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                unsafe { env.add_witness(&instruction_pointer.clone(), &Env::constant(4u32), pos, overflow_scratch) }
+            };
+            // print local t
+            println!("local t: {:?}", local_t);
             let local_rs1 = env.read_register(&rs1);
+            println!("local rs1: {:?}", local_rs1);
+            print!("local pre sign extend imm: {:?}", imm);
             let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            print!("local imm: {:?}", local_imm);
             let local_rs1_plus_imm = {
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
@@ -1610,16 +1657,20 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                     unsafe { env.add_witness(&local_rs1, &local_imm, pos, overflow_scratch) };
                 local_rs1_plus_imm
             };
-
+            print!("local rs1 plus imm: {:?}", local_rs1_plus_imm);
             let not_1 = Env::constant(!1u32);
+            print!("not 1: {:?}", not_1);
             let local_pc = {
-                let pos = env.alloc_scratch();
+                let pos: <Env as InterpreterEnv>::Position = env.alloc_scratch();
                 unsafe { env.and_witness(&local_rs1_plus_imm, &not_1, pos) }
             };
+            print!("local pc: {:?}", local_pc);
 
             env.set_instruction_pointer(local_pc.clone());
             env.write_register(&rd, local_t);
-            env.set_instruction_pointer(local_pc.clone() + Env::constant(4u32));
+            
+            env.set_next_instruction_pointer(local_pc.clone() + Env::constant(4u32));
+            println!("JALR done");
         }
     };
 }

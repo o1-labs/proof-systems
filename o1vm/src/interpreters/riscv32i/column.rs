@@ -2,7 +2,7 @@ use super::{
     interpreter::{
         IInstruction, Instruction,
         Instruction::{IType, RType, SBType, SType, UJType, UType},
-        RInstruction, SBInstruction, SInstruction, UInstruction,
+        RInstruction, SBInstruction, SInstruction, UInstruction, UJInstruction,
     },
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
@@ -10,6 +10,7 @@ use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
 };
+use libc::cpu_type_t;
 use strum::EnumCount;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,6 +76,17 @@ impl From<Instruction> for usize {
                     + SBInstruction::COUNT
                     + UInstruction::COUNT
                     + ujtype as usize
+            }
+            Instruction::CustomType(ctype) => {
+                SCRATCH_SIZE
+                    + 2
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + SBInstruction::COUNT
+                    + UInstruction::COUNT
+                    + UJInstruction::COUNT
+                    + ctype as usize
             }
         }
     }
