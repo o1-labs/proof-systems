@@ -80,6 +80,17 @@ impl<F: ark_ff::Field> From<NotInversedProofInputs<F>> for ProofInputs<F> {
     }
 }
 
+impl<F: Field> NotInversedProofInputs<F> {
+    pub fn new(domain_size: usize) -> Self {
+        NotInversedProofInputs {
+            scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            instruction_counter: Vec::with_capacity(domain_size),
+            error: Vec::with_capacity(domain_size),
+            selector: Vec::with_capacity(domain_size),
+        }
+    }
+}
+
 impl<F: Field> ProofInputs<F> {
     pub fn new(domain_size: usize) -> Self {
         ProofInputs {
