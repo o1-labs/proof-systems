@@ -1,6 +1,5 @@
 use std::array;
 
-use ark_ec::{AffineRepr, Group};
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
@@ -65,7 +64,7 @@ pub fn prove<
     rng: &mut RNG,
 ) -> Result<Proof<G>, ProverError>
 where
-    <G as AffineRepr>::BaseField: PrimeField,
+    G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
     let num_chunks = 1;
@@ -76,11 +75,13 @@ where
     ////////////////////////////////////////////////////////////////////////////
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
-    type F<G> = DensePolynomial<<<G as AffineRepr>::Group as Group>::ScalarField>;
 
     debug!("Prover: interpolating all columns, including the selectors");
     let ProofInputs { evaluations } = inputs;
-    let polys: WitnessColumns<F<G>, [F<G>; N_MIPS_SEL_COLS]> = {
+    let polys: WitnessColumns<
+        DensePolynomial<G::ScalarField>,
+        [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
+    > = {
         let WitnessColumns {
             scratch,
             instruction_counter,
@@ -91,18 +92,17 @@ where
         let domain_size = domain.d1.size as usize;
 
         // Build the selectors
-        let selector: [Vec<<<G as AffineRepr>::Group as Group>::ScalarField>; N_MIPS_SEL_COLS] =
-            array::from_fn(|i| {
-                let mut s_i = Vec::with_capacity(domain_size);
-                for s in &selector {
-                    s_i.push(if G::ScalarField::from(i as u64) == *s {
-                        G::ScalarField::one()
-                    } else {
-                        G::ScalarField::zero()
-                    })
-                }
-                s_i
-            });
+        let selector: [Vec<G::ScalarField>; N_MIPS_SEL_COLS] = array::from_fn(|i| {
+            let mut s_i = Vec::with_capacity(domain_size);
+            for s in &selector {
+                s_i.push(if G::ScalarField::from(i as u64) == *s {
+                    G::ScalarField::one()
+                } else {
+                    G::ScalarField::zero()
+                })
+            }
+            s_i
+        });
 
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
@@ -307,16 +307,12 @@ where
         }
     };
     // All evaluations at ζ
-    let zeta_evaluations: WitnessColumns<
-        <<G as AffineRepr>::Group as Group>::ScalarField,
-        [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
-    > = evals(&zeta);
+    let zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
+        evals(&zeta);
 
     // All evaluations at ζω
-    let zeta_omega_evaluations: WitnessColumns<
-        <<G as AffineRepr>::Group as Group>::ScalarField,
-        [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
-    > = evals(&zeta_omega);
+    let zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
+        evals(&zeta_omega);
 
     let chunked_quotient = quotient_poly
         .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize);

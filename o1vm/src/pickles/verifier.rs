@@ -1,4 +1,4 @@
-use ark_ec::{AffineRepr, Group};
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
 use rand::thread_rng;
 
@@ -31,23 +31,20 @@ use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use kimchi_msm::columns::Column;
 
 type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
-type EvaluationColumns<G> = WitnessColumns<
-    <<G as AffineRepr>::Group as Group>::ScalarField,
-    [<<G as AffineRepr>::Group as Group>::ScalarField; N_MIPS_SEL_COLS],
->;
+type EvaluationColumns<F> = WitnessColumns<F, [F; N_MIPS_SEL_COLS]>;
 
 struct ColumnEval<'a, G: AffineRepr> {
     commitment: &'a CommitmentColumns<G>,
-    zeta_eval: &'a EvaluationColumns<G>,
-    zeta_omega_eval: &'a EvaluationColumns<G>,
+    zeta_eval: &'a EvaluationColumns<G::ScalarField>,
+    zeta_omega_eval: &'a EvaluationColumns<G::ScalarField>,
 }
 
-impl<G: AffineRepr> ColumnEvaluations<<G as AffineRepr>::ScalarField> for ColumnEval<'_, G> {
+impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
     type Column = Column;
     fn evaluate(
         &self,
         col: Self::Column,
-    ) -> Result<PointEvaluations<<G as AffineRepr>::ScalarField>, ExprError<Self::Column>> {
+    ) -> Result<PointEvaluations<G::ScalarField>, ExprError<Self::Column>> {
         let ColumnEval {
             commitment: _,
             zeta_eval,
