@@ -24,6 +24,7 @@ use mina_poseidon::{
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
 use strum::{EnumCount, IntoEnumIterator};
+
 #[test]
 fn test_regression_constraints_with_selectors() {
     let constraints = {
@@ -75,6 +76,7 @@ fn test_regression_selectors_for_instructions() {
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
     (0..n).map(|i| Fq::from((i) as u64)).collect()
 }
+
 #[test]
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
