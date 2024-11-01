@@ -271,6 +271,8 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
+    fn print_variable(variable: &Self::Variable);
+
     // Returns the variable in the current row corresponding to a given column alias.
     fn variable(&self, column: Self::Position) -> Self::Variable;
 
@@ -1102,7 +1104,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
-    /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
+    /* decode and parse bits from the full 32 bit instruction in accordance with
+     * the Rtype riscV spec
     https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
      */
     let rd = {
@@ -1337,11 +1340,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             + v3
     };
 
+    println!("Instruction:");
+    Env::print_variable(&instruction);
+
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+        unsafe { env.bitmask(&instruction, 32, 25, pos) }
     };
+
+    println!("Opcode: ");
+    Env::print_variable(&opcode);
+    println!("Instruction: {instr}");
+
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
@@ -1350,26 +1361,33 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
      */
     let rd = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+        unsafe { env.bitmask(&instruction, 25, 20, pos) }
     };
     env.range_check8(&rd, 5);
 
+    Env::print_variable(&rd);
+
     let funct3 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 15, 12, pos) }
+        unsafe { env.bitmask(&instruction, 20, 17, pos) }
     };
+    Env::print_variable(&funct3);
     env.range_check8(&funct3, 3);
 
     let rs1 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 20, 15, pos) }
+        unsafe { env.bitmask(&instruction, 17, 12, pos) }
     };
+    Env::print_variable(&rs1);
     env.range_check8(&rs1, 5);
 
     let imm = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 20, pos) }
+        unsafe { env.bitmask(&instruction, 12, 0, pos) }
     };
+
+    Env::print_variable(&imm);
+
     env.range_check16(&imm, 11);
 
     // check correctness of decomposition of I type function
@@ -1556,7 +1574,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AddImmediate => {
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             let overflow_scratch = env.alloc_scratch();
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe {
@@ -1571,7 +1589,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::XorImmediate => {
             // xori: x[rd] = x[rs1] ^ sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1581,7 +1599,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::OrImmediate => {
             // ori: x[rd] = x[rs1] | sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1591,7 +1609,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AndImmediate => {
             // andi: x[rd] = x[rs1] & sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
+            let local_imm = env.sign_extend(&imm, 11); // bitlen 11 + 1 for sign bit
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);

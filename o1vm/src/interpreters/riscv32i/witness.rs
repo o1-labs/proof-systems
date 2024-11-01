@@ -61,6 +61,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u64;
 
+    fn print_variable(variable: &Self::Variable) {
+        println!("Variable as u32: {}", *variable as u32);
+        println!("Variable as i32: {}", *variable as i32);
+    }
+
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!()
     }
@@ -381,6 +386,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> (Self::Variable, Self::Variable) {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
+        println!("y_as_i32: {:?}", y as i32);
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
         let res = x.overflowing_add(y);
         let (res_, overflow) = (res.0 as u64, res.1 as u64);
@@ -708,7 +714,10 @@ impl<Fp: Field> Env<Fp> {
             }
         };
         // display the opcode
-        println!("Decoded instruction {:?} with opcode {:?}", instruction, opcode);
+        println!(
+            "Decoded instruction {:?} with opcode {:?}",
+            instruction, opcode
+        );
         (opcode, instruction)
     }
 

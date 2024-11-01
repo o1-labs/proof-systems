@@ -50,6 +50,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = E<Fp>;
 
+    fn print_variable(_variable: &Self::Variable) {
+        unimplemented!()
+    }
+
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: column,
