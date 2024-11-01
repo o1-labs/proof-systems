@@ -71,17 +71,22 @@ mod tests {
 
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
-                .unwrap();
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+            &group_map,
+            witness,
+            &[],
+            &index,
+            &mut rand::rngs::OsRng,
+        )
+        .unwrap();
 
         // deserialize the verifier index
         let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
-        let mut srs = SRS::<Affine<VestaParameters>>::create(verifier_index.max_poly_size);
-        srs.add_lagrange_basis(verifier_index.domain);
+        let srs = SRS::<Affine<VestaParameters>>::create(verifier_index.max_poly_size);
+        srs.get_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
         verifier_index_deserialize.srs = std::sync::Arc::new(srs);

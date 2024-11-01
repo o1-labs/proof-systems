@@ -21,3 +21,4 @@ serde_with.workspace = true
 
 mina-curves.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true

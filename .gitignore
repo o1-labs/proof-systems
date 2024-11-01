@@ -18,6 +18,7 @@ idea
 *.sage.py
 params
 _build
+build
 .merlin
 *.swp
 *.swo

@@ -224,8 +224,8 @@ pub mod mips {
         let domain_size = 1 << 3;
         let domain: D<Fp> = D::<Fp>::new(domain_size).unwrap();
 
-        let mut srs = PairingSRS::<Curve>::create(domain_size);
-        srs.add_lagrange_basis(domain);
+        let srs = PairingSRS::<Curve>::create(domain_size);
+        srs.get_lagrange_basis(domain);
 
         // Generating constraints
         let constraints = {
@@ -496,8 +496,8 @@ pub mod keccak {
             let domain_size = 1 << 6;
 
             let domain = D::<Fp>::new(domain_size).unwrap();
-            let mut srs = PairingSRS::<Curve>::create(domain_size);
-            srs.add_lagrange_basis(domain);
+            let srs = PairingSRS::<Curve>::create(domain_size);
+            srs.get_lagrange_basis(domain);
 
             // Create sponge
             let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());

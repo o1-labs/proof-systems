@@ -37,12 +37,12 @@ impl<Pair: Pairing> From<TestPairingSRS<Pair>> for PairingSRS<Pair> {
 
 /// Obtains an SRS for a specific curve from disk, or generates it if absent.
 pub fn get_bn254_srs(domain: EvaluationDomains<Fp>) -> PairingSRS<BN254> {
-    let mut srs = if domain.d1.size as usize == DOMAIN_SIZE {
+    let srs = if domain.d1.size as usize == DOMAIN_SIZE {
         read_bn254_srs_from_disk(get_bn254_srs_path())
     } else {
         PairingSRS::create(domain.d1.size as usize)
     };
-    srs.full_srs.add_lagrange_basis(domain.d1); // not added if already present.
+    srs.full_srs.get_lagrange_basis(domain.d1); // not added if already present.
     srs
 }
 
@@ -75,11 +75,11 @@ fn create_and_store_srs_with_path(
     // We generate with a fixed-seed RNG, only used for testing.
     let mut rng = &mut StdRng::from_seed([42u8; 32]);
     let trapdoor = Fp::rand(&mut rng);
-    let mut srs = PairingSRS::create_trusted_setup(trapdoor, domain_size);
+    let srs = PairingSRS::create_trusted_setup(trapdoor, domain_size);
 
     for sub_domain_size in 1..=domain_size {
         let domain = EvaluationDomains::<Fp>::create(sub_domain_size).unwrap();
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        srs.full_srs.get_lagrange_basis(domain.d1);
     }
 
     // overwrite SRS if the env var is set

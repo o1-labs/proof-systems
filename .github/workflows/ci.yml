@@ -67,6 +67,7 @@ jobs:
     name: Run checks and tests
     # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
     # Only in this configuration we enable tests with the code coverage data gathering.
+    # runs-on: [hetzner-proof-systems-runners-group-1]
     runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
     env:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
@@ -77,11 +78,17 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
+        node: [20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared

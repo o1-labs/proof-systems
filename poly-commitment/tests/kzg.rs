@@ -141,9 +141,9 @@ fn test_kzg_proof() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let x = ScalarField::rand(&mut rng);
 
-    let mut srs = unsafe { SRS::<G1>::create_trusted_setup(x, n) };
+    let srs = unsafe { SRS::<G1>::create_trusted_setup(x, n) };
     let verifier_srs = unsafe { SRS::<G2>::create_trusted_setup(x, 3) };
-    srs.add_lagrange_basis(domain);
+    srs.get_lagrange_basis(domain);
 
     let srs = PairingSRS {
         full_srs: srs,

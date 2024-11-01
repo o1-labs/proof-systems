@@ -20,8 +20,7 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 // Tests add and double gates
 #[test]
 fn ec_test() {
-    use o1_utils::tests::make_test_rng;
-    let mut rng = make_test_rng(None);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let num_doubles = 100;
     let num_additions = 100;
@@ -42,7 +41,7 @@ fn ec_test() {
     let ps: Vec<Other> = {
         let p = Other::generator()
             .into_group()
-            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng));
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
         let mut res = vec![];
         let mut acc = p;
         for _ in 0..num_additions {
@@ -55,7 +54,7 @@ fn ec_test() {
     let qs: Vec<Other> = {
         let q = Other::generator()
             .into_group()
-            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng));
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
         let mut res = vec![];
         let mut acc = q;
         for _ in 0..num_additions {

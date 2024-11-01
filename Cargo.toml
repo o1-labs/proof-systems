@@ -7,7 +7,6 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
-    "kimchi/snarky-deriver/",
     "msm",
     "o1vm",
     "poseidon",
@@ -30,9 +29,10 @@ ark-ec = { version = "0.4.2", features = ["parallel"] }
 ark-ff = { version = "0.4.2", features = ["parallel", "asm"] }
 ark-poly = { version = "0.4.2", features = ["parallel"] }
 ark-serialize = "0.4.2"
-ark-std = "0.4.0"
-bcs = "0.1.3"
+ark-std = { version = "0.4.0", features = ["parallel"] }
+ark-test-curves = { version = "0.4.2", features = ["parallel", "asm"] }
 base64 = "0.21.5"
+bcs = "0.1.3"
 bitvec = "1.0.0"
 blake2 = "0.10.0"
 bs58 = "0.5.0"
@@ -49,7 +49,7 @@ itertools = "0.12.1"
 libc = "0.2.62"
 libflate = "2"
 log = "0.4.20"
-num-bigint = { version = "0.4.3", features = ["rand", "serde"] }
+num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
 num-derive = "0.4"
 num-integer = "0.1.45"
 num-traits = "0.2"
@@ -61,15 +61,15 @@ proc-macro2 = "1.0.43"
 proptest = "1.0.0"
 proptest-derive = "0.4.0"
 quote = "1.0.21"
-rand = { version = "0.8.0", features = ["std_rng"] }
+rand = { version = "0.8.5", features = ["std_rng"] }
 rand_chacha = { version = "0.3.0" }
-rand_core = { version = "0.6.0" }
-rayon = "1"
+rand_core = { version = "0.6.3" }
+rayon = "1.5.0"
 regex = "1.10.2"
-rmp-serde = "1.1.1"
+rmp-serde = "1.1.2"
 secp256k1 = "0.28.2"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.79"
+serde = { version = "1.0.130", features = ["derive", "rc"] }
+serde_json = "1.0.113"
 serde_with = "3.6.0"
 sha2 = "0.10.0"
 sha3 = "0.10.8"
@@ -80,6 +80,8 @@ thiserror = "1.0.30"
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.90"
 
+
+arrabiata = { path = "./arrabiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
@@ -92,9 +94,9 @@ mina-poseidon = { path = "./poseidon", version = "0.1.0" }
 mvpoly = { path = "./mvpoly", version = "0.1.0" }
 o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
+optimism = { path = "./optimism", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
-snarky-deriver = { path = "./kimchi/snarky-deriver", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
 

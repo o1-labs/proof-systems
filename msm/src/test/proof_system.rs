@@ -31,7 +31,7 @@ mod tests {
             let x = Fp::rand(rng);
             PairingSRS::create(x, domain.d1.size as usize)
         };
-        srs.full_srs.add_lagrange_basis(domain.d1);
+        srs.get_lagrange_basis(domain.d1);
 
         let mut evaluations_prime = evaluations.clone();
         {

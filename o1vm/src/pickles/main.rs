@@ -66,8 +66,8 @@ pub fn main() -> ExitCode {
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
     let srs: SRS<Vesta> = {
-        let mut srs = SRS::create(DOMAIN_SIZE);
-        srs.add_lagrange_basis(domain_fp.d1);
+        let srs = SRS::create(DOMAIN_SIZE);
+        srs.get_lagrange_basis(domain_fp.d1);
         srs
     };
 
