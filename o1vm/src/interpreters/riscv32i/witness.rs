@@ -7,7 +7,7 @@ use super::{
         self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
         UInstruction, UJInstruction,
     },
-    registers::Registers,
+    registers::{self, Registers},
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
 use crate::{cannon::State, lookups::Lookup};
@@ -572,6 +572,7 @@ impl<Fp: Field> Env<Fp> {
             .map(|(offset, _)| *offset)
             .collect::<Vec<_>>();
 
+
         let initial_registers = {
             Registers {
                 general_purpose: state.registers,
@@ -580,6 +581,10 @@ impl<Fp: Field> Env<Fp> {
                 heap_pointer: state.heap,
             }
         };
+
+        let mut registers = initial_registers.clone();
+        registers[4] = 0x408004e0;
+        // set the stack pointer to the top of the stack
 
         Env {
             instruction_counter: state.step,
@@ -590,7 +595,7 @@ impl<Fp: Field> Env<Fp> {
                 .map(|offset| (*offset, vec![0u64; page_size]))
                 .collect(),
             last_memory_write_index_accesses: [0usize; 3],
-            registers: initial_registers.clone(),
+            registers: registers,
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
@@ -617,6 +622,11 @@ impl<Fp: Field> Env<Fp> {
             self.registers.current_instruction_pointer, instruction
         );
         let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
+        println!(
+            "Decoding instruction at address {:b} with value {:b}, with opcode",
+            self.registers.current_instruction_pointer, instruction
+        );
+
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {
