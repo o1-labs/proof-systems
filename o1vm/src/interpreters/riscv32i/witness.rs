@@ -572,7 +572,6 @@ impl<Fp: Field> Env<Fp> {
             .map(|(offset, _)| *offset)
             .collect::<Vec<_>>();
 
-
         let initial_registers = {
             Registers {
                 general_purpose: state.registers,
@@ -583,7 +582,7 @@ impl<Fp: Field> Env<Fp> {
         };
 
         let mut registers = initial_registers.clone();
-        registers[4] = 0x408004e0;
+        registers[2] = 0x408004e0;
         // set the stack pointer to the top of the stack
 
         Env {

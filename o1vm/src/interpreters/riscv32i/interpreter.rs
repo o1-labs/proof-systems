@@ -1067,7 +1067,7 @@ pub trait InterpreterEnv {
 
     fn set_halted(&mut self, flag: Self::Variable);
 
-        /// Given a variable x, this function extends it to a signed integer of
+    /// Given a variable x, this function extends it to a signed integer of
     /// bitlength bits.
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
         // FIXME: Constrain high_bit
@@ -1077,7 +1077,6 @@ pub trait InterpreterEnv {
         };
         high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
     }
-    
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
 
@@ -1377,7 +1376,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 6, 0, pos) }
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
@@ -1389,15 +1388,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
      */
     let rd = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 11, 6, pos) }
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
     };
     env.range_check8(&rd, 5);
-    // print out rd 
+    // print out rd
     println!("rd: {:?}", rd);
 
     let funct3 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 14, 11, pos) }
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
     };
     env.range_check8(&funct3, 3);
     // print out funct3
@@ -1405,7 +1404,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     let rs1 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 19, 14, pos) }
+        unsafe { env.bitmask(&instruction, 20, 15, pos) }
     };
     env.range_check8(&rs1, 5);
     // print out rs1
@@ -1413,14 +1412,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     let imm = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 19, pos) }
+        unsafe { env.bitmask(&instruction, 32, 20, pos) }
     };
 
     env.range_check16(&imm, 12);
     println!("imm: {:?}", imm);
 
     // check correctness of decomposition of I type function
-    /* 
+    /*
     env.add_constraint(
         instruction
         - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
@@ -1609,7 +1608,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AddImmediate => {
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&(rs1.clone()));
-            let local_imm = env.sign_extend(&imm, 12); 
+            let local_imm = env.sign_extend(&imm, 12);
             // print local imm
             println!("local imm: {:?}", local_imm);
             println!("local rs1: {:?}", local_rs1);
@@ -1627,7 +1626,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::XorImmediate => {
             // xori: x[rd] = x[rs1] ^ sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); 
+            let local_imm = env.sign_extend(&imm, 12);
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1637,7 +1636,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::OrImmediate => {
             // ori: x[rd] = x[rs1] | sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); 
+            let local_imm = env.sign_extend(&imm, 12);
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1647,7 +1646,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::AndImmediate => {
             // andi: x[rd] = x[rs1] & sext(immediate)
             let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12); 
+            let local_imm = env.sign_extend(&imm, 12);
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
             env.write_register(&rd, local_rd);
@@ -1809,35 +1808,56 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         }
         SInstruction::StoreHalf => {
             // sh: M[x[rs1] + sext(offset)] = x[rs2][15:0]
-            let v0 = {
-                let value_scratch = env.alloc_scratch();
-                unsafe { env.bitmask(&local_rs2, 16, 0, value_scratch) }
-            };
+            let [v0, v1] = [
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                },
+            ];
 
-            env.lookup_16bits(&v0);
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+
             env.write_memory(&address, v0);
+            env.write_memory(&(address.clone() + Env::constant(1u32)), v1);
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         SInstruction::StoreWord => {
             // sw: M[x[rs1] + sext(offset)] = x[rs2][31:0]
-            let [v0, v1] = [
+            let [v0, v1, v2, v3] = [
                 {
                     let value_scratch = env.alloc_scratch();
-                    unsafe { env.bitmask(&local_rs2, 16, 0, value_scratch) }
+                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
                 },
                 {
                     let value_scratch = env.alloc_scratch();
-                    unsafe { env.bitmask(&local_rs2, 32, 16, value_scratch) }
+                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 24, 16, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 32, 24, value_scratch) }
                 },
             ];
 
-            env.lookup_16bits(&v0);
-            env.lookup_16bits(&v1);
-            // write 16 bits at a time
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+            env.lookup_8bits(&v2);
+            env.lookup_8bits(&v3);
+
             env.write_memory(&address, v0);
-            env.write_memory(&(address.clone() + Env::constant(2u32)), v1);
+            env.write_memory(&(address.clone() + Env::constant(1u32)), v1);
+            env.write_memory(&(address.clone() + Env::constant(2u32)), v2);
+            env.write_memory(&(address.clone() + Env::constant(3u32)), v3);
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
