@@ -582,7 +582,7 @@ impl<Fp: Field> Env<Fp> {
         };
 
         let mut registers = initial_registers.clone();
-        registers[2] = 0x408004e0;
+        registers[2] = 0x408004f0;
         // set the stack pointer to the top of the stack
 
         Env {
@@ -616,13 +616,9 @@ impl<Fp: Field> Env<Fp> {
                 | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
-        println!(
-            "Decoding instruction at address {:b} with value {:b}, with opcode",
-            self.registers.current_instruction_pointer, instruction
-        );
         let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
         println!(
-            "Decoding instruction at address {:b} with value {:b}, with opcode",
+            "Decoding instruction at address {:x} with value {:b}, with opcode",
             self.registers.current_instruction_pointer, instruction
         );
 

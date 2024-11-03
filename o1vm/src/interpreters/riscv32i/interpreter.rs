@@ -1683,7 +1683,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                 local_rs1_plus_imm
             };
             print!("local rs1 plus imm: {:?}", local_rs1_plus_imm);
-            let not_1 = Env::constant(!1u32);
+            let not_1 = Env::constant(!1);
             print!("not 1: {:?}", not_1);
             let local_pc = {
                 let pos: <Env as InterpreterEnv>::Position = env.alloc_scratch();
@@ -1692,7 +1692,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             print!("local pc: {:?}", local_pc);
 
             env.set_instruction_pointer(local_pc.clone());
-            env.write_register(&rd, local_t);
+            env.write_register(&rd, local_t.clone());
 
             env.set_next_instruction_pointer(local_pc.clone() + Env::constant(4u32));
             println!("JALR done");
