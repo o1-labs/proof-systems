@@ -11,6 +11,8 @@ pub const INSTRUCTION_SET_SIZE: usize = 47;
 /// List all columns used by the interpreter
 pub mod column;
 
+pub mod constraints;
+
 pub mod interpreter;
 
 /// All the registers used by the ISA
