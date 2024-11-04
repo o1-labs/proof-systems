@@ -15,3 +15,5 @@ pub mod interpreter;
 
 /// All the registers used by the ISA
 pub mod registers;
+
+pub mod witness;
