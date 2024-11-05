@@ -7,10 +7,12 @@ use super::{
         self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
         UInstruction, UJInstruction,
     },
-    registers::{self, Registers},
+    registers::Registers,
     INSTRUCTION_SET_SIZE, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE, SCRATCH_SIZE,
 };
-use crate::{cannon::State, lookups::Lookup};
+use crate::{
+    cannon::State, interpreters::riscv32i::registers::reg_index_to_string, lookups::Lookup,
+};
 use ark_ff::Field;
 use std::array;
 
@@ -832,5 +834,30 @@ impl<Fp: Field> Env<Fp> {
     ///       single instruction that performs all of them.
     pub fn normalized_instruction_counter(&self) -> u64 {
         self.instruction_counter / MAX_ACC
+    }
+
+    pub fn log_register_state(&self) {
+        println!("Register state:");
+        for (i, reg) in self.registers.general_purpose.iter().enumerate() {
+            println!(
+                "x{} ({}): {} - 0x{:08x}",
+                i,
+                reg_index_to_string(i),
+                reg,
+                reg
+            );
+        }
+        println!(
+            "pc: {} - 0x{:08x}",
+            self.registers.current_instruction_pointer, self.registers.current_instruction_pointer
+        );
+        println!(
+            "npc: {} - 0x{:08x}",
+            self.registers.next_instruction_pointer, self.registers.next_instruction_pointer
+        );
+        println!(
+            "hp: {} - 0x{:08x}",
+            self.registers.heap_pointer, self.registers.heap_pointer
+        );
     }
 }
