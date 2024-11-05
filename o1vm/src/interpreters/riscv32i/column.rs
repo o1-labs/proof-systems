@@ -10,7 +10,6 @@ use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
 };
-use libc::cpu_type_t;
 use strum::EnumCount;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

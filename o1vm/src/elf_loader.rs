@@ -107,6 +107,26 @@ pub fn parse_riscv32i(path: &Path) -> Result<State, String> {
         };
         memory.push(page);
     });
+    let empty_pages = Page {
+        index: last_page_index as u32 + 1,
+        data: vec![0; page_size_usize],
+    };
+    memory.push(empty_pages);
+    let empty_pages = Page {
+        index: last_page_index as u32 + 2,
+        data: vec![0; page_size_usize],
+    };
+    memory.push(empty_pages);
+    let empty_pages = Page {
+        index: last_page_index as u32 + 3,
+        data: vec![0; page_size_usize],
+    };
+    memory.push(empty_pages);
+    let empty_pages = Page {
+        index: last_page_index as u32 + 4,
+        data: vec![0; page_size_usize],
+    };
+    memory.push(empty_pages);
 
     // FIXME: add data section into memory for static data saved in the binary
 
