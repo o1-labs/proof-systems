@@ -1655,6 +1655,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         }
         IInstruction::JumpAndLinkRegister => {
             // jalr: t =pc+4; pc=(x[rs1]+sext(offset))&∼1; x[rd]=t
+            
             println!("JALR");
             let (local_t, _overflow) = {
                 let pos = env.alloc_scratch();
@@ -1691,10 +1692,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             };
             print!("local pc: {:?}", local_pc);
 
-            env.set_instruction_pointer(local_pc.clone());
+            // copying mips for now to match deugger
+            env.set_instruction_pointer(next_instruction_pointer.clone());   
             env.write_register(&rd, local_t.clone());
 
-            env.set_next_instruction_pointer(local_pc.clone() + Env::constant(4u32));
+            env.set_next_instruction_pointer(local_rs1.clone());
             println!("JALR done");
         }
     };
