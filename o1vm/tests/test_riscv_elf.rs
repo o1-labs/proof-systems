@@ -1,8 +1,6 @@
 use mina_curves::pasta::Fp;
 use o1vm::interpreters::riscv32i::{
-    interpreter::{
-        CustomInstruction, CustomInstructionIter, IInstruction, Instruction, RInstruction,
-    },
+    interpreter::{IInstruction, Instruction, RInstruction},
     witness::Env,
     PAGE_SIZE,
 };
@@ -28,7 +26,7 @@ fn test_correctly_parsing_elf() {
 fn test_fibonacci() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/fibonacci-10",
+        "resources/programs/riscv32i/fibonacci-30",
     ));
     let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
@@ -45,8 +43,10 @@ fn test_fibonacci() {
     assert_eq!(witness.registers.current_instruction_pointer, 69936);
     assert_eq!(witness.registers.next_instruction_pointer, 69940);
 
-    while witness.step() != Instruction::CustomType(CustomInstruction::Invalid) {
-        println!("{:?}", witness.registers);
+    while !witness.halt {
+        witness.step();
+        println!("{:?}", witness.log_register_state());
+        println!("-----------------------------------------");
     }
 
     // let second_instruction = witness.step();
