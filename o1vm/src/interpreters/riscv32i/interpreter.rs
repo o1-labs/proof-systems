@@ -1470,6 +1470,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
+        // FIXME(dw): investigate?
         IInstruction::LoadWord => {
             // lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
             let local_rs1 = env.read_register(&rs1);
