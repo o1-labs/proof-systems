@@ -63,3 +63,35 @@ impl<T: Clone> IndexMut<usize> for Registers<T> {
         }
     }
 }
+
+pub fn reg_index_to_string(i: usize) -> String {
+    if i == 0 {
+        "zero".to_string()
+    } else if i == 1 {
+        "ra".to_string()
+    } else if i == 2 {
+        "sp".to_string()
+    } else if i == 3 {
+        "gp".to_string()
+    } else if i == 4 {
+        "tp".to_string()
+    } else if i == 5 {
+        "t0".to_string()
+    } else if i == 6 {
+        "t1".to_string()
+    } else if i == 7 {
+        "t2".to_string()
+    } else if i == 8 {
+        "fp".to_string()
+    } else if i == 9 {
+        "s1".to_string()
+    } else if (10..=17).contains(&i) {
+        format!("a{}", i - 10)
+    } else if (18..=27).contains(&i) {
+        format!("s{}", i - 16)
+    } else if (28..=31).contains(&i) {
+        format!("t{}", i - 25)
+    } else {
+        panic!("Invalid register index");
+    }
+}
