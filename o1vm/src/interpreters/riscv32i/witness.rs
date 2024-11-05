@@ -594,7 +594,7 @@ impl<Fp: Field> Env<Fp> {
                 .map(|offset| (*offset, vec![0u64; page_size]))
                 .collect(),
             last_memory_write_index_accesses: [0usize; 3],
-            registers: registers,
+            registers,
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
