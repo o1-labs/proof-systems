@@ -11,19 +11,19 @@ pub const REGISTER_HEAP_POINTER: usize = N_GP_REGISTERS + 3;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
     /// There are 32 general purpose registers.
-    /// - x0: hard-wired zero
-    /// - x1: return address
-    /// - x2: stack pointer
-    /// - x3: global pointer
-    /// - x4: thread pointer
-    /// - x5: temporary/alternate register
-    /// - x6-x7: temporaries
-    /// - x8: saved register/frame pointer
-    /// - x9: saved register
-    /// - x10-x11: function arguments/results
-    /// - x12-x17: function arguments
-    /// - x18-x27: saved registers
-    /// - x28-x31: temporaries
+    /// - x0: hard-wired zero (zero)
+    /// - x1: return address (ra)
+    /// - x2: stack pointer (sp)
+    /// - x3: global pointer (gp)
+    /// - x4: thread pointer (tp)
+    /// - x5: temporary/alternate register (t0)
+    /// - x6-x7: temporaries (t1 - t2)
+    /// - x8: saved register/frame pointer (s0 / fp)
+    /// - x9: saved register (s1)
+    /// - x10-x11: function arguments/results (a0 - a1)
+    /// - x12-x17: function arguments (a2 - a7)
+    /// - x18-x27: saved registers (s2 - s11)
+    /// - x28-x31: temporaries (t3 - t6)
     pub general_purpose: [T; N_GP_REGISTERS],
     pub current_instruction_pointer: T,
     pub next_instruction_pointer: T,
