@@ -76,7 +76,7 @@ impl From<Instruction> for usize {
                     + UInstruction::COUNT
                     + ujtype as usize
             }
-            Instruction::CustomType(ctype) => {
+            Instruction::SyscallType(syscall) => {
                 SCRATCH_SIZE
                     + 2
                     + RInstruction::COUNT
@@ -85,7 +85,7 @@ impl From<Instruction> for usize {
                     + SBInstruction::COUNT
                     + UInstruction::COUNT
                     + UJInstruction::COUNT
-                    + ctype as usize
+                    + syscall as usize
             }
         }
     }

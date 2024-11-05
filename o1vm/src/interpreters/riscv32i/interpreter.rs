@@ -14,7 +14,7 @@ pub enum Instruction {
     SBType(SBInstruction),
     UType(UInstruction),
     UJType(UJInstruction),
-    CustomType(CustomInstruction),
+    SyscallType(SyscallInstruction),
 }
 
 // See https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf for the order
@@ -106,9 +106,9 @@ pub enum UJInstruction {
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
-pub enum CustomInstruction {
+pub enum SyscallInstruction {
     #[default]
-    Invalid, // a custom instruction that we will use to halt execution
+    SyscallSuccess,
 }
 
 impl IntoIterator for Instruction {
@@ -159,9 +159,11 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
-            Instruction::CustomType(_) => {
-                let mut iter_contents = Vec::with_capacity(CustomInstruction::COUNT);
-                iter_contents.push(Instruction::CustomType(CustomInstruction::Invalid));
+            Instruction::SyscallType(_) => {
+                let mut iter_contents = Vec::with_capacity(SyscallInstruction::COUNT);
+                for syscall in SyscallInstruction::iter() {
+                    iter_contents.push(Instruction::SyscallType(syscall));
+                }
                 iter_contents.into_iter()
             }
         }
@@ -177,7 +179,7 @@ impl std::fmt::Display for Instruction {
             Instruction::SBType(sbtype) => write!(f, "{}", sbtype),
             Instruction::UType(utype) => write!(f, "{}", utype),
             Instruction::UJType(ujtype) => write!(f, "{}", ujtype),
-            Instruction::CustomType(custom) => write!(f, "{}", custom),
+            Instruction::SyscallType(_) => write!(f, "ecall"),
         }
     }
 }
@@ -259,14 +261,6 @@ impl std::fmt::Display for UJInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UJInstruction::JumpAndLink => write!(f, "jal"),
-        }
-    }
-}
-
-impl std::fmt::Display for CustomInstruction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CustomInstruction::Invalid => write!(f, "invalid"),
         }
     }
 }
@@ -1097,11 +1091,12 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::SBType(sbtype) => interpret_sbtype(env, sbtype),
         Instruction::UType(utype) => interpret_utype(env, utype),
         Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
-        Instruction::CustomType(customtype) => interpret_customtype(env, customtype),
+        Instruction::SyscallType(syscalltype) => interpret_syscall(env, syscalltype),
     }
 }
 
-pub fn interpret_customtype<Env: InterpreterEnv>(env: &mut Env, _instr: CustomInstruction) {
+pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInstruction) {
+    // FIXME: check if it is syscall success. There is only one syscall atm
     env.set_halted(Env::constant(1));
 }
 
