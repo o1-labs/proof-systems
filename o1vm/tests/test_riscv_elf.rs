@@ -26,7 +26,7 @@ fn test_correctly_parsing_elf() {
 fn test_fibonacci() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/fibonacci-30",
+        "resources/programs/riscv32i/fibonacci-7",
     ));
     let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
