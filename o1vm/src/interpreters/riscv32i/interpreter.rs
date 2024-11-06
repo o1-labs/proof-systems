@@ -1605,9 +1605,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&(rs1.clone()));
             let local_imm = env.sign_extend(&imm, 12);
-            // print local imm
-            println!("local imm: {:?}", local_imm);
-            println!("local rs1: {:?}", local_rs1);
             let overflow_scratch = env.alloc_scratch();
             let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe {
