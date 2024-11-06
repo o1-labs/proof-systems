@@ -1491,6 +1491,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
                 + v3;
+            println!("value: {:?}", value);
             let value = env.sign_extend(&value, 32);
             env.write_register(&rd, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());

@@ -45,6 +45,7 @@ fn test_fibonacci() {
 
     while !witness.halt {
         witness.step();
+        println!("Printing register state after instruction execution");
         println!("{:?}", witness.log_register_state());
         println!("-----------------------------------------");
     }
