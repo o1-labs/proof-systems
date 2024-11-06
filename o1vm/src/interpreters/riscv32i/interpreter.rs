@@ -1664,9 +1664,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                 res
             };
             println!("Offset: {:?}", offset);
-            env.set_instruction_pointer(next_instruction_pointer.clone());
-            env.write_register(&rd, instruction_pointer.clone() + Env::constant(4));
-            env.set_next_instruction_pointer(new_addr);
+            env.write_register(&rd, next_instruction_pointer.clone());
+            env.set_instruction_pointer(new_addr.clone());
+            env.set_next_instruction_pointer(new_addr.clone() + Env::constant(4u32));
         }
     };
 }
