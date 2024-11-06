@@ -1647,50 +1647,26 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::JumpAndLinkRegister => {
-            // jalr: t =pc+4; pc=(x[rs1]+sext(offset))&∼1; x[rd]=t
-            
-            println!("JALR");
-            let (local_t, _overflow) = {
-                let pos = env.alloc_scratch();
-                let overflow_scratch = env.alloc_scratch();
-                unsafe {
-                    env.add_witness(
-                        &instruction_pointer.clone(),
-                        &Env::constant(4u32),
-                        pos,
-                        overflow_scratch,
-                    )
-                }
-            };
-            // print local t
-            println!("local t: {:?}", local_t);
-            let local_rs1 = env.read_register(&rs1);
-            println!("local rs1: {:?}", local_rs1);
-            print!("local pre sign extend imm: {:?}", imm);
-            let local_imm = env.sign_extend(&imm, 12); // bitlen 11 + 1 for sign bit
-            print!("local imm: {:?}", local_imm);
-            let local_rs1_plus_imm = {
-                let pos = env.alloc_scratch();
-                let overflow_scratch = env.alloc_scratch();
-                let (local_rs1_plus_imm, _overflow) =
-                    unsafe { env.add_witness(&local_rs1, &local_imm, pos, overflow_scratch) };
-                local_rs1_plus_imm
-            };
-            print!("local rs1 plus imm: {:?}", local_rs1_plus_imm);
-            let not_1 = Env::constant(!1);
-            print!("not 1: {:?}", not_1);
-            let local_pc = {
-                let pos: <Env as InterpreterEnv>::Position = env.alloc_scratch();
-                unsafe { env.and_witness(&local_rs1_plus_imm, &not_1, pos) }
-            };
-            print!("local pc: {:?}", local_pc);
-
+            let addr = env.read_register(&rs1);
+            println!("Addr: {:?}", addr);
+            // jalr:
+            //  t  = pc+4;
+            //  pc = (x[rs1] + sext(offset)) & ∼1; <- NOT NOW
+            //  pc = (x[rs1] + sext(offset)); <- PLEASE FIXME
+            //  x[rd] = t
             // copying mips for now to match deugger
-            env.set_instruction_pointer(next_instruction_pointer.clone());   
-            env.write_register(&rd, local_t.clone());
-
-            env.set_next_instruction_pointer(local_rs1.clone());
-            println!("JALR done");
+            let offset = env.sign_extend(&imm, 12);
+            let new_addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&addr, &offset, res_scratch, overflow_scratch) };
+                res
+            };
+            println!("Offset: {:?}", offset);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.write_register(&rd, instruction_pointer.clone() + Env::constant(4));
+            env.set_next_instruction_pointer(new_addr);
         }
     };
 }
@@ -2058,7 +2034,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 };
                 next_instruction_pointer
             };
-
             let new_instruction_pointer = {
                 let pos = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
