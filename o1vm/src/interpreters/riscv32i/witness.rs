@@ -711,6 +711,10 @@ impl<Fp: Field> Env<Fp> {
                     0b001 => Instruction::RType(RInstruction::FenceI),
                     _ => panic!("Unknown RType 0001111 (Fence) instruction with full inst {}", instruction),
                 },
+                // FIXME: we should implement more syscalls here, and check the register state.
+                // Even better, only one constructor call ecall, and in the
+                // interpreter, we do the action depending on it
+                0b1110011 => Instruction::SyscallType(SyscallInstruction::SyscallSuccess),
                 _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
             }
         };
