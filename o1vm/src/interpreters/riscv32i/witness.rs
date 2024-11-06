@@ -383,6 +383,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         out_position: Self::Position,
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
+        println!("x: {}", *x);
+        println!("y: {}", *y);
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add

@@ -2115,7 +2115,8 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let less_than = unsafe { env.test_less_than(&local_rs2, &local_rs1, rd_scratch) };
 
             // greater than equal is the negation of less than
-            let offset = (Env::constant(1) - less_than.clone()) * imm0_12;
+            let offset =
+                (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * imm0_12;
 
             let next_instruction_pointer = {
                 let pos = env.alloc_scratch();
