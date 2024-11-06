@@ -1473,14 +1473,13 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         // FIXME(dw): investigate?
         IInstruction::LoadWord => {
             // lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
-            let local_rs1 = env.read_register(&rs1);
-            let local_imm = env.sign_extend(&imm, 12);
+            let base = env.read_register(&rs1);
+            let offset = env.sign_extend(&imm, 12);
             let address = {
                 let address_scratch = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
-                let (address, _overflow) = unsafe {
-                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
-                };
+                let (address, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, address_scratch, overflow_scratch) };
                 address
             };
             // Add a range check here for address
