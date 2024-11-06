@@ -1803,11 +1803,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
             let [v0, v1, v2, v3] = [
                 {
                     let value_scratch = env.alloc_scratch();
-                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
-                },
-                {
-                    let value_scratch = env.alloc_scratch();
-                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                    unsafe { env.bitmask(&local_rs2, 32, 24, value_scratch) }
                 },
                 {
                     let value_scratch = env.alloc_scratch();
@@ -1815,7 +1811,11 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
                 },
                 {
                     let value_scratch = env.alloc_scratch();
-                    unsafe { env.bitmask(&local_rs2, 32, 24, value_scratch) }
+                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
                 },
             ];
 
