@@ -207,6 +207,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         x as u64
     }
 
+    unsafe fn var_to_constant(&mut self, x: &Self::Variable) -> u32 {
+        (*x).try_into().unwrap()
+    }
+
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,

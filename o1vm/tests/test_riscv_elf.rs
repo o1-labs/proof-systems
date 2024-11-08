@@ -1,9 +1,11 @@
+use libc::exit;
 use mina_curves::pasta::Fp;
 use o1vm::interpreters::riscv32i::{
     interpreter::{IInstruction, Instruction, RInstruction},
     witness::Env,
     PAGE_SIZE,
 };
+use std::io::{self, Write};
 
 #[test]
 // This test is used to check that the elf loader is working correctly.
@@ -47,8 +49,14 @@ fn test_fibonacci() {
         witness.step();
         println!("Printing register state after instruction execution");
         println!("{:?}", witness.log_register_state());
-        println!("-----------------------------------------");
     }
+
+    /* 
+    for _i in 0..=67 {
+        witness.step();
+        println!("{:?}", witness.log_register_state());
+    }
+    */
 
     // let second_instruction = witness.step();
     // println!("Second instruction: {:?}", second_instruction);
