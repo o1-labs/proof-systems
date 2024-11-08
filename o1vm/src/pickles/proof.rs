@@ -30,7 +30,7 @@ impl<G: KimchiCurve> ProofInputs<G> {
 // FIXME: should we blind the commitment?
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::CustomType)
 )]
 pub struct Proof<G: KimchiCurve> {
     pub commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
