@@ -51,7 +51,7 @@ fn test_fibonacci() {
         println!("{:?}", witness.log_register_state());
     }
 
-    /* 
+    /*
     for _i in 0..=67 {
         witness.step();
         println!("{:?}", witness.log_register_state());

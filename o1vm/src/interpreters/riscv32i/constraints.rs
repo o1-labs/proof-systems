@@ -164,10 +164,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
-    unsafe fn var_to_constant(
-        &mut self,
-        _x: &Self::Variable,
-    ) -> u32 {
+    unsafe fn var_to_constant(&mut self, _x: &Self::Variable) -> u32 {
         0
     }
 

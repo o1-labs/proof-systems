@@ -744,7 +744,6 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-
     unsafe fn var_to_constant(&mut self, var: &Self::Variable) -> u32;
 
     /// Return the result of shifting `x` by `by`, storing the result in `position`.
@@ -1079,7 +1078,6 @@ pub trait InterpreterEnv {
 
     /// Reset the environment to handle the next instruction
     fn reset(&mut self);
-
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -1879,7 +1877,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     env.range_check8(&rs2, 5);
 
     // check correctness of decomposition of SB type function
-    /*  
+    /*
     env.add_constraint(
         instruction
         - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
@@ -1893,19 +1891,14 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     );
     */
 
-    let insn: u32 = unsafe {env.var_to_constant(&instruction)};
-    let top_bit =  (insn & 0x80000000) >> 31;
+    let insn: u32 = unsafe { env.var_to_constant(&instruction) };
+    let top_bit = (insn & 0x80000000) >> 31;
     let rd = (insn & 0x00000f80) >> 7;
     let func7: u32 = (insn & 0xfe000000) >> 25;
 
-    let imm0_12 = (top_bit * 0xfffff000)
-    | ((rd & 1) << 11)
-    | ((func7 & 0x3f) << 5)
-    | (rd & 0x1e);
+    let imm0_12 = (top_bit * 0xfffff000) | ((rd & 1) << 11) | ((func7 & 0x3f) << 5) | (rd & 0x1e);
 
     let imm0_12 = Env::constant(imm0_12);
-
-
 
     println!("SBTYPE offset is: imm0_12: {:?}", imm0_12);
 
@@ -1965,10 +1958,12 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let local_rs2 = env.read_register(&rs2);
 
             let rd_scratch = env.alloc_scratch();
-            
-            let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
-            let offset = (less_than.clone()) * imm0_12 + (Env::constant(1) - less_than.clone()) * Env::constant(4);
-            
+
+            let less_than =
+                unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) };
+            let offset = (less_than.clone()) * imm0_12
+                + (Env::constant(1) - less_than.clone()) * Env::constant(4);
+
             let addr = {
                 let res_scratch = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
@@ -1996,7 +1991,8 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let less_than =
                 unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) };
 
-            let offset = (Env::constant(1) - less_than.clone()) * imm0_12 + (less_than.clone()) * Env::constant(4);
+            let offset =
+                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * imm0_12;
             // greater than equal is the negation of less than
             let addr = {
                 let res_scratch = env.alloc_scratch();
@@ -2014,7 +2010,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-
         }
         SBInstruction::BranchLessThanUnsigned => {
             // bltu: if (x[rs1] <u x[rs2]) pc += sext(offset)
@@ -2024,18 +2019,14 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let rd_scratch = env.alloc_scratch();
             let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
             println!("less_than: {:?}", less_than);
-            let offset = (less_than.clone()) * imm0_12 + (Env::constant(1) - less_than.clone()) * Env::constant(4);
+            let offset = (Env::constant(1) - less_than.clone()) * Env::constant(4)
+                + less_than.clone() * imm0_12;
 
             let addr = {
                 let res_scratch = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (res, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        res_scratch,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
                 };
                 // FIXME: Requires a range check
                 res
@@ -2044,8 +2035,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             print!("BranchLessThanUnsigned: ADDRESS IS {:?}", addr);
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-
-
         }
         SBInstruction::BranchGreaterThanEqualUnsigned => {
             // bgeu: if (x[rs1] >=u x[rs2]) pc += sext(offset)
@@ -2054,27 +2043,23 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             let rd_scratch = env.alloc_scratch();
             let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
-            let offset = (Env::constant(1) - less_than.clone()) * imm0_12 + (less_than.clone()) * Env::constant(4);
+            let offset =
+                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * imm0_12;
 
             // greater than equal is the negation of less than
             let addr = {
                 let res_scratch = env.alloc_scratch();
                 let overflow_scratch = env.alloc_scratch();
                 let (res, _overflow) = unsafe {
-                    env.add_witness(
-                        &next_instruction_pointer,
-                        &offset,
-                        res_scratch,
-                        overflow_scratch,
-                    )
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
                 };
                 res
-        };
+            };
 
-        print!("BranchGreaterThanEqualUnsigned: ADDRESS IS {:?}", addr);
-        env.set_instruction_pointer(next_instruction_pointer);
-        env.set_next_instruction_pointer(addr);
-    }
+            print!("BranchGreaterThanEqualUnsigned: ADDRESS IS {:?}", addr);
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+        }
     };
 }
 
