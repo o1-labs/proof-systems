@@ -1,5 +1,4 @@
-use o1vm::interpreters::riscv32i::
-    interpreter::{IInstruction, Instruction, RInstruction};
+use o1vm::interpreters::riscv32i::interpreter::{IInstruction, Instruction, RInstruction};
 
 #[test]
 // Checking an instruction can be converted into a string.
