@@ -7,7 +7,7 @@ use super::{
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
 use crate::{
-    cannon::{PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
+    cannon::{State, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
     lookups::Lookup,
 };
 use ark_ff::Field;
@@ -567,6 +567,64 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 }
 
 impl<Fp: Field> Env<Fp> {
+    pub fn create(page_size: usize, state: State) -> Self {
+        let initial_instruction_pointer = state.pc;
+        let next_instruction_pointer = state.next_pc;
+
+        let selector = INSTRUCTION_SET_SIZE;
+
+        let mut initial_memory: Vec<(u32, Vec<u8>)> = state
+            .memory
+            .into_iter()
+            // Check that the conversion from page data is correct
+            .map(|page| (page.index, page.data))
+            .collect();
+
+        for (_address, initial_memory) in initial_memory.iter_mut() {
+            initial_memory.extend((0..(page_size - initial_memory.len())).map(|_| 0u8));
+            assert_eq!(initial_memory.len(), page_size);
+        }
+
+        let memory_offsets = initial_memory
+            .iter()
+            .map(|(offset, _)| *offset)
+            .collect::<Vec<_>>();
+
+        let initial_registers = {
+            Registers {
+                general_purpose: state.registers,
+                current_instruction_pointer: initial_instruction_pointer,
+                next_instruction_pointer,
+                heap_pointer: state.heap,
+            }
+        };
+
+        let mut registers = initial_registers.clone();
+        registers[2] = 0x408004f0;
+        // set the stack pointer to the top of the stack
+
+        Env {
+            instruction_counter: state.step,
+            memory: initial_memory.clone(),
+            last_memory_accesses: [0usize; 3],
+            memory_write_index: memory_offsets
+                .iter()
+                .map(|offset| (*offset, vec![0u64; page_size]))
+                .collect(),
+            last_memory_write_index_accesses: [0usize; 3],
+            registers,
+            registers_write_index: Registers::default(),
+            scratch_state_idx: 0,
+            scratch_state: fresh_scratch_state(),
+            halt: state.exited,
+            selector,
+        }
+    }
+
+    pub fn next_instruction_counter(&self) -> u64 {
+        (self.normalized_instruction_counter() + 1) * MAX_ACC
+    }
+
     pub fn reset_scratch_state(&mut self) {
         self.scratch_state_idx = 0;
         self.scratch_state = fresh_scratch_state();
