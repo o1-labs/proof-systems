@@ -3,7 +3,7 @@
 use super::{
     column::Column,
     interpreter::{
-        IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
+        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
         SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
@@ -743,6 +743,26 @@ impl<Fp: Field> Env<Fp> {
             instruction, opcode
         );
         (opcode, instruction)
+    }
+
+    /// Execute a single step in the RISCV32i program
+    pub fn step(&mut self) -> Instruction {
+        self.reset_scratch_state();
+        let (opcode, _instruction) = self.decode_instruction();
+
+        interpreter::interpret_instruction(self, opcode);
+
+        self.instruction_counter = self.next_instruction_counter();
+
+        // Integer division by MAX_ACC to obtain the actual instruction count
+        if self.halt {
+            println!(
+                "Halted at step={} instruction={:?}",
+                self.normalized_instruction_counter(),
+                opcode
+            );
+        }
+        opcode
     }
 
     pub fn reset_scratch_state(&mut self) {
