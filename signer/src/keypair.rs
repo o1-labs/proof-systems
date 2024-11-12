@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, KeypairError>;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Keypair {
     /// Secret key
-    pub(crate) secret: SecKey,
+    pub secret: SecKey,
     /// Public key
     pub public: PubKey,
 }
