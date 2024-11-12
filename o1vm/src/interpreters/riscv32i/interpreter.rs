@@ -78,10 +78,10 @@ pub enum SInstruction {
 pub enum SBInstruction {
     #[default]
     BranchEq, // beq
-    BranchNeq,              // bne
-    BranchLessThan,         // blt
-    BranchGreaterThanEqual,               // bge
-    BranchLessThanUnsigned, // bltu
+    BranchNeq,                      // bne
+    BranchLessThan,                 // blt
+    BranchGreaterThanEqual,         // bge
+    BranchLessThanUnsigned,         // bltu
     BranchGreaterThanEqualUnsigned, // bgeu
 }
 
@@ -242,7 +242,7 @@ impl std::fmt::Display for SBInstruction {
             SBInstruction::BranchEq => write!(f, "beq"),
             SBInstruction::BranchNeq => write!(f, "bne"),
             SBInstruction::BranchLessThan => write!(f, "blt"),
-            SBInstruction::BranchGreaterThanEqual=> write!(f, "bge"),
+            SBInstruction::BranchGreaterThanEqual => write!(f, "bge"),
             SBInstruction::BranchLessThanUnsigned => write!(f, "bltu"),
             SBInstruction::BranchGreaterThanEqualUnsigned => write!(f, "bgeu"),
         }
