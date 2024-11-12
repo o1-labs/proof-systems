@@ -1,8 +1,8 @@
 use super::{
     interpreter::{
-        IInstruction, Instruction,
-        Instruction::{IType, RType, SBType, SType, UJType, UType},
-        RInstruction, SBInstruction, SInstruction, UInstruction,
+        IInstruction,
+        Instruction::{self, IType, RType, SBType, SType, SyscallType, UJType, UType},
+        RInstruction, SBInstruction, SInstruction, UInstruction, UJInstruction,
     },
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
@@ -72,6 +72,17 @@ impl From<Instruction> for usize {
                     + SBInstruction::COUNT
                     + UInstruction::COUNT
                     + ujtype as usize
+            }
+            SyscallType(syscalltype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + SBInstruction::COUNT
+                    + UInstruction::COUNT
+                    + UJInstruction::COUNT
+                    + syscalltype as usize
             }
         }
     }
