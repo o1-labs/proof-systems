@@ -2,7 +2,10 @@
 //       to the SAME register/memory addrss?
 use super::{
     column::Column,
-    interpreter::{Instruction, InterpreterEnv},
+    interpreter::{
+        IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
+        SyscallInstruction, UInstruction, UJInstruction,
+    },
     registers::Registers,
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
@@ -623,6 +626,123 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn next_instruction_counter(&self) -> u64 {
         (self.normalized_instruction_counter() + 1) * MAX_ACC
+    }
+
+    pub fn decode_instruction(&mut self) -> (Instruction, u32) {
+        /* https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf */
+        let instruction =
+            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                    << 16)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                    << 8)
+                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+        let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
+        println!(
+            "Decoding instruction at address {:x} with value {:b}, with opcode",
+            self.registers.current_instruction_pointer, instruction
+        );
+
+        let opcode = {
+            match instruction & 0b1111111 // bits 0-6
+            {
+                0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
+                0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
+                0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
+                0b1100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::SBType(SBInstruction::BranchEq),
+                    0b001 => Instruction::SBType(SBInstruction::BranchNeq),
+                    0b100 => Instruction::SBType(SBInstruction::BranchLessThan),
+                    0b101 => Instruction::SBType(SBInstruction::BranchGreaterThanEqual),
+                    0b110 => Instruction::SBType(SBInstruction::BranchLessThanUnsigned),
+                    0b111 => Instruction::SBType(SBInstruction::BranchGreaterThanEqualUnsigned),
+                    _ => panic!("Unknown SBType instruction with full inst {}", instruction),
+                },
+                0b1100111 => Instruction::IType(IInstruction::JumpAndLinkRegister),
+                0b0000011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::LoadByte),
+                    0b001 => Instruction::IType(IInstruction::LoadHalf),
+                    0b010 => Instruction::IType(IInstruction::LoadWord),
+                    0b100 => Instruction::IType(IInstruction::LoadByteUnsigned),
+                    0b101 => Instruction::IType(IInstruction::LoadHalfUnsigned),
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::SType(SInstruction::StoreByte),
+                    0b001 => Instruction::SType(SInstruction::StoreHalf),
+                    0b010 => Instruction::SType(SInstruction::StoreWord),
+                    _ => panic!("Unknown SType instruction with full inst {}", instruction),
+                },
+                0b0010011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::AddImmediate),
+                    0b010 => Instruction::IType(IInstruction::SetLessThanImmediate),
+                    0b011 => Instruction::IType(IInstruction::SetLessThanImmediateUnsigned),
+                    0b100 => Instruction::IType(IInstruction::XorImmediate),
+                    0b110 => Instruction::IType(IInstruction::OrImmediate),
+                    0b111 => Instruction::IType(IInstruction::AndImmediate),
+                    0b001 => Instruction::IType(IInstruction::ShiftLeftLogicalImmediate),
+                    0b101 =>
+                    match (instruction >> 30) & 0x1 // bit 30 in simm component of IType
+                    {
+                    0b0 => Instruction::IType(IInstruction::ShiftRightLogicalImmediate),
+                    0b1 => Instruction::IType(IInstruction::ShiftRightArithmeticImmediate),
+                    _ => panic!("Unknown IType in shift right instructions with full inst {}", instruction),
+                    },
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0110011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 =>
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                    0b0 => Instruction::RType(RInstruction::Add),
+                    0b1 => Instruction::RType(RInstruction::Sub),
+                     _ => panic!("Unknown RType in add/sub instructions with full inst {}", instruction),
+                    },
+                    0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
+                    0b010 => Instruction::RType(RInstruction::SetLessThan),
+                    0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
+                    0b100 => Instruction::RType(RInstruction::Xor),
+                    0b101 =>
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                        0b0 => Instruction::RType(RInstruction::ShiftRightLogical),
+                        0b1 => Instruction::RType(RInstruction::ShiftRightArithmetic),
+                        _ => panic!("Unknown RType in shift right instructions with full inst {}", instruction),
+                    },
+                    0b110 => Instruction::RType(RInstruction::Or),
+                    0b111 => Instruction::RType(RInstruction::And),
+                    _ => panic!("Unknown RType 0110011 instruction with full inst {}", instruction),
+                },
+                0b0001111 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::RType(RInstruction::Fence),
+                    0b001 => Instruction::RType(RInstruction::FenceI),
+                    _ => panic!("Unknown RType 0001111 (Fence) instruction with full inst {}", instruction),
+                },
+                // FIXME: we should implement more syscalls here, and check the register state.
+                // Even better, only one constructor call ecall, and in the
+                // interpreter, we do the action depending on it
+                0b1110011 => Instruction::SyscallType(SyscallInstruction::SyscallSuccess),
+                _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
+            }
+        };
+        // display the opcode
+        println!(
+            "Decoded instruction {:?} with opcode {:?}",
+            instruction, opcode
+        );
+        (opcode, instruction)
     }
 
     pub fn reset_scratch_state(&mut self) {
