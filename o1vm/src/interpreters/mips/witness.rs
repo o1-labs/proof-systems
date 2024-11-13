@@ -962,6 +962,22 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         }
     }
 
+    pub fn write_inverse_column(&mut self, column: Column, value: Fp) {
+        assert!(value != Fp::zero());
+        match column {
+            Column::ScratchState(idx) => {
+                self.scratch_to_inverse.insert(idx);
+                self.scratch_state[idx] = value
+            }
+            Column::InstructionCounter | Column::Selector(_) => {
+                panic!(
+                    "inverse only supported in scratch state, not in {:?}",
+                    column
+                )
+            }
+        }
+    }
+
     pub fn update_last_memory_access(&mut self, i: usize) {
         let [i_0, i_1, _] = self.last_memory_accesses;
         self.last_memory_accesses = [i, i_0, i_1]
