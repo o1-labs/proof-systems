@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{collections::BTreeMap, time::Instant};
 
 use super::{
     super::interpreters::mips::witness::SCRATCH_SIZE,
@@ -7,9 +7,8 @@ use super::{
 };
 use crate::{
     interpreters::mips::{
-        constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
-    },
-    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+        constraints as mips_constraints, interpreter::{self, InterpreterEnv}, Instruction,
+    }, lookups::LookupTableIDs, pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS}
 };
 use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
@@ -81,7 +80,7 @@ fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
-    let proof_input = ProofInputs::<Pallas> {
+    let proof_input = ProofInputs::<Pallas, LookupTableIDs> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             instruction_counter: zero_to_n_minus_one(8)
@@ -92,7 +91,9 @@ fn test_small_circuit() {
                 .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
                 .collect(),
             selector: zero_to_n_minus_one(8),
+            lookup_env: None,
         },
+        logups: BTreeMap::new(),
     };
     let mut expr = Expr::zero();
     for i in 0..SCRATCH_SIZE + 2 {
@@ -103,7 +104,7 @@ fn test_small_circuit() {
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
-    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _, LookupTableIDs>(
         domain,
         &srs,
         proof_input,
@@ -113,7 +114,7 @@ fn test_small_circuit() {
     .unwrap();
 
     let instant_before_verification = Instant::now();
-    let verif = verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof);
+    let verif = verify::<Pallas, BaseSponge, ScalarSponge, LookupTableIDs>(domain, &srs, &[expr.clone()], &proof);
     let instant_after_verification = Instant::now();
     debug!(
         "Verification took: {} ms",

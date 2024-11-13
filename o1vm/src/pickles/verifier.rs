@@ -1,5 +1,6 @@
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use rand::thread_rng;
 
 use kimchi::{
@@ -22,24 +23,33 @@ use poly_commitment::{
     ipa::OpeningProof,
     OpenProof,
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use super::{
-    column_env::get_all_columns,
+    column_env::{get_all_columns, get_column_comm, get_column_eval},
     proof::{Proof, WitnessColumns},
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
-use kimchi_msm::columns::Column;
+use kimchi_msm::{columns::Column, LookupTableID};
 
-type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
-type EvaluationColumns<F> = WitnessColumns<F, [F; N_MIPS_SEL_COLS]>;
+type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
+type CommitmentColumns<G, ID> = WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID>;
+type EvaluationColumns<G, ID> = WitnessColumns<
+    Evals<<G as AffineRepr>::ScalarField>,
+    G,
+    [Evals<<G as AffineRepr>::ScalarField>; N_MIPS_SEL_COLS],
+    ID,
+>;
 
-struct ColumnEval<'a, G: AffineRepr> {
-    commitment: &'a CommitmentColumns<G>,
-    zeta_eval: &'a EvaluationColumns<G::ScalarField>,
-    zeta_omega_eval: &'a EvaluationColumns<G::ScalarField>,
+struct ColumnEval<'a, G: AffineRepr + KimchiCurve, ID: LookupTableID> {
+    commitment: &'a CommitmentColumns<G, ID>,
+    zeta_eval: &'a EvaluationColumns<G, ID>,
+    zeta_omega_eval: &'a EvaluationColumns<G, ID>,
 }
 
-impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
+impl<G: AffineRepr + KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::ScalarField>
+    for ColumnEval<'_, G, ID>
+{
     type Column = Column;
     fn evaluate(
         &self,
@@ -49,10 +59,15 @@ impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
             commitment: _,
             zeta_eval,
             zeta_omega_eval,
-        } = self;
-        if let Some(&zeta) = zeta_eval.get_column(&col) {
-            if let Some(&zeta_omega) = zeta_omega_eval.get_column(&col) {
-                Ok(PointEvaluations { zeta, zeta_omega })
+        } = *self;
+        if let Some(&ref zeta) = get_column_eval(zeta_eval, &col) {
+            if let Some(&ref zeta_omega) = get_column_eval(zeta_omega_eval, &col) {
+                assert!(zeta.evals.len() == 1);
+                assert!(zeta_omega.evals.len() == 1);
+                Ok(PointEvaluations {
+                    zeta: zeta.evals[0],
+                    zeta_omega: zeta_omega.evals[0],
+                })
             } else {
                 Err(ExprError::MissingEvaluation(col, CurrOrNext::Next))
             }
@@ -66,11 +81,12 @@ pub fn verify<
     G: KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &[E<G::ScalarField>],
-    proof: &Proof<G>,
+    proof: &Proof<G, ID>,
 ) -> bool
 where
     <G as AffineRepr>::BaseField: PrimeField,
@@ -81,6 +97,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment,
         quotient_evaluations,
+        logup_commitments: _,
+        logup_evaluations: _,
         opening_proof,
     } = proof;
 
@@ -118,10 +136,35 @@ where
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
+    let to_eval_witness_columns = |witness_columns: WitnessColumns<
+        G::ScalarField,
+        G,
+        [G::ScalarField; N_MIPS_SEL_COLS],
+        ID,
+    >| {
+        let to_evals = |&x| Evaluations::from_vec_and_domain(vec![x], domain.d1.clone());
+        let WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+            selector,
+            lookup_env,
+        } = witness_columns;
+        let scratch = scratch.par_iter().map(to_evals).collect::<Vec<_>>();
+        let selector = selector.par_iter().map(to_evals).collect::<Vec<_>>();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: to_evals(&instruction_counter),
+            error: to_evals(&error.clone()),
+            selector: selector.try_into().unwrap(),
+            lookup_env,
+        }
+    };
+
     let column_eval = ColumnEval {
         commitment: commitments,
-        zeta_eval: zeta_evaluations,
-        zeta_omega_eval: zeta_omega_evaluations,
+        zeta_eval: &to_eval_witness_columns(zeta_evaluations.clone()),
+        zeta_omega_eval: &to_eval_witness_columns(zeta_omega_evaluations.clone()),
     };
 
     // -- Absorb all commitments_and_evaluations
@@ -196,9 +239,9 @@ where
     let mut evaluations: Vec<_> = get_all_columns()
         .into_iter()
         .map(|column| {
-            let commitment = column_eval
-                .commitment
-                .get_column(&column)
+            let commitment = get_column_comm(column_eval
+                .commitment,
+                &column)
                 .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`"))
                 .clone();
 

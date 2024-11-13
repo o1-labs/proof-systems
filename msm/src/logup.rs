@@ -275,13 +275,13 @@ pub struct LogupWitness<F, ID: LookupTableID> {
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
-    pub(crate) m: BTreeMap<ID, Vec<T>>,
+    pub m: BTreeMap<ID, Vec<T>>,
     /// The polynomial keeping the sum of each row
-    pub(crate) h: BTreeMap<ID, Vec<T>>,
+    pub h: BTreeMap<ID, Vec<T>>,
     /// The "running-sum" over the rows, coined `φ`
-    pub(crate) sum: T,
+    pub sum: T,
     /// All fixed lookup tables values, indexed by their ID
-    pub(crate) fixed_tables: BTreeMap<ID, T>,
+    pub fixed_tables: BTreeMap<ID, T>,
 }
 
 /// Iterator implementation to abstract the content of the structure.
@@ -512,6 +512,7 @@ pub mod prover {
     }
 
     /// Represents the environment for the logup argument.
+    #[derive(Clone)]
     pub struct Env<G: KimchiCurve, ID: LookupTableID> {
         /// The polynomial of the multiplicities, indexed by the table ID.
         pub lookup_counters_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>>,

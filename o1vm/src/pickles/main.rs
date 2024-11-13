@@ -17,6 +17,7 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
+    lookups::LookupTableIDs,
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
 };
@@ -27,6 +28,8 @@ use strum::IntoEnumIterator;
 use mina_curves::pasta::{Fp, Vesta};
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
+
+type ID = LookupTableIDs;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
@@ -95,7 +98,7 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta, ID> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -126,6 +129,7 @@ pub fn main() -> ExitCode {
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
+                ID,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
             .unwrap();
             // FIXME: check that the proof is correct. This is for testing purposes.
@@ -140,6 +144,7 @@ pub fn main() -> ExitCode {
                     Vesta,
                     DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                     DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                    ID,
                 >(domain_fp, &srs, &constraints, &proof);
                 debug!(
                     "Verification done in {elapsed} μs",

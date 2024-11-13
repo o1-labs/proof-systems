@@ -1,15 +1,19 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi_msm::columns::Column;
+use kimchi_msm::{columns::Column, logup::prover::QuotientPolynomialEnvironment, LookupTableID};
+use poly_commitment::PolyComm;
 
 use crate::{
     interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
     pickles::proof::WitnessColumns,
 };
-use kimchi::circuits::{
-    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-    domains::{Domain, EvaluationDomains},
-    expr::{ColumnEnvironment as TColumnEnvironment, Constants},
+use kimchi::{
+    circuits::{
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
+        domains::{Domain, EvaluationDomains},
+        expr::{ColumnEnvironment as TColumnEnvironment, Constants},
+    },
+    curve::KimchiCurve,
 };
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
@@ -18,10 +22,10 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, F: FftField> {
+pub struct ColumnEnvironment<'a, F: FftField, G: KimchiCurve, ID: LookupTableID> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
+    pub witness: &'a WitnessColumns<Evals<F>, G, [Evals<F>; N_MIPS_SEL_COLS], ID>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -33,6 +37,9 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     pub challenges: BerkeleyChallenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
+
+    /// Lookup specific polynomials
+    pub lookup: Option<QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
 pub fn get_all_columns() -> Vec<Column> {
@@ -46,47 +53,142 @@ pub fn get_all_columns() -> Vec<Column> {
     cols
 }
 
-impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
-    pub fn get_column(&self, col: &Column) -> Option<&G> {
-        match *col {
-            Column::Relation(i) => {
-                if i < SCRATCH_SIZE {
-                    let res = &self.scratch[i];
-                    Some(res)
-                } else if i == SCRATCH_SIZE {
-                    let res = &self.instruction_counter;
-                    Some(res)
-                } else if i == SCRATCH_SIZE + 1 {
-                    let res = &self.error;
-                    Some(res)
-                } else {
-                    panic!("We should not have that many relation columns");
-                }
-            }
-            Column::DynamicSelector(i) => {
-                assert!(
-                    i < N_MIPS_SEL_COLS,
-                    "We do not have that many dynamic selector columns"
-                );
-                let res = &self.selector[i];
+pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
+    env: &'a WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
+    col: &Column,
+) -> Option<&'a PolyComm<G>> {
+    match *col {
+        Column::Relation(i) => {
+            if i < SCRATCH_SIZE {
+                let res = &env.scratch[i];
                 Some(res)
+            } else if i == SCRATCH_SIZE {
+                let res = &env.instruction_counter;
+                Some(res)
+            } else if i == SCRATCH_SIZE + 1 {
+                let res = &env.error;
+                Some(res)
+            } else {
+                panic!("We should not have that many relation columns");
             }
-            _ => {
-                panic!("We should not have any other type of columns")
+        }
+        Column::DynamicSelector(i) => {
+            assert!(
+                i < N_MIPS_SEL_COLS,
+                "We do not have that many dynamic selector columns"
+            );
+            let res = &env.selector[i];
+            Some(res)
+        }
+        Column::LookupPartialSum((table_id, i)) => {
+            if let Some(ref lookup) = env.lookup_env {
+                let table_id = ID::from_u32(table_id);
+                Some(&lookup.lookup_terms_comms_d1[&table_id][i])
+            } else {
+                panic!("No lookup provided")
             }
+        }
+        Column::LookupAggregation => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.lookup_aggregation_comm_d1)
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        Column::LookupMultiplicity((table_id, i)) => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.lookup_counters_comm_d1[&ID::from_u32(table_id)][i])
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        Column::LookupFixedTable(table_id) => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.fixed_lookup_tables_comms_d1[&ID::from_u32(table_id)])
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        _ => {
+            panic!("We should not have any other type of columns")
         }
     }
 }
 
-impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
-    for ColumnEnvironment<'a, F>
+pub fn get_column_eval<'a, G: KimchiCurve, ID: LookupTableID>(
+    env: &'a WitnessColumns<Evals<G::ScalarField>, G, [Evals<G::ScalarField>; N_MIPS_SEL_COLS], ID>,
+    col: &Column,
+) -> Option<&'a Evals<G::ScalarField>> {
+    match *col {
+        Column::Relation(i) => {
+            if i < SCRATCH_SIZE {
+                let res = &env.scratch[i];
+                Some(res)
+            } else if i == SCRATCH_SIZE {
+                let res = &env.instruction_counter;
+                Some(res)
+            } else if i == SCRATCH_SIZE + 1 {
+                let res = &env.error;
+                Some(res)
+            } else {
+                panic!("We should not have that many relation columns");
+            }
+        }
+        Column::DynamicSelector(i) => {
+            assert!(
+                i < N_MIPS_SEL_COLS,
+                "We do not have that many dynamic selector columns"
+            );
+            let res = &env.selector[i];
+            Some(res)
+        }
+        Column::LookupPartialSum((table_id, i)) => {
+            if let Some(ref lookup) = env.lookup_env {
+                let table_id = ID::from_u32(table_id);
+                Some(&lookup.lookup_terms_evals_d8[&table_id][i])
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        Column::LookupAggregation => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.lookup_aggregation_evals_d8)
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        Column::LookupMultiplicity((table_id, i)) => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)][i])
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        Column::LookupFixedTable(table_id) => {
+            if let Some(ref lookup) = env.lookup_env {
+                Some(&lookup.fixed_lookup_tables_evals_d8[&ID::from_u32(table_id)])
+            } else {
+                panic!("No lookup provided")
+            }
+        }
+        _ => {
+            panic!("We should not have any other type of columns")
+        }
+    }
+}
+
+impl<'a, F: FftField, G: KimchiCurve, ID: LookupTableID>
+    TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
+    for ColumnEnvironment<'a, F, G, ID>
+where
+    G: KimchiCurve<ScalarField = F>,
 {
     // FIXME: do we change to the MIPS column type?
     // We do not want to keep kimchi_msm/generic prover
     type Column = Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
-        self.witness.get_column(col)
+        get_column_eval(self.witness, col)
     }
 
     fn get_domain(&self, d: Domain) -> Radix2EvaluationDomain<F> {
