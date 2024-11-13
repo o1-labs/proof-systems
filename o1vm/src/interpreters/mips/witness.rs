@@ -29,6 +29,7 @@ use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
     array,
+    collections::HashSet,
     fs::File,
     io::{BufWriter, Write},
 };
@@ -90,6 +91,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub scratch_to_inverse: HashSet<usize>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -937,6 +939,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            scratch_to_inverse: HashSet::new(),
         }
     }
 
@@ -944,6 +947,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.scratch_state_idx = 0;
         self.scratch_state = fresh_scratch_state();
         self.selector = N_MIPS_SEL_COLS;
+        self.scratch_to_inverse = HashSet::new();
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {

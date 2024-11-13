@@ -8,6 +8,7 @@ use crate::{
     preimage_oracle::PreImageOracleT,
 };
 use rand::{CryptoRng, Rng, RngCore};
+use std::collections::HashSet;
 use std::{fs, path::PathBuf};
 
 // FIXME: we should parametrize the tests with different fields.
@@ -98,6 +99,7 @@ where
         preimage_key: None,
         keccak_env: None,
         hash_counter: 0,
+        scratch_to_inverse: HashSet::new(),
     };
     // Initialize general purpose registers with random values
     for reg in env.registers.general_purpose.iter_mut() {
