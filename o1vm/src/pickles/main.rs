@@ -123,6 +123,10 @@ pub fn main() -> ExitCode {
         }
         // Start a proof
         let start_iteration = Instant::now();
+        println!(
+            "len proof : {}",
+            curr_proof_inputs.evaluations.scratch[1].len()
+        );
         debug!("We make a proof, verify it (for testing) and start with a new chunk");
         let proof = prover::prove::<
             Vesta,
