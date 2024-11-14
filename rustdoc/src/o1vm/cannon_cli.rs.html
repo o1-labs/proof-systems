@@ -114,10 +114,10 @@
 <span class="kw">use </span>clap::{arg, value_parser, Arg, ArgAction};
 
 <span class="kw">pub fn </span>main_cli() -&gt; clap::Command {
-    <span class="kw">let </span>app_name = <span class="string">&quot;zkvm&quot;</span>;
+    <span class="kw">let </span>app_name = <span class="string">&quot;o1vm&quot;</span>;
     clap::Command::new(app_name)
         .version(<span class="string">&quot;0.1&quot;</span>)
-        .about(<span class="string">&quot;MIPS-based zkvm&quot;</span>)
+        .about(<span class="string">&quot;o1vm - a generic purpose zero-knowledge virtual machine&quot;</span>)
         .arg(<span class="macro">arg!</span>(--input &lt;FILE&gt; <span class="string">&quot;initial state file&quot;</span>).default_value(<span class="string">&quot;state.json&quot;</span>))
         .arg(<span class="macro">arg!</span>(--output &lt;FILE&gt; <span class="string">&quot;output state file&quot;</span>).default_value(<span class="string">&quot;out.json&quot;</span>))
         .arg(<span class="macro">arg!</span>(--meta &lt;FILE&gt; <span class="string">&quot;metadata file&quot;</span>).default_value(<span class="string">&quot;meta.json&quot;</span>))
