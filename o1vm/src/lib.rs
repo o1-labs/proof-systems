@@ -26,6 +26,8 @@ pub mod preimage_oracle;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
+pub mod utils;
+
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
