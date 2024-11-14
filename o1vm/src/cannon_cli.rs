@@ -2,10 +2,10 @@ use crate::cannon::*;
 use clap::{arg, value_parser, Arg, ArgAction};
 
 pub fn main_cli() -> clap::Command {
-    let app_name = "zkvm";
+    let app_name = "o1vm";
     clap::Command::new(app_name)
         .version("0.1")
-        .about("MIPS-based zkvm")
+        .about("o1vm - a generic purpose zero-knowledge virtual machine")
         .arg(arg!(--input <FILE> "initial state file").default_value("state.json"))
         .arg(arg!(--output <FILE> "output state file").default_value("out.json"))
         .arg(arg!(--meta <FILE> "metadata file").default_value("meta.json"))
