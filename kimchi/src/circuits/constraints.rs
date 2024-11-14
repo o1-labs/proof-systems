@@ -639,6 +639,22 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
+/// The default number of chunks in a circuit is one (< 2^16 rows)
+pub const NUM_CHUNKS_BY_DEFAULT: usize = 1;
+
+/// The number of rows required for zero knowledge in circuits with one single chunk
+pub const ZK_ROWS_BY_DEFAULT: u64 = 3;
+
+/// This function computes a strict lower bound in the number of rows required
+/// for zero knowledge in circuits with `num_chunks` chunks. This means that at
+/// least one needs 1 more row than the result of this function to achieve zero
+/// knowledge.
+/// Example:
+///   for 1 chunk, this function returns 2, but at least 3 rows are needed
+/// Note:
+///   the number of zero knowledge rows is usually computed across the codebase
+///   as the formula `(16 * num_chunks + 5) / 7`, which is precisely the formula
+///   in this function plus one.
 pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
     (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS
 }
