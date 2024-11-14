@@ -1099,6 +1099,7 @@
 <a href="#1099" id="1099">1099</a>
 <a href="#1100" id="1100">1100</a>
 <a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -1156,9 +1157,11 @@
     </span>SetLessThanImmediateUnsigned,  <span class="comment">// sltiu
 
     </span>AddImmediate, <span class="comment">// addi
-    </span>AndImmediate, <span class="comment">// andi
     </span>XorImmediate, <span class="comment">// xori
     </span>OrImmediate,  <span class="comment">// ori
+    </span>AndImmediate, <span class="comment">// andi
+
+    </span>JumpAndLinkRegister, <span class="comment">// jalr
 </span>}
 
 <span class="attr">#[derive(
@@ -1177,11 +1180,11 @@
 </span><span class="kw">pub enum </span>SBInstruction {
     <span class="attr">#[default]
     </span>BranchEq, <span class="comment">// beq
-    </span>BranchNeq,              <span class="comment">// bne
-    </span>BranchLessThan,         <span class="comment">// blt
-    </span>BranchGe,               <span class="comment">// bge
-    </span>BranchLessThanUnsigned, <span class="comment">// bltu
-    </span>BranchGreaterThanEqual, <span class="comment">// bgeu
+    </span>BranchNeq,                      <span class="comment">// bne
+    </span>BranchLessThan,                 <span class="comment">// blt
+    </span>BranchGreaterThanEqual,         <span class="comment">// bge
+    </span>BranchLessThanUnsigned,         <span class="comment">// bltu
+    </span>BranchGreaterThanEqualUnsigned, <span class="comment">// bgeu
 </span>}
 
 <span class="attr">#[derive(
@@ -1200,7 +1203,6 @@
 </span><span class="kw">pub enum </span>UJInstruction {
     <span class="attr">#[default]
     </span>JumpAndLink, <span class="comment">// jal
-    </span>JumpAndLinkRegister, <span class="comment">// jalr
 </span>}
 
 <span class="attr">#[derive(
@@ -1321,6 +1323,7 @@
             IInstruction::XorImmediate =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;xori&quot;</span>),
             IInstruction::OrImmediate =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ori&quot;</span>),
             IInstruction::AndImmediate =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;andi&quot;</span>),
+            IInstruction::JumpAndLinkRegister =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;jalr&quot;</span>),
         }
     }
 }
@@ -1341,9 +1344,9 @@
             SBInstruction::BranchEq =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;beq&quot;</span>),
             SBInstruction::BranchNeq =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bne&quot;</span>),
             SBInstruction::BranchLessThan =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;blt&quot;</span>),
-            SBInstruction::BranchGe =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bge&quot;</span>),
+            SBInstruction::BranchGreaterThanEqual =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bge&quot;</span>),
             SBInstruction::BranchLessThanUnsigned =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bltu&quot;</span>),
-            SBInstruction::BranchGreaterThanEqual =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bgeu&quot;</span>),
+            SBInstruction::BranchGreaterThanEqualUnsigned =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bgeu&quot;</span>),
         }
     }
 }
@@ -1361,7 +1364,6 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             UJInstruction::JumpAndLink =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;jal&quot;</span>),
-            UJInstruction::JumpAndLinkRegister =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;jalr&quot;</span>),
         }
     }
 }
