@@ -33,5 +33,8 @@ pub const DEGREE_QUOTIENT_POLYNOMIAL: u64 = 7;
 /// added for the selectors.
 pub const TOTAL_NUMBER_OF_CONSTRAINTS: usize = 464;
 
+/// Proof size for a single proof.
+pub const PROOF_SIZE: usize = 18994;
+
 #[cfg(test)]
 mod tests;
