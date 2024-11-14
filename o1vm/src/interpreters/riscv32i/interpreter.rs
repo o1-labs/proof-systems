@@ -55,9 +55,11 @@ pub enum IInstruction {
     SetLessThanImmediateUnsigned,  // sltiu
 
     AddImmediate, // addi
-    AndImmediate, // andi
     XorImmediate, // xori
     OrImmediate,  // ori
+    AndImmediate, // andi
+
+    JumpAndLinkRegister, // jalr
 }
 
 #[derive(
@@ -76,11 +78,11 @@ pub enum SInstruction {
 pub enum SBInstruction {
     #[default]
     BranchEq, // beq
-    BranchNeq,              // bne
-    BranchLessThan,         // blt
-    BranchGe,               // bge
-    BranchLessThanUnsigned, // bltu
-    BranchGreaterThanEqual, // bgeu
+    BranchNeq,                      // bne
+    BranchLessThan,                 // blt
+    BranchGreaterThanEqual,         // bge
+    BranchLessThanUnsigned,         // bltu
+    BranchGreaterThanEqualUnsigned, // bgeu
 }
 
 #[derive(
@@ -99,7 +101,6 @@ pub enum UInstruction {
 pub enum UJInstruction {
     #[default]
     JumpAndLink, // jal
-    JumpAndLinkRegister, // jalr
 }
 
 #[derive(
@@ -220,6 +221,7 @@ impl std::fmt::Display for IInstruction {
             IInstruction::XorImmediate => write!(f, "xori"),
             IInstruction::OrImmediate => write!(f, "ori"),
             IInstruction::AndImmediate => write!(f, "andi"),
+            IInstruction::JumpAndLinkRegister => write!(f, "jalr"),
         }
     }
 }
@@ -240,9 +242,9 @@ impl std::fmt::Display for SBInstruction {
             SBInstruction::BranchEq => write!(f, "beq"),
             SBInstruction::BranchNeq => write!(f, "bne"),
             SBInstruction::BranchLessThan => write!(f, "blt"),
-            SBInstruction::BranchGe => write!(f, "bge"),
+            SBInstruction::BranchGreaterThanEqual => write!(f, "bge"),
             SBInstruction::BranchLessThanUnsigned => write!(f, "bltu"),
-            SBInstruction::BranchGreaterThanEqual => write!(f, "bgeu"),
+            SBInstruction::BranchGreaterThanEqualUnsigned => write!(f, "bgeu"),
         }
     }
 }
@@ -260,7 +262,6 @@ impl std::fmt::Display for UJInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UJInstruction::JumpAndLink => write!(f, "jal"),
-            UJInstruction::JumpAndLinkRegister => write!(f, "jalr"),
         }
     }
 }

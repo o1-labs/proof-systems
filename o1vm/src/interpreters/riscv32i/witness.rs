@@ -2,12 +2,15 @@
 //       to the SAME register/memory addrss?
 use super::{
     column::Column,
-    interpreter::{Instruction, InterpreterEnv},
+    interpreter::{
+        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
+        SyscallInstruction, UInstruction, UJInstruction,
+    },
     registers::Registers,
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
 use crate::{
-    cannon::{PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
+    cannon::{State, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
     lookups::Lookup,
 };
 use ark_ff::Field;
@@ -567,6 +570,201 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 }
 
 impl<Fp: Field> Env<Fp> {
+    pub fn create(page_size: usize, state: State) -> Self {
+        let initial_instruction_pointer = state.pc;
+        let next_instruction_pointer = state.next_pc;
+
+        let selector = INSTRUCTION_SET_SIZE;
+
+        let mut initial_memory: Vec<(u32, Vec<u8>)> = state
+            .memory
+            .into_iter()
+            // Check that the conversion from page data is correct
+            .map(|page| (page.index, page.data))
+            .collect();
+
+        for (_address, initial_memory) in initial_memory.iter_mut() {
+            initial_memory.extend((0..(page_size - initial_memory.len())).map(|_| 0u8));
+            assert_eq!(initial_memory.len(), page_size);
+        }
+
+        let memory_offsets = initial_memory
+            .iter()
+            .map(|(offset, _)| *offset)
+            .collect::<Vec<_>>();
+
+        let initial_registers = {
+            Registers {
+                general_purpose: state.registers,
+                current_instruction_pointer: initial_instruction_pointer,
+                next_instruction_pointer,
+                heap_pointer: state.heap,
+            }
+        };
+
+        let mut registers = initial_registers.clone();
+        registers[2] = 0x408004f0;
+        // set the stack pointer to the top of the stack
+
+        Env {
+            instruction_counter: state.step,
+            memory: initial_memory.clone(),
+            last_memory_accesses: [0usize; 3],
+            memory_write_index: memory_offsets
+                .iter()
+                .map(|offset| (*offset, vec![0u64; page_size]))
+                .collect(),
+            last_memory_write_index_accesses: [0usize; 3],
+            registers,
+            registers_write_index: Registers::default(),
+            scratch_state_idx: 0,
+            scratch_state: fresh_scratch_state(),
+            halt: state.exited,
+            selector,
+        }
+    }
+
+    pub fn next_instruction_counter(&self) -> u64 {
+        (self.normalized_instruction_counter() + 1) * MAX_ACC
+    }
+
+    pub fn decode_instruction(&mut self) -> (Instruction, u32) {
+        /* https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf */
+        let instruction =
+            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                    << 16)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                    << 8)
+                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
+        let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
+        println!(
+            "Decoding instruction at address {:x} with value {:b}, with opcode",
+            self.registers.current_instruction_pointer, instruction
+        );
+
+        let opcode = {
+            match instruction & 0b1111111 // bits 0-6
+            {
+                0b0110111 => Instruction::UType(UInstruction::LoadUpperImmediate),
+                0b0010111 => Instruction::UType(UInstruction::AddUpperImmediate),
+                0b1101111 => Instruction::UJType(UJInstruction::JumpAndLink),
+                0b1100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::SBType(SBInstruction::BranchEq),
+                    0b001 => Instruction::SBType(SBInstruction::BranchNeq),
+                    0b100 => Instruction::SBType(SBInstruction::BranchLessThan),
+                    0b101 => Instruction::SBType(SBInstruction::BranchGreaterThanEqual),
+                    0b110 => Instruction::SBType(SBInstruction::BranchLessThanUnsigned),
+                    0b111 => Instruction::SBType(SBInstruction::BranchGreaterThanEqualUnsigned),
+                    _ => panic!("Unknown SBType instruction with full inst {}", instruction),
+                },
+                0b1100111 => Instruction::IType(IInstruction::JumpAndLinkRegister),
+                0b0000011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::LoadByte),
+                    0b001 => Instruction::IType(IInstruction::LoadHalf),
+                    0b010 => Instruction::IType(IInstruction::LoadWord),
+                    0b100 => Instruction::IType(IInstruction::LoadByteUnsigned),
+                    0b101 => Instruction::IType(IInstruction::LoadHalfUnsigned),
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0100011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::SType(SInstruction::StoreByte),
+                    0b001 => Instruction::SType(SInstruction::StoreHalf),
+                    0b010 => Instruction::SType(SInstruction::StoreWord),
+                    _ => panic!("Unknown SType instruction with full inst {}", instruction),
+                },
+                0b0010011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::IType(IInstruction::AddImmediate),
+                    0b010 => Instruction::IType(IInstruction::SetLessThanImmediate),
+                    0b011 => Instruction::IType(IInstruction::SetLessThanImmediateUnsigned),
+                    0b100 => Instruction::IType(IInstruction::XorImmediate),
+                    0b110 => Instruction::IType(IInstruction::OrImmediate),
+                    0b111 => Instruction::IType(IInstruction::AndImmediate),
+                    0b001 => Instruction::IType(IInstruction::ShiftLeftLogicalImmediate),
+                    0b101 =>
+                    match (instruction >> 30) & 0x1 // bit 30 in simm component of IType
+                    {
+                    0b0 => Instruction::IType(IInstruction::ShiftRightLogicalImmediate),
+                    0b1 => Instruction::IType(IInstruction::ShiftRightArithmeticImmediate),
+                    _ => panic!("Unknown IType in shift right instructions with full inst {}", instruction),
+                    },
+                    _ => panic!("Unknown IType instruction with full inst {}", instruction),
+                },
+                0b0110011 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 =>
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                    0b0 => Instruction::RType(RInstruction::Add),
+                    0b1 => Instruction::RType(RInstruction::Sub),
+                     _ => panic!("Unknown RType in add/sub instructions with full inst {}", instruction),
+                    },
+                    0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
+                    0b010 => Instruction::RType(RInstruction::SetLessThan),
+                    0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
+                    0b100 => Instruction::RType(RInstruction::Xor),
+                    0b101 =>
+                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
+                    {
+                        0b0 => Instruction::RType(RInstruction::ShiftRightLogical),
+                        0b1 => Instruction::RType(RInstruction::ShiftRightArithmetic),
+                        _ => panic!("Unknown RType in shift right instructions with full inst {}", instruction),
+                    },
+                    0b110 => Instruction::RType(RInstruction::Or),
+                    0b111 => Instruction::RType(RInstruction::And),
+                    _ => panic!("Unknown RType 0110011 instruction with full inst {}", instruction),
+                },
+                0b0001111 =>
+                match (instruction >> 12) & 0x7 // bits 12-14 for func3
+                {
+                    0b000 => Instruction::RType(RInstruction::Fence),
+                    0b001 => Instruction::RType(RInstruction::FenceI),
+                    _ => panic!("Unknown RType 0001111 (Fence) instruction with full inst {}", instruction),
+                },
+                // FIXME: we should implement more syscalls here, and check the register state.
+                // Even better, only one constructor call ecall, and in the
+                // interpreter, we do the action depending on it
+                0b1110011 => Instruction::SyscallType(SyscallInstruction::SyscallSuccess),
+                _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
+            }
+        };
+        // display the opcode
+        println!(
+            "Decoded instruction {:?} with opcode {:?}",
+            instruction, opcode
+        );
+        (opcode, instruction)
+    }
+
+    /// Execute a single step in the RISCV32i program
+    pub fn step(&mut self) -> Instruction {
+        self.reset_scratch_state();
+        let (opcode, _instruction) = self.decode_instruction();
+
+        interpreter::interpret_instruction(self, opcode);
+
+        self.instruction_counter = self.next_instruction_counter();
+
+        // Integer division by MAX_ACC to obtain the actual instruction count
+        if self.halt {
+            println!(
+                "Halted at step={} instruction={:?}",
+                self.normalized_instruction_counter(),
+                opcode
+            );
+        }
+        opcode
+    }
+
     pub fn reset_scratch_state(&mut self) {
         self.scratch_state_idx = 0;
         self.scratch_state = fresh_scratch_state();
