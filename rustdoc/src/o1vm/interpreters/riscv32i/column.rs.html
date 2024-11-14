@@ -79,11 +79,22 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     interpreter::{
-        IInstruction, Instruction,
-        Instruction::{IType, RType, SBType, SType, UJType, UType},
-        RInstruction, SBInstruction, SInstruction, UInstruction,
+        IInstruction,
+        Instruction::{<span class="self">self</span>, IType, RType, SBType, SType, SyscallType, UJType, UType},
+        RInstruction, SBInstruction, SInstruction, UInstruction, UJInstruction,
     },
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
 };
@@ -153,6 +164,17 @@
                     + SBInstruction::COUNT
                     + UInstruction::COUNT
                     + ujtype <span class="kw">as </span>usize
+            }
+            SyscallType(syscalltype) =&gt; {
+                SCRATCH_SIZE
+                    + <span class="number">1
+                    </span>+ RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + SBInstruction::COUNT
+                    + UInstruction::COUNT
+                    + UJInstruction::COUNT
+                    + syscalltype <span class="kw">as </span>usize
             }
         }
     }
