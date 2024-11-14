@@ -1,8 +1,16 @@
-use super::{INSTRUCTION_SET_SIZE, SCRATCH_SIZE};
+use super::{
+    interpreter::{
+        IInstruction, Instruction,
+        Instruction::{IType, RType, SBType, SType, UJType, UType},
+        RInstruction, SBInstruction, SInstruction, UInstruction,
+    },
+    INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
+};
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
 };
+use strum::EnumCount;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Column {
@@ -25,6 +33,45 @@ impl From<Column> for usize {
                     "There is only {INSTRUCTION_SET_SIZE}"
                 );
                 SCRATCH_SIZE + 1 + s
+            }
+        }
+    }
+}
+
+impl From<Instruction> for usize {
+    fn from(instr: Instruction) -> usize {
+        match instr {
+            RType(rtype) => SCRATCH_SIZE + 1 + rtype as usize,
+            IType(itype) => SCRATCH_SIZE + 1 + RInstruction::COUNT + itype as usize,
+            SType(stype) => {
+                SCRATCH_SIZE + 1 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
+            }
+            SBType(sbtype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + sbtype as usize
+            }
+            UType(utype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + SBInstruction::COUNT
+                    + utype as usize
+            }
+            UJType(ujtype) => {
+                SCRATCH_SIZE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + SInstruction::COUNT
+                    + SBInstruction::COUNT
+                    + UInstruction::COUNT
+                    + ujtype as usize
             }
         }
     }
