@@ -12,6 +12,7 @@ pub enum Instruction {
     SBType(SBInstruction),
     UType(UInstruction),
     UJType(UJInstruction),
+    SyscallType(SyscallInstruction),
 }
 
 // See
@@ -101,6 +102,15 @@ pub enum UJInstruction {
     JumpAndLinkRegister, // jalr
 }
 
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+
+pub enum SyscallInstruction {
+    #[default]
+    SyscallSuccess,
+}
+
 impl IntoIterator for Instruction {
     type Item = Instruction;
     type IntoIter = std::vec::IntoIter<Instruction>;
@@ -149,6 +159,13 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
+            Instruction::SyscallType(_) => {
+                let mut iter_contents = Vec::with_capacity(SyscallInstruction::COUNT);
+                for syscall in SyscallInstruction::iter() {
+                    iter_contents.push(Instruction::SyscallType(syscall));
+                }
+                iter_contents.into_iter()
+            }
         }
     }
 }
@@ -162,6 +179,7 @@ impl std::fmt::Display for Instruction {
             Instruction::SBType(sbtype) => write!(f, "{}", sbtype),
             Instruction::UType(utype) => write!(f, "{}", utype),
             Instruction::UJType(ujtype) => write!(f, "{}", ujtype),
+            Instruction::SyscallType(_syscall) => write!(f, "ecall"),
         }
     }
 }
@@ -1050,6 +1068,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::SBType(sbtype) => interpret_sbtype(env, sbtype),
         Instruction::UType(utype) => interpret_utype(env, utype),
         Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
+        Instruction::SyscallType(syscall) => interpret_syscall(env, syscall),
     }
 }
 
@@ -1074,5 +1093,9 @@ pub fn interpret_utype<Env: InterpreterEnv>(_env: &mut Env, _instr: UInstruction
 }
 
 pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstruction) {
+    unimplemented!("TODO")
+}
+
+pub fn interpret_syscall<Env: InterpreterEnv>(_env: &mut Env, _instr: SyscallInstruction) {
     unimplemented!("TODO")
 }
