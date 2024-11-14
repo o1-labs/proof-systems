@@ -1046,6 +1046,36 @@
 <a href="#1046" id="1046">1046</a>
 <a href="#1047" id="1047">1047</a>
 <a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2091,7 +2121,37 @@
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
     env.activate_selector(instr);
 
-    <span class="comment">// TODO: match on instructions
-    </span><span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>);
+    <span class="kw">match </span>instr {
+        Instruction::RType(rtype) =&gt; interpret_rtype(env, rtype),
+        Instruction::IType(itype) =&gt; interpret_itype(env, itype),
+        Instruction::SType(stype) =&gt; interpret_stype(env, stype),
+        Instruction::SBType(sbtype) =&gt; interpret_sbtype(env, sbtype),
+        Instruction::UType(utype) =&gt; interpret_utype(env, utype),
+        Instruction::UJType(ujtype) =&gt; interpret_ujtype(env, ujtype),
+    }
+}
+
+<span class="kw">pub fn </span>interpret_rtype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: RInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
+}
+
+<span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: IInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
+}
+
+<span class="kw">pub fn </span>interpret_stype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: SInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
+}
+
+<span class="kw">pub fn </span>interpret_sbtype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: SBInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
+}
+
+<span class="kw">pub fn </span>interpret_utype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: UInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
+}
+
+<span class="kw">pub fn </span>interpret_ujtype&lt;Env: InterpreterEnv&gt;(_env: <span class="kw-2">&amp;mut </span>Env, _instr: UJInstruction) {
+    <span class="macro">unimplemented!</span>(<span class="string">&quot;TODO&quot;</span>)
 }
 </code></pre></div></section></main></body></html>
