@@ -95,62 +95,59 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
-        let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
-        for (scratch, scratch_chunk) in mips_wit_env
-            .scratch_state
-            .iter()
-            .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
-        {
-            scratch_chunk.push(*scratch);
+        // Create a proof input for DOMAIN_SIZE steps
+        let mut curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+        for _ in 0..DOMAIN_SIZE {
+            if !mips_wit_env.halt {
+                let _instr = mips_wit_env.step(&configuration, &meta, &start);
+                for (scratch, scratch_chunk) in mips_wit_env
+                    .scratch_state
+                    .iter()
+                    .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+                {
+                    scratch_chunk.push(*scratch);
+                }
+                curr_proof_inputs
+                    .evaluations
+                    .instruction_counter
+                    .push(Fp::from(mips_wit_env.instruction_counter));
+                // FIXME: Might be another value
+                curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
+
+                curr_proof_inputs
+                    .evaluations
+                    .selector
+                    .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
+            }
         }
-        curr_proof_inputs
-            .evaluations
-            .instruction_counter
-            .push(Fp::from(mips_wit_env.instruction_counter));
-        // FIXME: Might be another value
-        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
-
-        curr_proof_inputs
-            .evaluations
-            .selector
-            .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
-
-        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
-            // FIXME
+        // Start a proof
+        let start_iteration = Instant::now();
+        debug!("We make a proof, verify it (for testing) and start with a new chunk");
+        let proof = prover::prove::<
+            Vesta,
+            DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+            DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+            _,
+        >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+        .unwrap();
+        debug!(
+            "Proof generated in {elapsed} μs",
+            elapsed = start_iteration.elapsed().as_micros()
+        );
+        {
             let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let proof = prover::prove::<
+            let verif = verifier::verify::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                _,
-            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
-            .unwrap();
-            // FIXME: check that the proof is correct. This is for testing purposes.
-            // Leaving like this for now.
+            >(domain_fp, &srs, &constraints, &proof);
             debug!(
-                "Proof generated in {elapsed} μs",
+                "Verification done in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
             );
-            {
-                let start_iteration = Instant::now();
-                let verif = verifier::verify::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                >(domain_fp, &srs, &constraints, &proof);
-                debug!(
-                    "Verification done in {elapsed} μs",
-                    elapsed = start_iteration.elapsed().as_micros()
-                );
-                assert!(verif);
-            }
-
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            assert!(verif);
         }
     }
-    // TODO: Logic
     ExitCode::SUCCESS
 }
