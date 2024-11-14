@@ -1967,6 +1967,7 @@ dependencies = [
  "ark-ec",
  "ark-ff",
  "ark-poly",
+ "ark-serialize",
  "base64",
  "clap 4.4.18",
  "command-fds",

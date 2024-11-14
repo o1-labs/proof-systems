@@ -1,3 +1,4 @@
+use ark_serialize::CanonicalSerialize;
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
@@ -36,4 +37,74 @@ pub struct Proof<G: KimchiCurve> {
     pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
     /// IPA opening proof
     pub opening_proof: OpeningProof<G>,
+}
+
+impl<G: KimchiCurve> Proof<G> {
+    // FIXME: improve by using serialize_compressed on proof directly. This way,
+    // if the proof structure change, we don't need to update this function.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let _ = &self
+            .commitments
+            .scratch
+            .iter()
+            .map(|v| v.chunks.serialize_compressed(&mut bytes))
+            .collect::<Vec<_>>();
+        let _ = self
+            .commitments
+            .instruction_counter
+            .chunks
+            .serialize_compressed(&mut bytes);
+        let _ = self
+            .commitments
+            .error
+            .chunks
+            .serialize_compressed(&mut bytes);
+        self.commitments.selector.iter().for_each(|sel| {
+            let _ = sel.chunks.serialize_compressed(&mut bytes);
+        });
+        self.zeta_evaluations.scratch.iter().for_each(|eval| {
+            let _ = eval.serialize_compressed(&mut bytes);
+        });
+        let _ = self
+            .zeta_evaluations
+            .instruction_counter
+            .serialize_compressed(&mut bytes);
+        let _ = self.zeta_evaluations.error.serialize_compressed(&mut bytes);
+        self.zeta_evaluations.selector.iter().for_each(|sel| {
+            let _ = sel.serialize_compressed(&mut bytes);
+        });
+        self.zeta_omega_evaluations.scratch.iter().for_each(|eval| {
+            let _ = eval.serialize_compressed(&mut bytes);
+        });
+        let _ = self
+            .zeta_omega_evaluations
+            .instruction_counter
+            .serialize_compressed(&mut bytes);
+        let _ = self
+            .zeta_omega_evaluations
+            .error
+            .serialize_compressed(&mut bytes);
+        self.zeta_omega_evaluations.selector.iter().for_each(|sel| {
+            let _ = sel.serialize_compressed(&mut bytes);
+        });
+        let _ = self
+            .quotient_commitment
+            .chunks
+            .serialize_compressed(&mut bytes);
+        let _ = self
+            .quotient_evaluations
+            .zeta
+            .serialize_compressed(&mut bytes);
+        let _ = self
+            .quotient_evaluations
+            .zeta_omega
+            .serialize_compressed(&mut bytes);
+        let _ = self.opening_proof.lr.serialize_compressed(&mut bytes);
+        let _ = self.opening_proof.delta.serialize_compressed(&mut bytes);
+        let _ = self.opening_proof.z1.serialize_compressed(&mut bytes);
+        let _ = self.opening_proof.z2.serialize_compressed(&mut bytes);
+        let _ = self.opening_proof.sg.serialize_compressed(&mut bytes);
+        bytes
+    }
 }

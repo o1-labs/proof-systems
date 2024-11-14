@@ -7,9 +7,13 @@ use super::{
 };
 use crate::{
     interpreters::mips::{
-        constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
+        constraints as mips_constraints,
+        interpreter::{self, InterpreterEnv},
+        Instruction,
     },
-    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+    pickles::{
+        verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, PROOF_SIZE, TOTAL_NUMBER_OF_CONSTRAINTS,
+    },
 };
 use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
@@ -120,4 +124,6 @@ fn test_small_circuit() {
         (instant_after_verification - instant_before_verification).as_millis()
     );
     assert!(verif, "Verification fails");
+
+    assert_eq!(proof.to_bytes().len(), PROOF_SIZE);
 }

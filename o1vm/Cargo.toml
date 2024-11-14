@@ -25,41 +25,42 @@ name = "pickles_o1vm"
 path = "src/pickles/main.rs"
 
 [dependencies]
-o1-utils.workspace = true
 # FIXME: Only activate this when legacy_o1vm is built
 ark-bn254.workspace = true
 # FIXME: Only activate this when legacy_o1vm is built
 folding.workspace = true
 # FIXME: Only activate this when legacy_o1vm is built
 kimchi = { workspace = true, features = [ "bn254" ] }
-kimchi-msm.workspace = true
-poly-commitment.workspace = true
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
+ark-serialize.workspace = true
+base64.workspace = true
+clap.workspace = true
+command-fds.workspace = true
+elf.workspace = true
+env_logger.workspace = true
 groupmap.workspace = true
+hex.workspace = true
+itertools.workspace = true
+kimchi-msm.workspace = true
+libc.workspace = true
+libflate.workspace = true
+log.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
-elf.workspace = true
+o1-utils.workspace = true
+os_pipe.workspace = true
+poly-commitment.workspace = true
+rand.workspace = true
+rayon.workspace = true
+regex.workspace = true
 rmp-serde.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 serde_with.workspace = true
+sha3.workspace = true
 stacker = "0.1"
-ark-poly.workspace = true
-ark-ff.workspace = true
-ark-ec.workspace = true
-clap.workspace = true
-hex.workspace = true
-regex.workspace = true
-libflate.workspace = true
-base64.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
-log.workspace = true
-env_logger.workspace = true
-command-fds.workspace = true
-os_pipe.workspace = true
-rand.workspace = true
-libc.workspace = true
-rayon.workspace = true
-sha3.workspace = true
-itertools.workspace = true
 thiserror.workspace = true
