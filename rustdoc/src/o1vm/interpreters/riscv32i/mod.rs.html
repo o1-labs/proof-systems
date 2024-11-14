@@ -15,6 +15,10 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// The minimal number of columns required for the VM
 </span><span class="comment">// FIXME: the value will be updated when the interpreter is fully
 // implemented. Using a small value for now.
@@ -28,8 +32,12 @@
 <span class="doccomment">/// List all columns used by the interpreter
 </span><span class="kw">pub mod </span>column;
 
+<span class="kw">pub mod </span>constraints;
+
 <span class="kw">pub mod </span>interpreter;
 
 <span class="doccomment">/// All the registers used by the ISA
 </span><span class="kw">pub mod </span>registers;
+
+<span class="kw">pub mod </span>witness;
 </code></pre></div></section></main></body></html>
