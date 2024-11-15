@@ -86,7 +86,12 @@ where
         evaluations,
         logups,
     } = inputs;
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>, G, [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS], ID> = {
+    let polys: WitnessColumns<
+        DensePolynomial<G::ScalarField>,
+        G,
+        [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
+        ID,
+    > = {
         let WitnessColumns {
             scratch,
             instruction_counter,

@@ -7,8 +7,12 @@ use super::{
 };
 use crate::{
     interpreters::mips::{
-        constraints as mips_constraints, interpreter::{self, InterpreterEnv}, Instruction,
-    }, lookups::LookupTableIDs, pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS}
+        constraints as mips_constraints,
+        interpreter::{self, InterpreterEnv},
+        Instruction,
+    },
+    lookups::LookupTableIDs,
+    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
 use ark_ff::{One, Zero};
 use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
@@ -114,7 +118,12 @@ fn test_small_circuit() {
     .unwrap();
 
     let instant_before_verification = Instant::now();
-    let verif = verify::<Pallas, BaseSponge, ScalarSponge, LookupTableIDs>(domain, &srs, &[expr.clone()], &proof);
+    let verif = verify::<Pallas, BaseSponge, ScalarSponge, LookupTableIDs>(
+        domain,
+        &srs,
+        &[expr.clone()],
+        &proof,
+    );
     let instant_after_verification = Instant::now();
     debug!(
         "Verification took: {} ms",

@@ -239,9 +239,7 @@ where
     let mut evaluations: Vec<_> = get_all_columns()
         .into_iter()
         .map(|column| {
-            let commitment = get_column_comm(column_eval
-                .commitment,
-                &column)
+            let commitment = get_column_comm(column_eval.commitment, &column)
                 .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`"))
                 .clone();
 
