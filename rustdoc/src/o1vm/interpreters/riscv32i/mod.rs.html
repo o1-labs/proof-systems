@@ -24,12 +24,12 @@
 </pre></div><pre class="rust"><code><span class="doccomment">/// The minimal number of columns required for the VM
 </span><span class="comment">// FIXME: the value will be updated when the interpreter is fully
 // implemented. Using a small value for now.
-</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">20</span>;
+</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">80</span>;
 
 <span class="doccomment">/// Number of instructions in the ISA
 </span><span class="comment">// FIXME: the value might not be correct. It will be updated when the
 // interpreter is fully implemented.
-</span><span class="kw">pub const </span>INSTRUCTION_SET_SIZE: usize = <span class="number">47</span>;
+</span><span class="kw">pub const </span>INSTRUCTION_SET_SIZE: usize = <span class="number">40</span>;
 <span class="kw">pub const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
 <span class="kw">pub const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
 <span class="kw">pub const </span>PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - <span class="number">1</span>;
