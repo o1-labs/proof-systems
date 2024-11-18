@@ -1132,7 +1132,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     // TODO add decoding constraint checking
 
     match instr {
-        // FIXME(dw): investigate?
         IInstruction::LoadWord => {
             // lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
             let base = env.read_register(&rs1);
@@ -1210,7 +1209,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             //  pc = (x[rs1] + sext(offset)) & ∼1; <- NOT NOW
             //  pc = (x[rs1] + sext(offset)); <- PLEASE FIXME
             //  x[rd] = t
-            // copying mips for now to match deugger
             let offset = env.sign_extend(&imm, 12);
             let new_addr = {
                 let res_scratch = env.alloc_scratch();

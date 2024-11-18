@@ -6,7 +6,7 @@ pub const SCRATCH_SIZE: usize = 80;
 /// Number of instructions in the ISA
 // FIXME: the value might not be correct. It will be updated when the
 // interpreter is fully implemented.
-pub const INSTRUCTION_SET_SIZE: usize = 90;
+pub const INSTRUCTION_SET_SIZE: usize = 40;
 pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
 pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
