@@ -17,7 +17,10 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::{proof::ProofInputs, prover, verifier},
+    pickles::{
+        proof::{NotInversedProofInputs, ProofInputs},
+        prover, verifier,
+    },
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -95,7 +98,7 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs = NotInversedProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -116,8 +119,14 @@ pub fn main() -> ExitCode {
             .evaluations
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
-
+        // bookkeeping of the values to batch inverse later
+        curr_proof_inputs
+            .idx_to_inverse
+            .push(mips_wit_env.scratch_to_inverse.clone());
+        // Start a proof
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+            // Perform the batch inversion in the witness
+            let curr_proof_inputs_inversed: ProofInputs<Fp> = curr_proof_inputs.into();
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
@@ -126,7 +135,13 @@ pub fn main() -> ExitCode {
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
-            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+            >(
+                domain_fp,
+                &srs,
+                curr_proof_inputs_inversed,
+                &constraints,
+                &mut rng,
+            )
             .unwrap();
             // FIXME: check that the proof is correct. This is for testing purposes.
             // Leaving like this for now.
@@ -148,7 +163,7 @@ pub fn main() -> ExitCode {
                 assert!(verif);
             }
 
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            curr_proof_inputs = NotInversedProofInputs::new(DOMAIN_SIZE);
         }
     }
     // TODO: Logic
