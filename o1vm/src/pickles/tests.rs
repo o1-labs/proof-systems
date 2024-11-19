@@ -81,7 +81,7 @@ fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
-    let proof_input = ProofInputs::<Pallas> {
+    let proof_input = ProofInputs::<Fq> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             instruction_counter: zero_to_n_minus_one(8)

@@ -10,11 +10,11 @@ pub struct WitnessColumns<G, S> {
     pub selector: S,
 }
 
-pub struct ProofInputs<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+pub struct ProofInputs<F: Field> {
+    pub evaluations: WitnessColumns<Vec<F>, Vec<F>>,
 }
 
-impl<G: KimchiCurve> ProofInputs<G> {
+impl<F: Field> ProofInputs<F> {
     pub fn new(domain_size: usize) -> Self {
         ProofInputs {
             evaluations: WitnessColumns {
