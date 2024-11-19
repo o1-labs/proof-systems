@@ -1,7 +1,6 @@
 use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 use ark_ff::Field;
-use kimchi::curve::KimchiCurve;
-use kimchi::proof::PointEvaluations;
+use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 use std::collections::{HashMap, HashSet};
 

@@ -8,8 +8,7 @@ use crate::{
     preimage_oracle::PreImageOracleT,
 };
 use rand::{CryptoRng, Rng, RngCore};
-use std::collections::HashSet;
-use std::{fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf};
 
 // FIXME: we should parametrize the tests with different fields.
 use ark_bn254::Fr as Fp;
