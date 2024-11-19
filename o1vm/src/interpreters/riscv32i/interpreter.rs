@@ -13,6 +13,7 @@ pub enum Instruction {
     UType(UInstruction),
     UJType(UJInstruction),
     SyscallType(SyscallInstruction),
+    MType(MInstruction),
 }
 
 // See
@@ -111,6 +112,55 @@ pub enum SyscallInstruction {
     SyscallSuccess,
 }
 
+/// M extension instructions
+/// Following <https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html>
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
+pub enum MInstruction {
+    /// Format: `mul rd, rs1, rs2`
+    /// Description: performs an 32-bit 32-bit multiplication of signed rs1
+    /// by signed rs2 and places the lower 32 bits in the destination register.
+    /// Implementation: `x[rd] = x[rs1] * x[rs2]`
+    #[default]
+    Mul, // mul
+    /// Format: `mulh rd, rs1, rs2`
+    /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
+    /// signed rs2 and places the upper 32 bits in the destination register.
+    /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
+    Mulh, // mulh
+    /// Format: `mulhsu rd, rs1, rs2`
+    /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
+    /// unsigned rs2 and places the upper 32 bits in the destination register.
+    /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
+    Mulhsu, // mulhsu
+    /// Format: `mulhu rd, rs1, rs2`
+    /// Description: performs an 32-bit 32-bit multiplication of unsigned rs1 by
+    /// unsigned rs2 and places the upper 32 bits in the destination register.
+    /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
+    Mulhu, // mulhu
+    /// Format: `div rd, rs1, rs2`
+    /// Description: perform an 32 bits by 32 bits signed integer division of
+    /// rs1 by rs2, rounding towards zero
+    /// Implementation: `x[rd] = x[rs1] /s x[rs2]`
+    Div, // div
+    /// Format: `divu rd, rs1, rs2`
+    /// Description: performs an 32 bits by 32 bits unsigned integer division of
+    /// rs1 by rs2, rounding towards zero.
+    /// Implementation: `x[rd] = x[rs1] /u x[rs2]`
+    Divu, // divu
+    /// Format: `rem rd, rs1, rs2`
+    /// Description: performs an 32 bits by 32 bits signed integer reminder of
+    /// rs1 by rs2.
+    /// Implementation: `x[rd] = x[rs1] %s x[rs2]`
+    Rem, // rem
+    /// Format: `remu rd, rs1, rs2`
+    /// Description: performs an 32 bits by 32 bits unsigned integer reminder of
+    /// rs1 by rs2.
+    /// Implementation: `x[rd] = x[rs1] %u x[rs2]`
+    Remu, // remu
+}
+
 impl IntoIterator for Instruction {
     type Item = Instruction;
     type IntoIter = std::vec::IntoIter<Instruction>;
@@ -166,6 +216,13 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
+            Instruction::MType(_) => {
+                let mut iter_contents = Vec::with_capacity(MInstruction::COUNT);
+                for mtype in MInstruction::iter() {
+                    iter_contents.push(Instruction::MType(mtype));
+                }
+                iter_contents.into_iter()
+            }
         }
     }
 }
@@ -180,6 +237,7 @@ impl std::fmt::Display for Instruction {
             Instruction::UType(utype) => write!(f, "{}", utype),
             Instruction::UJType(ujtype) => write!(f, "{}", ujtype),
             Instruction::SyscallType(_syscall) => write!(f, "ecall"),
+            Instruction::MType(mtype) => write!(f, "{}", mtype),
         }
     }
 }
@@ -261,6 +319,21 @@ impl std::fmt::Display for UJInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UJInstruction::JumpAndLink => write!(f, "jal"),
+        }
+    }
+}
+
+impl std::fmt::Display for MInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MInstruction::Mul => write!(f, "mul"),
+            MInstruction::Mulh => write!(f, "mulh"),
+            MInstruction::Mulhsu => write!(f, "mulhsu"),
+            MInstruction::Mulhu => write!(f, "mulhu"),
+            MInstruction::Div => write!(f, "div"),
+            MInstruction::Divu => write!(f, "divu"),
+            MInstruction::Rem => write!(f, "rem"),
+            MInstruction::Remu => write!(f, "remu"),
         }
     }
 }
@@ -1068,6 +1141,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::UType(utype) => interpret_utype(env, utype),
         Instruction::UJType(ujtype) => interpret_ujtype(env, ujtype),
         Instruction::SyscallType(syscall) => interpret_syscall(env, syscall),
+        Instruction::MType(mtype) => interpret_mtype(env, mtype),
     }
 }
 
@@ -1246,4 +1320,8 @@ pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstructi
 pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInstruction) {
     // FIXME: check if it is syscall success. There is only one syscall atm
     env.set_halted(Env::constant(1));
+}
+
+pub fn interpret_mtype<Env: InterpreterEnv>(_env: &mut Env, _instr: MInstruction) {
+    unimplemented!("TODO")
 }
