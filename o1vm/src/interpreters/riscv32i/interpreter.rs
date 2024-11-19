@@ -4,6 +4,11 @@ use strum_macros::{EnumCount, EnumIter};
 use crate::lookups::{Lookup, LookupTableIDs};
 use ark_ff::{One, Zero};
 
+// #[cfg(not(test))]
+use log::debug;
+// #[cfg(test)]
+// use std::fmt::println as debug;
+
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
@@ -1085,7 +1090,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 
     /* https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html */
     /* as a general note each inst has an equation description, each operation in the equation needs a witness inst */
-    println!("Interpreting instruction {:?}", instr);
+    // debug!("Interpreting instruction {:?}", instr);
     match instr {
         Instruction::RType(rtype) => interpret_rtype(env, rtype),
         Instruction::IType(itype) => interpret_itype(env, itype),
@@ -1127,7 +1132,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
     };
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
-    println!("opcode: {:?}", opcode);
+    // debug!("opcode: {:?}", opcode);
 
     /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
     https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
@@ -1137,14 +1142,14 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
         unsafe { env.bitmask(&instruction, 12, 7, pos) }
     };
     env.range_check8(&rd, 5);
-    println!("rd: {:?}", rd);
+    // debug!("rd: {:?}", rd);
 
     let funct3 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 15, 12, pos) }
     };
     env.range_check8(&funct3, 3);
-    println!("funct3: {:?}", funct3);
+    // debug!("funct3: {:?}", funct3);
 
     let rs1 = {
         let pos = env.alloc_scratch();
@@ -1366,11 +1371,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         let shift2 = v2 * Env::constant(1 << 16);
         let shift3 = v3 * Env::constant(1 << 24);
 
-        println!("v0: {:?}", v0);
-        println!("v1: {:?}", shift1 );
-        println!("v2: {:?}", shift2 );
-        println!("v3: {:?}", shift3 );
-        println!("v4: {:?}", v4 );
+        debug!("v0: {:?}", v0);
+        debug!("v1: {:?}", shift1);
+        debug!("v2: {:?}", shift2);
+        debug!("v3: {:?}", shift3);
+        debug!("v4: {:?}", v4);
 
         shift3 + shift2 + shift1 + v0
     };
@@ -1380,21 +1385,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3))); // Least significant byte
-    
+
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
             + v3
-    };   
+    };
 
-    let insbe = unsafe {env.var_to_constant(&instructionse)};
+    let insbe = unsafe { env.var_to_constant(&instructionse) };
     let insbe = insbe.to_be();
 
-    println!("finished parsing iinstruction");
+    debug!("finished parsing iinstruction");
     //print out the instruction
-    println!("instruction in the interpreter: {:?}", instruction);
+    debug!("instruction in the interpreter: {:?}", instruction);
 
-    println!("instructionse in the interpreter big end: {:?}", insbe );
+    debug!("instructionse in the interpreter big end: {:?}", insbe);
 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
@@ -1404,7 +1409,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
     // print out the opcode
-    println!("opcode: {:?}", opcode);
+    debug!("opcode: {:?}", opcode);
 
     /* decode and parse bits from the full 32 bit instruction in accordance with the Rtype riscV spec
     https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
@@ -1415,7 +1420,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     };
     env.range_check8(&rd, 5);
     // print out rd
-    println!("rd: {:?}", rd);
+    debug!("rd: {:?}", rd);
 
     let funct3 = {
         let pos = env.alloc_scratch();
@@ -1423,7 +1428,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     };
     env.range_check8(&funct3, 3);
     // print out funct3
-    println!("funct3: {:?}", funct3);
+    debug!("funct3: {:?}", funct3);
 
     let rs1 = {
         let pos = env.alloc_scratch();
@@ -1431,7 +1436,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     };
     env.range_check8(&rs1, 5);
     // print out rs1
-    println!("rs1: {:?}", rs1.clone());
+    // debug!("rs1: {:?}", rs1.clone());
 
     let imm = {
         let pos = env.alloc_scratch();
@@ -1439,7 +1444,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     };
 
     env.range_check16(&imm, 12);
-    println!("imm: {:?}", imm);
+    debug!("imm: {:?}", imm);
 
     // check correctness of decomposition of I type function
     /*
@@ -1454,8 +1459,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     */
 
     // print out the immediate and the opcode
-    println!("imm: {:?}", imm);
-    println!("opcode: {:?}", opcode);
+    // debug!("imm: {:?}", imm);
+    // debug!("opcode: {:?}", opcode);
 
     match instr {
         IInstruction::LoadByte => {
@@ -1519,7 +1524,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
                 + v3;
-            println!("value: {:?}", value);
+            // debug!("value: {:?}", value);
             let value = env.sign_extend(&value, 32);
             env.write_register(&rd, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -1676,7 +1681,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         }
         IInstruction::JumpAndLinkRegister => {
             let addr = env.read_register(&rs1);
-            println!("Addr: {:?}", addr);
+            // debug!("Addr: {:?}", addr);
             // jalr:
             //  t  = pc+4;
             //  pc = (x[rs1] + sext(offset)) & ∼1; <- NOT NOW
@@ -1691,7 +1696,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                     unsafe { env.add_witness(&addr, &offset, res_scratch, overflow_scratch) };
                 res
             };
-            println!("Offset: {:?}", offset);
+            // debug!("Offset: {:?}", offset);
             env.write_register(&rd, next_instruction_pointer.clone());
             env.set_instruction_pointer(new_addr.clone());
             env.set_next_instruction_pointer(new_addr.clone() + Env::constant(4u32));
@@ -1881,7 +1886,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             + v0
     };
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-    print!("SBTYPE instruction: {:?}", instruction);
 
     let opcode = {
         let pos = env.alloc_scratch();
@@ -1926,7 +1930,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
     let imm0_12 = Env::constant(imm0_12);
 
-    println!("SBTYPE offset is: imm0_12: {:?}", imm0_12);
+    // debug!("SBTYPE offset is: imm0_12: {:?}", imm0_12);
 
     match instr {
         SBInstruction::BranchEq => {
@@ -2044,7 +2048,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
             let rd_scratch = env.alloc_scratch();
             let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
-            println!("less_than: {:?}", less_than);
+            // debug!("less_than: {:?}", less_than);
             let offset = (Env::constant(1) - less_than.clone()) * Env::constant(4)
                 + less_than.clone() * imm0_12;
 
@@ -2058,7 +2062,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 res
             };
 
-            print!("BranchLessThanUnsigned: ADDRESS IS {:?}", addr);
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
         }
@@ -2082,7 +2085,6 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
                 res
             };
 
-            print!("BranchGreaterThanEqualUnsigned: ADDRESS IS {:?}", addr);
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
         }

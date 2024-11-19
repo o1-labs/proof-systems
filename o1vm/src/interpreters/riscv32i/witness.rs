@@ -16,6 +16,7 @@ use crate::{
     lookups::Lookup,
 };
 use ark_ff::Field;
+use log::debug;
 use std::array;
 
 /// Maximum number of register accesses per instruction (based on demo)
@@ -387,8 +388,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         out_position: Self::Position,
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        println!("x: {}", *x);
-        println!("y: {}", *y);
+        debug!("x: {}", *x);
+        debug!("y: {}", *y);
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
         // https://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
@@ -544,7 +545,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable) {
-        println!(
+        debug!(
             "Exited with code {} at step {}",
             *exit_code,
             self.normalized_instruction_counter()
@@ -627,7 +628,7 @@ impl<Fp: Field> Env<Fp> {
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
-        println!(
+        debug!(
             "Decoding instruction at address {:x} with value {:b}, with opcode",
             self.registers.current_instruction_pointer, instruction
         );
@@ -727,7 +728,7 @@ impl<Fp: Field> Env<Fp> {
             }
         };
         // display the opcode
-        println!(
+        debug!(
             "Decoded instruction {:?} with opcode {:?}",
             instruction, opcode
         );
@@ -737,19 +738,19 @@ impl<Fp: Field> Env<Fp> {
     /// Execute a single step in the RISCV32i program
     pub fn step(&mut self) -> Instruction {
         self.reset_scratch_state();
-        println!("Before decode");
+        debug!("Before decode");
         let (opcode, _instruction) = self.decode_instruction();
-        println!("After decode");
+        debug!("After decode");
 
         interpreter::interpret_instruction(self, opcode);
 
-        println!("Before ic set");
+        debug!("Before ic set");
         self.instruction_counter = self.next_instruction_counter();
-        println!("After ic set");
+        debug!("After ic set");
 
         // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {
-            println!(
+            debug!(
                 "Halted at step={} instruction={:?}",
                 self.normalized_instruction_counter(),
                 opcode
