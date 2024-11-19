@@ -347,10 +347,10 @@ pub trait InterpreterEnv {
     /// The variables are "freed" after each step/instruction.
     /// The variable allocation can be seen as an allocation on a stack that is
     /// popped after each step execution.
-    /// At the moment, [crate::interpreters::riscv32i::SCRATCH_SIZE]
+    /// At the moment, [crate::interpreters::riscv32im::SCRATCH_SIZE]
     /// elements can be allocated. If more temporary variables are required for
     /// an instruction, increase the value
-    /// [crate::interpreters::riscv32i::SCRATCH_SIZE]
+    /// [crate::interpreters::riscv32im::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
     type Variable: Clone

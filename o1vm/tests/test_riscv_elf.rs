@@ -1,5 +1,5 @@
 use mina_curves::pasta::Fp;
-use o1vm::interpreters::riscv32i::{
+use o1vm::interpreters::riscv32im::{
     interpreter::{IInstruction, Instruction, RInstruction},
     witness::Env,
     PAGE_SIZE,

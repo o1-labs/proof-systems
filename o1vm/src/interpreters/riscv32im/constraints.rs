@@ -4,7 +4,7 @@ use super::{
     INSTRUCTION_SET_SIZE,
 };
 use crate::{
-    interpreters::riscv32i::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
+    interpreters::riscv32im::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
     lookups::Lookup,
 };
 use ark_ff::{Field, One};
