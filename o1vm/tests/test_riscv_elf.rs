@@ -29,7 +29,7 @@ fn test_no_action() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32i/no-action",
     ));
-    let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
     // This is the output we get by running objdump -d no-action
     assert_eq!(witness.registers.current_instruction_pointer, 69844);
