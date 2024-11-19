@@ -986,7 +986,7 @@ pub trait InterpreterEnv {
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
     env.activate_selector(instr);
-    println!("Interpreting instruction: ");
+
     match instr {
         Instruction::RType(instr) => interpret_rtype(env, instr),
         Instruction::JType(instr) => interpret_jtype(env, instr),

@@ -45,28 +45,21 @@ fn test_fibonacci() {
     assert_eq!(witness.registers.current_instruction_pointer, 69936);
     assert_eq!(witness.registers.next_instruction_pointer, 69940);
 
+    let mut recursions = 0;
     while !witness.halt {
         witness.step();
+        // 0x11128 is the ret address of the call to fib
+        if witness.registers.current_instruction_pointer == 0x11128 {
+            recursions += 1;
+            println!("recursions: {}", recursions);
+            //assert_eq!(witness.registers.general_purpose[10], 13);
+        }
         println!("Printing register state after instruction execution");
         println!("{:?}", witness.log_register_state());
+        println!("recursions: {}", recursions);
     }
-
-    /*
-    for _i in 0..=67 {
-        witness.step();
-        println!("{:?}", witness.log_register_state());
-    }
-    */
-
-    // let second_instruction = witness.step();
-    // println!("Second instruction: {:?}", second_instruction);
-    // assert_eq!(
-    //     second_instruction,
-    //     Instruction::IType(IInstruction::AddImmediate)
-    // );
-    // assert_eq!(witness.registers.current_instruction_pointer, 69940);
-    // assert_eq!(witness.registers.next_instruction_pointer, 69944);
 }
+
 
 #[test]
 // Checking an instruction can be converted into a string.

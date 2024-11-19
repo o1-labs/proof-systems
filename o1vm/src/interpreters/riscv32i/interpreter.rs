@@ -1360,15 +1360,41 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
         let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
-        (v3 * Env::constant(1 << 24))
-            + (v2 * Env::constant(1 << 16))
-            + (v1 * Env::constant(1 << 8))
-            + v0
+        let v4 = env.read_memory(&(instruction_pointer.clone() + Env::constant(4)));
+
+        let shift1 = v1 * Env::constant(1 << 8);
+        let shift2 = v2 * Env::constant(1 << 16);
+        let shift3 = v3 * Env::constant(1 << 24);
+
+        println!("v0: {:?}", v0);
+        println!("v1: {:?}", shift1 );
+        println!("v2: {:?}", shift2 );
+        println!("v3: {:?}", shift3 );
+        println!("v4: {:?}", v4 );
+
+        shift3 + shift2 + shift1 + v0
     };
+
+    let instructionse = {
+        let v0 = env.read_memory(&instruction_pointer); // Most significant byte
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3))); // Least significant byte
+    
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };   
+
+    let insbe = unsafe {env.var_to_constant(&instructionse)};
+    let insbe = insbe.to_be();
 
     println!("finished parsing iinstruction");
     //print out the instruction
     println!("instruction in the interpreter: {:?}", instruction);
+
+    println!("instructionse in the interpreter big end: {:?}", insbe );
 
     /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
