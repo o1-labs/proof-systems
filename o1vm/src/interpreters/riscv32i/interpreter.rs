@@ -106,7 +106,6 @@ pub enum UJInstruction {
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
 )]
-
 pub enum SyscallInstruction {
     #[default]
     SyscallSuccess,
@@ -1101,7 +1100,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
-    /* decode and parse bits from the full 32 bits instruction in accordance with the Rtype riscV spec
+    /* decode and parse bits from the full 32 bits instruction in accordance
+     * with the Rtype RISC-V spec
     https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
      */
     let rd = {
