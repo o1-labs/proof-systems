@@ -2023,6 +2023,109 @@ pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInst
     env.set_halted(Env::constant(1));
 }
 
-pub fn interpret_mtype<Env: InterpreterEnv>(_env: &mut Env, _instr: MInstruction) {
-    unimplemented!("TODO")
+/// Interpret an M-type instruction.
+/// The encoding of an M-type instruction is as follows:
+/// ```text
+/// | 31     27 | 26    25 | 24     20 | 19     15 | 14        12 | 11    7 | 6      0 |
+/// |   00000   |    01    |    rs2    |    rs1    |    funct3    |    rd   |  opcode  |
+/// ```
+/// Following the documentation found
+/// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let _next_instruction_pointer = env.get_next_instruction_pointer();
+
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
+    };
+
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    env.range_check8(&opcode, 7);
+
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
+
+    let funct3 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
+    };
+    env.range_check8(&funct3, 3);
+
+    let rs1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 15, pos) }
+    };
+    env.range_check8(&rs1, 5);
+
+    let rs2 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 25, 20, pos) }
+    };
+    env.range_check8(&rs2, 5);
+
+    let funct2 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 27, 25, pos) }
+    };
+    // FIXME: check it is equal to 01?
+    env.range_check8(&funct2, 2);
+
+    let funct5 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 27, pos) }
+    };
+    // FIXME: check it is equal to 00000?
+    env.range_check8(&funct5, 5);
+
+    // Check decomposition of M type instruction
+    env.add_constraint(
+        instruction
+            - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+            - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
+            - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+            - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+            - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
+            - (funct2.clone() * Env::constant(1 << 25))   // funct2 at bits 25-26
+            - (funct5.clone() * Env::constant(1 << 27)), // funct5 at bits 27-31
+    );
+
+    match instr {
+        MInstruction::Mul => {
+            unimplemented!("Mul")
+        }
+        MInstruction::Mulh => {
+            unimplemented!("Mulh")
+        }
+        MInstruction::Mulhsu => {
+            unimplemented!("Mulhsu")
+        }
+        MInstruction::Mulhu => {
+            unimplemented!("Mulhu")
+        }
+        MInstruction::Div => {
+            unimplemented!("Div")
+        }
+        MInstruction::Divu => {
+            unimplemented!("Divu")
+        }
+        MInstruction::Rem => {
+            unimplemented!("Rem")
+        }
+        MInstruction::Remu => {
+            unimplemented!("Remu")
+        }
+    }
 }
