@@ -1238,8 +1238,12 @@ where
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
-        let non_hiding = |d1_size: usize| PolyComm {
-            chunks: vec![G::ScalarField::zero(); d1_size],
+        let non_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::zero(); n_chunks],
+        };
+
+        let fixed_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::one(); n_chunks],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1247,12 +1251,8 @@ where
 
         let mut polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (coefficients_form(p), non_hiding(*d1_size)))
+            .map(|(p, n_chunks)| (coefficients_form(p), non_hiding(*n_chunks)))
             .collect::<Vec<_>>();
-
-        let fixed_hiding = |d1_size: usize| PolyComm {
-            chunks: vec![G::ScalarField::one(); d1_size],
-        };
 
         //~ 1. Then, include:
         //~~ * the negated public polynomial

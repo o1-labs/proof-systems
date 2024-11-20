@@ -490,11 +490,11 @@ where
     let u = u_chal.to_field(endo_r);
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-    let non_hiding = |d1_size| PolyComm {
-        chunks: vec![G::ScalarField::zero(); d1_size],
+    let non_hiding = |n_chunks| PolyComm {
+        chunks: vec![G::ScalarField::zero(); n_chunks],
     };
-    let hiding = |d1_size| PolyComm {
-        chunks: vec![G::ScalarField::one(); d1_size],
+    let hiding = |n_chunks| PolyComm {
+        chunks: vec![G::ScalarField::one(); n_chunks],
     };
 
     // Gathering all polynomials to use in the opening proof
