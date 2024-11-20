@@ -1590,6 +1590,16 @@
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2995,7 +3005,17 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::And =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;And&quot;</span>)
+            <span class="comment">/* and: x[rd] = x[rs1] &amp; x[rs2] */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.and_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::Fence =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Fence&quot;</span>)
