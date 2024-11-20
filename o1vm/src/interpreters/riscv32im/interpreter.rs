@@ -1377,7 +1377,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RInstruction::ShiftRightArithmetic => {
-            unimplemented!("ShiftRightArithmetic");
+            /* sra: x[rd] = x[rs1] >> x[rs2] */
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+            let local_rd = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right_arithmetic(&local_rs1, &local_rs2, pos)
+            };
+            env.write_register(&rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RInstruction::Or => {
             unimplemented!("Or")
