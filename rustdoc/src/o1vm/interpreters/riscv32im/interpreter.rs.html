@@ -1600,6 +1600,14 @@
 <a href="#1600" id="1600">1600</a>
 <a href="#1601" id="1601">1601</a>
 <a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -3026,13 +3034,19 @@
     };
 }
 
-<span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: IInstruction) {
-    <span class="comment">/* fetch instruction pointer from the program state */
-    </span><span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
-    <span class="comment">/* compute the next instruction ptr and add one, as well record raml lookup */
-    </span><span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
-    <span class="comment">/* read instruction from ip address */
-    </span><span class="kw">let </span>instruction = {
+<span class="doccomment">/// Interpret an I-type instruction.
+/// The encoding of an I-type instruction is as follows:
+/// ```text
+/// | 31     20 | 19     15 | 14    12 | 11    7 | 6      0 |
+/// | immediate |    rs1    |  funct3  |    rd   |  opcode  |
+/// ```
+/// Following the documentation found
+/// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+</span><span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: IInstruction) {
+    <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
+
+    <span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
@@ -3043,23 +3057,18 @@
             + v0
     };
 
-    <span class="comment">/* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-    </span><span class="kw">let </span>opcode = {
+    <span class="kw">let </span>opcode = {
         <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">7</span>, <span class="number">0</span>, pos) }
     };
-    <span class="comment">/* verify opcode is 7 bits */
-    </span>env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">7</span>);
+    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">7</span>);
 
-    <span class="comment">/* decode and parse bits from the full 32 bits instruction in accordance
-     * with the Rtype RISC-V spec
-    https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf
-     */
-    </span><span class="kw">let </span>rd = {
+    <span class="kw">let </span>rd = {
         <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">12</span>, <span class="number">7</span>, pos) }
     };
     env.range_check8(<span class="kw-2">&amp;</span>rd, <span class="number">5</span>);
+
     <span class="kw">let </span>funct3 = {
         <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">15</span>, <span class="number">12</span>, pos) }
@@ -3079,10 +3088,17 @@
 
     env.range_check16(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
 
-    <span class="comment">// check correctness of decomposition of I type function
-    // TODO add decoding constraint checking
+    <span class="comment">// check correctness of decomposition
+    </span>env.add_constraint(
+        instruction
+            - (opcode.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">0</span>))    <span class="comment">// opcode at bits 0-6
+            </span>- (rd.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">7</span>))        <span class="comment">// rd at bits 7-11
+            </span>- (funct3.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">12</span>))   <span class="comment">// funct3 at bits 12-14
+            </span>- (rs1.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">15</span>))      <span class="comment">// rs1 at bits 15-19
+            </span>- (imm.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">20</span>)), <span class="comment">// imm at bits 20-32
+    </span>);
 
-    </span><span class="kw">match </span>instr {
+    <span class="kw">match </span>instr {
         IInstruction::LoadWord =&gt; {
             <span class="comment">// lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
             </span><span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs1);
