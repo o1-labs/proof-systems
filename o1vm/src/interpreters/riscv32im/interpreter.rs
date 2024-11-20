@@ -1424,6 +1424,14 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
     };
 }
 
+/// Interpret an I-type instruction.
+/// The encoding of an I-type instruction is as follows:
+/// ```text
+/// | 31     20 | 19     15 | 14    12 | 11    7 | 6      0 |
+/// | immediate |    rs1    |  funct3  |    rd   |  opcode  |
+/// ```
+/// Following the documentation found
+/// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) {
     /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
