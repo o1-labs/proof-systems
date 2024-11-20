@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse_riscv32i"]};
+window.SIDEBAR_ITEMS = {"fn":["parse_riscv32"]};

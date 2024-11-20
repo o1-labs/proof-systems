@@ -149,14 +149,14 @@
 <span class="kw">use </span>std::{collections::HashMap, path::Path};
 
 <span class="doccomment">/// Parse an ELF file and return the parsed data as a structure that is expected
-/// by the o1vm RISC-V 32i edition.
+/// by the o1vm RISC-V 32 bits edition.
 </span><span class="comment">// FIXME: parametrize by an architecture. We should return a state depending on the
 // architecture. In the meantime, we can have parse_riscv32i and parse_mips.
 // FIXME: for now, we return a State structure, either for RISC-V 32i or MIPS.
 // We should return a structure specifically built for the o1vm, and not tight
 // to Cannon. It will be done in a future PR to avoid breaking the current code
 // and have a huge diff.
-</span><span class="kw">pub fn </span>parse_riscv32i(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;State, String&gt; {
+</span><span class="kw">pub fn </span>parse_riscv32(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;State, String&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;Start parsing the ELF file to load a RISC-V 32i compatible state&quot;</span>);
     <span class="kw">let </span>file_data = std::fs::read(path).expect(<span class="string">&quot;Could not read file.&quot;</span>);
     <span class="kw">let </span>slice = file_data.as_slice();
