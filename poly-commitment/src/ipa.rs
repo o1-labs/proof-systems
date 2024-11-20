@@ -568,15 +568,17 @@ impl<G: CommitmentCurve> SRS<G> {
         // Combines polynomials roughly as follows: p(X) := ∑_i polyscale^i p_i(X)
         //
         // `blinding_factor` is a combined set of commitments that are
-        // paired with polynomials in `plnms`.
+        // paired with polynomials in `plnms`. In kimchi, these input commitments
+        // are blinders, so often `[G::ScalarField::one(); num_chunks]` or zeroes.
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
 
         // The initial evaluation vector for polynomial commitment b_init is not
-        // just the powers of a single point as in the original IPA, but rather
-        // a vector of linearly combined powers with `evalscale` as recombiner.
+        // just the powers of a single point as in the original IPA (1,ζ,ζ^2,...)
+        //
+        // but rather a vector of linearly combined powers with `evalscale` as recombiner.
         //
         // b_init[j] = Σ_i evalscale^i elm_i^j
-        //          = ζ^j + evalscale * ζ^j ω^j (in the specific case of opening)
+        //           = ζ^j + evalscale * ζ^j ω^j (in the specific case of challenges (ζ,ζω))
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
