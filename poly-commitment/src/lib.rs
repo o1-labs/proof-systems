@@ -4,6 +4,7 @@ pub mod error;
 pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
+pub mod utils;
 
 // Exposing property based tests for the SRS trait
 pub mod pbt_srs;
@@ -13,7 +14,7 @@ pub use commitment::PolyComm;
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
 };
 use ark_ec::AffineRepr;
 use ark_ff::UniformRand;

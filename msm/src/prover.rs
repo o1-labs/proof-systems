@@ -30,7 +30,7 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};

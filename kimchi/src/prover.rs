@@ -46,7 +46,7 @@ use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
 };
 use rand_core::{CryptoRng, RngCore};

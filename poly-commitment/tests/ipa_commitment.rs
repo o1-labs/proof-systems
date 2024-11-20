@@ -11,8 +11,10 @@ use mina_poseidon::{
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
-    ipa::{DensePolynomialOrEvaluations, SRS},
-    pbt_srs, PolyComm, SRS as _,
+    ipa::SRS,
+    pbt_srs,
+    utils::DensePolynomialOrEvaluations,
+    PolyComm, SRS as _,
 };
 use rand::Rng;
 use std::array;

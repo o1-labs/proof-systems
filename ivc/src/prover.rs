@@ -31,8 +31,8 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
-    ipa::DensePolynomialOrEvaluations,
     kzg::{KZGProof, PairingSRS},
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};
