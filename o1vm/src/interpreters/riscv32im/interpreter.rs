@@ -1312,7 +1312,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RInstruction::ShiftLeftLogical => {
-            unimplemented!("ShiftLeftLogical");
+            /* sll: x[rd] = x[rs1] << x[rs2] */
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+            let local_rd = unsafe {
+                let rd_scratch = env.alloc_scratch();
+                env.shift_left(&local_rs1, &local_rs2, rd_scratch)
+            };
+            env.write_register(&rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RInstruction::SetLessThan => {
             unimplemented!("SetLessThan");
