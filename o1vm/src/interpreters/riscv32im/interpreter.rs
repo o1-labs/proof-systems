@@ -1478,8 +1478,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     env.range_check16(&imm, 12);
 
-    // check correctness of decomposition of I type function
-    // TODO add decoding constraint checking
+    // check correctness of decomposition
+    env.add_constraint(
+        instruction
+            - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+            - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
+            - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+            - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+            - (imm.clone() * Env::constant(1 << 20)), // imm at bits 20-32
+    );
 
     match instr {
         IInstruction::LoadWord => {
