@@ -1210,7 +1210,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -1280,7 +1280,20 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
 
     match instr {
         RInstruction::Add => {
-            unimplemented!("Add");
+            // add: x[rd] = x[rs1] + x[rs2]
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+            let overflow_scratch = env.alloc_scratch();
+            let rd_scratch = env.alloc_scratch();
+            let local_rd = unsafe {
+                let (local_rd, _overflow) =
+                    env.add_witness(&local_rs1, &local_rs2, rd_scratch, overflow_scratch);
+                local_rd
+            };
+            env.write_register(&rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RInstruction::Sub => {
             unimplemented!("Sub");
