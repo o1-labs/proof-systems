@@ -542,24 +542,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn divmod(
-        &mut self,
-        x: &Self::Variable,
-        y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let q = x / y;
-        let r = x % y;
-        let q = q as u64;
-        let r = r as u64;
-        self.write_column(position_quotient, q);
-        self.write_column(position_remainder, r);
-        (q, r)
-    }
-
     unsafe fn count_leading_zeros(
         &mut self,
         x: &Self::Variable,
