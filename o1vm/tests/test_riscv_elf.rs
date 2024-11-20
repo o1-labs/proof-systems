@@ -41,6 +41,45 @@ fn test_instruction_can_be_converted_into_string() {
 }
 
 #[test]
+fn test_fibonacci() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32i/fibonacci-7",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+    // This is the output we get by running objdump -d fibonacci
+    assert_eq!(witness.registers.current_instruction_pointer, 69932);
+    assert_eq!(witness.registers.next_instruction_pointer, 69936);
+
+    let first_instruction = witness.step();
+    assert_eq!(
+        first_instruction,
+        Instruction::IType(IInstruction::AddImmediate)
+    );
+    // println!("{:?}", witness.registers);
+    assert_eq!(witness.registers.current_instruction_pointer, 69936);
+    assert_eq!(witness.registers.next_instruction_pointer, 69940);
+
+    let mut recursions = 0;
+    while !witness.halt {
+        witness.step();
+        // 0x11128 is the ret address of the call to fib
+        // if witness.registers.current_instruction_pointer == 0x11128 {
+        //     recursions += 1;
+        //     println!("recursions: {}", recursions);
+        // }
+        //assert_eq!(witness.registers.general_purpose[10], 13);
+        // }
+        // At the end of the execution the result of the fibonacci of 7 should
+        // be in register 10, which is 13 (7 times).
+        if witness.registers.current_instruction_pointer == 0x1117c {
+            assert_eq!(witness.registers.general_purpose[10], 13);
+        }
+    }
+}
+
+#[test]
 fn test_no_action() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
