@@ -2075,7 +2075,7 @@ pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInst
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -2146,7 +2146,17 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
 
     match instr {
         MInstruction::Mul => {
-            unimplemented!("Mul")
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_lo_signed(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulh => {
             unimplemented!("Mulh")
