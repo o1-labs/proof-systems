@@ -45,7 +45,29 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_poseidon_kimchi);
+pub fn bench_conversions(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Poseidon");
+
+    let hashes_fp: Vec<Fp> = (0..65536).map(|_| rand::random()).collect();
+    group.bench_function("fp_to_fp9, 2^16 elems", |b| {
+        b.iter(|| {
+            for h in hashes_fp.clone().into_iter() {
+                let _hash_fp9: Fp9 = h.into();
+            }
+        });
+    });
+
+    let hashes_fp9: Vec<Fp> = (0..65536).map(|_| rand::random()).collect();
+    group.bench_function("fp9_to_fp, 2^16 elems", |b| {
+        b.iter(|| {
+            for h in hashes_fp9.clone().into_iter() {
+                let _hash_fp: Fp = h.into();
+            }
+        });
+    });
+}
+
+criterion_group!(benches, bench_poseidon_kimchi, bench_conversions);
 criterion_main!(benches);
 
 // sponge params for Fp9
@@ -67,6 +89,7 @@ fn fp9_sponge_params() -> ArithmeticSpongeParams<Fp9> {
             .collect(),
     }
 }
+
 fn fp9_static_params() -> &'static ArithmeticSpongeParams<Fp9> {
     static PARAMS: Lazy<ArithmeticSpongeParams<Fp9>> = Lazy::new(fp9_sponge_params);
     &PARAMS
