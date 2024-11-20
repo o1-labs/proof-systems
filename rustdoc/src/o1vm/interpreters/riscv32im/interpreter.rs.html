@@ -1540,6 +1540,16 @@
 <a href="#1540" id="1540">1540</a>
 <a href="#1541" id="1541">1541</a>
 <a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2880,7 +2890,17 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::SetLessThanUnsigned =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThanUnsigned&quot;</span>);
+            <span class="comment">/* sltu: x[rd] = (x[rs1] &lt; (u)x[rs2]) ? 1 : 0 */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.test_less_than(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::Xor =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Xor&quot;</span>);
