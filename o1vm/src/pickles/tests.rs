@@ -95,7 +95,6 @@ fn test_small_circuit() {
                 .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
                 .collect(),
             selector: zero_to_n_minus_one(8),
-            lookup_env: None,
         },
         logups: BTreeMap::new(),
     };

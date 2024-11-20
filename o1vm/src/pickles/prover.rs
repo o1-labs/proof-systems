@@ -88,16 +88,13 @@ where
     } = inputs;
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
-        G,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
-        ID,
     > = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
             selector,
-            ref lookup_env,
         } = evaluations;
 
         let domain_size = domain.d1.size as usize;
@@ -127,7 +124,6 @@ where
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
-            lookup_env: lookup_env.clone(),
         }
     };
 

@@ -33,23 +33,19 @@ use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use kimchi_msm::{columns::Column, LookupTableID};
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
-type CommitmentColumns<G, ID> = WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID>;
-type EvaluationColumns<G, ID> = WitnessColumns<
+type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
+type EvaluationColumns<G> = WitnessColumns<
     Evals<<G as AffineRepr>::ScalarField>,
-    G,
     [Evals<<G as AffineRepr>::ScalarField>; N_MIPS_SEL_COLS],
-    ID,
 >;
 
-struct ColumnEval<'a, G: AffineRepr + KimchiCurve, ID: LookupTableID> {
-    commitment: &'a CommitmentColumns<G, ID>,
-    zeta_eval: &'a EvaluationColumns<G, ID>,
-    zeta_omega_eval: &'a EvaluationColumns<G, ID>,
+struct ColumnEval<'a, G: KimchiCurve> {
+    commitment: &'a CommitmentColumns<G>,
+    zeta_eval: &'a EvaluationColumns<G>,
+    zeta_omega_eval: &'a EvaluationColumns<G>,
 }
 
-impl<G: AffineRepr + KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::ScalarField>
-    for ColumnEval<'_, G, ID>
-{
+impl<G: KimchiCurve> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
     type Column = Column;
     fn evaluate(
         &self,
@@ -60,7 +56,7 @@ impl<G: AffineRepr + KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::Scalar
             zeta_eval,
             zeta_omega_eval,
         } = *self;
-        if let Some(&ref zeta) = get_column_eval(zeta_eval, &col) {
+        if let Some(&ref zeta) = get_column_eval::<_, G::ScalarField, _>(zeta_eval, &col) {
             if let Some(&ref zeta_omega) = get_column_eval(zeta_omega_eval, &col) {
                 assert!(zeta.evals.len() == 1);
                 assert!(zeta_omega.evals.len() == 1);
@@ -97,8 +93,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment,
         quotient_evaluations,
-        logup_commitments: _,
-        logup_evaluations: _,
+        logup_commitments,
+        logup_evaluations,
         opening_proof,
     } = proof;
 
@@ -136,30 +132,25 @@ where
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    let to_eval_witness_columns = |witness_columns: WitnessColumns<
-        G::ScalarField,
-        G,
-        [G::ScalarField; N_MIPS_SEL_COLS],
-        ID,
-    >| {
-        let to_evals = |&x| Evaluations::from_vec_and_domain(vec![x], domain.d1.clone());
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-            selector,
-            lookup_env,
-        } = witness_columns;
-        let scratch = scratch.par_iter().map(to_evals).collect::<Vec<_>>();
-        let selector = selector.par_iter().map(to_evals).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: to_evals(&instruction_counter),
-            error: to_evals(&error.clone()),
-            selector: selector.try_into().unwrap(),
-            lookup_env,
-        }
-    };
+    let to_eval_witness_columns =
+        |witness_columns: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>| {
+            let to_evals = |&x| Evaluations::from_vec_and_domain(vec![x], domain.d1.clone());
+            let WitnessColumns {
+                scratch,
+                instruction_counter,
+                error,
+                selector,
+            } = witness_columns;
+            let scratch = scratch.par_iter().map(to_evals).collect::<Vec<_>>();
+            let selector = selector.par_iter().map(to_evals).collect::<Vec<_>>();
+            WitnessColumns {
+                scratch: scratch.try_into().unwrap(),
+                instruction_counter: to_evals(&instruction_counter),
+                error: to_evals(&error.clone()),
+                selector: selector.try_into().unwrap(),
+                lookup_env,
+            }
+        };
 
     let column_eval = ColumnEval {
         commitment: commitments,

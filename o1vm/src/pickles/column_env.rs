@@ -1,4 +1,4 @@
-use ark_ff::FftField;
+use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi_msm::{columns::Column, logup::prover::QuotientPolynomialEnvironment, LookupTableID};
 use poly_commitment::PolyComm;
@@ -22,10 +22,10 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, F: FftField, G: KimchiCurve, ID: LookupTableID> {
+pub struct ColumnEnvironment<'a, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evals<F>, G, [Evals<F>; N_MIPS_SEL_COLS], ID>,
+    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -54,7 +54,7 @@ pub fn get_all_columns() -> Vec<Column> {
 }
 
 pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
-    env: &'a WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
+    env: &'a WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
     col: &Column,
 ) -> Option<&'a PolyComm<G>> {
     match *col {
@@ -115,10 +115,10 @@ pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
     }
 }
 
-pub fn get_column_eval<'a, G: KimchiCurve, ID: LookupTableID>(
-    env: &'a WitnessColumns<Evals<G::ScalarField>, G, [Evals<G::ScalarField>; N_MIPS_SEL_COLS], ID>,
+pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
+    env: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
     col: &Column,
-) -> Option<&'a Evals<G::ScalarField>> {
+) -> Option<&'a Evals<F>> {
     match *col {
         Column::Relation(i) => {
             if i < SCRATCH_SIZE {
@@ -177,11 +177,9 @@ pub fn get_column_eval<'a, G: KimchiCurve, ID: LookupTableID>(
     }
 }
 
-impl<'a, F: FftField, G: KimchiCurve, ID: LookupTableID>
+impl<'a, F: FftField, ID: LookupTableID>
     TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
-    for ColumnEnvironment<'a, F, G, ID>
-where
-    G: KimchiCurve<ScalarField = F>,
+    for ColumnEnvironment<'a, F, ID>
 {
     // FIXME: do we change to the MIPS column type?
     // We do not want to keep kimchi_msm/generic prover

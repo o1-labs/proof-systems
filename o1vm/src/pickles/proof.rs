@@ -10,16 +10,15 @@ use poly_commitment::{ipa::OpeningProof, PolyComm};
 use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 
 #[derive(Clone)]
-pub struct WitnessColumns<F, G: KimchiCurve, S, ID: LookupTableID> {
+pub struct WitnessColumns<F, S> {
     pub scratch: [F; crate::interpreters::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: F,
     pub error: F,
     pub selector: S,
-    pub lookup_env: Option<LookupEnv<G, ID>>,
 }
 
 pub struct ProofInputs<G: KimchiCurve, ID: LookupTableID> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>, G, Vec<G::ScalarField>, ID>,
+    pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
     pub logups: BTreeMap<ID, LogupWitness<G::ScalarField, ID>>,
 }
 
@@ -31,7 +30,6 @@ impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),
-                lookup_env: None,
             },
             logups: BTreeMap::new(),
         }
@@ -40,10 +38,9 @@ impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
 
 // FIXME: should we blind the commitment?
 pub struct Proof<G: KimchiCurve, ID: LookupTableID> {
-    pub commitments: WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
-    pub zeta_evaluations: WitnessColumns<G::ScalarField, G, [G::ScalarField; N_MIPS_SEL_COLS], ID>,
-    pub zeta_omega_evaluations:
-        WitnessColumns<G::ScalarField, G, [G::ScalarField; N_MIPS_SEL_COLS], ID>,
+    pub commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
+    pub zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
+    pub zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     pub quotient_commitment: PolyComm<G>,
     pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
     pub logup_commitments: Option<LookupProof<PolyComm<G>, ID>>,
