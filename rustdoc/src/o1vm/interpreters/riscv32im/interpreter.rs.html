@@ -1520,6 +1520,16 @@
 <a href="#1520" id="1520">1520</a>
 <a href="#1521" id="1521">1521</a>
 <a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2834,7 +2844,17 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::ShiftLeftLogical =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftLeftLogical&quot;</span>);
+            <span class="comment">/* sll: x[rd] = x[rs1] &lt;&lt; x[rs2] */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                env.shift_left(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::SetLessThan =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThan&quot;</span>);
