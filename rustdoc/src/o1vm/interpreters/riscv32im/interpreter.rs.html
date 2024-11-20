@@ -1560,6 +1560,36 @@
 <a href="#1560" id="1560">1560</a>
 <a href="#1561" id="1561">1561</a>
 <a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
+<a href="#1573" id="1573">1573</a>
+<a href="#1574" id="1574">1574</a>
+<a href="#1575" id="1575">1575</a>
+<a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
+<a href="#1580" id="1580">1580</a>
+<a href="#1581" id="1581">1581</a>
+<a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2926,13 +2956,43 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::ShiftRightLogical =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightLogical&quot;</span>);
+            <span class="comment">/* srl: x[rd] = x[rs1] &gt;&gt; x[rs2] */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.shift_right(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::ShiftRightArithmetic =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightArithmetic&quot;</span>);
+            <span class="comment">/* sra: x[rd] = x[rs1] &gt;&gt; x[rs2] */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.shift_right_arithmetic(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::Or =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;Or&quot;</span>)
+            <span class="comment">/* or: x[rd] = x[rs1] | x[rs2] */
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.or_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::And =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;And&quot;</span>)
