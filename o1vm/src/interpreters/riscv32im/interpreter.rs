@@ -1,3 +1,26 @@
+//! This module implement an interpreter for the RISCV32 IM instruction set
+//! architecture.
+//!
+//! The implementation mostly follows (and copy) code from the MIPS interpreter
+//! available [here](../mips/interpreter.rs).
+//!
+//! ## Credits
+//!
+//! We would like to thank the authors of the following documentations:
+//! - <https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html> ([CC BY
+//! 4.0](https://creativecommons.org/licenses/by/4.0/)) from
+//! [msyksphinz-self](https://github.com/msyksphinz-self/riscv-isadoc)
+//! -
+//! <https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf>
+//! from the course [CS 3410: Computer System Organization and
+//! Programming](https://www.cs.cornell.edu/courses/cs3410/2024fa/home.html) at
+//! Cornell University.
+//!
+//! The format and description of each instruction is taken from these sources,
+//! and copied in this file for offline reference.
+//! If you are the author of the above documentations and would like to add or
+//! modify the credits, please open a pull request.
+
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 use crate::lookups::{Lookup, LookupTableIDs};
 use ark_ff::{One, Zero};
