@@ -183,8 +183,8 @@ impl<G: CommitmentCurve> SRS<G> {
         {
             sponge.absorb_fr(&[shift_scalar::<G>(*combined_inner_product)]);
 
-            let t = sponge.challenge_fq();
-            let u: G = {
+            let u_base: G = {
+                let t = sponge.challenge_fq();
                 let (x, y) = group_map.to_group(t);
                 G::of_coordinates(x, y)
             };
@@ -240,7 +240,7 @@ impl<G: CommitmentCurve> SRS<G> {
             // TERM
             // -rand_base_i * (z1 * b0 * U)
             scalars.push(neg_rand_base_i * (opening.z1 * b0));
-            points.push(u);
+            points.push(u_base);
 
             // TERM
             // rand_base_i c_i Q_i
@@ -269,7 +269,7 @@ impl<G: CommitmentCurve> SRS<G> {
             );
 
             scalars.push(rand_base_i_c_i * *combined_inner_product);
-            points.push(u);
+            points.push(u_base);
 
             scalars.push(rand_base_i);
             points.push(opening.delta);
@@ -569,7 +569,7 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // `blinding_factor` is a combined set of commitments that are
         // paired with polynomials in `plnms`. In kimchi, these input commitments
-        // are blinders, so often `[G::ScalarField::one(); num_chunks]` or zeroes.
+        // are poly com blinders, so often `[G::ScalarField::one(); num_chunks]` or zeroes.
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
 
         // The initial evaluation vector for polynomial commitment b_init is not
@@ -579,6 +579,13 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // b_init[j] = Σ_i evalscale^i elm_i^j
         //           = ζ^j + evalscale * ζ^j ω^j (in the specific case of challenges (ζ,ζω))
+        //
+        // So in our case b_init is the following vector:
+        //    1 + evalscale
+        //    ζ + evalscale * ζ ω
+        //    ζ^2 + evalscale * (ζ ω)^2
+        //    ζ^3 + evalscale * (ζ ω)^3
+        //    ...
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
@@ -593,7 +600,7 @@ impl<G: CommitmentCurve> SRS<G> {
             res
         };
 
-        // Combined polynomial p, evaluated at the combined point b_init.
+        // Combined polynomial p(X) evaluated at the combined eval point b_init.
         let combined_inner_product = p
             .coeffs
             .iter()
@@ -610,8 +617,9 @@ impl<G: CommitmentCurve> SRS<G> {
         // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
-        let t = sponge.challenge_fq();
-        let u: G = {
+        // Generate another randomisation base U; our commitments will be w.r.t bases {G_i},H,U.
+        let u_base: G = {
+            let t = sponge.challenge_fq();
             let (x, y) = group_map.to_group(t);
             G::of_coordinates(x, y)
         };
@@ -645,7 +653,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
             // Pedersen commitment to a_lo,rand_l,<a_hi,b_lo>
             let l = G::Group::msm_bigint(
-                &[g_lo, &[self.h, u]].concat(),
+                &[g_lo, &[self.h, u_base]].concat(),
                 &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
                     .concat()
                     .iter()
@@ -655,7 +663,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .into_affine();
 
             let r = G::Group::msm_bigint(
-                &[g_hi, &[self.h, u]].concat(),
+                &[g_hi, &[self.h, u_base]].concat(),
                 &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
                     .concat()
                     .iter()
@@ -670,7 +678,9 @@ impl<G: CommitmentCurve> SRS<G> {
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
-            // Round #i challenges
+            // Round #i challenges;
+            // - not to be confused with "u_base"
+            // - not to be confused with "u" as "polyscale"
             let u_pre = squeeze_prechallenge(&mut sponge);
             let u = u_pre.to_field(&endo_r);
             let u_inv = u.inverse().unwrap();
@@ -716,11 +726,15 @@ impl<G: CommitmentCurve> SRS<G> {
         let b0 = b[0];
         let g0 = g[0];
 
-        // Schnorr/Sigma-protocol part
-
-        // r_prime = blinding_factor + \sum_i (rand_l[i] * (u[i]^{-1}) + rand_r * u[i])
-        //   where u is a vector of folding challenges, and rand_l/rand_r are
-        //   intermediate L/R blinders
+        // Compute r_prime, a folded blinder. It combines blinders on
+        // each individual step of the IPA folding process together
+        // with the final blinding_factor of the polynomial.
+        //
+        // r_prime := ∑_i (rand_l[i] * u[i]^{-1} + rand_r * u[i])
+        //          + blinding_factor
+        //
+        // where u is a vector of folding challenges, and rand_l/rand_r are
+        // intermediate L/R blinders.
         let r_prime = blinders
             .iter()
             .zip(chals.iter().zip(chal_invs.iter()))
@@ -730,13 +744,16 @@ impl<G: CommitmentCurve> SRS<G> {
         let d = <G::ScalarField as UniformRand>::rand(rng);
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
-        // delta = (g0 + u*b0)*d + h*r_delta
-        let delta = ((g0.into_group() + (u.mul(b0))).into_affine().mul(d) + self.h.mul(r_delta))
-            .into_affine();
+        // Compute delta, the commitment
+        // delta = G0^d * U_base^{b0*d} * H^r_delta   (as a group element, in multiplicative notation)
+        let delta = ((g0.into_group() + (u_base.mul(b0))).into_affine().mul(d)
+            + self.h.mul(r_delta))
+        .into_affine();
 
         sponge.absorb_g(&[delta]);
         let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
+        // (?) Schnorr-like responses showing the knowledge of r_prime and a0.
         let z1 = a0 * c + d;
         let z2 = r_prime * c + r_delta;
 
