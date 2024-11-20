@@ -362,6 +362,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    unsafe fn div(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
     unsafe fn divmod(
         &mut self,
         _x: &Self::Variable,
