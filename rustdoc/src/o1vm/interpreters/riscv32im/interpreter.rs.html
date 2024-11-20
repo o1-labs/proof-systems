@@ -1325,6 +1325,61 @@
 <a href="#1325" id="1325">1325</a>
 <a href="#1326" id="1326">1326</a>
 <a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -1351,18 +1406,63 @@
 )]
 </span><span class="kw">pub enum </span>RInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `add rd, rs1, rs2`
+    /// Description: Adds the registers rs1 and rs2 and stores the result in rd.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result.
     </span>Add, <span class="comment">// add
-    </span>Sub,                  <span class="comment">// sub
-    </span>ShiftLeftLogical,     <span class="comment">// sll
-    </span>SetLessThan,          <span class="comment">// slt
-    </span>SetLessThanUnsigned,  <span class="comment">// sltu
-    </span>Xor,                  <span class="comment">// xor
-    </span>ShiftRightLogical,    <span class="comment">// srl
+    </span><span class="doccomment">/// Format: `sub rd, rs1, rs2`
+    /// Description: Subs the register rs2 from rs1 and stores the result in rd.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result.
+    </span>Sub, <span class="comment">// sub
+    </span><span class="doccomment">/// Format: `sll rd, rs1, rs2`
+    /// Description: Performs logical left shift on the value in register rs1 by
+    /// the shift amount held in the lower 5 bits of register rs2.
+    </span>ShiftLeftLogical, <span class="comment">// sll
+    </span><span class="doccomment">/// Format: `slt rd, rs1, rs2`
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than register rs2 when both are treated as signed numbers, else 0 is
+    /// written to rd.
+    </span>SetLessThan, <span class="comment">// slt
+    </span><span class="doccomment">/// Format: `sltu rd, rs1, rs2`
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than register rs2 when both are treated as unsigned numbers, else 0 is
+    /// written to rd.
+    </span>SetLessThanUnsigned, <span class="comment">// sltu
+    </span><span class="doccomment">/// Format: `xor rd, rs1, rs2`
+    /// Description: Performs bitwise XOR on registers rs1 and rs2 and place the
+    /// result in rd
+    </span>Xor, <span class="comment">// xor
+    </span><span class="doccomment">/// Format: `srl rd, rs1, rs2`
+    /// Description: Logical right shift on the value in register rs1 by the
+    /// shift amount held in the lower 5 bits of register rs2
+    </span>ShiftRightLogical, <span class="comment">// srl
+    </span><span class="doccomment">/// Format: `sra rd, rs1, rs2`
+    /// Description: Performs arithmetic right shift on the value in register
+    /// rs1 by the shift amount held in the lower 5 bits of register rs2
     </span>ShiftRightArithmetic, <span class="comment">// sra
-    </span>Or,                   <span class="comment">// or
-    </span>And,                  <span class="comment">// and
-    </span>Fence,                <span class="comment">// fence
-    </span>FenceI,               <span class="comment">// fence.i
+    </span><span class="doccomment">/// Format: `or rd, rs1, rs2`
+    /// Description: Performs bitwise OR on registers rs1 and rs2 and place the
+    /// result in rd
+    </span>Or, <span class="comment">// or
+    </span><span class="doccomment">/// Format: `and rd, rs1, rs2`
+    /// Description: Performs bitwise AND on registers rs1 and rs2 and place the
+    /// result in rd
+    </span>And, <span class="comment">// and
+    </span><span class="doccomment">/// Format: `fence`
+    /// Description: Used to order device I/O and memory accesses as viewed by
+    /// other RISC-V harts and external devices or coprocessors.
+    /// Any combination of device input (I), device output (O), memory reads
+    /// (R), and memory writes (W) may be ordered with respect to any
+    /// combination of the same. Informally, no other RISC-V hart or external
+    /// device can observe any operation in the successor set following a FENCE
+    /// before any operation in the predecessor set preceding the FENCE.
+    </span>Fence, <span class="comment">// fence
+    </span><span class="doccomment">/// Format: `fence.i`
+    /// Description: Provides explicit synchronization between writes to
+    /// instruction memory and instruction fetches on the same hart.
+    </span>FenceI, <span class="comment">// fence.i
 </span>}
 
 <span class="attr">#[derive(
@@ -1418,8 +1518,16 @@
 )]
 </span><span class="kw">pub enum </span>UInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `lui rd,imm`
+    /// Description: Build 32-bit constants and uses the U-type format. LUI
+    /// places the U-immediate value in the top 20 bits of the destination
+    /// register rd, filling in the lowest 12 bits with zeros.
     </span>LoadUpperImmediate, <span class="comment">// lui
-    // Add upper immediate to PC
+    </span><span class="doccomment">/// Format: `auipc rd,imm`
+    /// Description: Build pc-relative addresses and uses the U-type format.
+    /// AUIPC (Add upper immediate to PC) forms a 32-bit offset from the 20-bit
+    /// U-immediate, filling in the lowest 12 bits with zeros, adds this offset
+    /// to the pc, then places the result in register rd.
     </span>AddUpperImmediate, <span class="comment">// auipc
 </span>}
 
@@ -1428,6 +1536,8 @@
 )]
 </span><span class="kw">pub enum </span>UJInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `jal rd,imm`
+    /// Description: Jump to address and place return address in rd.
     </span>JumpAndLink, <span class="comment">// jal
 </span>}
 
