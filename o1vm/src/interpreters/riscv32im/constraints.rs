@@ -362,19 +362,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
-    unsafe fn divmod_signed(
-        &mut self,
-        _x: &Self::Variable,
-        _y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        (
-            self.variable(position_quotient),
-            self.variable(position_remainder),
-        )
-    }
-
     unsafe fn divmod(
         &mut self,
         _x: &Self::Variable,

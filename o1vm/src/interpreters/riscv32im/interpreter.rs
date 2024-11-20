@@ -1279,22 +1279,6 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn divmod_signed(
-        &mut self,
-        x: &Self::Variable,
-        y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable);
-
-    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
-    /// `position_remainder` respectively.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
-    /// that they fall within the desired range.
     unsafe fn divmod(
         &mut self,
         x: &Self::Variable,
