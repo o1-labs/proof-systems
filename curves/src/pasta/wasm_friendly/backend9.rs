@@ -26,6 +26,7 @@ pub const fn from_64x4(pa: [u64; 4]) -> [u32; 9] {
     p[8] = (pa[3] >> 40) as u32;
     p
 }
+
 pub const fn to_64x4(pa: [u32; 9]) -> [u64; 4] {
     let mut p = [0u64; 4];
     p[0] = pa[0] as u64;
@@ -140,7 +141,7 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
         let xi = x[i] as u64;
 
         // compute qi and carry z0 result to z1 before discarding z0
-        tmp = xi * y_local[0];
+        tmp = (xi * y_local[0]) + z[0];
         let qi = ((tmp & MASK64) * FpC::MINV) & MASK64;
         z[1] += (tmp + qi * FpC::MODULUS64[0]) >> SHIFT64;
 

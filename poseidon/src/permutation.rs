@@ -2,7 +2,7 @@
 //! used in Poseidon.
 
 extern crate alloc;
-use mina_curves::pasta::wasm_friendly::minimal_field::MinimalField;
+use ark_ff::Field;
 
 use crate::{
     constants::SpongeConstants,
@@ -10,7 +10,7 @@ use crate::{
 };
 use alloc::{vec, vec::Vec};
 
-fn apply_mds_matrix<F: MinimalField, SC: SpongeConstants>(
+fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &[F],
 ) -> Vec<F> {
@@ -41,7 +41,7 @@ fn apply_mds_matrix<F: MinimalField, SC: SpongeConstants>(
 /// - Add the round constants to the state.
 ///
 /// The function has side-effect and the parameter state is modified.
-pub fn full_round<F: MinimalField, SC: SpongeConstants>(
+pub fn full_round<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
     r: usize,
@@ -55,7 +55,7 @@ pub fn full_round<F: MinimalField, SC: SpongeConstants>(
     }
 }
 
-pub fn half_rounds<F: MinimalField, SC: SpongeConstants>(
+pub fn half_rounds<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut [F],
 ) {
@@ -104,7 +104,7 @@ pub fn half_rounds<F: MinimalField, SC: SpongeConstants>(
     }
 }
 
-pub fn poseidon_block_cipher<F: MinimalField, SC: SpongeConstants>(
+pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {

@@ -5,7 +5,7 @@ use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveConfig};
 use mina_curves::{
     named::NamedCurve,
     pasta::curves::{
-        pallas::{LegacyPallasParameters, PallasParameters},
+        pallas::{LegacyPallasParameters, PallasParameters, WasmPallasParameters},
         vesta::{LegacyVestaParameters, VestaParameters},
     },
 };
@@ -192,5 +192,40 @@ impl KimchiCurve for Affine<ark_bn254::g1::Config> {
     fn other_curve_generator() -> (Self::ScalarField, Self::ScalarField) {
         // TODO: Dummy value, this is definitely not right
         (44u64.into(), 88u64.into())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// WASM
+////////////////////////////////////////////////////////////////////////////
+
+impl KimchiCurve for Affine<WasmPallasParameters> {
+    const NAME: &'static str = "pallas_wasm";
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        todo!()
+        //mina_poseidon::pasta::fq_kimchi::static_params()
+    }
+
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+        todo!()
+        //mina_poseidon::pasta::fp_kimchi::static_params()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        todo!()
+        //pallas_endos()
+    }
+
+    fn other_curve_endo() -> &'static Self::ScalarField {
+        todo!()
+        //&vesta_endos().0
+    }
+
+    fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
+        todo!()
+        //Affine::<VestaParameters>::generator()
+        //    .to_coordinates()
+        //    .unwrap()
     }
 }

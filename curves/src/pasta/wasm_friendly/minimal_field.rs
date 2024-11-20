@@ -37,8 +37,8 @@ pub trait MinimalField:
     }
 }
 
-impl<F: ark_ff::Field> MinimalField for F {
-    fn square_in_place(&mut self) -> &mut Self {
-        self.square_in_place()
-    }
-}
+//impl<F: ark_ff::Field> MinimalField for F {
+//    fn square_in_place(&mut self) -> &mut Self {
+//        self.square_in_place()
+//    }
+//}

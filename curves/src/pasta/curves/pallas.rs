@@ -4,6 +4,7 @@ use ark_ec::{
     CurveConfig,
 };
 use ark_ff::{MontFp, Zero};
+use std::marker::PhantomData;
 
 /// G_GENERATOR_X =
 /// 1
@@ -73,3 +74,44 @@ impl SWCurveConfig for LegacyPallasParameters {
 }
 
 pub type LegacyPallas = Affine<LegacyPallasParameters>;
+
+////////////////////////////////////////////////////////////////////////////
+// WASM experimentation
+////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
+pub struct WasmPallasParameters;
+
+impl CurveConfig for WasmPallasParameters {
+    type BaseField = crate::pasta::wasm_friendly::Fp9;
+
+    type ScalarField = crate::pasta::wasm_friendly::Fq9; // FIXME must be Fq9 of course
+
+    /// COFACTOR = 1
+    const COFACTOR: &'static [u64] = &[0x1];
+
+    /// COFACTOR_INV = 1
+    // FIXME
+    const COFACTOR_INV: crate::pasta::wasm_friendly::Fq9 =
+        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+}
+
+pub type WasmPallas = Affine<WasmPallasParameters>;
+
+pub type WasmProjectivePallas = Projective<WasmPallasParameters>;
+
+impl SWCurveConfig for WasmPallasParameters {
+    // FIXME
+    const COEFF_A: Self::BaseField =
+        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+
+    // FIXME
+    const COEFF_B: Self::BaseField =
+        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+
+    // FIXME
+    const GENERATOR: Affine<Self> = Affine::new_unchecked(
+        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData),
+        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData),
+    );
+}

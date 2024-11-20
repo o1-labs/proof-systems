@@ -2261,6 +2261,7 @@ dependencies = [
  "num-bigint",
  "rand",
  "wasm-bindgen",
+ "zeroize",
 ]
 
 [[package]]

@@ -11,12 +11,14 @@ license = "Apache-2.0"
 
 [dependencies]
 ark-bn254.workspace = true
+ark-std.workspace = true
 ark-ec.workspace = true
 ark-ff.workspace = true
 num-bigint.workspace = true
 ark-serialize.workspace = true
 wasm-bindgen.workspace = true
 derivative.workspace = true
+zeroize.workspace = true
 
 [dev-dependencies]
 rand.workspace = true
