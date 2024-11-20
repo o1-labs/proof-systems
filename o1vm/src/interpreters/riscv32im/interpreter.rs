@@ -291,6 +291,7 @@ pub enum UInstruction {
 pub enum UJInstruction {
     #[default]
     /// Format: `jal rd,imm`
+    ///
     /// Description: Jump to address and place return address in rd.
     JumpAndLink, // jal
 }
