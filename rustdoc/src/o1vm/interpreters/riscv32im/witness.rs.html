@@ -842,16 +842,6 @@
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
 <a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO: do we want to be more restrictive and refer to the number of accesses
 //       to the SAME register/memory addrss?
 </span><span class="kw">use super</span>::{
@@ -1492,12 +1482,7 @@
                     &lt;&lt; <span class="number">8</span>)
                 | (<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.registers.current_instruction_pointer + <span class="number">3</span>) <span class="kw">as </span>u32);
         <span class="kw">let </span>instruction = instruction.to_be(); <span class="comment">// convert to big endian for more straightforward decoding
-        </span><span class="macro">println!</span>(
-            <span class="string">&quot;Decoding instruction at address {:x} with value {:b}, with opcode&quot;</span>,
-            <span class="self">self</span>.registers.current_instruction_pointer, instruction
-        );
-
-        <span class="kw">let </span>opcode = {
+        </span><span class="kw">let </span>opcode = {
             <span class="kw">match </span>instruction &amp; <span class="number">0b1111111 </span><span class="comment">// bits 0-6
             </span>{
                 <span class="number">0b0110111 </span>=&gt; Instruction::UType(UInstruction::LoadUpperImmediate),
@@ -1591,11 +1576,6 @@
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unknown instruction with full inst {:b}, and opcode {:b}&quot;</span>, instruction, instruction &amp; <span class="number">0b1111111</span>),
             }
         };
-        <span class="comment">// display the opcode
-        </span><span class="macro">println!</span>(
-            <span class="string">&quot;Decoded instruction {:?} with opcode {:?}&quot;</span>,
-            instruction, opcode
-        );
         (opcode, instruction)
     }
 
