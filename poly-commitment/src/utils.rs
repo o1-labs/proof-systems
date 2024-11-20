@@ -66,11 +66,16 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 /// evaluations form. In this case it applies an IFFT, and, if necessarry,
 /// applies chunking to it (ie. split it in multiple polynomials of
 /// degree less than the SRS size).
+///
 /// Parameters:
-/// - plnms: vector of polynomials, either in evaluations or coefficients form.
-/// The order of the output follows the order of this structure.
-/// - polyscale: scalar to combine the polynomials, which will be scaled based
-/// on the number of polynomials to combine.
+/// - `plnms`: vector of polynomials, either in evaluations or coefficients form, together with
+///    a set of scalars representing their blinders.
+/// - `polyscale`: scalar to combine the polynomials, which will be scaled based on the number of
+///    polynomials to combine.
+///
+/// Output:
+/// - `combined_poly`: combined polynomial. The order of the output follows the order of `plnms`.
+/// - `combined_comm`: combined scalars representing the blinder commitment.
 ///
 /// Example:
 /// Given the three polynomials `p1(X)`, and `p3(X)` in coefficients
