@@ -1494,6 +1494,19 @@
 <a href="#1494" id="1494">1494</a>
 <a href="#1495" id="1495">1495</a>
 <a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -2706,7 +2719,7 @@
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 </span><span class="kw">pub fn </span>interpret_rtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: RInstruction) {
     <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
-    <span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
 
     <span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
@@ -2776,7 +2789,20 @@
 
     <span class="kw">match </span>instr {
         RInstruction::Add =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;Add&quot;</span>);
+            <span class="comment">// add: x[rd] = x[rs1] + x[rs2]
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>(local_rd, _overflow) =
+                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch, overflow_scratch);
+                local_rd
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         RInstruction::Sub =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Sub&quot;</span>);
