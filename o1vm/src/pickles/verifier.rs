@@ -33,10 +33,11 @@ use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use kimchi_msm::{columns::Column, LookupTableID};
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
-type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
+type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID>;
 type EvaluationColumns<G> = WitnessColumns<
     Evals<<G as AffineRepr>::ScalarField>,
     [Evals<<G as AffineRepr>::ScalarField>; N_MIPS_SEL_COLS],
+    ID,
 >;
 
 struct ColumnEval<'a, G: KimchiCurve> {
@@ -148,7 +149,6 @@ where
                 instruction_counter: to_evals(&instruction_counter),
                 error: to_evals(&error.clone()),
                 selector: selector.try_into().unwrap(),
-                lookup_env,
             }
         };
 

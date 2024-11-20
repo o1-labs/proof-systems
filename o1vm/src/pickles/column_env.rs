@@ -1,6 +1,8 @@
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi_msm::{columns::Column, logup::prover::QuotientPolynomialEnvironment, LookupTableID};
+use kimchi_msm::{
+    columns::Column, logup::prover::QuotientPolynomialEnvironment, Env as LookupEnv, LookupTableID,
+};
 use poly_commitment::PolyComm;
 
 use crate::{
@@ -25,7 +27,7 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 pub struct ColumnEnvironment<'a, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
+    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS], ID>,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -54,7 +56,7 @@ pub fn get_all_columns() -> Vec<Column> {
 }
 
 pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
-    env: &'a WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
+    env: &'a WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
     col: &Column,
 ) -> Option<&'a PolyComm<G>> {
     match *col {
@@ -81,34 +83,21 @@ pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
             Some(res)
         }
         Column::LookupPartialSum((table_id, i)) => {
-            if let Some(ref lookup) = env.lookup_env {
-                let table_id = ID::from_u32(table_id);
-                Some(&lookup.lookup_terms_comms_d1[&table_id][i])
-            } else {
-                panic!("No lookup provided")
-            }
-        }
+            let table_id = ID::from_u32(table_id);
+            Some(env.lookup[&table_id].f[i])
+        } /*
         Column::LookupAggregation => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.lookup_aggregation_comm_d1)
-            } else {
-                panic!("No lookup provided")
-            }
+        Some(&lookup_env.lookup_aggregation_comm_d1)
+
         }
         Column::LookupMultiplicity((table_id, i)) => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.lookup_counters_comm_d1[&ID::from_u32(table_id)][i])
-            } else {
-                panic!("No lookup provided")
-            }
+        Some(&lookup_env.lookup_counters_comm_d1[&ID::from_u32(table_id)][i])
         }
         Column::LookupFixedTable(table_id) => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.fixed_lookup_tables_comms_d1[&ID::from_u32(table_id)])
-            } else {
-                panic!("No lookup provided")
-            }
+        Some(&lookup_env.fixed_lookup_tables_comms_d1[&ID::from_u32(table_id)])
         }
+        }
+         */
         _ => {
             panic!("We should not have any other type of columns")
         }
@@ -116,7 +105,7 @@ pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
 }
 
 pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
-    env: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
+    env: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS], ID>,
     col: &Column,
 ) -> Option<&'a Evals<F>> {
     match *col {
@@ -142,6 +131,7 @@ pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
             let res = &env.selector[i];
             Some(res)
         }
+        /*
         Column::LookupPartialSum((table_id, i)) => {
             if let Some(ref lookup) = env.lookup_env {
                 let table_id = ID::from_u32(table_id);
@@ -171,6 +161,7 @@ pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
                 panic!("No lookup provided")
             }
         }
+         */
         _ => {
             panic!("We should not have any other type of columns")
         }
