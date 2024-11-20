@@ -61,16 +61,8 @@ fn test_fibonacci() {
     assert_eq!(witness.registers.current_instruction_pointer, 69936);
     assert_eq!(witness.registers.next_instruction_pointer, 69940);
 
-    let mut recursions = 0;
     while !witness.halt {
         witness.step();
-        // 0x11128 is the ret address of the call to fib
-        // if witness.registers.current_instruction_pointer == 0x11128 {
-        //     recursions += 1;
-        //     println!("recursions: {}", recursions);
-        // }
-        //assert_eq!(witness.registers.general_purpose[10], 13);
-        // }
         // At the end of the execution the result of the fibonacci of 7 should
         // be in register 10, which is 13 (7 times).
         if witness.registers.current_instruction_pointer == 0x1117c {
