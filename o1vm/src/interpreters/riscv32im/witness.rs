@@ -638,11 +638,6 @@ impl<Fp: Field> Env<Fp> {
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
-        println!(
-            "Decoding instruction at address {:x} with value {:b}, with opcode",
-            self.registers.current_instruction_pointer, instruction
-        );
-
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {
@@ -737,11 +732,6 @@ impl<Fp: Field> Env<Fp> {
                 _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
             }
         };
-        // display the opcode
-        println!(
-            "Decoded instruction {:?} with opcode {:?}",
-            instruction, opcode
-        );
         (opcode, instruction)
     }
 
