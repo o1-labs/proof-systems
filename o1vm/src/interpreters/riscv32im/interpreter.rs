@@ -1215,6 +1215,20 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `(x * y) & ((1 << 32) - 1))`, storing the results in `position`
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn mul_lo_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
     /// and `position_lo` respectively.
     ///
