@@ -24,18 +24,63 @@ pub enum Instruction {
 )]
 pub enum RInstruction {
     #[default]
+    /// Format: `add rd, rs1, rs2`
+    /// Description: Adds the registers rs1 and rs2 and stores the result in rd.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result.
     Add, // add
-    Sub,                  // sub
-    ShiftLeftLogical,     // sll
-    SetLessThan,          // slt
-    SetLessThanUnsigned,  // sltu
-    Xor,                  // xor
-    ShiftRightLogical,    // srl
+    /// Format: `sub rd, rs1, rs2`
+    /// Description: Subs the register rs2 from rs1 and stores the result in rd.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result.
+    Sub, // sub
+    /// Format: `sll rd, rs1, rs2`
+    /// Description: Performs logical left shift on the value in register rs1 by
+    /// the shift amount held in the lower 5 bits of register rs2.
+    ShiftLeftLogical, // sll
+    /// Format: `slt rd, rs1, rs2`
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than register rs2 when both are treated as signed numbers, else 0 is
+    /// written to rd.
+    SetLessThan, // slt
+    /// Format: `sltu rd, rs1, rs2`
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than register rs2 when both are treated as unsigned numbers, else 0 is
+    /// written to rd.
+    SetLessThanUnsigned, // sltu
+    /// Format: `xor rd, rs1, rs2`
+    /// Description: Performs bitwise XOR on registers rs1 and rs2 and place the
+    /// result in rd
+    Xor, // xor
+    /// Format: `srl rd, rs1, rs2`
+    /// Description: Logical right shift on the value in register rs1 by the
+    /// shift amount held in the lower 5 bits of register rs2
+    ShiftRightLogical, // srl
+    /// Format: `sra rd, rs1, rs2`
+    /// Description: Performs arithmetic right shift on the value in register
+    /// rs1 by the shift amount held in the lower 5 bits of register rs2
     ShiftRightArithmetic, // sra
-    Or,                   // or
-    And,                  // and
-    Fence,                // fence
-    FenceI,               // fence.i
+    /// Format: `or rd, rs1, rs2`
+    /// Description: Performs bitwise OR on registers rs1 and rs2 and place the
+    /// result in rd
+    Or, // or
+    /// Format: `and rd, rs1, rs2`
+    /// Description: Performs bitwise AND on registers rs1 and rs2 and place the
+    /// result in rd
+    And, // and
+    /// Format: `fence`
+    /// Description: Used to order device I/O and memory accesses as viewed by
+    /// other RISC-V harts and external devices or coprocessors.
+    /// Any combination of device input (I), device output (O), memory reads
+    /// (R), and memory writes (W) may be ordered with respect to any
+    /// combination of the same. Informally, no other RISC-V hart or external
+    /// device can observe any operation in the successor set following a FENCE
+    /// before any operation in the predecessor set preceding the FENCE.
+    Fence, // fence
+    /// Format: `fence.i`
+    /// Description: Provides explicit synchronization between writes to
+    /// instruction memory and instruction fetches on the same hart.
+    FenceI, // fence.i
 }
 
 #[derive(
@@ -91,8 +136,16 @@ pub enum SBInstruction {
 )]
 pub enum UInstruction {
     #[default]
+    /// Format: `lui rd,imm`
+    /// Description: Build 32-bit constants and uses the U-type format. LUI
+    /// places the U-immediate value in the top 20 bits of the destination
+    /// register rd, filling in the lowest 12 bits with zeros.
     LoadUpperImmediate, // lui
-    // Add upper immediate to PC
+    /// Format: `auipc rd,imm`
+    /// Description: Build pc-relative addresses and uses the U-type format.
+    /// AUIPC (Add upper immediate to PC) forms a 32-bit offset from the 20-bit
+    /// U-immediate, filling in the lowest 12 bits with zeros, adds this offset
+    /// to the pc, then places the result in register rd.
     AddUpperImmediate, // auipc
 }
 
@@ -101,6 +154,8 @@ pub enum UInstruction {
 )]
 pub enum UJInstruction {
     #[default]
+    /// Format: `jal rd,imm`
+    /// Description: Jump to address and place return address in rd.
     JumpAndLink, // jal
 }
 
