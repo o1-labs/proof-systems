@@ -9,7 +9,7 @@ use kimchi_msm::{
 use std::ops::{Index, IndexMut};
 use strum::EnumCount;
 
-use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
+use super::{witness::SCRATCH_SIZE_INVERSE, ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
 /// The number of hashes performed so far in the block
 pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
@@ -50,6 +50,9 @@ pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
+    // A column whose value needs to be inverted in the final witness.
+    // We're keeping a separate column to perform a batch inversion at the end.
+    ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
 }
@@ -66,8 +69,12 @@ impl From<ColumnAlias> for usize {
                 assert!(i < SCRATCH_SIZE);
                 i
             }
-            ColumnAlias::InstructionCounter => SCRATCH_SIZE,
-            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s,
+            ColumnAlias::ScratchStateInverse(i) => {
+                assert!(i < SCRATCH_SIZE_INVERSE);
+                SCRATCH_SIZE + i
+            }
+            ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
+            ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
         }
     }
 }
@@ -138,7 +145,11 @@ impl ColumnIndexer for ColumnAlias {
                 assert!(ss < SCRATCH_SIZE);
                 Column::Relation(ss)
             }
-            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE),
+            Self::ScratchStateInverse(ss) => {
+                assert!(ss < SCRATCH_SIZE_INVERSE);
+                Column::Relation(SCRATCH_SIZE + ss)
+            }
+            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             // TODO: what happens with error? It does not have a corresponding alias
             Self::Selector(s) => {
                 assert!(s < N_MIPS_SEL_COLS);

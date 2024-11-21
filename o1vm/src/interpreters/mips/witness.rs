@@ -115,6 +115,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         Column::ScratchState(scratch_idx)
     }
 
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        Column::ScratchStateInverse(scratch_idx)
+    }
+
     type Variable = u64;
 
     fn variable(&self, _column: Self::Position) -> Self::Variable {
@@ -915,6 +921,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }

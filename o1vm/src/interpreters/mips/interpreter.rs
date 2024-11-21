@@ -172,6 +172,8 @@ pub trait InterpreterEnv {
     /// [crate::interpreters::mips::witness::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
+    fn alloc_scratch_inverse(&mut self) -> Self::Position;
+
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
