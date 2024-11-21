@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::{
-    super::interpreters::mips::witness::SCRATCH_SIZE,
+    super::interpreters::mips::column::SCRATCH_SIZE,
     proof::{ProofInputs, WitnessColumns},
     prover::prove,
 };

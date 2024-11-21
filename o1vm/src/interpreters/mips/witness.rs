@@ -1,4 +1,4 @@
-use super::column::N_MIPS_SEL_COLS;
+use super::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 use crate::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -50,16 +50,6 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-// FIXME: since the introduction of the scratch size inverse, the value below
-// can be decreased. It implies to change the offsets defined in [column]. At
-// the moment, it incurs an overhead we could avoid as some columns are zeroes.
-// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
-// + length + has_n_bytes + chunk_bytes + preimage
-pub const SCRATCH_SIZE: usize = 98;
-
-/// Number of columns used by the MIPS interpreter to keep values to be
-/// inverted.
-pub const SCRATCH_SIZE_INVERSE: usize = 12;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {

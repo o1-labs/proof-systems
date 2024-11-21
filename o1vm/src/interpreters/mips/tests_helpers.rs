@@ -3,7 +3,7 @@ use crate::{
     interpreters::mips::{
         interpreter::{debugging::InstructionParts, InterpreterEnv},
         registers::Registers,
-        witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
+        witness::{Env as WEnv, SyscallEnv},
     },
     preimage_oracle::PreImageOracleT,
 };
@@ -13,7 +13,7 @@ use std::{fs, path::PathBuf};
 // FIXME: we should parametrize the tests with different fields.
 use ark_bn254::Fr as Fp;
 
-use super::witness::SCRATCH_SIZE_INVERSE;
+use super::column::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
