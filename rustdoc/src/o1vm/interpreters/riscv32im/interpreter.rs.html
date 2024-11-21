@@ -2129,6 +2129,20 @@
 <a href="#2129" id="2129">2129</a>
 <a href="#2130" id="2130">2130</a>
 <a href="#2131" id="2131">2131</a>
+<a href="#2132" id="2132">2132</a>
+<a href="#2133" id="2133">2133</a>
+<a href="#2134" id="2134">2134</a>
+<a href="#2135" id="2135">2135</a>
+<a href="#2136" id="2136">2136</a>
+<a href="#2137" id="2137">2137</a>
+<a href="#2138" id="2138">2138</a>
+<a href="#2139" id="2139">2139</a>
+<a href="#2140" id="2140">2140</a>
+<a href="#2141" id="2141">2141</a>
+<a href="#2142" id="2142">2142</a>
+<a href="#2143" id="2143">2143</a>
+<a href="#2144" id="2144">2144</a>
+<a href="#2145" id="2145">2145</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3326,6 +3340,20 @@
     /// There are no constraints on the returned value; callers must manually add constraints to
     /// ensure that it is correctly constructed.
     </span><span class="kw">unsafe fn </span>mul_signed_witness(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Returns `((x * y) &gt;&gt; 32`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    </span><span class="kw">unsafe fn </span>mul_hi_signed(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
