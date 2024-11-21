@@ -2002,6 +2002,30 @@
 <a href="#2002" id="2002">2002</a>
 <a href="#2003" id="2003">2003</a>
 <a href="#2004" id="2004">2004</a>
+<a href="#2005" id="2005">2005</a>
+<a href="#2006" id="2006">2006</a>
+<a href="#2007" id="2007">2007</a>
+<a href="#2008" id="2008">2008</a>
+<a href="#2009" id="2009">2009</a>
+<a href="#2010" id="2010">2010</a>
+<a href="#2011" id="2011">2011</a>
+<a href="#2012" id="2012">2012</a>
+<a href="#2013" id="2013">2013</a>
+<a href="#2014" id="2014">2014</a>
+<a href="#2015" id="2015">2015</a>
+<a href="#2016" id="2016">2016</a>
+<a href="#2017" id="2017">2017</a>
+<a href="#2018" id="2018">2018</a>
+<a href="#2019" id="2019">2019</a>
+<a href="#2020" id="2020">2020</a>
+<a href="#2021" id="2021">2021</a>
+<a href="#2022" id="2022">2022</a>
+<a href="#2023" id="2023">2023</a>
+<a href="#2024" id="2024">2024</a>
+<a href="#2025" id="2025">2025</a>
+<a href="#2026" id="2026">2026</a>
+<a href="#2027" id="2027">2027</a>
+<a href="#2028" id="2028">2028</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3638,6 +3662,12 @@
     </span>);
 
     <span class="kw">match </span>instr {
+        IInstruction::LoadByte =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadByte&quot;</span>)
+        }
+        IInstruction::LoadHalf =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadHalf&quot;</span>)
+        }
         IInstruction::LoadWord =&gt; {
             <span class="comment">// lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
             </span><span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs1);
@@ -3662,6 +3692,27 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+        }
+        IInstruction::LoadByteUnsigned =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadByteUnsigned&quot;</span>)
+        }
+        IInstruction::LoadHalfUnsigned =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadHalfUnsigned&quot;</span>)
+        }
+        IInstruction::ShiftLeftLogicalImmediate =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftLeftLogicalImmediate&quot;</span>)
+        }
+        IInstruction::ShiftRightLogicalImmediate =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightLogicalImmediate&quot;</span>)
+        }
+        IInstruction::ShiftRightArithmeticImmediate =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightArithmeticImmediate&quot;</span>)
+        }
+        IInstruction::SetLessThanImmediate =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThanImmediate&quot;</span>)
+        }
+        IInstruction::SetLessThanImmediateUnsigned =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThanImmediateUnsigned&quot;</span>)
         }
         IInstruction::AddImmediate =&gt; {
             <span class="comment">// addi: x[rd] = x[rs1] + sext(immediate)
@@ -3726,9 +3777,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, next_instruction_pointer.clone());
             env.set_instruction_pointer(new_addr.clone());
             env.set_next_instruction_pointer(new_addr.clone() + Env::constant(<span class="number">4u32</span>));
-        }
-        <span class="kw">_ </span>=&gt; {
-            <span class="macro">panic!</span>(<span class="string">&quot;Unimplemented instruction: {:?}&quot;</span>, instr);
         }
     };
 }
