@@ -227,7 +227,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
+            let pos = self.alloc_scratch_inverse();
             self.variable(pos)
         };
         // If x = 0, then res = 1 and x_inv_or_zero = 0

@@ -329,15 +329,15 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
         // write the result
-        let pos = self.alloc_scratch();
-        let res = if *x == 0 { 1 } else { 0 };
-        self.write_column(pos, res);
-        // write the non deterministic advice inv_or_zero
-        if *x == 0 {
+        let res = {
             let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        // write the non deterministic advice inv_or_zero
+        let pos = self.alloc_scratch_inverse();
+        if *x == 0 {
             self.write_field_column(pos, Fp::zero());
         } else {
-            let pos = self.alloc_scratch_inverse();
             self.write_field_column(pos, Fp::from(*x));
         };
         // return the result
@@ -354,11 +354,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             self.write_column(pos, is_zero);
             is_zero
         };
+        let pos = self.alloc_scratch_inverse();
         if to_zero_test == Fp::zero() {
-            let pos = self.alloc_scratch();
             self.write_field_column(pos, Fp::zero());
         } else {
-            let pos = self.alloc_scratch_inverse();
             self.write_field_column(pos, to_zero_test);
         };
         res
