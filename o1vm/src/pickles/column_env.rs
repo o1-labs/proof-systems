@@ -3,7 +3,10 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi_msm::columns::Column;
 
 use crate::{
-    interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
+    interpreters::mips::{
+        column::N_MIPS_SEL_COLS,
+        witness::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
+    },
     pickles::proof::WitnessColumns,
 };
 use kimchi::circuits::{
@@ -60,19 +63,24 @@ impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
                     let res = &self.error;
                     Some(res)
                 } else {
-                    panic!("We should not have that many relation columns");
+                    panic!("We should not have that many relation columns. We have {} columns and index {} was given", SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2, i);
                 }
             }
             Column::DynamicSelector(i) => {
                 assert!(
                     i < N_MIPS_SEL_COLS,
-                    "We do not have that many dynamic selector columns"
+                    "We do not have that many dynamic selector columns. We have {} columns and index {} was given",
+                    N_MIPS_SEL_COLS,
+                    i
                 );
                 let res = &self.selector[i];
                 Some(res)
             }
             _ => {
-                panic!("We should not have any other type of columns")
+                panic!(
+                    "We should not have any other type of columns. The column {:?} was given",
+                    col
+                );
             }
         }
     }
