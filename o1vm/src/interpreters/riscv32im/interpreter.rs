@@ -291,6 +291,7 @@ pub enum UInstruction {
 pub enum UJInstruction {
     #[default]
     /// Format: `jal rd,imm`
+    ///
     /// Description: Jump to address and place return address in rd.
     JumpAndLink, // jal
 }
@@ -1944,8 +1945,53 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
     };
 }
 
-pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstruction) {
-    unimplemented!("TODO")
+/// Interpret an UJ-type instruction.
+/// The encoding of an UJ-type instruction is as follows:
+/// ```text
+/// | 31     12 | 11    7 | 6      0 |
+/// | immediate |    rd   |  opcode  |
+/// ```
+/// Following the documentation found
+/// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let _next_instruction_pointer = env.get_next_instruction_pointer();
+
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
+    };
+
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    env.range_check8(&opcode, 7);
+
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
+
+    // FIXME: trickier
+    let _imm = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 12, pos) }
+    };
+
+    // FIXME: check correctness of decomposition
+    match instr {
+        UJInstruction::JumpAndLink => {
+            unimplemented!("JumpAndLink")
+        }
+    };
 }
 
 pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInstruction) {
