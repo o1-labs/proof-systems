@@ -1,3 +1,26 @@
+//! This module implement an interpreter for the RISCV32 IM instruction set
+//! architecture.
+//!
+//! The implementation mostly follows (and copy) code from the MIPS interpreter
+//! available [here](../mips/interpreter.rs).
+//!
+//! ## Credits
+//!
+//! We would like to thank the authors of the following documentations:
+//! - <https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html> ([CC BY
+//! 4.0](https://creativecommons.org/licenses/by/4.0/)) from
+//! [msyksphinz-self](https://github.com/msyksphinz-self/riscv-isadoc)
+//! -
+//! <https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf>
+//! from the course [CS 3410: Computer System Organization and
+//! Programming](https://www.cs.cornell.edu/courses/cs3410/2024fa/home.html) at
+//! Cornell University.
+//!
+//! The format and description of each instruction is taken from these sources,
+//! and copied in this file for offline reference.
+//! If you are the author of the above documentations and would like to add or
+//! modify the credits, please open a pull request.
+
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 use crate::lookups::{Lookup, LookupTableIDs};
 use ark_ff::{One, Zero};
@@ -25,50 +48,61 @@ pub enum Instruction {
 pub enum RInstruction {
     #[default]
     /// Format: `add rd, rs1, rs2`
+    ///
     /// Description: Adds the registers rs1 and rs2 and stores the result in rd.
     /// Arithmetic overflow is ignored and the result is simply the low 32
     /// bits of the result.
     Add, // add
     /// Format: `sub rd, rs1, rs2`
+    ///
     /// Description: Subs the register rs2 from rs1 and stores the result in rd.
     /// Arithmetic overflow is ignored and the result is simply the low 32
     /// bits of the result.
     Sub, // sub
     /// Format: `sll rd, rs1, rs2`
+    ///
     /// Description: Performs logical left shift on the value in register rs1 by
     /// the shift amount held in the lower 5 bits of register rs2.
     ShiftLeftLogical, // sll
     /// Format: `slt rd, rs1, rs2`
+    ///
     /// Description: Place the value 1 in register rd if register rs1 is less
     /// than register rs2 when both are treated as signed numbers, else 0 is
     /// written to rd.
     SetLessThan, // slt
     /// Format: `sltu rd, rs1, rs2`
+    ///
     /// Description: Place the value 1 in register rd if register rs1 is less
     /// than register rs2 when both are treated as unsigned numbers, else 0 is
     /// written to rd.
     SetLessThanUnsigned, // sltu
     /// Format: `xor rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise XOR on registers rs1 and rs2 and place the
     /// result in rd
     Xor, // xor
     /// Format: `srl rd, rs1, rs2`
+    ///
     /// Description: Logical right shift on the value in register rs1 by the
     /// shift amount held in the lower 5 bits of register rs2
     ShiftRightLogical, // srl
     /// Format: `sra rd, rs1, rs2`
+    ///
     /// Description: Performs arithmetic right shift on the value in register
     /// rs1 by the shift amount held in the lower 5 bits of register rs2
     ShiftRightArithmetic, // sra
     /// Format: `or rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise OR on registers rs1 and rs2 and place the
     /// result in rd
     Or, // or
     /// Format: `and rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise AND on registers rs1 and rs2 and place the
     /// result in rd
     And, // and
     /// Format: `fence`
+    ///
     /// Description: Used to order device I/O and memory accesses as viewed by
     /// other RISC-V harts and external devices or coprocessors.
     /// Any combination of device input (I), device output (O), memory reads
@@ -78,6 +112,7 @@ pub enum RInstruction {
     /// before any operation in the predecessor set preceding the FENCE.
     Fence, // fence
     /// Format: `fence.i`
+    ///
     /// Description: Provides explicit synchronization between writes to
     /// instruction memory and instruction fetches on the same hart.
     FenceI, // fence.i
@@ -88,23 +123,88 @@ pub enum RInstruction {
 )]
 pub enum IInstruction {
     #[default]
+    /// Format: `lb rd, offset(rs1)`
+    ///
+    /// Description: Loads a 8-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
     LoadByte, // lb
-    LoadHalf,         // lh
-    LoadWord,         // lw
+    /// Format: `lh rd, offset(rs1)`
+    ///
+    /// Description: Loads a 16-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
+    LoadHalf, // lh
+    /// Format: `lw rd, offset(rs1)`
+    ///
+    /// Description: Loads a 32-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
+    LoadWord, // lw
+    /// Format: `lbu rd, offset(rs1)`
+    ///
+    /// Description: Loads a 8-bit value from memory and zero-extends this to
+    /// 32 bits before storing it in register rd.
     LoadByteUnsigned, // lbu
+    /// Format: `lhu rd, offset(rs1)`
+    ///
+    /// Description: Loads a 16-bit value from memory and zero-extends this to
+    /// 32 bits before storing it in register rd.
     LoadHalfUnsigned, // lhu
 
-    ShiftLeftLogicalImmediate,     // slli
-    ShiftRightLogicalImmediate,    // srli
+    /// Format: `slli rd, rs1, shamt`
+    ///
+    /// Description: Performs logical left shift on the value in register rs1 by
+    /// the shift amount held in the lower 5 bits of the immediate
+    ShiftLeftLogicalImmediate, // slli
+    /// Format: `srli rd, rs1, shamt`
+    ///
+    /// Description: Performs logical right shift on the value in register rs1
+    /// by the shift amount held in the lower 5 bits of the immediate
+    ShiftRightLogicalImmediate, // srli
+    /// Format: `srai rd, rs1, shamt`
+    ///
+    /// Description: Performs arithmetic right shift on the value in register
+    /// rs1 by the shift amount held in the lower 5 bits of the immediate
     ShiftRightArithmeticImmediate, // srai
-    SetLessThanImmediate,          // slti
-    SetLessThanImmediateUnsigned,  // sltiu
+    /// Format: `slti rd, rs1, imm`
+    ///
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than the signextended immediate when both are treated as signed numbers,
+    /// else 0 is written to rd.
+    SetLessThanImmediate, // slti
+    /// Format: `sltiu rd, rs1, imm`
+    ///
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than the immediate when both are treated as unsigned numbers, else 0 is
+    /// written to rd.
+    SetLessThanImmediateUnsigned, // sltiu
 
+    /// Format: `addi rd, rs1, imm`
+    ///
+    /// Description: Adds the sign-extended 12-bit immediate to register rs1.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result. ADDI rd, rs1, 0 is used to implement the MV rd, rs1
+    /// assembler pseudo-instruction.
     AddImmediate, // addi
+    /// Format: `xori rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise XOR on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd Note, “XORI rd, rs1, -1”
+    /// performs a bitwise logical inversion of register rs1(assembler
+    /// pseudo-instruction NOT rd, rs)
     XorImmediate, // xori
-    OrImmediate,  // ori
+    /// Format: `ori rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise OR on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd
+    OrImmediate, // ori
+    /// Format: `andi rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise AND on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd
     AndImmediate, // andi
 
+    /// Format: `jalr rd, rs1, imm`
+    ///
+    /// Description: Jump to address and place return address in rd.
     JumpAndLinkRegister, // jalr
 }
 
@@ -113,8 +213,20 @@ pub enum IInstruction {
 )]
 pub enum SInstruction {
     #[default]
+    /// Format: `sb rs2, offset(rs1)`
+    ///
+    /// Description: Store 8-bit, values from the low bits of register rs2 to
+    /// memory.
     StoreByte, // sb
+    /// Format: `sh rs2, offset(rs1)`
+    ///
+    /// Description: Store 16-bit, values from the low bits of register rs2 to
+    /// memory.
     StoreHalf, // sh
+    /// Format: `sw rs2, offset(rs1)`
+    ///
+    /// Description: Store 32-bit, values from the low bits of register rs2 to
+    /// memory.
     StoreWord, // sw
 }
 
@@ -123,11 +235,33 @@ pub enum SInstruction {
 )]
 pub enum SBInstruction {
     #[default]
+    /// Format: `beq rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 and rs2 are equal.
     BranchEq, // beq
-    BranchNeq,                      // bne
-    BranchLessThan,                 // blt
-    BranchGreaterThanEqual,         // bge
-    BranchLessThanUnsigned,         // bltu
+    /// Format: `bne rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 and rs2 are not equal.
+    BranchNeq, // bne
+    /// Format: `blt rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is less than rs2, using
+    /// signed comparison.
+    BranchLessThan, // blt
+    /// Format: `bge rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is greater than or equal
+    /// to rs2, using signed comparison.
+    BranchGreaterThanEqual, // bge
+    /// Format: `bltu rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is less than rs2, using
+    /// unsigned comparison.
+    BranchLessThanUnsigned, // bltu
+    /// Format: `bgeu rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is greater than or equal
+    /// to rs2, using unsigned comparison.
     BranchGreaterThanEqualUnsigned, // bgeu
 }
 
@@ -137,11 +271,13 @@ pub enum SBInstruction {
 pub enum UInstruction {
     #[default]
     /// Format: `lui rd,imm`
+    ///
     /// Description: Build 32-bit constants and uses the U-type format. LUI
     /// places the U-immediate value in the top 20 bits of the destination
     /// register rd, filling in the lowest 12 bits with zeros.
     LoadUpperImmediate, // lui
     /// Format: `auipc rd,imm`
+    ///
     /// Description: Build pc-relative addresses and uses the U-type format.
     /// AUIPC (Add upper immediate to PC) forms a 32-bit offset from the 20-bit
     /// U-immediate, filling in the lowest 12 bits with zeros, adds this offset
@@ -174,42 +310,50 @@ pub enum SyscallInstruction {
 )]
 pub enum MInstruction {
     /// Format: `mul rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1
     /// by signed rs2 and places the lower 32 bits in the destination register.
     /// Implementation: `x[rd] = x[rs1] * x[rs2]`
     #[default]
     Mul, // mul
     /// Format: `mulh rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
     /// signed rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
     Mulh, // mulh
     /// Format: `mulhsu rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
     /// unsigned rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
     Mulhsu, // mulhsu
     /// Format: `mulhu rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of unsigned rs1 by
     /// unsigned rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) >> 32`
     Mulhu, // mulhu
     /// Format: `div rd, rs1, rs2`
+    ///
     /// Description: perform an 32 bits by 32 bits signed integer division of
     /// rs1 by rs2, rounding towards zero
     /// Implementation: `x[rd] = x[rs1] /s x[rs2]`
     Div, // div
     /// Format: `divu rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits unsigned integer division of
     /// rs1 by rs2, rounding towards zero.
     /// Implementation: `x[rd] = x[rs1] /u x[rs2]`
     Divu, // divu
     /// Format: `rem rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits signed integer reminder of
     /// rs1 by rs2.
     /// Implementation: `x[rd] = x[rs1] %s x[rs2]`
     Rem, // rem
     /// Format: `remu rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits unsigned integer reminder of
     /// rs1 by rs2.
     /// Implementation: `x[rd] = x[rs1] %u x[rs2]`
