@@ -683,21 +683,6 @@ pub trait InterpreterEnv {
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
-    /// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// `x`.
-    ///
-    /// The value returned may be a placeholder; callers should be careful not to depend directly
-    /// on the value stored in the variable.
-    unsafe fn inverse_or_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable;
-
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable;
 
     /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.

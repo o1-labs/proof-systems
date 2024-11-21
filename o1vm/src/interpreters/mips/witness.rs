@@ -312,20 +312,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         res
     }
 
-    unsafe fn inverse_or_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable {
-        if *x == 0 {
-            self.write_column(position, 0);
-            0
-        } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
-            1 // Placeholder value
-        }
-    }
-
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
         // write the result
         let pos = self.alloc_scratch();
