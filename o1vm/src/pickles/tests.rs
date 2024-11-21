@@ -7,7 +7,10 @@ use super::{
 };
 use crate::{
     interpreters::mips::{
-        constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, Instruction,
+        column::SCRATCH_SIZE_INVERSE,
+        constraints as mips_constraints,
+        interpreter::{self, InterpreterEnv},
+        Instruction,
     },
     pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
@@ -63,7 +66,7 @@ fn test_small_circuit() {
     let proof_input = ProofInputs::<Pallas> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
-            scratch_inverse: std::array::from_fn(|_| zero_to_n_minus_one(8)),
+            scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
                 .map(|x| x + Fq::one())
@@ -75,7 +78,7 @@ fn test_small_circuit() {
         },
     };
     let mut expr = Expr::zero();
-    for i in 0..SCRATCH_SIZE + 2 {
+    for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
     let mut rng = make_test_rng(None);

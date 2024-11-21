@@ -9,7 +9,9 @@ use kimchi_msm::{
 use std::ops::{Index, IndexMut};
 use strum::EnumCount;
 
-use super::{witness::SCRATCH_SIZE_INVERSE, ITypeInstruction, JTypeInstruction, RTypeInstruction};
+pub use super::{
+    witness::SCRATCH_SIZE_INVERSE, ITypeInstruction, JTypeInstruction, RTypeInstruction,
+};
 
 /// The number of hashes performed so far in the block
 pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
