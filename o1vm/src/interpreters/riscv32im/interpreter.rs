@@ -1885,8 +1885,63 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     };
 }
 
-pub fn interpret_utype<Env: InterpreterEnv>(_env: &mut Env, _instr: UInstruction) {
-    unimplemented!("TODO")
+/// Interpret an U-type instruction.
+/// The encoding of an U-type instruction is as follows:
+/// ```text
+/// | 31     12 | 11    7 | 6      0 |
+/// | immediate |    rd   |  opcode  |
+/// ```
+/// Following the documentation found
+/// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let _next_instruction_pointer = env.get_next_instruction_pointer();
+
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v3 * Env::constant(1 << 24))
+            + (v2 * Env::constant(1 << 16))
+            + (v1 * Env::constant(1 << 8))
+            + v0
+    };
+
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 7, 0, pos) }
+    };
+    env.range_check8(&opcode, 7);
+
+    let rd = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 12, 7, pos) }
+    };
+    env.range_check8(&rd, 5);
+
+    let imm = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 12, pos) }
+    };
+    // FIXME: rangecheck
+
+    // check correctness of decomposition of U type function
+    env.add_constraint(
+        instruction
+            - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+            - (rd.clone() * Env::constant(1 << 7))        // rd at bits 7-11
+            - (imm.clone() * Env::constant(1 << 12)), // imm at bits 12-31
+    );
+
+    match instr {
+        UInstruction::LoadUpperImmediate => {
+            unimplemented!("LoadUpperImmediate")
+        }
+        UInstruction::AddUpperImmediate => {
+            unimplemented!("AddUpperImmediate")
+        }
+    };
 }
 
 pub fn interpret_ujtype<Env: InterpreterEnv>(_env: &mut Env, _instr: UJInstruction) {
