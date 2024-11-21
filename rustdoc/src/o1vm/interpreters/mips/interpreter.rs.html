@@ -2658,21 +2658,6 @@
 <a href="#2658" id="2658">2658</a>
 <a href="#2659" id="2659">2659</a>
 <a href="#2660" id="2660">2660</a>
-<a href="#2661" id="2661">2661</a>
-<a href="#2662" id="2662">2662</a>
-<a href="#2663" id="2663">2663</a>
-<a href="#2664" id="2664">2664</a>
-<a href="#2665" id="2665">2665</a>
-<a href="#2666" id="2666">2666</a>
-<a href="#2667" id="2667">2667</a>
-<a href="#2668" id="2668">2668</a>
-<a href="#2669" id="2669">2669</a>
-<a href="#2670" id="2670">2670</a>
-<a href="#2671" id="2671">2671</a>
-<a href="#2672" id="2672">2672</a>
-<a href="#2673" id="2673">2673</a>
-<a href="#2674" id="2674">2674</a>
-<a href="#2675" id="2675">2675</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -3357,21 +3342,6 @@
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// `x`.
     </span><span class="kw">unsafe fn </span>test_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// `x`.
-    ///
-    /// The value returned may be a placeholder; callers should be careful not to depend directly
-    /// on the value stored in the variable.
-    </span><span class="kw">unsafe fn </span>inverse_or_zero(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 

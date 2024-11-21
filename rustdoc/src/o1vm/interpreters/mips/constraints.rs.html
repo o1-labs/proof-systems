@@ -664,14 +664,6 @@
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::{
         column::{
@@ -894,21 +886,13 @@
         };
         <span class="kw">let </span>x_inv_or_zero = {
             <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-            <span class="kw">unsafe </span>{ <span class="self">self</span>.inverse_or_zero(x, pos) }
+            <span class="self">self</span>.variable(pos)
         };
         <span class="comment">// If x = 0, then res = 1 and x_inv_or_zero = 0
         // If x &lt;&gt; 0, then res = 0 and x_inv_or_zero = x^(-1)
         </span><span class="self">self</span>.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - <span class="self">Self</span>::constant(<span class="number">1</span>));
         <span class="self">self</span>.add_constraint(x.clone() * res.clone());
         res
-    }
-
-    <span class="kw">unsafe fn </span>inverse_or_zero(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(position)
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
