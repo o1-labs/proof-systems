@@ -1676,7 +1676,174 @@
 <a href="#1676" id="1676">1676</a>
 <a href="#1677" id="1677">1677</a>
 <a href="#1678" id="1678">1678</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
+<a href="#1679" id="1679">1679</a>
+<a href="#1680" id="1680">1680</a>
+<a href="#1681" id="1681">1681</a>
+<a href="#1682" id="1682">1682</a>
+<a href="#1683" id="1683">1683</a>
+<a href="#1684" id="1684">1684</a>
+<a href="#1685" id="1685">1685</a>
+<a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
+<a href="#1702" id="1702">1702</a>
+<a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
+<a href="#1707" id="1707">1707</a>
+<a href="#1708" id="1708">1708</a>
+<a href="#1709" id="1709">1709</a>
+<a href="#1710" id="1710">1710</a>
+<a href="#1711" id="1711">1711</a>
+<a href="#1712" id="1712">1712</a>
+<a href="#1713" id="1713">1713</a>
+<a href="#1714" id="1714">1714</a>
+<a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
+<a href="#1719" id="1719">1719</a>
+<a href="#1720" id="1720">1720</a>
+<a href="#1721" id="1721">1721</a>
+<a href="#1722" id="1722">1722</a>
+<a href="#1723" id="1723">1723</a>
+<a href="#1724" id="1724">1724</a>
+<a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a>
+<a href="#1731" id="1731">1731</a>
+<a href="#1732" id="1732">1732</a>
+<a href="#1733" id="1733">1733</a>
+<a href="#1734" id="1734">1734</a>
+<a href="#1735" id="1735">1735</a>
+<a href="#1736" id="1736">1736</a>
+<a href="#1737" id="1737">1737</a>
+<a href="#1738" id="1738">1738</a>
+<a href="#1739" id="1739">1739</a>
+<a href="#1740" id="1740">1740</a>
+<a href="#1741" id="1741">1741</a>
+<a href="#1742" id="1742">1742</a>
+<a href="#1743" id="1743">1743</a>
+<a href="#1744" id="1744">1744</a>
+<a href="#1745" id="1745">1745</a>
+<a href="#1746" id="1746">1746</a>
+<a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
+<a href="#1808" id="1808">1808</a>
+<a href="#1809" id="1809">1809</a>
+<a href="#1810" id="1810">1810</a>
+<a href="#1811" id="1811">1811</a>
+<a href="#1812" id="1812">1812</a>
+<a href="#1813" id="1813">1813</a>
+<a href="#1814" id="1814">1814</a>
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
+<a href="#1819" id="1819">1819</a>
+<a href="#1820" id="1820">1820</a>
+<a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
+//! architecture.
+//!
+//! The implementation mostly follows (and copy) code from the MIPS interpreter
+//! available [here](../mips/interpreter.rs).
+//!
+//! ## Credits
+//!
+//! We would like to thank the authors of the following documentations:
+//! - &lt;https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html&gt; ([CC BY
+//! 4.0](https://creativecommons.org/licenses/by/4.0/)) from
+//! [msyksphinz-self](https://github.com/msyksphinz-self/riscv-isadoc)
+//! -
+//! &lt;https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf&gt;
+//! from the course [CS 3410: Computer System Organization and
+//! Programming](https://www.cs.cornell.edu/courses/cs3410/2024fa/home.html) at
+//! Cornell University.
+//!
+//! The format and description of each instruction is taken from these sources,
+//! and copied in this file for offline reference.
+//! If you are the author of the above documentations and would like to add or
+//! modify the credits, please open a pull request.
+
+</span><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>strum::{EnumCount, IntoEnumIterator};
@@ -1703,50 +1870,61 @@
 </span><span class="kw">pub enum </span>RInstruction {
     <span class="attr">#[default]
     </span><span class="doccomment">/// Format: `add rd, rs1, rs2`
+    ///
     /// Description: Adds the registers rs1 and rs2 and stores the result in rd.
     /// Arithmetic overflow is ignored and the result is simply the low 32
     /// bits of the result.
     </span>Add, <span class="comment">// add
     </span><span class="doccomment">/// Format: `sub rd, rs1, rs2`
+    ///
     /// Description: Subs the register rs2 from rs1 and stores the result in rd.
     /// Arithmetic overflow is ignored and the result is simply the low 32
     /// bits of the result.
     </span>Sub, <span class="comment">// sub
     </span><span class="doccomment">/// Format: `sll rd, rs1, rs2`
+    ///
     /// Description: Performs logical left shift on the value in register rs1 by
     /// the shift amount held in the lower 5 bits of register rs2.
     </span>ShiftLeftLogical, <span class="comment">// sll
     </span><span class="doccomment">/// Format: `slt rd, rs1, rs2`
+    ///
     /// Description: Place the value 1 in register rd if register rs1 is less
     /// than register rs2 when both are treated as signed numbers, else 0 is
     /// written to rd.
     </span>SetLessThan, <span class="comment">// slt
     </span><span class="doccomment">/// Format: `sltu rd, rs1, rs2`
+    ///
     /// Description: Place the value 1 in register rd if register rs1 is less
     /// than register rs2 when both are treated as unsigned numbers, else 0 is
     /// written to rd.
     </span>SetLessThanUnsigned, <span class="comment">// sltu
     </span><span class="doccomment">/// Format: `xor rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise XOR on registers rs1 and rs2 and place the
     /// result in rd
     </span>Xor, <span class="comment">// xor
     </span><span class="doccomment">/// Format: `srl rd, rs1, rs2`
+    ///
     /// Description: Logical right shift on the value in register rs1 by the
     /// shift amount held in the lower 5 bits of register rs2
     </span>ShiftRightLogical, <span class="comment">// srl
     </span><span class="doccomment">/// Format: `sra rd, rs1, rs2`
+    ///
     /// Description: Performs arithmetic right shift on the value in register
     /// rs1 by the shift amount held in the lower 5 bits of register rs2
     </span>ShiftRightArithmetic, <span class="comment">// sra
     </span><span class="doccomment">/// Format: `or rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise OR on registers rs1 and rs2 and place the
     /// result in rd
     </span>Or, <span class="comment">// or
     </span><span class="doccomment">/// Format: `and rd, rs1, rs2`
+    ///
     /// Description: Performs bitwise AND on registers rs1 and rs2 and place the
     /// result in rd
     </span>And, <span class="comment">// and
     </span><span class="doccomment">/// Format: `fence`
+    ///
     /// Description: Used to order device I/O and memory accesses as viewed by
     /// other RISC-V harts and external devices or coprocessors.
     /// Any combination of device input (I), device output (O), memory reads
@@ -1756,6 +1934,7 @@
     /// before any operation in the predecessor set preceding the FENCE.
     </span>Fence, <span class="comment">// fence
     </span><span class="doccomment">/// Format: `fence.i`
+    ///
     /// Description: Provides explicit synchronization between writes to
     /// instruction memory and instruction fetches on the same hart.
     </span>FenceI, <span class="comment">// fence.i
@@ -1766,23 +1945,88 @@
 )]
 </span><span class="kw">pub enum </span>IInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `lb rd, offset(rs1)`
+    ///
+    /// Description: Loads a 8-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
     </span>LoadByte, <span class="comment">// lb
-    </span>LoadHalf,         <span class="comment">// lh
-    </span>LoadWord,         <span class="comment">// lw
+    </span><span class="doccomment">/// Format: `lh rd, offset(rs1)`
+    ///
+    /// Description: Loads a 16-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
+    </span>LoadHalf, <span class="comment">// lh
+    </span><span class="doccomment">/// Format: `lw rd, offset(rs1)`
+    ///
+    /// Description: Loads a 32-bit value from memory and sign-extends this to
+    /// 32 bits before storing it in register rd.
+    </span>LoadWord, <span class="comment">// lw
+    </span><span class="doccomment">/// Format: `lbu rd, offset(rs1)`
+    ///
+    /// Description: Loads a 8-bit value from memory and zero-extends this to
+    /// 32 bits before storing it in register rd.
     </span>LoadByteUnsigned, <span class="comment">// lbu
+    </span><span class="doccomment">/// Format: `lhu rd, offset(rs1)`
+    ///
+    /// Description: Loads a 16-bit value from memory and zero-extends this to
+    /// 32 bits before storing it in register rd.
     </span>LoadHalfUnsigned, <span class="comment">// lhu
 
-    </span>ShiftLeftLogicalImmediate,     <span class="comment">// slli
-    </span>ShiftRightLogicalImmediate,    <span class="comment">// srli
+    </span><span class="doccomment">/// Format: `slli rd, rs1, shamt`
+    ///
+    /// Description: Performs logical left shift on the value in register rs1 by
+    /// the shift amount held in the lower 5 bits of the immediate
+    </span>ShiftLeftLogicalImmediate, <span class="comment">// slli
+    </span><span class="doccomment">/// Format: `srli rd, rs1, shamt`
+    ///
+    /// Description: Performs logical right shift on the value in register rs1
+    /// by the shift amount held in the lower 5 bits of the immediate
+    </span>ShiftRightLogicalImmediate, <span class="comment">// srli
+    </span><span class="doccomment">/// Format: `srai rd, rs1, shamt`
+    ///
+    /// Description: Performs arithmetic right shift on the value in register
+    /// rs1 by the shift amount held in the lower 5 bits of the immediate
     </span>ShiftRightArithmeticImmediate, <span class="comment">// srai
-    </span>SetLessThanImmediate,          <span class="comment">// slti
-    </span>SetLessThanImmediateUnsigned,  <span class="comment">// sltiu
+    </span><span class="doccomment">/// Format: `slti rd, rs1, imm`
+    ///
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than the signextended immediate when both are treated as signed numbers,
+    /// else 0 is written to rd.
+    </span>SetLessThanImmediate, <span class="comment">// slti
+    </span><span class="doccomment">/// Format: `sltiu rd, rs1, imm`
+    ///
+    /// Description: Place the value 1 in register rd if register rs1 is less
+    /// than the immediate when both are treated as unsigned numbers, else 0 is
+    /// written to rd.
+    </span>SetLessThanImmediateUnsigned, <span class="comment">// sltiu
 
+    </span><span class="doccomment">/// Format: `addi rd, rs1, imm`
+    ///
+    /// Description: Adds the sign-extended 12-bit immediate to register rs1.
+    /// Arithmetic overflow is ignored and the result is simply the low 32
+    /// bits of the result. ADDI rd, rs1, 0 is used to implement the MV rd, rs1
+    /// assembler pseudo-instruction.
     </span>AddImmediate, <span class="comment">// addi
+    </span><span class="doccomment">/// Format: `xori rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise XOR on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd Note, “XORI rd, rs1, -1”
+    /// performs a bitwise logical inversion of register rs1(assembler
+    /// pseudo-instruction NOT rd, rs)
     </span>XorImmediate, <span class="comment">// xori
-    </span>OrImmediate,  <span class="comment">// ori
+    </span><span class="doccomment">/// Format: `ori rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise OR on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd
+    </span>OrImmediate, <span class="comment">// ori
+    </span><span class="doccomment">/// Format: `andi rd, rs1, imm`
+    ///
+    /// Description: Performs bitwise AND on register rs1 and the sign-extended
+    /// 12-bit immediate and place the result in rd
     </span>AndImmediate, <span class="comment">// andi
 
+    </span><span class="doccomment">/// Format: `jalr rd, rs1, imm`
+    ///
+    /// Description: Jump to address and place return address in rd.
     </span>JumpAndLinkRegister, <span class="comment">// jalr
 </span>}
 
@@ -1791,8 +2035,20 @@
 )]
 </span><span class="kw">pub enum </span>SInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `sb rs2, offset(rs1)`
+    ///
+    /// Description: Store 8-bit, values from the low bits of register rs2 to
+    /// memory.
     </span>StoreByte, <span class="comment">// sb
+    </span><span class="doccomment">/// Format: `sh rs2, offset(rs1)`
+    ///
+    /// Description: Store 16-bit, values from the low bits of register rs2 to
+    /// memory.
     </span>StoreHalf, <span class="comment">// sh
+    </span><span class="doccomment">/// Format: `sw rs2, offset(rs1)`
+    ///
+    /// Description: Store 32-bit, values from the low bits of register rs2 to
+    /// memory.
     </span>StoreWord, <span class="comment">// sw
 </span>}
 
@@ -1801,11 +2057,33 @@
 )]
 </span><span class="kw">pub enum </span>SBInstruction {
     <span class="attr">#[default]
+    </span><span class="doccomment">/// Format: `beq rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 and rs2 are equal.
     </span>BranchEq, <span class="comment">// beq
-    </span>BranchNeq,                      <span class="comment">// bne
-    </span>BranchLessThan,                 <span class="comment">// blt
-    </span>BranchGreaterThanEqual,         <span class="comment">// bge
-    </span>BranchLessThanUnsigned,         <span class="comment">// bltu
+    </span><span class="doccomment">/// Format: `bne rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 and rs2 are not equal.
+    </span>BranchNeq, <span class="comment">// bne
+    </span><span class="doccomment">/// Format: `blt rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is less than rs2, using
+    /// signed comparison.
+    </span>BranchLessThan, <span class="comment">// blt
+    </span><span class="doccomment">/// Format: `bge rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is greater than or equal
+    /// to rs2, using signed comparison.
+    </span>BranchGreaterThanEqual, <span class="comment">// bge
+    </span><span class="doccomment">/// Format: `bltu rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is less than rs2, using
+    /// unsigned comparison.
+    </span>BranchLessThanUnsigned, <span class="comment">// bltu
+    </span><span class="doccomment">/// Format: `bgeu rs1, rs2, offset`
+    ///
+    /// Description: Take the branch if registers rs1 is greater than or equal
+    /// to rs2, using unsigned comparison.
     </span>BranchGreaterThanEqualUnsigned, <span class="comment">// bgeu
 </span>}
 
@@ -1815,11 +2093,13 @@
 </span><span class="kw">pub enum </span>UInstruction {
     <span class="attr">#[default]
     </span><span class="doccomment">/// Format: `lui rd,imm`
+    ///
     /// Description: Build 32-bit constants and uses the U-type format. LUI
     /// places the U-immediate value in the top 20 bits of the destination
     /// register rd, filling in the lowest 12 bits with zeros.
     </span>LoadUpperImmediate, <span class="comment">// lui
     </span><span class="doccomment">/// Format: `auipc rd,imm`
+    ///
     /// Description: Build pc-relative addresses and uses the U-type format.
     /// AUIPC (Add upper immediate to PC) forms a 32-bit offset from the 20-bit
     /// U-immediate, filling in the lowest 12 bits with zeros, adds this offset
@@ -1852,42 +2132,50 @@
 )]
 </span><span class="kw">pub enum </span>MInstruction {
     <span class="doccomment">/// Format: `mul rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1
     /// by signed rs2 and places the lower 32 bits in the destination register.
     /// Implementation: `x[rd] = x[rs1] * x[rs2]`
     </span><span class="attr">#[default]
     </span>Mul, <span class="comment">// mul
     </span><span class="doccomment">/// Format: `mulh rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
     /// signed rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) &gt;&gt; 32`
     </span>Mulh, <span class="comment">// mulh
     </span><span class="doccomment">/// Format: `mulhsu rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of signed rs1 by
     /// unsigned rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) &gt;&gt; 32`
     </span>Mulhsu, <span class="comment">// mulhsu
     </span><span class="doccomment">/// Format: `mulhu rd, rs1, rs2`
+    ///
     /// Description: performs an 32-bit 32-bit multiplication of unsigned rs1 by
     /// unsigned rs2 and places the upper 32 bits in the destination register.
     /// Implementation: `x[rd] = (x[rs1] * x[rs2]) &gt;&gt; 32`
     </span>Mulhu, <span class="comment">// mulhu
     </span><span class="doccomment">/// Format: `div rd, rs1, rs2`
+    ///
     /// Description: perform an 32 bits by 32 bits signed integer division of
     /// rs1 by rs2, rounding towards zero
     /// Implementation: `x[rd] = x[rs1] /s x[rs2]`
     </span>Div, <span class="comment">// div
     </span><span class="doccomment">/// Format: `divu rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits unsigned integer division of
     /// rs1 by rs2, rounding towards zero.
     /// Implementation: `x[rd] = x[rs1] /u x[rs2]`
     </span>Divu, <span class="comment">// divu
     </span><span class="doccomment">/// Format: `rem rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits signed integer reminder of
     /// rs1 by rs2.
     /// Implementation: `x[rd] = x[rs1] %s x[rs2]`
     </span>Rem, <span class="comment">// rem
     </span><span class="doccomment">/// Format: `remu rd, rs1, rs2`
+    ///
     /// Description: performs an 32 bits by 32 bits unsigned integer reminder of
     /// rs1 by rs2.
     /// Implementation: `x[rd] = x[rs1] %u x[rs2]`
