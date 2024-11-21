@@ -1634,6 +1634,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
     );
 
     match instr {
+        IInstruction::LoadByte => {
+            unimplemented!("LoadByte")
+        }
+        IInstruction::LoadHalf => {
+            unimplemented!("LoadHalf")
+        }
         IInstruction::LoadWord => {
             // lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
             let base = env.read_register(&rs1);
@@ -1658,6 +1664,27 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.write_register(&rd, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
+        IInstruction::LoadByteUnsigned => {
+            unimplemented!("LoadByteUnsigned")
+        }
+        IInstruction::LoadHalfUnsigned => {
+            unimplemented!("LoadHalfUnsigned")
+        }
+        IInstruction::ShiftLeftLogicalImmediate => {
+            unimplemented!("ShiftLeftLogicalImmediate")
+        }
+        IInstruction::ShiftRightLogicalImmediate => {
+            unimplemented!("ShiftRightLogicalImmediate")
+        }
+        IInstruction::ShiftRightArithmeticImmediate => {
+            unimplemented!("ShiftRightArithmeticImmediate")
+        }
+        IInstruction::SetLessThanImmediate => {
+            unimplemented!("SetLessThanImmediate")
+        }
+        IInstruction::SetLessThanImmediateUnsigned => {
+            unimplemented!("SetLessThanImmediateUnsigned")
         }
         IInstruction::AddImmediate => {
             // addi: x[rd] = x[rs1] + sext(immediate)
@@ -1722,9 +1749,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.write_register(&rd, next_instruction_pointer.clone());
             env.set_instruction_pointer(new_addr.clone());
             env.set_next_instruction_pointer(new_addr.clone() + Env::constant(4u32));
-        }
-        _ => {
-            panic!("Unimplemented instruction: {:?}", instr);
         }
     };
 }
