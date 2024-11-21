@@ -354,15 +354,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             self.write_column(pos, is_zero);
             is_zero
         };
-        let _to_zero_test_inv_or_zero = {
-            if to_zero_test == Fp::zero() {
-                let pos = self.alloc_scratch();
-                self.write_field_column(pos, Fp::zero());
-            } else {
-                let pos = self.alloc_scratch_inverse();
-                self.write_field_column(pos, to_zero_test);
-            };
-            1 // Placeholder value
+        if to_zero_test == Fp::zero() {
+            let pos = self.alloc_scratch();
+            self.write_field_column(pos, Fp::zero());
+        } else {
+            let pos = self.alloc_scratch_inverse();
+            self.write_field_column(pos, to_zero_test);
         };
         res
     }
