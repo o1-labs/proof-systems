@@ -162,6 +162,44 @@ pub fn bench_basic_ops(c: &mut Criterion) {
             criterion::BatchSize::SmallInput,
         );
     });
+
+    group.bench_function("Native multiplication in Fp (4 muls)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let z: Fp = x * y;
+                let z: Fp = z * x;
+                let z: Fp = z * y;
+                let z: Fp = z * x;
+                z
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multiplication in Fp9 with a conversion (4 muls)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let x_fp9: Fp9 = From::from(x);
+                let y_fp9: Fp9 = From::from(y);
+                let z_fp9: Fp9 = x_fp9 * y_fp9;
+                let z_fp9: Fp9 = z_fp9 * x_fp9;
+                let z_fp9: Fp9 = z_fp9 * y_fp9;
+                let z_fp9: Fp9 = z_fp9 * x_fp9;
+                z_fp9
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
 }
 
 criterion_group!(
