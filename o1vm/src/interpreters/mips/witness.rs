@@ -914,6 +914,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.selector = N_MIPS_SEL_COLS;
     }
 
+    pub fn reset_scratch_state_inverse(&mut self) {
+        self.scratch_state_idx_inverse = 0;
+        self.scratch_state_inverse = fresh_scratch_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         self.write_field_column(column, value.into())
     }
@@ -1156,6 +1161,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         start: &Start,
     ) -> Instruction {
         self.reset_scratch_state();
+        self.reset_scratch_state_inverse();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
