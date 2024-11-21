@@ -50,9 +50,16 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
+// FIXME: since the introduction of the scratch size inverse, the value below
+// can be decreased. It implies to change the offsets defined in [column]. At
+// the moment, it incurs an overhead we could avoid as some columns are zeroes.
 // MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
 // + length + has_n_bytes + chunk_bytes + preimage
 pub const SCRATCH_SIZE: usize = 98;
+
+/// Number of columns used by the MIPS interpreter to keep values to be
+/// inverted.
+pub const SCRATCH_SIZE_INVERSE: usize = 12;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -81,7 +88,9 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
+    pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -878,7 +887,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
             selector,
