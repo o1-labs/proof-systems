@@ -139,20 +139,36 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 
 impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
+
     fn to_column(self) -> Column {
         match self {
             Self::ScratchState(ss) => {
-                assert!(ss < SCRATCH_SIZE);
+                assert!(
+                    ss < SCRATCH_SIZE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE,
+                    ss
+                );
                 Column::Relation(ss)
             }
             Self::ScratchStateInverse(ss) => {
-                assert!(ss < SCRATCH_SIZE_INVERSE);
+                assert!(
+                    ss < SCRATCH_SIZE_INVERSE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE_INVERSE,
+                    ss
+                );
                 Column::Relation(SCRATCH_SIZE + ss)
             }
             Self::InstructionCounter => Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             // TODO: what happens with error? It does not have a corresponding alias
             Self::Selector(s) => {
-                assert!(s < N_MIPS_SEL_COLS);
+                assert!(
+                    s < N_MIPS_SEL_COLS,
+                    "The maximum index is {}, got {}",
+                    N_MIPS_SEL_COLS,
+                    s
+                );
                 Column::DynamicSelector(s)
             }
         }
