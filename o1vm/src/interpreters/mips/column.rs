@@ -35,7 +35,7 @@ pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
 pub(crate) const MIPS_PREIMAGE_KEY: usize = 97;
 
 /// The number of columns used for relation witness in the MIPS circuit
-pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
+pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
 pub const N_MIPS_SEL_COLS: usize =
