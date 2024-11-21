@@ -11,7 +11,7 @@ use crate::{
     },
     pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
-use ark_ff::{One, Zero};
+use ark_ff::{Field, One, UniformRand, Zero};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::{columns::Column, expr::E};
 use log::debug;
@@ -100,4 +100,32 @@ fn test_small_circuit() {
         (instant_after_verification - instant_before_verification).as_millis()
     );
     assert!(verif, "Verification fails");
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_only_zeroes() {
+    let input = vec![Fq::zero(); 8];
+    let exp_output = vec![Fq::zero(); 8];
+    let mut output = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_zeroes_and_ones() {
+    let input: Vec<Fq> = vec![Fq::zero(), Fq::one(), Fq::zero()];
+    let exp_output: Vec<Fq> = vec![Fq::zero(), Fq::one(), Fq::zero()];
+    let mut output: Vec<Fq> = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_zeroes_and_random() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let input: Vec<Fq> = vec![Fq::zero(), Fq::rand(&mut rng), Fq::one()];
+    let exp_output: Vec<Fq> = vec![Fq::zero(), input[1].inverse().unwrap(), Fq::one()];
+    let mut output: Vec<Fq> = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
 }
