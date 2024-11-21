@@ -39,8 +39,9 @@ pub struct ColumnEnvironment<'a, F: FftField> {
 }
 
 pub fn get_all_columns() -> Vec<Column> {
-    let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + 2 + N_MIPS_SEL_COLS);
-    for i in 0..SCRATCH_SIZE + 2 {
+    let mut cols =
+        Vec::<Column>::with_capacity(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 + N_MIPS_SEL_COLS);
+    for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
         cols.push(Column::Relation(i));
     }
     for i in 0..N_MIPS_SEL_COLS {
@@ -56,10 +57,13 @@ impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
                 if i < SCRATCH_SIZE {
                     let res = &self.scratch[i];
                     Some(res)
-                } else if i == SCRATCH_SIZE {
+                } else if i < SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
+                    let res = &self.scratch_inverse[i - SCRATCH_SIZE];
+                    Some(res)
+                } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
                     let res = &self.instruction_counter;
                     Some(res)
-                } else if i == SCRATCH_SIZE + 1 {
+                } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 {
                     let res = &self.error;
                     Some(res)
                 } else {
