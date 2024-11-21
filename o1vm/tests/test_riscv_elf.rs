@@ -49,3 +49,27 @@ fn test_no_action() {
     assert_eq!(witness.registers.general_purpose[16], 0);
     assert_eq!(witness.registers.general_purpose[17], 42);
 }
+
+// FIXME: stop ignoring when all the instructions are implemented.
+#[test]
+#[ignore]
+fn test_fibonacci_7() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/fibonacci-7",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+    // This is the output we get by running objdump -d fibonacci-7
+    assert_eq!(witness.registers.current_instruction_pointer, 69932);
+    assert_eq!(witness.registers.next_instruction_pointer, 69936);
+
+    while !witness.halt {
+        witness.step();
+        if witness.registers.current_instruction_pointer == 0x1117c {
+            // Fibonacci sequence:
+            // 1 1 2 3 5 8 13
+            assert_eq!(witness.registers.general_purpose[10], 13);
+        }
+    }
+}
