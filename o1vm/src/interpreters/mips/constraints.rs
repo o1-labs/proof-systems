@@ -631,6 +631,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn reset(&mut self) {
         self.scratch_state_idx = 0;
+        self.scratch_state_idx_inverse = 0;
         self.constraints.clear();
         self.lookups.clear();
         self.selector = None;
