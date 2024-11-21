@@ -46,28 +46,130 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
 }
 
 pub fn bench_conversions(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Poseidon");
+    let mut group = c.benchmark_group("Conversions");
 
-    let hashes_fp: Vec<Fp> = (0..65536).map(|_| rand::random()).collect();
-    group.bench_function("fp_to_fp9, 2^16 elems", |b| {
-        b.iter(|| {
-            for h in hashes_fp.clone().into_iter() {
-                let _hash_fp9: Fp9 = h.into();
-            }
-        });
+    group.bench_function("Conversion: fp_to_fp9", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                x
+            },
+            |x| {
+                let z: Fp9 = x.into();
+                z
+            },
+            criterion::BatchSize::SmallInput,
+        );
     });
 
-    let hashes_fp9: Vec<Fp> = (0..65536).map(|_| rand::random()).collect();
-    group.bench_function("fp9_to_fp, 2^16 elems", |b| {
-        b.iter(|| {
-            for h in hashes_fp9.clone().into_iter() {
-                let _hash_fp: Fp = h.into();
-            }
-        });
+    group.bench_function("Conversion: fp_to_fp9, 2^16 elements", |b| {
+        b.iter_batched(
+            || (0..65536).map(|_| rand::random()).collect(),
+            |hashes_fp: Vec<Fp>| {
+                let mut hashes_fp9: Vec<Fp9> = Vec::with_capacity(65536);
+                for h in hashes_fp.clone().into_iter() {
+                    hashes_fp9.push(h.into());
+                }
+                hashes_fp9
+            },
+            criterion::BatchSize::SmallInput,
+        );
     });
 }
 
-criterion_group!(benches, bench_poseidon_kimchi, bench_conversions);
+pub fn bench_basic_ops(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Basic ops");
+
+    group.bench_function("Native multiplication in Fp (single)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let z: Fp = x * y;
+                z
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multiplication in Fp9 (single)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                let x_fp9: Fp9 = x.into();
+                let y_fp9: Fp9 = y.into();
+                (x_fp9, y_fp9)
+            },
+            |(x_fp9, y_fp9)| {
+                let z_fp9: Fp9 = x_fp9 * y_fp9;
+                z_fp9
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multiplication in Fp9 with a conversion (single)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let x_fp9: Fp9 = From::from(x);
+                let y_fp9: Fp9 = From::from(y);
+                let z_fp9: Fp9 = x_fp9 * y_fp9;
+                z_fp9
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Native multiplication in Fp (double)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let z: Fp = x * y;
+                let z: Fp = z * x;
+                z
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multiplication in Fp9 with a conversion (double)", |b| {
+        b.iter_batched(
+            || {
+                let x: Fp = rand::random();
+                let y: Fp = rand::random();
+                (x, y)
+            },
+            |(x, y)| {
+                let x_fp9: Fp9 = From::from(x);
+                let y_fp9: Fp9 = From::from(y);
+                let z_fp9: Fp9 = x_fp9 * y_fp9;
+                let z_fp9: Fp9 = z_fp9 * x_fp9;
+                z_fp9
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+}
+
+criterion_group!(
+    benches,
+    bench_poseidon_kimchi,
+    bench_conversions,
+    bench_basic_ops
+);
 criterion_main!(benches);
 
 // sponge params for Fp9
