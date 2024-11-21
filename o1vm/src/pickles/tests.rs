@@ -63,6 +63,7 @@ fn test_small_circuit() {
     let proof_input = ProofInputs::<Pallas> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
+            scratch_inverse: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
                 .map(|x| x + Fq::one())
