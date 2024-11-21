@@ -333,13 +333,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(pos, res);
         // write the non deterministic advice inv_or_zero
-        let pos = self.alloc_scratch();
-        let inv_or_zero = if *x == 0 {
-            Fp::zero()
+        if *x == 0 {
+            let pos = self.alloc_scratch();
+            self.write_field_column(pos, Fp::zero());
         } else {
-            Fp::inverse(&Fp::from(*x)).unwrap()
+            let pos = self.alloc_scratch_inverse();
+            self.write_field_column(pos, Fp::from(*x));
         };
-        self.write_field_column(pos, inv_or_zero);
         // return the result
         res
     }
@@ -355,13 +355,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             is_zero
         };
         let _to_zero_test_inv_or_zero = {
-            let pos = self.alloc_scratch();
-            let inv_or_zero = if to_zero_test == Fp::zero() {
-                Fp::zero()
+            if to_zero_test == Fp::zero() {
+                let pos = self.alloc_scratch();
+                self.write_field_column(pos, Fp::zero());
             } else {
-                Fp::inverse(&to_zero_test).unwrap()
+                let pos = self.alloc_scratch_inverse();
+                self.write_field_column(pos, to_zero_test);
             };
-            self.write_field_column(pos, inv_or_zero);
             1 // Placeholder value
         };
         res
