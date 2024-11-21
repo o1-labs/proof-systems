@@ -2,14 +2,17 @@
 use crate::{
     interpreters::mips::{
         column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+        constraints,
         interpreter::debugging::InstructionParts,
         tests_helpers::*,
+        ITypeInstruction, JTypeInstruction, RTypeInstruction,
     },
     preimage_oracle::PreImageOracleT,
 };
 use kimchi::o1_utils;
+use mina_curves::pasta::Fp;
 use rand::Rng;
-use strum::IntoEnumIterator;
+use strum::{EnumCount, IntoEnumIterator};
 
 use super::Instruction;
 
@@ -324,4 +327,24 @@ mod itype {
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
         assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
     }
+}
+
+#[test]
+// Sanity check that we have as many selector as we have instructions
+fn test_regression_selectors_for_instructions() {
+    let mips_con_env = constraints::Env::<Fp>::default();
+    let constraints = mips_con_env.get_selector_constraints();
+    assert_eq!(
+        // We substract 1 as we have one boolean check per sel
+        // and 1 constraint to check that one and only one
+        // sel is activated
+        constraints.len() - 1,
+        // We could use N_MIPS_SEL_COLS, but sanity check in case this value is
+        // changed.
+        RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
+    );
+    // All instructions are degree 1 or 2.
+    constraints
+        .iter()
+        .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
 }

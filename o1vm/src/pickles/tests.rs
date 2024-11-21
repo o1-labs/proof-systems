@@ -12,7 +12,6 @@ use crate::{
     pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
 use ark_ff::{One, Zero};
-use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::{columns::Column, expr::E};
 use log::debug;
@@ -23,7 +22,7 @@ use mina_poseidon::{
 };
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 #[test]
 fn test_regression_constraints_with_selectors() {
@@ -51,26 +50,6 @@ fn test_regression_constraints_with_selectors() {
 
     let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap();
     assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
-}
-
-#[test]
-// Sanity check that we have as many selector as we have instructions
-fn test_regression_selectors_for_instructions() {
-    let mips_con_env = mips_constraints::Env::<Fp>::default();
-    let constraints = mips_con_env.get_selector_constraints();
-    assert_eq!(
-        // We substract 1 as we have one boolean check per sel
-        // and 1 constraint to check that one and only one
-        // sel is activated
-        constraints.len() - 1,
-        // We could use N_MIPS_SEL_COLS, but sanity check in case this value is
-        // changed.
-        RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
-    );
-    // All instructions are degree 1 or 2.
-    constraints
-        .iter()
-        .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
 }
 
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
