@@ -15,6 +15,11 @@ use poly_commitment::{
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::process::ExitCode;
 
+// To run:
+// ```
+// cargo run --release -p data-storage
+// ```
+
 pub fn main() -> ExitCode {
     const SRS_SIZE: usize = 1 << 16;
 
