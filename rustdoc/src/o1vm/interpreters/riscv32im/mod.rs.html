@@ -21,18 +21,21 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// The minimal number of columns required for the VM
 </span><span class="comment">// FIXME: the value will be updated when the interpreter is fully
 // implemented. Using a small value for now.
 </span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">80</span>;
 
 <span class="doccomment">/// Number of instructions in the ISA
-</span><span class="comment">// FIXME: the value might not be correct. It will be updated when the
-// interpreter is fully implemented.
-</span><span class="kw">pub const </span>INSTRUCTION_SET_SIZE: usize = <span class="number">40</span>;
+</span><span class="kw">pub const </span>INSTRUCTION_SET_SIZE: usize = <span class="number">48</span>;
+
 <span class="kw">pub const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
 <span class="kw">pub const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
 <span class="kw">pub const </span>PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - <span class="number">1</span>;
+
 <span class="doccomment">/// List all columns used by the interpreter
 </span><span class="kw">pub mod </span>column;
 
@@ -44,4 +47,7 @@
 </span><span class="kw">pub mod </span>registers;
 
 <span class="kw">pub mod </span>witness;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 </code></pre></div></section></main></body></html>
