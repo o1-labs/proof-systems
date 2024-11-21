@@ -73,3 +73,20 @@ fn test_fibonacci_7() {
         }
     }
 }
+
+#[test]
+fn test_is_prime_naive() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/is_prime_naive",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+    // This is the output we get by running objdump -d is_prime_naive
+    assert_eq!(witness.registers.current_instruction_pointer, 69844);
+    assert_eq!(witness.registers.next_instruction_pointer, 69848);
+
+    while !witness.halt {
+        witness.step();
+    }
+}
