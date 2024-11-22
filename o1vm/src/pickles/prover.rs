@@ -1,7 +1,8 @@
-use std::array;
+use std::{array, collections::BTreeMap};
 
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use folding::eval_leaf;
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
@@ -30,7 +31,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 
 use super::{
     column_env::ColumnEnvironment,
-    proof::{Proof, ProofInputs, WitnessColumns},
+    proof::{Lookup, Proof, ProofInputs, WitnessColumns},
     DEGREE_QUOTIENT_POLYNOMIAL,
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
@@ -89,12 +90,15 @@ where
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
+        ID
     > = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
             selector,
+            lookup,
+            lookup_agg,
         } = evaluations;
 
         let domain_size = domain.d1.size as usize;
@@ -116,25 +120,37 @@ where
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
+        
+        let eval_lookup = |lookup: Lookup<Vec<G::ScalarField>>| 
+        Lookup {
+            f: lookup.f.into_par_iter().map(eval_col).collect::<Vec<_>>().try_into().unwrap(),
+            m: lookup.m.into_par_iter().map(eval_col).collect::<Vec<_>>().try_into().unwrap(),
+            t: eval_col(lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, eval_lookup(l))).collect::<BTreeMap<ID, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
+            lookup,
+            lookup_agg: eval_col(lookup_agg.clone()),
         }
     };
 
     debug!("Prover: committing to all columns, including the selectors");
-    let commitments: WitnessColumns<PolyComm<G>, G, [PolyComm<G>; N_MIPS_SEL_COLS], ID> = {
+    let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID> = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
             selector,
-            lookup_env,
+            lookup,
+            lookup_agg,
         } = &polys;
 
         let comm = |poly: &DensePolynomial<G::ScalarField>| {
@@ -146,15 +162,36 @@ where
             .unwrap()
             .commitment
         };
+        let comm_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| 
+        Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(comm)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(comm)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: comm(&lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
+        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, comm_lookup(l))).collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: comm(&instruction_counter),
             error: comm(&error),
             selector: selector.try_into().unwrap(),
-            lookup_env: lookup_env.clone(),
+            lookup,
+            lookup_agg: comm(&lookup_agg),
         }
     };
 
@@ -169,19 +206,43 @@ where
             instruction_counter,
             error,
             selector,
-            lookup_env,
+            lookup,
+            lookup_agg,
         } = &polys;
+
         let eval_d8 =
             |poly: &DensePolynomial<G::ScalarField>| poly.evaluate_over_domain_by_ref(domain.d8);
+
+        let eval_d8_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>|
+        Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(eval_d8)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(eval_d8)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: eval_d8(&lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
+        let lookup = lookup.into_par_iter().map(|(&id, l)| (id, eval_d8_lookup(l.clone()))).collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
             selector: selector.try_into().unwrap(),
-            lookup_env: lookup_env.clone(),
+            lookup,
+            lookup_agg: eval_d8(lookup_agg),
         }
     };
 
@@ -226,14 +287,14 @@ where
     let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
-    let column_env: ColumnEnvironment<'_, G::ScalarField, G, ID> = {
+    let column_env: ColumnEnvironment<'_, G::ScalarField, ID> = {
         // FIXME: use a proper Challenge structure
         let challenges = BerkeleyChallenges {
             alpha,
-            // No permutation argument for the moment
+            // TODO: No permutation argument for the moment
             beta: G::ScalarField::zero(),
             gamma: G::ScalarField::zero(),
-            // No lookup for the moment
+            // TODO: No lookup for the moment
             joint_combiner: G::ScalarField::zero(),
         };
         ColumnEnvironment {
@@ -334,27 +395,50 @@ where
             instruction_counter,
             error,
             selector,
-            lookup_env,
+            lookup,
+            lookup_agg,
         } = &polys;
+
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+
+        let eval_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>|
+            Lookup {
+                f: lookup
+                    .f
+                    .par_iter()
+                    .map(eval)
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+                m: lookup
+                    .m
+                    .par_iter()
+                    .map(eval)
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+                t: eval(&lookup.t),
+            };
+
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
         let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
+        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, eval_lookup(l))).collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval(&instruction_counter),
             error: eval(&error),
             selector: selector.try_into().unwrap(),
-            lookup_env: lookup_env.clone(),
+            lookup,
+            lookup_agg: eval(&lookup_agg),
         }
     };
     // All evaluations at ζ
-    let zeta_evaluations: WitnessColumns<G::ScalarField, G, [G::ScalarField; N_MIPS_SEL_COLS], ID> =
+    let zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS], ID> =
         evals(&zeta);
 
     // All evaluations at ζω
     let zeta_omega_evaluations: WitnessColumns<
         G::ScalarField,
-        G,
         [G::ScalarField; N_MIPS_SEL_COLS],
         ID,
     > = evals(&zeta_omega);

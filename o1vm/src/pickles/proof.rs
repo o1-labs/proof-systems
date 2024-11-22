@@ -1,24 +1,22 @@
 use std::collections::BTreeMap;
 
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
-use kimchi_msm::{
-    logup::{prover::Env as LookupEnv, LookupProof},
-    LogupWitness, LookupTableID,
-};
+use kimchi_msm::{logup::LookupProof, LogupWitness, LookupTableID};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
 use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
 
+#[derive(Clone)]
 pub struct Lookup<F> {
-    m: Vec<F>,
-    f: Vec<F>,
-    t: F,
+    pub m: Vec<F>,
+    pub f: Vec<F>,
+    pub t: F,
 }
 
 #[derive(Clone)]
 // TODO : Rename F and S
-pub struct WitnessColumns<F, S, ID: LookupTableID> {
-    pub scratch: [F; crate::interpreters::mips::witness::SCRATCH_SIZE],
+pub struct WitnessColumns<F: Clone, S, ID: LookupTableID> {
+    pub scratch: [F; SCRATCH_SIZE],
     pub instruction_counter: F,
     pub error: F,
     pub selector: S,
@@ -39,6 +37,8 @@ impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),
+                lookup: BTreeMap::new(),
+                lookup_agg: Vec::with_capacity(domain_size),
             },
             logups: BTreeMap::new(),
         }

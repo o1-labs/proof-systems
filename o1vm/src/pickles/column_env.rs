@@ -1,21 +1,18 @@
-use ark_ff::{FftField, Field};
+use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi_msm::{
-    columns::Column, logup::prover::QuotientPolynomialEnvironment, Env as LookupEnv, LookupTableID,
+    columns::Column,
+    LookupTableID, logup::prover::QuotientPolynomialEnvironment,
 };
-use poly_commitment::PolyComm;
 
 use crate::{
     interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
     pickles::proof::WitnessColumns,
 };
-use kimchi::{
-    circuits::{
-        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
-        domains::{Domain, EvaluationDomains},
-        expr::{ColumnEnvironment as TColumnEnvironment, Constants},
-    },
-    curve::KimchiCurve,
+use kimchi::circuits::{
+    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
+    domains::{Domain, EvaluationDomains},
+    expr::{ColumnEnvironment as TColumnEnvironment, Constants},
 };
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
@@ -55,7 +52,7 @@ pub fn get_all_columns() -> Vec<Column> {
     cols
 }
 
-pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
+/* pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
     env: &'a WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
     col: &Column,
 ) -> Option<&'a PolyComm<G>> {
@@ -84,7 +81,7 @@ pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
         }
         Column::LookupPartialSum((table_id, i)) => {
             let table_id = ID::from_u32(table_id);
-            Some(env.lookup[&table_id].f[i])
+            Some(&env.lookup[&table_id].f[i])
         } /*
         Column::LookupAggregation => {
         Some(&lookup_env.lookup_aggregation_comm_d1)
@@ -102,12 +99,12 @@ pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
             panic!("We should not have any other type of columns")
         }
     }
-}
+} */
 
-pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
-    env: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS], ID>,
+pub fn get_column<'a, F: Clone, ID: LookupTableID>(
+    env: &'a WitnessColumns<F, [F; N_MIPS_SEL_COLS], ID>,
     col: &Column,
-) -> Option<&'a Evals<F>> {
+) -> Option<&'a F> {
     match *col {
         Column::Relation(i) => {
             if i < SCRATCH_SIZE {
@@ -131,37 +128,19 @@ pub fn get_column_eval<'a, F: FftField, ID: LookupTableID>(
             let res = &env.selector[i];
             Some(res)
         }
-        /*
         Column::LookupPartialSum((table_id, i)) => {
-            if let Some(ref lookup) = env.lookup_env {
-                let table_id = ID::from_u32(table_id);
-                Some(&lookup.lookup_terms_evals_d8[&table_id][i])
-            } else {
-                panic!("No lookup provided")
-            }
+            let table_id = ID::from_u32(table_id);
+            Some(&env.lookup[&table_id].f[i])
         }
-        Column::LookupAggregation => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.lookup_aggregation_evals_d8)
-            } else {
-                panic!("No lookup provided")
-            }
-        }
+        Column::LookupAggregation => Some(&env.lookup_agg),
         Column::LookupMultiplicity((table_id, i)) => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)][i])
-            } else {
-                panic!("No lookup provided")
-            }
+            let table_id = ID::from_u32(table_id);
+            Some(&env.lookup[&table_id].m[i])
         }
         Column::LookupFixedTable(table_id) => {
-            if let Some(ref lookup) = env.lookup_env {
-                Some(&lookup.fixed_lookup_tables_evals_d8[&ID::from_u32(table_id)])
-            } else {
-                panic!("No lookup provided")
-            }
+            let table_id = ID::from_u32(table_id);
+            Some(&env.lookup[&table_id].t)
         }
-         */
         _ => {
             panic!("We should not have any other type of columns")
         }
@@ -177,7 +156,7 @@ impl<'a, F: FftField, ID: LookupTableID>
     type Column = Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
-        get_column_eval(self.witness, col)
+        get_column(self.witness, col)
     }
 
     fn get_domain(&self, d: Domain) -> Radix2EvaluationDomain<F> {
