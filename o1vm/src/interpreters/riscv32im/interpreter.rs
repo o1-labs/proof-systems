@@ -1999,7 +1999,26 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         SInstruction::StoreHalf => {
-            unimplemented!("StoreHalf")
+            // sh: M[x[rs1] + sext(offset)] = x[rs2][15:0]
+            let [v0, v1] = [
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+
+            env.write_memory(&address, v0);
+            env.write_memory(&(address.clone() + Env::constant(1u32)), v1);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         SInstruction::StoreWord => {
             unimplemented!("StoreWord")
