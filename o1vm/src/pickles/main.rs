@@ -1,4 +1,3 @@
-use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
@@ -7,6 +6,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use num_bigint::BigUint;
 use o1vm::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -95,7 +95,7 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -103,26 +103,28 @@ pub fn main() -> ExitCode {
             .iter()
             .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
         {
-            scratch_chunk.push(*scratch);
+            scratch_chunk.push(scratch.clone());
         }
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state_inverse
             .iter()
             .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
         {
-            scratch_chunk.push(*scratch);
+            scratch_chunk.push(scratch.clone());
         }
         curr_proof_inputs
             .evaluations
             .instruction_counter
-            .push(Fp::from(mips_wit_env.instruction_counter));
+            .push(BigUint::from(mips_wit_env.instruction_counter));
         // FIXME: Might be another value
-        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
-
         curr_proof_inputs
             .evaluations
-            .selector
-            .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
+            .error
+            .push(BigUint::from(42_u32));
+
+        curr_proof_inputs.evaluations.selector.push(BigUint::from(
+            (mips_wit_env.selector - N_MIPS_REL_COLS) as u64,
+        ));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME

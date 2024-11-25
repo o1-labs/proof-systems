@@ -1,4 +1,5 @@
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
+use num_bigint::BigUint;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
 use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
@@ -11,11 +12,11 @@ pub struct WitnessColumns<G, S> {
     pub selector: S,
 }
 
-pub struct ProofInputs<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+pub struct ProofInputs {
+    pub evaluations: WitnessColumns<Vec<BigUint>, Vec<BigUint>>,
 }
 
-impl<G: KimchiCurve> ProofInputs<G> {
+impl ProofInputs {
     pub fn new(domain_size: usize) -> Self {
         ProofInputs {
             evaluations: WitnessColumns {

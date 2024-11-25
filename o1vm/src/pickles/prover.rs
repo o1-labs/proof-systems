@@ -15,7 +15,8 @@ use kimchi::{
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::ExtendedDensePolynomial;
+use num_bigint::BigUint;
+use o1_utils::{ExtendedDensePolynomial, FieldHelpers};
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     ipa::{OpeningProof, SRS},
@@ -60,7 +61,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<G>,
+    inputs: ProofInputs,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
 ) -> Result<Proof<G>, ProverError>
@@ -94,19 +95,23 @@ where
         let domain_size = domain.d1.size as usize;
 
         // Build the selectors
-        let selector: [Vec<G::ScalarField>; N_MIPS_SEL_COLS] = array::from_fn(|i| {
+        let selector: [Vec<BigUint>; N_MIPS_SEL_COLS] = array::from_fn(|i| {
             let mut s_i = Vec::with_capacity(domain_size);
             for s in &selector {
-                s_i.push(if G::ScalarField::from(i as u64) == *s {
-                    G::ScalarField::one()
+                s_i.push(if BigUint::from(i as u64) == *s {
+                    BigUint::one()
                 } else {
-                    G::ScalarField::zero()
+                    BigUint::zero()
                 })
             }
             s_i
         });
 
-        let eval_col = |evals: Vec<G::ScalarField>| {
+        let eval_col = |evals: Vec<BigUint>| {
+            let evals: Vec<G::ScalarField> = evals
+                .into_par_iter()
+                .map(|x| G::ScalarField::from_biguint(&x).unwrap())
+                .collect();
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
@@ -114,9 +119,16 @@ where
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse
             .into_par_iter()
-            .map(|mut evals| {
+            .map(|evals| {
+                let mut evals: Vec<G::ScalarField> = evals
+                    .into_par_iter()
+                    .map(|x| G::ScalarField::from_biguint(&x).unwrap())
+                    .collect();
                 ark_ff::batch_inversion(&mut evals);
-                eval_col(evals)
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    evals, domain.d1,
+                )
+                .interpolate()
             })
             .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();

@@ -159,7 +159,7 @@ pub fn main() -> ExitCode {
         for i in 0..N_MIPS_REL_COLS {
             match i.cmp(&SCRATCH_SIZE) {
                 Ordering::Less => mips_trace.trace.get_mut(&instr).unwrap().witness.cols[i]
-                    .push(mips_wit_env.scratch_state[i]),
+                    .push(mips_wit_env.scratch_state[i].clone().into()),
                 Ordering::Equal => mips_trace.trace.get_mut(&instr).unwrap().witness.cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter)),
                 Ordering::Greater => {
