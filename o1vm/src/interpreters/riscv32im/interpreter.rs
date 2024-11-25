@@ -20,6 +20,14 @@
 //! and copied in this file for offline reference.
 //! If you are the author of the above documentations and would like to add or
 //! modify the credits, please open a pull request.
+//!
+//! For each instruction, we provide the format, description, and the
+//! semantic in pseudo-code of the instruction.
+//! When `signed` is mentioned in the pseudo-code, it means that the
+//! operation is performed as a signed operation (i.e. signed(v) where `v` is a
+//! 32 bits value means that `v` must be interpreted as a i32 value in Rust, the
+//! most significant bit being the sign - 1 for negative, 0 for positive).
+//! By default, unsigned operations are performed.
 
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 use crate::lookups::{Lookup, LookupTableIDs};
