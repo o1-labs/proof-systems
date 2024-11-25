@@ -1296,17 +1296,7 @@
 <a href="#1296" id="1296">1296</a>
 <a href="#1297" id="1297">1297</a>
 <a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
-<a href="#1306" id="1306">1306</a>
-<a href="#1307" id="1307">1307</a>
-<a href="#1308" id="1308">1308</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1358,18 +1348,8 @@
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 <span class="comment">// TODO: Delete and use a vector instead
-// FIXME: since the introduction of the scratch size inverse, the value below
-// can be decreased. It implies to change the offsets defined in [column]. At
-// the moment, it incurs an overhead we could avoid as some columns are zeroes.
-// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
-// + length + has_n_bytes + chunk_bytes + preimage
-</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">98</span>;
 
-<span class="doccomment">/// Number of columns used by the MIPS interpreter to keep values to be
-/// inverted.
-</span><span class="kw">pub const </span>SCRATCH_SIZE_INVERSE: usize = <span class="number">12</span>;
-
-<span class="attr">#[derive(Clone, Default)]
+</span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
     <span class="kw">pub </span>last_hint: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
