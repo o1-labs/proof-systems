@@ -343,10 +343,10 @@
             environment::KeccakEnv,
         },
         mips::{
-            column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+            column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, SCRATCH_SIZE},
             constraints <span class="kw">as </span>mips_constraints,
             interpreter::Instruction,
-            witness::{<span class="self">self </span><span class="kw">as </span>mips_witness, SCRATCH_SIZE},
+            witness::{<span class="self">self </span><span class="kw">as </span>mips_witness},
         },
     },
     legacy::{

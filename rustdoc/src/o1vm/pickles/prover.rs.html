@@ -420,6 +420,39 @@
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
@@ -506,6 +539,7 @@
     &gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -532,9 +566,17 @@
         };
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.into_par_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>scratch_inverse = scratch_inverse
+            .into_par_iter()
+            .map(|<span class="kw-2">mut </span>evals| {
+                ark_ff::batch_inversion(<span class="kw-2">&amp;mut </span>evals);
+                eval_col(evals)
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>selector = selector.into_par_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
@@ -545,6 +587,7 @@
     <span class="kw">let </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;, [PolyComm&lt;G&gt;; N_MIPS_SEL_COLS]&gt; = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -561,9 +604,11 @@
         };
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>scratch_inverse = scratch_inverse.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>selector = selector.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: comm(instruction_counter),
             error: comm(error),
             selector: selector.try_into().unwrap(),
@@ -578,6 +623,7 @@
     </span><span class="kw">let </span>evaluations_d8 = {
         <span class="kw">let </span>WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -586,9 +632,14 @@
             |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate_over_domain_by_ref(domain.d8);
         <span class="comment">// Doing in parallel
         </span><span class="kw">let </span>scratch = scratch.into_par_iter().map(eval_d8).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>scratch_inverse = scratch_inverse
+            .into_par_iter()
+            .map(eval_d8)
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>selector = selector.into_par_iter().map(eval_d8).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
             selector: selector.try_into().unwrap(),
@@ -598,6 +649,9 @@
     <span class="comment">// Absorbing the commitments - Fiat Shamir
     // We do not parallelize as we need something deterministic.
     </span><span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch.iter() {
+        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
+    }
+    <span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch_inverse.iter() {
         absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
     }
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.instruction_counter);
@@ -713,15 +767,18 @@
     <span class="kw">let </span>evals = |point| {
         <span class="kw">let </span>WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
         } = <span class="kw-2">&amp;</span>polys;
         <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
         <span class="kw">let </span>scratch = scratch.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>scratch_inverse = scratch_inverse.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>selector = selector.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval(instruction_counter),
             error: eval(error),
             selector: selector.try_into().unwrap(),
@@ -764,6 +821,14 @@
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+        .scratch_inverse
+        .iter()
+        .zip(zeta_omega_evaluations.scratch_inverse.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.instruction_counter);
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.error);
@@ -789,6 +854,7 @@
     ////////////////////////////////////////////////////////////////////////////
 
     </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.scratch.into_iter().collect();
+    polynomials.extend(polys.scratch_inverse);
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);

@@ -37,13 +37,16 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 <span class="kw">use </span>poly_commitment::{ipa::OpeningProof, PolyComm};
 
-<span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
+<span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 <span class="kw">pub struct </span>WitnessColumns&lt;G, S&gt; {
     <span class="kw">pub </span>scratch: [G; SCRATCH_SIZE],
+    <span class="kw">pub </span>scratch_inverse: [G; SCRATCH_SIZE_INVERSE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
     <span class="kw">pub </span>selector: S,
@@ -58,6 +61,7 @@
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size)),
+                scratch_inverse: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size)),
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),

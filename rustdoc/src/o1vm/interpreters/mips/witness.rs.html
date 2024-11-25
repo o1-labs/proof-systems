@@ -1286,7 +1286,17 @@
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1338,11 +1348,8 @@
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 <span class="comment">// TODO: Delete and use a vector instead
-// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
-// + length + has_n_bytes + chunk_bytes + preimage
-</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">98</span>;
 
-<span class="attr">#[derive(Clone, Default)]
+</span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
     <span class="kw">pub </span>last_hint: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
@@ -1369,7 +1376,9 @@
     <span class="kw">pub </span>registers: Registers&lt;u32&gt;,
     <span class="kw">pub </span>registers_write_index: Registers&lt;u64&gt;,
     <span class="kw">pub </span>scratch_state_idx: usize,
+    <span class="kw">pub </span>scratch_state_idx_inverse: usize,
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
+    <span class="kw">pub </span>scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
     <span class="kw">pub </span>selector: usize,
@@ -1392,6 +1401,12 @@
         <span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx;
         <span class="self">self</span>.scratch_state_idx += <span class="number">1</span>;
         Column::ScratchState(scratch_idx)
+    }
+
+    <span class="kw">fn </span>alloc_scratch_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
+        <span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx_inverse;
+        <span class="self">self</span>.scratch_state_idx_inverse += <span class="number">1</span>;
+        Column::ScratchStateInverse(scratch_idx)
     }
 
     <span class="kw">type </span>Variable = u64;
@@ -1602,17 +1617,17 @@
 
     <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// write the result
-        </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-        <span class="kw">let </span>res = <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-        <span class="self">self</span>.write_column(pos, res);
-        <span class="comment">// write the non deterministic advice inv_or_zero
-        </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-        <span class="kw">let </span>inv_or_zero = <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{
-            Fp::zero()
-        } <span class="kw">else </span>{
-            Fp::inverse(<span class="kw-2">&amp;</span>Fp::from(<span class="kw-2">*</span>x)).unwrap()
+        </span><span class="kw">let </span>res = {
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.test_zero(x, pos) }
         };
-        <span class="self">self</span>.write_field_column(pos, inv_or_zero);
+        <span class="comment">// write the non deterministic advice inv_or_zero
+        </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch_inverse();
+        <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{
+            <span class="self">self</span>.write_field_column(pos, Fp::zero());
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.write_field_column(pos, Fp::from(<span class="kw-2">*</span>x));
+        };
         <span class="comment">// return the result
         </span>res
     }
@@ -1627,16 +1642,12 @@
             <span class="self">self</span>.write_column(pos, is_zero);
             is_zero
         };
-        <span class="kw">let </span>_to_zero_test_inv_or_zero = {
-            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-            <span class="kw">let </span>inv_or_zero = <span class="kw">if </span>to_zero_test == Fp::zero() {
-                Fp::zero()
-            } <span class="kw">else </span>{
-                Fp::inverse(<span class="kw-2">&amp;</span>to_zero_test).unwrap()
-            };
-            <span class="self">self</span>.write_field_column(pos, inv_or_zero);
-            <span class="number">1 </span><span class="comment">// Placeholder value
-        </span>};
+        <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch_inverse();
+        <span class="kw">if </span>to_zero_test == Fp::zero() {
+            <span class="self">self</span>.write_field_column(pos, Fp::zero());
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.write_field_column(pos, to_zero_test);
+        };
         res
     }
 
@@ -2166,7 +2177,9 @@
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: <span class="number">0</span>,
+            scratch_state_idx_inverse: <span class="number">0</span>,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
             selector,
@@ -2185,6 +2198,11 @@
         <span class="self">self</span>.selector = N_MIPS_SEL_COLS;
     }
 
+    <span class="kw">pub fn </span>reset_scratch_state_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.scratch_state_idx_inverse = <span class="number">0</span>;
+        <span class="self">self</span>.scratch_state_inverse = fresh_scratch_state();
+    }
+
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: u64) {
         <span class="self">self</span>.write_field_column(column, value.into())
     }
@@ -2192,6 +2210,7 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) =&gt; <span class="self">self</span>.scratch_state_inverse[idx] = value,
             Column::InstructionCounter =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Cannot overwrite the column {:?}&quot;</span>, column),
             Column::Selector(s) =&gt; <span class="self">self</span>.selector = s,
         }
@@ -2426,6 +2445,7 @@
         start: <span class="kw-2">&amp;</span>Start,
     ) -&gt; Instruction {
         <span class="self">self</span>.reset_scratch_state();
+        <span class="self">self</span>.reset_scratch_state_inverse();
         <span class="kw">let </span>(opcode, _instruction) = <span class="self">self</span>.decode_instruction();
 
         <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);

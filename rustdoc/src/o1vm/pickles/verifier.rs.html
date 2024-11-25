@@ -254,6 +254,17 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>rand::thread_rng;
@@ -352,6 +363,9 @@
     <span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch.iter() {
         absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
     }
+    <span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch_inverse.iter() {
+        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
+    }
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.instruction_counter);
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.error);
     <span class="kw">for </span>comm <span class="kw">in </span>commitments.selector.iter() {
@@ -389,6 +403,14 @@
         .scratch
         .iter()
         .zip(zeta_omega_evaluations.scratch.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
+    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+        .scratch_inverse
+        .iter()
+        .zip(zeta_omega_evaluations.scratch_inverse.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);

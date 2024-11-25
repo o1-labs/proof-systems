@@ -2658,6 +2658,8 @@
 <a href="#2658" id="2658">2658</a>
 <a href="#2659" id="2659">2659</a>
 <a href="#2660" id="2660">2660</a>
+<a href="#2661" id="2661">2661</a>
+<a href="#2662" id="2662">2662</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -2826,11 +2828,13 @@
     /// The variables are &quot;freed&quot; after each step/instruction.
     /// The variable allocation can be seen as an allocation on a stack that is
     /// popped after each step execution.
-    /// At the moment, [crate::interpreters::mips::witness::SCRATCH_SIZE - 46]
+    /// At the moment, [crate::interpreters::mips::column::SCRATCH_SIZE - 46]
     /// elements can be allocated. If more temporary variables are required for
     /// an instruction, increase the value
-    /// [crate::interpreters::mips::witness::SCRATCH_SIZE]
+    /// [crate::interpreters::mips::column::SCRATCH_SIZE]
     </span><span class="kw">fn </span>alloc_scratch(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
+
+    <span class="kw">fn </span>alloc_scratch_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
 
     <span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;

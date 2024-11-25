@@ -154,6 +154,13 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::expr::E;
@@ -258,6 +265,13 @@
             .scratch_state
             .iter()
             .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+        {
+            scratch_chunk.push(<span class="kw-2">*</span>scratch);
+        }
+        <span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
+            .scratch_state_inverse
+            .iter()
+            .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
         {
             scratch_chunk.push(<span class="kw-2">*</span>scratch);
         }

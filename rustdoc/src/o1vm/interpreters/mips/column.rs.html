@@ -171,10 +171,40 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::{
-    witness::SCRATCH_SIZE,
-    Instruction::{<span class="self">self</span>, IType, JType, RType},
-};
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::interpreters::mips::Instruction::{<span class="self">self</span>, IType, JType, RType};
 <span class="kw">use </span>kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
@@ -184,31 +214,40 @@
 
 <span class="kw">use super</span>::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>SCRATCH_SIZE_WITHOUT_KECCAK: usize = <span class="number">45</span>;
 <span class="doccomment">/// The number of hashes performed so far in the block
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HASH_COUNTER_OFF: usize = <span class="number">80</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HASH_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK;
 <span class="doccomment">/// The number of bytes of the preimage that have been read so far in this hash
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_BYTE_COUNTER_OFF: usize = <span class="number">81</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_BYTE_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">1</span>;
 <span class="doccomment">/// A flag indicating whether the preimage has been read fully or not
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_END_OF_PREIMAGE_OFF: usize = <span class="number">82</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_END_OF_PREIMAGE_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">2</span>;
 <span class="doccomment">/// The number of preimage bytes processed in this step
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_NUM_BYTES_READ_OFF: usize = <span class="number">83</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_NUM_BYTES_READ_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">3</span>;
 <span class="doccomment">/// The at most 4-byte chunk of the preimage that has been read in this step.
 /// Contains a field element of at most 4 bytes.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_CHUNK_OFF: usize = <span class="number">84</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_CHUNK_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">4</span>;
 <span class="doccomment">/// The at most 4-bytes of the preimage that are currently being processed
 /// Consists of 4 field elements of at most 1 byte each.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_BYTES_OFF: usize = <span class="number">85</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">5</span>;
 <span class="doccomment">/// The at most 4-bytes of the length that are currently being processed
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_LENGTH_BYTES_OFF: usize = <span class="number">89</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_LENGTH_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">5 </span>+ <span class="number">4</span>;
 <span class="doccomment">/// Flags indicating whether at least N bytes have been processed in this step
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = <span class="number">93</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">5 </span>+ <span class="number">4 </span>+ <span class="number">4</span>;
 <span class="doccomment">/// The maximum size of a chunk (4 bytes)
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LEN: usize = <span class="number">4</span>;
 <span class="doccomment">/// The location of the preimage key as a field element of 248bits
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_KEY: usize = <span class="number">97</span>;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_PREIMAGE_KEY: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">5 </span>+ <span class="number">4 </span>+ <span class="number">4 </span>+ <span class="number">4</span>;
+
+<span class="comment">// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
+// + length + has_n_bytes + chunk_bytes + preimage
+</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = SCRATCH_SIZE_WITHOUT_KECCAK + <span class="number">5 </span>+ <span class="number">4 </span>+ <span class="number">4 </span>+ <span class="number">4 </span>+ <span class="number">1</span>;
+
+<span class="doccomment">/// Number of columns used by the MIPS interpreter to keep values to be
+/// inverted.
+</span><span class="kw">pub const </span>SCRATCH_SIZE_INVERSE: usize = <span class="number">12</span>;
 
 <span class="doccomment">/// The number of columns used for relation witness in the MIPS circuit
-</span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + <span class="number">2</span>;
+</span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2</span>;
 
 <span class="doccomment">/// The number of witness columns used to store the instruction selectors.
 </span><span class="kw">pub const </span>N_MIPS_SEL_COLS: usize =
@@ -223,6 +262,9 @@
 </span><span class="kw">pub enum </span>ColumnAlias {
     <span class="comment">// Can be seen as the abstract indexed variable X_{i}
     </span>ScratchState(usize),
+    <span class="comment">// A column whose value needs to be inverted in the final witness.
+    // We&#39;re keeping a separate column to perform a batch inversion at the end.
+    </span>ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
 }
@@ -239,8 +281,12 @@
                 <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
                 i
             }
-            ColumnAlias::InstructionCounter =&gt; SCRATCH_SIZE,
-            ColumnAlias::Selector(s) =&gt; SCRATCH_SIZE + <span class="number">1 </span>+ s,
+            ColumnAlias::ScratchStateInverse(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE_INVERSE);
+                SCRATCH_SIZE + i
+            }
+            ColumnAlias::InstructionCounter =&gt; SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
+            ColumnAlias::Selector(s) =&gt; SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">1 </span>+ s,
         }
     }
 }
@@ -305,16 +351,36 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
     <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
+
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ScratchState(ss) =&gt; {
-                <span class="macro">assert!</span>(ss &lt; SCRATCH_SIZE);
+                <span class="macro">assert!</span>(
+                    ss &lt; SCRATCH_SIZE,
+                    <span class="string">&quot;The maximum index is {}, got {}&quot;</span>,
+                    SCRATCH_SIZE,
+                    ss
+                );
                 Column::Relation(ss)
             }
-            <span class="self">Self</span>::InstructionCounter =&gt; Column::Relation(SCRATCH_SIZE),
+            <span class="self">Self</span>::ScratchStateInverse(ss) =&gt; {
+                <span class="macro">assert!</span>(
+                    ss &lt; SCRATCH_SIZE_INVERSE,
+                    <span class="string">&quot;The maximum index is {}, got {}&quot;</span>,
+                    SCRATCH_SIZE_INVERSE,
+                    ss
+                );
+                Column::Relation(SCRATCH_SIZE + ss)
+            }
+            <span class="self">Self</span>::InstructionCounter =&gt; Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
             </span><span class="self">Self</span>::Selector(s) =&gt; {
-                <span class="macro">assert!</span>(s &lt; N_MIPS_SEL_COLS);
+                <span class="macro">assert!</span>(
+                    s &lt; N_MIPS_SEL_COLS,
+                    <span class="string">&quot;The maximum index is {}, got {}&quot;</span>,
+                    N_MIPS_SEL_COLS,
+                    s
+                );
                 Column::DynamicSelector(s)
             }
         }
