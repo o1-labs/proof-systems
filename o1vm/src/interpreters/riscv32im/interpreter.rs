@@ -1893,9 +1893,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 /// Following the documentation found
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) {
+    /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
+    /* compute the next instruction ptr and add one, as well record raml lookup */
     let _next_instruction_pointer = env.get_next_instruction_pointer();
-
+    /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -1907,18 +1909,20 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
             + v0
     };
 
+    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
     let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
+    /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
-    let imm1 = {
+    let imm0_4 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 12, 7, pos) }
+        // bytes 7-11
     };
-    env.range_check8(&imm1, 5);
-
+    env.range_check8(&imm0_4, 5);
     let funct3 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 15, 12, pos) }
@@ -1930,18 +1934,55 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         unsafe { env.bitmask(&instruction, 20, 15, pos) }
     };
     env.range_check8(&rs1, 5);
-
     let rs2 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 25, 20, pos) }
     };
     env.range_check8(&rs2, 5);
 
-    let imm2 = {
+    let imm5_11 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 25, pos) }
+        // bytes 25-31
     };
-    env.range_check16(&imm2, 12);
+    env.range_check8(&imm5_11, 7);
+
+    // check correctness of decomposition of S type function
+    env.add_constraint(
+        instruction
+         - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
+         - (imm0_4.clone() * Env::constant(1 << 7))    // imm0_4 at bits 7-11
+         - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+         - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+         - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
+         - (imm5_11.clone() * Env::constant(1 << 25)), // imm5_11 at bits 25-31
+    );
+
+    let local_rs1 = env.read_register(&rs1);
+    let local_imm0_4 = env.sign_extend(&imm0_4, 5);
+    let local_imm5_11 = env.sign_extend(&imm5_11, 7);
+    let local_imm0_11 = {
+        let pos = env.alloc_scratch();
+        let shift_pos = env.alloc_scratch();
+        let shifted_imm5_11 =
+            unsafe { env.shift_left(&local_imm5_11, &Env::constant(5), shift_pos) };
+        let local_imm0_11 = unsafe { env.or_witness(&shifted_imm5_11, &local_imm0_4, pos) };
+        env.sign_extend(&local_imm0_11, 11)
+    };
+    let _address = {
+        let address_scratch = env.alloc_scratch();
+        let overflow_scratch = env.alloc_scratch();
+        let (address, _overflow) = unsafe {
+            env.add_witness(
+                &local_rs1,
+                &local_imm0_11,
+                address_scratch,
+                overflow_scratch,
+            )
+        };
+        address
+    };
+    let _local_rs2 = env.read_register(&rs2);
 
     match instr {
         SInstruction::StoreByte => {
