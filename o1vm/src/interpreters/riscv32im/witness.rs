@@ -3,8 +3,8 @@
 use super::{
     column::Column,
     interpreter::{
-        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
-        SyscallInstruction, UInstruction, UJInstruction,
+        self, IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
+        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
@@ -771,6 +771,20 @@ impl<Fp: Field> Env<Fp> {
                 // Even better, only one constructor call ecall, and in the
                 // interpreter, we do the action depending on it
                 0b1110011 => Instruction::SyscallType(SyscallInstruction::SyscallSuccess),
+                0b0110011 => {
+                    // bits 12-14 for funct3
+                    match (instruction >> 12) & 0x7 {
+                        0b000 => Instruction::MType(MInstruction::Mul),
+                        0b001 => Instruction::MType(MInstruction::Mulh),
+                        0b010 => Instruction::MType(MInstruction::Mulhsu),
+                        0b011 => Instruction::MType(MInstruction::Mulhu),
+                        0b100 => Instruction::MType(MInstruction::Div),
+                        0b101 => Instruction::MType(MInstruction::Divu),
+                        0b110 => Instruction::MType(MInstruction::Rem),
+                        0b111 => Instruction::MType(MInstruction::Remu),
+                        _ => panic!("Unknown MType instruction with full inst {}", instruction),
+                    }
+                },
                 _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
             }
         };
