@@ -129,12 +129,18 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi_msm::columns::Column;
 
 <span class="kw">use crate</span>::{
-    interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
+    interpreters::mips::{
+        column::N_MIPS_SEL_COLS,
+        witness::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
+    },
     pickles::proof::WitnessColumns,
 };
 <span class="kw">use </span>kimchi::circuits::{

@@ -729,10 +729,10 @@
 
     <span class="comment">// Use one of the available columns. It won&#39;t create a new column every time
     // this function is called. The number of columns is defined upfront by
-    // crate::interpreters::mips::column::SCRATCH_SIZE.
+    // crate::mips::witness::SCRATCH_SIZE.
     </span><span class="kw">fn </span>alloc_scratch(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
         <span class="comment">// All columns are implemented using a simple index, and a name is given
-        // to the index. See crate::interpreters::mips::column::SCRATCH_SIZE for the maximum number of
+        // to the index. See crate::SCRATCH_SIZE for the maximum number of
         // columns the circuit can use.
         </span><span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx;
         <span class="self">self</span>.scratch_state_idx += <span class="number">1</span>;
