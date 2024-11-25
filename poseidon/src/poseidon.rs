@@ -4,14 +4,14 @@ use crate::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},
 };
-use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use mina_curves::pasta::wasm_friendly::MinimalField;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
-pub trait Sponge<Input: Field, Digest> {
+pub trait Sponge<Input: MinimalField, Digest> {
     /// Create a new cryptographic sponge using arithmetic sponge `params`
     fn new(params: &'static ArithmeticSpongeParams<Input>) -> Self;
 
@@ -25,7 +25,7 @@ pub trait Sponge<Input: Field, Digest> {
     fn reset(&mut self);
 }
 
-pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
+pub fn sbox<F: MinimalField, SC: SpongeConstants>(x: F) -> F {
     x.pow([SC::PERM_SBOX as u64])
 }
 
@@ -37,7 +37,7 @@ pub enum SpongeState {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
-pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeserialize> {
+pub struct ArithmeticSpongeParams<F: MinimalField + CanonicalSerialize + CanonicalDeserialize> {
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub round_constants: Vec<Vec<F>>,
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
@@ -45,7 +45,7 @@ pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeser
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
+pub struct ArithmeticSponge<F: MinimalField, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
@@ -54,7 +54,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub constants: std::marker::PhantomData<SC>,
 }
 
-impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
+impl<F: MinimalField, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     pub fn full_round(&mut self, r: usize) {
         full_round::<F, SC>(self.params, &mut self.state, r);
     }
@@ -64,7 +64,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     }
 }
 
-impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
+impl<F: MinimalField, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     fn new(params: &'static ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
