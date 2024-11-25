@@ -2240,6 +2240,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
 
     match instr {
         MInstruction::Mul => {
+            // x[rd] = x[rs1] * x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2253,6 +2254,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulh => {
+            // x[rd] = (signed(x[rs1]) * signed(x[rs2])) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2266,6 +2268,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhsu => {
+            // x[rd] = (signed(x[rs1]) * x[rs2]) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2279,6 +2282,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhu => {
+            // x[rd] = (x[rs1] * x[rs2]) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2292,6 +2296,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Div => {
+            // x[rd] = signed(x[rs1]) / signed(x[rs2])
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2305,6 +2310,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Divu => {
+            // x[rd] = x[rs1] / x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2318,6 +2324,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Rem => {
+            // x[rd] = signed(x[rs1]) % signed(x[rs2])
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2331,6 +2338,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Remu => {
+            // x[rd] = x[rs1] % x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
