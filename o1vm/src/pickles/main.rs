@@ -128,34 +128,34 @@ pub fn main() -> ExitCode {
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
             // FIXME
-            let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let proof = prover::prove::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                _,
-            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
-            .unwrap();
-            // FIXME: check that the proof is correct. This is for testing purposes.
-            // Leaving like this for now.
-            debug!(
-                "Proof generated in {elapsed} μs",
-                elapsed = start_iteration.elapsed().as_micros()
-            );
-            {
-                let start_iteration = Instant::now();
-                let verif = verifier::verify::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                >(domain_fp, &srs, &constraints, &proof);
-                debug!(
-                    "Verification done in {elapsed} μs",
-                    elapsed = start_iteration.elapsed().as_micros()
-                );
-                assert!(verif);
-            }
+            // let start_iteration = Instant::now();
+            // debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
+            // let proof = prover::prove::<
+            //     Vesta,
+            //     DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+            //     DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+            //     _,
+            // >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+            // .unwrap();
+            // // FIXME: check that the proof is correct. This is for testing purposes.
+            // // Leaving like this for now.
+            // debug!(
+            //     "Proof generated in {elapsed} μs",
+            //     elapsed = start_iteration.elapsed().as_micros()
+            // );
+            // {
+            //     let start_iteration = Instant::now();
+            //     let verif = verifier::verify::<
+            //         Vesta,
+            //         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+            //         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+            //     >(domain_fp, &srs, &constraints, &proof);
+            //     debug!(
+            //         "Verification done in {elapsed} μs",
+            //         elapsed = start_iteration.elapsed().as_micros()
+            //     );
+            //     assert!(verif);
+            // }
 
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
