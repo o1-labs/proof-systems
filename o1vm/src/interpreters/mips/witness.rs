@@ -50,9 +50,16 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
+// FIXME: since the introduction of the scratch size inverse, the value below
+// can be decreased. It implies to change the offsets defined in [column]. At
+// the moment, it incurs an overhead we could avoid as some columns are zeroes.
 // MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
 // + length + has_n_bytes + chunk_bytes + preimage
 pub const SCRATCH_SIZE: usize = 98;
+
+/// Number of columns used by the MIPS interpreter to keep values to be
+/// inverted.
+pub const SCRATCH_SIZE_INVERSE: usize = 12;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -81,7 +88,9 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
+    pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -104,6 +113,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        Column::ScratchStateInverse(scratch_idx)
     }
 
     type Variable = u64;
@@ -314,17 +329,17 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
         // write the result
-        let pos = self.alloc_scratch();
-        let res = if *x == 0 { 1 } else { 0 };
-        self.write_column(pos, res);
-        // write the non deterministic advice inv_or_zero
-        let pos = self.alloc_scratch();
-        let inv_or_zero = if *x == 0 {
-            Fp::zero()
-        } else {
-            Fp::inverse(&Fp::from(*x)).unwrap()
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
         };
-        self.write_field_column(pos, inv_or_zero);
+        // write the non deterministic advice inv_or_zero
+        let pos = self.alloc_scratch_inverse();
+        if *x == 0 {
+            self.write_field_column(pos, Fp::zero());
+        } else {
+            self.write_field_column(pos, Fp::from(*x));
+        };
         // return the result
         res
     }
@@ -339,15 +354,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             self.write_column(pos, is_zero);
             is_zero
         };
-        let _to_zero_test_inv_or_zero = {
-            let pos = self.alloc_scratch();
-            let inv_or_zero = if to_zero_test == Fp::zero() {
-                Fp::zero()
-            } else {
-                Fp::inverse(&to_zero_test).unwrap()
-            };
-            self.write_field_column(pos, inv_or_zero);
-            1 // Placeholder value
+        let pos = self.alloc_scratch_inverse();
+        if to_zero_test == Fp::zero() {
+            self.write_field_column(pos, Fp::zero());
+        } else {
+            self.write_field_column(pos, to_zero_test);
         };
         res
     }
@@ -878,7 +889,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
             selector,
@@ -897,6 +910,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.selector = N_MIPS_SEL_COLS;
     }
 
+    pub fn reset_scratch_state_inverse(&mut self) {
+        self.scratch_state_idx_inverse = 0;
+        self.scratch_state_inverse = fresh_scratch_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         self.write_field_column(column, value.into())
     }
@@ -904,6 +922,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }
@@ -1138,6 +1157,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         start: &Start,
     ) -> Instruction {
         self.reset_scratch_state();
+        self.reset_scratch_state_inverse();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);

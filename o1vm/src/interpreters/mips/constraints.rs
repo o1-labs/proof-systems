@@ -25,6 +25,7 @@ use super::column::N_MIPS_SEL_COLS;
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     scratch_state_idx: usize,
+    scratch_state_idx_inverse: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     constraints: Vec<E<Fp>>,
@@ -37,6 +38,7 @@ impl<Fp: Field> Default for Env<Fp> {
     fn default() -> Self {
         Self {
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
@@ -60,6 +62,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        MIPSColumn::ScratchStateInverse(scratch_idx)
     }
 
     type Variable = E<Fp>;
@@ -219,7 +227,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
+            let pos = self.alloc_scratch_inverse();
             self.variable(pos)
         };
         // If x = 0, then res = 1 and x_inv_or_zero = 0
@@ -623,6 +631,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn reset(&mut self) {
         self.scratch_state_idx = 0;
+        self.scratch_state_idx_inverse = 0;
         self.constraints.clear();
         self.lookups.clear();
         self.selector = None;

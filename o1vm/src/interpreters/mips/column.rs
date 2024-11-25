@@ -9,7 +9,9 @@ use kimchi_msm::{
 use std::ops::{Index, IndexMut};
 use strum::EnumCount;
 
-use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
+pub use super::{
+    witness::SCRATCH_SIZE_INVERSE, ITypeInstruction, JTypeInstruction, RTypeInstruction,
+};
 
 /// The number of hashes performed so far in the block
 pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
@@ -35,7 +37,7 @@ pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
 pub(crate) const MIPS_PREIMAGE_KEY: usize = 97;
 
 /// The number of columns used for relation witness in the MIPS circuit
-pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
+pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
 pub const N_MIPS_SEL_COLS: usize =
@@ -50,6 +52,9 @@ pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
+    // A column whose value needs to be inverted in the final witness.
+    // We're keeping a separate column to perform a batch inversion at the end.
+    ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
 }
@@ -66,8 +71,12 @@ impl From<ColumnAlias> for usize {
                 assert!(i < SCRATCH_SIZE);
                 i
             }
-            ColumnAlias::InstructionCounter => SCRATCH_SIZE,
-            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s,
+            ColumnAlias::ScratchStateInverse(i) => {
+                assert!(i < SCRATCH_SIZE_INVERSE);
+                SCRATCH_SIZE + i
+            }
+            ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
+            ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
         }
     }
 }
@@ -132,16 +141,36 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 
 impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
+
     fn to_column(self) -> Column {
         match self {
             Self::ScratchState(ss) => {
-                assert!(ss < SCRATCH_SIZE);
+                assert!(
+                    ss < SCRATCH_SIZE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE,
+                    ss
+                );
                 Column::Relation(ss)
             }
-            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE),
+            Self::ScratchStateInverse(ss) => {
+                assert!(
+                    ss < SCRATCH_SIZE_INVERSE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE_INVERSE,
+                    ss
+                );
+                Column::Relation(SCRATCH_SIZE + ss)
+            }
+            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             // TODO: what happens with error? It does not have a corresponding alias
             Self::Selector(s) => {
-                assert!(s < N_MIPS_SEL_COLS);
+                assert!(
+                    s < N_MIPS_SEL_COLS,
+                    "The maximum index is {}, got {}",
+                    N_MIPS_SEL_COLS,
+                    s
+                );
                 Column::DynamicSelector(s)
             }
         }

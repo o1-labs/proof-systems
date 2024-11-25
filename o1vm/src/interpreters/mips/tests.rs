@@ -114,6 +114,7 @@ mod rtype {
         //       that condition would generate an infinite loop instead)
         while dummy_env.registers.preimage_offset < total_length {
             dummy_env.reset_scratch_state();
+            dummy_env.reset_scratch_state_inverse();
 
             // Set maximum number of bytes to read in this call
             dummy_env.registers[6] = rng.gen_range(1..=4);
