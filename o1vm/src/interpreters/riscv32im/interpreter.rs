@@ -1896,7 +1896,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
     /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
     /* compute the next instruction ptr and add one, as well record raml lookup */
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -1969,7 +1969,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         let local_imm0_11 = unsafe { env.or_witness(&shifted_imm5_11, &local_imm0_4, pos) };
         env.sign_extend(&local_imm0_11, 11)
     };
-    let _address = {
+    let address = {
         let address_scratch = env.alloc_scratch();
         let overflow_scratch = env.alloc_scratch();
         let (address, _overflow) = unsafe {
@@ -1982,11 +1982,21 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
         };
         address
     };
-    let _local_rs2 = env.read_register(&rs2);
+    let local_rs2 = env.read_register(&rs2);
 
     match instr {
         SInstruction::StoreByte => {
-            unimplemented!("StoreByte")
+            // sb: M[x[rs1] + sext(offset)] = x[rs2][7:0]
+            let v0 = {
+                let value_scratch = env.alloc_scratch();
+                unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
+            };
+
+            env.lookup_8bits(&v0);
+            env.write_memory(&address, v0);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         SInstruction::StoreHalf => {
             unimplemented!("StoreHalf")
