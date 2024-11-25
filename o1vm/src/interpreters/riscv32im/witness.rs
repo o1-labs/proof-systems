@@ -543,7 +543,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn mod_(
+    unsafe fn mod_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,

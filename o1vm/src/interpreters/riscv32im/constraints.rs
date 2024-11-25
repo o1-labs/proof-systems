@@ -371,7 +371,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
-    unsafe fn mod_(
+    unsafe fn mod_unsigned(
         &mut self,
         _x: &Self::Variable,
         _y: &Self::Variable,

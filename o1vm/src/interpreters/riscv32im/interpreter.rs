@@ -1306,7 +1306,7 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn mod_(
+    unsafe fn mod_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
