@@ -1,10 +1,7 @@
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
-use crate::interpreters::mips::{
-    column::N_MIPS_SEL_COLS,
-    witness::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
-};
+use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; SCRATCH_SIZE],

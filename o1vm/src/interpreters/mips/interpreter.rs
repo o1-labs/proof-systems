@@ -166,10 +166,10 @@ pub trait InterpreterEnv {
     /// The variables are "freed" after each step/instruction.
     /// The variable allocation can be seen as an allocation on a stack that is
     /// popped after each step execution.
-    /// At the moment, [crate::interpreters::mips::witness::SCRATCH_SIZE - 46]
+    /// At the moment, [crate::interpreters::mips::column::SCRATCH_SIZE - 46]
     /// elements can be allocated. If more temporary variables are required for
     /// an instruction, increase the value
-    /// [crate::interpreters::mips::witness::SCRATCH_SIZE]
+    /// [crate::interpreters::mips::column::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
     fn alloc_scratch_inverse(&mut self) -> Self::Position;

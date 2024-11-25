@@ -54,10 +54,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     // Use one of the available columns. It won't create a new column every time
     // this function is called. The number of columns is defined upfront by
-    // crate::mips::witness::SCRATCH_SIZE.
+    // crate::interpreters::mips::column::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
-        // to the index. See crate::SCRATCH_SIZE for the maximum number of
+        // to the index. See crate::interpreters::mips::column::SCRATCH_SIZE for the maximum number of
         // columns the circuit can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;

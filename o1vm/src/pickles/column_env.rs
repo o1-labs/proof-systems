@@ -3,10 +3,7 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi_msm::columns::Column;
 
 use crate::{
-    interpreters::mips::{
-        column::N_MIPS_SEL_COLS,
-        witness::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
-    },
+    interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
     pickles::proof::WitnessColumns,
 };
 use kimchi::circuits::{

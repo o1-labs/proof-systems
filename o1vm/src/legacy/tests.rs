@@ -1,9 +1,8 @@
 use crate::{
     interpreters::mips::{
-        column::N_MIPS_REL_COLS,
+        column::{N_MIPS_REL_COLS, SCRATCH_SIZE},
         constraints::Env as CEnv,
         interpreter::{debugging::InstructionParts, interpret_itype},
-        witness::SCRATCH_SIZE,
         ITypeInstruction,
     },
     legacy::{
