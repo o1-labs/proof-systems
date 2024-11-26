@@ -1,5 +1,7 @@
 //! Instantiation of the lookups for the VM project.
 
+use std::collections::BTreeMap;
+
 use self::LookupTableIDs::*;
 use crate::{interpreters::keccak::pad_blocks, ramlookup::RAMLookup};
 use ark_ff::{Field, PrimeField};
@@ -11,6 +13,7 @@ use kimchi::{
     o1_utils::{FieldHelpers, Two},
 };
 use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
+use crate::ramlookup::LookupMode;
 
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
@@ -274,5 +277,34 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
                 })
                 .collect(),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct PartitionedLookups<T, ID: LookupTableID> {
+    pub reads: BTreeMap<ID, Vec<Vec<T>>>,
+    pub writes: BTreeMap<ID, Vec<Vec<T>>>,
+}
+
+pub fn partition_lookups<T, ID: LookupTableID>(lookups: Vec<RAMLookup<T, ID>>) -> PartitionedLookups<T, ID> {
+    let mut reads = BTreeMap::new();
+    let mut writes = BTreeMap::new();
+
+    let insert_with_id = |lookup: RAMLookup<T, ID>, table: &mut BTreeMap<ID, Vec<Vec<T>>>,|
+        if let Some(old_vec) = table.get_mut(&lookup.table_id) {
+            old_vec.push(lookup.value)
+        } else {
+            let _ = table.insert(lookup.table_id,vec![lookup.value]);
+        };
+
+    for lookup in lookups {
+        match lookup.mode {
+            LookupMode::Read => insert_with_id(lookup, &mut reads),
+            LookupMode::Write => insert_with_id(lookup, &mut writes),
+        }
+    }
+
+    PartitionedLookups {
+        reads, writes,
     }
 }

@@ -1,8 +1,5 @@
-use std::collections::BTreeMap;
-
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use rand::thread_rng;
 
 use kimchi::{
@@ -25,11 +22,10 @@ use poly_commitment::{
     ipa::OpeningProof,
     OpenProof,
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use super::{
     column_env::{get_all_columns, get_column},
-    proof::{Lookup, Proof, WitnessColumns},
+    proof::{Proof, WitnessColumns},
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
 use kimchi_msm::{columns::Column, LookupTableID};

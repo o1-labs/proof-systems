@@ -2,7 +2,6 @@ use std::{array, collections::BTreeMap};
 
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use folding::eval_leaf;
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,

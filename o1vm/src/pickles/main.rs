@@ -1,6 +1,6 @@
 use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::expr::E;
+use kimchi_msm::{expr::E, logup::constraint_lookups};
 use log::debug;
 use mina_curves::pasta::VestaParameters;
 use mina_poseidon::{
@@ -17,7 +17,7 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    lookups::LookupTableIDs,
+    lookups::{partition_lookups, LookupTableIDs},
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
 };
@@ -95,8 +95,17 @@ pub fn main() -> ExitCode {
                 acc
             });
         constraints.extend(mips_con_env.get_selector_constraints());
+
+        // Do the lookup constraints
+        let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
+        let lookup_constraints = constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes);
+        constraints.extend(lookup_constraints);
+
+        // constraints.extend(mips_con_env.get_lookup_constraints());
         constraints
     };
+
+    
 
     let mut curr_proof_inputs: ProofInputs<Vesta, ID> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
