@@ -52,55 +52,6 @@ pub fn get_all_columns() -> Vec<Column> {
     cols
 }
 
-/* pub fn get_column_comm<'a, G: KimchiCurve, ID: LookupTableID>(
-    env: &'a WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID>,
-    col: &Column,
-) -> Option<&'a PolyComm<G>> {
-    match *col {
-        Column::Relation(i) => {
-            if i < SCRATCH_SIZE {
-                let res = &env.scratch[i];
-                Some(res)
-            } else if i == SCRATCH_SIZE {
-                let res = &env.instruction_counter;
-                Some(res)
-            } else if i == SCRATCH_SIZE + 1 {
-                let res = &env.error;
-                Some(res)
-            } else {
-                panic!("We should not have that many relation columns");
-            }
-        }
-        Column::DynamicSelector(i) => {
-            assert!(
-                i < N_MIPS_SEL_COLS,
-                "We do not have that many dynamic selector columns"
-            );
-            let res = &env.selector[i];
-            Some(res)
-        }
-        Column::LookupPartialSum((table_id, i)) => {
-            let table_id = ID::from_u32(table_id);
-            Some(&env.lookup[&table_id].f[i])
-        } /*
-        Column::LookupAggregation => {
-        Some(&lookup_env.lookup_aggregation_comm_d1)
-
-        }
-        Column::LookupMultiplicity((table_id, i)) => {
-        Some(&lookup_env.lookup_counters_comm_d1[&ID::from_u32(table_id)][i])
-        }
-        Column::LookupFixedTable(table_id) => {
-        Some(&lookup_env.fixed_lookup_tables_comms_d1[&ID::from_u32(table_id)])
-        }
-        }
-         */
-        _ => {
-            panic!("We should not have any other type of columns")
-        }
-    }
-} */
-
 pub fn get_column<'a, F: Clone, ID: LookupTableID>(
     env: &'a WitnessColumns<F, [F; N_MIPS_SEL_COLS], ID>,
     col: &Column,
