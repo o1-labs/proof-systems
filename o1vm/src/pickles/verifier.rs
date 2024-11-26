@@ -43,7 +43,9 @@ struct ColumnEval<'a, G: KimchiCurve, ID: LookupTableID> {
     zeta_omega_eval: &'a EvaluationColumns<G, ID>,
 }
 
-impl<G: KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G, ID> {
+impl<G: KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::ScalarField>
+    for ColumnEval<'_, G, ID>
+{
     type Column = Column;
     fn evaluate(
         &self,

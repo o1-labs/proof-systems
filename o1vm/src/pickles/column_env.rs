@@ -1,9 +1,6 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi_msm::{
-    columns::Column,
-    LookupTableID, logup::prover::QuotientPolynomialEnvironment,
-};
+use kimchi_msm::{columns::Column, logup::prover::QuotientPolynomialEnvironment, LookupTableID};
 
 use crate::{
     interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},

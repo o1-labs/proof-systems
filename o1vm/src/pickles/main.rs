@@ -98,14 +98,13 @@ pub fn main() -> ExitCode {
 
         // Do the lookup constraints
         let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
-        let lookup_constraints = constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes);
+        let lookup_constraints =
+            constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes);
         constraints.extend(lookup_constraints);
 
         // constraints.extend(mips_con_env.get_lookup_constraints());
         constraints
     };
-
-    
 
     let mut curr_proof_inputs: ProofInputs<Vesta, ID> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {

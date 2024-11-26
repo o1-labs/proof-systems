@@ -89,7 +89,7 @@ where
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
-        ID
+        ID,
     > = {
         let WitnessColumns {
             scratch,
@@ -119,18 +119,33 @@ where
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
-        
-        let eval_lookup = |lookup: Lookup<Vec<G::ScalarField>>| 
-        Lookup {
-            f: lookup.f.into_par_iter().map(eval_col).collect::<Vec<_>>().try_into().unwrap(),
-            m: lookup.m.into_par_iter().map(eval_col).collect::<Vec<_>>().try_into().unwrap(),
+
+        let eval_lookup = |lookup: Lookup<Vec<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .into_par_iter()
+                .map(eval_col)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .into_par_iter()
+                .map(eval_col)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
             t: eval_col(lookup.t),
         };
 
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
-        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, eval_lookup(l))).collect::<BTreeMap<ID, _>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, eval_lookup(l)))
+            .collect::<BTreeMap<ID, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
@@ -161,8 +176,7 @@ where
             .unwrap()
             .commitment
         };
-        let comm_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| 
-        Lookup {
+        let comm_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
             f: lookup
                 .f
                 .par_iter()
@@ -183,7 +197,11 @@ where
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
-        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, comm_lookup(l))).collect::<BTreeMap<_, _>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, comm_lookup(l)))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: comm(&instruction_counter),
@@ -212,8 +230,7 @@ where
         let eval_d8 =
             |poly: &DensePolynomial<G::ScalarField>| poly.evaluate_over_domain_by_ref(domain.d8);
 
-        let eval_d8_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>|
-        Lookup {
+        let eval_d8_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
             f: lookup
                 .f
                 .par_iter()
@@ -234,7 +251,10 @@ where
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
-        let lookup = lookup.into_par_iter().map(|(&id, l)| (id, eval_d8_lookup(l.clone()))).collect::<BTreeMap<_, _>>();
+        let lookup = lookup
+            .into_par_iter()
+            .map(|(&id, l)| (id, eval_d8_lookup(l.clone())))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
@@ -400,28 +420,31 @@ where
 
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
 
-        let eval_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>|
-            Lookup {
-                f: lookup
-                    .f
-                    .par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap(),
-                m: lookup
-                    .m
-                    .par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap(),
-                t: eval(&lookup.t),
-            };
+        let eval_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(eval)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(eval)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: eval(&lookup.t),
+        };
 
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
         let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
-        let lookup = lookup.clone().into_par_iter().map(|(id, l)| (id, eval_lookup(l))).collect::<BTreeMap<_, _>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, eval_lookup(l)))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             instruction_counter: eval(&instruction_counter),
