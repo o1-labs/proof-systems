@@ -101,8 +101,6 @@ pub fn main() -> ExitCode {
         let lookup_constraints =
             constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes);
         constraints.extend(lookup_constraints);
-
-        // constraints.extend(mips_con_env.get_lookup_constraints());
         constraints
     };
 
