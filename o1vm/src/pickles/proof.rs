@@ -27,7 +27,7 @@ pub struct WitnessColumns<G: Clone, S, ID: LookupTableID> {
 
 pub struct ProofInputs<G: KimchiCurve, ID: LookupTableID> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>, ID>,
-    pub logups: BTreeMap<ID, LogupWitness<G::ScalarField, ID>>,
+    pub lookups: BTreeMap<ID, LogupWitness<G::ScalarField, ID>>,
 }
 
 impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
@@ -42,7 +42,7 @@ impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
                 lookup: BTreeMap::new(),
                 lookup_agg: Vec::with_capacity(domain_size),
             },
-            logups: BTreeMap::new(),
+            lookups: BTreeMap::new(),
         }
     }
 }
@@ -55,8 +55,8 @@ pub struct Proof<G: KimchiCurve, ID: LookupTableID> {
         WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS], ID>,
     pub quotient_commitment: PolyComm<G>,
     pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
-    pub logup_commitments: Option<LookupProof<PolyComm<G>, ID>>,
-    pub logup_evaluations: Option<LookupProof<PointEvaluations<G::ScalarField>, ID>>,
+    pub lookup_commitments: Option<LookupProof<PolyComm<G>, ID>>,
+    pub lookup_evaluations: Option<LookupProof<PointEvaluations<G::ScalarField>, ID>>,
     /// IPA opening proof
     pub opening_proof: OpeningProof<G>,
 }

@@ -84,7 +84,7 @@ where
     debug!("Prover: interpolating all columns, including the selectors");
     let ProofInputs {
         evaluations,
-        logups,
+        lookups,
     } = inputs;
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
@@ -297,9 +297,9 @@ where
         absorb_commitment(&mut fq_sponge, comm)
     }
 
-    let lookup_env = if !logups.is_empty() {
+    let lookup_env = if !lookups.is_empty() {
         Some(Env::create::<OpeningProof<G>, EFqSponge>(
-            logups,
+            lookups,
             domain,
             &mut fq_sponge,
             srs,
@@ -310,7 +310,7 @@ where
 
     // Don't need to be absorbed. Already absorbed in logup::prover::Env::create
     // FIXME: remove clone
-    let logup_commitments = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+    let lookup_commitments = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
@@ -504,7 +504,7 @@ where
             .collect(),
     };
 
-    let logup_evaluations = lookup_env.as_ref().map(|lookup_env| LookupProof {
+    let lookup_evaluations = lookup_env.as_ref().map(|lookup_env| LookupProof {
         m: lookup_env
             .lookup_counters_poly_d1
             .iter()
@@ -597,7 +597,8 @@ where
     }
 
     if lookup_env.is_some() {
-        for PointEvaluations { zeta, zeta_omega } in logup_evaluations.as_ref().unwrap().into_iter()
+        for PointEvaluations { zeta, zeta_omega } in
+            lookup_evaluations.as_ref().unwrap().into_iter()
         {
             fr_sponge.absorb(zeta);
             fr_sponge.absorb(zeta_omega);
@@ -714,8 +715,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment: quotient_commitment.commitment,
         quotient_evaluations,
-        logup_commitments,
-        logup_evaluations,
+        lookup_commitments,
+        lookup_evaluations,
         opening_proof,
     })
 }
