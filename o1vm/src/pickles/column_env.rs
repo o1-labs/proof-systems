@@ -94,7 +94,10 @@ pub fn get_column<'a, F: Clone, ID: LookupTableID>(
             Some(&env.lookup[&table_id].t)
         }
         _ => {
-            panic!("We should not have any other type of columns. The column {:?} was given", col)
+            panic!(
+                "We should not have any other type of columns. The column {:?} was given",
+                col
+            )
         }
     }
 }
