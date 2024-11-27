@@ -335,7 +335,9 @@ where
             beta: G::ScalarField::zero(),
             gamma: G::ScalarField::zero(),
             // TODO: No lookup for the moment
-            joint_combiner: G::ScalarField::zero(),
+            joint_combiner: lookup_env
+                .map(|le| le.joint_combiner)
+                .unwrap_or(G::ScalarField::zero()),
         };
         ColumnEnvironment {
             constants: Constants {
