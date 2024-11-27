@@ -3,8 +3,10 @@
 use std::collections::BTreeMap;
 
 use self::LookupTableIDs::*;
-use crate::ramlookup::LookupMode;
-use crate::{interpreters::keccak::pad_blocks, ramlookup::RAMLookup};
+use crate::{
+    interpreters::keccak::pad_blocks,
+    ramlookup::{LookupMode, RAMLookup},
+};
 use ark_ff::{Field, PrimeField};
 use kimchi::{
     circuits::polynomials::keccak::{
