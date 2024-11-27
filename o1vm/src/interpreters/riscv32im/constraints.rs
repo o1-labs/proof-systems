@@ -4,7 +4,7 @@ use super::{
     INSTRUCTION_SET_SIZE,
 };
 use crate::{
-    interpreters::riscv32i::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
+    interpreters::riscv32im::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
     lookups::Lookup,
 };
 use ark_ff::{Field, One};
@@ -325,6 +325,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (self.variable(position_hi), self.variable(position_lo))
+    }
+
+    unsafe fn mul_hi_signed(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn mul_lo_signed(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
     }
 
     unsafe fn mul_hi_lo(

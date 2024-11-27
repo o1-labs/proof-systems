@@ -4,7 +4,7 @@ use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use kimchi_msm::{logup::LookupProof, LogupWitness, LookupTableID};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
-use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
+use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 #[derive(Clone)]
 pub struct Lookup<F> {
@@ -15,13 +15,14 @@ pub struct Lookup<F> {
 
 #[derive(Clone)]
 // TODO : Rename F and S
-pub struct WitnessColumns<F: Clone, S, ID: LookupTableID> {
-    pub scratch: [F; SCRATCH_SIZE],
-    pub instruction_counter: F,
-    pub error: F,
+pub struct WitnessColumns<G: Clone, S, ID: LookupTableID> {
+    pub scratch: [G; SCRATCH_SIZE],
+    pub scratch_inverse: [G; SCRATCH_SIZE_INVERSE],
+    pub instruction_counter: G,
+    pub error: G,
     pub selector: S,
-    pub lookup: BTreeMap<ID, Lookup<F>>,
-    pub lookup_agg: F,
+    pub lookup: BTreeMap<ID, Lookup<G>>,
+    pub lookup_agg: G,
 }
 
 pub struct ProofInputs<G: KimchiCurve, ID: LookupTableID> {
@@ -34,6 +35,7 @@ impl<G: KimchiCurve, ID: LookupTableID> ProofInputs<G, ID> {
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+                scratch_inverse: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),

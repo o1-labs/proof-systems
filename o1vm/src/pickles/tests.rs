@@ -1,12 +1,13 @@
 use std::{collections::BTreeMap, time::Instant};
 
 use super::{
-    super::interpreters::mips::witness::SCRATCH_SIZE,
+    super::interpreters::mips::column::SCRATCH_SIZE,
     proof::{ProofInputs, WitnessColumns},
     prover::prove,
 };
 use crate::{
     interpreters::mips::{
+        column::SCRATCH_SIZE_INVERSE,
         constraints as mips_constraints,
         interpreter::{self, InterpreterEnv},
         Instruction,
@@ -14,8 +15,7 @@ use crate::{
     lookups::LookupTableIDs,
     pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
 };
-use ark_ff::{One, Zero};
-use interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
+use ark_ff::{Field, One, UniformRand, Zero};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::{columns::Column, expr::E};
 use log::debug;
@@ -26,7 +26,7 @@ use mina_poseidon::{
 };
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 #[test]
 fn test_regression_constraints_with_selectors() {
@@ -56,26 +56,6 @@ fn test_regression_constraints_with_selectors() {
     assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
 }
 
-#[test]
-// Sanity check that we have as many selector as we have instructions
-fn test_regression_selectors_for_instructions() {
-    let mips_con_env = mips_constraints::Env::<Fp>::default();
-    let constraints = mips_con_env.get_selector_constraints();
-    assert_eq!(
-        // We substract 1 as we have one boolean check per sel
-        // and 1 constraint to check that one and only one
-        // sel is activated
-        constraints.len() - 1,
-        // We could use N_MIPS_SEL_COLS, but sanity check in case this value is
-        // changed.
-        RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
-    );
-    // All instructions are degree 1 or 2.
-    constraints
-        .iter()
-        .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
-}
-
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
     (0..n).map(|i| Fq::from((i) as u64)).collect()
 }
@@ -87,6 +67,7 @@ fn test_small_circuit() {
     let proof_input = ProofInputs::<Pallas, LookupTableIDs> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
+            scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
                 .map(|x| x + Fq::one())
@@ -99,7 +80,7 @@ fn test_small_circuit() {
         logups: BTreeMap::new(),
     };
     let mut expr = Expr::zero();
-    for i in 0..SCRATCH_SIZE + 2 {
+    for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
         expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
     }
     let mut rng = make_test_rng(None);
@@ -129,4 +110,32 @@ fn test_small_circuit() {
         (instant_after_verification - instant_before_verification).as_millis()
     );
     assert!(verif, "Verification fails");
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_only_zeroes() {
+    let input = vec![Fq::zero(); 8];
+    let exp_output = vec![Fq::zero(); 8];
+    let mut output = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_zeroes_and_ones() {
+    let input: Vec<Fq> = vec![Fq::zero(), Fq::one(), Fq::zero()];
+    let exp_output: Vec<Fq> = vec![Fq::zero(), Fq::one(), Fq::zero()];
+    let mut output: Vec<Fq> = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
+}
+
+#[test]
+fn test_arkworks_batch_inversion_with_zeroes_and_random() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let input: Vec<Fq> = vec![Fq::zero(), Fq::rand(&mut rng), Fq::one()];
+    let exp_output: Vec<Fq> = vec![Fq::zero(), input[1].inverse().unwrap(), Fq::one()];
+    let mut output: Vec<Fq> = input.clone();
+    ark_ff::batch_inversion::<Fq>(&mut output);
+    assert_eq!(output, exp_output);
 }

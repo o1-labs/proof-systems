@@ -93,6 +93,7 @@ where
     > = {
         let WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -140,6 +141,13 @@ where
 
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        let scratch_inverse = scratch_inverse
+            .into_par_iter()
+            .map(|mut evals| {
+                ark_ff::batch_inversion(&mut evals);
+                eval_col(evals)
+            })
+            .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
         let lookup = lookup
             .clone()
@@ -148,6 +156,7 @@ where
             .collect::<BTreeMap<ID, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
@@ -160,6 +169,7 @@ where
     let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID> = {
         let WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -196,6 +206,7 @@ where
 
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
+        let scratch_inverse = scratch_inverse.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
         let lookup = lookup
             .clone()
@@ -204,8 +215,9 @@ where
             .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
-            instruction_counter: comm(&instruction_counter),
-            error: comm(&error),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
+            instruction_counter: comm(instruction_counter),
+            error: comm(error),
             selector: selector.try_into().unwrap(),
             lookup,
             lookup_agg: comm(&lookup_agg),
@@ -220,6 +232,7 @@ where
     let evaluations_d8 = {
         let WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -250,6 +263,10 @@ where
 
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
+        let scratch_inverse = scratch_inverse
+            .into_par_iter()
+            .map(eval_d8)
+            .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         let lookup = lookup
             .into_par_iter()
@@ -257,6 +274,7 @@ where
             .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
             selector: selector.try_into().unwrap(),
@@ -268,6 +286,9 @@ where
     // Absorbing the commitments - Fiat Shamir
     // We do not parallelize as we need something deterministic.
     for comm in commitments.scratch.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
+    for comm in commitments.scratch_inverse.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
@@ -411,6 +432,7 @@ where
     let evals = |point| {
         let WitnessColumns {
             scratch,
+            scratch_inverse,
             instruction_counter,
             error,
             selector,
@@ -439,6 +461,7 @@ where
         };
 
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
+        let scratch_inverse = scratch_inverse.par_iter().map(eval).collect::<Vec<_>>();
         let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
         let lookup = lookup
             .clone()
@@ -447,8 +470,9 @@ where
             .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
-            instruction_counter: eval(&instruction_counter),
-            error: eval(&error),
+            scratch_inverse: scratch_inverse.try_into().unwrap(),
+            instruction_counter: eval(instruction_counter),
+            error: eval(error),
             selector: selector.try_into().unwrap(),
             lookup,
             lookup_agg: eval(&lookup_agg),
@@ -543,6 +567,14 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .scratch_inverse
+        .iter()
+        .zip(zeta_omega_evaluations.scratch_inverse.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
     fr_sponge.absorb(&zeta_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_evaluations.error);
@@ -576,6 +608,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
+    polynomials.extend(polys.scratch_inverse);
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);

@@ -116,6 +116,13 @@ pub fn main() -> ExitCode {
         {
             scratch_chunk.push(*scratch);
         }
+        for (scratch, scratch_chunk) in mips_wit_env
+            .scratch_state_inverse
+            .iter()
+            .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
+        {
+            scratch_chunk.push(*scratch);
+        }
         curr_proof_inputs
             .evaluations
             .instruction_counter
