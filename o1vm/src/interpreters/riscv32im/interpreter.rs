@@ -2069,7 +2069,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
     /* compute the next instruction ptr and add one, as well record raml lookup */
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
