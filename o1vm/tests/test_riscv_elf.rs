@@ -45,7 +45,6 @@ fn test_fibonacci() {
     assert_eq!(witness.registers.current_instruction_pointer, 69936);
     assert_eq!(witness.registers.next_instruction_pointer, 69940);
 
-    let mut recursions = 0;
     while !witness.halt {
         witness.step();
         // 0x11128 is the ret address of the call to fib

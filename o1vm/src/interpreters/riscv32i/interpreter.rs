@@ -1754,10 +1754,10 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
 
     let imm5_11 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 31, 25, pos) }
+        unsafe { env.bitmask(&instruction, 32, 25, pos) }
         // bytes 25-31
     };
-    env.range_check8(&imm5_11, 6);
+    env.range_check8(&imm5_11, 7);
 
     // check correctness of decomposition of S type function
     env.add_constraint(
@@ -1894,6 +1894,12 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     /* verify opcode is 7 bits */
     env.range_check8(&opcode, 7);
 
+    let funct3 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 15, 12, pos) }
+    };
+    env.range_check8(&funct3, 3);
+
     let rs1 = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 20, 15, pos) }
@@ -1906,31 +1912,82 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     };
     env.range_check8(&rs2, 5);
 
-    // check correctness of decomposition of SB type function
-    /*
-    env.add_constraint(
-        instruction
-        - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-6
-        - (imm11.clone() * Env::constant(1 << 7))     // imm11 at bits 7
-        - (imm0_4.clone() * Env::constant(1 << 8))    // imm0_4 at bits 8-11
-        - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
-        - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
-        - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
-        - (imm5_10.clone() * Env::constant(1 << 25))  // imm5_10 at bits 25-30
-        - (imm12.clone() * Env::constant(1 << 31)), // imm12 at bits 31
-    );
-    */
+    let imm0_12 = {
+        let imm11 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 8, 7, pos) }
+        };
 
-    let insn: u32 = unsafe { env.var_to_constant(&instruction) };
+        env.range_check8(&imm11, 1);
+
+        let imm1_4 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 12, 8, pos) }
+        };
+        env.range_check8(&imm1_4, 4);
+
+        let imm5_10 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 31, 25, pos) }
+        };
+        env.range_check8(&imm5_10, 6); 
+
+        let imm12 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 32, 31, pos) }
+        };
+        env.range_check8(&imm12, 1);
+
+    // print out the instruction before the decoding
+    println!("instruction is: {:?}", instruction);
+    // print out all of the immediate segments on different lines
+    println!("imm11: {:?}", imm11.clone());
+    println!("imm1_4: {:?}", imm1_4.clone());
+    println!("imm5_10: {:?}", imm5_10.clone());
+    println!("imm12: {:?}", imm12.clone().clone());
+
+    // print out all of the shifted segments
+    println!("imm12: {:?}", imm12.clone() * Env::constant(1 << 11 ));
+    println!("imm11: {:?}", imm11.clone() * Env::constant(1 << 10 ));
+    println!("imm5_10: {:?}", imm5_10.clone() * Env::constant(1 << 5));
+    println!("imm1_4: {:?}", imm1_4.clone());
+
+
+        // check correctness of decomposition of SB type function
+        env.add_constraint(
+            instruction.clone()
+            - (opcode.clone() * Env::constant(1 << 0))    // opcode at bits 0-7
+            - (imm11.clone() * Env::constant(1 << 7))     // imm11 at bits 8
+            - (imm1_4.clone() * Env::constant(1 << 8))    // imm1_4 at bits 8-11
+            - (funct3.clone() * Env::constant(1 << 12))   // funct3 at bits 12-14
+            - (rs1.clone() * Env::constant(1 << 15))      // rs1 at bits 15-19
+            - (rs2.clone() * Env::constant(1 << 20))      // rs2 at bits 20-24
+            - (imm5_10.clone() * Env::constant(1 << 25))  // imm5_10 at bits 25-30
+            - (imm12.clone() * Env::constant(1 << 31)), // imm12 at bits 31
+        );
+
+        let imm0_12 = ( imm12 * Env::constant(1 << 12 ))
+        + (imm11 * Env::constant(1 << 11 ))
+        + (imm5_10 * Env::constant(1 << 5))
+        + (imm1_4  * Env::constant(1 << 1));
+
+
+    imm0_12 
+    };
+
+    let imm0_12 = env.sign_extend(&imm0_12, 13);
+
+
+    let insn: u32 = unsafe { env.var_to_constant(&instruction.clone()) };
     let top_bit = (insn & 0x80000000) >> 31;
     let rd = (insn & 0x00000f80) >> 7;
     let func7: u32 = (insn & 0xfe000000) >> 25;
 
-    let imm0_12 = (top_bit * 0xfffff000) | ((rd & 1) << 11) | ((func7 & 0x3f) << 5) | (rd & 0x1e);
+    let imm0_12_test = (top_bit * 0xfffff000) | ((rd & 1) << 11) | ((func7 & 0x3f) << 5) | (rd & 0x1e);
 
-    let imm0_12 = Env::constant(imm0_12);
-
-    // debug!("SBTYPE offset is: imm0_12: {:?}", imm0_12);
+    let decoded = unsafe { env.var_to_constant(&imm0_12) };
+    println!("SBTYPE NEW offset is: imm0_12: {:b}", decoded);
+    println!("SBTYPE offset is: imm0_12_test: {:b}", imm0_12_test);
 
     match instr {
         SBInstruction::BranchEq => {
@@ -2158,7 +2215,7 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
                 let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
                 env.sign_extend(&shifted_imm, 32)
             };
-            let local_pc = env.get_instruction_pointer();
+            let local_pc = instruction_pointer.clone();
             let pos = env.alloc_scratch();
             let overflow_pos = env.alloc_scratch();
             let (local_rd, _) =
