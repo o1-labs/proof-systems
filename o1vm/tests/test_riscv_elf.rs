@@ -52,7 +52,6 @@ fn test_no_action() {
 
 // FIXME: stop ignoring when all the instructions are implemented.
 #[test]
-#[ignore]
 fn test_fibonacci_7() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
