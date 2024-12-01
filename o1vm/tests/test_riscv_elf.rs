@@ -50,7 +50,6 @@ fn test_no_action() {
     assert_eq!(witness.registers.general_purpose[17], 42);
 }
 
-// FIXME: stop ignoring when all the instructions are implemented.
 #[test]
 fn test_fibonacci_7() {
     let curr_dir = std::env::current_dir().unwrap();
