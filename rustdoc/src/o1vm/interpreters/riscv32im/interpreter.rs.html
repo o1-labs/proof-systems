@@ -2244,6 +2244,23 @@
 <a href="#2244" id="2244">2244</a>
 <a href="#2245" id="2245">2245</a>
 <a href="#2246" id="2246">2246</a>
+<a href="#2247" id="2247">2247</a>
+<a href="#2248" id="2248">2248</a>
+<a href="#2249" id="2249">2249</a>
+<a href="#2250" id="2250">2250</a>
+<a href="#2251" id="2251">2251</a>
+<a href="#2252" id="2252">2252</a>
+<a href="#2253" id="2253">2253</a>
+<a href="#2254" id="2254">2254</a>
+<a href="#2255" id="2255">2255</a>
+<a href="#2256" id="2256">2256</a>
+<a href="#2257" id="2257">2257</a>
+<a href="#2258" id="2258">2258</a>
+<a href="#2259" id="2259">2259</a>
+<a href="#2260" id="2260">2260</a>
+<a href="#2261" id="2261">2261</a>
+<a href="#2262" id="2262">2262</a>
+<a href="#2263" id="2263">2263</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4020,7 +4037,24 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::LoadHalfUnsigned =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadHalfUnsigned&quot;</span>)
+            <span class="comment">// lhu: x[rd] = M[x[rs1] + sext(offset)][15:0]
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
+            <span class="kw">let </span>address = {
+                <span class="kw">let </span>address_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(address, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            <span class="comment">// Add a range check here for address
+            </span><span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>address);
+            <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">1</span>)));
+            <span class="kw">let </span>value = (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>)) + v1;
+            env.write_register(<span class="kw-2">&amp;</span>rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::ShiftLeftLogicalImmediate =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftLeftLogicalImmediate&quot;</span>)
