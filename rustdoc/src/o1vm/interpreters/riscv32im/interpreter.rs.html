@@ -2175,6 +2175,22 @@
 <a href="#2175" id="2175">2175</a>
 <a href="#2176" id="2176">2176</a>
 <a href="#2177" id="2177">2177</a>
+<a href="#2178" id="2178">2178</a>
+<a href="#2179" id="2179">2179</a>
+<a href="#2180" id="2180">2180</a>
+<a href="#2181" id="2181">2181</a>
+<a href="#2182" id="2182">2182</a>
+<a href="#2183" id="2183">2183</a>
+<a href="#2184" id="2184">2184</a>
+<a href="#2185" id="2185">2185</a>
+<a href="#2186" id="2186">2186</a>
+<a href="#2187" id="2187">2187</a>
+<a href="#2188" id="2188">2188</a>
+<a href="#2189" id="2189">2189</a>
+<a href="#2190" id="2190">2190</a>
+<a href="#2191" id="2191">2191</a>
+<a href="#2192" id="2192">2192</a>
+<a href="#2193" id="2193">2193</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3840,7 +3856,23 @@
 
     <span class="kw">match </span>instr {
         IInstruction::LoadByte =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadByte&quot;</span>)
+            <span class="comment">// lb:  x[rd] = sext(M[x[rs1] + sext(offset)][7:0])
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
+            <span class="kw">let </span>address = {
+                <span class="kw">let </span>address_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(address, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            <span class="comment">// Add a range check here for address
+            </span><span class="kw">let </span>value = env.read_memory(<span class="kw-2">&amp;</span>address);
+            <span class="kw">let </span>value = env.sign_extend(<span class="kw-2">&amp;</span>value, <span class="number">8</span>);
+            env.write_register(<span class="kw-2">&amp;</span>rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::LoadHalf =&gt; {
             <span class="comment">// lh:  x[rd] = sext(M[x[rs1] + sext(offset)][15:0])
