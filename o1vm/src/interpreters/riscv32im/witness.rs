@@ -515,6 +515,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn mod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x % y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
     unsafe fn divmod_signed(
         &mut self,
         x: &Self::Variable,
