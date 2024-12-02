@@ -2206,6 +2206,20 @@
 <a href="#2206" id="2206">2206</a>
 <a href="#2207" id="2207">2207</a>
 <a href="#2208" id="2208">2208</a>
+<a href="#2209" id="2209">2209</a>
+<a href="#2210" id="2210">2210</a>
+<a href="#2211" id="2211">2211</a>
+<a href="#2212" id="2212">2212</a>
+<a href="#2213" id="2213">2213</a>
+<a href="#2214" id="2214">2214</a>
+<a href="#2215" id="2215">2215</a>
+<a href="#2216" id="2216">2216</a>
+<a href="#2217" id="2217">2217</a>
+<a href="#2218" id="2218">2218</a>
+<a href="#2219" id="2219">2219</a>
+<a href="#2220" id="2220">2220</a>
+<a href="#2221" id="2221">2221</a>
+<a href="#2222" id="2222">2222</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3452,6 +3466,20 @@
         position_hi: <span class="self">Self</span>::Position,
         position_lo: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Returns `((x * y) &gt;&gt; 32`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    </span><span class="kw">unsafe fn </span>mul_hi(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Returns `((x * y) &gt;&gt; 32, (x * y) &amp; ((1 &lt;&lt; 32) - 1))`, storing the results in `position_hi`
     /// and `position_lo` respectively.
