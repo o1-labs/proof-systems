@@ -354,6 +354,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    unsafe fn mul_lo(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
     unsafe fn mul_hi_lo(
         &mut self,
         _x: &Self::Variable,
