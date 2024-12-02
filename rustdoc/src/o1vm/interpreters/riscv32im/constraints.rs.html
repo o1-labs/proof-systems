@@ -464,10 +464,6 @@
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
 <a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{Column, E},
     interpreter::{Instruction, InterpreterEnv},
@@ -832,7 +828,7 @@
         <span class="self">self</span>.variable(position)
     }
 
-    <span class="kw">unsafe fn </span>mul_lo(
+    <span class="kw">unsafe fn </span>div(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
@@ -841,17 +837,13 @@
         <span class="self">self</span>.variable(position)
     }
 
-    <span class="kw">unsafe fn </span>divmod_signed(
+    <span class="kw">unsafe fn </span>mul_lo(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position_quotient: <span class="self">Self</span>::Position,
-        position_remainder: <span class="self">Self</span>::Position,
-    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        (
-            <span class="self">self</span>.variable(position_quotient),
-            <span class="self">self</span>.variable(position_remainder),
-        )
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(position)
     }
 
     <span class="kw">unsafe fn </span>divmod(

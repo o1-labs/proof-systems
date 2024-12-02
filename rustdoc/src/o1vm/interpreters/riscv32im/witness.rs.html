@@ -888,10 +888,6 @@
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO: do we want to be more restrictive and refer to the number of accesses
 //       to the SAME register/memory addrss?
 </span><span class="kw">use super</span>::{
@@ -1423,22 +1419,18 @@
         res
     }
 
-    <span class="kw">unsafe fn </span>divmod_signed(
+    <span class="kw">unsafe fn </span>div(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position_quotient: <span class="self">Self</span>::Position,
-        position_remainder: <span class="self">Self</span>::Position,
-    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
-        <span class="kw">let </span>q = ((x <span class="kw">as </span>i32) / (y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
-        <span class="kw">let </span>r = ((x <span class="kw">as </span>i32) % (y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
-        <span class="kw">let </span>q = q <span class="kw">as </span>u64;
-        <span class="kw">let </span>r = r <span class="kw">as </span>u64;
-        <span class="self">self</span>.write_column(position_quotient, q);
-        <span class="self">self</span>.write_column(position_remainder, r);
-        (q, r)
+        <span class="kw">let </span>res = x / y;
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
+        res
     }
 
     <span class="kw">unsafe fn </span>divmod(
