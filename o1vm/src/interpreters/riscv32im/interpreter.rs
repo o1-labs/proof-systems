@@ -1663,7 +1663,23 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     match instr {
         IInstruction::LoadByte => {
-            unimplemented!("LoadByte")
+            // lb:  x[rd] = sext(M[x[rs1] + sext(offset)][7:0])
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // Add a range check here for address
+            let value = env.read_memory(&address);
+            let value = env.sign_extend(&value, 8);
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::LoadHalf => {
             // lh:  x[rd] = sext(M[x[rs1] + sext(offset)][15:0])
