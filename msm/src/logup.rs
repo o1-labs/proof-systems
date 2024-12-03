@@ -437,6 +437,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
             })
             .collect();
 
+        // isn't it supposed to be not table_id.runtime_create_column()
         if table_id.is_fixed() || table_id.runtime_create_column() {
             let table_lookup = Logup {
                 table_id: *table_id,
