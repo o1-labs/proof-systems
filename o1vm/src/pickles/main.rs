@@ -85,22 +85,23 @@ pub fn main() -> ExitCode {
             .fold(vec![], |mut acc, instr| {
                 interpreter::interpret_instruction(&mut mips_con_env, instr);
                 let selector = mips_con_env.get_selector();
+                let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
+                let lookup_constraints =
+                    constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes)
+                        .into_iter();
                 let constraints_with_selector: Vec<E<Fp>> = mips_con_env
                     .get_constraints()
                     .into_iter()
-                    .map(|c| selector.clone() * c)
+                    .zip(lookup_constraints)
+                    .map(|(cst, lookup_cst)| {
+                        selector.clone() * cst * lookup_cst
+                    })
                     .collect();
                 acc.extend(constraints_with_selector);
                 mips_con_env.reset();
                 acc
             });
         constraints.extend(mips_con_env.get_selector_constraints());
-
-        // Do the lookup constraints
-        let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
-        let lookup_constraints =
-            constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes);
-        constraints.extend(lookup_constraints);
         constraints
     };
 
