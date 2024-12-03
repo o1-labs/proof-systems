@@ -745,7 +745,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
         // Compute delta, the commitment
-        // delta = G0^d * U_base^{b0*d} * H^r_delta   (as a group element, in multiplicative notation)
+        // delta = [d] G0 + [b0*d] U_base + [r_delta] H^r   (as a group element, in additive notation)
         let delta = ((g0.into_group() + (u_base.mul(b0))).into_affine().mul(d)
             + self.h.mul(r_delta))
         .into_affine();
