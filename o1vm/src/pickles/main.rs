@@ -93,9 +93,7 @@ pub fn main() -> ExitCode {
                     .get_constraints()
                     .into_iter()
                     .zip(lookup_constraints)
-                    .map(|(cst, lookup_cst)| {
-                        selector.clone() * cst * lookup_cst
-                    })
+                    .map(|(cst, lookup_cst)| selector.clone() * cst * lookup_cst)
                     .collect();
                 acc.extend(constraints_with_selector);
                 mips_con_env.reset();

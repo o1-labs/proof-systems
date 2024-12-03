@@ -103,7 +103,7 @@ impl LookupTableID for LookupTableIDs {
 
     fn runtime_create_column(&self) -> bool {
         if self.is_fixed() {
-            panic!("No runtime tables specified!!!!!!!!!!!!")
+            panic!("No runtime tables specified")
         } else {
             false
         }
