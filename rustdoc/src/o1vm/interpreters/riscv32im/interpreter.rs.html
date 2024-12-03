@@ -2271,6 +2271,30 @@
 <a href="#2271" id="2271">2271</a>
 <a href="#2272" id="2272">2272</a>
 <a href="#2273" id="2273">2273</a>
+<a href="#2274" id="2274">2274</a>
+<a href="#2275" id="2275">2275</a>
+<a href="#2276" id="2276">2276</a>
+<a href="#2277" id="2277">2277</a>
+<a href="#2278" id="2278">2278</a>
+<a href="#2279" id="2279">2279</a>
+<a href="#2280" id="2280">2280</a>
+<a href="#2281" id="2281">2281</a>
+<a href="#2282" id="2282">2282</a>
+<a href="#2283" id="2283">2283</a>
+<a href="#2284" id="2284">2284</a>
+<a href="#2285" id="2285">2285</a>
+<a href="#2286" id="2286">2286</a>
+<a href="#2287" id="2287">2287</a>
+<a href="#2288" id="2288">2288</a>
+<a href="#2289" id="2289">2289</a>
+<a href="#2290" id="2290">2290</a>
+<a href="#2291" id="2291">2291</a>
+<a href="#2292" id="2292">2292</a>
+<a href="#2293" id="2293">2293</a>
+<a href="#2294" id="2294">2294</a>
+<a href="#2295" id="2295">2295</a>
+<a href="#2296" id="2296">2296</a>
+<a href="#2297" id="2297">2297</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3558,6 +3582,20 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Returns `x / y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    </span><span class="kw">unsafe fn </span>div(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="doccomment">/// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
     /// `position_remainder` respectively.
     ///
@@ -4537,7 +4575,17 @@
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Divu&quot;</span>)
         }
         MInstruction::Rem =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;Rem&quot;</span>)
+            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="comment">// FIXME: constrain
+            </span><span class="kw">let </span>res = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.mod_signed(<span class="kw-2">&amp;</span>rs1, <span class="kw-2">&amp;</span>rs2, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Remu =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Remu&quot;</span>)

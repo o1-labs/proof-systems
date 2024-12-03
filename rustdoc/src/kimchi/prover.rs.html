@@ -1835,7 +1835,7 @@
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
@@ -3027,8 +3027,12 @@
         <span class="comment">//~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
-        </span><span class="kw">let </span>non_hiding = |d1_size: usize| PolyComm {
-            chunks: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
+        </span><span class="kw">let </span>non_hiding = |n_chunks: usize| PolyComm {
+            chunks: <span class="macro">vec!</span>[G::ScalarField::zero(); n_chunks],
+        };
+
+        <span class="kw">let </span>fixed_hiding = |n_chunks: usize| PolyComm {
+            chunks: <span class="macro">vec!</span>[G::ScalarField::one(); n_chunks],
         };
 
         <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -3036,12 +3040,8 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (coefficients_form(p), non_hiding(<span class="kw-2">*</span>d1_size)))
+            .map(|(p, n_chunks)| (coefficients_form(p), non_hiding(<span class="kw-2">*</span>n_chunks)))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-
-        <span class="kw">let </span>fixed_hiding = |d1_size: usize| PolyComm {
-            chunks: <span class="macro">vec!</span>[G::ScalarField::one(); d1_size],
-        };
 
         <span class="comment">//~ 1. Then, include:
         //~~ * the negated public polynomial

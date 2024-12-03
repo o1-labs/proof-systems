@@ -1209,7 +1209,7 @@
     <span class="comment">// final combined evaluation result
     </span><span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
     <span class="comment">// polyscale^i
-    </span><span class="kw">let </span><span class="kw-2">mut </span>xi_i = F::one();
+    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = F::one();
 
     <span class="kw">for </span>evals_tr <span class="kw">in </span>polys.iter().filter(|evals_tr| !evals_tr[<span class="number">0</span>].is_empty()) {
         <span class="comment">// Transpose the evaluations.
@@ -1221,7 +1221,7 @@
 
         <span class="comment">// Iterating over the polynomial segments.
         // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
-        // Given that xi_i = polyscale^i0 at this point, after this loop we have:
+        // Given that polyscale_i = polyscale^i0 at this point, after this loop we have:
         //
         //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
         //           i                    j
@@ -1229,8 +1229,8 @@
         </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
             <span class="comment">// p_i(evalscale)
             </span><span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
-            res += <span class="kw-2">&amp;</span>(xi_i * term);
-            xi_i <span class="kw-2">*</span>= polyscale;
+            res += <span class="kw-2">&amp;</span>(polyscale_i * term);
+            polyscale_i <span class="kw-2">*</span>= polyscale;
         }
     }
     res
@@ -1305,16 +1305,16 @@
     rand_base: G::ScalarField,
 ) {
     <span class="comment">// will contain the power of polyscale
-    </span><span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
+    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = G::ScalarField::one();
 
     <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         <span class="comment">// iterating over the polynomial segments
         </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.chunks {
-            scalars.push(rand_base * xi_i);
+            scalars.push(rand_base * polyscale_i);
             points.push(<span class="kw-2">*</span>comm_ch);
 
             <span class="comment">// compute next power of polyscale
-            </span>xi_i <span class="kw-2">*</span>= polyscale;
+            </span>polyscale_i <span class="kw-2">*</span>= polyscale;
         }
     }
 }

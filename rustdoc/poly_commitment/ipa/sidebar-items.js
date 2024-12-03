@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DensePolynomialOrEvaluations"],"fn":["combine_polys","endos"],"mod":["caml"],"struct":["Challenges","OpeningProof","SRS"]};
+window.SIDEBAR_ITEMS = {"fn":["endos"],"mod":["caml"],"struct":["Challenges","OpeningProof","SRS"]};

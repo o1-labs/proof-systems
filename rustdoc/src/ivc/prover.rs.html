@@ -531,8 +531,8 @@
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
-    ipa::DensePolynomialOrEvaluations,
     kzg::{KZGProof, PairingSRS},
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
 <span class="kw">use </span>rand::{CryptoRng, RngCore};
@@ -937,11 +937,11 @@
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
     <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-    <span class="kw">let </span>non_hiding = |d1_size| PolyComm {
-        chunks: <span class="macro">vec!</span>[Fp::zero(); d1_size],
+    <span class="kw">let </span>non_hiding = |n_chunks| PolyComm {
+        chunks: <span class="macro">vec!</span>[Fp::zero(); n_chunks],
     };
-    <span class="kw">let </span>hiding = |d1_size| PolyComm {
-        chunks: <span class="macro">vec!</span>[Fp::one(); d1_size],
+    <span class="kw">let </span>hiding = |n_chunks| PolyComm {
+        chunks: <span class="macro">vec!</span>[Fp::one(); n_chunks],
     };
 
     <span class="comment">// Gathering all polynomials_to_open to use in the opening proof
