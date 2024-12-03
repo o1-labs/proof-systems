@@ -336,6 +336,7 @@ where
             gamma: G::ScalarField::zero(),
             // TODO: No lookup for the moment
             joint_combiner: lookup_env
+                .as_ref()
                 .map(|le| le.joint_combiner)
                 .unwrap_or(G::ScalarField::zero()),
         };

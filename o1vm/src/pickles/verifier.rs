@@ -231,6 +231,8 @@ where
         })
         .collect();
 
+    
+
     evaluations.push(Evaluation {
         commitment: proof.quotient_commitment.clone(),
         evaluations: vec![
