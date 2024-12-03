@@ -65,7 +65,7 @@ pub fn get_column<'a, F: Clone, ID: LookupTableID>(
             } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
                 let res = &env.instruction_counter;
                 Some(res)
-            } else if i == SCRATCH_SIZE + 1 {
+            } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 {
                 let res = &env.error;
                 Some(res)
             } else {
