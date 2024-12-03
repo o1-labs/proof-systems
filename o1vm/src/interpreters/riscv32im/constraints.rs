@@ -344,6 +344,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    unsafe fn mul_hi_signed_unsigned(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
     unsafe fn div_signed(
         &mut self,
         _x: &Self::Variable,
