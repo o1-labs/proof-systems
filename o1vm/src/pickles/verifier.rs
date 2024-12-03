@@ -88,8 +88,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment,
         quotient_evaluations,
-        lookup_commitments,
-        lookup_evaluations,
+        lookup_commitments: _,
+        lookup_evaluations: _,
         opening_proof,
     } = proof;
 
