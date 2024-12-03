@@ -2295,6 +2295,20 @@
 <a href="#2295" id="2295">2295</a>
 <a href="#2296" id="2296">2296</a>
 <a href="#2297" id="2297">2297</a>
+<a href="#2298" id="2298">2298</a>
+<a href="#2299" id="2299">2299</a>
+<a href="#2300" id="2300">2300</a>
+<a href="#2301" id="2301">2301</a>
+<a href="#2302" id="2302">2302</a>
+<a href="#2303" id="2303">2303</a>
+<a href="#2304" id="2304">2304</a>
+<a href="#2305" id="2305">2305</a>
+<a href="#2306" id="2306">2306</a>
+<a href="#2307" id="2307">2307</a>
+<a href="#2308" id="2308">2308</a>
+<a href="#2309" id="2309">2309</a>
+<a href="#2310" id="2310">2310</a>
+<a href="#2311" id="2311">2311</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3590,6 +3604,20 @@
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
     </span><span class="kw">unsafe fn </span>div(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Returns `x % y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    </span><span class="kw">unsafe fn </span>mod_unsigned(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
