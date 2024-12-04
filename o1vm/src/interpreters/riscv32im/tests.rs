@@ -2,14 +2,14 @@ use super::{registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE,
 use crate::interpreters::riscv32im::{
     constraints,
     interpreter::{
-        IInstruction, Instruction, MInstruction, RInstruction, SBInstruction, SInstruction,
-        SyscallInstruction, UInstruction, UJInstruction,
+        interpret_instruction, IInstruction, Instruction, InterpreterEnv, MInstruction,
+        RInstruction, SBInstruction, SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
 };
 use ark_ff::Zero;
 use mina_curves::pasta::Fp;
 use rand::{CryptoRng, Rng, RngCore};
-use strum::EnumCount;
+use strum::{EnumCount, IntoEnumIterator};
 
 // Sanity check that we have as many selector as we have instructions
 #[test]
@@ -36,6 +36,65 @@ fn test_regression_selectors_for_instructions() {
     constraints
         .iter()
         .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
+}
+
+#[test]
+fn test_regression_number_of_constraints_per_instruction() {
+    let mut env = constraints::Env::<Fp>::default();
+    let instructions = Instruction::iter().flat_map(|x| x.into_iter());
+    for instruction in instructions {
+        interpret_instruction(&mut env, instruction);
+        println!(
+            "{:?} constraints for {}",
+            env.constraints.len(),
+            instruction
+        );
+        match instruction {
+            Instruction::RType(rtype) => match rtype {
+                RInstruction::Add => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Sub => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftLeftLogical => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::SetLessThan => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::SetLessThanUnsigned => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Xor => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftRightLogical => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftRightArithmetic => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Or => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::And => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Fence => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::FenceI => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+            },
+            _ => {
+                // FIXME
+                assert_eq!(env.constraints.len(), 1);
+            }
+        }
+        env.reset()
+    }
 }
 
 pub fn dummy_env() -> Env<Fp> {
