@@ -2258,7 +2258,17 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhsu => {
-            unimplemented!("Mulhsu")
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_hi_signed_unsigned(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhu => {
             let rs1 = env.read_register(&rs1);
