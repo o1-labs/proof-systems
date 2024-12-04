@@ -5,9 +5,7 @@ use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
 use poly_commitment::{
-    commitment::CommitmentCurve,
-    ipa::{DensePolynomialOrEvaluations, SRS},
-    PolyComm, SRS as _,
+    commitment::CommitmentCurve, ipa::SRS, utils::DensePolynomialOrEvaluations, PolyComm, SRS as _,
 };
 
 fn benchmark_ipa_open(c: &mut Criterion) {

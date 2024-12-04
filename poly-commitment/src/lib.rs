@@ -4,6 +4,7 @@ pub mod error;
 pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
+pub mod utils;
 
 // Exposing property based tests for the SRS trait
 pub mod pbt_srs;
@@ -13,7 +14,7 @@ pub use commitment::PolyComm;
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
 };
 use ark_ec::AffineRepr;
 use ark_ff::UniformRand;
@@ -168,8 +169,9 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
 }
 
 #[allow(type_alias_bounds)]
-/// Simply an alias to represent a polynomial with its commitment, possibly with
-/// a blinder.
+/// An alias to represent a polynomial (in either coefficient or
+/// evaluation form), with a set of *scalar field* elements that
+/// represent the exponent of its blinder.
 // TODO: add a string to name the polynomial
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
