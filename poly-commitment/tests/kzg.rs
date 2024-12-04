@@ -9,9 +9,11 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use mina_curves::pasta::{Fp, Vesta as VestaG};
 use poly_commitment::{
     commitment::Evaluation,
-    ipa::{DensePolynomialOrEvaluations, SRS},
+    ipa::SRS,
     kzg::{combine_evaluations, KZGProof, PairingSRS},
-    pbt_srs, PolyComm, SRS as _,
+    pbt_srs,
+    utils::DensePolynomialOrEvaluations,
+    PolyComm, SRS as _,
 };
 
 #[test]

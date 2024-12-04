@@ -1,10 +1,11 @@
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
-use crate::interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE};
+use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; SCRATCH_SIZE],
+    pub scratch_inverse: [G; SCRATCH_SIZE_INVERSE],
     pub instruction_counter: G,
     pub error: G,
     pub selector: S,
@@ -19,6 +20,7 @@ impl<G: KimchiCurve> ProofInputs<G> {
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+                scratch_inverse: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
                 instruction_counter: Vec::with_capacity(domain_size),
                 error: Vec::with_capacity(domain_size),
                 selector: Vec::with_capacity(domain_size),

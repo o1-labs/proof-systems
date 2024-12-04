@@ -25,6 +25,7 @@ use super::column::N_MIPS_SEL_COLS;
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     scratch_state_idx: usize,
+    scratch_state_idx_inverse: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     constraints: Vec<E<Fp>>,
@@ -37,6 +38,7 @@ impl<Fp: Field> Default for Env<Fp> {
     fn default() -> Self {
         Self {
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
@@ -52,14 +54,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     // Use one of the available columns. It won't create a new column every time
     // this function is called. The number of columns is defined upfront by
-    // crate::mips::witness::SCRATCH_SIZE.
+    // crate::interpreters::mips::column::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
-        // to the index. See crate::SCRATCH_SIZE for the maximum number of
+        // to the index. See crate::interpreters::mips::column::SCRATCH_SIZE for the maximum number of
         // columns the circuit can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        MIPSColumn::ScratchStateInverse(scratch_idx)
     }
 
     type Variable = E<Fp>;
@@ -219,22 +227,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
-            unsafe { self.inverse_or_zero(x, pos) }
+            let pos = self.alloc_scratch_inverse();
+            self.variable(pos)
         };
         // If x = 0, then res = 1 and x_inv_or_zero = 0
         // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
         self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
         self.add_constraint(x.clone() * res.clone());
         res
-    }
-
-    unsafe fn inverse_or_zero(
-        &mut self,
-        _x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable {
-        self.variable(position)
     }
 
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
@@ -631,6 +631,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn reset(&mut self) {
         self.scratch_state_idx = 0;
+        self.scratch_state_idx_inverse = 0;
         self.constraints.clear();
         self.lookups.clear();
         self.selector = None;
