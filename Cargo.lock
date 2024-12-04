@@ -1984,6 +1984,8 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
+ "ocaml",
+ "ocaml-gen",
  "os_pipe",
  "poly-commitment",
  "rand",
