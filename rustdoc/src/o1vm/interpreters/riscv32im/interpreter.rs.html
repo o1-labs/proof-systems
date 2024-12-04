@@ -2337,6 +2337,22 @@
 <a href="#2337" id="2337">2337</a>
 <a href="#2338" id="2338">2338</a>
 <a href="#2339" id="2339">2339</a>
+<a href="#2340" id="2340">2340</a>
+<a href="#2341" id="2341">2341</a>
+<a href="#2342" id="2342">2342</a>
+<a href="#2343" id="2343">2343</a>
+<a href="#2344" id="2344">2344</a>
+<a href="#2345" id="2345">2345</a>
+<a href="#2346" id="2346">2346</a>
+<a href="#2347" id="2347">2347</a>
+<a href="#2348" id="2348">2348</a>
+<a href="#2349" id="2349">2349</a>
+<a href="#2350" id="2350">2350</a>
+<a href="#2351" id="2351">2351</a>
+<a href="#2352" id="2352">2352</a>
+<a href="#2353" id="2353">2353</a>
+<a href="#2354" id="2354">2354</a>
+<a href="#2355" id="2355">2355</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -2359,6 +2375,14 @@
 //! and copied in this file for offline reference.
 //! If you are the author of the above documentations and would like to add or
 //! modify the credits, please open a pull request.
+//!
+//! For each instruction, we provide the format, description, and the
+//! semantic in pseudo-code of the instruction.
+//! When `signed` is mentioned in the pseudo-code, it means that the
+//! operation is performed as a signed operation (i.e. signed(v) where `v` is a
+//! 32 bits value means that `v` must be interpreted as a i32 value in Rust, the
+//! most significant bit being the sign - 1 for negative, 0 for positive).
+//! By default, unsigned operations are performed.
 
 </span><span class="kw">use </span><span class="kw">super</span>::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 <span class="kw">use </span><span class="kw">crate</span>::lookups::{Lookup, LookupTableIDs};
@@ -4571,7 +4595,8 @@
 
     <span class="kw">match </span>instr {
         MInstruction::Mul =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = x[rs1] * x[rs2]
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4584,7 +4609,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Mulh =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = (signed(x[rs1]) * signed(x[rs2])) &gt;&gt; 32
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4597,7 +4623,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Mulhsu =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = (signed(x[rs1]) * x[rs2]) &gt;&gt; 32
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4610,7 +4637,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Mulhu =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = (x[rs1] * x[rs2]) &gt;&gt; 32
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4623,7 +4651,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Div =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = signed(x[rs1]) / signed(x[rs2])
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4636,7 +4665,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Divu =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = x[rs1] / x[rs2]
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4649,7 +4679,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Rem =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = signed(x[rs1]) % signed(x[rs2])
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
@@ -4662,7 +4693,8 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Remu =&gt; {
-            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="comment">// x[rd] = x[rs1] % x[rs2]
+            </span><span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
             <span class="comment">// FIXME: constrain
             </span><span class="kw">let </span>res = {
