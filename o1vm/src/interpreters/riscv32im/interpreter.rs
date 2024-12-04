@@ -20,6 +20,14 @@
 //! and copied in this file for offline reference.
 //! If you are the author of the above documentations and would like to add or
 //! modify the credits, please open a pull request.
+//!
+//! For each instruction, we provide the format, description, and the
+//! semantic in pseudo-code of the instruction.
+//! When `signed` is mentioned in the pseudo-code, it means that the
+//! operation is performed as a signed operation (i.e. signed(v) where `v` is a
+//! 32 bits value means that `v` must be interpreted as a i32 value in Rust, the
+//! most significant bit being the sign - 1 for negative, 0 for positive).
+//! By default, unsigned operations are performed.
 
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 use crate::lookups::{Lookup, LookupTableIDs};
@@ -2232,6 +2240,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
 
     match instr {
         MInstruction::Mul => {
+            // x[rd] = x[rs1] * x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2245,6 +2254,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulh => {
+            // x[rd] = (signed(x[rs1]) * signed(x[rs2])) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2258,6 +2268,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhsu => {
+            // x[rd] = (signed(x[rs1]) * x[rs2]) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2271,6 +2282,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhu => {
+            // x[rd] = (x[rs1] * x[rs2]) >> 32
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2284,6 +2296,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Div => {
+            // x[rd] = signed(x[rs1]) / signed(x[rs2])
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2297,6 +2310,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Divu => {
+            // x[rd] = x[rs1] / x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2310,6 +2324,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Rem => {
+            // x[rd] = signed(x[rs1]) % signed(x[rs2])
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
@@ -2323,6 +2338,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Remu => {
+            // x[rd] = x[rs1] % x[rs2]
             let rs1 = env.read_register(&rs1);
             let rs2 = env.read_register(&rs2);
             // FIXME: constrain
