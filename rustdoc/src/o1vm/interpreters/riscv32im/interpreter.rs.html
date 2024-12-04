@@ -2327,6 +2327,16 @@
 <a href="#2327" id="2327">2327</a>
 <a href="#2328" id="2328">2328</a>
 <a href="#2329" id="2329">2329</a>
+<a href="#2330" id="2330">2330</a>
+<a href="#2331" id="2331">2331</a>
+<a href="#2332" id="2332">2332</a>
+<a href="#2333" id="2333">2333</a>
+<a href="#2334" id="2334">2334</a>
+<a href="#2335" id="2335">2335</a>
+<a href="#2336" id="2336">2336</a>
+<a href="#2337" id="2337">2337</a>
+<a href="#2338" id="2338">2338</a>
+<a href="#2339" id="2339">2339</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4587,7 +4597,17 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Mulhsu =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;Mulhsu&quot;</span>)
+            <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+            <span class="comment">// FIXME: constrain
+            </span><span class="kw">let </span>res = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.mul_hi_signed_unsigned(<span class="kw-2">&amp;</span>rs1, <span class="kw-2">&amp;</span>rs2, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         MInstruction::Mulhu =&gt; {
             <span class="kw">let </span>rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
