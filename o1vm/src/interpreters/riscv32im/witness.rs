@@ -3,8 +3,8 @@
 use super::{
     column::Column,
     interpreter::{
-        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
-        SyscallInstruction, UInstruction, UJInstruction,
+        self, IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
+        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
@@ -750,31 +750,70 @@ impl<Fp: Field> Env<Fp> {
                     },
                     _ => panic!("Unknown IType instruction with full inst {}", instruction),
                 },
-                0b0110011 =>
-                match (instruction >> 12) & 0x7 // bits 12-14 for func3
-                {
-                    0b000 =>
-                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
-                    {
-                    0b0 => Instruction::RType(RInstruction::Add),
-                    0b1 => Instruction::RType(RInstruction::Sub),
-                     _ => panic!("Unknown RType in add/sub instructions with full inst {}", instruction),
-                    },
-                    0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
-                    0b010 => Instruction::RType(RInstruction::SetLessThan),
-                    0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
-                    0b100 => Instruction::RType(RInstruction::Xor),
-                    0b101 =>
-                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
-                    {
-                        0b0 => Instruction::RType(RInstruction::ShiftRightLogical),
-                        0b1 => Instruction::RType(RInstruction::ShiftRightArithmetic),
-                        _ => panic!("Unknown RType in shift right instructions with full inst {}", instruction),
-                    },
-                    0b110 => Instruction::RType(RInstruction::Or),
-                    0b111 => Instruction::RType(RInstruction::And),
-                    _ => panic!("Unknown RType 0110011 instruction with full inst {}", instruction),
-                },
+                0b0110011 => {
+                    let funct5 = instruction >> 27 & 0x1F; // bits 27-31 for funct5
+                    let funct2 = instruction >> 25 & 0x3; // bits 25-26 for func2
+                    let funct3 = instruction >> 12 & 0x7; // bits 12-14 for func3
+                    match funct2 {
+                        // These are the instructions for the base integer set
+                        0b00 => {
+                            // The integer set have two sets of instructions
+                            // using a different funct5 value
+                            match funct5 {
+                                0b00000 => {
+                                    // Note: all possible values are handled here
+                                    match funct3 {
+                                        0b000 => Instruction::RType(RInstruction::Add),
+                                        0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
+                                        0b010 => Instruction::RType(RInstruction::SetLessThan),
+                                        0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
+                                        0b100 => Instruction::RType(RInstruction::Xor),
+                                        0b101 => Instruction::RType(RInstruction::ShiftRightLogical),
+                                        0b110 => Instruction::RType(RInstruction::Or),
+                                        0b111 => Instruction::RType(RInstruction::And),
+                                        _ => panic!("This case should never happen as funct3 is 8 bits long and all possible case are implemented. However, we still have an unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // Note that there are still some values unhandled here.
+                                0b01000 => {
+                                    // Note that there are still 6 values unhandled here.
+                                    match funct3 {
+                                        0b000 => Instruction::RType(RInstruction::Sub),
+                                        0b101 => Instruction::RType(RInstruction::ShiftRightArithmetic),
+                                        _ => panic!("Unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // All the unhandled cases
+                                1_u32..=7_u32 | 9_u32..=u32::MAX =>
+                                    panic!("Unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                            }
+                        },
+                        // These are the instructions for the M type
+                        0b01 => {
+                            match funct5 {
+                                // All instructions for the M type have the same
+                                // funct5 value. Still catching it here to be
+                                // sure we do not misinterpret an instruction
+                                0b00000 => {
+                                    match funct3 {
+                                        0b000 => Instruction::MType(MInstruction::Mul),
+                                        0b001 => Instruction::MType(MInstruction::Mulh),
+                                        0b010 => Instruction::MType(MInstruction::Mulhsu),
+                                        0b011 => Instruction::MType(MInstruction::Mulhu),
+                                        0b100 => Instruction::MType(MInstruction::Div),
+                                        0b101 => Instruction::MType(MInstruction::Divu),
+                                        0b110 => Instruction::MType(MInstruction::Rem),
+                                        0b111 => Instruction::MType(MInstruction::Remu),
+                                        _ => panic!("This case should never happen as funct3 is 8 bits long and all possible case are implemented. However, we still have an unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // Note that there are still some values unhandled here.
+                                1_u32..=u32::MAX => panic!("Unknown 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                            }
+                        },
+                        _ => panic!("Unknown RType 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                    }
+                }
                 0b0001111 =>
                 match (instruction >> 12) & 0x7 // bits 12-14 for func3
                 {
