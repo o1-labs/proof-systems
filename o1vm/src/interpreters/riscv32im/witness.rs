@@ -447,10 +447,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let res = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
-        let res = (res >> 32) as u32;
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x as i64) * (y as i64);
+        let res = (res >> 32) as i32;
         let res = res as u64;
         self.write_column(position, res);
         res
@@ -462,9 +462,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let res = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = ((x as i64) * (y as i64)) as u64;
         let res = (res & ((1 << 32) - 1)) as u32;
         let res = res as u64;
         self.write_column(position, res);
@@ -507,9 +507,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x / y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mul_lo(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let res = ((x as i32) / (y as i32)) as u32;
+        let res = (x as u64) * (y as u64);
+        let res = (res & ((1 << 32) - 1)) as u32;
         let res = res as u64;
         self.write_column(position, res);
         res
@@ -521,9 +536,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let res = ((x as i32) % (y as i32)) as u32;
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x % y) as u32;
         let res = res as u64;
         self.write_column(position, res);
         res
@@ -543,7 +558,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn mod_(
+    unsafe fn mod_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,

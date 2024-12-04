@@ -3,7 +3,7 @@ use crate::{
     interpreters::mips::{
         interpreter::{debugging::InstructionParts, InterpreterEnv},
         registers::Registers,
-        witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
+        witness::{Env as WEnv, SyscallEnv},
     },
     preimage_oracle::PreImageOracleT,
 };
@@ -12,6 +12,8 @@ use std::{fs, path::PathBuf};
 
 // FIXME: we should parametrize the tests with different fields.
 use ark_bn254::Fr as Fp;
+
+use super::column::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 
 const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
@@ -87,7 +89,9 @@ where
         registers: Registers::default(),
         registers_write_index: Registers::default(),
         scratch_state_idx: 0,
+        scratch_state_idx_inverse: 0,
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
+        scratch_state_inverse: [Fp::from(0); SCRATCH_SIZE_INVERSE],
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related

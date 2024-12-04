@@ -1251,6 +1251,20 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `(x * y) & ((1 << 32) - 1))`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn mul_lo(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Returns `((x * y) >> 32`, storing the results in `position`.
     ///
     /// # Safety
@@ -1314,7 +1328,7 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn mod_(
+    unsafe fn mod_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
@@ -1691,10 +1705,44 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     match instr {
         IInstruction::LoadByte => {
-            unimplemented!("LoadByte")
+            // lb:  x[rd] = sext(M[x[rs1] + sext(offset)][7:0])
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // Add a range check here for address
+            let value = env.read_memory(&address);
+            let value = env.sign_extend(&value, 8);
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::LoadHalf => {
-            unimplemented!("LoadHalf")
+            // lh:  x[rd] = sext(M[x[rs1] + sext(offset)][15:0])
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // Add a range check here for address
+            let v0 = env.read_memory(&address);
+            let v1 = env.read_memory(&(address.clone() + Env::constant(1)));
+            let value = (v0 * Env::constant(1 << 8)) + v1;
+            let value = env.sign_extend(&value, 16);
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::LoadWord => {
             // lw:  x[rd] = sext(M[x[rs1] + sext(offset)][31:0])
@@ -1722,10 +1770,42 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::LoadByteUnsigned => {
-            unimplemented!("LoadByteUnsigned")
+            //lbu: x[rd] = M[x[rs1] + sext(offset)][7:0]
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // lhu: Add a range check here for address
+            let value = env.read_memory(&address);
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::LoadHalfUnsigned => {
-            unimplemented!("LoadHalfUnsigned")
+            // lhu: x[rd] = M[x[rs1] + sext(offset)][15:0]
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let address = {
+                let address_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (address, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, address_scratch, overflow_scratch)
+                };
+                address
+            };
+            // Add a range check here for address
+            let v0 = env.read_memory(&address);
+            let v1 = env.read_memory(&(address.clone() + Env::constant(1)));
+            let value = (v0 * Env::constant(1 << 8)) + v1;
+            env.write_register(&rd, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::ShiftLeftLogicalImmediate => {
             unimplemented!("ShiftLeftLogicalImmediate")
@@ -2264,7 +2344,7 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
             // FIXME: constrain
             let res = {
                 let pos = env.alloc_scratch();
-                unsafe { env.mod_(&rs1, &rs2, pos) }
+                unsafe { env.mod_unsigned(&rs1, &rs2, pos) }
             };
             env.write_register(&rd, res);
 
