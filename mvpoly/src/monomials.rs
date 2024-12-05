@@ -1,7 +1,7 @@
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
-use rand::RngCore;
+use rand::{Rng, RngCore};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -10,7 +10,10 @@ use std::{
 
 use crate::{
     prime,
-    utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
+    utils::{
+        compute_indices_nested_loop, compute_indices_nested_loop_upper_bound, naive_prime_factors,
+        PrimeNumberGenerator,
+    },
     MVPoly,
 };
 
@@ -291,9 +294,24 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
     ///
     /// For now, the function is only used for testing.
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
-        // IMPROVEME: using prime::Dense::random to ease the implementaiton.
-        // Feel free to change
-        prime::Dense::random(rng, max_degree).into()
+        let degree = max_degree.unwrap_or(D);
+        // Generating all monomials with degree <= degree^N
+        let exponents: Vec<Vec<usize>> =
+            compute_indices_nested_loop_upper_bound(vec![degree; N], degree);
+        // We add 10% of zeroes.
+        let exponents: Vec<_> = exponents
+            .into_iter()
+            .filter(|_indices| rng.gen_range(0..10) != 0)
+            .collect();
+        // Generating random coefficients for the 90%
+        let monomials: HashMap<[usize; N], F> = exponents
+            .into_iter()
+            .map(|indices| {
+                let coeff = F::rand(rng);
+                (indices.try_into().unwrap(), coeff)
+            })
+            .collect();
+        Self { monomials }
     }
 
     fn from_variable<Column: Into<usize>>(
