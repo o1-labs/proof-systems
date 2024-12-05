@@ -2,8 +2,8 @@ use super::{registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE,
 use crate::interpreters::riscv32im::{
     constraints,
     interpreter::{
-        IInstruction, Instruction, MInstruction, RInstruction, SBInstruction, SInstruction,
-        SyscallInstruction, UInstruction, UJInstruction,
+        IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
+        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
 };
 use ark_ff::Zero;
@@ -418,4 +418,32 @@ pub fn test_instruction_decoding_and() {
     env.memory[0].1[3] = instruction[3];
     let (opcode, _instruction) = env.decode_instruction();
     assert_eq!(opcode, Instruction::RType(RInstruction::And));
+}
+
+#[test]
+pub fn test_witness_bitmask_bounds() {
+    let mut env: Env<Fp> = dummy_env();
+    // Checking that the bit position given as upper bound is not included in
+    // the output, i.e. the output is v[LOWER_BOUND:UPPER_BOUND-1]
+    {
+        // We take only 4 bits on the 5.
+        let input = 0b10000;
+        let output = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&input, 4, 0, pos) }
+        };
+        let exp_output = 0b0000;
+        assert_eq!(output, exp_output);
+    }
+
+    {
+        // We take 5 bits
+        let input = 0b10000;
+        let output = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&input, 5, 0, pos) }
+        };
+        let exp_output = 0b10000;
+        assert_eq!(output, exp_output);
+    }
 }
