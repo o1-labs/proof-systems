@@ -11,6 +11,13 @@ COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' RUSTDOCFLAG
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
 RISCV32_TOOLCHAIN_PATH = $(shell pwd)/_riscv32-gnu-toolchain
 
+O1VM_RESOURCES_PATH = $(shell pwd)/o1vm/resources/programs
+O1VM_RISCV32IM_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/src
+O1VM_RISCV32IM_SOURCE_FILES = $(wildcard ${O1VM_RISCV32IM_SOURCE_DIR}/*.S)
+O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
+O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
+RISCV32_AS_FLAGS = --warn --fatal-warnings
+
 # Default target
 all: release
 
@@ -147,7 +154,18 @@ setup-riscv32-toolchain:
 		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
 		@echo ""
 
+build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES}
+
+${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
+		@echo ""
+		@echo "Building the RISC-V 32-bits binary: $@ using $<"
+		@echo ""
+		mkdir -p ${O1VM_RISCV32IM_BIN_DIR}
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-as ${RISCV32_AS_FLAGS} -o $@ $<
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
+		@echo ""
+
 fclean: clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs
