@@ -130,6 +130,35 @@ impl LookupTableID for LookupTableIDs {
     }
 }
 
+impl LookupTableIDs {
+    /// Panics if the requested table is not fixed!
+    pub fn to_fixed_table<F: Field>(&self) -> LookupTable<F> {
+        match self {
+            Self::PadLookup => LookupTable::<F>::table_pad(),
+            Self::RoundConstantsLookup => LookupTable::<F>::table_round_constants(),
+            Self::AtMost4Lookup => LookupTable::<F>::table_at_most_4(),
+            Self::ByteLookup => LookupTable::<F>::table_byte(),
+            Self::RangeCheck16Lookup => LookupTable::<F>::table_range_check_16(),
+            Self::SparseLookup => LookupTable::<F>::table_sparse(),
+            Self::ResetLookup => LookupTable::<F>::table_reset(),
+            _ => panic!("Table {:?} is not fixed, so cannot called to_fixed_table on it!", self),
+        }
+    }
+
+    pub fn to_multiplicities_vec(self) -> Vec<u32> {
+        match self {
+            Self::PadLookup => vec![0; PadLookup.length()],
+            Self::RoundConstantsLookup => vec![0; RoundConstantsLookup.length()],
+            Self::AtMost4Lookup => vec![0; AtMost4Lookup.length()],
+            Self::ByteLookup => vec![0; ByteLookup.length()],
+            Self::RangeCheck16Lookup => vec![0; RangeCheck16Lookup.length()],
+            Self::SparseLookup => vec![0; SparseLookup.length()],
+            Self::ResetLookup => vec![0; ResetLookup.length()],
+            _ => panic!("Table {:?} is not fixed, so cannot called to_multiplicities_vec on it!", self),
+        }
+    }
+}
+
 /// Trait that creates all the fixed lookup tables used in the VM
 pub(crate) trait FixedLookupTables<F> {
     /// Checks whether a value is in a table and returns the position if it is or None otherwise.
