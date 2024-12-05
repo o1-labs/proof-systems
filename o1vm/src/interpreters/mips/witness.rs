@@ -25,12 +25,15 @@ use crate::{
     utils::memory_size,
 };
 use ark_ff::Field;
-use kimchi_msm::LogupTableID as _;
 use core::panic;
 use kimchi::o1_utils::Two;
+use kimchi_msm::LogupTableID as _;
 use log::{debug, info};
 use std::{
-    array, collections::HashMap, fs::File, io::{BufWriter, Write}
+    array,
+    collections::HashMap,
+    fs::File,
+    io::{BufWriter, Write},
 };
 
 // TODO: do we want to be more restrictive and refer to the number of accesses
@@ -150,9 +153,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         if let Some(idx) = LookupTable::is_in_table(&lookup.table_id, lookup.value) {
             // We found the table, so just add one to the multiplicity.
-            self.lookup_multiplicities.get_mut(&lookup.table_id).unwrap()[idx] += 1;
+            self.lookup_multiplicities
+                .get_mut(&lookup.table_id)
+                .unwrap()[idx] += 1;
         } else {
-            panic!("Tried to lookup in non-fixed table: {:?}", LookupTableIDs::from_u32(lookup.table_id));
+            panic!(
+                "Tried to lookup in non-fixed table: {:?}",
+                LookupTableIDs::from_u32(lookup.table_id)
+            );
         }
     }
 
@@ -879,7 +887,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         let (lookup_fixed_tables, lookup_multiplicities) = {
             let mut ft = HashMap::new();
             let mut m = HashMap::new();
-            let fixed_tables = LookupTableIDs::all_variants().into_iter().filter(|x| x.is_fixed()).collect::<Vec<_>>();
+            let fixed_tables = LookupTableIDs::all_variants()
+                .into_iter()
+                .filter(|x| x.is_fixed())
+                .collect::<Vec<_>>();
 
             for table_id in fixed_tables {
                 ft.insert(table_id, table_id.to_fixed_table::<Fp>());

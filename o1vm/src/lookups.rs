@@ -141,7 +141,10 @@ impl LookupTableIDs {
             Self::RangeCheck16Lookup => LookupTable::<F>::table_range_check_16(),
             Self::SparseLookup => LookupTable::<F>::table_sparse(),
             Self::ResetLookup => LookupTable::<F>::table_reset(),
-            _ => panic!("Table {:?} is not fixed, so cannot called to_fixed_table on it!", self),
+            _ => panic!(
+                "Table {:?} is not fixed, so cannot called to_fixed_table on it!",
+                self
+            ),
         }
     }
 
@@ -154,7 +157,10 @@ impl LookupTableIDs {
             Self::RangeCheck16Lookup => vec![0; RangeCheck16Lookup.length()],
             Self::SparseLookup => vec![0; SparseLookup.length()],
             Self::ResetLookup => vec![0; ResetLookup.length()],
-            _ => panic!("Table {:?} is not fixed, so cannot called to_multiplicities_vec on it!", self),
+            _ => panic!(
+                "Table {:?} is not fixed, so cannot called to_multiplicities_vec on it!",
+                self
+            ),
         }
     }
 }
