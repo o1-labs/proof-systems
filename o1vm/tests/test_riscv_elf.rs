@@ -27,7 +27,7 @@ fn test_instruction_can_be_converted_into_string() {
 fn test_no_action() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32im/no-action",
+        "resources/programs/riscv32im/bin/no-action",
     ));
     let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
@@ -56,7 +56,7 @@ fn test_no_action() {
 fn test_fibonacci_7() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32im/fibonacci-7",
+        "resources/programs/riscv32im/bin/fibonacci-7",
     ));
     let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
