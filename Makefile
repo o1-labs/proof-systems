@@ -115,7 +115,7 @@ format: ## Format the code
 lint: ## Lint the code
 		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
-generate-test-coverage-report:
+generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
 		@echo "Generating the test coverage report."
 		@echo ""
@@ -129,7 +129,7 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-generate-doc:
+generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
@@ -142,7 +142,7 @@ help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-setup-riscv32-toolchain:
+setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo ""
 		@echo "Setting up the RISC-V 32-bit toolchain"
 		@echo ""
@@ -155,7 +155,7 @@ setup-riscv32-toolchain:
 		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
 		@echo ""
 
-build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES}
+build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES} ## Build all RISC-V 32 bits programs written for the o1vm
 
 ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		@echo ""
@@ -166,7 +166,7 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
 		@echo ""
 
-fclean: clean
+fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
 .PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs
