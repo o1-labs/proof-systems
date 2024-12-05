@@ -23,6 +23,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use num_bigint::BigUint;
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
 use strum::IntoEnumIterator;
@@ -55,24 +56,24 @@ fn test_regression_constraints_with_selectors() {
     assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
 }
 
-fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
-    (0..n).map(|i| Fq::from((i) as u64)).collect()
+fn zero_to_n_minus_one(n: usize) -> Vec<BigUint> {
+    (0..n).map(|i| BigUint::from((i) as u64)).collect()
 }
 
 #[test]
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
-    let proof_input = ProofInputs::<Pallas> {
+    let proof_input = ProofInputs {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
-            scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
+            scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| BigUint::zero()).collect()),
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
-                .map(|x| x + Fq::one())
+                .map(|x| x + BigUint::one())
                 .collect(),
             error: (0..8)
-                .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
+                .map(|i| BigUint::from((i * SCRATCH_SIZE + (i + 1)) as u64))
                 .collect(),
             selector: zero_to_n_minus_one(8),
         },
