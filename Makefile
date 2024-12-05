@@ -21,11 +21,10 @@ setup:
 		@echo "Git submodules synced."
 		@echo ""
 
-# Install test dependencies
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
 # FIXME: latest 0.8.19+ requires rustc 1.74+
-install-test-deps:
+install-test-deps: ## Install test dependencies
 		@echo ""
 		@echo "Installing the test dependencies."
 		@echo ""
@@ -36,73 +35,73 @@ install-test-deps:
 		@echo "Test dependencies installed."
 		@echo ""
 
-# Clean the project
-clean:
+
+clean: ## Clean the project
 		cargo clean
 
-# Build the project
-build:
+
+build: ## Build the project
 		cargo build --all-targets --all-features
 
-# Build the project in release mode
-release:
+
+release: ## Build the project in release mode
 		cargo build --release --all-targets --all-features
 
-# Test the project's docs comments
-test-doc:
+
+test-doc: ## Test the project's docs comments
 		cargo test --all-features --release --doc
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
-# Test the project with non-heavy tests and using native cargo test runner
-test:
+
+test: ## Test the project with non-heavy tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
-# Test the project with heavy tests and using native cargo test runner
-test-heavy:
+
+test-heavy: ## Test the project with heavy tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
-# Test the project with all tests and using native cargo test runner
-test-all:
+
+test-all: ## Test the project with all tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
-# Test the project with non-heavy tests and using nextest test runner
-nextest:
+
+nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
-# Test the project with heavy tests and using nextest test runner
-nextest-heavy:
+
+nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
-# Test the project with all tests and using nextest test runner
-nextest-all:
+
+nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
-# Format the code
-format:
+
+format: ## Format the code
 		cargo +nightly fmt -- --check
 
-# Lint the code
-lint:
+
+lint: ## Lint the code
 		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report:
@@ -128,4 +127,8 @@ generate-doc:
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc
+help: ## Ask for help!
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc help
