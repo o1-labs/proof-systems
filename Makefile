@@ -48,6 +48,7 @@ install-test-deps: ## Install test dependencies
 
 clean: ## Clean the project
 		cargo clean
+		rm -rf $(O1VM_RISCV32IM_BIN_FILES)
 
 
 build: ## Build the project
