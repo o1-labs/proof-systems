@@ -2,10 +2,12 @@
 # Known coverage limitations and issues:
 # - https://github.com/rust-lang/rust/issues/79417
 # - https://github.com/nextest-rs/nextest/issues/16
-# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage report and the corresponding PR check,
-#        once situation with the Rust's Doctests will be improved.
+# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage
+# report and the corresponding PR check, once situation with the Rust's Doctests
+# will be improved.
 COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' RUSTDOCFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
-# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
+# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of
+# custom output types, hence, no need in double invocation
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
 RISCV32_TOOLCHAIN_PATH = $(shell pwd)/_riscv32-gnu-toolchain
 
