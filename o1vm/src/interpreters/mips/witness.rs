@@ -20,7 +20,7 @@ use crate::{
             registers::Registers,
         },
     },
-    lookups::{Lookup, LookupTable, LookupTableIDs},
+    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
     utils::memory_size,
 };
@@ -147,10 +147,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
-        // No-op, constraints only
-        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
-
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        if let Some(idx) = LookupTable::is_in_table(&lookup.table_id, lookup.value) {
+            // We found the table, so just add one to the multiplicity.
+            self.lookup_multiplicities.get_mut(&lookup.table_id).unwrap()[idx] += 1;
+        } else {
+            panic!("Tried to lookup in non-fixed table: {:?}", LookupTableIDs::from_u32(lookup.table_id));
+        }
     }
 
     fn instruction_counter(&self) -> Self::Variable {
