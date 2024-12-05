@@ -209,3 +209,11 @@ _riscv32-gnu-toolchain/build/riscv32-unknown-elf-as \
   -o a.out \
   o1vm/resources/programs/riscv32im/src/${FILENAME}
 ```
+
+### Write new test examples
+
+The Makefile at the top-level of this repository will automatically detect new
+`.S` files in the directory `o1vm/resources/programs/riscv32im/src/` when the
+target `build-riscv32-programs` is called. Any change to the existing files will
+also be detected by the target, and you can commit the changes of the resulting
+binary.
