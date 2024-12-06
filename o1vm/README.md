@@ -203,7 +203,7 @@ To compile on of the source files available in
 `resources/programs/riscv32im/src`, the user can use:
 
 ```shell
-FILENAME=sll.s
+FILENAME=sll.S
 
 _riscv32-gnu-toolchain/build/riscv32-unknown-elf-as \
   -o a.out \
