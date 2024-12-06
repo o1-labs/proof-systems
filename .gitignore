@@ -39,3 +39,6 @@ o1vm/op-program-db*
 o1vm/state.json
 meta.json
 state.json
+
+# Directory for the RISC-V 32bits toolchain
+_riscv32-gnu-toolchain

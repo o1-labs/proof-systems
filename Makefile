@@ -2,11 +2,21 @@
 # Known coverage limitations and issues:
 # - https://github.com/rust-lang/rust/issues/79417
 # - https://github.com/nextest-rs/nextest/issues/16
-# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage report and the corresponding PR check,
-#        once situation with the Rust's Doctests will be improved.
+# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage
+# report and the corresponding PR check, once situation with the Rust's Doctests
+# will be improved.
 COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' RUSTDOCFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
-# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
+# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of
+# custom output types, hence, no need in double invocation
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
+RISCV32_TOOLCHAIN_PATH = $(shell pwd)/_riscv32-gnu-toolchain
+
+O1VM_RESOURCES_PATH = $(shell pwd)/o1vm/resources/programs
+O1VM_RISCV32IM_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/src
+O1VM_RISCV32IM_SOURCE_FILES = $(wildcard ${O1VM_RISCV32IM_SOURCE_DIR}/*.S)
+O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
+O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
+RISCV32_AS_FLAGS = --warn --fatal-warnings
 
 # Default target
 all: release
@@ -38,6 +48,7 @@ install-test-deps: ## Install test dependencies
 
 clean: ## Clean the project
 		cargo clean
+		rm -rf $(O1VM_RISCV32IM_BIN_FILES)
 
 
 build: ## Build the project
@@ -104,7 +115,7 @@ format: ## Format the code
 lint: ## Lint the code
 		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
-generate-test-coverage-report:
+generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
 		@echo "Generating the test coverage report."
 		@echo ""
@@ -118,7 +129,7 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-generate-doc:
+generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
@@ -131,4 +142,31 @@ help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc help
+setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
+		@echo ""
+		@echo "Setting up the RISC-V 32-bit toolchain"
+		@echo ""
+		if [ ! -d $(RISCV32_TOOLCHAIN_PATH) ]; then \
+			git clone https://github.com/riscv-collab/riscv-gnu-toolchain ${RISCV32_TOOLCHAIN_PATH}; \
+		fi
+		cd ${RISCV32_TOOLCHAIN_PATH} && ./configure --with-arch=rv32gc --with-abi=ilp32d --prefix=${RISCV32_TOOLCHAIN_PATH}/build
+		cd ${RISCV32_TOOLCHAIN_PATH} && make -j 32 # require a good internet connection and some minutes
+		@echo ""
+		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
+		@echo ""
+
+build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES} ## Build all RISC-V 32 bits programs written for the o1vm
+
+${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
+		@echo ""
+		@echo "Building the RISC-V 32-bits binary: $@ using $<"
+		@echo ""
+		mkdir -p ${O1VM_RISCV32IM_BIN_DIR}
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-as ${RISCV32_AS_FLAGS} -o $@ $<
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
+		@echo ""
+
+fclean: clean ## Clean the tooling artefacts in addition to running clean
+		rm -rf ${RISCV32_TOOLCHAIN_PATH}
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs
