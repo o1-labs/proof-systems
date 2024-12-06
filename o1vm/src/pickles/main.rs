@@ -1,6 +1,6 @@
 use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::expr::E;
+use kimchi_msm::{expr::E, logup::constraint_lookups};
 use log::debug;
 use mina_curves::pasta::VestaParameters;
 use mina_poseidon::{
@@ -17,6 +17,7 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
+    lookups::{partition_lookups, LookupTableIDs},
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
 };
@@ -27,6 +28,8 @@ use strum::IntoEnumIterator;
 use mina_curves::pasta::{Fp, Vesta};
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
+
+type ID = LookupTableIDs;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
@@ -82,10 +85,15 @@ pub fn main() -> ExitCode {
             .fold(vec![], |mut acc, instr| {
                 interpreter::interpret_instruction(&mut mips_con_env, instr);
                 let selector = mips_con_env.get_selector();
+                let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
+                let lookup_constraints =
+                    constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes)
+                        .into_iter();
                 let constraints_with_selector: Vec<E<Fp>> = mips_con_env
                     .get_constraints()
                     .into_iter()
-                    .map(|c| selector.clone() * c)
+                    .zip(lookup_constraints)
+                    .map(|(cst, lookup_cst)| selector.clone() * cst * lookup_cst)
                     .collect();
                 acc.extend(constraints_with_selector);
                 mips_con_env.reset();
@@ -95,7 +103,7 @@ pub fn main() -> ExitCode {
         constraints
     };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta, ID> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -133,6 +141,7 @@ pub fn main() -> ExitCode {
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
+                ID,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
             .unwrap();
             // FIXME: check that the proof is correct. This is for testing purposes.
@@ -147,6 +156,7 @@ pub fn main() -> ExitCode {
                     Vesta,
                     DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                     DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                    ID,
                 >(domain_fp, &srs, &constraints, &proof);
                 debug!(
                     "Verification done in {elapsed} μs",
