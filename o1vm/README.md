@@ -193,7 +193,7 @@ For the RISC-V 32 bits architecture, the user can install the toolchain by using
 `make setup-riscv32-toolchain`.
 
 If you encounter any issue with the build dependencies, you can refer to [this
-GitHub repository](https://github.com/riscv-collab/riscv-gnu-toolchain).
+GitHub repository](https://github.com/riscv-collab/riscv-gnu-toolchain?tab=readme-ov-file#prerequisites).
 
 The toolchain will be available in the directory
 `_riscv32-gnu-toolchain/build` at the root of this repository (see variable
