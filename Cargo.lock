@@ -275,7 +275,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrabiata"
+name = "arrabbiata"
 version = "0.1.0"
 dependencies = [
  "ark-ec",
