@@ -205,7 +205,7 @@ To compile on of the source files available in
 ```shell
 FILENAME=sll.S
 
-_riscv32-gnu-toolchain/build/riscv32-unknown-elf-as \
+_riscv32-gnu-toolchain/build/bin/riscv32-unknown-elf-as
   -o a.out \
   o1vm/resources/programs/riscv32im/src/${FILENAME}
 ```
