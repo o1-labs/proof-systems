@@ -587,12 +587,6 @@
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
 <a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a list of property tests for the `MVPoly` trait.
 //!
 //! Any type that implements the `MVPoly` trait should pass these tests.
@@ -1150,12 +1144,6 @@
         monomials_exponents.shuffle(<span class="kw-2">&amp;mut </span>rng);
         p.add_monomial(monomials_exponents, c);
         <span class="macro">assert!</span>(p.is_multilinear());
-    }
-
-    <span class="comment">// Test with a random polynomial (very unlikely to be multilinear)
-    </span>{
-        <span class="kw">let </span>p = <span class="kw">unsafe </span>{ T::random(<span class="kw-2">&amp;mut </span>rng, <span class="prelude-val">None</span>) };
-        <span class="macro">assert!</span>(!p.is_multilinear());
     }
 }
 
