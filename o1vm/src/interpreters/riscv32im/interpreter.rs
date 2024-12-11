@@ -1782,8 +1782,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftRightLogicalImmediate => {
             // srli: x[rd] = x[rs1] >> shamt
             let local_rs1 = env.read_register(&rs1);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_right(&local_rs1, &shamt.clone(), rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_right(&local_rs1, &shamt, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
