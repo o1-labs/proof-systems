@@ -1637,6 +1637,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     env.range_check16(&imm, 12);
 
+    let shamt = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 5, 0, pos) }
+    };
+    env.range_check8(&shamt, 5);
+
+    let imm_header = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 12, 5, pos) }
+    };
+    env.range_check8(&imm_header, 7);
+
+    // check the correctness of the immediate and shamt
+    env.add_constraint(imm.clone() - (imm_header.clone() * Env::constant(1 << 5)) - shamt.clone());
+
     // check correctness of decomposition
     env.add_constraint(
         instruction
@@ -1754,13 +1769,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftLeftLogicalImmediate => {
             // slli: x[rd] = x[rs1] << shamt
             let local_rs1 = env.read_register(&rs1);
-            let shamt = {
+
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 4, 0, pos) }
+                unsafe { env.shift_left(&local_rs1, &shamt.clone(), pos) }
             };
-            // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_left(&local_rs1, &shamt, rd_scratch) };
 
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
