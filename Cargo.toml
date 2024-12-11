@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "arrabiata",
+    "arrabbiata",
     "book",
     "turshi",
     "curves",
@@ -81,7 +81,7 @@ tinytemplate = "1.1"
 wasm-bindgen = "=0.2.90"
 
 
-arrabiata = { path = "./arrabiata", version = "0.1.0" }
+arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }

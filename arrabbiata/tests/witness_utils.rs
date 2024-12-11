@@ -3,7 +3,7 @@
 //! A user is expected to use the gadget methods.
 //! The API of the utilities is more subject to changes.
 
-use arrabiata::{interpreter::InterpreterEnv, witness::Env, POSEIDON_STATE_SIZE};
+use arrabbiata::{interpreter::InterpreterEnv, witness::Env, POSEIDON_STATE_SIZE};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
