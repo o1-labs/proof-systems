@@ -272,6 +272,18 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains functions to work with prime numbers and to compute
 //! dimension of multivariate spaces
 
@@ -494,7 +506,8 @@
     }
 }
 
-<span class="doccomment">/// Compute the list of indices to perform N nested loops of different size each.
+<span class="doccomment">/// Compute the list of indices to perform N nested loops of different size
+/// each, whose sum is less than or equal to an optional upper bound.
 /// In other words, if we have to perform the 3 nested loops:
 /// ```rust
 /// let n1 = 3;
@@ -528,10 +541,13 @@
 ///
 /// In the case of an empty loop (i.e. one value in the input list is 0), the
 /// expected output is the empty list.
-</span><span class="kw">pub fn </span>compute_indices_nested_loop(nested_loop_sizes: Vec&lt;usize&gt;) -&gt; Vec&lt;Vec&lt;usize&gt;&gt; {
+</span><span class="kw">pub fn </span>compute_indices_nested_loop(
+    nested_loop_sizes: Vec&lt;usize&gt;,
+    upper_bound: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+) -&gt; Vec&lt;Vec&lt;usize&gt;&gt; {
     <span class="kw">let </span>n = nested_loop_sizes.iter().product();
     (<span class="number">0</span>..n)
-        .map(|i| {
+        .filter_map(|i| {
             <span class="kw">let </span><span class="kw-2">mut </span>div = <span class="number">1</span>;
             <span class="comment">// Compute indices for the loop, step i
             </span><span class="kw">let </span>indices: Vec&lt;usize&gt; = nested_loop_sizes
@@ -542,7 +558,15 @@
                     k
                 })
                 .collect();
-            indices
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(upper_bound) = upper_bound {
+                <span class="kw">if </span>indices.iter().sum::&lt;usize&gt;() &lt;= upper_bound {
+                    <span class="prelude-val">Some</span>(indices)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(indices)
+            }
         })
         .collect()
 }

@@ -533,6 +533,9 @@
 <a href="#533" id="533">533</a>
 <a href="#534" id="534">534</a>
 <a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 <span class="kw">use </span>num_integer::binomial;
@@ -828,7 +831,8 @@
     </span><span class="kw">unsafe fn </span>random&lt;RNG: RngCore&gt;(rng: <span class="kw-2">&amp;mut </span>RNG, max_degree: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>degree = max_degree.unwrap_or(D);
         <span class="comment">// Generating all monomials with degree &lt;= degree^N
-        </span><span class="kw">let </span>nested_loops_indices: Vec&lt;Vec&lt;usize&gt;&gt; = compute_indices_nested_loop(<span class="macro">vec!</span>[degree; N]);
+        </span><span class="kw">let </span>nested_loops_indices: Vec&lt;Vec&lt;usize&gt;&gt; =
+            compute_indices_nested_loop(<span class="macro">vec!</span>[degree; N], max_degree);
         <span class="comment">// Filtering the monomials with degree &lt;= degree
         </span><span class="kw">let </span>exponents: Vec&lt;Vec&lt;usize&gt;&gt; = nested_loops_indices
             .into_iter()
@@ -944,8 +948,10 @@
             <span class="comment">// Will be used to compute the nested sums
             // It returns all the indices i_1, ..., i_k for the sums:
             // Σ_{i_1 = 0}^{n_1} Σ_{i_2 = 0}^{n_2} ... Σ_{i_k = 0}^{n_k}
-            </span><span class="kw">let </span>indices =
-                compute_indices_nested_loop(non_zero_exponents.iter().map(|d| <span class="kw-2">*</span>d + <span class="number">1</span>).collect());
+            </span><span class="kw">let </span>indices = compute_indices_nested_loop(
+                non_zero_exponents.iter().map(|d| <span class="kw-2">*</span>d + <span class="number">1</span>).collect(),
+                <span class="prelude-val">None</span>,
+            );
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..=u_degree {
                 <span class="comment">// Add the binomial from the homogeneisation
                 // i.e (u_degree choose i)
