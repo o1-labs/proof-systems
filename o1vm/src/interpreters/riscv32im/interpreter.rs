@@ -1759,8 +1759,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
                 unsafe { env.bitmask(&imm, 5, 0, pos) }
             };
             // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_left(&local_rs1, &shamt, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_left(&local_rs1, &shamt, pos) }
+            };
 
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
