@@ -4,7 +4,7 @@ use super::{
     INSTRUCTION_SET_SIZE,
 };
 use crate::{
-    interpreters::riscv32i::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
+    interpreters::riscv32im::{constraints::ConstantTerm::Literal, SCRATCH_SIZE},
     lookups::Lookup,
 };
 use ark_ff::{Field, One};
@@ -317,50 +317,85 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
-    unsafe fn mul_hi_lo_signed(
+    unsafe fn mul_hi_signed(
         &mut self,
         _x: &Self::Variable,
         _y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        (self.variable(position_hi), self.variable(position_lo))
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
     }
 
-    unsafe fn mul_hi_lo(
+    unsafe fn mul_lo_signed(
         &mut self,
         _x: &Self::Variable,
         _y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        (self.variable(position_hi), self.variable(position_lo))
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
     }
 
-    unsafe fn divmod_signed(
+    unsafe fn mul_hi(
         &mut self,
         _x: &Self::Variable,
         _y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        (
-            self.variable(position_quotient),
-            self.variable(position_remainder),
-        )
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
     }
 
-    unsafe fn divmod(
+    unsafe fn mul_hi_signed_unsigned(
         &mut self,
         _x: &Self::Variable,
         _y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        (
-            self.variable(position_quotient),
-            self.variable(position_remainder),
-        )
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn div_signed(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn mod_signed(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn div(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn mod_unsigned(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn mul_lo(
+        &mut self,
+        _x: &Self::Variable,
+        _y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
     }
 
     unsafe fn count_leading_zeros(

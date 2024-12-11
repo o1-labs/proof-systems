@@ -12,10 +12,10 @@ use o1vm::{
             environment::KeccakEnv,
         },
         mips::{
-            column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
+            column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, SCRATCH_SIZE},
             constraints as mips_constraints,
             interpreter::Instruction,
-            witness::{self as mips_witness, SCRATCH_SIZE},
+            witness::{self as mips_witness},
         },
     },
     legacy::{

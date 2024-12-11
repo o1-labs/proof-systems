@@ -1,5 +1,5 @@
 use mina_curves::pasta::Fp;
-use o1vm::interpreters::riscv32i::{
+use o1vm::interpreters::riscv32im::{
     interpreter::{IInstruction, Instruction, RInstruction},
     witness::Env,
     PAGE_SIZE,
@@ -27,9 +27,9 @@ fn test_instruction_can_be_converted_into_string() {
 fn test_no_action() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/no-action",
+        "resources/programs/riscv32im/bin/no-action",
     ));
-    let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
     // This is the output we get by running objdump -d no-action
     assert_eq!(witness.registers.current_instruction_pointer, 69844);
@@ -48,4 +48,47 @@ fn test_no_action() {
     assert_eq!(witness.registers.general_purpose[15], 0);
     assert_eq!(witness.registers.general_purpose[16], 0);
     assert_eq!(witness.registers.general_purpose[17], 42);
+}
+
+// FIXME: stop ignoring when all the instructions are implemented.
+#[test]
+#[ignore]
+fn test_fibonacci_7() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/fibonacci-7",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+    // This is the output we get by running objdump -d fibonacci-7
+    assert_eq!(witness.registers.current_instruction_pointer, 69932);
+    assert_eq!(witness.registers.next_instruction_pointer, 69936);
+
+    while !witness.halt {
+        witness.step();
+        if witness.registers.current_instruction_pointer == 0x1117c {
+            // Fibonacci sequence:
+            // 1 1 2 3 5 8 13
+            assert_eq!(witness.registers.general_purpose[10], 13);
+        }
+    }
+}
+
+// FIXME: stop ignore when all the instructions necessary for running this
+// program are implemented.
+#[test]
+#[ignore]
+fn test_sll() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sll",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    // FIXME: check the state of the registers after the program has run.
 }

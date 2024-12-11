@@ -5,9 +5,9 @@
 fn test_correctly_parsing_elf() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
-        "resources/programs/riscv32i/fibonacci",
+        "resources/programs/riscv32im/bin/fibonacci",
     ));
-    let state = o1vm::elf_loader::parse_riscv32i(&path).unwrap();
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
 
     // This is the output we get by running objdump -d fibonacci
     assert_eq!(state.pc, 69932);

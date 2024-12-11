@@ -96,6 +96,9 @@ where
     for comm in commitments.scratch.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
+    for comm in commitments.scratch_inverse.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
     absorb_commitment(&mut fq_sponge, &commitments.error);
     for comm in commitments.selector.iter() {
@@ -133,6 +136,14 @@ where
         .scratch
         .iter()
         .zip(zeta_omega_evaluations.scratch.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .scratch_inverse
+        .iter()
+        .zip(zeta_omega_evaluations.scratch_inverse.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);

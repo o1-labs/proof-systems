@@ -1,4 +1,4 @@
-use arrabiata::{
+use arrabbiata::{
     interpreter::{self, InterpreterEnv},
     witness::Env,
     IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE, POSEIDON_STATE_SIZE,

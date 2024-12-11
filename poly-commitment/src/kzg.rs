@@ -10,9 +10,8 @@
 //! parameter.
 
 use crate::{
-    commitment::*,
-    ipa::{combine_polys, SRS},
-    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
+    commitment::*, ipa::SRS, utils::combine_polys, CommitmentError, PolynomialsToCombine,
+    SRS as SRSTrait,
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
@@ -55,7 +54,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
     evaluations: &Vec<Evaluation<G>>,
     polyscale: G::ScalarField,
 ) -> Vec<G::ScalarField> {
-    let mut xi_i = G::ScalarField::one();
+    let mut polyscale_i = G::ScalarField::one();
     let mut acc = {
         let num_evals = if !evaluations.is_empty() {
             evaluations[0].evaluations.len()
@@ -74,9 +73,9 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         for chunk_idx in 0..evaluations[0].len() {
             // supposes that all evaluations are of the same size
             for eval_pt_idx in 0..evaluations.len() {
-                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * xi_i;
+                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * polyscale_i;
             }
-            xi_i *= polyscale;
+            polyscale_i *= polyscale;
         }
     }
 

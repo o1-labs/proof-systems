@@ -14,7 +14,8 @@ use poly_commitment::{
         combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
         Evaluation, PolyComm,
     },
-    ipa::{DensePolynomialOrEvaluations, OpeningProof, SRS},
+    ipa::{OpeningProof, SRS},
+    utils::DensePolynomialOrEvaluations,
     SRS as _,
 };
 use rand::{CryptoRng, Rng, SeedableRng};

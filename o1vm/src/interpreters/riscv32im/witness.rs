@@ -441,78 +441,135 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn mul_hi_lo_signed(
+    unsafe fn mul_hi_signed(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let mul = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
-        let hi = (mul >> 32) as u32;
-        let lo = (mul & ((1 << 32) - 1)) as u32;
-        let hi = hi as u64;
-        let lo = lo as u64;
-        self.write_column(position_hi, hi);
-        self.write_column(position_lo, lo);
-        (hi, lo)
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x as i64) * (y as i64);
+        let res = (res >> 32) as i32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn mul_hi_lo(
+    unsafe fn mul_lo_signed(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let mul = (x as u64) * (y as u64);
-        let hi = (mul >> 32) as u32;
-        let lo = (mul & ((1 << 32) - 1)) as u32;
-        let hi = hi as u64;
-        let lo = lo as u64;
-        self.write_column(position_hi, hi);
-        self.write_column(position_lo, lo);
-        (hi, lo)
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = ((x as i64) * (y as i64)) as u64;
+        let res = (res & ((1 << 32) - 1)) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn divmod_signed(
+    unsafe fn mul_hi(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let q = ((x as i32) / (y as i32)) as u32;
-        let r = ((x as i32) % (y as i32)) as u32;
-        let q = q as u64;
-        let r = r as u64;
-        self.write_column(position_quotient, q);
-        self.write_column(position_remainder, r);
-        (q, r)
+        let res = (x as u64) * (y as u64);
+        let res = (res >> 32) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn divmod(
+    unsafe fn mul_hi_signed_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let q = x / y;
-        let r = x % y;
-        let q = q as u64;
-        let r = r as u64;
-        self.write_column(position_quotient, q);
-        self.write_column(position_remainder, r);
-        (q, r)
+        let res = (((x as i32) as i64) * (y as i64)) as u64;
+        let res = (res >> 32) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn div_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x / y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mul_lo(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = (x as u64) * (y as u64);
+        let res = (res & ((1 << 32) - 1)) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x % y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn div(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = x / y;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mod_unsigned(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = x % y;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
     unsafe fn count_leading_zeros(
@@ -638,11 +695,6 @@ impl<Fp: Field> Env<Fp> {
                     << 8)
                 | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let instruction = instruction.to_be(); // convert to big endian for more straightforward decoding
-        println!(
-            "Decoding instruction at address {:x} with value {:b}, with opcode",
-            self.registers.current_instruction_pointer, instruction
-        );
-
         let opcode = {
             match instruction & 0b1111111 // bits 0-6
             {
@@ -737,11 +789,6 @@ impl<Fp: Field> Env<Fp> {
                 _ => panic!("Unknown instruction with full inst {:b}, and opcode {:b}", instruction, instruction & 0b1111111),
             }
         };
-        // display the opcode
-        println!(
-            "Decoded instruction {:?} with opcode {:?}",
-            instruction, opcode
-        );
         (opcode, instruction)
     }
 

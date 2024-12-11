@@ -31,8 +31,8 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
-    ipa::DensePolynomialOrEvaluations,
     kzg::{KZGProof, PairingSRS},
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};
@@ -437,11 +437,11 @@ where
     let u = u_chal.to_field(endo_r);
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-    let non_hiding = |d1_size| PolyComm {
-        chunks: vec![Fp::zero(); d1_size],
+    let non_hiding = |n_chunks| PolyComm {
+        chunks: vec![Fp::zero(); n_chunks],
     };
-    let hiding = |d1_size| PolyComm {
-        chunks: vec![Fp::one(); d1_size],
+    let hiding = |n_chunks| PolyComm {
+        chunks: vec![Fp::one(); n_chunks],
     };
 
     // Gathering all polynomials_to_open to use in the opening proof

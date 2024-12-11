@@ -3,7 +3,7 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi_msm::columns::Column;
 
 use crate::{
-    interpreters::mips::{column::N_MIPS_SEL_COLS, witness::SCRATCH_SIZE},
+    interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
     pickles::proof::WitnessColumns,
 };
 use kimchi::circuits::{
@@ -36,8 +36,9 @@ pub struct ColumnEnvironment<'a, F: FftField> {
 }
 
 pub fn get_all_columns() -> Vec<Column> {
-    let mut cols = Vec::<Column>::with_capacity(SCRATCH_SIZE + 2 + N_MIPS_SEL_COLS);
-    for i in 0..SCRATCH_SIZE + 2 {
+    let mut cols =
+        Vec::<Column>::with_capacity(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 + N_MIPS_SEL_COLS);
+    for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
         cols.push(Column::Relation(i));
     }
     for i in 0..N_MIPS_SEL_COLS {
@@ -53,26 +54,34 @@ impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
                 if i < SCRATCH_SIZE {
                     let res = &self.scratch[i];
                     Some(res)
-                } else if i == SCRATCH_SIZE {
+                } else if i < SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
+                    let res = &self.scratch_inverse[i - SCRATCH_SIZE];
+                    Some(res)
+                } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
                     let res = &self.instruction_counter;
                     Some(res)
-                } else if i == SCRATCH_SIZE + 1 {
+                } else if i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 {
                     let res = &self.error;
                     Some(res)
                 } else {
-                    panic!("We should not have that many relation columns");
+                    panic!("We should not have that many relation columns. We have {} columns and index {} was given", SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2, i);
                 }
             }
             Column::DynamicSelector(i) => {
                 assert!(
                     i < N_MIPS_SEL_COLS,
-                    "We do not have that many dynamic selector columns"
+                    "We do not have that many dynamic selector columns. We have {} columns and index {} was given",
+                    N_MIPS_SEL_COLS,
+                    i
                 );
                 let res = &self.selector[i];
                 Some(res)
             }
             _ => {
-                panic!("We should not have any other type of columns")
+                panic!(
+                    "We should not have any other type of columns. The column {:?} was given",
+                    col
+                );
             }
         }
     }
