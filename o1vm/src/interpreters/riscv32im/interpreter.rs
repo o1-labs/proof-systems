@@ -1782,11 +1782,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftRightLogicalImmediate => {
             // srli: x[rd] = x[rs1] >> shamt
             let local_rs1 = env.read_register(&rs1);
-            let shamt = {
-                let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 5, 0, pos) }
-            };
-            // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
             let local_rd = {
                 let pos = env.alloc_scratch();
                 unsafe { env.shift_right(&local_rs1, &shamt, pos) }
