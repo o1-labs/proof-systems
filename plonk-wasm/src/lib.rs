@@ -1,4 +1,3 @@
-//#![feature(get_mut_unchecked)]
 //! The Marlin_plonk_stubs crate exports some functionalities
 //! and structures from the following the Rust crates to OCaml:
 //!
@@ -50,7 +49,7 @@ pub fn free_u32_ptr(ptr: *mut u32) {
 }
 
 
-/*
+
 #[wasm_bindgen]
 pub fn set_u32_ptr(ptr: *mut u32, arg: u32) {
     // The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
@@ -75,7 +74,7 @@ pub fn wait_until_non_zero(ptr: *const u32) -> u32 {
     }
     unreachable!();
 }
-*/
+
 
 pub mod rayon;
 
