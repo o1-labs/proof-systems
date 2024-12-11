@@ -1785,14 +1785,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             let local_rs1 = env.read_register(&rs1);
             let shamt = {
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 4, 0, pos) }
+                unsafe { env.bitmask(&imm, 5, 0, pos) }
             };
             // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
             // sign extend shamt for arithmetic shift
             let shamt = env.sign_extend(&shamt, 4);
 
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_right_arithmetic(&local_rs1, &shamt, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_right_arithmetic(&local_rs1, &shamt, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
