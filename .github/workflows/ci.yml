@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain_version: ["1.72"]
+        rust_toolchain_version: ["1.74"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
-        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
+        rust_toolchain_version: ["1.72", "1.73", "1.74"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
