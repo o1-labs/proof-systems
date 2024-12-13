@@ -22,13 +22,15 @@ setup:
 		@echo ""
 
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+# FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
+# FIXME: latest 0.8.19+ requires rustc 1.74+
 install-test-deps: ## Install test dependencies
 		@echo ""
 		@echo "Installing the test dependencies."
 		@echo ""
 		rustup component add llvm-tools-preview
-		cargo install cargo-nextest@=0.9.68 --locked
-		cargo install grcov@=0.8.19 --locked
+		cargo install cargo-nextest@=0.9.67 --locked
+		cargo install grcov@=0.8.13 --locked
 		@echo ""
 		@echo "Test dependencies installed."
 		@echo ""
