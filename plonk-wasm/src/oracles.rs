@@ -115,6 +115,7 @@ macro_rules! impl_oracles {
                 }
             }
 
+            #[allow(clippy::from_over_into)]
             impl Into<RandomOracles<$F>> for WasmRandomOracles
             {
                 fn into(self) -> RandomOracles<$F> {

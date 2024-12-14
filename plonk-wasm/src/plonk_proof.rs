@@ -18,6 +18,7 @@ use array_init::array_init;
 use kimchi::{circuits::wires::COLUMNS, verifier::Context};
 use std::array;
 // use std::path::Path;
+use base64::{engine::general_purpose, Engine as _};
 use groupmap::GroupMap;
 use kimchi::{
     proof::{
@@ -37,7 +38,6 @@ use poly_commitment::{
     SRS as _,
 };
 use serde::{Deserialize, Serialize};
-
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -628,7 +628,7 @@ macro_rules! impl_proof {
                 pub fn serialize(&self) -> String {
                     let (proof, _public_input) = self.into();
                     let serialized = rmp_serde::to_vec(&proof).unwrap();
-                    base64::encode(serialized)
+                    general_purpose::STANDARD.encode(serialized)
                 }
             }
 

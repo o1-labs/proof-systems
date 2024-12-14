@@ -582,6 +582,7 @@ macro_rules! impl_verification_key {
             }
             type WasmPlonkVerifierIndex = [<Wasm $field_name:camel PlonkVerifierIndex>];
 
+            #[allow(clippy::too_many_arguments)]
             #[wasm_bindgen]
             impl [<Wasm $field_name:camel PlonkVerifierIndex>] {
                 #[wasm_bindgen(constructor)]
@@ -640,7 +641,7 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            pub fn to_wasm<'a>(
+            pub fn to_wasm(
                 srs: &Arc<SRS<$G>>,
                 vi: DlogVerifierIndex<$G, OpeningProof<$G>>,
             ) -> WasmPlonkVerifierIndex {

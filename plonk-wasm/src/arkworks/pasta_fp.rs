@@ -224,8 +224,7 @@ pub fn caml_pasta_fp_domain_generator(log2_size: i32) -> WasmPastaFp {
 #[wasm_bindgen]
 pub fn caml_pasta_fp_to_bytes(x: WasmPastaFp) -> Vec<u8> {
     let len = std::mem::size_of::<Fp>();
-    let mut str: Vec<u8> = Vec::with_capacity(len);
-    str.resize(len, 0);
+    let mut str: Vec<u8> = vec![0; len];
     let str_as_fp: *mut Fp = str.as_mut_ptr().cast::<Fp>();
     unsafe {
         *str_as_fp = x.0;
