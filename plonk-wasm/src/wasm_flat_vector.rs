@@ -22,8 +22,7 @@
 
 use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi};
 
-use std::convert::From;
-use std::ops::Deref;
+use std::{convert::From, ops::Deref};
 
 #[derive(Clone, Debug)]
 pub struct WasmFlatVector<T>(Vec<T>);

@@ -1,9 +1,10 @@
 use crate::wasm_flat_vector::WasmFlatVector;
 use paste::paste;
-use std::convert::From;
-use std::ops::Deref;
-use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi};
-use wasm_bindgen::prelude::*;
+use std::{convert::From, ops::Deref};
+use wasm_bindgen::{
+    convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi},
+    prelude::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct WasmVector<T>(Vec<T>);

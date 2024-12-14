@@ -1,15 +1,14 @@
-use crate::wasm_flat_vector::WasmFlatVector;
-use crate::wasm_vector::WasmVector;
-use ark_poly::DenseUVPolynomial;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+use crate::{wasm_flat_vector::WasmFlatVector, wasm_vector::WasmVector};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use paste::paste;
-use poly_commitment::SRS as ISRS;
-use poly_commitment::{commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS};
+use poly_commitment::{
+    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, SRS as ISRS,
+};
 use serde::{Deserialize, Serialize};
-use std::ops::Deref;
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    ops::Deref,
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
@@ -211,8 +210,10 @@ macro_rules! impl_srs {
 
 pub mod fp {
     use super::*;
-    use crate::arkworks::{WasmGVesta as WasmG, WasmPastaFp};
-    use crate::poly_comm::vesta::WasmFpPolyComm as WasmPolyComm;
+    use crate::{
+        arkworks::{WasmGVesta as WasmG, WasmPastaFp},
+        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
+    };
     use mina_curves::pasta::{Fp, Vesta as G};
 
     impl_srs!(caml_fp_srs, WasmPastaFp, WasmG, Fp, G, WasmPolyComm, Fp);
@@ -291,8 +292,10 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::arkworks::{WasmGPallas as WasmG, WasmPastaFq};
-    use crate::poly_comm::pallas::WasmFqPolyComm as WasmPolyComm;
+    use crate::{
+        arkworks::{WasmGPallas as WasmG, WasmPastaFq},
+        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
+    };
     use mina_curves::pasta::{Fq, Pallas as G};
 
     impl_srs!(caml_fq_srs, WasmPastaFq, WasmG, Fq, G, WasmPolyComm, Fq);
