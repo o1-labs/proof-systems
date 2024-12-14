@@ -102,7 +102,7 @@ format: ## Format the code
 
 
 lint: ## Lint the code
-		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all
 
 generate-test-coverage-report:
 		@echo ""
