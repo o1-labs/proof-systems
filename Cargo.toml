@@ -18,7 +18,8 @@ members = [
     "utils",
     "internal-tracing",
     "ivc",
-    "folding"
+    "folding",
+    "plonk-wasm"
 ]
 resolver = "2"
 
@@ -99,6 +100,8 @@ poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
+plonk-wasm = { path = "./plonk-wasm", version = "0.1.0", features = ["wasm_types"] }
+
 
 [profile.release]
 lto = true
