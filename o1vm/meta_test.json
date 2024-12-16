@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "go.go",
+      "start": 0,
+      "size": 0
+    },
+    {
+      "name": "internal/cpu.processOptions",
+      "start": 69632,
+      "size": 1872
+    },
+    {
+      "name": "runtime.text",
+      "start": 69632,
+      "size": 0
+    },  
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Load",
+      "start": 71504,
+      "size": 28
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Store",
+      "start": 71532,
+      "size": 28
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).And",
+      "start": 71560,
+      "size": 88
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Or",
+      "start": 71648,
+      "size": 72
+    }]}

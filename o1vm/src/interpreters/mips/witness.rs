@@ -24,10 +24,13 @@ use crate::{
     preimage_oracle::PreImageOracleT,
     utils::memory_size,
 };
-use ark_ff::Field;
-use core::panic;
-use kimchi::o1_utils::Two;
+use ark_ff::{BigInteger256, PrimeField, Zero};
+use core::{
+    ops::{Add, Neg, Sub},
+    panic,
+};
 use log::{debug, info};
+use o1_utils::FieldHelpers;
 use std::{
     array,
     fs::File,
@@ -64,12 +67,114 @@ impl SyscallEnv {
     }
 }
 
+/// This structure represents an abstract encoded value the interpreter will deal with.
+/// The MIPS interpreter is supposed to work with 32-bit values, but the witness
+/// has to perform a bit more than just that. For instance, some values must be
+/// inverted by the prover, so we need to have a way to represent that.
+/// The interpreter must be as fast as possible, and therefore the memory
+/// representation of each value is critical. The idea of this structure is to
+/// keep the "scratch state" into a single contiguous and small piece of memory,
+/// and avoid indirection. The operation that the prover must perform while
+/// making a proof would be hidden in the underlying representation of the
+/// value.
+///
+/// For instance, the prover must be able to invert a value, but we want to
+/// delay this at proving time, and not at witness generation time, to perform a
+/// batch inversion. When the prover makes an inversion, it has first to compute
+/// the difference of two values, and then to invert the result. We could keep a
+/// state using field elements, but this would imply more memory than needed (4
+/// u64 instead of 1 u32 + 1 bit), and perform computation in Montgomery
+/// representation, which can also be delayed at proving time.
+///
+/// The idea is to represent each value as u64, and keep operations that must be
+/// performed in the 32bits that are not actually used, as flags.
+///
+/// For instance, the operation "compute the opposite in the field" (i.e.
+/// compute Fp::modulus - x) would be encoded in the 33th bits of the u64.
+pub struct V(u64);
+
+impl V {
+    fn into(self) -> u64 {
+        self.0
+    }
+
+    fn into(&self) -> u64 {
+        self.0
+    }
+
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+
+    fn into(&self) -> usize {
+        self.0
+    }
+
+    fn into(self) -> u32 {
+        self.0 as u32
+    }
+
+    fn into(&self) -> u32 {
+        self.0 as u32
+    }
+
+    fn from_u32(x: u32) -> Self {
+        V(x as u64)
+    }
+
+    fn into_biguint<F: PrimeField>(self) -> BigUint {
+        let mask = (1 << 32) - 1;
+        if self.0 & (1 << 32) == 1 {
+            F::modulus_biguint() - BigUint::from(self.0 & mask)
+        } else {
+            BigUint::from(self.0)
+        }
+    }
+
+    fn is_one(&self) -> bool {
+        self.0 == 1
+    }
+}
+
+impl Add<usize> for V {
+    type Output = Self;
+
+    /// We do suppose it is not a negative value
+    fn add(self, rhs: usize) -> Self::Output {
+        V(self.0 + rhs as u64)
+    }
+}
+
+impl Zero for V {
+    fn zero() -> Self {
+        V(0)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl One for V {
+    fn one() -> Self {
+        V(1)
+    }
+}
+
+impl Neg for V {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        V(self.0 ^ (1 << 32))
+    }
+}
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
 /// addition to that, it has access to the environment of the Keccak interpreter
 /// that is used to verify the preimage requested during the execution.
-pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
+pub struct Env<Fp: PrimeField, PreImageOracle: PreImageOracleT> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
@@ -79,8 +184,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
     pub scratch_state_idx_inverse: usize,
-    pub scratch_state: [Fp; SCRATCH_SIZE],
-    pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
+    pub scratch_state: [V; SCRATCH_SIZE],
+    pub scratch_state_inverse: [V; SCRATCH_SIZE_INVERSE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -92,11 +197,11 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
-    array::from_fn(|_| Fp::zero())
+fn fresh_scratch_state<const N: usize>() -> [u64; N] {
+    array::from_fn(|_| 0)
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -111,7 +216,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         Column::ScratchStateInverse(scratch_idx)
     }
 
-    type Variable = u64;
+    type Variable = V;
 
     fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!()
@@ -137,7 +242,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn check_boolean(x: &Self::Variable) {
-        if !(*x == 0 || *x == 1) {
+        if !(x.is_zero() || x.is_one()) {
             panic!("The value {} is not a boolean", *x);
         }
     }
@@ -325,11 +430,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         };
         // write the non deterministic advice inv_or_zero
         let pos = self.alloc_scratch_inverse();
-        if *x == 0 {
-            self.write_field_column(pos, Fp::zero());
-        } else {
-            self.write_field_column(pos, Fp::from(*x));
-        };
+        self.write_column(pos, x);
         // return the result
         res
     }
@@ -337,19 +438,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
         // We replicate is_zero(x-y), but working on field elt,
         // to avoid subtraction overflow in the witness interpreter for u32
-        let to_zero_test = Fp::from(*x) - Fp::from(*y);
         let res = {
             let pos = self.alloc_scratch();
-            let is_zero: u64 = if to_zero_test == Fp::zero() { 1 } else { 0 };
+            let is_zero: u64 = if x == y { 1 } else { 0 };
             self.write_column(pos, is_zero);
             is_zero
         };
         let pos = self.alloc_scratch_inverse();
-        if to_zero_test == Fp::zero() {
-            self.write_field_column(pos, Fp::zero());
+        if x > y {
+            let res = BigInteger256::from(x - y);
+            self.write_biguint_column(pos, res);
         } else {
-            self.write_field_column(pos, to_zero_test);
-        };
+            let res = Fp::modulus_biguint().clone() - BigInteger256::from(y - x);
+            self.write_biguint_column(pos, res)
+        }
         res
     }
 
@@ -739,10 +841,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
 
             // Store preimage key in the witness excluding the MSB as 248 bits
             // so it can be used for the communication channel between Keccak
-            let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
-                acc * Fp::two_pow(8) + Fp::from(self.preimage_key.unwrap()[i])
+            let bytes31 = (1..32).fold(BigInteger256::zero(), |acc, i| {
+                acc * BigInteger256::from((1 << 8) as u32)
+                    + BigInteger256::from(self.preimage_key.unwrap()[i])
             });
-            self.write_field_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
+            self.write_biguint_column(Self::Position::ScratchState(MIPS_PREIMAGE_KEY), bytes31);
 
             debug!("Preimage has been read entirely, triggering Keccak process");
             self.keccak_env = Some(KeccakEnv::<Fp>::new(
@@ -819,7 +922,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
@@ -906,10 +1009,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
-        self.write_field_column(column, value.into())
+        self.write_biguint_column(column, value.into())
     }
 
-    pub fn write_field_column(&mut self, column: Column, value: Fp) {
+    pub fn write__column(&mut self, column: Column, value: BigInteger256) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
