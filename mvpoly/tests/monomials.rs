@@ -712,3 +712,95 @@ fn test_from_expr_ec_addition() {
         assert_eq!(eval, exp_eval);
     }
 }
+
+#[test]
+fn test_cross_terms_fixed_polynomial_and_eval_homogeneous_degree_3() {
+    // X
+    let x = {
+        // We say it is of degree 2 for the cross-term computation
+        let mut x = Sparse::<Fp, 1, 2>::zero();
+        x.add_monomial([1], Fp::one());
+        x
+    };
+    // X * Y
+    let scaled_x = {
+        let scaling_var = {
+            let mut v = Sparse::<Fp, 2, 2>::zero();
+            v.add_monomial([0, 1], Fp::one());
+            v
+        };
+        let x: Sparse<Fp, 2, 2> = {
+            let x: Result<Sparse<Fp, 2, 2>, String> = x.clone().into();
+            x.unwrap()
+        };
+        x.clone() * scaling_var
+    };
+    // x1 = 42, α1 = 1
+    // x2 = 42, α2 = 2
+    let eval1: [Fp; 2] = [Fp::from(42), Fp::one()];
+    let eval2: [Fp; 2] = [Fp::from(42), Fp::one() + Fp::one()];
+    let u1 = Fp::one();
+    let u2 = Fp::one() + Fp::one();
+    let scalar1 = eval1[1];
+    let scalar2 = eval2[1];
+
+    let cross_terms_scaled_p1 = {
+        // When computing the cross-terms, the method supposes that the polynomial
+        // is of degree D - 1.
+        // We do suppose we homogenize to degree 3.
+        let scaled_x: Sparse<Fp, 2, 3> = {
+            let p: Result<Sparse<Fp, 2, 3>, String> = scaled_x.clone().into();
+            p.unwrap()
+        };
+        scaled_x.compute_cross_terms(&eval1, &eval2, u1, u2)
+    };
+    let cross_terms = {
+        let x: Sparse<Fp, 1, 2> = {
+            let x: Result<Sparse<Fp, 1, 2>, String> = x.clone().into();
+            x.unwrap()
+        };
+        x.compute_cross_terms_scaled(
+            &eval1[0..1].try_into().unwrap(),
+            &eval2[0..1].try_into().unwrap(),
+            u1,
+            u2,
+            scalar1,
+            scalar2,
+        )
+    };
+    assert_eq!(cross_terms, cross_terms_scaled_p1);
+}
+
+#[test]
+fn test_cross_terms_scaled() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+    let scaled_p1 = {
+        // Scaling variable is U. We do this by adding a new variable.
+        let scaling_variable: Sparse<Fp, 5, 3> = {
+            let mut p: Sparse<Fp, 5, 3> = Sparse::<Fp, 5, 3>::zero();
+            p.add_monomial([0, 0, 0, 0, 1], Fp::one());
+            p
+        };
+        // Simply transforming p1 in the expected degree and with the right
+        // number of variables
+        let p1 = {
+            let p1: Result<Sparse<Fp, 5, 3>, String> = p1.clone().into();
+            p1.unwrap()
+        };
+        scaling_variable.clone() * p1.clone()
+    };
+    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let scalar1 = random_eval1[4];
+    let scalar2 = random_eval2[4];
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = {
+        let eval1: [Fp; 4] = random_eval1[0..4].try_into().unwrap();
+        let eval2: [Fp; 4] = random_eval2[0..4].try_into().unwrap();
+        p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2)
+    };
+    let scaled_cross_terms = scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    assert_eq!(cross_terms, scaled_cross_terms);
+}
