@@ -2378,6 +2378,14 @@
 <a href="#2378" id="2378">2378</a>
 <a href="#2379" id="2379">2379</a>
 <a href="#2380" id="2380">2380</a>
+<a href="#2381" id="2381">2381</a>
+<a href="#2382" id="2382">2382</a>
+<a href="#2383" id="2383">2383</a>
+<a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4216,7 +4224,15 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::ShiftRightLogicalImmediate =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightLogicalImmediate&quot;</span>)
+            <span class="comment">// srli: x[rd] = x[rs1] &gt;&gt; shamt
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.shift_right(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>shamt, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::ShiftRightArithmeticImmediate =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;ShiftRightArithmeticImmediate&quot;</span>)
