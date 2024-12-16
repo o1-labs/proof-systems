@@ -712,3 +712,37 @@ fn test_from_expr_ec_addition() {
         assert_eq!(eval, exp_eval);
     }
 }
+
+#[test]
+fn test_cross_terms_scaled() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+    let scaled_p1 = {
+        // Scaling variable is U. We do this by adding a new variable.
+        let scaling_variable: Sparse<Fp, 5, 3> = {
+            let mut p: Sparse<Fp, 5, 3> = Sparse::<Fp, 5, 3>::zero();
+            p.add_monomial([0, 0, 0, 0, 1], Fp::one());
+            p
+        };
+        // Simply transforming p1 in the expected degree and with the right
+        // number of variables
+        let p1 = {
+            let p1: Result<Sparse<Fp, 5, 3>, String> = p1.clone().into();
+            p1.unwrap()
+        };
+        scaling_variable.clone() * p1.clone()
+    };
+    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let scalar1 = random_eval1[4];
+    let scalar2 = random_eval2[4];
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = {
+        let eval1: [Fp; 4] = random_eval1[0..4].try_into().unwrap();
+        let eval2: [Fp; 4] = random_eval2[0..4].try_into().unwrap();
+        p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2)
+    };
+    let scaled_cross_terms = scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    assert_eq!(cross_terms, scaled_cross_terms);
+}
