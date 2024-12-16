@@ -1847,7 +1847,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::ShiftRightArithmeticImmediate => {
-            unimplemented!("ShiftRightArithmeticImmediate")
+            // srai: x[rd] = x[rs1] >> shamt
+            let local_rs1 = env.read_register(&rs1);
+
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_right_arithmetic(&local_rs1, &shamt, pos) }
+            };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::SetLessThanImmediate => {
             unimplemented!("SetLessThanImmediate")
