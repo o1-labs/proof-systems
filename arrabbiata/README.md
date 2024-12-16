@@ -54,7 +54,7 @@ activated gate on each row.
 
 Different built-in examples are provided. For instance:
 ```
-cargo run --bin arrabiata --release -- square-root --n 10 --srs-size 16
+cargo run --bin arrabbiata --release -- square-root --n 10 --srs-size 16
 ```
 
 will generate 10 full folding iterations of the polynomial-time function `f(X, Y) =
