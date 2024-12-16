@@ -1693,6 +1693,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     env.range_check16(&imm, 12);
 
+    let shamt = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 5, 0, pos) }
+    };
+    env.range_check8(&shamt, 5);
+
+    let imm_header = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 12, 5, pos) }
+    };
+    env.range_check8(&imm_header, 7);
+
+    // check the correctness of the immediate and shamt
+    env.add_constraint(imm.clone() - (imm_header.clone() * Env::constant(1 << 5)) - shamt.clone());
+
     // check correctness of decomposition
     env.add_constraint(
         instruction
@@ -1808,7 +1823,17 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::ShiftLeftLogicalImmediate => {
-            unimplemented!("ShiftLeftLogicalImmediate")
+            // slli: x[rd] = x[rs1] << shamt
+            let local_rs1 = env.read_register(&rs1);
+
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_left(&local_rs1, &shamt.clone(), pos) }
+            };
+
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::ShiftRightLogicalImmediate => {
             unimplemented!("ShiftRightLogicalImmediate")
