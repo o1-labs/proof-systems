@@ -1859,7 +1859,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::SetLessThanImmediate => {
-            unimplemented!("SetLessThanImmediate")
+            // slti: x[rd] = (x[rs1] < sext(immediate)) ? 1 : 0
+            let local_rs1 = env.read_register(&rs1);
+            let local_imm = env.sign_extend(&imm, 12);
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&local_rs1, &local_imm, pos) }
+            };
+            env.write_register(&rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         IInstruction::SetLessThanImmediateUnsigned => {
             unimplemented!("SetLessThanImmediateUnsigned")
