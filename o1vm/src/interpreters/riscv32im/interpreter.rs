@@ -2212,10 +2212,11 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
                 env.sign_extend(&shifted_imm, 32)
             };
             let local_pc = instruction_pointer.clone();
-            let pos = env.alloc_scratch();
-            let overflow_pos = env.alloc_scratch();
-            let (local_rd, _) =
-                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) };
+            let (local_rd, _) = {
+                let pos = env.alloc_scratch();
+                let overflow_pos = env.alloc_scratch();
+                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) }
+            };
             env.write_register(&rd, local_rd);
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
