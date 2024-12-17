@@ -47,12 +47,15 @@ pub mod caml {
     use ocaml;
     use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
     use poly_commitment::{ipa::OpeningProof, PolyComm};
+    use poly_commitment::ipa::caml::CamlOpeningProof;
+    use poly_commitment::commitment::caml::CamlPolyComm;
     use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
+    use std::fmt::Debug;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlWitnessColumns<CamlG, CamlS> {
-      pub scratch: [CamlG; SCRATCH_SIZE],
-      pub scratch_inverse: [CamlG; SCRATCH_SIZE_INVERSE],
+      pub scratch: Vec<CamlG>,
+      pub scratch_inverse: Vec<CamlG>,
       pub instruction_counter: CamlG,
       pub error: CamlG,
       pub selector: CamlS,
@@ -65,8 +68,8 @@ pub mod caml {
     {
         fn from(witness_columns: WitnessColumns<G,S>) -> Self {
             Self {
-                scratch: witness_columns.scratch.map(CamlG::from),
-                scratch_inverse: witness_columns.scratch_inverse.map(CamlG::from),
+                scratch: witness_columns.scratch.map(CamlG::from).into(),
+                scratch_inverse: witness_columns.scratch_inverse.map(CamlG::from).into(),
                 instruction_counter: CamlG::from(witness_columns.instruction_counter),
                 error: CamlG::from(witness_columns.error),
                 selector: CamlS::from(witness_columns.selector),
@@ -76,13 +79,25 @@ pub mod caml {
 
     impl<G, S, CamlG, CamlS> From<CamlWitnessColumns<CamlG, CamlS>> for WitnessColumns<G,S>
     where
-        G: From<CamlG>,
+        G: From<CamlG> + Debug,
         S: From<CamlS>,
     {
         fn from(caml_witness_columns: CamlWitnessColumns<CamlG, CamlS>) -> Self {
             Self {
-                scratch: caml_witness_columns.scratch.map(G::from),
-                scratch_inverse: caml_witness_columns.scratch_inverse.map(G::from),
+                scratch: caml_witness_columns
+                  .scratch
+                  .into_iter()
+                  .map(G::from)
+                  .collect::<Vec<_>>()
+                  .try_into()
+                  .expect("scratch Vec length mismatch for SCRATCH_SIZE"),
+                scratch_inverse: caml_witness_columns
+                  .scratch_inverse
+                  .into_iter()
+                  .map(G::from)
+                  .collect::<Vec<_>>()
+                  .try_into()
+                  .expect("scratch_inverse Vec length mismatch for SCRATCH_SIZE"),
                 instruction_counter: G::from(caml_witness_columns.instruction_counter),
                 error: G::from(caml_witness_columns.error),
                 selector: S::from(caml_witness_columns.selector),
@@ -91,7 +106,7 @@ pub mod caml {
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    struct Evals<F>(Vec<F>);
+    pub struct Evals<F>(Vec<F>);
 
     impl<F, CamlF> From<Evals<F>> for Vec<CamlF>
     where
@@ -110,6 +125,7 @@ pub mod caml {
             Evals(es.into_iter().map(F::from).collect())
         }
     }
+
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofInputs<CamlF> {
@@ -139,17 +155,18 @@ pub mod caml {
             }
         }
     }
-/*
+
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProof<G> {
-        pub commitments: CamlWitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
-        pub zeta_evaluations: CamlWitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
-        pub zeta_omega_evaluations: CamlWitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
-        pub quotient_commitment: PolyComm<G>,
-        pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
-        pub opening_proof: OpeningProof<G>,
+    pub struct CamlProof<CamlG, CamlF> {
+        pub commitments: CamlWitnessColumns<CamlPolyComm<CamlG>, Vec<CamlPolyComm<CamlG>>>,
+        pub zeta_evaluations: CamlWitnessColumns<CamlF, Vec<CamlF>>,
+        pub zeta_omega_evaluations: CamlWitnessColumns<CamlF, Vec<CamlF>>,
+        pub quotient_commitment: CamlPolyComm<CamlG>,
+        pub quotient_evaluations: PointEvaluations<Vec<CamlF>>,
+        pub opening_proof: CamlOpeningProof<CamlG, CamlF>,
     }
 
+    /*
     impl<G, CamlG> From<Proof<G>> for CamlProof<CamlG>
     where
         CamlG: From<G>,
@@ -166,7 +183,8 @@ pub mod caml {
         }
     }
 
-    impl<CamlG> From<CamlProof<CamlG>> for Proof<G>
+
+    impl<G, CamlG> From<CamlProof<CamlG>> for Proof<G>
     where
         G: From<CamlG>,
     {
