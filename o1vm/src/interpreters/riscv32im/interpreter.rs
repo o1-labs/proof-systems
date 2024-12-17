@@ -1811,8 +1811,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // sltiu: x[rd] = (x[rs1] < (u)sext(immediate)) ? 1 : 0
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.test_less_than(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&local_rs1, &local_imm, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
