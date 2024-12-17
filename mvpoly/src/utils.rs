@@ -220,7 +220,8 @@ pub fn compute_all_two_factors_decomposition(
     }
 }
 
-/// Compute the list of indices to perform N nested loops of different size each.
+/// Compute the list of indices to perform N nested loops of different size
+/// each, whose sum is less than or equal to an optional upper bound.
 /// In other words, if we have to perform the 3 nested loops:
 /// ```rust
 /// let n1 = 3;
@@ -254,10 +255,13 @@ pub fn compute_all_two_factors_decomposition(
 ///
 /// In the case of an empty loop (i.e. one value in the input list is 0), the
 /// expected output is the empty list.
-pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usize>> {
+pub fn compute_indices_nested_loop(
+    nested_loop_sizes: Vec<usize>,
+    upper_bound: Option<usize>,
+) -> Vec<Vec<usize>> {
     let n = nested_loop_sizes.iter().product();
     (0..n)
-        .map(|i| {
+        .filter_map(|i| {
             let mut div = 1;
             // Compute indices for the loop, step i
             let indices: Vec<usize> = nested_loop_sizes
@@ -268,7 +272,15 @@ pub fn compute_indices_nested_loop(nested_loop_sizes: Vec<usize>) -> Vec<Vec<usi
                     k
                 })
                 .collect();
-            indices
+            if let Some(upper_bound) = upper_bound {
+                if indices.iter().sum::<usize>() <= upper_bound {
+                    Some(indices)
+                } else {
+                    None
+                }
+            } else {
+                Some(indices)
+            }
         })
         .collect()
 }

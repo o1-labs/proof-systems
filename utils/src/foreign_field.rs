@@ -191,6 +191,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignFieldHelpers<F, B>
     }
 
     fn two_to_3limb() -> F {
+        // Self?
         F::from(2u64).pow([3 * B as u64])
     }
 }

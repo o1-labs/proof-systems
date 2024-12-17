@@ -1,0 +1,86 @@
+name: proof-systems-github-runners
+
+networks:
+  proof-systems:
+    driver: bridge
+
+services:
+  proof-systems-runner-1:
+    image: ${GITHUB_RUNNER_DOCKER_IMAGE}
+    environment:
+      REPO_URL: ${GITHUB_RUNNERS_REPO_URL}
+      RUNNER_NAME: ${GITHUB_RUNNER_NAME_PERFIX}-1
+      RUNNER_TOKEN: ${GITHUB_RUNNER_1_TOKEN}
+      RUNNER_WORKDIR: /tmp/${GITHUB_RUNNER_NAME_PERFIX}-1/work
+      RUNNER_GROUP: ${GITHUB_RUNNERS_GROUP}
+      RUNNER_SCOPE: "${GITHUB_RUNNER_SCOPE}"
+      LABELS: linux,x64,${GITHUB_RUNNERS_GROUP},${GITHUB_RUNNER_NAME_PERFIX}-1
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp/${GITHUB_RUNNER_NAME_PERFIX}-1:/tmp/${GITHUB_RUNNER_NAME_PERFIX}-1"
+      # note: a quirk of docker-in-docker is that this path
+      # needs to be the same path on host and inside the container,
+      # docker mgmt cmds run outside of docker but expect the paths from within
+
+  proof-systems-runner-2:
+    image: ${GITHUB_RUNNER_DOCKER_IMAGE}
+    environment:
+      REPO_URL: ${GITHUB_RUNNERS_REPO_URL}
+      RUNNER_NAME: ${GITHUB_RUNNER_NAME_PERFIX}-2
+      RUNNER_TOKEN: ${GITHUB_RUNNER_2_TOKEN}
+      RUNNER_WORKDIR: /tmp/${GITHUB_RUNNER_NAME_PERFIX}-2/work
+      RUNNER_GROUP: ${GITHUB_RUNNERS_GROUP}
+      RUNNER_SCOPE: "${GITHUB_RUNNER_SCOPE}"
+      LABELS: linux,x64,${GITHUB_RUNNERS_GROUP},${GITHUB_RUNNER_NAME_PERFIX}-2
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp/${GITHUB_RUNNER_NAME_PERFIX}-2:/tmp/${GITHUB_RUNNER_NAME_PERFIX}-2"
+      # note: a quirk of docker-in-docker is that this path
+      # needs to be the same path on host and inside the container,
+      # docker mgmt cmds run outside of docker but expect the paths from within
+
+  proof-systems-runner-3:
+    image: ${GITHUB_RUNNER_DOCKER_IMAGE}
+    environment:
+      REPO_URL: ${GITHUB_RUNNERS_REPO_URL}
+      RUNNER_NAME: ${GITHUB_RUNNER_NAME_PERFIX}-3
+      RUNNER_TOKEN: ${GITHUB_RUNNER_3_TOKEN}
+      RUNNER_WORKDIR: /tmp/${GITHUB_RUNNER_NAME_PERFIX}-3/work
+      RUNNER_GROUP: ${GITHUB_RUNNERS_GROUP}
+      RUNNER_SCOPE: "${GITHUB_RUNNER_SCOPE}"
+      LABELS: linux,x64,${GITHUB_RUNNERS_GROUP},${GITHUB_RUNNER_NAME_PERFIX}-3
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp/${GITHUB_RUNNER_NAME_PERFIX}-3:/tmp/${GITHUB_RUNNER_NAME_PERFIX}-3"
+      # note: a quirk of docker-in-docker is that this path
+      # needs to be the same path on host and inside the container,
+      # docker mgmt cmds run outside of docker but expect the paths from within
+
+  proof-systems-runner-4:
+    image: ${GITHUB_RUNNER_DOCKER_IMAGE}
+    environment:
+      REPO_URL: ${GITHUB_RUNNERS_REPO_URL}
+      RUNNER_NAME: ${GITHUB_RUNNER_NAME_PERFIX}-4
+      RUNNER_TOKEN: ${GITHUB_RUNNER_4_TOKEN}
+      RUNNER_WORKDIR: /tmp/${GITHUB_RUNNER_NAME_PERFIX}-4/work
+      RUNNER_GROUP: ${GITHUB_RUNNERS_GROUP}
+      RUNNER_SCOPE: "${GITHUB_RUNNER_SCOPE}"
+      LABELS: linux,x64,${GITHUB_RUNNERS_GROUP},${GITHUB_RUNNER_NAME_PERFIX}-4
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp/${GITHUB_RUNNER_NAME_PERFIX}-4:/tmp/${GITHUB_RUNNER_NAME_PERFIX}-4"
+      # note: a quirk of docker-in-docker is that this path
+      # needs to be the same path on host and inside the container,
+      # docker mgmt cmds run outside of docker but expect the paths from within

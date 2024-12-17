@@ -12,15 +12,12 @@ use o1vm::{
     cannon_cli,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
-        constraints as mips_constraints, interpreter,
-        interpreter::InterpreterEnv,
+        constraints as mips_constraints,
+        interpreter::{self, InterpreterEnv},
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::{
-        proof::{Proof, ProofInputs},
-        prover,
-    },
+    pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -69,8 +66,8 @@ pub fn main() -> ExitCode {
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
     let srs: SRS<Vesta> = {
-        let mut srs = SRS::create(DOMAIN_SIZE);
-        srs.add_lagrange_basis(domain_fp.d1);
+        let srs = SRS::create(DOMAIN_SIZE);
+        srs.get_lagrange_basis(domain_fp.d1);
         srs
     };
 
@@ -78,7 +75,6 @@ pub fn main() -> ExitCode {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    // TODO: give this to the prover + verifier
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
@@ -109,6 +105,13 @@ pub fn main() -> ExitCode {
         {
             scratch_chunk.push(*scratch);
         }
+        for (scratch, scratch_chunk) in mips_wit_env
+            .scratch_state_inverse
+            .iter()
+            .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
+        {
+            scratch_chunk.push(*scratch);
+        }
         curr_proof_inputs
             .evaluations
             .instruction_counter
@@ -125,19 +128,33 @@ pub fn main() -> ExitCode {
             // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let _proof: Result<Proof<Vesta>, prover::ProverError> =
-                prover::prove::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                    _,
-                >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
+            let proof = prover::prove::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                _,
+            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+            .unwrap();
             // FIXME: check that the proof is correct. This is for testing purposes.
             // Leaving like this for now.
             debug!(
                 "Proof generated in {elapsed} μs",
                 elapsed = start_iteration.elapsed().as_micros()
             );
+            {
+                let start_iteration = Instant::now();
+                let verif = verifier::verify::<
+                    Vesta,
+                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                >(domain_fp, &srs, &constraints, &proof);
+                debug!(
+                    "Verification done in {elapsed} μs",
+                    elapsed = start_iteration.elapsed().as_micros()
+                );
+                assert!(verif);
+            }
+
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }

@@ -66,5 +66,4 @@ The modified permuation checks that ensures that the check is performed only on 
 
 * For all $h \in H$, $L_{n-k}(h)(Z(h) - 1) = 0$
 
-
 In the modified permutation polynomial above, the multiple $(X-h_{n-k}) \ldots (X-h_{n-1})(X-h_n)$ ensures that the permutation check is performed only on all the values except the last $k$ elements in the witness polynomials.

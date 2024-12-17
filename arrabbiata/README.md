@@ -1,4 +1,4 @@
-## Arrabiata - a generic recursive zero-knowledge argument implementation based on folding schemes
+## Arrabbiata - a generic recursive zero-knowledge argument implementation based on folding schemes
 
 ### Motivation
 

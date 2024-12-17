@@ -1,4 +1,4 @@
-use super::column::N_MIPS_SEL_COLS;
+use super::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 use crate::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -22,6 +22,7 @@ use crate::{
     },
     lookups::Lookup,
     preimage_oracle::PreImageOracleT,
+    utils::memory_size,
 };
 use ark_ff::Field;
 use core::panic;
@@ -49,9 +50,6 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
-// + length + has_n_bytes + chunk_bytes + preimage
-pub const SCRATCH_SIZE: usize = 98;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -80,7 +78,9 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
+    pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -96,42 +96,6 @@ fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
 }
 
-const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
-const PREFIXES: &str = "KMGTPE"; // prefixes for memory quantities KiB, MiB, GiB, ...
-
-// Create a human-readable string representation of the memory size
-fn memory_size(total: usize) -> String {
-    if total < KUNIT {
-        format!("{total} B")
-    } else {
-        // Compute the index in the prefixes string above
-        let mut idx = 0;
-        let mut d = KUNIT;
-        let mut n = total / KUNIT;
-
-        while n >= KUNIT {
-            d *= KUNIT;
-            idx += 1;
-            n /= KUNIT;
-        }
-
-        let value = total as f64 / d as f64;
-
-        let prefix =
-        ////////////////////////////////////////////////////////////////////////
-        // Famous last words: 1023 exabytes ought to be enough for anybody    //
-        //                                                                    //
-        // Corollary:                                                         //
-        // unwrap() below shouldn't fail                                      //
-        // The maximum representation for usize corresponds to 16 exabytes    //
-        // anyway                                                             //
-        ////////////////////////////////////////////////////////////////////////
-            PREFIXES.chars().nth(idx).unwrap();
-
-        format!("{:.1} {}iB", value, prefix)
-    }
-}
-
 impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
@@ -139,6 +103,12 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        Column::ScratchStateInverse(scratch_idx)
     }
 
     type Variable = u64;
@@ -347,27 +317,40 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         res
     }
 
-    unsafe fn inverse_or_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable {
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        // write the result
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        // write the non deterministic advice inv_or_zero
+        let pos = self.alloc_scratch_inverse();
         if *x == 0 {
-            self.write_column(position, 0);
-            0
+            self.write_field_column(pos, Fp::zero());
         } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
-            1 // Placeholder value
-        }
+            self.write_field_column(pos, Fp::from(*x));
+        };
+        // return the result
+        res
     }
 
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
-        // To avoid subtraction overflow in the witness interpreter for u32
-        if x > y {
-            self.is_zero(&(*x - *y))
+        // We replicate is_zero(x-y), but working on field elt,
+        // to avoid subtraction overflow in the witness interpreter for u32
+        let to_zero_test = Fp::from(*x) - Fp::from(*y);
+        let res = {
+            let pos = self.alloc_scratch();
+            let is_zero: u64 = if to_zero_test == Fp::zero() { 1 } else { 0 };
+            self.write_column(pos, is_zero);
+            is_zero
+        };
+        let pos = self.alloc_scratch_inverse();
+        if to_zero_test == Fp::zero() {
+            self.write_field_column(pos, Fp::zero());
         } else {
-            self.is_zero(&(*y - *x))
-        }
+            self.write_field_column(pos, to_zero_test);
+        };
+        res
     }
 
     unsafe fn test_less_than(
@@ -896,7 +879,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
             selector,
@@ -915,6 +900,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.selector = N_MIPS_SEL_COLS;
     }
 
+    pub fn reset_scratch_state_inverse(&mut self) {
+        self.scratch_state_idx_inverse = 0;
+        self.scratch_state_inverse = fresh_scratch_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         self.write_field_column(column, value.into())
     }
@@ -922,6 +912,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }
@@ -1156,6 +1147,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         start: &Start,
     ) -> Instruction {
         self.reset_scratch_state();
+        self.reset_scratch_state_inverse();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
@@ -1250,7 +1242,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             let s: State = State {
                 pc: self.registers.current_instruction_pointer,
                 next_pc: self.registers.next_instruction_pointer,
-                step: self.instruction_counter,
+                step: self.normalized_instruction_counter(),
                 registers: self.registers.general_purpose,
                 lo: self.registers.lo,
                 hi: self.registers.hi,
@@ -1287,6 +1279,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
             // Approximate instruction per seconds
             let how_many_steps = step as usize - start.step;
+
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
 
             let pages = self.memory.len();
@@ -1301,20 +1294,5 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 step, pc, insn, ips, pages, mem, name
             );
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn test_memory_size() {
-        assert_eq!(memory_size(1023_usize), "1023 B");
-        assert_eq!(memory_size(1024_usize), "1.0 KiB");
-        assert_eq!(memory_size(1024 * 1024_usize), "1.0 MiB");
-        assert_eq!(memory_size(2100 * 1024 * 1024_usize), "2.1 GiB");
-        assert_eq!(memory_size(std::usize::MAX), "16.0 EiB");
     }
 }

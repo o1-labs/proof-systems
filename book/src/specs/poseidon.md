@@ -157,7 +157,7 @@ You can find the MDS matrix and round constants we use in [/poseidon/src/pasta/f
 
 ## Test vectors
 
-We have test vectors contained in [/poseidon/src/tests/test_vectors/kimchi.json](https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/tests/test_vectors/kimchi.json).
+We have test vectors contained in [/poseidon/tests/test_vectors/kimchi.json](https://github.com/o1-labs/proof-systems/tree/master/poseidon/tests/test_vectors/kimchi.json).
 
 ## Pointers to the OCaml code
 

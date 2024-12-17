@@ -10,9 +10,8 @@
 //! parameter.
 
 use crate::{
-    commitment::*,
-    ipa::{combine_polys, SRS},
-    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
+    commitment::*, ipa::SRS, utils::combine_polys, CommitmentError, PolynomialsToCombine,
+    SRS as SRSTrait,
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
@@ -55,7 +54,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
     evaluations: &Vec<Evaluation<G>>,
     polyscale: G::ScalarField,
 ) -> Vec<G::ScalarField> {
-    let mut xi_i = G::ScalarField::one();
+    let mut polyscale_i = G::ScalarField::one();
     let mut acc = {
         let num_evals = if !evaluations.is_empty() {
             evaluations[0].evaluations.len()
@@ -74,9 +73,9 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         for chunk_idx in 0..evaluations[0].len() {
             // supposes that all evaluations are of the same size
             for eval_pt_idx in 0..evaluations.len() {
-                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * xi_i;
+                acc[eval_pt_idx] += evaluations[eval_pt_idx][chunk_idx] * polyscale_i;
             }
-            xi_i *= polyscale;
+            polyscale_i *= polyscale;
         }
     }
 
@@ -114,7 +113,7 @@ impl<Pair: Pairing> Clone for KZGProof<Pair> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 /// Define a structured reference string (i.e. SRS) for the KZG protocol.
 /// The SRS consists of powers of an element `g^x` for some toxic waste `x`.
 ///
@@ -240,8 +239,13 @@ impl<
         self.full_srs.max_poly_size()
     }
 
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
-        self.full_srs.get_lagrange_basis(domain_size)
+    fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>> {
+        self.full_srs.get_lagrange_basis(domain)
+    }
+
+    fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+        self.full_srs
+            .get_lagrange_basis_from_domain_size(domain_size)
     }
 
     fn blinding_commitment(&self) -> G {
@@ -321,10 +325,6 @@ impl<
         let mut rng = thread_rng();
         let toxic_waste = G::ScalarField::rand(&mut rng);
         Self::create_trusted_setup(toxic_waste, depth)
-    }
-
-    fn add_lagrange_basis(&mut self, domain: D<<G>::ScalarField>) {
-        self.full_srs.add_lagrange_basis(domain);
     }
 
     fn size(&self) -> usize {

@@ -1,4 +1,4 @@
-# Accumulation
+    # Accumulation
 
 ## Introduction
 
@@ -751,8 +751,8 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
             (\comm, \chaleval\omega, \openy_{\chaleval\omega}) &\in \langPCS{\degree}
             \end{align}
             $$
-        These are combined using a random linear combination with $\chalu$ in the inner product argument
-        (see [Different functionalities](/plonk/inner_product_api.html) for details).
+        These are combined using a random linear combination with $\chalv$ in the inner product argument
+        (see [Different functionalities](../plonk/inner_product_api.html) for details).
         </details>
 
 1. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.

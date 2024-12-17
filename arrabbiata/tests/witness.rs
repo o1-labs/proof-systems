@@ -1,6 +1,6 @@
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{PrimeField, UniformRand};
-use arrabiata::{
+use arrabbiata::{
     interpreter::{self, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp,
     witness::Env,

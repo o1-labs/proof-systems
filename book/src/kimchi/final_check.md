@@ -73,7 +73,7 @@ $$
 \end{align}
 $$
 
-So at the end, when we have to check for the identity $f(\zeta) = Z_H(\zeta) t(\zeta)$ we'll actually have to check something like this (I colored the missing parts on the left hand side of the equation):
+So at the end, when we have to check for the identity $f(\zeta) = Z_H(\zeta) t(\zeta)$ we'll actually have to check something like this (I colored the missing parts on the left-hand side of the equation):
 
 $$
 \begin{align}

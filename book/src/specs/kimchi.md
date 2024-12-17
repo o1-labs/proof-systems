@@ -1223,8 +1223,8 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_add.md)
-chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
+For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_mul.md)
+chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 ##### Notations
 
@@ -1947,7 +1947,7 @@ A proof consists of the following data structures:
 ```rs
 /// Evaluations of a polynomial at 2 points
 #[serde_as]
-#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug, PartialEq)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -1972,7 +1972,7 @@ pub struct PointEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they
 /// are single-sized#[serde_as]
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProofEvaluations<Evals> {
     /// public input polynomials
     pub public: Option<Evals>,
@@ -2041,7 +2041,7 @@ pub struct ProofEvaluations<Evals> {
 
 /// Commitments linked to the lookup feature
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineRepr> {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
@@ -2054,7 +2054,7 @@ pub struct LookupCommitments<G: AffineRepr> {
 
 /// All the commitments that the prover creates as part of the proof.
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineRepr> {
     /// The commitments to the witness (execution trace)
@@ -2070,7 +2070,7 @@ pub struct ProverCommitments<G: AffineRepr> {
 /// The proof that the prover creates from a
 /// [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineRepr, OpeningProof> {
     /// All the polynomial commitments required in the proof
@@ -2097,7 +2097,7 @@ pub struct ProverProof<G: AffineRepr, OpeningProof> {
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct RecursionChallenge<G>
 where

@@ -38,9 +38,14 @@ hex.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
 
-snarky-deriver.workspace = true
+wasm-bindgen = { workspace = true, optional = true }
 
+internal-tracing.workspace = true
+
+# Internal dependencies
 turshi.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true
@@ -48,12 +53,6 @@ mina-curves.workspace = true
 o1-utils.workspace = true
 mina-poseidon.workspace = true
 
-ocaml = { workspace = true, optional = true }
-ocaml-gen = { workspace = true, optional = true }
-
-wasm-bindgen = { workspace = true, optional = true }
-
-internal-tracing.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

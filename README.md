@@ -80,13 +80,13 @@ You can visualize the documentation by opening the file `target/doc/index.html`.
 
 <!-- Please update this section if you add more workflows -->
 
-- [CI](.github/workflows/ci.yml).  
+- [CI](.github/workflows/ci.yml).
   This workflow ensures that the entire project builds correctly, adheres to guidelines, and passes all necessary tests.
-- [Nightly tests with the code coverage](.github/workflows/ci-nightly.yml).  
+- [Nightly tests with the code coverage](.github/workflows/ci-nightly.yml).
   This workflow runs all the tests per scheduler or on-demand, generates and attaches the code coverage report to the job's execution results.
-- [Benchmarks](.github/workflows/benches.yml).  
+- [Benchmarks](.github/workflows/benches.yml).
   This workflow runs benchmarks when a pull request is labeled with "benchmark." It sets up the Rust and OCaml environments, installs necessary tools, and executes cargo criterion benchmarks on the kimchi crate. The benchmark results are then posted as a comment on the pull request for review.
-- [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).  
+- [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).
   When CI passes on master, the documentation built from the rust code will be available by this [link](https://o1-labs.github.io/proof-systems/rustdoc) and the book will be available by this [link](https://o1-labs.github.io/proof-systems).
 
 ## Nix for Dependencies (WIP)

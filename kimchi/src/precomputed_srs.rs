@@ -11,7 +11,7 @@
 
 use crate::curve::KimchiCurve;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use poly_commitment::{ipa::SRS, PolyComm};
+use poly_commitment::{hash_map_cache::HashMapCache, ipa::SRS, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
@@ -24,7 +24,8 @@ pub enum StoredSRSType {
     Prod,
 }
 
-/// A clone of the SRS that is serialized in a test-optimised way.
+/// A clone of the SRS struct that is used for serialization, in a
+/// test-optimised way.
 ///
 /// NB: Serialization of these fields is unchecked (and fast). If you
 /// want to make sure the data is checked on deserialization, this code
@@ -47,12 +48,12 @@ pub struct TestSRS<G> {
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 }
 
-impl<G> From<SRS<G>> for TestSRS<G> {
+impl<G: Clone> From<SRS<G>> for TestSRS<G> {
     fn from(value: SRS<G>) -> Self {
         TestSRS {
             g: value.g,
             h: value.h,
-            lagrange_bases: value.lagrange_bases,
+            lagrange_bases: value.lagrange_bases.into(),
         }
     }
 }
@@ -62,7 +63,7 @@ impl<G> From<TestSRS<G>> for SRS<G> {
         SRS {
             g: value.g,
             h: value.h,
-            lagrange_bases: value.lagrange_bases,
+            lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
         }
     }
 }
@@ -128,15 +129,14 @@ mod tests {
     use ark_serialize::Write;
     use hex;
     use mina_curves::pasta::{Pallas, Vesta};
-    use poly_commitment::SRS as _;
-    use std::collections::HashMap;
+    use poly_commitment::{hash_map_cache::HashMapCache, SRS as _};
 
     use crate::circuits::domains::EvaluationDomains;
 
     fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: String) {
         let h = G::generator();
         let g = vec![h];
-        let lagrange_bases = HashMap::new();
+        let lagrange_bases = HashMapCache::new();
         let srs = SRS::<G> {
             g,
             h,
@@ -170,13 +170,13 @@ mod tests {
     {
         // generate SRS
         let domain_size = 1 << log2_size;
-        let mut srs = SRS::<G>::create(domain_size);
+        let srs = SRS::<G>::create(domain_size);
 
         // Test SRS objects have Lagrange bases precomputed
         if srs_type == StoredSRSType::Test {
             for sub_domain_size in 1..=domain_size {
                 let domain = EvaluationDomains::<G::ScalarField>::create(sub_domain_size).unwrap();
-                srs.add_lagrange_basis(domain.d1);
+                srs.get_lagrange_basis(domain.d1);
             }
         }
 

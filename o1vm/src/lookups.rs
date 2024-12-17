@@ -62,14 +62,15 @@ impl LookupTableID for LookupTableIDs {
         match value {
             0 => PadLookup,
             1 => RoundConstantsLookup,
-            2 => ByteLookup,
-            3 => RangeCheck16Lookup,
-            4 => SparseLookup,
-            5 => ResetLookup,
-            6 => MemoryLookup,
-            7 => RegisterLookup,
-            8 => SyscallLookup,
-            9 => KeccakStepLookup,
+            2 => AtMost4Lookup,
+            3 => ByteLookup,
+            4 => RangeCheck16Lookup,
+            5 => SparseLookup,
+            6 => ResetLookup,
+            7 => MemoryLookup,
+            8 => RegisterLookup,
+            9 => SyscallLookup,
+            10 => KeccakStepLookup,
             _ => panic!("Invalid table ID"),
         }
     }

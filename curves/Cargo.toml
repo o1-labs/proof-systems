@@ -16,6 +16,7 @@ num-bigint.workspace = true
 
 [dev-dependencies]
 rand.workspace = true
+ark-test-curves.workspace = true
 ark-algebra-test-templates.workspace = true
-ark-std.workspace = true
 ark-serialize.workspace = true
+ark-std.workspace = true

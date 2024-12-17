@@ -14,29 +14,26 @@ use crate::{
         wires::Wire,
     },
     proof::ProverProof,
-    prover_index::testing::new_index_for_test_with_lookups,
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    verifier::verify,
 };
-
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
-use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
-
-use std::{array, sync::Arc};
-
-use crate::{prover_index::ProverIndex, verifier::verify};
 use groupmap::GroupMap;
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use num_bigint::{BigUint, RandBigInt};
+use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use poly_commitment::{
     commitment::CommitmentCurve,
     ipa::{endos, OpeningProof, SRS},
     SRS as _,
 };
+use std::{array, sync::Arc};
 
 use super::framework::TestFramework;
 
@@ -1074,8 +1071,8 @@ fn verify_64_bit_range_check() {
             .unwrap();
 
     let index = {
-        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.get_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
@@ -1197,9 +1194,14 @@ fn verify_range_check_valid_proof1() {
     // Generate proof
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let public_input = witness[0][0..prover_index.cs.public].to_vec();
-    let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &prover_index)
-            .expect("failed to generate proof");
+    let proof = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        &group_map,
+        witness,
+        &[],
+        &prover_index,
+        &mut rand::rngs::OsRng,
+    )
+    .expect("failed to generate proof");
 
     // Get the verifier index
     let verifier_index = prover_index.verifier_index();

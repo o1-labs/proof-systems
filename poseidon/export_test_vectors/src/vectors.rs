@@ -8,7 +8,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
 use num_bigint::BigUint;
-use rand::{prelude::*, Rng};
+use rand::Rng;
 use serde::Serialize;
 
 //
@@ -55,13 +55,13 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 
 /// creates a set of test vectors
 pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
-    let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
     let mut test_vectors = vec![];
 
     // generate inputs of different lengths
     for length in 0..6 {
         // generate input & hash
-        let input = rand_fields(&mut rng, length);
+        let input = rand_fields(rng, length);
         let output = match param_type {
             ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
                 &input,
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn poseidon_test_vectors_regression() {
         use mina_poseidon::pasta;
-        let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
         // Values are generated w.r.t. the following commit:
         // 1494cf973d40fb276465929eb7db1952c5de7bdc
@@ -194,7 +194,7 @@ mod tests {
 
             for length in 0..6 {
                 // generate input & hash
-                let input = rand_fields(&mut rng, length);
+                let input = rand_fields(rng, length);
                 let output = match param_type {
                     ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
                         &input,

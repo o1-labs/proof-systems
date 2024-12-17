@@ -396,8 +396,8 @@ mod checker {
 fn test_folding_instance() {
     let constraints = constraints();
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = poly_commitment::ipa::SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    let srs = poly_commitment::ipa::SRS::<Curve>::create(2);
+    srs.get_lagrange_basis(domain);
 
     let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 

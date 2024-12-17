@@ -24,7 +24,7 @@ The point-and-permute optimization of garbled circuit in [BMR90](https://www.cs.
 |$(\one,\zero,\one)$|$\enc_{X_a^1,X_b^1}(X_c^1)$|
 |$(\one,\one,\zero)$|$\enc_{X_a^1,X_b^0}(X_c^0)$|
 
-- When the evaluator gets the input label, say $X_a^1,X_b^1$, the evaluator first extracts the `color` bits $(\lsb(X_a^1),\lsb(X_b^1)) = (\one,\zero)$ and decrypts the corresponding ciphertext (the third one in the above example) to get a output label.
+- When the evaluator gets the input label, say $X_a^1,X_b^1$, the evaluator first extracts the `color` bits $(\lsb(X_a^1),\lsb(X_b^1)) = (\one,\zero)$ and decrypts the corresponding ciphertext (the third one in the above example) to get an output label.
 
 ## Encryption Instantiation
 The encryption algorithm is instantiated with hash function (modeled as random oracle) and one-time pad.

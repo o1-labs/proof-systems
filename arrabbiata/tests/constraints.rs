@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use std::collections::HashMap;
 
-use arrabiata::{
+use arrabbiata::{
     columns::Gadget,
     constraints,
     interpreter::{self, Instruction},

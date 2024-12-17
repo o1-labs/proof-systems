@@ -1,6 +1,6 @@
 # Mina hasher
 
-This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
+This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://o1-labs.github.io/proof-systems/specs/poseidon.html) that converts it from a sponge into a hash interface.
 
 ## Hasher interface
 

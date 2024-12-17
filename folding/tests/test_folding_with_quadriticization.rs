@@ -342,8 +342,8 @@ fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestW
 fn test_quadriticization() {
     let constraints = constraints();
     let domain = D::<Fp>::new(2).unwrap();
-    let mut srs = SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    let srs = SRS::<Curve>::create(2);
+    srs.get_lagrange_basis(domain);
 
     let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 

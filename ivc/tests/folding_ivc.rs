@@ -123,8 +123,8 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
     let constraints = constraint_env.get_relation_constraints();
 
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = PairingSRS::create(2);
-    srs.add_lagrange_basis(domain);
+    let srs = PairingSRS::create(2);
+    srs.get_lagrange_basis(domain);
 
     let folding_compat_expresions: Vec<FoldingCompatibleExpr<TestConfig>> = constraints
         .into_iter()

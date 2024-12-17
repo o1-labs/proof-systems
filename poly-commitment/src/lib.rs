@@ -1,9 +1,10 @@
 mod combine;
 pub mod commitment;
 pub mod error;
-
+pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
+pub mod utils;
 
 // Exposing property based tests for the SRS trait
 pub mod pbt_srs;
@@ -13,7 +14,7 @@ pub use commitment::PolyComm;
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
 };
 use ark_ec::AffineRepr;
 use ark_ff::UniformRand;
@@ -26,9 +27,6 @@ use rand_core::{CryptoRng, RngCore};
 pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
-
-    /// Retrieve the precomputed Lagrange basis for the given domain size
-    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>>;
 
     /// Get the group element used for blinding commitments
     fn blinding_commitment(&self) -> G;
@@ -160,14 +158,20 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// this case.
     fn create(depth: usize) -> Self;
 
-    fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>);
+    /// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>>;
+
+    /// Same as `get_lagrange_basis` but only using the domain size.
+    fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>>;
 
     fn size(&self) -> usize;
 }
 
 #[allow(type_alias_bounds)]
-/// Simply an alias to represent a polynomial with its commitment, possibly with
-/// a blinder.
+/// An alias to represent a polynomial (in either coefficient or
+/// evaluation form), with a set of *scalar field* elements that
+/// represent the exponent of its blinder.
 // TODO: add a string to name the polynomial
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
@@ -175,7 +179,7 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
 )];
 
 pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
-    type SRS: SRS<G>;
+    type SRS: SRS<G> + std::fmt::Debug;
 
     /// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:
@@ -191,6 +195,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator used for zero-knowledge
+    #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,

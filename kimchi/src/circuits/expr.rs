@@ -23,7 +23,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::{self, Debug, Display},
+    fmt,
+    fmt::{Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
@@ -2743,7 +2744,10 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_bigint()),
+            Literal(x) => format!(
+                "field(\"{:#066X}\")",
+                Into::<num_bigint::BigUint>::into(x.into_bigint())
+            ),
         }
     }
 

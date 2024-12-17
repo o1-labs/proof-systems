@@ -48,12 +48,11 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 
 #[test]
 fn test_example_circuit() {
-    use mina_curves::pasta::Pallas;
-    use mina_curves::pasta::Vesta;
+    use mina_curves::pasta::{Pallas, Vesta};
     // create SRS
     let srs = {
-        let mut srs = SRS::<Vesta>::create(1 << 7); // 2^7 = 128
-        srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
+        let srs = SRS::<Vesta>::create(1 << 7); // 2^7 = 128
+        srs.get_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
 

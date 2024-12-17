@@ -46,9 +46,10 @@ use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    ipa::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
 };
+use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::{array, collections::HashMap};
 
@@ -134,22 +135,25 @@ where
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
+        RNG: RngCore + CryptoRng,
     >(
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G, OpeningProof>,
+        rng: &mut RNG,
     ) -> Result<Self>
     where
         VerifierIndex<G, OpeningProof>: Clone,
     {
-        Self::create_recursive::<EFqSponge, EFrSponge>(
+        Self::create_recursive::<EFqSponge, EFrSponge, RNG>(
             groupmap,
             witness,
             runtime_tables,
             index,
             Vec::new(),
             None,
+            rng,
         )
     }
 
@@ -167,6 +171,7 @@ where
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
+        RNG: RngCore + CryptoRng,
     >(
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
@@ -174,6 +179,7 @@ where
         index: &ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
+        rng: &mut RNG,
     ) -> Result<Self>
     where
         VerifierIndex<G, OpeningProof>: Clone,
@@ -188,9 +194,6 @@ where
         } else {
             d1_size / index.max_poly_size
         };
-
-        // TODO: rng should be passed as arg
-        let rng = &mut rand::rngs::OsRng;
 
         // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
         // Catch mistakes before proof generation.
@@ -1235,8 +1238,12 @@ where
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
-        let non_hiding = |d1_size: usize| PolyComm {
-            chunks: vec![G::ScalarField::zero(); d1_size],
+        let non_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::zero(); n_chunks],
+        };
+
+        let fixed_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::one(); n_chunks],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1244,12 +1251,8 @@ where
 
         let mut polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (coefficients_form(p), non_hiding(*d1_size)))
+            .map(|(p, n_chunks)| (coefficients_form(p), non_hiding(*n_chunks)))
             .collect::<Vec<_>>();
-
-        let fixed_hiding = |d1_size: usize| PolyComm {
-            chunks: vec![G::ScalarField::one(); d1_size],
-        };
 
         //~ 1. Then, include:
         //~~ * the negated public polynomial

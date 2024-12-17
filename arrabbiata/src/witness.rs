@@ -788,20 +788,20 @@ impl<
         info!("Create an SRS of size {srs_log2_size} for the first curve");
         let srs_e1: SRS<E1> = {
             let start = Instant::now();
-            let mut srs = SRS::create(srs_size);
+            let srs = SRS::create(srs_size);
             debug!("SRS for E1 created in {:?}", start.elapsed());
             let start = Instant::now();
-            srs.add_lagrange_basis(domain_fp.d1);
+            srs.get_lagrange_basis(domain_fp.d1);
             debug!("Lagrange basis for E1 added in {:?}", start.elapsed());
             srs
         };
         info!("Create an SRS of size {srs_log2_size} for the second curve");
         let srs_e2: SRS<E2> = {
             let start = Instant::now();
-            let mut srs = SRS::create(srs_size);
+            let srs = SRS::create(srs_size);
             debug!("SRS for E2 created in {:?}", start.elapsed());
             let start = Instant::now();
-            srs.add_lagrange_basis(domain_fq.d1);
+            srs.get_lagrange_basis(domain_fq.d1);
             debug!("Lagrange basis for E2 added in {:?}", start.elapsed());
             srs
         };

@@ -146,8 +146,8 @@ fn test_with_constraints(constraints: Vec<FoldingCompatibleExpr<TestConfig>>) ->
     use ark_poly::EvaluationDomain;
 
     let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-    let mut srs = poly_commitment::ipa::SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
+    let srs = poly_commitment::ipa::SRS::<Curve>::create(2);
+    srs.get_lagrange_basis(domain);
 
     let (scheme, _) = FoldingScheme::<TestConfig>::new(constraints, &srs, domain, &());
     // println!("exp:\n {}", exp.to_string());

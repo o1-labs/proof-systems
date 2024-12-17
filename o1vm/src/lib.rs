@@ -4,6 +4,9 @@ pub mod cannon;
 /// A CLI mimicking the Cannon CLI.
 pub mod cannon_cli;
 
+/// A module to load ELF files.
+pub mod elf_loader;
+
 pub mod interpreters;
 
 /// Legacy implementation of the recursive proof composition.
@@ -22,6 +25,8 @@ pub mod preimage_oracle;
 
 /// The RAM lookup argument.
 pub mod ramlookup;
+
+pub mod utils;
 
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,

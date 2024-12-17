@@ -29,6 +29,7 @@ use num_bigint::BigUint;
 use poly_commitment::{
     commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
 };
+use rand_core::{CryptoRng, RngCore};
 use std::{fmt::Write, time::Instant};
 
 // aliases
@@ -121,6 +122,7 @@ where
         self
     }
 
+    // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
     #[allow(dead_code)]
@@ -240,13 +242,14 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        ProverProof::create_recursive::<EFqSponge, EFrSponge>(
+        ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
             &self.0.runtime_tables,
             &prover,
             self.0.recursion,
             None,
+            &mut rand::rngs::OsRng,
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -274,13 +277,14 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge>(
+        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
             &self.0.runtime_tables,
             &prover,
             self.0.recursion,
             None,
+            &mut rand::rngs::OsRng,
         )
         .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
@@ -295,6 +299,65 @@ where
         )
         .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+
+        Ok(())
+    }
+}
+
+impl<G: KimchiCurve, OpeningProof> TestRunner<G, OpeningProof>
+where
+    G::ScalarField: PrimeField + Clone,
+    G::BaseField: PrimeField + Clone,
+    OpeningProof: OpenProof<G>
+        + Clone
+        + PartialEq
+        + std::fmt::Debug
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
+{
+    /// Regression test: Create a proof and check that is is equal to
+    /// the given serialized implementation (and that deserializes
+    /// correctly).
+    pub(crate) fn prove_and_check_serialization_regression<
+        EFqSponge,
+        EFrSponge,
+        RNG: RngCore + CryptoRng,
+    >(
+        self,
+        buf_expected: Vec<u8>,
+        rng: &mut RNG,
+    ) -> Result<(), String>
+    where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    {
+        let prover = self.0.prover_index.unwrap();
+        let witness = self.0.witness.unwrap();
+
+        if !self.0.disable_gates_checks {
+            // Note: this is already done by ProverProof::create_recursive::()
+            //       not sure why we do it here
+            prover
+                .verify(&witness, &self.0.public_inputs)
+                .map_err(|e| format!("{e:?}"))?;
+        }
+
+        let group_map = <G as CommitmentCurve>::Map::setup();
+
+        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+            &group_map,
+            witness,
+            &self.0.runtime_tables,
+            &prover,
+            self.0.recursion,
+            None,
+            rng,
+        )
+        .map_err(|e| e.to_string())?;
+
+        o1_utils::serialization::test_generic_serialization_regression_serde(proof, buf_expected);
 
         Ok(())
     }
