@@ -45,25 +45,28 @@ pub mod caml {
     use super::{WitnessColumns, ProofInputs, Proof};
     use ark_ec::AffineRepr;
     use ocaml;
+    use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
+    use poly_commitment::{ipa::OpeningProof, PolyComm};
+    use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlWitnessColumn<G, S> {
-      pub scratch: [G; SCRATCH_SIZE],
-      pub scratch_inverse: [G; SCRATCH_SIZE_INVERSE],
-      pub instruction_counter: G,
-      pub error: G,
-      pub selector: S,
+    pub struct CamlWitnessColumns<CamlG, CamlS> {
+      pub scratch: [CamlG; SCRATCH_SIZE],
+      pub scratch_inverse: [CamlG; SCRATCH_SIZE_INVERSE],
+      pub instruction_counter: CamlG,
+      pub error: CamlG,
+      pub selector: CamlS,
     }
 
-    impl<CamlG, CamlS> From<WitnessColumns<G>> for CamlWitnessColumns<CamlG, CamlF>
+    impl<G, S, CamlG, CamlS> From<WitnessColumns<G,S>> for CamlWitnessColumns<CamlG, CamlS>
     where
         CamlG: From<G>,
         CamlS: From<S>,
     {
         fn from(witness_columns: WitnessColumns<G,S>) -> Self {
             Self {
-                scratch: witness_columns.scratch.into_iter().map(CamlG::from).collect(),
-                scratch_inverse: witness_columns.scratch_inverse.into_iter().map(CamlG::from).collect(),
+                scratch: witness_columns.scratch.map(CamlG::from),
+                scratch_inverse: witness_columns.scratch_inverse.map(CamlG::from),
                 instruction_counter: CamlG::from(witness_columns.instruction_counter),
                 error: CamlG::from(witness_columns.error),
                 selector: CamlS::from(witness_columns.selector),
@@ -71,15 +74,15 @@ pub mod caml {
         }
     }
 
-    impl<CamlG, CamlS> From<CamlWitnessColumns<CamlG, CamlS>> for WitnessColumns<G,S>
+    impl<G, S, CamlG, CamlS> From<CamlWitnessColumns<CamlG, CamlS>> for WitnessColumns<G,S>
     where
         G: From<CamlG>,
         S: From<CamlS>,
     {
         fn from(caml_witness_columns: CamlWitnessColumns<CamlG, CamlS>) -> Self {
             Self {
-                scratch: caml_witness_columns.scratch.into_iter().map(G::from).collect(),
-                scratch_inverse: caml_witness_columns.scratch_inverse.into_iter().map(G::from).collect(),
+                scratch: caml_witness_columns.scratch.map(G::from),
+                scratch_inverse: caml_witness_columns.scratch_inverse.map(G::from),
                 instruction_counter: G::from(caml_witness_columns.instruction_counter),
                 error: G::from(caml_witness_columns.error),
                 selector: S::from(caml_witness_columns.selector),
@@ -88,13 +91,35 @@ pub mod caml {
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProofInputs<G> {
-        pub evaluations: CamlWitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+    struct Evals<F>(Vec<F>);
+
+    impl<F, CamlF> From<Evals<F>> for Vec<CamlF>
+    where
+        CamlF: From<F>,
+    {
+        fn from(es: Evals<F>) -> Self {
+            es.0.into_iter().map(CamlF::from).collect()
+        }
     }
 
-    impl<CamlG> From<ProofInputs<G>> for CamlProofInputs<CamlG>
+    impl<F, CamlF> From<Vec<CamlF>> for Evals<F>
     where
-        CamlG: From<G>,
+        F: From<CamlF>,
+    {
+        fn from(es: Vec<CamlF>) -> Self {
+            Evals(es.into_iter().map(F::from).collect())
+        }
+    }
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProofInputs<CamlF> {
+        pub evaluations: CamlWitnessColumns<Evals<CamlF>, Evals<CamlF>>,
+    }
+
+    impl<G, CamlF> From<ProofInputs<G>> for CamlProofInputs<CamlF>
+    where
+        G: KimchiCurve,
+        CamlF: From<G::ScalarField>
     {
         fn from(proof_inputs: ProofInputs<G>) -> Self {
             Self {
@@ -103,17 +128,18 @@ pub mod caml {
         }
     }
 
-    impl<CamlG> From<CamlProofInputs<CamlG>> for ProofInputs<G>
+    impl<G, CamlF> From<CamlProofInputs<CamlF>> for ProofInputs<G>
     where
-        G: From<CamlG>,
+        G: KimchiCurve,
+        G::ScalarField: From<CamlF>,
     {
-        fn from(caml_proof_inputs: CamlProofInputs<CamlG>) -> Self {
+        fn from(caml_proof_inputs: CamlProofInputs<CamlF>) -> Self {
             Self {
                 evaluations: WitnessColumns::from(caml_proof_inputs.evaluations),
             }
         }
     }
-
+/*
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProof<G> {
         pub commitments: CamlWitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
@@ -124,7 +150,7 @@ pub mod caml {
         pub opening_proof: OpeningProof<G>,
     }
 
-    impl<CamlG> From<Proof<G>> for CamlProof<CamlG>
+    impl<G, CamlG> From<Proof<G>> for CamlProof<CamlG>
     where
         CamlG: From<G>,
     { fn from(proof: Proof<G>) ->
@@ -155,4 +181,5 @@ pub mod caml {
             }
         }
     }
+ */
 }
