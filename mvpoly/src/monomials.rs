@@ -554,12 +554,19 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Sparse<F, N, D> 
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize, const M: usize> From<Sparse<F, N, D>>
-    for Result<Sparse<F, M, D>, String>
+impl<F: PrimeField, const N: usize, const D: usize, const M: usize, const D_PRIME: usize>
+    From<Sparse<F, N, D>> for Result<Sparse<F, M, D_PRIME>, String>
 {
-    fn from(poly: Sparse<F, N, D>) -> Result<Sparse<F, M, D>, String> {
+    fn from(poly: Sparse<F, N, D>) -> Result<Sparse<F, M, D_PRIME>, String> {
         if M < N {
-            return Err("The number of variables must be greater than N".to_string());
+            return Err(format!(
+                "The final number of variables {M} must be greater than {N}"
+            ));
+        }
+        if D_PRIME < D {
+            return Err(format!(
+                "The final degree {D_PRIME} must be greater than initial degree {D}"
+            ));
         }
         let mut monomials = HashMap::new();
         poly.monomials.iter().for_each(|(exponents, coeff)| {
