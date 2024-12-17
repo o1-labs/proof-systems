@@ -1,8 +1,42 @@
 use super::{registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE, SCRATCH_SIZE};
-use crate::interpreters::riscv32im::interpreter::{Instruction, MInstruction, RInstruction};
+use crate::interpreters::riscv32im::{
+    constraints,
+    interpreter::{
+        IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
+        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
+    },
+};
 use ark_ff::Zero;
 use mina_curves::pasta::Fp;
 use rand::{CryptoRng, Rng, RngCore};
+use strum::EnumCount;
+
+// Sanity check that we have as many selector as we have instructions
+#[test]
+fn test_regression_selectors_for_instructions() {
+    let mips_con_env = constraints::Env::<Fp>::default();
+    let constraints = mips_con_env.get_selector_constraints();
+    assert_eq!(
+        // We substract 1 as we have one boolean check per sel
+        // and 1 constraint to check that one and only one
+        // sel is activated
+        constraints.len() - 1,
+        // This should match the list in
+        // crate::interpreters::riscv32im::interpreter::Instruction
+        RInstruction::COUNT
+            + IInstruction::COUNT
+            + SInstruction::COUNT
+            + SBInstruction::COUNT
+            + UInstruction::COUNT
+            + UJInstruction::COUNT
+            + SyscallInstruction::COUNT
+            + MInstruction::COUNT
+    );
+    // All instructions are degree 1 or 2.
+    constraints
+        .iter()
+        .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
+}
 
 pub fn dummy_env() -> Env<Fp> {
     Env {
@@ -407,6 +441,34 @@ pub fn test_instruction_decoding_and() {
     env.memory[0].1[3] = instruction[3];
     let (opcode, _instruction) = env.decode_instruction();
     assert_eq!(opcode, Instruction::RType(RInstruction::And));
+}
+
+#[test]
+pub fn test_witness_bitmask_bounds() {
+    let mut env: Env<Fp> = dummy_env();
+    // Checking that the bit position given as upper bound is not included in
+    // the output, i.e. the output is v[LOWER_BOUND:UPPER_BOUND-1]
+    {
+        // We take only 4 bits on the 5.
+        let input = 0b10000;
+        let output = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&input, 4, 0, pos) }
+        };
+        let exp_output = 0b0000;
+        assert_eq!(output, exp_output);
+    }
+
+    {
+        // We take 5 bits
+        let input = 0b10000;
+        let output = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&input, 5, 0, pos) }
+        };
+        let exp_output = 0b10000;
+        assert_eq!(output, exp_output);
+    }
 }
 
 #[test]

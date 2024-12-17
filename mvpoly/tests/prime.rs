@@ -365,7 +365,7 @@ fn test_evaluation_predefined_polynomial() {
 fn test_from_expr_ec_addition() {
     // Simulate a real usecase
     // The following lines/design look similar to the ones we use in
-    // o1vm/arrabiata
+    // o1vm/arrabbiata
     #[derive(Clone, Copy, PartialEq)]
     enum Column {
         X(usize),

@@ -1,7 +1,7 @@
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
-use rand::RngCore;
+use rand::{Rng, RngCore};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -291,9 +291,32 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
     ///
     /// For now, the function is only used for testing.
     unsafe fn random<RNG: RngCore>(rng: &mut RNG, max_degree: Option<usize>) -> Self {
-        // IMPROVEME: using prime::Dense::random to ease the implementaiton.
-        // Feel free to change
-        prime::Dense::random(rng, max_degree).into()
+        let degree = max_degree.unwrap_or(D);
+        // Generating all monomials with degree <= degree^N
+        let nested_loops_indices: Vec<Vec<usize>> =
+            compute_indices_nested_loop(vec![degree; N], max_degree);
+        // Filtering the monomials with degree <= degree
+        let exponents: Vec<Vec<usize>> = nested_loops_indices
+            .into_iter()
+            .filter(|indices| {
+                let sum = indices.iter().sum::<usize>();
+                sum <= degree
+            })
+            .collect();
+        // We add 10% of zeroes.
+        let exponents: Vec<_> = exponents
+            .into_iter()
+            .filter(|_indices| rng.gen_range(0..10) != 0)
+            .collect();
+        // Generating random coefficients for the 90%
+        let monomials: HashMap<[usize; N], F> = exponents
+            .into_iter()
+            .map(|indices| {
+                let coeff = F::rand(rng);
+                (indices.try_into().unwrap(), coeff)
+            })
+            .collect();
+        Self { monomials }
     }
 
     fn from_variable<Column: Into<usize>>(
@@ -387,8 +410,10 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
             // Will be used to compute the nested sums
             // It returns all the indices i_1, ..., i_k for the sums:
             // Σ_{i_1 = 0}^{n_1} Σ_{i_2 = 0}^{n_2} ... Σ_{i_k = 0}^{n_k}
-            let indices =
-                compute_indices_nested_loop(non_zero_exponents.iter().map(|d| *d + 1).collect());
+            let indices = compute_indices_nested_loop(
+                non_zero_exponents.iter().map(|d| *d + 1).collect(),
+                None,
+            );
             for i in 0..=u_degree {
                 // Add the binomial from the homogeneisation
                 // i.e (u_degree choose i)

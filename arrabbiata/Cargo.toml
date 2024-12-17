@@ -1,5 +1,5 @@
 [package]
-name = "arrabiata"
+name = "arrabbiata"
 version = "0.1.0"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
@@ -8,7 +8,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [[bin]]
-name = "arrabiata"
+name = "arrabbiata"
 path = "src/main.rs"
 
 [dependencies]

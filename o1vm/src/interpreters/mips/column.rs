@@ -1,7 +1,4 @@
-use crate::interpreters::mips::{
-    witness::SCRATCH_SIZE,
-    Instruction::{self, IType, JType, RType},
-};
+use crate::interpreters::mips::Instruction::{self, IType, JType, RType};
 use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
@@ -11,31 +8,40 @@ use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
+pub(crate) const SCRATCH_SIZE_WITHOUT_KECCAK: usize = 45;
 /// The number of hashes performed so far in the block
-pub(crate) const MIPS_HASH_COUNTER_OFF: usize = 80;
+pub(crate) const MIPS_HASH_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK;
 /// The number of bytes of the preimage that have been read so far in this hash
-pub(crate) const MIPS_BYTE_COUNTER_OFF: usize = 81;
+pub(crate) const MIPS_BYTE_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 1;
 /// A flag indicating whether the preimage has been read fully or not
-pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = 82;
+pub(crate) const MIPS_END_OF_PREIMAGE_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 2;
 /// The number of preimage bytes processed in this step
-pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = 83;
+pub(crate) const MIPS_NUM_BYTES_READ_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 3;
 /// The at most 4-byte chunk of the preimage that has been read in this step.
 /// Contains a field element of at most 4 bytes.
-pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = 84;
+pub(crate) const MIPS_PREIMAGE_CHUNK_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 4;
 /// The at most 4-bytes of the preimage that are currently being processed
 /// Consists of 4 field elements of at most 1 byte each.
-pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = 85;
+pub(crate) const MIPS_PREIMAGE_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5;
 /// The at most 4-bytes of the length that are currently being processed
-pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = 89;
+pub(crate) const MIPS_LENGTH_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5 + 4;
 /// Flags indicating whether at least N bytes have been processed in this step
-pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = 93;
+pub(crate) const MIPS_HAS_N_BYTES_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5 + 4 + 4;
 /// The maximum size of a chunk (4 bytes)
 pub(crate) const MIPS_CHUNK_BYTES_LEN: usize = 4;
 /// The location of the preimage key as a field element of 248bits
-pub(crate) const MIPS_PREIMAGE_KEY: usize = 97;
+pub(crate) const MIPS_PREIMAGE_KEY: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5 + 4 + 4 + 4;
+
+// MIPS + hash_counter + byte_counter + eof + num_bytes_read + chunk + bytes
+// + length + has_n_bytes + chunk_bytes + preimage
+pub const SCRATCH_SIZE: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5 + 4 + 4 + 4 + 1;
+
+/// Number of columns used by the MIPS interpreter to keep values to be
+/// inverted.
+pub const SCRATCH_SIZE_INVERSE: usize = 12;
 
 /// The number of columns used for relation witness in the MIPS circuit
-pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
+pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
 pub const N_MIPS_SEL_COLS: usize =
@@ -50,6 +56,9 @@ pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
+    // A column whose value needs to be inverted in the final witness.
+    // We're keeping a separate column to perform a batch inversion at the end.
+    ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
 }
@@ -66,8 +75,12 @@ impl From<ColumnAlias> for usize {
                 assert!(i < SCRATCH_SIZE);
                 i
             }
-            ColumnAlias::InstructionCounter => SCRATCH_SIZE,
-            ColumnAlias::Selector(s) => SCRATCH_SIZE + 1 + s,
+            ColumnAlias::ScratchStateInverse(i) => {
+                assert!(i < SCRATCH_SIZE_INVERSE);
+                SCRATCH_SIZE + i
+            }
+            ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
+            ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
         }
     }
 }
@@ -132,16 +145,36 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 
 impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
+
     fn to_column(self) -> Column {
         match self {
             Self::ScratchState(ss) => {
-                assert!(ss < SCRATCH_SIZE);
+                assert!(
+                    ss < SCRATCH_SIZE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE,
+                    ss
+                );
                 Column::Relation(ss)
             }
-            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE),
+            Self::ScratchStateInverse(ss) => {
+                assert!(
+                    ss < SCRATCH_SIZE_INVERSE,
+                    "The maximum index is {}, got {}",
+                    SCRATCH_SIZE_INVERSE,
+                    ss
+                );
+                Column::Relation(SCRATCH_SIZE + ss)
+            }
+            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             // TODO: what happens with error? It does not have a corresponding alias
             Self::Selector(s) => {
-                assert!(s < N_MIPS_SEL_COLS);
+                assert!(
+                    s < N_MIPS_SEL_COLS,
+                    "The maximum index is {}, got {}",
+                    N_MIPS_SEL_COLS,
+                    s
+                );
                 Column::DynamicSelector(s)
             }
         }
