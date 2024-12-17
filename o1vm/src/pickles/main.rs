@@ -13,7 +13,6 @@ use o1vm::{
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints as mips_constraints,
-        interpreter::{self, InterpreterEnv},
         witness::{self as mips_witness},
         Instruction,
     },
@@ -22,7 +21,6 @@ use o1vm::{
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
-use strum::IntoEnumIterator;
 
 use mina_curves::pasta::{Fp, Vesta};
 
@@ -75,25 +73,7 @@ pub fn main() -> ExitCode {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let constraints = {
-        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
-        let mut constraints = Instruction::iter()
-            .flat_map(|instr_typ| instr_typ.into_iter())
-            .fold(vec![], |mut acc, instr| {
-                interpreter::interpret_instruction(&mut mips_con_env, instr);
-                let selector = mips_con_env.get_selector();
-                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
-                    .get_constraints()
-                    .into_iter()
-                    .map(|c| selector.clone() * c)
-                    .collect();
-                acc.extend(constraints_with_selector);
-                mips_con_env.reset();
-                acc
-            });
-        constraints.extend(mips_con_env.get_selector_constraints());
-        constraints
-    };
+    let constraints: Vec<E<Fp>> = mips_constraints::make_constraints::<Fp>();
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
