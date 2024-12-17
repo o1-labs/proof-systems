@@ -2395,6 +2395,15 @@
 <a href="#2395" id="2395">2395</a>
 <a href="#2396" id="2396">2396</a>
 <a href="#2397" id="2397">2397</a>
+<a href="#2398" id="2398">2398</a>
+<a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
+<a href="#2402" id="2402">2402</a>
+<a href="#2403" id="2403">2403</a>
+<a href="#2404" id="2404">2404</a>
+<a href="#2405" id="2405">2405</a>
+<a href="#2406" id="2406">2406</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4256,7 +4265,16 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::SetLessThanImmediate =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThanImmediate&quot;</span>)
+            <span class="comment">// slti: x[rd] = (x[rs1] &lt; sext(immediate)) ? 1 : 0
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.test_less_than_signed(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         IInstruction::SetLessThanImmediateUnsigned =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;SetLessThanImmediateUnsigned&quot;</span>)
