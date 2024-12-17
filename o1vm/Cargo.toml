@@ -67,9 +67,9 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [features]
-default = []
 ocaml_types = [
     "ocaml",
     "ocaml-gen",
     "poly-commitment/ocaml_types",
 ]
+default = ["ocaml_types"]
