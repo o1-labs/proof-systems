@@ -107,29 +107,29 @@ pub mod caml {
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct Evals<F>(Vec<F>);
+    pub struct EvalVec<F>(Vec<F>);
 
-    impl<F, CamlF> From<Evals<F>> for Vec<CamlF>
+    impl<F, CamlF> From<EvalVec<F>> for Vec<CamlF>
     where
         CamlF: From<F>,
     {
-        fn from(es: Evals<F>) -> Self {
+        fn from(es: EvalVec<F>) -> Self {
             es.0.into_iter().map(CamlF::from).collect()
         }
     }
 
-    impl<F, CamlF> From<Vec<CamlF>> for Evals<F>
+    impl<F, CamlF> From<Vec<CamlF>> for EvalVec<F>
     where
         F: From<CamlF>,
     {
         fn from(es: Vec<CamlF>) -> Self {
-            Evals(es.into_iter().map(F::from).collect())
+            EvalVec(es.into_iter().map(F::from).collect())
         }
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofInputs<CamlF> {
-        pub evaluations: CamlWitnessColumns<Evals<CamlF>, Evals<CamlF>>,
+        pub evaluations: CamlWitnessColumns<EvalVec<CamlF>, EvalVec<CamlF>>,
     }
 
     impl<G, CamlF> From<ProofInputs<G>> for CamlProofInputs<CamlF>
@@ -158,36 +158,37 @@ pub mod caml {
 
     //[PolyComm<G>; N_MIPS_SEL_COLS]>
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct MyVec<T>(Vec<T>);
+    pub struct MipsColumnsVec<T>(Vec<T>);
 
-    impl<T, S> From<[T; N_MIPS_SEL_COLS]> for MyVec<S>
+    impl<T, S> From<[T; N_MIPS_SEL_COLS]> for MipsColumnsVec<S>
     where
         T: Clone,
         S: From<T>,
     {
         fn from(xs: [T; N_MIPS_SEL_COLS]) -> Self {
-            MyVec(xs.map(S::from).into())
+            MipsColumnsVec(xs.map(S::from).into())
         }
     }
 
-    impl<T, S> From<MyVec<S>> for [T; N_MIPS_SEL_COLS]
+    impl<T, S> From<MipsColumnsVec<S>> for [T; N_MIPS_SEL_COLS]
     where
         T: Clone + Debug + From<S>,
     {
-        fn from(xs: MyVec<S>) -> Self {
+        fn from(xs: MipsColumnsVec<S>) -> Self {
             xs.0.into_iter()
                 .map(T::from)
                 .collect::<Vec<_>>()
                 .try_into()
-                .expect("MyVec length mismatch for N_MIPS_SEL_COLS")
+                .expect("MipsColumnsVec length mismatch for N_MIPS_SEL_COLS")
         }
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProof<CamlG, CamlF> {
-        pub commitments: CamlWitnessColumns<CamlPolyComm<CamlG>, MyVec<CamlPolyComm<CamlG>>>,
-        pub zeta_evaluations: CamlWitnessColumns<CamlF, MyVec<CamlF>>,
-        pub zeta_omega_evaluations: CamlWitnessColumns<CamlF, MyVec<CamlF>>,
+        pub commitments:
+            CamlWitnessColumns<CamlPolyComm<CamlG>, MipsColumnsVec<CamlPolyComm<CamlG>>>,
+        pub zeta_evaluations: CamlWitnessColumns<CamlF, MipsColumnsVec<CamlF>>,
+        pub zeta_omega_evaluations: CamlWitnessColumns<CamlF, MipsColumnsVec<CamlF>>,
         pub quotient_commitment: CamlPolyComm<CamlG>,
         pub quotient_evaluations: PointEvaluations<Vec<CamlF>>,
         pub opening_proof: CamlOpeningProof<CamlG, CamlF>,

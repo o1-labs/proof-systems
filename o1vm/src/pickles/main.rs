@@ -2,7 +2,7 @@ use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
-use mina_curves::pasta::VestaParameters;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -21,8 +21,6 @@ use o1vm::{
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
-
-use mina_curves::pasta::{Fp, Vesta};
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
