@@ -20,16 +20,18 @@ use crate::{
             registers::Registers,
         },
     },
-    lookups::Lookup,
+    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
     utils::memory_size,
 };
 use ark_ff::Field;
 use core::panic;
 use kimchi::o1_utils::Two;
+use kimchi_msm::LogupTableID as _;
 use log::{debug, info};
 use std::{
     array,
+    collections::HashMap,
     fs::File,
     io::{BufWriter, Write},
 };
@@ -64,6 +66,10 @@ impl SyscallEnv {
     }
 }
 
+// Some type aliases to aid in refactoring to something faster later
+type FixedTableMap<ID, F> = HashMap<ID, LookupTable<F>>;
+type MultiplicityMap<ID> = HashMap<ID, Vec<u32>>;
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
@@ -90,6 +96,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub lookup_fixed_tables: FixedTableMap<LookupTableIDs, Fp>,
+    pub lookup_multiplicities: MultiplicityMap<LookupTableIDs>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -142,9 +150,18 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
-        // No-op, constraints only
-        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        if let Some(idx) = LookupTable::is_in_table(&lookup.table_id, lookup.value) {
+            // We found the table, so just add one to the multiplicity.
+            self.lookup_multiplicities
+                .get_mut(&lookup.table_id)
+                .unwrap()[idx] += 1;
+        } else {
+            panic!(
+                "Tried to lookup in non-fixed table: {:?}",
+                LookupTableIDs::from_u32(lookup.table_id)
+            );
+        }
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -867,6 +884,22 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             }
         };
 
+        let (lookup_fixed_tables, lookup_multiplicities) = {
+            let mut ft = HashMap::new();
+            let mut m = HashMap::new();
+            let fixed_tables = LookupTableIDs::all_variants()
+                .into_iter()
+                .filter(|x| x.is_fixed())
+                .collect::<Vec<_>>();
+
+            for table_id in fixed_tables {
+                ft.insert(table_id, table_id.to_fixed_table::<Fp>());
+                m.insert(table_id, table_id.to_multiplicities_vec());
+            }
+
+            (ft, m)
+        };
+
         Env {
             instruction_counter: state.step,
             memory: initial_memory.clone(),
@@ -891,6 +924,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            lookup_fixed_tables,
+            lookup_multiplicities,
         }
     }
 
