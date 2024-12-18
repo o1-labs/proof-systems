@@ -70,8 +70,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let domain = kimchi::circuits::domains::EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -330,6 +328,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 }
 
 pub fn main() -> ExitCode {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = cli::Commands::parse();
     match args {
         cli::Commands::Cannon(args) => match args {

@@ -2,7 +2,7 @@
 # Test preimage read from VM request to server response
 # Usage: test_preimage_read.sh [OP_DB_DIR] [NETWORK_NAME]
 
-source ./rpcs.sh
+source rpcs.sh
 
 set +u
 if [ -z "${FILENAME}" ]; then

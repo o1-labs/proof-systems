@@ -60,8 +60,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
     let srs: SRS<Vesta> = {
         let srs = SRS::create(DOMAIN_SIZE);
@@ -159,6 +157,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 }
 
 pub fn main() -> ExitCode {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = cli::Commands::parse();
     match args {
         cli::Commands::Cannon(args) => match args {
