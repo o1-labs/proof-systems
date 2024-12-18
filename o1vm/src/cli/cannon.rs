@@ -97,10 +97,11 @@ impl From<MipsVmConfigurationArgs> for VmConfiguration {
 
 #[derive(Parser, Debug, Clone)]
 pub struct RunArgs {
-    #[command(flatten)]
-    pub vm_cfg: MipsVmConfigurationArgs,
     #[arg(long = "preimage-db-dir", value_name = "PREIMAGE_DB_DIR")]
     pub preimage_db_dir: Option<String>,
+    // it's important that vm_cfg is last in order to properly parse the host field
+    #[command(flatten)]
+    pub vm_cfg: MipsVmConfigurationArgs,
 }
 
 #[derive(Subcommand, Clone, Debug)]
