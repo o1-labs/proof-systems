@@ -1,15 +1,16 @@
 use ark_ff::UniformRand;
+use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
-use mina_curves::pasta::VestaParameters;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
-    cannon::{self, Meta, Start, State},
-    cannon_cli,
+    cannon::{self, Meta, Start, State, VmConfiguration},
+    cli::{self, Cannon, Commands, RunArgs},
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints as mips_constraints,
@@ -24,16 +25,19 @@ use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
 use strum::IntoEnumIterator;
 
-use mina_curves::pasta::{Fp, Vesta};
-
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn main() -> ExitCode {
-    let cli = cannon_cli::main_cli();
-
     let mut rng = rand::thread_rng();
 
-    let configuration = cannon_cli::read_configuration(&cli.get_matches());
+    let cli = cli::Commands::parse();
+
+    let configuration = match cli {
+        Commands::Cannon(cannon) => match cannon {
+            Cannon::Run(RunArgs { vm_cfg, .. }) => VmConfiguration::from(vm_cfg),
+            _ => panic!("Invalid command, expected run command"),
+        },
+    };
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");

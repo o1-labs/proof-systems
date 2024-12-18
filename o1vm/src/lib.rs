@@ -2,7 +2,7 @@
 pub mod cannon;
 
 /// A CLI mimicking the Cannon CLI.
-pub mod cannon_cli;
+pub mod cli;
 
 /// A module to load ELF files.
 pub mod elf_loader;

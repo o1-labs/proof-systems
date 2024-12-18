@@ -1,8 +1,8 @@
-use clap::Arg;
+use clap::Parser;
 use log::{debug, error};
 use o1vm::{
-    cannon::PreimageKey,
-    cannon_cli::{main_cli, read_configuration},
+    cannon::{PreimageKey, VmConfiguration},
+    cli::{self, Cannon, Commands, RunArgs},
     preimage_oracle::{PreImageOracle, PreImageOracleT},
 };
 use std::{
@@ -17,20 +17,17 @@ fn main() -> ExitCode {
 
     env_logger::init();
 
-    // Add command-line parameter to read the Optimism op-program DB directory
-    let cli = main_cli().arg(
-        Arg::new("preimage-db-dir")
-            .long("preimage-db-dir")
-            .value_name("PREIMAGE_DB_DIR"),
-    );
-
     // Now read matches with the additional argument(s)
-    let matches = cli.get_matches();
 
-    let configuration = read_configuration(&matches);
-
-    // Get DB directory and abort if unset
-    let preimage_db_dir = matches.get_one::<String>("preimage-db-dir");
+    let (configuration, preimage_db_dir) = match cli::Commands::parse() {
+        Commands::Cannon(cannon) => match cannon {
+            Cannon::Run(RunArgs {
+                vm_cfg,
+                preimage_db_dir,
+            }) => (VmConfiguration::from(vm_cfg), preimage_db_dir),
+            _ => panic!("Invalid command, expected mips run command"),
+        },
+    };
 
     if let Some(preimage_key_dir) = preimage_db_dir {
         let mut po = PreImageOracle::create(&configuration.host);

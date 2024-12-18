@@ -1,11 +1,12 @@
 use ark_ff::UniformRand;
+use clap::Parser;
 use folding::decomposable_folding::DecomposableFoldingScheme;
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use log::debug;
 use o1vm::{
-    cannon::{self, Meta, Start, State},
-    cannon_cli,
+    cannon::{self, Meta, Start, State, VmConfiguration},
+    cli::{self, Cannon, Commands, RunArgs},
     interpreters::{
         keccak::{
             column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
@@ -39,9 +40,14 @@ use strum::IntoEnumIterator;
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn main() -> ExitCode {
-    let cli = cannon_cli::main_cli();
+    let cli = cli::Commands::parse();
 
-    let configuration = cannon_cli::read_configuration(&cli.get_matches());
+    let configuration = match cli {
+        Commands::Cannon(cannon) => match cannon {
+            Cannon::Run(RunArgs { vm_cfg, .. }) => VmConfiguration::from(vm_cfg),
+            _ => panic!("Invalid command, expected run command"),
+        },
+    };
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
