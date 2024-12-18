@@ -2,7 +2,7 @@
 # Test preimage read from VM request to server response
 # Usage: test_preimage_read.sh [OP_DB_DIR] [NETWORK_NAME]
 
-source rpcs.sh
+source ./rpcs.sh
 
 set +u
 if [ -z "${FILENAME}" ]; then
@@ -36,7 +36,7 @@ NETWORK=${2:-sepolia}
 #################################################
 
 # Run test with debug on
-RUST_LOG=debug cargo run -r --bin test_optimism_preimage_read -- \
+RUST_LOG=debug cargo run -r --bin pickles_o1vm -- cannon test-optimism-preimage-read -- \
     --preimage-db-dir ${DATADIR} -- \
     op-program \
     --log.level DEBUG \

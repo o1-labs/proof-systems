@@ -30,7 +30,7 @@ fi
 cargo run --bin ${BINARY_FLAVOR} \
     --all-features \
     --release \
-    -p o1vm -- \
+    -p o1vm cannon run -- \
     --pprof.cpu \
     --info-at "${INFO_AT:-%10000000}" \
     --snapshot-state-at "${SNAPSHOT_STATE_AT:-%10000000}" \

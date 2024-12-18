@@ -1,11 +1,12 @@
 use ark_ff::UniformRand;
+use clap::Parser;
 use folding::decomposable_folding::DecomposableFoldingScheme;
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use log::debug;
 use o1vm::{
     cannon::{self, Meta, Start, State},
-    cannon_cli,
+    cli,
     interpreters::{
         keccak::{
             column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
@@ -29,6 +30,7 @@ use o1vm::{
     },
     lookups::LookupTableIDs,
     preimage_oracle::PreImageOracle,
+    test_preimage_read,
 };
 use poly_commitment::SRS as _;
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
@@ -38,10 +40,8 @@ use strum::IntoEnumIterator;
 /// program.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-pub fn main() -> ExitCode {
-    let cli = cannon_cli::main_cli();
-
-    let configuration = cannon_cli::read_configuration(&cli.get_matches());
+pub fn cannon_main(args: cli::cannon::RunArgs) {
+    let configuration: cannon::VmConfiguration = args.vm_cfg.into();
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
@@ -327,5 +327,19 @@ pub fn main() -> ExitCode {
     }
 
     // TODO: Logic
+}
+
+pub fn main() -> ExitCode {
+    let args = cli::Commands::parse();
+    match args {
+        cli::Commands::Cannon(args) => match args {
+            cli::cannon::Cannon::Run(args) => {
+                cannon_main(args);
+            }
+            cli::cannon::Cannon::TestPreimageRead(args) => {
+                test_preimage_read::main(args);
+            }
+        },
+    }
     ExitCode::SUCCESS
 }
