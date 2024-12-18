@@ -39,16 +39,8 @@ use strum::IntoEnumIterator;
 /// program.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-pub fn main() -> ExitCode {
-    let cli = cli::Commands::parse();
 
-    let configuration = match cli {
-        Commands::Cannon(cannon) => match cannon {
-            Cannon::Run(RunArgs { vm_cfg, .. }) => VmConfiguration::from(vm_cfg),
-            _ => panic!("Invalid command, expected run command"),
-        },
-    };
-
+pub fn run(configuration: VmConfiguration) {
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
@@ -333,5 +325,20 @@ pub fn main() -> ExitCode {
     }
 
     // TODO: Logic
+}
+
+
+pub fn main() -> ExitCode {
+    let cli = cli::Commands::parse();
+
+    match cli {
+        Commands::Cannon(cannon) => match cannon {
+            Cannon::Run(RunArgs { vm_cfg, .. }) => {
+                let configuration = VmConfiguration::from(vm_cfg);
+                run(configuration);
+            },
+            _ => panic!("Invalid command, expected run command"),
+        },
+    };
     ExitCode::SUCCESS
 }

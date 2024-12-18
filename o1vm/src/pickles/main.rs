@@ -19,25 +19,16 @@ use o1vm::{
         Instruction,
     },
     pickles::{proof::ProofInputs, prover, verifier},
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::PreImageOracle, elf_loader::parse_riscv32,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
-use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
+use std::{fs::File, io::BufReader, process::ExitCode, time::Instant, path::Path};
 use strum::IntoEnumIterator;
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-pub fn main() -> ExitCode {
+pub fn run(configuration: VmConfiguration) {
     let mut rng = rand::thread_rng();
-
-    let cli = cli::Commands::parse();
-
-    let configuration = match cli {
-        Commands::Cannon(cannon) => match cannon {
-            Cannon::Run(RunArgs { vm_cfg, .. }) => VmConfiguration::from(vm_cfg),
-            _ => panic!("Invalid command, expected run command"),
-        },
-    };
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
@@ -162,6 +153,32 @@ pub fn main() -> ExitCode {
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-    // TODO: Logic
+}
+
+pub fn gen_state_json(
+    input_elf : String,
+    output: String
+) -> Result<(), String> {
+    let elf_path = Path::new(&input_elf);
+    let state = parse_riscv32(elf_path)?;
+    let file = File::create(output).map_err(|e| e.to_string())?;
+    serde_json::to_writer_pretty(file, &state).map_err(|e| e.to_string())
+}
+
+pub fn main() -> ExitCode {
+    let cli = cli::Commands::parse();
+
+    match cli {
+        Commands::Cannon(cannon) => match cannon {
+            Cannon::Run(RunArgs { vm_cfg, .. }) => {
+                let configuration = VmConfiguration::from(vm_cfg);
+                run(configuration);
+            },
+            Cannon::GenStateJson(gen_state_json_args) => {
+                gen_state_json(gen_state_json_args.input, gen_state_json_args.output)
+                    .expect("Error generating state.json");
+            },
+        },
+    };
     ExitCode::SUCCESS
 }

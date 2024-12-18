@@ -98,7 +98,7 @@ impl From<MipsVmConfigurationArgs> for VmConfiguration {
 #[derive(Parser, Debug, Clone)]
 pub struct GenStateJsonArgs {
     #[arg(short = 'i', long = "input", value_name = "FILE")]
-    input: String,
+    pub input: String,
 
     #[arg(
         short = 'o',
@@ -106,7 +106,7 @@ pub struct GenStateJsonArgs {
         value_name = "FILE",
         default_value = "state.json"
     )]
-    output: String,
+    pub output: String,
 }
 
 #[derive(Parser, Debug, Clone)]
