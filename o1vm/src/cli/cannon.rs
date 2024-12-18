@@ -104,9 +104,30 @@ pub struct RunArgs {
     pub vm_cfg: MipsVmConfigurationArgs,
 }
 
+#[derive(Parser, Debug, Clone)]
+pub struct GenStateJsonArgs {
+    #[arg(
+        short = 'i',
+        long,
+        value_name = "FILE",
+        help = "input ELF file"
+    )]
+    pub input: String,
+    #[arg(
+        short = 'o',
+        long,
+        value_name = "FILE",
+        default_value = "state.json",
+        help = "output state.json file"
+    )]
+    pub output: String,
+}
+
 #[derive(Subcommand, Clone, Debug)]
 pub enum Cannon {
     Run(RunArgs),
     #[command(name = "test-optimism-preimage-read")]
     TestPreimageRead(RunArgs),
+    #[command(name = "gen-state-json")]
+    GenStateJson(GenStateJsonArgs),
 }

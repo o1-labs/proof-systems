@@ -1,5 +1,5 @@
 use crate::cannon::{Page, State, PAGE_SIZE};
-use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
+use elf::{endian::{LittleEndian, BigEndian}, section::SectionHeader, ElfBytes};
 use log::debug;
 use std::{collections::HashMap, path::Path};
 
@@ -15,10 +15,10 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
     debug!("Start parsing the ELF file to load a RISC-V 32i compatible state");
     let file_data = std::fs::read(path).expect("Could not read file.");
     let slice = file_data.as_slice();
-    let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
+    let file = ElfBytes::<BigEndian>::minimal_parse(slice).expect("Open ELF file failed.");
 
     // Checking it is RISC-V
-    assert_eq!(file.ehdr.e_machine, 243);
+    assert_eq!(file.ehdr.e_machine, 8);
 
     let (shdrs_opt, strtab_opt) = file
         .section_headers_with_strtab()

@@ -338,6 +338,9 @@ pub fn main() -> ExitCode {
             cli::cannon::Cannon::TestPreimageRead(args) => {
                 test_preimage_read::main(args);
             }
+            cli::cannon::Cannon::GenStateJson(_) => {
+                panic!("GenStateJson not implemented for legacy prover");
+            }
         },
     }
     ExitCode::SUCCESS
