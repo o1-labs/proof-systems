@@ -192,7 +192,7 @@ This needs to be fixed.</p>
 <p>The URS comprises of:</p>
 <ul>
 <li><code>Gs</code>: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.</li>
-<li><code>H</code>: a blinding curve point that can be used to add hidding to a polynomial commitment scheme.</li>
+<li><code>H</code>: a blinding curve point that can be used to add hiding to a polynomial commitment scheme.</li>
 </ul>
 <p>The URS is generated deterministically, and thus can be rederived if not stored.</p>
 <p>As different circuits of different size do not share the same domain, and the size of the domain is directly equal to the number of <code>Gs</code> curve points we use to commit to polynomials, we often want to share the same URS of maximum size across many circuits (constraint systems).
