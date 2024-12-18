@@ -1,4 +1,4 @@
-# MVPoly: play with multi-variate poynomials
+# MVPoly: play with multi-variate polynomials
 
 This library aims to provide algorithms and different representations to
 manipulate multivariate polynomials.
