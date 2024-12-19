@@ -54,22 +54,12 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
 
 <span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraints;
+<span class="kw">pub mod </span>curve;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>logup;
 <span class="kw">pub mod </span>poseidon_3_60_0_5_5_fp;
@@ -100,18 +90,6 @@
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 </span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">15 </span>+ <span class="number">2</span>;
-
-<span class="doccomment">/// The low-exponentiation value used by the Poseidon hash function for the
-/// substitution box.
-///
-/// The value is used to perform initialisation checks with the fields.
-</span><span class="kw">pub const </span>POSEIDON_ALPHA: u64 = <span class="number">5</span>;
-
-<span class="doccomment">/// The number of full rounds in the Poseidon hash function.
-</span><span class="kw">pub const </span>POSEIDON_ROUNDS_FULL: usize = <span class="number">60</span>;
-
-<span class="doccomment">/// The number of elements in the state of the Poseidon hash function.
-</span><span class="kw">pub const </span>POSEIDON_STATE_SIZE: usize = <span class="number">3</span>;
 
 <span class="doccomment">/// The maximum number of bits the fields can be.
 /// It is critical as we have some assumptions for the gadgets describing the

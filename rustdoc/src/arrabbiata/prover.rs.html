@@ -18,11 +18,9 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A prover for the folding/accumulation scheme
 
-</span><span class="kw">use </span><span class="kw">crate</span>::proof::Proof;
-<span class="kw">use </span>ark_ec::AffineRepr;
+</span><span class="kw">use crate</span>::{curve::ArrabbiataCurve, proof::Proof};
 <span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use </span><span class="kw">crate</span>::witness::Env;
@@ -33,8 +31,8 @@
 </span><span class="kw">pub fn </span>prove&lt;
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: AffineRepr&lt;ScalarField = Fp, BaseField = Fq&gt;,
-    E2: AffineRepr&lt;ScalarField = Fq, BaseField = Fp&gt;,
+    E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
+    E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
 &gt;(
     _env: <span class="kw-2">&amp;</span>Env&lt;Fp, Fq, E1, E2&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Proof, String&gt; {

@@ -933,6 +933,15 @@
 <a href="#933" id="933">933</a>
 <a href="#934" id="934">934</a>
 <a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.
@@ -1022,7 +1031,8 @@
 //!
 //! Hashing is a crucial part of the IVC scheme. The hash function the
 //! interpreter does use for the moment is an instance of the Poseidon hash
-//! function with a fixed state size of [POSEIDON_STATE_SIZE]. Increasing the
+//! function with a fixed state size of
+//! [crate::curve::PlonkSpongeConstants::SPONGE_WIDTH]. Increasing the
 //! state size can be considered as it would potentially optimize the
 //! number of rounds, and allow hashing more data on one row. We leave this for
 //! future works.
@@ -1273,11 +1283,11 @@
 //! there.
 
 </span><span class="kw">use crate</span>::{
-    columns::Gadget, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>log::debug;
+<span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>num_bigint::BigInt;
 
 <span class="doccomment">/// A list of instruction/gadget implemented in the interpreter.
@@ -1765,19 +1775,23 @@
         Instruction::Poseidon(curr_round) =&gt; {
             env.activate_gadget(Gadget::Poseidon);
             <span class="macro">debug!</span>(<span class="string">&quot;Executing instruction Poseidon({curr_round})&quot;</span>);
-            <span class="kw">if </span>curr_round &lt; POSEIDON_ROUNDS_FULL {
+            <span class="kw">if </span>curr_round &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL {
                 <span class="comment">// Values to be absorbed are 0 when when the round is not zero,
                 // i.e. when we are processing the rounds.
-                </span><span class="kw">let </span>values_to_absorb: Vec&lt;E::Variable&gt; = (<span class="number">0</span>..POSEIDON_STATE_SIZE - <span class="number">1</span>)
+                </span><span class="kw">let </span>values_to_absorb: Vec&lt;E::Variable&gt; = (<span class="number">0</span>..PlonkSpongeConstants::SPONGE_WIDTH
+                    - <span class="number">1</span>)
                     .map(|_i| {
                         <span class="kw">let </span>pos = env.allocate_public_input();
                         <span class="comment">// fetch_value_to_absorb is supposed to return 0 if curr_round != 0.
                         </span><span class="kw">unsafe </span>{ env.fetch_value_to_absorb(pos, curr_round) }
                     })
                     .collect();
-                <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; =
-                    (<span class="number">0</span>..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
-                <span class="kw">let </span>round_output_positions: Vec&lt;E::Position&gt; = (<span class="number">0</span>..POSEIDON_STATE_SIZE)
+                <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; = (<span class="number">0
+                    </span>..PlonkSpongeConstants::SPONGE_WIDTH)
+                    .map(|_i| env.allocate())
+                    .collect();
+                <span class="kw">let </span>round_output_positions: Vec&lt;E::Position&gt; = (<span class="number">0
+                    </span>..PlonkSpongeConstants::SPONGE_WIDTH)
                     .map(|_i| env.allocate_next_row())
                     .collect();
                 <span class="comment">// If we are at the first round, we load the state from the environment.
@@ -1791,8 +1805,9 @@
                         .enumerate()
                         .map(|(i, pos)| {
                             <span class="kw">let </span>res = env.load_poseidon_state(<span class="kw-2">*</span>pos, i);
-                            <span class="comment">// Absorb value. The capacity is POSEIDON_STATE_SIZE - 1
-                            </span><span class="kw">if </span>i &lt; POSEIDON_STATE_SIZE - <span class="number">1 </span>{
+                            <span class="comment">// Absorb value. The capacity is
+                            // PlonkSpongeConstants::SPONGE_WIDTH - 1
+                            </span><span class="kw">if </span>i &lt; PlonkSpongeConstants::SPONGE_WIDTH - <span class="number">1 </span>{
                                 res + values_to_absorb[i].clone()
                             } <span class="kw">else </span>{
                                 res
@@ -1817,7 +1832,7 @@
 
                     <span class="kw">let </span>round = curr_round + idx_round;
 
-                    <span class="kw">let </span>rcs: Vec&lt;E::Variable&gt; = (<span class="number">0</span>..POSEIDON_STATE_SIZE)
+                    <span class="kw">let </span>rcs: Vec&lt;E::Variable&gt; = (<span class="number">0</span>..PlonkSpongeConstants::SPONGE_WIDTH)
                         .map(|i| {
                             <span class="kw">let </span>pos = env.allocate_public_input();
                             env.get_poseidon_round_constant(pos, round, i)
@@ -1850,7 +1865,7 @@
                     // now, we will save the state at the end of the last round
                     // and reload it at the beginning of the next Poseidon full
                     // hash.
-                    </span><span class="kw">if </span>round == POSEIDON_ROUNDS_FULL - <span class="number">1 </span>{
+                    </span><span class="kw">if </span>round == PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">1 </span>{
                         state.iter().enumerate().for_each(|(i, x)| {
                             <span class="kw">unsafe </span>{ env.save_poseidon_state(x.clone(), i) };
                         });
@@ -1859,7 +1874,10 @@
                     state
                 });
             } <span class="kw">else </span>{
-                <span class="macro">panic!</span>(<span class="string">&quot;Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}&quot;</span>);
+                <span class="macro">panic!</span>(
+                    <span class="string">&quot;Invalid index: it is supposed to be less than {}&quot;</span>,
+                    PlonkSpongeConstants::PERM_ROUNDS_FULL
+                );
             }
         }
         Instruction::NoOp =&gt; {}
