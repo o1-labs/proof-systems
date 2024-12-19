@@ -87,7 +87,8 @@
 //!
 //! Hashing is a crucial part of the IVC scheme. The hash function the
 //! interpreter does use for the moment is an instance of the Poseidon hash
-//! function with a fixed state size of [POSEIDON_STATE_SIZE]. Increasing the
+//! function with a fixed state size of
+//! [crate::curve::PlonkSpongeConstants::SPONGE_WIDTH]. Increasing the
 //! state size can be considered as it would potentially optimize the
 //! number of rounds, and allow hashing more data on one row. We leave this for
 //! future works.
@@ -338,11 +339,11 @@
 //! there.
 
 use crate::{
-    columns::Gadget, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, POSEIDON_ROUNDS_FULL,
-    POSEIDON_STATE_SIZE,
+    columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 use ark_ff::{One, Zero};
 use log::debug;
+use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 
 /// A list of instruction/gadget implemented in the interpreter.
@@ -830,19 +831,23 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
         Instruction::Poseidon(curr_round) => {
             env.activate_gadget(Gadget::Poseidon);
             debug!("Executing instruction Poseidon({curr_round})");
-            if curr_round < POSEIDON_ROUNDS_FULL {
+            if curr_round < PlonkSpongeConstants::PERM_ROUNDS_FULL {
                 // Values to be absorbed are 0 when when the round is not zero,
                 // i.e. when we are processing the rounds.
-                let values_to_absorb: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE - 1)
+                let values_to_absorb: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH
+                    - 1)
                     .map(|_i| {
                         let pos = env.allocate_public_input();
                         // fetch_value_to_absorb is supposed to return 0 if curr_round != 0.
                         unsafe { env.fetch_value_to_absorb(pos, curr_round) }
                     })
                     .collect();
-                let round_input_positions: Vec<E::Position> =
-                    (0..POSEIDON_STATE_SIZE).map(|_i| env.allocate()).collect();
-                let round_output_positions: Vec<E::Position> = (0..POSEIDON_STATE_SIZE)
+                let round_input_positions: Vec<E::Position> = (0
+                    ..PlonkSpongeConstants::SPONGE_WIDTH)
+                    .map(|_i| env.allocate())
+                    .collect();
+                let round_output_positions: Vec<E::Position> = (0
+                    ..PlonkSpongeConstants::SPONGE_WIDTH)
                     .map(|_i| env.allocate_next_row())
                     .collect();
                 // If we are at the first round, we load the state from the environment.
@@ -856,8 +861,9 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         .enumerate()
                         .map(|(i, pos)| {
                             let res = env.load_poseidon_state(*pos, i);
-                            // Absorb value. The capacity is POSEIDON_STATE_SIZE - 1
-                            if i < POSEIDON_STATE_SIZE - 1 {
+                            // Absorb value. The capacity is
+                            // PlonkSpongeConstants::SPONGE_WIDTH - 1
+                            if i < PlonkSpongeConstants::SPONGE_WIDTH - 1 {
                                 res + values_to_absorb[i].clone()
                             } else {
                                 res
@@ -882,7 +888,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
 
                     let round = curr_round + idx_round;
 
-                    let rcs: Vec<E::Variable> = (0..POSEIDON_STATE_SIZE)
+                    let rcs: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
                         .map(|i| {
                             let pos = env.allocate_public_input();
                             env.get_poseidon_round_constant(pos, round, i)
@@ -915,7 +921,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     // now, we will save the state at the end of the last round
                     // and reload it at the beginning of the next Poseidon full
                     // hash.
-                    if round == POSEIDON_ROUNDS_FULL - 1 {
+                    if round == PlonkSpongeConstants::PERM_ROUNDS_FULL - 1 {
                         state.iter().enumerate().for_each(|(i, x)| {
                             unsafe { env.save_poseidon_state(x.clone(), i) };
                         });
@@ -924,7 +930,10 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     state
                 });
             } else {
-                panic!("Invalid index: it is supposed to be less than {POSEIDON_ROUNDS_FULL}");
+                panic!(
+                    "Invalid index: it is supposed to be less than {}",
+                    PlonkSpongeConstants::PERM_ROUNDS_FULL
+                );
             }
         }
         Instruction::NoOp => {}
