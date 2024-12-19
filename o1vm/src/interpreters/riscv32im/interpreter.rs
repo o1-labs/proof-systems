@@ -2270,7 +2270,22 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         UInstruction::AddUpperImmediate => {
-            unimplemented!("AddUpperImmediate")
+            // auipc: x[rd] = pc + sext(immediate[31:12] << 12)
+            let local_imm = {
+                let pos = env.alloc_scratch();
+                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                env.sign_extend(&shifted_imm, 32)
+            };
+            let local_pc = instruction_pointer.clone();
+            let (local_rd, _) = {
+                let pos = env.alloc_scratch();
+                let overflow_pos = env.alloc_scratch();
+                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) }
+            };
+            env.write_register(&rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     };
 }
