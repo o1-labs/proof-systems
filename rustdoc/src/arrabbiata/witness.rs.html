@@ -1049,25 +1049,25 @@
 <a href="#1049" id="1049">1049</a>
 <a href="#1050" id="1050">1050</a>
 <a href="#1051" id="1051">1051</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
+<a href="#1052" id="1052">1052</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{models::short_weierstrass::SWCurveConfig, AffineRepr};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 <span class="kw">use </span>log::{debug, info};
-<span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-<span class="kw">use </span>poly_commitment::{ipa::SRS, PolyComm, SRS <span class="kw">as _</span>};
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 <span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use crate</span>::{
     columns::{Column, Gadget},
-    curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    poseidon_3_60_0_5_5_fp, poseidon_3_60_0_5_5_fq, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    POSEIDON_ALPHA, POSEIDON_ROUNDS_FULL, POSEIDON_STATE_SIZE,
 };
 
 <span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
@@ -1083,8 +1083,8 @@
 </span><span class="kw">pub struct </span>Env&lt;
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
-    E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
+    E1: AffineRepr&lt;ScalarField = Fp, BaseField = Fq&gt;,
+    E2: AffineRepr&lt;ScalarField = Fq, BaseField = Fp&gt;,
 &gt; {
     <span class="comment">// ----------------
     // Setup related (domains + SRS)
@@ -1170,8 +1170,8 @@
     /// public IO.
     </span><span class="comment">// IMPROVEME: use a list of BigInt? It might be faster as the CPU will
     // already have in its cache the values, and we can use a flat array
-    </span><span class="kw">pub </span>sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-    <span class="kw">pub </span>sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+    </span><span class="kw">pub </span>sponge_e1: [BigInt; POSEIDON_STATE_SIZE],
+    <span class="kw">pub </span>sponge_e2: [BigInt; POSEIDON_STATE_SIZE],
 
     <span class="doccomment">/// The current iteration of the IVC
     </span><span class="kw">pub </span>current_iteration: u64,
@@ -1236,8 +1236,8 @@
 </span><span class="kw">impl</span>&lt;
         Fp: PrimeField,
         Fq: PrimeField,
-        E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
-        E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
+        E1: CommitmentCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
+        E2: CommitmentCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
     &gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp, Fq, E1, E2&gt;
 <span class="kw">where
     </span>&lt;E1::Params <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField: PrimeField,
@@ -1443,11 +1443,11 @@
         i: usize,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>rc = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            E1::sponge_params().round_constants[round][i]
+            poseidon_3_60_0_5_5_fp::static_params().round_constants[round][i]
                 .to_biguint()
                 .into()
         } <span class="kw">else </span>{
-            E2::sponge_params().round_constants[round][i]
+            poseidon_3_60_0_5_5_fq::static_params().round_constants[round][i]
                 .to_biguint()
                 .into()
         };
@@ -1456,9 +1456,13 @@
 
     <span class="kw">fn </span>get_poseidon_mds_matrix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, j: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            E1::sponge_params().mds[i][j].to_biguint().into()
+            poseidon_3_60_0_5_5_fp::static_params().mds[i][j]
+                .to_biguint()
+                .into()
         } <span class="kw">else </span>{
-            E2::sponge_params().mds[i][j].to_biguint().into()
+            poseidon_3_60_0_5_5_fq::static_params().mds[i][j]
+                .to_biguint()
+                .into()
         }
     }
 
@@ -1803,32 +1807,30 @@
 <span class="kw">impl</span>&lt;
         Fp: PrimeField,
         Fq: PrimeField,
-        E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
-        E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
+        E1: CommitmentCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
+        E2: CommitmentCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
     &gt; Env&lt;Fp, Fq, E1, E2&gt;
 {
     <span class="kw">pub fn </span>new(
         srs_log2_size: usize,
         z0: BigInt,
-        sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-        sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+        sponge_e1: [BigInt; <span class="number">3</span>],
+        sponge_e2: [BigInt; <span class="number">3</span>],
     ) -&gt; <span class="self">Self </span>{
         {
             <span class="macro">assert!</span>(Fp::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
             <span class="macro">assert!</span>(Fq::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
             <span class="kw">let </span>modulus_fp = Fp::modulus_biguint();
-            <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
             <span class="macro">assert!</span>(
-                (modulus_fp - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
+                (modulus_fp - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(POSEIDON_ALPHA))
                     == BigUint::from(<span class="number">1_u64</span>),
-                <span class="string">&quot;The modulus of Fp should be coprime with {alpha}&quot;
+                <span class="string">&quot;The modulus of Fp should be coprime with {POSEIDON_ALPHA}&quot;
             </span>);
             <span class="kw">let </span>modulus_fq = Fq::modulus_biguint();
-            <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
             <span class="macro">assert!</span>(
-                (modulus_fq - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
+                (modulus_fq - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(POSEIDON_ALPHA))
                     == BigUint::from(<span class="number">1_u64</span>),
-                <span class="string">&quot;The modulus of Fq should be coprime with {alpha}&quot;
+                <span class="string">&quot;The modulus of Fq should be coprime with {POSEIDON_ALPHA}&quot;
             </span>);
         }
         <span class="kw">let </span>srs_size = <span class="number">1 </span>&lt;&lt; srs_log2_size;
@@ -2065,7 +2067,7 @@
     </span><span class="kw">pub fn </span>fetch_next_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Instruction {
         <span class="kw">match </span><span class="self">self</span>.current_instruction {
             Instruction::Poseidon(i) =&gt; {
-                <span class="kw">if </span>i &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">5 </span>{
+                <span class="kw">if </span>i &lt; POSEIDON_ROUNDS_FULL - <span class="number">5 </span>{
                     Instruction::Poseidon(i + <span class="number">5</span>)
                 } <span class="kw">else </span>{
                     <span class="comment">// FIXME: we continue absorbing

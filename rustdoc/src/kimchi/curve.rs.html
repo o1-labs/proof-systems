@@ -244,7 +244,7 @@
     </span><span class="kw">fn </span>other_curve_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField);
 }
 
-<span class="kw">pub fn </span>vesta_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
+<span class="kw">fn </span>vesta_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
     &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
     &lt;VestaParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
 ) {
@@ -255,7 +255,7 @@
     <span class="kw-2">&amp;</span>VESTA_ENDOS
 }
 
-<span class="kw">pub fn </span>pallas_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
+<span class="kw">fn </span>pallas_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
     &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::BaseField,
     &lt;PallasParameters <span class="kw">as </span>CurveConfig&gt;::ScalarField,
 ) {
