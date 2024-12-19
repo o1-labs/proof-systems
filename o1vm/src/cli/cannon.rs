@@ -19,13 +19,8 @@ pub struct MipsVmConfigurationArgs {
     )]
     output: String,
 
-    #[arg(
-        long,
-        value_name = "FILE",
-        default_value = "meta.json",
-        help = "metadata file"
-    )]
-    meta: String,
+    #[arg(long, value_name = "FILE", help = "metadata file")]
+    meta: Option<String>,
 
     #[arg(
         long = "proof-at",
@@ -99,6 +94,8 @@ impl From<MipsVmConfigurationArgs> for VmConfiguration {
 pub struct RunArgs {
     #[arg(long = "preimage-db-dir", value_name = "PREIMAGE_DB_DIR")]
     pub preimage_db_dir: Option<String>,
+    #[arg(long = "srs-cache", value_name = "SRS_CACHE")]
+    pub srs_cache: Option<String>,
     // it's important that vm_cfg is last in order to properly parse the host field
     #[command(flatten)]
     pub vm_cfg: MipsVmConfigurationArgs,

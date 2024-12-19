@@ -40,6 +40,7 @@ o1vm/state.json
 meta.json
 state.json
 o1vm/resources/programs/mips/*.bin
+o1vm/resources/programs/mips/*.asm
 
 # Directory for the RISC-V 32bits toolchain
 _riscv32-gnu-toolchain

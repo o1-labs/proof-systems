@@ -89,6 +89,10 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
                 let padding_needed =
                     (page_size_usize - (data_length % page_size_usize)) % page_size_usize;
                 if padding_needed > 0 {
+                    debug!(
+                        "Padding the last page with {} zeros to reach the page size of {} bytes.",
+                        padding_needed, page_size_usize
+                    );
                     data[page_offset + data_length..page_offset + page_size_usize].fill(0);
                 }
                 data_length

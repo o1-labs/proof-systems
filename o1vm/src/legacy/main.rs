@@ -5,7 +5,7 @@ use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use log::debug;
 use o1vm::{
-    cannon::{self, Meta, Start, State},
+    cannon::{self, Start, State},
     cli,
     interpreters::{
         keccak::{
@@ -29,7 +29,7 @@ use o1vm::{
         BaseSponge, Fp, OpeningProof, ScalarSponge,
     },
     lookups::LookupTableIDs,
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 use poly_commitment::SRS as _;
@@ -50,22 +50,13 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
-    let meta_file = File::open(&configuration.metadata_file).unwrap_or_else(|_| {
-        panic!(
-            "Could not open metadata file {}",
-            &configuration.metadata_file
-        )
-    });
+    let meta = &configuration.metadata_file.clone().map(|f| {
+        let meta_file =
+            File::open(&f).unwrap_or_else(|_| panic!("Could not open metadata file {}", f));
 
-    let meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|_| {
-        panic!(
-            "Error deserializing metadata file {}",
-            &configuration.metadata_file
-        )
+        serde_json::from_reader(BufReader::new(meta_file))
+            .unwrap_or_else(|_| panic!("Error deserializing metadata file {}", f))
     });
-
-    let mut po = PreImageOracle::create(&configuration.host);
-    let _child = po.start();
 
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
@@ -83,8 +74,26 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     // Initialize the environments
     // The Keccak environment is extracted inside the loop
-    let mut mips_wit_env =
-        mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_wit_env = match configuration.host.clone() {
+        Some(host) => {
+            let mut po = PreImageOracle::create(host);
+            let _child = po.start();
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(po),
+            )
+        }
+        None => {
+            // warning: the null preimage oracle has no data and will crash the program if used
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(NullPreImageOracle),
+            )
+        }
+    };
+
     let mut mips_con_env = mips_constraints::Env::<Fp>::default();
     // The keccak environment is extracted inside the loop
 

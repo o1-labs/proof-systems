@@ -9,7 +9,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
-    cannon::{self, Meta, Start, State},
+    cannon::{self, Start, State},
     cli, elf_loader,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
@@ -19,7 +19,7 @@ use o1vm::{
         Instruction,
     },
     pickles::{proof::ProofInputs, prover, verifier},
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -33,43 +33,69 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     let configuration: cannon::VmConfiguration = args.vm_cfg.into();
 
+    debug!("Loading state from file {}", configuration.input_state_file);
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
+    debug!("State loaded successfully");
 
-    let meta_file = File::open(&configuration.metadata_file).unwrap_or_else(|_| {
-        panic!(
-            "Could not open metadata file {}",
-            &configuration.metadata_file
-        )
+    let meta = &configuration.metadata_file.clone().map(|f| {
+        debug!("Loading metadata from file {}", f);
+        let meta_file =
+            File::open(&f).unwrap_or_else(|_| panic!("Could not open metadata file {}", f));
+
+        serde_json::from_reader(BufReader::new(meta_file))
+            .unwrap_or_else(|_| panic!("Error deserializing metadata file {}", f))
     });
-
-    let meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|_| {
-        panic!(
-            "Error deserializing metadata file {}",
-            &configuration.metadata_file
-        )
-    });
-
-    let mut po = PreImageOracle::create(&configuration.host);
-    let _child = po.start();
 
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
+    debug!("Creating SRS");
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-    let srs: SRS<Vesta> = {
-        let srs = SRS::create(DOMAIN_SIZE);
-        srs.get_lagrange_basis(domain_fp.d1);
-        srs
+    let srs: SRS<Vesta> = match &args.srs_cache {
+        Some(cache) => {
+            debug!("Loading SRS from cache {}", cache);
+            let file = File::open(&cache).expect("Error opening srs_cache file ");
+            let reader = BufReader::new(file);
+            let srs: SRS<Vesta> = rmp_serde::from_read(reader).unwrap();
+            debug!("SRS loaded successfully from cache");
+            srs
+        }
+        None => {
+            debug!("No SRS cache provided. Creating SRS from scratch");
+            let srs = SRS::create(DOMAIN_SIZE);
+            srs.get_lagrange_basis(domain_fp.d1);
+            debug!("SRS created successfully");
+            srs
+        }
     };
 
     // Initialize the environments
-    let mut mips_wit_env =
-        mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_wit_env = match configuration.host.clone() {
+        Some(host) => {
+            debug!("Using preimage oracle at {:#?}", host);
+            let mut po = PreImageOracle::create(host);
+            let _child = po.start();
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(po),
+            )
+        }
+        None => {
+            debug!("No preimage oracle provided 🤞");
+            // warning: the null preimage oracle has no data and will crash the program if used
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(NullPreImageOracle),
+            )
+        }
+    };
 
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
