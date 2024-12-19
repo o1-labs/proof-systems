@@ -2464,6 +2464,80 @@
 <a href="#2464" id="2464">2464</a>
 <a href="#2465" id="2465">2465</a>
 <a href="#2466" id="2466">2466</a>
+<a href="#2467" id="2467">2467</a>
+<a href="#2468" id="2468">2468</a>
+<a href="#2469" id="2469">2469</a>
+<a href="#2470" id="2470">2470</a>
+<a href="#2471" id="2471">2471</a>
+<a href="#2472" id="2472">2472</a>
+<a href="#2473" id="2473">2473</a>
+<a href="#2474" id="2474">2474</a>
+<a href="#2475" id="2475">2475</a>
+<a href="#2476" id="2476">2476</a>
+<a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
+<a href="#2483" id="2483">2483</a>
+<a href="#2484" id="2484">2484</a>
+<a href="#2485" id="2485">2485</a>
+<a href="#2486" id="2486">2486</a>
+<a href="#2487" id="2487">2487</a>
+<a href="#2488" id="2488">2488</a>
+<a href="#2489" id="2489">2489</a>
+<a href="#2490" id="2490">2490</a>
+<a href="#2491" id="2491">2491</a>
+<a href="#2492" id="2492">2492</a>
+<a href="#2493" id="2493">2493</a>
+<a href="#2494" id="2494">2494</a>
+<a href="#2495" id="2495">2495</a>
+<a href="#2496" id="2496">2496</a>
+<a href="#2497" id="2497">2497</a>
+<a href="#2498" id="2498">2498</a>
+<a href="#2499" id="2499">2499</a>
+<a href="#2500" id="2500">2500</a>
+<a href="#2501" id="2501">2501</a>
+<a href="#2502" id="2502">2502</a>
+<a href="#2503" id="2503">2503</a>
+<a href="#2504" id="2504">2504</a>
+<a href="#2505" id="2505">2505</a>
+<a href="#2506" id="2506">2506</a>
+<a href="#2507" id="2507">2507</a>
+<a href="#2508" id="2508">2508</a>
+<a href="#2509" id="2509">2509</a>
+<a href="#2510" id="2510">2510</a>
+<a href="#2511" id="2511">2511</a>
+<a href="#2512" id="2512">2512</a>
+<a href="#2513" id="2513">2513</a>
+<a href="#2514" id="2514">2514</a>
+<a href="#2515" id="2515">2515</a>
+<a href="#2516" id="2516">2516</a>
+<a href="#2517" id="2517">2517</a>
+<a href="#2518" id="2518">2518</a>
+<a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
+<a href="#2524" id="2524">2524</a>
+<a href="#2525" id="2525">2525</a>
+<a href="#2526" id="2526">2526</a>
+<a href="#2527" id="2527">2527</a>
+<a href="#2528" id="2528">2528</a>
+<a href="#2529" id="2529">2529</a>
+<a href="#2530" id="2530">2530</a>
+<a href="#2531" id="2531">2531</a>
+<a href="#2532" id="2532">2532</a>
+<a href="#2533" id="2533">2533</a>
+<a href="#2534" id="2534">2534</a>
+<a href="#2535" id="2535">2535</a>
+<a href="#2536" id="2536">2536</a>
+<a href="#2537" id="2537">2537</a>
+<a href="#2538" id="2538">2538</a>
+<a href="#2539" id="2539">2539</a>
+<a href="#2540" id="2540">2540</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4530,10 +4604,60 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         SInstruction::StoreHalf =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreHalf&quot;</span>)
+            <span class="comment">// sh: M[x[rs1] + sext(offset)] = x[rs2][15:0]
+            </span><span class="kw">let </span>[v0, v1] = [
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">8</span>, <span class="number">0</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">16</span>, <span class="number">8</span>, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+
+            env.write_memory(<span class="kw-2">&amp;</span>address, v0);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">1u32</span>)), v1);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         SInstruction::StoreWord =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreWord&quot;</span>)
+            <span class="comment">// sw: M[x[rs1] + sext(offset)] = x[rs2][31:0]
+            </span><span class="kw">let </span>[v0, v1, v2, v3] = [
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">32</span>, <span class="number">24</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">24</span>, <span class="number">16</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">16</span>, <span class="number">8</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">8</span>, <span class="number">0</span>, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v3);
+
+            env.write_memory(<span class="kw-2">&amp;</span>address, v0);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">1u32</span>)), v1);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">2u32</span>)), v2);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">3u32</span>)), v3);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
     };
 }
@@ -4633,7 +4757,7 @@
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 </span><span class="kw">pub fn </span>interpret_utype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: UInstruction) {
     <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
-    <span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
 
     <span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
@@ -4674,10 +4798,34 @@
 
     <span class="kw">match </span>instr {
         UInstruction::LoadUpperImmediate =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadUpperImmediate&quot;</span>)
+            <span class="comment">// lui: x[rd] = sext(immediate[31:12] &lt;&lt; 12)
+            </span><span class="kw">let </span>local_imm = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>shifted_imm = <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>imm, <span class="kw-2">&amp;</span>Env::constant(<span class="number">12</span>), pos) };
+                env.sign_extend(<span class="kw-2">&amp;</span>shifted_imm, <span class="number">32</span>)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_imm);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         UInstruction::AddUpperImmediate =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;AddUpperImmediate&quot;</span>)
+            <span class="comment">// auipc: x[rd] = pc + sext(immediate[31:12] &lt;&lt; 12)
+            </span><span class="kw">let </span>local_imm = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>shifted_imm = <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>imm, <span class="kw-2">&amp;</span>Env::constant(<span class="number">12</span>), pos) };
+                env.sign_extend(<span class="kw-2">&amp;</span>shifted_imm, <span class="number">32</span>)
+            };
+            <span class="kw">let </span>local_pc = instruction_pointer.clone();
+            <span class="kw">let </span>(local_rd, <span class="kw">_</span>) = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>overflow_pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.add_witness(<span class="kw-2">&amp;</span>local_pc, <span class="kw-2">&amp;</span>local_imm, pos, overflow_pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
     };
 }
