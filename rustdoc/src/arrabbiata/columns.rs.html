@@ -133,6 +133,29 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::expr::{AlphaChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -142,6 +165,8 @@
     ops::Index,
 };
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
+
+<span class="kw">use </span><span class="kw">crate</span>::NUMBER_OF_COLUMNS;
 
 <span class="doccomment">/// This enum represents the different gadgets that can be used in the circuit.
 /// The selectors are defined at setup time, can take only the values `0` or
@@ -169,6 +194,27 @@
     Selector(Gadget),
     PublicInput(usize),
     X(usize),
+}
+
+<span class="doccomment">/// Convert a column to a usize. This is used by the library [mvpoly] when we
+/// need to compute the cross-terms.
+/// For now, only the private inputs and the public inputs are converted,
+/// because there might not need to treat the selectors in the polynomial while
+/// computing the cross-terms (FIXME: check this later, but pretty sure it&#39;s the
+/// case).
+///
+/// Also, the [mvpoly::monomials] implementation of the trait [mvpoly::MVPoly]
+/// will be used, and the mapping here is consistent with the one expected by
+/// this implementation, i.e. we simply map to an increasing number starting at
+/// 0, without any gap.
+</span><span class="kw">impl </span>From&lt;Column&gt; <span class="kw">for </span>usize {
+    <span class="kw">fn </span>from(val: Column) -&gt; usize {
+        <span class="kw">match </span>val {
+            Column::X(i) =&gt; i,
+            Column::PublicInput(i) =&gt; NUMBER_OF_COLUMNS + i,
+            Column::Selector(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;Selectors are not supported. This method is supposed to be called only to compute the cross-term and an optimisation is in progress to avoid the inclusion of the selectors in the multi-variate polynomial.&quot;</span>),
+        }
+    }
 }
 
 <span class="kw">pub struct </span>Challenges&lt;F: Field&gt; {

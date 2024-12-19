@@ -745,6 +745,18 @@
 <a href="#745" id="745">745</a>
 <a href="#746" id="746">746</a>
 <a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Multivariate polynomial dense representation using prime numbers
 //!
 //! First, we start by attributing a different prime number for each variable.
@@ -1175,6 +1187,18 @@
         _eval2: <span class="kw-2">&amp;</span>[F; N],
         _u1: F,
         _u2: F,
+    ) -&gt; HashMap&lt;usize, F&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>compute_cross_terms_scaled(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        _eval1: <span class="kw-2">&amp;</span>[F; N],
+        _eval2: <span class="kw-2">&amp;</span>[F; N],
+        _u1: F,
+        _u2: F,
+        _scalar1: F,
+        _scalar2: F,
     ) -&gt; HashMap&lt;usize, F&gt; {
         <span class="macro">unimplemented!</span>()
     }

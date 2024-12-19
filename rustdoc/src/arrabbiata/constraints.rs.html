@@ -370,13 +370,31 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{columns::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     columns::{Gadget, E},
+    curve::ArrabbiataCurve,
     interpreter::{<span class="self">self</span>, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-<span class="kw">use </span>ark_ff::{Field, PrimeField};
+<span class="kw">use </span>ark_ec::{short_weierstrass::SWCurveConfig, CurveConfig};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
@@ -384,27 +402,32 @@
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 
 <span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Env&lt;Fp: Field&gt; {
-    <span class="kw">pub </span>poseidon_mds: Vec&lt;Vec&lt;Fp&gt;&gt;,
+</span><span class="kw">pub struct </span>Env&lt;C: ArrabbiataCurve&gt; {
     <span class="doccomment">/// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
-    </span><span class="comment">// FIXME: this is ugly. Let use the curve as a parameter. Only lazy for now.
     </span><span class="kw">pub </span>a: BigInt,
     <span class="kw">pub </span>idx_var: usize,
     <span class="kw">pub </span>idx_var_next_row: usize,
     <span class="kw">pub </span>idx_var_pi: usize,
-    <span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    <span class="kw">pub </span>constraints: Vec&lt;E&lt;C::ScalarField&gt;&gt;,
     <span class="kw">pub </span>activated_gadget: <span class="prelude-ty">Option</span>&lt;Gadget&gt;,
 }
 
-<span class="kw">impl</span>&lt;Fp: PrimeField&gt; Env&lt;Fp&gt; {
-    <span class="kw">pub fn </span>new(poseidon_mds: Vec&lt;Vec&lt;Fp&gt;&gt;, a: BigInt) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt;
+<span class="kw">where
+    </span>&lt;&lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+{
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="comment">// This check might not be useful
-        </span><span class="macro">assert!</span>(a &lt; Fp::modulus_biguint().into(), <span class="string">&quot;a is too large&quot;</span>);
+        </span><span class="kw">let </span>a: BigInt = &lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params::COEFF_A.to_biguint().into();
+        <span class="macro">assert!</span>(
+            a &lt; C::ScalarField::modulus_biguint().into(),
+            <span class="string">&quot;a is too large&quot;
+        </span>);
         <span class="self">Self </span>{
-            poseidon_mds,
             a,
             idx_var: <span class="number">0</span>,
             idx_var_next_row: <span class="number">0</span>,
@@ -420,10 +443,10 @@
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-</span><span class="kw">impl</span>&lt;Fp: PrimeField&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
+</span><span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; InterpreterEnv <span class="kw">for </span>Env&lt;C&gt; {
     <span class="kw">type </span>Position = (Column, CurrOrNext);
 
-    <span class="kw">type </span>Variable = E&lt;Fp&gt;;
+    <span class="kw">type </span>Variable = E&lt;C::ScalarField&gt;;
 
     <span class="kw">fn </span>allocate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
         <span class="macro">assert!</span>(<span class="self">self</span>.idx_var &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns&quot;</span>);
@@ -453,7 +476,7 @@
 
     <span class="kw">fn </span>constant(<span class="kw-2">&amp;</span><span class="self">self</span>, value: BigInt) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>v = value.to_biguint().unwrap();
-        <span class="kw">let </span>v = Fp::from_biguint(<span class="kw-2">&amp;</span>v).unwrap();
+        <span class="kw">let </span>v = C::ScalarField::from_biguint(<span class="kw-2">&amp;</span>v).unwrap();
         <span class="kw">let </span>v_inner = Operations::from(Literal(v));
         <span class="self">Self</span>::Variable::constant(v_inner)
     }
@@ -552,7 +575,7 @@
     }
 
     <span class="kw">fn </span>get_poseidon_mds_matrix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, j: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>v = <span class="self">self</span>.poseidon_mds[i][j];
+        <span class="kw">let </span>v = C::sponge_params().mds[i][j];
         <span class="kw">let </span>v_inner = Operations::from(Literal(v));
         <span class="self">Self</span>::Variable::constant(v_inner)
     }
@@ -676,7 +699,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; Env&lt;F&gt; {
+<span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt; {
     <span class="doccomment">/// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
@@ -689,7 +712,7 @@
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    </span><span class="kw">pub fn </span>get_all_constraints_for_ivc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_all_constraints_for_ivc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;C::ScalarField&gt;&gt; {
         <span class="comment">// Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         </span><span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">self</span>.clone();
@@ -726,7 +749,7 @@
     </span><span class="comment">// FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
-    </span><span class="kw">pub fn </span>get_all_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_all_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;C::ScalarField&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="self">self</span>.get_all_constraints_for_ivc();
 
         <span class="comment">// Copying the instance we got in parameter, and making it mutable to
@@ -740,6 +763,15 @@
         constraints.extend(env.constraints.clone());
 
         constraints
+    }
+}
+
+<span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Default <span class="kw">for </span>Env&lt;C&gt;
+<span class="kw">where
+    </span>&lt;&lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+{
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 </code></pre></div></section></main></body></html>
