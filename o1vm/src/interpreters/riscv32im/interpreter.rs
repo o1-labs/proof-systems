@@ -2086,7 +2086,38 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         SInstruction::StoreWord => {
-            unimplemented!("StoreWord")
+            // sw: M[x[rs1] + sext(offset)] = x[rs2][31:0]
+            let [v0, v1, v2, v3] = [
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 32, 24, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 24, 16, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 16, 8, value_scratch) }
+                },
+                {
+                    let value_scratch = env.alloc_scratch();
+                    unsafe { env.bitmask(&local_rs2, 8, 0, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(&v0);
+            env.lookup_8bits(&v1);
+            env.lookup_8bits(&v2);
+            env.lookup_8bits(&v3);
+
+            env.write_memory(&address, v0);
+            env.write_memory(&(address.clone() + Env::constant(1u32)), v1);
+            env.write_memory(&(address.clone() + Env::constant(2u32)), v2);
+            env.write_memory(&(address.clone() + Env::constant(3u32)), v3);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     };
 }
