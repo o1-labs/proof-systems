@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cannon","cannon_cli","elf_loader","interpreters","legacy","lookups","pickles","preimage_oracle","ramlookup","utils"]};
+window.SIDEBAR_ITEMS = {"mod":["cannon","cli","elf_loader","interpreters","legacy","lookups","pickles","preimage_oracle","ramlookup","test_preimage_read","utils"]};

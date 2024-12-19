@@ -486,6 +486,9 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
@@ -635,33 +638,36 @@
     Range(u64, <span class="prelude-ty">Option</span>&lt;u64&gt;),
 }
 
-<span class="comment">// Simple parser for Cannon&#39;s &quot;frequency format&quot;
-// A frequency input is either
-// - never/always
-// - =&lt;n&gt; (only at step n)
-// - %&lt;n&gt; (every steps multiple of n)
-// - n..[m] (from n on, until m excluded if specified, until the end otherwise)
-</span><span class="kw">pub fn </span>step_frequency_parser(s: <span class="kw-2">&amp;</span>str) -&gt; std::result::Result&lt;StepFrequency, String&gt; {
-    <span class="kw">use </span>StepFrequency::<span class="kw-2">*</span>;
+<span class="kw">impl </span>FromStr <span class="kw">for </span>StepFrequency {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= String;
+    <span class="comment">// Simple parser for Cannon&#39;s &quot;frequency format&quot;
+    // A frequency input is either
+    // - never/always
+    // - =&lt;n&gt; (only at step n)
+    // - %&lt;n&gt; (every steps multiple of n)
+    // - n..[m] (from n on, until m excluded if specified, until the end otherwise)
+    </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; std::result::Result&lt;StepFrequency, String&gt; {
+        <span class="kw">use </span>StepFrequency::<span class="kw-2">*</span>;
 
-    <span class="kw">let </span>mod_re = Regex::new(<span class="string">r&quot;^%([0-9]+)&quot;</span>).unwrap();
-    <span class="kw">let </span>eq_re = Regex::new(<span class="string">r&quot;^=([0-9]+)&quot;</span>).unwrap();
-    <span class="kw">let </span>ival_re = Regex::new(<span class="string">r&quot;^([0-9]+)..([0-9]+)?&quot;</span>).unwrap();
+        <span class="kw">let </span>mod_re = Regex::new(<span class="string">r&quot;^%([0-9]+)&quot;</span>).unwrap();
+        <span class="kw">let </span>eq_re = Regex::new(<span class="string">r&quot;^=([0-9]+)&quot;</span>).unwrap();
+        <span class="kw">let </span>ival_re = Regex::new(<span class="string">r&quot;^([0-9]+)..([0-9]+)?&quot;</span>).unwrap();
 
-    <span class="kw">match </span>s {
-        <span class="string">&quot;never&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Never),
-        <span class="string">&quot;always&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Always),
-        s =&gt; {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = mod_re.captures(s) {
-                <span class="prelude-val">Ok</span>(Every(m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap()))
-            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(m) = eq_re.captures(s) {
-                <span class="prelude-val">Ok</span>(Exactly(m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap()))
-            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(m) = ival_re.captures(s) {
-                <span class="kw">let </span>lo = m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap();
-                <span class="kw">let </span>hi_opt = m.get(<span class="number">2</span>).map(|x| x.as_str().parse::&lt;u64&gt;().unwrap());
-                <span class="prelude-val">Ok</span>(Range(lo, hi_opt))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Unknown frequency format {}&quot;</span>, s))
+        <span class="kw">match </span>s {
+            <span class="string">&quot;never&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Never),
+            <span class="string">&quot;always&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Always),
+            s =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = mod_re.captures(s) {
+                    <span class="prelude-val">Ok</span>(Every(m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap()))
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(m) = eq_re.captures(s) {
+                    <span class="prelude-val">Ok</span>(Exactly(m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap()))
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(m) = ival_re.captures(s) {
+                    <span class="kw">let </span>lo = m[<span class="number">1</span>].parse::&lt;u64&gt;().unwrap();
+                    <span class="kw">let </span>hi_opt = m.get(<span class="number">2</span>).map(|x| x.as_str().parse::&lt;u64&gt;().unwrap());
+                    <span class="prelude-val">Ok</span>(Range(lo, hi_opt))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Unknown frequency format {}&quot;</span>, s))
+                }
             }
         }
     }
@@ -784,13 +790,13 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>sp_parser() {
         <span class="kw">use </span>StepFrequency::<span class="kw-2">*</span>;
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;never&quot;</span>), <span class="prelude-val">Ok</span>(Never));
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;always&quot;</span>), <span class="prelude-val">Ok</span>(Always));
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;=123&quot;</span>), <span class="prelude-val">Ok</span>(Exactly(<span class="number">123</span>)));
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;%123&quot;</span>), <span class="prelude-val">Ok</span>(Every(<span class="number">123</span>)));
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;1..3&quot;</span>), <span class="prelude-val">Ok</span>(Range(<span class="number">1</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>))));
-        <span class="macro">assert_eq!</span>(step_frequency_parser(<span class="string">&quot;1..&quot;</span>), <span class="prelude-val">Ok</span>(Range(<span class="number">1</span>, <span class="prelude-val">None</span>)));
-        <span class="macro">assert!</span>(step_frequency_parser(<span class="string">&quot;@123&quot;</span>).is_err());
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;never&quot;</span>), <span class="prelude-val">Ok</span>(Never));
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;always&quot;</span>), <span class="prelude-val">Ok</span>(Always));
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;=123&quot;</span>), <span class="prelude-val">Ok</span>(Exactly(<span class="number">123</span>)));
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;%123&quot;</span>), <span class="prelude-val">Ok</span>(Every(<span class="number">123</span>)));
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;1..3&quot;</span>), <span class="prelude-val">Ok</span>(Range(<span class="number">1</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>))));
+        <span class="macro">assert_eq!</span>(StepFrequency::from_str(<span class="string">&quot;1..&quot;</span>), <span class="prelude-val">Ok</span>(Range(<span class="number">1</span>, <span class="prelude-val">None</span>)));
+        <span class="macro">assert!</span>(StepFrequency::from_str(<span class="string">&quot;@123&quot;</span>).is_err());
     }
 
     <span class="comment">// This sample is a subset taken from a Cannon-generated &quot;meta.json&quot; file

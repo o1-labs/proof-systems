@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["main_cli","read_configuration"]};

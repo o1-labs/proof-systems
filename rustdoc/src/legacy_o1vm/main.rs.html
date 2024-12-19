@@ -329,14 +329,28 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>folding::decomposable_folding::DecomposableFoldingScheme;
 <span class="kw">use </span>kimchi::o1_utils;
 <span class="kw">use </span>kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>o1vm::{
     cannon::{<span class="self">self</span>, Meta, Start, State},
-    cannon_cli,
+    cli,
     interpreters::{
         keccak::{
             column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
@@ -360,6 +374,7 @@
     },
     lookups::LookupTableIDs,
     preimage_oracle::PreImageOracle,
+    test_preimage_read,
 };
 <span class="kw">use </span>poly_commitment::SRS <span class="kw">as _</span>;
 <span class="kw">use </span>std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
@@ -369,10 +384,8 @@
 /// program.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
-<span class="kw">pub fn </span>main() -&gt; ExitCode {
-    <span class="kw">let </span>cli = cannon_cli::main_cli();
-
-    <span class="kw">let </span>configuration = cannon_cli::read_configuration(<span class="kw-2">&amp;</span>cli.get_matches());
+<span class="kw">pub fn </span>cannon_main(args: cli::cannon::RunArgs) {
+    <span class="kw">let </span>configuration: cannon::VmConfiguration = args.vm_cfg.into();
 
     <span class="kw">let </span>file =
         File::open(<span class="kw-2">&amp;</span>configuration.input_state_file).expect(<span class="string">&quot;Error opening input state file &quot;</span>);
@@ -400,8 +413,6 @@
 
     <span class="comment">// Initialize some data used for statistical computations
     </span><span class="kw">let </span>start = Start::create(state.step <span class="kw">as </span>usize);
-
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(<span class="string">&quot;info&quot;</span>)).init();
 
     <span class="kw">let </span>domain = kimchi::circuits::domains::EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
 
@@ -658,6 +669,21 @@
     }
 
     <span class="comment">// TODO: Logic
-    </span>ExitCode::SUCCESS
+</span>}
+
+<span class="kw">pub fn </span>main() -&gt; ExitCode {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(<span class="string">&quot;info&quot;</span>)).init();
+    <span class="kw">let </span>args = cli::Commands::parse();
+    <span class="kw">match </span>args {
+        cli::Commands::Cannon(args) =&gt; <span class="kw">match </span>args {
+            cli::cannon::Cannon::Run(args) =&gt; {
+                cannon_main(args);
+            }
+            cli::cannon::Cannon::TestPreimageRead(args) =&gt; {
+                test_preimage_read::main(args);
+            }
+        },
+    }
+    ExitCode::SUCCESS
 }
 </code></pre></div></section></main></body></html>
