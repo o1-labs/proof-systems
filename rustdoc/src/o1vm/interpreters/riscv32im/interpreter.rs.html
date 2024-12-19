@@ -2454,6 +2454,35 @@
 <a href="#2454" id="2454">2454</a>
 <a href="#2455" id="2455">2455</a>
 <a href="#2456" id="2456">2456</a>
+<a href="#2457" id="2457">2457</a>
+<a href="#2458" id="2458">2458</a>
+<a href="#2459" id="2459">2459</a>
+<a href="#2460" id="2460">2460</a>
+<a href="#2461" id="2461">2461</a>
+<a href="#2462" id="2462">2462</a>
+<a href="#2463" id="2463">2463</a>
+<a href="#2464" id="2464">2464</a>
+<a href="#2465" id="2465">2465</a>
+<a href="#2466" id="2466">2466</a>
+<a href="#2467" id="2467">2467</a>
+<a href="#2468" id="2468">2468</a>
+<a href="#2469" id="2469">2469</a>
+<a href="#2470" id="2470">2470</a>
+<a href="#2471" id="2471">2471</a>
+<a href="#2472" id="2472">2472</a>
+<a href="#2473" id="2473">2473</a>
+<a href="#2474" id="2474">2474</a>
+<a href="#2475" id="2475">2475</a>
+<a href="#2476" id="2476">2476</a>
+<a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
+<a href="#2483" id="2483">2483</a>
+<a href="#2484" id="2484">2484</a>
+<a href="#2485" id="2485">2485</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4417,7 +4446,7 @@
     <span class="comment">/* fetch instruction pointer from the program state */
     </span><span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
     <span class="comment">/* compute the next instruction ptr and add one, as well record raml lookup */
-    </span><span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
+    </span><span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
     <span class="comment">/* read instruction from ip address */
     </span><span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
@@ -4490,7 +4519,7 @@
         <span class="kw">let </span>local_imm0_11 = <span class="kw">unsafe </span>{ env.or_witness(<span class="kw-2">&amp;</span>shifted_imm5_11, <span class="kw-2">&amp;</span>local_imm0_4, pos) };
         env.sign_extend(<span class="kw-2">&amp;</span>local_imm0_11, <span class="number">11</span>)
     };
-    <span class="kw">let </span>_address = {
+    <span class="kw">let </span>address = {
         <span class="kw">let </span>address_scratch = env.alloc_scratch();
         <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
         <span class="kw">let </span>(address, _overflow) = <span class="kw">unsafe </span>{
@@ -4503,14 +4532,43 @@
         };
         address
     };
-    <span class="kw">let </span>_local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+    <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
 
     <span class="kw">match </span>instr {
         SInstruction::StoreByte =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreByte&quot;</span>)
+            <span class="comment">// sb: M[x[rs1] + sext(offset)] = x[rs2][7:0]
+            </span><span class="kw">let </span>v0 = {
+                <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">8</span>, <span class="number">0</span>, value_scratch) }
+            };
+
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.write_memory(<span class="kw-2">&amp;</span>address, v0);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         SInstruction::StoreHalf =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreHalf&quot;</span>)
+            <span class="comment">// sh: M[x[rs1] + sext(offset)] = x[rs2][15:0]
+            </span><span class="kw">let </span>[v0, v1] = [
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">8</span>, <span class="number">0</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">16</span>, <span class="number">8</span>, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+
+            env.write_memory(<span class="kw-2">&amp;</span>address, v0);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">1u32</span>)), v1);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         SInstruction::StoreWord =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreWord&quot;</span>)
