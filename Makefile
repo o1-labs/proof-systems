@@ -18,6 +18,11 @@ O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
 O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
 RISCV32_AS_FLAGS = --warn --fatal-warnings
 
+O1VM_MIPS_SOURCE_DIR = $(shell pwd)/o1vm/ethereum-optimism/cannon/mipsevm/open_mips_tests/test
+O1VM_MIPS_SOURCE_FILES = $(wildcard ${O1VM_MIPS_SOURCE_DIR}/*.asm)
+O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
+O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
+
 # Default target
 all: release
 
@@ -49,6 +54,7 @@ install-test-deps: ## Install test dependencies
 clean: ## Clean the project
 		cargo clean
 		rm -rf $(O1VM_RISCV32IM_BIN_FILES)
+		rm -rf $(O1VM_MIPS_BIN_FILES)
 
 
 build: ## Build the project
@@ -138,12 +144,8 @@ generate-doc: ## Generate the Rust documentation
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
-o1vm-test:
-		@mips-linux-gnu-as -o ./o1vm/resources/programs/mips/hello_world.bin ./o1vm/resources/programs/mips/hello_world.mips
-
 help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
 
 setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo ""
@@ -169,7 +171,18 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
 		@echo ""
 
+build-mips-programs: ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
+
+${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
+		@echo ""
+		@echo "Building the MIPS binary: $@ using $<"
+		@echo ""
+		mkdir -p ${O1VM_MIPS_BIN_DIR}
+		mips-linux-gnu-as -defsym big_endian=1 -march=mips32r2 -o $@ $<
+		mips-linux-gnu-ld -s -o $(basename $@) $@
+		@echo ""
+
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs o1vm-test
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs
