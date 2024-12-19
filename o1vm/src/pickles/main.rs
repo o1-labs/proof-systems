@@ -1,15 +1,16 @@
 use ark_ff::UniformRand;
+use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::expr::E;
 use log::debug;
-use mina_curves::pasta::VestaParameters;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
     cannon::{self, Meta, Start, State},
-    cannon_cli,
+    cli,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints as mips_constraints,
@@ -19,21 +20,18 @@ use o1vm::{
     },
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
+    test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
 use strum::IntoEnumIterator;
 
-use mina_curves::pasta::{Fp, Vesta};
-
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-pub fn main() -> ExitCode {
-    let cli = cannon_cli::main_cli();
-
+pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut rng = rand::thread_rng();
 
-    let configuration = cannon_cli::read_configuration(&cli.get_matches());
+    let configuration: cannon::VmConfiguration = args.vm_cfg.into();
 
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
@@ -61,8 +59,6 @@ pub fn main() -> ExitCode {
 
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
-
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
     let srs: SRS<Vesta> = {
@@ -158,6 +154,20 @@ pub fn main() -> ExitCode {
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-    // TODO: Logic
+}
+
+pub fn main() -> ExitCode {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let args = cli::Commands::parse();
+    match args {
+        cli::Commands::Cannon(args) => match args {
+            cli::cannon::Cannon::Run(args) => {
+                cannon_main(args);
+            }
+            cli::cannon::Cannon::TestPreimageRead(args) => {
+                test_preimage_read::main(args);
+            }
+        },
+    }
     ExitCode::SUCCESS
 }
