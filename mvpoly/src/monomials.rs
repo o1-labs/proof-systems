@@ -1,3 +1,8 @@
+use crate::{
+    prime,
+    utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
+    MVPoly,
+};
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use num_integer::binomial;
@@ -6,12 +11,6 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     ops::{Add, Mul, Neg, Sub},
-};
-
-use crate::{
-    prime,
-    utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
-    MVPoly,
 };
 
 /// Represents a multivariate polynomial in `N` variables with coefficients in
@@ -472,6 +471,41 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         cross_terms_by_powers_of_r
     }
 
+    fn compute_cross_terms_scaled(
+        &self,
+        eval1: &[F; N],
+        eval2: &[F; N],
+        u1: F,
+        u2: F,
+        scalar1: F,
+        scalar2: F,
+    ) -> HashMap<usize, F> {
+        assert!(
+            D >= 2,
+            "The degree of the polynomial must be greater than 2"
+        );
+        let cross_terms = self.compute_cross_terms(eval1, eval2, u1, u2);
+
+        let mut res: HashMap<usize, F> = HashMap::new();
+        cross_terms.iter().for_each(|(power_r, coeff)| {
+            res.insert(*power_r, *coeff * scalar1);
+        });
+        cross_terms.iter().for_each(|(power_r, coeff)| {
+            res.entry(*power_r + 1)
+                .and_modify(|e| *e += *coeff * scalar2)
+                .or_insert(*coeff * scalar2);
+        });
+        let eval1_hom = self.homogeneous_eval(eval1, u1);
+        res.entry(1)
+            .and_modify(|e| *e += eval1_hom * scalar2)
+            .or_insert(eval1_hom * scalar2);
+        let eval2_hom = self.homogeneous_eval(eval2, u2);
+        res.entry(D)
+            .and_modify(|e| *e += eval2_hom * scalar1)
+            .or_insert(eval2_hom * scalar1);
+        res
+    }
+
     fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
         self.monomials
             .entry(exponents)
@@ -520,12 +554,19 @@ impl<F: PrimeField, const N: usize, const D: usize> From<F> for Sparse<F, N, D> 
     }
 }
 
-impl<F: PrimeField, const N: usize, const D: usize, const M: usize> From<Sparse<F, N, D>>
-    for Result<Sparse<F, M, D>, String>
+impl<F: PrimeField, const N: usize, const D: usize, const M: usize, const D_PRIME: usize>
+    From<Sparse<F, N, D>> for Result<Sparse<F, M, D_PRIME>, String>
 {
-    fn from(poly: Sparse<F, N, D>) -> Result<Sparse<F, M, D>, String> {
+    fn from(poly: Sparse<F, N, D>) -> Result<Sparse<F, M, D_PRIME>, String> {
         if M < N {
-            return Err("The number of variables must be greater than N".to_string());
+            return Err(format!(
+                "The final number of variables {M} must be greater than {N}"
+            ));
+        }
+        if D_PRIME < D {
+            return Err(format!(
+                "The final degree {D_PRIME} must be greater than initial degree {D}"
+            ));
         }
         let mut monomials = HashMap::new();
         poly.monomials.iter().for_each(|(exponents, coeff)| {

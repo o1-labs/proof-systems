@@ -254,6 +254,45 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
         u2: F,
     ) -> HashMap<usize, F>;
 
+    /// Compute the cross-terms of the given polynomial, scaled by the given
+    /// scalar.
+    ///
+    /// More explicitly, given a polynomial `P(X1, ..., Xn)` and a scalar α, the
+    /// method computes the the cross-terms of the polynomial `Q(X1, ..., Xn, α)
+    /// = α * P(X1, ..., Xn)`. For this reason, the method takes as input the
+    /// two different scalars `scalar1` and `scalar2` as we are considering the
+    /// scaling factor as a variable.
+    ///
+    /// This method is particularly useful when you need to compute a
+    /// (possibly random) combinaison of polynomials `P1(X1, ..., Xn), ...,
+    /// Pm(X1, ..., Xn)`, like when computing a quotient polynomial in the PlonK
+    /// PIOP, as the result is the sum of individual "scaled" polynomials:
+    /// ```text
+    /// Q(X_1, ..., X_n, α_1, ..., α_m) =
+    ///   α_1 P1(X_1, ..., X_n) +
+    ///   ...
+    ///   α_m Pm(X_1, ..., X_n) +
+    /// ```
+    ///
+    /// The polynomial must not necessarily be homogeneous. For this reason, the
+    /// values `u1` and `u2` represents the extra variable that is used to make
+    /// the polynomial homogeneous.
+    ///
+    /// The homogeneous degree is supposed to be the one defined by the type of
+    /// the polynomial `P`, i.e. `D`.
+    ///
+    /// The output is a map of `D` values that represents the cross-terms
+    /// for each power of `r`.
+    fn compute_cross_terms_scaled(
+        &self,
+        eval1: &[F; N],
+        eval2: &[F; N],
+        u1: F,
+        u2: F,
+        scalar1: F,
+        scalar2: F,
+    ) -> HashMap<usize, F>;
+
     /// Modify the monomial in the polynomial to the new value `coeff`.
     fn modify_monomial(&mut self, exponents: [usize; N], coeff: F);
 

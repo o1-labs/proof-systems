@@ -102,6 +102,12 @@ pub fn main() {
         // Compute the accumulator for the permutation argument
 
         // FIXME:
+        // Commit to the accumulator and absorb the commitment
+
+        // FIXME:
+        // Coin challenge α for combining the constraints
+
+        // FIXME:
         // Compute the cross-terms
 
         // FIXME:
