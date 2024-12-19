@@ -106,12 +106,7 @@ pub struct RunArgs {
 
 #[derive(Parser, Debug, Clone)]
 pub struct GenStateJsonArgs {
-    #[arg(
-        short = 'i',
-        long,
-        value_name = "FILE",
-        help = "input ELF file"
-    )]
+    #[arg(short = 'i', long, value_name = "FILE", help = "input ELF file")]
     pub input: String,
     #[arg(
         short = 'o',

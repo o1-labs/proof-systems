@@ -10,7 +10,7 @@ use mina_poseidon::{
 };
 use o1vm::{
     cannon::{self, Meta, Start, State},
-    cli,
+    cli, elf_loader,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints as mips_constraints,
@@ -20,10 +20,10 @@ use o1vm::{
     },
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::PreImageOracle,
-    test_preimage_read, elf_loader,
+    test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
-use std::{fs::File, io::BufReader, process::ExitCode, time::Instant, path::Path};
+use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 use strum::IntoEnumIterator;
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
@@ -156,14 +156,13 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     }
 }
 
-fn gen_state_json(arg : cli::cannon::GenStateJsonArgs) -> Result<(), String> {
+fn gen_state_json(arg: cli::cannon::GenStateJsonArgs) -> Result<(), String> {
     let path = Path::new(&arg.input);
-    let elf_file = elf_loader::parse_riscv32(path)?;
+    let elf_file = elf_loader::parse_elf(elf_loader::Architecture::Mips, path)?;
     let state = State::from(elf_file);
     let file = File::create(&arg.output).expect("Error creating output state file");
     serde_json::to_writer_pretty(file, &state).expect("Error writing output state file");
-    Ok(()) 
-
+    Ok(())
 }
 
 pub fn main() -> ExitCode {
@@ -176,7 +175,7 @@ pub fn main() -> ExitCode {
             }
             cli::cannon::Cannon::TestPreimageRead(args) => {
                 test_preimage_read::main(args);
-            },
+            }
             cli::cannon::Cannon::GenStateJson(args) => {
                 gen_state_json(args).expect("Error generating state.json file");
             }
