@@ -1,4 +1,5 @@
 use ark_ff::{Field, One, UniformRand, Zero};
+use core::cmp::Ordering;
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr, ExprInner, Variable},
@@ -803,4 +804,63 @@ fn test_cross_terms_scaled() {
     };
     let scaled_cross_terms = scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
     assert_eq!(cross_terms, scaled_cross_terms);
+}
+
+#[test]
+fn test_cross_terms_aggregated_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    const M: usize = 20;
+    let polys: Vec<Sparse<Fp, 5, 4>> = (0..M)
+        .map(|_| unsafe { Sparse::<Fp, 5, 4>::random(&mut rng, None) })
+        .collect();
+
+    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let scalar1: Fp = Fp::rand(&mut rng);
+    let scalar2: Fp = Fp::rand(&mut rng);
+
+    const N: usize = 5 + M;
+    const D: usize = 4 + 1;
+    let aggregated_poly: Sparse<Fp, { N }, { D }> = {
+        let vars: [Sparse<Fp, N, D>; M] = std::array::from_fn(|j| {
+            let mut res = Sparse::<Fp, { N }, { D }>::zero();
+            let monomial: [usize; N] = std::array::from_fn(|i| if i == 5 + j { 1 } else { 0 });
+            res.add_monomial(monomial, Fp::one());
+            res
+        });
+        polys
+            .iter()
+            .enumerate()
+            .fold(Sparse::<Fp, { N }, { D }>::zero(), |acc, (j, poly)| {
+                let poly: Result<Sparse<Fp, { N }, { D }>, String> = (*poly).clone().into();
+                let poly: Sparse<Fp, { N }, { D }> = poly.unwrap();
+                poly * vars[j].clone() + acc
+            })
+    };
+
+    let res = mvpoly::compute_combined_cross_terms(
+        polys,
+        random_eval1,
+        random_eval2,
+        u1,
+        u2,
+        scalar1,
+        scalar2,
+    );
+    let random_eval1_prime: [Fp; N] = std::array::from_fn(|i| match i.cmp(&5) {
+        Ordering::Greater => scalar1.pow([(i as u64) - 5_u64]),
+        Ordering::Less => random_eval1[i],
+        Ordering::Equal => Fp::one(),
+    });
+
+    let random_eval2_prime: [Fp; N] = std::array::from_fn(|i| match i.cmp(&5) {
+        Ordering::Greater => scalar2.pow([(i as u64) - 5_u64]),
+        Ordering::Less => random_eval2[i],
+        Ordering::Equal => Fp::one(),
+    });
+    let cross_terms_aggregated =
+        aggregated_poly.compute_cross_terms(&random_eval1_prime, &random_eval2_prime, u1, u2);
+    assert_eq!(res, cross_terms_aggregated);
 }

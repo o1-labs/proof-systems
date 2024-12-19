@@ -300,3 +300,39 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// variable in each monomial is of maximum degree 1.
     fn is_multilinear(&self) -> bool;
 }
+
+/// Compute the cross terms of a list of polynomials. The polynomials are
+/// linearly combined using the power of a combiner, often called `α`.
+pub fn compute_combined_cross_terms<
+    F: PrimeField,
+    const N: usize,
+    const D: usize,
+    T: MVPoly<F, N, D>,
+>(
+    polys: Vec<T>,
+    eval1: [F; N],
+    eval2: [F; N],
+    u1: F,
+    u2: F,
+    combiner1: F,
+    combiner2: F,
+) -> HashMap<usize, F> {
+    // These should never happen as they should be random
+    // It also makes the code cleaner as we do not need to handle 0^0
+    assert!(combiner1 != F::zero());
+    assert!(combiner2 != F::zero());
+    assert!(u1 != F::zero());
+    assert!(u2 != F::zero());
+    polys
+        .into_iter()
+        .enumerate()
+        .fold(HashMap::new(), |mut acc, (i, poly)| {
+            let scalar1 = combiner1.pow([i as u64]);
+            let scalar2 = combiner2.pow([i as u64]);
+            let res = poly.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2);
+            res.iter().for_each(|(p, r)| {
+                acc.entry(*p).and_modify(|e| *e += r).or_insert(*r);
+            });
+            acc
+        })
+}
