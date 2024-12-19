@@ -864,3 +864,43 @@ fn test_cross_terms_aggregated_polynomial() {
         aggregated_poly.compute_cross_terms(&random_eval1_prime, &random_eval2_prime, u1, u2);
     assert_eq!(res, cross_terms_aggregated);
 }
+
+#[test]
+fn test_cross_terms_scaled_invariant_output_size() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let scalar1 = Fp::rand(&mut rng);
+    let scalar2 = Fp::rand(&mut rng);
+
+    {
+        let p1 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 4);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 4>::zero();
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 4);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 7>::one();
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 7);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 12>::from(Fp::from(42));
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 12);
+    }
+}
