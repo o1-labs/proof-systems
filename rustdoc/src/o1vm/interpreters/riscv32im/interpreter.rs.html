@@ -2514,6 +2514,15 @@
 <a href="#2514" id="2514">2514</a>
 <a href="#2515" id="2515">2515</a>
 <a href="#2516" id="2516">2516</a>
+<a href="#2517" id="2517">2517</a>
+<a href="#2518" id="2518">2518</a>
+<a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
+<a href="#2524" id="2524">2524</a>
+<a href="#2525" id="2525">2525</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4733,7 +4742,7 @@
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 </span><span class="kw">pub fn </span>interpret_utype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: UInstruction) {
     <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
-    <span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
 
     <span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
@@ -4774,7 +4783,16 @@
 
     <span class="kw">match </span>instr {
         UInstruction::LoadUpperImmediate =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;LoadUpperImmediate&quot;</span>)
+            <span class="comment">// lui: x[rd] = sext(immediate[31:12] &lt;&lt; 12)
+            </span><span class="kw">let </span>local_imm = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">let </span>shifted_imm = <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>imm, <span class="kw-2">&amp;</span>Env::constant(<span class="number">12</span>), pos) };
+                env.sign_extend(<span class="kw-2">&amp;</span>shifted_imm, <span class="number">32</span>)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, local_imm);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         UInstruction::AddUpperImmediate =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;AddUpperImmediate&quot;</span>)
