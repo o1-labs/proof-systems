@@ -2217,7 +2217,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -2258,7 +2258,16 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
 
     match instr {
         UInstruction::LoadUpperImmediate => {
-            unimplemented!("LoadUpperImmediate")
+            // lui: x[rd] = sext(immediate[31:12] << 12)
+            let local_imm = {
+                let pos = env.alloc_scratch();
+                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                env.sign_extend(&shifted_imm, 32)
+            };
+            env.write_register(&rd, local_imm);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         UInstruction::AddUpperImmediate => {
             unimplemented!("AddUpperImmediate")
