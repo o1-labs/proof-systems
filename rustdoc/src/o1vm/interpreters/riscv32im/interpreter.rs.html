@@ -2483,6 +2483,37 @@
 <a href="#2483" id="2483">2483</a>
 <a href="#2484" id="2484">2484</a>
 <a href="#2485" id="2485">2485</a>
+<a href="#2486" id="2486">2486</a>
+<a href="#2487" id="2487">2487</a>
+<a href="#2488" id="2488">2488</a>
+<a href="#2489" id="2489">2489</a>
+<a href="#2490" id="2490">2490</a>
+<a href="#2491" id="2491">2491</a>
+<a href="#2492" id="2492">2492</a>
+<a href="#2493" id="2493">2493</a>
+<a href="#2494" id="2494">2494</a>
+<a href="#2495" id="2495">2495</a>
+<a href="#2496" id="2496">2496</a>
+<a href="#2497" id="2497">2497</a>
+<a href="#2498" id="2498">2498</a>
+<a href="#2499" id="2499">2499</a>
+<a href="#2500" id="2500">2500</a>
+<a href="#2501" id="2501">2501</a>
+<a href="#2502" id="2502">2502</a>
+<a href="#2503" id="2503">2503</a>
+<a href="#2504" id="2504">2504</a>
+<a href="#2505" id="2505">2505</a>
+<a href="#2506" id="2506">2506</a>
+<a href="#2507" id="2507">2507</a>
+<a href="#2508" id="2508">2508</a>
+<a href="#2509" id="2509">2509</a>
+<a href="#2510" id="2510">2510</a>
+<a href="#2511" id="2511">2511</a>
+<a href="#2512" id="2512">2512</a>
+<a href="#2513" id="2513">2513</a>
+<a href="#2514" id="2514">2514</a>
+<a href="#2515" id="2515">2515</a>
+<a href="#2516" id="2516">2516</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4571,7 +4602,38 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         SInstruction::StoreWord =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;StoreWord&quot;</span>)
+            <span class="comment">// sw: M[x[rs1] + sext(offset)] = x[rs2][31:0]
+            </span><span class="kw">let </span>[v0, v1, v2, v3] = [
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">32</span>, <span class="number">24</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">24</span>, <span class="number">16</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">16</span>, <span class="number">8</span>, value_scratch) }
+                },
+                {
+                    <span class="kw">let </span>value_scratch = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>local_rs2, <span class="number">8</span>, <span class="number">0</span>, value_scratch) }
+                },
+            ];
+
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v0);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v1);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v2);
+            env.lookup_8bits(<span class="kw-2">&amp;</span>v3);
+
+            env.write_memory(<span class="kw-2">&amp;</span>address, v0);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">1u32</span>)), v1);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">2u32</span>)), v2);
+            env.write_memory(<span class="kw-2">&amp;</span>(address.clone() + Env::constant(<span class="number">3u32</span>)), v3);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
     };
 }
