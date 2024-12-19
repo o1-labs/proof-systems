@@ -115,7 +115,7 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
 
     // Entry point of the program
     let pc: u32 = file.ehdr.e_entry as u32;
-    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported.");
+    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported. This can happen if the binary given is an object file and not an executable file. You might need to call the linker (ld) before running the binary.");
     let next_pc: u32 = pc + 4u32;
 
     let state = State {
