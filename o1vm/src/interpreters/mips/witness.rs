@@ -924,7 +924,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     }
 
     pub fn get_memory_page_index(&mut self, page: u32) -> usize {
-        for &i in self.last_memory_accesses.iter() {
+        let last_memory_accesses = self.last_memory_accesses;
+        for &i in last_memory_accesses.iter() {
             if self.memory_write_index[i].0 == page {
                 return i;
             }
@@ -937,6 +938,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         }
 
         // Memory not found; dynamically allocate
+        debug!("Memory not found; dynamically allocating");
         let memory = vec![0u8; PAGE_SIZE as usize];
         self.memory.push((page, memory));
         let i = self.memory.len() - 1;

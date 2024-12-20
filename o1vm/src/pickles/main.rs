@@ -97,6 +97,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
     };
 
+    debug!("Generating constraints");
     let constraints = {
         let mut mips_con_env = mips_constraints::Env::<Fp>::default();
         let mut constraints = Instruction::iter()
@@ -118,6 +119,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+
+    debug!("Generating Witness");
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env

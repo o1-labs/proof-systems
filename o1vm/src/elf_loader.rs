@@ -48,7 +48,7 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
 
     let code_section_starting_address = text_section.sh_addr as usize;
     let code_section_size = text_section.sh_size as usize;
-    let code_section_end_address = code_section_starting_address + code_section_size;
+    let code_section_end_address = code_section_starting_address + code_section_size - 1;
     debug!(
         "The executable code starts at address {}, has size {} bytes, and ends at address {}.",
         code_section_starting_address, code_section_size, code_section_end_address
@@ -59,18 +59,31 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
     let page_size_usize: usize = PAGE_SIZE.try_into().unwrap();
     // Padding to get the right number of pages. We suppose that the memory
     // index starts at 0.
+
+    // the address that the first page starts on
     let start_page_address: usize =
         (code_section_starting_address / page_size_usize) * page_size_usize;
-    let end_page_address =
-        (code_section_end_address / (page_size_usize - 1)) * page_size_usize + page_size_usize;
+
+    debug!("start_page_address: {}", start_page_address);
+
+    // the address that the last page starts on
+    let end_page_address = (code_section_end_address / page_size_usize) * page_size_usize;
+
+    debug!("end_page_address: {}", end_page_address);
 
     let first_page_index = start_page_address / page_size_usize;
-    let last_page_index = (end_page_address - 1) / page_size_usize;
+    debug!("first_page_index: {}", first_page_index);
+
+    let last_page_index = end_page_address / page_size_usize;
+    debug!("last_page_index: {}", last_page_index);
+
     let mut data_offset = 0;
     (first_page_index..=last_page_index).for_each(|page_index| {
+        debug!("Building page {}", page_index);
         let mut data = vec![0; page_size_usize];
         // Special case of only one page
         if first_page_index == last_page_index {
+            debug!("Only one page to build.");
             let data_length = code_section_end_address - code_section_starting_address;
             let page_offset = code_section_starting_address - start_page_address;
             data[page_offset..page_offset + data_length]
@@ -78,7 +91,9 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
             data_offset += data_length;
         } else {
             let page_offset = if page_index == first_page_index {
-                code_section_starting_address - start_page_address
+                let offset = code_section_starting_address - start_page_address;
+                debug!("The first page has an offset of {} bytes.", offset);
+                offset
             } else {
                 0
             };
