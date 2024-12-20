@@ -1,7 +1,8 @@
-use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
-use poly_commitment::{ipa::OpeningProof, PolyComm};
-
 use crate::interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
+use ark_ff::Zero;
+use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
+use log::debug;
+use poly_commitment::{ipa::OpeningProof, PolyComm};
 
 pub struct WitnessColumns<G, S> {
     pub scratch: [G; SCRATCH_SIZE],
@@ -26,6 +27,34 @@ impl<G: KimchiCurve> ProofInputs<G> {
                 selector: Vec::with_capacity(domain_size),
             },
         }
+    }
+
+    pub fn domain_size(&self) -> usize {
+        self.evaluations.instruction_counter.capacity()
+    }
+
+    pub fn pad(&mut self) {
+        let zero = G::ScalarField::zero();
+        let n = self.domain_size();
+        debug!(
+            "Padding proof inputs with zeros, current length {}",
+            self.evaluations.instruction_counter.len()
+        );
+        self.evaluations
+            .scratch
+            .iter_mut()
+            .for_each(|s| s.resize(n, zero));
+        self.evaluations
+            .scratch_inverse
+            .iter_mut()
+            .for_each(|s| s.resize(n, zero));
+        self.evaluations.instruction_counter.resize(n, zero);
+        self.evaluations.error.resize(n, zero);
+        self.evaluations.selector.resize(n, zero);
+        debug!(
+            "Padded proof inputs, now has length {}",
+            self.evaluations.instruction_counter.len()
+        );
     }
 }
 

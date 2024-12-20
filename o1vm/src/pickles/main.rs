@@ -1,3 +1,4 @@
+use ark_ec::short_weierstrass::Affine;
 use ark_ff::UniformRand;
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
@@ -18,11 +19,15 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::{proof::ProofInputs, prover, verifier},
+    pickles::{
+        proof::{Proof, ProofInputs},
+        prover, verifier,
+    },
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
+use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 use strum::IntoEnumIterator;
 
@@ -98,30 +103,58 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     debug!("Generating constraints");
-    let constraints = {
-        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
-        let mut constraints = Instruction::iter()
-            .flat_map(|instr_typ| instr_typ.into_iter())
-            .fold(vec![], |mut acc, instr| {
-                interpreter::interpret_instruction(&mut mips_con_env, instr);
-                let selector = mips_con_env.get_selector();
-                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
-                    .get_constraints()
-                    .into_iter()
-                    .map(|c| selector.clone() * c)
-                    .collect();
-                acc.extend(constraints_with_selector);
-                mips_con_env.reset();
-                acc
-            });
-        constraints.extend(mips_con_env.get_selector_constraints());
-        constraints
-    };
+    let constraints = generate_constraints();
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
-
-    debug!("Generating Witness");
+    debug!("Running Prove/Vefiry loop");
     while !mips_wit_env.halt {
+        let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+        debug!("Generating Witness");
+        build_proof_inputs(
+            &mut mips_wit_env,
+            &configuration,
+            &meta,
+            &start,
+            &mut curr_proof_inputs,
+            &mut rng,
+        );
+
+        let proof = prove(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng);
+        verify(domain_fp, srs.clone(), constraints.clone(), &proof);
+    }
+    debug!("Execution finished");
+}
+
+fn generate_constraints() -> Vec<E<Fp>> {
+    let mut mips_con_env = mips_constraints::Env::<Fp>::default();
+    let mut constraints = Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .fold(vec![], |mut acc, instr| {
+            interpreter::interpret_instruction(&mut mips_con_env, instr);
+            let selector = mips_con_env.get_selector();
+            let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                .get_constraints()
+                .into_iter()
+                .map(|c| selector.clone() * c)
+                .collect();
+            acc.extend(constraints_with_selector);
+            mips_con_env.reset();
+            acc
+        });
+    constraints.extend(mips_con_env.get_selector_constraints());
+    constraints
+}
+
+fn build_proof_inputs(
+    mips_wit_env: &mut mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
+    configuration: &cannon::VmConfiguration,
+    meta: &Option<cannon::Meta>,
+    start: &Start,
+    curr_proof_inputs: &mut ProofInputs<Vesta>,
+    mut rng: &mut ThreadRng,
+) {
+    while !(mips_wit_env.halt
+        || curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE)
+    {
         let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
@@ -148,41 +181,55 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .evaluations
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
-
-        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
-            // FIXME
-            let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let proof = prover::prove::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                _,
-            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
-            .unwrap();
-            // FIXME: check that the proof is correct. This is for testing purposes.
-            // Leaving like this for now.
-            debug!(
-                "Proof generated in {elapsed} μs",
-                elapsed = start_iteration.elapsed().as_micros()
-            );
-            {
-                let start_iteration = Instant::now();
-                let verif = verifier::verify::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                >(domain_fp, &srs, &constraints, &proof);
-                debug!(
-                    "Verification done in {elapsed} μs",
-                    elapsed = start_iteration.elapsed().as_micros()
-                );
-                assert!(verif);
-            }
-
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
-        }
     }
+    let n_instructions_executed = curr_proof_inputs.evaluations.instruction_counter.len();
+    if !(n_instructions_executed == DOMAIN_SIZE) {
+        curr_proof_inputs.pad();
+    }
+}
+
+fn prove(
+    domain_fp: EvaluationDomains<Fp>,
+    srs: &SRS<Vesta>,
+    curr_proof_inputs: ProofInputs<Vesta>,
+    constraints: &Vec<E<Fp>>,
+    mut rng: &mut ThreadRng,
+) -> Proof<Affine<VestaParameters>> {
+    let start_iteration = Instant::now();
+    debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
+    let proof = prover::prove::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+        _,
+    >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+    .unwrap();
+    // FIXME: check that the proof is correct. This is for testing purposes.
+    // Leaving like this for now.
+    debug!(
+        "Proof generated in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    proof
+}
+
+fn verify(
+    domain_fp: EvaluationDomains<Fp>,
+    srs: SRS<Vesta>,
+    constraints: Vec<E<Fp>>,
+    proof: &Proof<Affine<VestaParameters>>,
+) {
+    let start_iteration = Instant::now();
+    let verif = verifier::verify::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+    >(domain_fp, &srs, &constraints, &proof);
+    debug!(
+        "Verification done in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    assert!(verif);
 }
 
 fn gen_state_json(arg: cli::cannon::GenStateJsonArgs) -> Result<(), String> {
