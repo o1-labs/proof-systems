@@ -1099,8 +1099,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::JumpRegister => {
             let addr = env.read_register(&rs);
-            env.set_instruction_pointer(next_instruction_pointer.clone());
-            env.set_next_instruction_pointer(addr);
+            if addr.is_zero() {
+                env.set_halted(Env::constant(1));
+            } else {
+                env.set_instruction_pointer(next_instruction_pointer.clone());
+                env.set_next_instruction_pointer(addr);
+            }
         }
         RTypeInstruction::JumpAndLinkRegister => {
             let addr = env.read_register(&rs);
