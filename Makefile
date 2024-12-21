@@ -55,6 +55,7 @@ install-test-deps: ## Install test dependencies
 clean: ## Clean the project
 		cargo clean
 		rm -rf $(O1VM_RISCV32IM_BIN_FILES)
+		rm -rf $(O1VM_MIPS_SOURCE_FILES)
 		rm -rf $(O1VM_MIPS_BIN_FILES)
 
 
@@ -187,7 +188,9 @@ ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 		@echo "Building the MIPS binary: $@ using $<"
 		@echo ""
 		mkdir -p ${O1VM_MIPS_BIN_DIR}
-		@sed 's/.global test/.global text/g' -i $<
+		@sed 's/.global test/.global \_\_start/g' -i $<
+		@sed 's/.section test/section \.text/g' -i $<
+		@sed 's/test/\_\_start/g' -i $<
 		@mips-linux-gnu-as -defsym big_endian=1 -march=mips32r2 -o $@ $<
 		@mips-linux-gnu-ld -s -o $(basename $@) $@
 		@echo ""
