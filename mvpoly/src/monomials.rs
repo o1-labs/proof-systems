@@ -102,6 +102,9 @@ impl<const N: usize, const D: usize, F: PrimeField> Mul for Sparse<F, N, D> {
 
     fn mul(self, other: Self) -> Self {
         let mut monomials = HashMap::new();
+        let degree_lhs = unsafe { self.degree() };
+        let degree_rhs = unsafe { other.degree() };
+        assert!(degree_lhs + degree_rhs <= D, "The degree of the output is expected to be maximum {D}, but the resulting output would be larger than {D} ({res})", res=degree_lhs + degree_rhs);
         self.monomials.iter().for_each(|(exponents1, coeff1)| {
             other
                 .monomials
