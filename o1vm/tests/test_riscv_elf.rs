@@ -101,5 +101,6 @@ fn test_sll() {
         witness.step();
     }
 
-    // FIXME: check the state of the registers after the program has run.
+    // Expected output of the program
+    assert_eq!(witness.registers.general_purpose[5], 1 << 14)
 }
