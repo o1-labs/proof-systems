@@ -934,7 +934,13 @@ pub trait InterpreterEnv {
             let pos = self.alloc_scratch();
             unsafe { self.bitmask(x, bitlength, bitlength - 1, pos) }
         };
-        high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
+        // Casting in u64 for special case of bitlength = 0 to avoid overflow.
+        // No condition for constant time execution.
+        // Decomposing the steps for readability.
+        let v: u64 = (1u64 << (32 - bitlength)) - 1;
+        let v: u64 = v << bitlength;
+        let v: u32 = v as u32;
+        high_bit * Self::constant(v) + x.clone()
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
