@@ -577,6 +577,9 @@
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
 <a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     prime,
     utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
@@ -681,6 +684,9 @@
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>monomials = HashMap::new();
+        <span class="kw">let </span>degree_lhs = <span class="kw">unsafe </span>{ <span class="self">self</span>.degree() };
+        <span class="kw">let </span>degree_rhs = <span class="kw">unsafe </span>{ other.degree() };
+        <span class="macro">assert!</span>(degree_lhs + degree_rhs &lt;= D, <span class="string">&quot;The degree of the output is expected to be maximum {D}, but the resulting output would be larger than {D} ({res})&quot;</span>, res=degree_lhs + degree_rhs);
         <span class="self">self</span>.monomials.iter().for_each(|(exponents1, coeff1)| {
             other
                 .monomials
