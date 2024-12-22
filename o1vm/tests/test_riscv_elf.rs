@@ -88,10 +88,7 @@ fn test_fibonacci_7() {
     }
 }
 
-// FIXME: stop ignore when all the instructions necessary for running this
-// program are implemented.
 #[test]
-#[ignore]
 fn test_sll() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
