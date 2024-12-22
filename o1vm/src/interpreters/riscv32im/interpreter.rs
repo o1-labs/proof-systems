@@ -1388,6 +1388,7 @@ pub trait InterpreterEnv {
     /// Given a variable `x`, this function extends it to a signed integer of
     /// `bitlength` bits.
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
+        assert!(bitlength <= 32);
         // FIXME: Constrain `high_bit`
         let high_bit = {
             let pos = self.alloc_scratch();
