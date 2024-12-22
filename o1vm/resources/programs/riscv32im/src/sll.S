@@ -1,7 +1,9 @@
 .global _start
 
 _start:
-  lui t0, 0x42
+  # Load 2^12 in the register t0
+  lui t0, 0b1
+  # Multiply by 4
   sll t0, t0, 2
   li a0, 0
   li a1, 0
