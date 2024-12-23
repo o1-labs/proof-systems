@@ -594,9 +594,9 @@ pub trait InterpreterEnv {
     fn check_boolean(x: &Self::Variable);
 
     /// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    fn assert_boolean(&mut self, x: Self::Variable) {
-        Self::check_boolean(&x);
-        self.add_constraint(x.clone() * x.clone() - x);
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        Self::check_boolean(x);
+        self.add_constraint(x.clone() * x.clone() - x.clone());
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
