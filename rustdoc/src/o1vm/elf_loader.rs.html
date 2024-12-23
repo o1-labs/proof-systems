@@ -260,7 +260,7 @@
 
     <span class="comment">// Entry point of the program
     </span><span class="kw">let </span>pc: u32 = file.ehdr.e_entry <span class="kw">as </span>u32;
-    <span class="macro">assert!</span>(pc != <span class="number">0</span>, <span class="string">&quot;Entry point is 0. The documentation of the ELF library says that it means the ELF doesn&#39;t have an entry point. This is not supported.&quot;</span>);
+    <span class="macro">assert!</span>(pc != <span class="number">0</span>, <span class="string">&quot;Entry point is 0. The documentation of the ELF library says that it means the ELF doesn&#39;t have an entry point. This is not supported. This can happen if the binary given is an object file and not an executable file. You might need to call the linker (ld) before running the binary.&quot;</span>);
     <span class="kw">let </span>next_pc: u32 = pc + <span class="number">4u32</span>;
 
     <span class="kw">let </span>state = State {
