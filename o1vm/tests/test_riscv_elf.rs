@@ -195,6 +195,7 @@ fn test_addi_negative() {
     assert_eq!(witness.registers[T0], 100);
     assert_eq!(witness.registers[T1], 50);
     assert_eq!(witness.registers[T2], (-50_i32) as u32);
+    assert_eq!(witness.registers[T4], (-1500_i32) as u32);
 }
 
 #[test]
