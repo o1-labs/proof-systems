@@ -1,9 +1,23 @@
 use mina_curves::pasta::Fp;
 use o1vm::interpreters::riscv32im::{
     interpreter::{IInstruction, Instruction, RInstruction},
+    registers::RegisterAlias::*,
     witness::Env,
     PAGE_SIZE,
 };
+
+#[test]
+fn test_registers_indexed_by_alias() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sll",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    assert_eq!(witness.registers[Ip], 65688);
+    assert_eq!(witness.registers[NextIp], 65692);
+}
 
 #[test]
 // Checking an instruction can be converted into a string.
