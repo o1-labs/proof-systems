@@ -2538,6 +2538,13 @@
 <a href="#2538" id="2538">2538</a>
 <a href="#2539" id="2539">2539</a>
 <a href="#2540" id="2540">2540</a>
+<a href="#2541" id="2541">2541</a>
+<a href="#2542" id="2542">2542</a>
+<a href="#2543" id="2543">2543</a>
+<a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3928,12 +3935,19 @@
     <span class="doccomment">/// Given a variable `x`, this function extends it to a signed integer of
     /// `bitlength` bits.
     </span><span class="kw">fn </span>sign_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bitlength: u32) -&gt; <span class="self">Self</span>::Variable {
+        <span class="macro">assert!</span>(bitlength &lt;= <span class="number">32</span>);
         <span class="comment">// FIXME: Constrain `high_bit`
         </span><span class="kw">let </span>high_bit = {
             <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
             <span class="kw">unsafe </span>{ <span class="self">self</span>.bitmask(x, bitlength, bitlength - <span class="number">1</span>, pos) }
         };
-        high_bit * <span class="self">Self</span>::constant(((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>) &lt;&lt; bitlength) + x.clone()
+        <span class="comment">// Casting in u64 for special case of bitlength = 0 to avoid overflow.
+        // No condition for constant time execution.
+        // Decomposing the steps for readability.
+        </span><span class="kw">let </span>v: u64 = (<span class="number">1u64 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>;
+        <span class="kw">let </span>v: u64 = v &lt;&lt; bitlength;
+        <span class="kw">let </span>v: u32 = v <span class="kw">as </span>u32;
+        high_bit * <span class="self">Self</span>::constant(v) + x.clone()
     }
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);

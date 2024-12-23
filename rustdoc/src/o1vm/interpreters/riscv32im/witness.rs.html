@@ -938,6 +938,14 @@
 <a href="#938" id="938">938</a>
 <a href="#939" id="939">939</a>
 <a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO: do we want to be more restrictive and refer to the number of accesses
 //       to the SAME register/memory addrss?
 </span><span class="kw">use super</span>::{
@@ -1154,6 +1162,14 @@
         lowest_bit: u32,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="macro">assert!</span>(
+            lowest_bit &lt; highest_bit,
+            <span class="string">&quot;The lowest bit must be strictly lower than the highest bit&quot;
+        </span>);
+        <span class="macro">assert!</span>(
+            highest_bit &lt;= <span class="number">32</span>,
+            <span class="string">&quot;The interpreter is for a 32bits architecture&quot;
+        </span>);
         <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>res = (x &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
         <span class="kw">let </span>res = res <span class="kw">as </span>u64;
