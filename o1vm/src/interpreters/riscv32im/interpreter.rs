@@ -2269,9 +2269,11 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
 
-            let rd_scratch = env.alloc_scratch();
-            let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
-            // debug!("less_than: {:?}", less_than);
+            let less_than = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) }
+            };
+
             let offset = (Env::constant(1) - less_than.clone()) * Env::constant(4)
                 + less_than.clone() * imm0_12;
 
