@@ -120,3 +120,41 @@ fn test_addi() {
 
     assert_eq!(witness.registers[T0], 15);
 }
+
+#[test]
+fn test_add_1() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/add_1",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T0], 15);
+}
+
+#[test]
+fn test_add_2() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/add_2",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T0], 123); // First number
+    assert_eq!(witness.registers[T1], 456); // Second number
+    assert_eq!(witness.registers[T2], 789); // Third number
+    assert_eq!(witness.registers[T3], 579); // t3 = t0 + t1
+    assert_eq!(witness.registers[T4], 1368); // t4 = t3 + t2
+    assert_eq!(witness.registers[T5], 912); // t5 = t0 + t2
+    assert_eq!(witness.registers[T6], 1368); // t6 = t4 + x0 (Copy t4 to t6)
+}
