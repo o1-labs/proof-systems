@@ -1026,16 +1026,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 + shamt.clone() * Env::constant(1 << 6)
                 + funct),
     );
-
     match instr {
         RTypeInstruction::ShiftLeftLogical => {
-            let rt = env.read_register(&rt);
-            // FIXME: Constrain this value
-            let shifted = unsafe {
-                let pos = env.alloc_scratch();
-                env.shift_left(&rt, &shamt, pos)
-            };
-            env.write_register(&rd, shifted);
+            shift_left_logical(env, rt, shamt, rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
@@ -1696,6 +1689,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     };
+}
+
+pub fn shift_left_logical<Env: InterpreterEnv>(
+    env: &mut Env,
+    rt: Env::Variable,
+    shamt: Env::Variable,
+    rd: Env::Variable,
+) {
+    let rt = env.read_register(&rt);
+    // FIXME: Constrain this value
+    let shifted = unsafe {
+        let pos = env.alloc_scratch();
+        env.shift_left(&rt, &shamt, pos)
+    };
+    env.write_register(&rd, shifted);
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {

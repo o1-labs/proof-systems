@@ -150,12 +150,13 @@ fn build_proof_inputs(
     meta: &Option<cannon::Meta>,
     start: &Start,
     curr_proof_inputs: &mut ProofInputs<Vesta>,
-    mut rng: &mut ThreadRng,
+    rng: &mut ThreadRng,
 ) {
-    while !(mips_wit_env.halt
-        || curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE)
-    {
-        let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
+    fn write_to_proof_inputs(
+        mips_wit_env: &mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
+        curr_proof_inputs: &mut ProofInputs<Affine<VestaParameters>>,
+        mut rng: &mut ThreadRng,
+    ) {
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
             .iter()
@@ -182,9 +183,18 @@ fn build_proof_inputs(
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
     }
-    let n_instructions_executed = curr_proof_inputs.evaluations.instruction_counter.len();
-    if !(n_instructions_executed == DOMAIN_SIZE) {
-        curr_proof_inputs.pad();
+
+    while !(mips_wit_env.halt
+        || curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE)
+    {
+        let _instr: Instruction = mips_wit_env.step(&configuration, &meta, &start);
+        write_to_proof_inputs(mips_wit_env, curr_proof_inputs, rng);
+    }
+    if curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE {
+        while !(curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE) {
+            mips_wit_env.pad();
+            write_to_proof_inputs(mips_wit_env, curr_proof_inputs, rng);
+        }
     }
 }
 

@@ -1140,6 +1140,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         (self.normalized_instruction_counter() + 1) * MAX_ACC
     }
 
+    pub fn pad(&mut self) {
+        self.reset_scratch_state();
+        self.reset_scratch_state_inverse();
+        let zero = self.registers.general_purpose[0] as u64;
+        self.activate_selector(Instruction::RType(RTypeInstruction::ShiftLeftLogical));
+        interpreter::shift_left_logical(self, zero, zero, zero);
+    }
+
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
     pub fn step(
