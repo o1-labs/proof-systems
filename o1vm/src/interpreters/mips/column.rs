@@ -94,6 +94,12 @@ impl From<Instruction> for usize {
             IType(itype) => {
                 N_MIPS_REL_COLS + RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize
             }
+            Instruction::NoOp => {
+                N_MIPS_REL_COLS
+                    + RTypeInstruction::COUNT
+                    + JTypeInstruction::COUNT
+                    + ITypeInstruction::COUNT
+            }
         }
     }
 }

@@ -989,7 +989,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         let opcode = {
             match instruction >> 26 {
                 0x00 => match instruction & 0x3F {
-                    0x00 => Instruction::RType(RTypeInstruction::ShiftLeftLogical),
+                    0x00 => {
+                        if instruction == 0 {
+                            Instruction::NoOp
+                        } else {
+                            Instruction::RType(RTypeInstruction::ShiftLeftLogical)
+                        }
+                    }
                     0x02 => Instruction::RType(RTypeInstruction::ShiftRightLogical),
                     0x03 => Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
                     0x04 => Instruction::RType(RTypeInstruction::ShiftLeftLogicalVariable),
