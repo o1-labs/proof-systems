@@ -2066,9 +2066,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
 /// Following the documentation found
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction) {
-    /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
-    /* compute the next instruction ptr and add one, as well record raml lookup */
     let _next_instruction_pointer = env.get_next_instruction_pointer();
     /* read instruction from ip address */
     let instruction = {
@@ -2081,13 +2079,11 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             + (v1 * Env::constant(1 << 8))
             + v0
     };
-    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-
     let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
-    /* verify opcode is 7 bits */
+
     env.range_check8(&opcode, 7);
 
     let funct3 = {
