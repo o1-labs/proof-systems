@@ -2110,7 +2110,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             unsafe { env.bitmask(&instruction, 8, 7, pos) }
         };
 
-        env.range_check8(&imm11, 1);
+        env.assert_boolean(&imm11);
 
         let imm1_4 = {
             let pos = env.alloc_scratch();
@@ -2128,7 +2128,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let pos = env.alloc_scratch();
             unsafe { env.bitmask(&instruction, 32, 31, pos) }
         };
-        env.range_check8(&imm12, 1);
+        env.assert_boolean(&imm12);
 
         // check correctness of decomposition of SB type function
         env.add_constraint(
