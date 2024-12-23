@@ -78,7 +78,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     debug!("Prover: interpolating all columns, including the selectors");
-    let ProofInputs { evaluations } = inputs;
+    let ProofInputs { evaluations, .. } = inputs;
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
@@ -268,6 +268,7 @@ where
             combined_expr.evaluations(&column_env);
 
         // And we interpolate using the evaluations
+        debug!("Prover: interpolating the constraint polynomial");
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
         let fail_final_q_division = || panic!("Fail division by vanishing poly");
@@ -275,6 +276,7 @@ where
             || panic!("The constraints are not satisifed since the remainder is not zero");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
+        debug!("Prover: dividing the constraint polynomial by the vanishing polynomial");
         let (quotient, rem) = expr_evaluation_interpolated
             .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
@@ -288,6 +290,7 @@ where
         quotient
     };
 
+    debug!("Prover: committing to the quotient polynomial");
     let quotient_commitment = srs
         .commit_custom(
             &quotient_poly,

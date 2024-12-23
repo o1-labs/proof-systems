@@ -106,9 +106,7 @@ pub fn create_bidirectional_channel() -> Option<(RW, RW)> {
 }
 
 impl PreImageOracle {
-    pub fn create(hp_opt: &Option<HostProgram>) -> PreImageOracle {
-        let host_program = hp_opt.as_ref().expect("No host program given");
-
+    pub fn create(host_program: HostProgram) -> PreImageOracle {
         let mut cmd = Command::new(&host_program.name);
         cmd.args(&host_program.arguments);
 
@@ -154,6 +152,18 @@ impl PreImageOracle {
         self.cmd
             .spawn()
             .expect("Could not spawn pre-image oracle process")
+    }
+}
+
+pub struct NullPreImageOracle;
+
+impl PreImageOracleT for NullPreImageOracle {
+    fn get_preimage(&mut self, _key: [u8; 32]) -> Preimage {
+        panic!("No preimage oracle specified for preimage retrieval");
+    }
+
+    fn hint(&mut self, _hint: Hint) {
+        panic!("No preimage oracle specified for hints");
     }
 }
 
@@ -221,6 +231,16 @@ impl PreImageOracleT for PreImageOracle {
         let mut buf = [0_u8];
         // And do nothing with it anyway
         let _ = reader.read_exact(&mut buf);
+    }
+}
+
+impl PreImageOracleT for Box<dyn PreImageOracleT> {
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+        self.as_mut().get_preimage(key)
+    }
+
+    fn hint(&mut self, hint: Hint) {
+        self.as_mut().hint(hint)
     }
 }
 
