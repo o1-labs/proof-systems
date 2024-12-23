@@ -1286,6 +1286,10 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     unsafe fn div_signed(
         &mut self,
         x: &Self::Variable,
@@ -1314,6 +1318,10 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     unsafe fn div(
         &mut self,
         x: &Self::Variable,
