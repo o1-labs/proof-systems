@@ -212,4 +212,5 @@ fn test_add_sub_swap() {
 
     assert_eq!(witness.registers[T0], 10);
     assert_eq!(witness.registers[T1], 5);
+    assert_eq!(witness.registers[T2], 15);
 }
