@@ -15,8 +15,8 @@ fn test_registers_indexed_by_alias() {
     let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
-    assert_eq!(witness.registers[Ip], 65688);
-    assert_eq!(witness.registers[NextIp], 65692);
+    assert_eq!(witness.registers[Ip], 65652);
+    assert_eq!(witness.registers[NextIp], 65656);
 }
 
 #[test]
@@ -88,10 +88,7 @@ fn test_fibonacci_7() {
     }
 }
 
-// FIXME: stop ignore when all the instructions necessary for running this
-// program are implemented.
 #[test]
-#[ignore]
 fn test_sll() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
@@ -104,5 +101,6 @@ fn test_sll() {
         witness.step();
     }
 
-    // FIXME: check the state of the registers after the program has run.
+    // Expected output of the program
+    assert_eq!(witness.registers.general_purpose[5], 1 << 14)
 }
