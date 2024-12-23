@@ -88,8 +88,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         assert_eq!(*x, *y);
     }
 
-    fn check_boolean(x: &Self::Variable) {
-        if !(*x == 0 || *x == 1) {
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        if *x != 0 && *x != 1 {
             panic!("The value {} is not a boolean", *x);
         }
     }
