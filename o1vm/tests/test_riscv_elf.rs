@@ -249,3 +249,54 @@ fn test_addi_boundary_immediate() {
     assert_eq!(witness.registers[T1], 2147);
     assert_eq!(witness.registers[T3], (-1048_i32) as u32);
 }
+
+#[test]
+fn test_sub() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sub",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T2], 500);
+    assert_eq!(witness.registers[T5], (-100_i32) as u32);
+}
+
+#[test]
+fn test_sub_2() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sub_2",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T2], -200_i32 as u32);
+    assert_eq!(witness.registers[T5], 150);
+}
+
+#[test]
+fn test_sub_3() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sub_3",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T1], 0);
+    assert_eq!(witness.registers[T4], -2147483648_i32 as u32);
+}
