@@ -15,8 +15,8 @@ fn test_registers_indexed_by_alias() {
     let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
     let witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
-    assert_eq!(witness.registers[Ip], 65688);
-    assert_eq!(witness.registers[NextIp], 65692);
+    assert_eq!(witness.registers[Ip], 65652);
+    assert_eq!(witness.registers[NextIp], 65656);
 }
 
 #[test]
