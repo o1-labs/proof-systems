@@ -175,3 +175,45 @@ RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pick
 ```shell
 ./clear-e2e-testing-cache.sh
 ```
+
+## Running test programs
+
+Different programs written either in Rust or directly in assembly are given in
+the folder `resources/programs`. For each different architecture, you can see
+examples.
+
+As installing the toolchain for each ISA might not be easy on every development
+platform, we do provide the source code and the corresponding assembly
+respectively in `resources/programs/[ISA]/src` and
+`resources/programs/[ISA]/bin`.
+
+### RISC-V 32 bits (riscv32i, riscv32im)
+
+For the RISC-V 32 bits architecture, the user can install the toolchain by using
+`make setup-riscv32-toolchain`.
+
+If you encounter any issue with the build dependencies, you can refer to [this
+GitHub repository](https://github.com/riscv-collab/riscv-gnu-toolchain?tab=readme-ov-file#prerequisites).
+
+The toolchain will be available in the directory
+`_riscv32-gnu-toolchain/build` at the root of this repository (see variable
+`RISCV32_TOOLCHAIN_PATH` in the [Makefile](../Makefile).
+
+To compile on of the source files available in
+`resources/programs/riscv32im/src`, the user can use:
+
+```shell
+FILENAME=sll.S
+
+_riscv32-gnu-toolchain/build/bin/riscv32-unknown-elf-as
+  -o a.out \
+  o1vm/resources/programs/riscv32im/src/${FILENAME}
+```
+
+### Write new test examples
+
+The Makefile at the top-level of this repository will automatically detect new
+`.S` files in the directory `o1vm/resources/programs/riscv32im/src/` when the
+target `build-riscv32-programs` is called. Any change to the existing files will
+also be detected by the target, and you can commit the changes of the resulting
+binary.

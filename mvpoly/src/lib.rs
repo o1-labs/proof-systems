@@ -254,10 +254,85 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
         u2: F,
     ) -> HashMap<usize, F>;
 
+    /// Compute the cross-terms of the given polynomial, scaled by the given
+    /// scalar.
+    ///
+    /// More explicitly, given a polynomial `P(X1, ..., Xn)` and a scalar α, the
+    /// method computes the the cross-terms of the polynomial `Q(X1, ..., Xn, α)
+    /// = α * P(X1, ..., Xn)`. For this reason, the method takes as input the
+    /// two different scalars `scalar1` and `scalar2` as we are considering the
+    /// scaling factor as a variable.
+    ///
+    /// This method is particularly useful when you need to compute a
+    /// (possibly random) combinaison of polynomials `P1(X1, ..., Xn), ...,
+    /// Pm(X1, ..., Xn)`, like when computing a quotient polynomial in the PlonK
+    /// PIOP, as the result is the sum of individual "scaled" polynomials:
+    /// ```text
+    /// Q(X_1, ..., X_n, α_1, ..., α_m) =
+    ///   α_1 P1(X_1, ..., X_n) +
+    ///   ...
+    ///   α_m Pm(X_1, ..., X_n) +
+    /// ```
+    ///
+    /// The polynomial must not necessarily be homogeneous. For this reason, the
+    /// values `u1` and `u2` represents the extra variable that is used to make
+    /// the polynomial homogeneous.
+    ///
+    /// The homogeneous degree is supposed to be the one defined by the type of
+    /// the polynomial `P`, i.e. `D`.
+    ///
+    /// The output is a map of `D` values that represents the cross-terms
+    /// for each power of `r`.
+    fn compute_cross_terms_scaled(
+        &self,
+        eval1: &[F; N],
+        eval2: &[F; N],
+        u1: F,
+        u2: F,
+        scalar1: F,
+        scalar2: F,
+    ) -> HashMap<usize, F>;
+
     /// Modify the monomial in the polynomial to the new value `coeff`.
     fn modify_monomial(&mut self, exponents: [usize; N], coeff: F);
 
     /// Return true if the multi-variate polynomial is multilinear, i.e. if each
     /// variable in each monomial is of maximum degree 1.
     fn is_multilinear(&self) -> bool;
+}
+
+/// Compute the cross terms of a list of polynomials. The polynomials are
+/// linearly combined using the power of a combiner, often called `α`.
+pub fn compute_combined_cross_terms<
+    F: PrimeField,
+    const N: usize,
+    const D: usize,
+    T: MVPoly<F, N, D>,
+>(
+    polys: Vec<T>,
+    eval1: [F; N],
+    eval2: [F; N],
+    u1: F,
+    u2: F,
+    combiner1: F,
+    combiner2: F,
+) -> HashMap<usize, F> {
+    // These should never happen as they should be random
+    // It also makes the code cleaner as we do not need to handle 0^0
+    assert!(combiner1 != F::zero());
+    assert!(combiner2 != F::zero());
+    assert!(u1 != F::zero());
+    assert!(u2 != F::zero());
+    polys
+        .into_iter()
+        .enumerate()
+        .fold(HashMap::new(), |mut acc, (i, poly)| {
+            let scalar1 = combiner1.pow([i as u64]);
+            let scalar2 = combiner2.pow([i as u64]);
+            let res = poly.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2);
+            res.iter().for_each(|(p, r)| {
+                acc.entry(*p).and_modify(|e| *e += r).or_insert(*r);
+            });
+            acc
+        })
 }

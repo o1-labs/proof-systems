@@ -20,6 +20,14 @@
 //! and copied in this file for offline reference.
 //! If you are the author of the above documentations and would like to add or
 //! modify the credits, please open a pull request.
+//!
+//! For each instruction, we provide the format, description, and the
+//! semantic in pseudo-code of the instruction.
+//! When `signed` is mentioned in the pseudo-code, it means that the
+//! operation is performed as a signed operation (i.e. signed(v) where `v` is a
+//! 32 bits value means that `v` must be interpreted as a i32 value in Rust, the
+//! most significant bit being the sign - 1 for negative, 0 for positive).
+//! By default, unsigned operations are performed.
 
 use super::registers::{REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_NEXT_IP};
 use crate::lookups::{Lookup, LookupTableIDs};
@@ -1215,69 +1223,117 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
-    /// and `position_lo` respectively.
+    /// Returns `(x * y) & ((1 << 32) - 1))`, storing the results in `position`
     ///
     /// # Safety
     ///
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn mul_hi_lo_signed(
+    unsafe fn mul_lo_signed(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable);
+        position: Self::Position,
+    ) -> Self::Variable;
 
-    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
-    /// and `position_lo` respectively.
+    /// Returns `((x * y) >> 32`, storing the results in `position`.
     ///
     /// # Safety
     ///
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn mul_hi_lo(
+    unsafe fn mul_hi(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable);
+        position: Self::Position,
+    ) -> Self::Variable;
 
-    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
-    /// `position_remainder` respectively.
+    /// Returns `(x * y) & ((1 << 32) - 1))`, storing the results in `position`.
     ///
     /// # Safety
     ///
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn divmod_signed(
+    unsafe fn mul_lo(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable);
+        position: Self::Position,
+    ) -> Self::Variable;
 
-    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
-    /// `position_remainder` respectively.
+    /// Returns `((x * y) >> 32`, storing the results in `position`.
     ///
     /// # Safety
     ///
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
-    unsafe fn divmod(
+    unsafe fn mul_hi_signed_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable);
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x / y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn div_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x % y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn mod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x / y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn div(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x % y`, storing the results in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn mod_unsigned(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
 
     /// Returns the number of leading 0s in `x`, storing the result in `position`.
     ///
@@ -1332,12 +1388,19 @@ pub trait InterpreterEnv {
     /// Given a variable `x`, this function extends it to a signed integer of
     /// `bitlength` bits.
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
+        assert!(bitlength <= 32);
         // FIXME: Constrain `high_bit`
         let high_bit = {
             let pos = self.alloc_scratch();
             unsafe { self.bitmask(x, bitlength, bitlength - 1, pos) }
         };
-        high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
+        // Casting in u64 for special case of bitlength = 0 to avoid overflow.
+        // No condition for constant time execution.
+        // Decomposing the steps for readability.
+        let v: u64 = (1u64 << (32 - bitlength)) - 1;
+        let v: u64 = v << bitlength;
+        let v: u32 = v as u32;
+        high_bit * Self::constant(v) + x.clone()
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
@@ -1637,6 +1700,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
 
     env.range_check16(&imm, 12);
 
+    let shamt = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 5, 0, pos) }
+    };
+    env.range_check8(&shamt, 5);
+
+    let imm_header = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&imm, 12, 5, pos) }
+    };
+    env.range_check8(&imm_header, 7);
+
+    // check the correctness of the immediate and shamt
+    env.add_constraint(imm.clone() - (imm_header.clone() * Env::constant(1 << 5)) - shamt.clone());
+
     // check correctness of decomposition
     env.add_constraint(
         instruction
@@ -1754,13 +1832,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftLeftLogicalImmediate => {
             // slli: x[rd] = x[rs1] << shamt
             let local_rs1 = env.read_register(&rs1);
-            let shamt = {
+
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 4, 0, pos) }
+                unsafe { env.shift_left(&local_rs1, &shamt.clone(), pos) }
             };
-            // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_left(&local_rs1, &shamt, rd_scratch) };
 
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -1769,13 +1845,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftRightLogicalImmediate => {
             // srli: x[rd] = x[rs1] >> shamt
             let local_rs1 = env.read_register(&rs1);
-            let shamt = {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 4, 0, pos) }
+                unsafe { env.shift_right(&local_rs1, &shamt, pos) }
             };
-            // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_right(&local_rs1, &shamt, rd_scratch) };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1783,16 +1856,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
         IInstruction::ShiftRightArithmeticImmediate => {
             // srai: x[rd] = x[rs1] >> shamt
             let local_rs1 = env.read_register(&rs1);
-            let shamt = {
-                let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&imm, 4, 0, pos) }
-            };
-            // parse shamt from imm as 20-24 of instruction and 0-4 wrt to imm
-            // sign extend shamt for arithmetic shift
-            let shamt = env.sign_extend(&shamt, 4);
 
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.shift_right_arithmetic(&local_rs1, &shamt, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_right_arithmetic(&local_rs1, &shamt, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1801,8 +1869,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // slti: x[rd] = (x[rs1] < sext(immediate)) ? 1 : 0
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.test_less_than_signed(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&local_rs1, &local_imm, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1811,8 +1881,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // sltiu: x[rd] = (x[rs1] < (u)sext(immediate)) ? 1 : 0
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.test_less_than(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&local_rs1, &local_imm, pos) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -2386,10 +2458,11 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
                 env.sign_extend(&shifted_imm, 32)
             };
             let local_pc = instruction_pointer.clone();
-            let pos = env.alloc_scratch();
-            let overflow_pos = env.alloc_scratch();
-            let (local_rd, _) =
-                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) };
+            let (local_rd, _) = {
+                let pos = env.alloc_scratch();
+                let overflow_pos = env.alloc_scratch();
+                unsafe { env.add_witness(&local_pc, &local_imm, pos, overflow_pos) }
+            };
             env.write_register(&rd, local_rd);
 
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -2462,7 +2535,7 @@ pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInst
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -2533,28 +2606,116 @@ pub fn interpret_mtype<Env: InterpreterEnv>(env: &mut Env, instr: MInstruction) 
 
     match instr {
         MInstruction::Mul => {
-            unimplemented!("Mul")
+            // x[rd] = x[rs1] * x[rs2]
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_lo_signed(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulh => {
-            unimplemented!("Mulh")
+            // x[rd] = (signed(x[rs1]) * signed(x[rs2])) >> 32
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_hi_signed(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhsu => {
-            unimplemented!("Mulhsu")
+            // x[rd] = (signed(x[rs1]) * x[rs2]) >> 32
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_hi_signed_unsigned(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Mulhu => {
-            unimplemented!("Mulhu")
+            // x[rd] = (x[rs1] * x[rs2]) >> 32
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_hi(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Div => {
-            unimplemented!("Div")
+            // x[rd] = signed(x[rs1]) / signed(x[rs2])
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.div_signed(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Divu => {
-            unimplemented!("Divu")
+            // x[rd] = x[rs1] / x[rs2]
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.div(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Rem => {
-            unimplemented!("Rem")
+            // x[rd] = signed(x[rs1]) % signed(x[rs2])
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mod_signed(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         MInstruction::Remu => {
-            unimplemented!("Remu")
+            // x[rd] = x[rs1] % x[rs2]
+            let rs1 = env.read_register(&rs1);
+            let rs2 = env.read_register(&rs2);
+            // FIXME: constrain
+            let res = {
+                let pos = env.alloc_scratch();
+                unsafe { env.mod_unsigned(&rs1, &rs2, pos) }
+            };
+            env.write_register(&rd, res);
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     }
 }
