@@ -2326,7 +2326,30 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchLessThanUnsigned => {
-            unimplemented!("BranchLessThanUnsigned")
+            // bltu: if (x[rs1] <u x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let less_than = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) }
+            };
+
+            let offset = (Env::constant(1) - less_than.clone()) * Env::constant(4)
+                + less_than.clone() * imm0_12;
+
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
+                };
+                // FIXME: Requires a range check
+                res
+            };
+
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchGreaterThanEqualUnsigned => {
             unimplemented!("BranchGreaterThanEqualUnsigned")
