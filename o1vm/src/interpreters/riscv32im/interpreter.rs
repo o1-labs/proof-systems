@@ -2218,7 +2218,29 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
 
     match instr {
         SBInstruction::BranchEq => {
-            unimplemented!("BranchEq")
+            // beq: if (x[rs1] == x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let equals = env.equal(&local_rs1, &local_rs2);
+            let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * imm0_12;
+            let offset = env.sign_extend(&offset, 12);
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchNeq => {
             // bne: if (x[rs1] != x[rs2]) pc += sext(offset)
