@@ -1,4 +1,5 @@
 use ark_ff::{Field, One, UniformRand, Zero};
+use core::cmp::Ordering;
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr, ExprInner, Variable},
@@ -575,7 +576,7 @@ fn test_build_from_variable_next_row_with_offset_given() {
 fn test_from_expr_ec_addition() {
     // Simulate a real usecase
     // The following lines/design look similar to the ones we use in
-    // o1vm/arrabiata
+    // o1vm/arrabbiata
     #[derive(Clone, Copy, PartialEq)]
     enum Column {
         X(usize),
@@ -710,5 +711,196 @@ fn test_from_expr_ec_addition() {
                 + random_evaluation[3]
         };
         assert_eq!(eval, exp_eval);
+    }
+}
+
+#[test]
+fn test_cross_terms_fixed_polynomial_and_eval_homogeneous_degree_3() {
+    // X
+    let x = {
+        // We say it is of degree 2 for the cross-term computation
+        let mut x = Sparse::<Fp, 1, 2>::zero();
+        x.add_monomial([1], Fp::one());
+        x
+    };
+    // X * Y
+    let scaled_x = {
+        let scaling_var = {
+            let mut v = Sparse::<Fp, 2, 2>::zero();
+            v.add_monomial([0, 1], Fp::one());
+            v
+        };
+        let x: Sparse<Fp, 2, 2> = {
+            let x: Result<Sparse<Fp, 2, 2>, String> = x.clone().into();
+            x.unwrap()
+        };
+        x.clone() * scaling_var
+    };
+    // x1 = 42, α1 = 1
+    // x2 = 42, α2 = 2
+    let eval1: [Fp; 2] = [Fp::from(42), Fp::one()];
+    let eval2: [Fp; 2] = [Fp::from(42), Fp::one() + Fp::one()];
+    let u1 = Fp::one();
+    let u2 = Fp::one() + Fp::one();
+    let scalar1 = eval1[1];
+    let scalar2 = eval2[1];
+
+    let cross_terms_scaled_p1 = {
+        // When computing the cross-terms, the method supposes that the polynomial
+        // is of degree D - 1.
+        // We do suppose we homogenize to degree 3.
+        let scaled_x: Sparse<Fp, 2, 3> = {
+            let p: Result<Sparse<Fp, 2, 3>, String> = scaled_x.clone().into();
+            p.unwrap()
+        };
+        scaled_x.compute_cross_terms(&eval1, &eval2, u1, u2)
+    };
+    let cross_terms = {
+        let x: Sparse<Fp, 1, 2> = {
+            let x: Result<Sparse<Fp, 1, 2>, String> = x.clone().into();
+            x.unwrap()
+        };
+        x.compute_cross_terms_scaled(
+            &eval1[0..1].try_into().unwrap(),
+            &eval2[0..1].try_into().unwrap(),
+            u1,
+            u2,
+            scalar1,
+            scalar2,
+        )
+    };
+    assert_eq!(cross_terms, cross_terms_scaled_p1);
+}
+
+#[test]
+fn test_cross_terms_scaled() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let p1 = unsafe { Sparse::<Fp, 4, 2>::random(&mut rng, None) };
+    let scaled_p1 = {
+        // Scaling variable is U. We do this by adding a new variable.
+        let scaling_variable: Sparse<Fp, 5, 3> = {
+            let mut p: Sparse<Fp, 5, 3> = Sparse::<Fp, 5, 3>::zero();
+            p.add_monomial([0, 0, 0, 0, 1], Fp::one());
+            p
+        };
+        // Simply transforming p1 in the expected degree and with the right
+        // number of variables
+        let p1 = {
+            let p1: Result<Sparse<Fp, 5, 3>, String> = p1.clone().into();
+            p1.unwrap()
+        };
+        scaling_variable.clone() * p1.clone()
+    };
+    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let scalar1 = random_eval1[4];
+    let scalar2 = random_eval2[4];
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let cross_terms = {
+        let eval1: [Fp; 4] = random_eval1[0..4].try_into().unwrap();
+        let eval2: [Fp; 4] = random_eval2[0..4].try_into().unwrap();
+        p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2)
+    };
+    let scaled_cross_terms = scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
+    assert_eq!(cross_terms, scaled_cross_terms);
+}
+
+#[test]
+fn test_cross_terms_aggregated_polynomial() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    const M: usize = 20;
+    let polys: Vec<Sparse<Fp, 5, 4>> = (0..M)
+        .map(|_| unsafe { Sparse::<Fp, 5, 4>::random(&mut rng, None) })
+        .collect();
+
+    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let scalar1: Fp = Fp::rand(&mut rng);
+    let scalar2: Fp = Fp::rand(&mut rng);
+
+    const N: usize = 5 + M;
+    const D: usize = 4 + 1;
+    let aggregated_poly: Sparse<Fp, { N }, { D }> = {
+        let vars: [Sparse<Fp, N, D>; M] = std::array::from_fn(|j| {
+            let mut res = Sparse::<Fp, { N }, { D }>::zero();
+            let monomial: [usize; N] = std::array::from_fn(|i| if i == 5 + j { 1 } else { 0 });
+            res.add_monomial(monomial, Fp::one());
+            res
+        });
+        polys
+            .iter()
+            .enumerate()
+            .fold(Sparse::<Fp, { N }, { D }>::zero(), |acc, (j, poly)| {
+                let poly: Result<Sparse<Fp, { N }, { D }>, String> = (*poly).clone().into();
+                let poly: Sparse<Fp, { N }, { D }> = poly.unwrap();
+                poly * vars[j].clone() + acc
+            })
+    };
+
+    let res = mvpoly::compute_combined_cross_terms(
+        polys,
+        random_eval1,
+        random_eval2,
+        u1,
+        u2,
+        scalar1,
+        scalar2,
+    );
+    let random_eval1_prime: [Fp; N] = std::array::from_fn(|i| match i.cmp(&5) {
+        Ordering::Greater => scalar1.pow([(i as u64) - 5_u64]),
+        Ordering::Less => random_eval1[i],
+        Ordering::Equal => Fp::one(),
+    });
+
+    let random_eval2_prime: [Fp; N] = std::array::from_fn(|i| match i.cmp(&5) {
+        Ordering::Greater => scalar2.pow([(i as u64) - 5_u64]),
+        Ordering::Less => random_eval2[i],
+        Ordering::Equal => Fp::one(),
+    });
+    let cross_terms_aggregated =
+        aggregated_poly.compute_cross_terms(&random_eval1_prime, &random_eval2_prime, u1, u2);
+    assert_eq!(res, cross_terms_aggregated);
+}
+
+#[test]
+fn test_cross_terms_scaled_invariant_output_size() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let random_eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let random_eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let u1 = Fp::rand(&mut rng);
+    let u2 = Fp::rand(&mut rng);
+    let scalar1 = Fp::rand(&mut rng);
+    let scalar2 = Fp::rand(&mut rng);
+
+    {
+        let p1 = unsafe { Sparse::<Fp, 4, 4>::random(&mut rng, None) };
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 4);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 4>::zero();
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 4);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 7>::one();
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 7);
+    }
+
+    {
+        let p1 = Sparse::<Fp, 4, 12>::from(Fp::from(42));
+        let cross_terms =
+            p1.compute_cross_terms_scaled(&random_eval1, &random_eval2, u1, u2, scalar1, scalar2);
+        assert_eq!(cross_terms.len(), 12);
     }
 }

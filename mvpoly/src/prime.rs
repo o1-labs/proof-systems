@@ -432,6 +432,18 @@ impl<F: PrimeField, const N: usize, const D: usize> MVPoly<F, N, D> for Dense<F,
         unimplemented!()
     }
 
+    fn compute_cross_terms_scaled(
+        &self,
+        _eval1: &[F; N],
+        _eval2: &[F; N],
+        _u1: F,
+        _u2: F,
+        _scalar1: F,
+        _scalar2: F,
+    ) -> HashMap<usize, F> {
+        unimplemented!()
+    }
+
     fn modify_monomial(&mut self, exponents: [usize; N], coeff: F) {
         let mut prime_gen = PrimeNumberGenerator::new();
         let primes = prime_gen.get_first_nth_primes(N);

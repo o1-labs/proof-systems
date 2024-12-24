@@ -38,7 +38,7 @@ pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     fn other_curve_generator() -> (Self::ScalarField, Self::ScalarField);
 }
 
-fn vesta_endos() -> &'static (
+pub fn vesta_endos() -> &'static (
     <VestaParameters as CurveConfig>::BaseField,
     <VestaParameters as CurveConfig>::ScalarField,
 ) {
@@ -49,7 +49,7 @@ fn vesta_endos() -> &'static (
     &VESTA_ENDOS
 }
 
-fn pallas_endos() -> &'static (
+pub fn pallas_endos() -> &'static (
     <PallasParameters as CurveConfig>::BaseField,
     <PallasParameters as CurveConfig>::ScalarField,
 ) {

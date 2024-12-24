@@ -17,7 +17,7 @@
 - [Commitments](./fundamentals/zkbook_commitment.md)
 - [Polynomial Commitments](./plonk/polynomial_commitments.md)
   - [Inner Product Argument](./plonk/inner_product.md)
-  - [Different Functionnalities](./plonk/inner_product_api.md)
+  - [Different Functionalities](./plonk/inner_product_api.md)
 - [Two Party Computation](./fundamentals/zkbook_2pc/overview.md)
   - [Garbled Circuits](./fundamentals/zkbook_2pc/gc.md)
     - [Basics](./fundamentals/zkbook_2pc/basics.md)
