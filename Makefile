@@ -18,6 +18,13 @@ O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
 O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
 RISCV32_AS_FLAGS = --warn --fatal-warnings
 
+OPTIMISM_MIPS_SOURCE_DIR = $(shell pwd)/o1vm/ethereum-optimism/cannon/mipsevm/open_mips_tests/test
+OPTIMISM_MIPS_SOURCE_FILES = $(wildcard ${OPTIMISM_MIPS_SOURCE_DIR}/*.asm)
+O1VM_MIPS_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/mips/src
+O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_SOURCE_DIR}/%.asm,${OPTIMISM_MIPS_SOURCE_FILES})
+O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
+O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
+
 # Default target
 all: release
 
@@ -47,8 +54,9 @@ install-test-deps: ## Install test dependencies
 
 
 clean: ## Clean the project
-		cargo clean
-		rm -rf $(O1VM_RISCV32IM_BIN_FILES)
+		@cargo clean
+		@rm -rf $(O1VM_RISCV32IM_BIN_FILES)
+		@rm -rf $(O1VM_MIPS_BIN_DIR)
 
 
 build: ## Build the project
@@ -166,7 +174,31 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
 		@echo ""
 
+build-mips-programs: ${O1VM_MIPS_SOURCE_FILES} ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
+
+${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
+		@mkdir -p ${O1VM_MIPS_SOURCE_DIR}
+		@echo "Transforming $< to $@, making it compatible for o1vm"
+		@sed \
+				-e '/\.balign 4/d' \
+				-e '/\.set\s*noreorder/d' \
+				-e '/\.ent\s*test/d' \
+				-e '/\.end test/d' \
+				-e 's/\.section .test, "x"/.section .text/' \
+				-e 's/\s*\.section .text/.section .text/' \
+				-e 's/\.global test/.global __start/' \
+				-e "s/^\s*\.global __start/.global __start/" \
+				-e "s/test\:/__start:/" \
+				-e "/\.global __start/a\\" \
+				$< > $@
+
+${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
+		@echo "Building the MIPS binary: $(basename $@) using $<"
+		@mkdir -p ${O1VM_MIPS_BIN_DIR}
+		@mips-linux-gnu-as -defsym big_endian=1 -march=mips32r2 -o $@ $<
+		@mips-linux-gnu-ld -s -o $(basename $@) $@
+
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs
