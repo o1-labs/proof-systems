@@ -2545,6 +2545,37 @@
 <a href="#2545" id="2545">2545</a>
 <a href="#2546" id="2546">2546</a>
 <a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
+<a href="#2549" id="2549">2549</a>
+<a href="#2550" id="2550">2550</a>
+<a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3149,9 +3180,9 @@
     </span><span class="kw">fn </span>check_boolean(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    </span><span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
-        <span class="self">Self</span>::check_boolean(<span class="kw-2">&amp;</span>x);
-        <span class="self">self</span>.add_constraint(x.clone() * x.clone() - x);
+    </span><span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">Self</span>::check_boolean(x);
+        <span class="self">self</span>.add_constraint(x.clone() * x.clone() - x.clone());
     }
 
     <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
@@ -4687,8 +4718,8 @@
 </span><span class="kw">pub fn </span>interpret_sbtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: SBInstruction) {
     <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
     <span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
-
-    <span class="kw">let </span>instruction = {
+    <span class="comment">/* read instruction from ip address */
+    </span><span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
@@ -4698,19 +4729,12 @@
             + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
             + v0
     };
-
     <span class="kw">let </span>opcode = {
         <span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">7</span>, <span class="number">0</span>, pos) }
     };
-    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">7</span>);
 
-    <span class="comment">// FIXME: trickier
-    </span><span class="kw">let </span>imm1 = {
-        <span class="kw">let </span>pos = env.alloc_scratch();
-        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">12</span>, <span class="number">7</span>, pos) }
-    };
-    env.range_check8(<span class="kw-2">&amp;</span>imm1, <span class="number">5</span>);
+    env.range_check8(<span class="kw-2">&amp;</span>opcode, <span class="number">7</span>);
 
     <span class="kw">let </span>funct3 = {
         <span class="kw">let </span>pos = env.alloc_scratch();
@@ -4730,16 +4754,54 @@
     };
     env.range_check8(<span class="kw-2">&amp;</span>rs2, <span class="number">5</span>);
 
-    <span class="comment">// FIXME: trickier
-    </span><span class="kw">let </span>imm2 = {
-        <span class="kw">let </span>pos = env.alloc_scratch();
-        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">25</span>, pos) }
+    <span class="kw">let </span>imm0_12 = {
+        <span class="kw">let </span>imm11 = {
+            <span class="kw">let </span>pos = env.alloc_scratch();
+            <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">8</span>, <span class="number">7</span>, pos) }
+        };
+
+        env.assert_boolean(<span class="kw-2">&amp;</span>imm11);
+
+        <span class="kw">let </span>imm1_4 = {
+            <span class="kw">let </span>pos = env.alloc_scratch();
+            <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">12</span>, <span class="number">8</span>, pos) }
+        };
+        env.range_check8(<span class="kw-2">&amp;</span>imm1_4, <span class="number">4</span>);
+
+        <span class="kw">let </span>imm5_10 = {
+            <span class="kw">let </span>pos = env.alloc_scratch();
+            <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">31</span>, <span class="number">25</span>, pos) }
+        };
+        env.range_check8(<span class="kw-2">&amp;</span>imm5_10, <span class="number">6</span>);
+
+        <span class="kw">let </span>imm12 = {
+            <span class="kw">let </span>pos = env.alloc_scratch();
+            <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">31</span>, pos) }
+        };
+        env.assert_boolean(<span class="kw-2">&amp;</span>imm12);
+
+        <span class="comment">// check correctness of decomposition of SB type function
+        </span>env.add_constraint(
+            instruction.clone()
+                - (opcode * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">0</span>))    <span class="comment">// opcode at bits 0-7
+                </span>- (imm11.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">7</span>))     <span class="comment">// imm11 at bits 8
+                </span>- (imm1_4.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))    <span class="comment">// imm1_4 at bits 9-11
+                </span>- (funct3 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))   <span class="comment">// funct3 at bits 11-14
+                </span>- (rs1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">14</span>))      <span class="comment">// rs1 at bits 15-20
+                </span>- (rs2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">19</span>))      <span class="comment">// rs2 at bits 20-24
+                </span>- (imm5_10.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))  <span class="comment">// imm5_10 at bits 25-30
+                </span>- (imm12.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">31</span>)), <span class="comment">// imm12 at bits 31
+        </span>);
+
+        (imm12 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">12</span>))
+            + (imm11 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
+            + (imm5_10 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">5</span>))
+            + (imm1_4 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">1</span>))
     };
-    env.range_check16(<span class="kw-2">&amp;</span>imm2, <span class="number">12</span>);
+    <span class="comment">// extra bit is because the 0th bit in the immediate is always 0 i.e you cannot jump to an odd address
+    </span><span class="kw">let </span>_imm0_12 = env.sign_extend(<span class="kw-2">&amp;</span>imm0_12, <span class="number">13</span>);
 
-    <span class="comment">// FIXME: check correctness of decomposition
-
-    </span><span class="kw">match </span>instr {
+    <span class="kw">match </span>instr {
         SBInstruction::BranchEq =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchEq&quot;</span>)
         }
