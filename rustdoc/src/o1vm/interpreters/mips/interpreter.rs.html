@@ -2660,6 +2660,12 @@
 <a href="#2660" id="2660">2660</a>
 <a href="#2661" id="2661">2661</a>
 <a href="#2662" id="2662">2662</a>
+<a href="#2663" id="2663">2663</a>
+<a href="#2664" id="2664">2664</a>
+<a href="#2665" id="2665">2665</a>
+<a href="#2666" id="2666">2666</a>
+<a href="#2667" id="2667">2667</a>
+<a href="#2668" id="2668">2668</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -3596,7 +3602,13 @@
             <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
             <span class="kw">unsafe </span>{ <span class="self">self</span>.bitmask(x, bitlength, bitlength - <span class="number">1</span>, pos) }
         };
-        high_bit * <span class="self">Self</span>::constant(((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>) &lt;&lt; bitlength) + x.clone()
+        <span class="comment">// Casting in u64 for special case of bitlength = 0 to avoid overflow.
+        // No condition for constant time execution.
+        // Decomposing the steps for readability.
+        </span><span class="kw">let </span>v: u64 = (<span class="number">1u64 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>;
+        <span class="kw">let </span>v: u64 = v &lt;&lt; bitlength;
+        <span class="kw">let </span>v: u32 = v <span class="kw">as </span>u32;
+        high_bit * <span class="self">Self</span>::constant(v) + x.clone()
     }
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
