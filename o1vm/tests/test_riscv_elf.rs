@@ -356,3 +356,33 @@ fn test_slt() {
     assert_eq!(witness.registers[T5], 0);
     assert_eq!(witness.registers[T6], 0);
 }
+
+#[test]
+#[should_panic]
+fn test_div_by_zero() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/div_by_zero",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_divu_by_zero() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/divu_by_zero",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+}
