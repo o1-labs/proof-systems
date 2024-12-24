@@ -196,3 +196,21 @@ fn test_addi_negative() {
     assert_eq!(witness.registers[T1], 50);
     assert_eq!(witness.registers[T2], (-50_i32) as u32);
 }
+
+#[test]
+fn test_add_sub_swap() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/add_sub_swap",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T0], 10);
+    assert_eq!(witness.registers[T1], 5);
+    assert_eq!(witness.registers[T2], 15);
+}
