@@ -2665,6 +2665,29 @@
 <a href="#2665" id="2665">2665</a>
 <a href="#2666" id="2666">2666</a>
 <a href="#2667" id="2667">2667</a>
+<a href="#2668" id="2668">2668</a>
+<a href="#2669" id="2669">2669</a>
+<a href="#2670" id="2670">2670</a>
+<a href="#2671" id="2671">2671</a>
+<a href="#2672" id="2672">2672</a>
+<a href="#2673" id="2673">2673</a>
+<a href="#2674" id="2674">2674</a>
+<a href="#2675" id="2675">2675</a>
+<a href="#2676" id="2676">2676</a>
+<a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
+<a href="#2683" id="2683">2683</a>
+<a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
+<a href="#2690" id="2690">2690</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4993,7 +5016,30 @@
             env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchLessThanUnsigned =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchLessThanUnsigned&quot;</span>)
+            <span class="comment">// bltu: if (x[rs1] &lt;u x[rs2]) pc += sext(offset)
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+
+            <span class="kw">let </span>less_than = {
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.test_less_than(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch) }
+            };
+
+            <span class="kw">let </span>offset = (Env::constant(<span class="number">1</span>) - less_than.clone()) * Env::constant(<span class="number">4</span>)
+                + less_than.clone() * imm0_12;
+
+            <span class="kw">let </span>addr = {
+                <span class="kw">let </span>res_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(res, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>instruction_pointer, <span class="kw-2">&amp;</span>offset, res_scratch, overflow_scratch)
+                };
+                <span class="comment">// FIXME: Requires a range check
+                </span>res
+            };
+
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchGreaterThanEqualUnsigned =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchGreaterThanEqualUnsigned&quot;</span>)
