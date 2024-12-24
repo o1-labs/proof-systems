@@ -511,7 +511,7 @@ pub fn combined_inner_product<F: PrimeField>(
     // final combined evaluation result
     let mut res = F::zero();
     // polyscale^i
-    let mut xi_i = F::one();
+    let mut polyscale_i = F::one();
 
     for evals_tr in polys.iter().filter(|evals_tr| !evals_tr[0].is_empty()) {
         // Transpose the evaluations.
@@ -523,7 +523,7 @@ pub fn combined_inner_product<F: PrimeField>(
 
         // Iterating over the polynomial segments.
         // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
-        // Given that xi_i = polyscale^i0 at this point, after this loop we have:
+        // Given that polyscale_i = polyscale^i0 at this point, after this loop we have:
         //
         //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
         //           i                    j
@@ -531,8 +531,8 @@ pub fn combined_inner_product<F: PrimeField>(
         for eval in &evals {
             // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
-            res += &(xi_i * term);
-            xi_i *= polyscale;
+            res += &(polyscale_i * term);
+            polyscale_i *= polyscale;
         }
     }
     res
@@ -607,16 +607,16 @@ pub fn combine_commitments<G: CommitmentCurve>(
     rand_base: G::ScalarField,
 ) {
     // will contain the power of polyscale
-    let mut xi_i = G::ScalarField::one();
+    let mut polyscale_i = G::ScalarField::one();
 
     for Evaluation { commitment, .. } in evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         // iterating over the polynomial segments
         for comm_ch in &commitment.chunks {
-            scalars.push(rand_base * xi_i);
+            scalars.push(rand_base * polyscale_i);
             points.push(*comm_ch);
 
             // compute next power of polyscale
-            xi_i *= polyscale;
+            polyscale_i *= polyscale;
         }
     }
 }

@@ -3,6 +3,7 @@ use strum::EnumCount as _;
 pub mod column_env;
 pub mod columns;
 pub mod constraints;
+pub mod curve;
 pub mod interpreter;
 pub mod logup;
 pub mod poseidon_3_60_0_5_5_fp;
@@ -33,18 +34,6 @@ pub const NUMBER_OF_COLUMNS: usize = 15;
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
-
-/// The low-exponentiation value used by the Poseidon hash function for the
-/// substitution box.
-///
-/// The value is used to perform initialisation checks with the fields.
-pub const POSEIDON_ALPHA: u64 = 5;
-
-/// The number of full rounds in the Poseidon hash function.
-pub const POSEIDON_ROUNDS_FULL: usize = 60;
-
-/// The number of elements in the state of the Poseidon hash function.
-pub const POSEIDON_STATE_SIZE: usize = 3;
 
 /// The maximum number of bits the fields can be.
 /// It is critical as we have some assumptions for the gadgets describing the
