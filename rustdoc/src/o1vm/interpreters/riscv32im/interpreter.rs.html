@@ -2590,6 +2590,28 @@
 <a href="#2590" id="2590">2590</a>
 <a href="#2591" id="2591">2591</a>
 <a href="#2592" id="2592">2592</a>
+<a href="#2593" id="2593">2593</a>
+<a href="#2594" id="2594">2594</a>
+<a href="#2595" id="2595">2595</a>
+<a href="#2596" id="2596">2596</a>
+<a href="#2597" id="2597">2597</a>
+<a href="#2598" id="2598">2598</a>
+<a href="#2599" id="2599">2599</a>
+<a href="#2600" id="2600">2600</a>
+<a href="#2601" id="2601">2601</a>
+<a href="#2602" id="2602">2602</a>
+<a href="#2603" id="2603">2603</a>
+<a href="#2604" id="2604">2604</a>
+<a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
+<a href="#2609" id="2609">2609</a>
+<a href="#2610" id="2610">2610</a>
+<a href="#2611" id="2611">2611</a>
+<a href="#2612" id="2612">2612</a>
+<a href="#2613" id="2613">2613</a>
+<a href="#2614" id="2614">2614</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4810,7 +4832,29 @@
 
     <span class="kw">match </span>instr {
         SBInstruction::BranchEq =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchEq&quot;</span>)
+            <span class="comment">// beq: if (x[rs1] == x[rs2]) pc += sext(offset)
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+
+            <span class="kw">let </span>equals = env.equal(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2);
+            <span class="kw">let </span>offset = (Env::constant(<span class="number">1</span>) - equals.clone()) * Env::constant(<span class="number">4</span>) + equals * imm0_12;
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>offset, <span class="number">12</span>);
+            <span class="kw">let </span>addr = {
+                <span class="kw">let </span>res_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(res, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(
+                        <span class="kw-2">&amp;</span>next_instruction_pointer,
+                        <span class="kw-2">&amp;</span>offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                <span class="comment">// FIXME: Requires a range check
+                </span>res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchNeq =&gt; {
             <span class="comment">// bne: if (x[rs1] != x[rs2]) pc += sext(offset)
