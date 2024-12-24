@@ -2688,6 +2688,26 @@
 <a href="#2688" id="2688">2688</a>
 <a href="#2689" id="2689">2689</a>
 <a href="#2690" id="2690">2690</a>
+<a href="#2691" id="2691">2691</a>
+<a href="#2692" id="2692">2692</a>
+<a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
+<a href="#2698" id="2698">2698</a>
+<a href="#2699" id="2699">2699</a>
+<a href="#2700" id="2700">2700</a>
+<a href="#2701" id="2701">2701</a>
+<a href="#2702" id="2702">2702</a>
+<a href="#2703" id="2703">2703</a>
+<a href="#2704" id="2704">2704</a>
+<a href="#2705" id="2705">2705</a>
+<a href="#2706" id="2706">2706</a>
+<a href="#2707" id="2707">2707</a>
+<a href="#2708" id="2708">2708</a>
+<a href="#2709" id="2709">2709</a>
+<a href="#2710" id="2710">2710</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -5042,7 +5062,27 @@
             env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchGreaterThanEqualUnsigned =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchGreaterThanEqualUnsigned&quot;</span>)
+            <span class="comment">// bgeu: if (x[rs1] &gt;=u x[rs2]) pc += sext(offset)
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+
+            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+            <span class="kw">let </span>less_than = <span class="kw">unsafe </span>{ env.test_less_than(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch) };
+            <span class="kw">let </span>offset =
+                less_than.clone() * Env::constant(<span class="number">4</span>) + (Env::constant(<span class="number">1</span>) - less_than) * imm0_12;
+
+            <span class="comment">// greater than equal is the negation of less than
+            </span><span class="kw">let </span>addr = {
+                <span class="kw">let </span>res_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(res, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>instruction_pointer, <span class="kw-2">&amp;</span>offset, res_scratch, overflow_scratch)
+                };
+                res
+            };
+
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
     };
 }
