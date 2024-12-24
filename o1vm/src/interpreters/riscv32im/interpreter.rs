@@ -602,9 +602,9 @@ pub trait InterpreterEnv {
     fn check_boolean(x: &Self::Variable);
 
     /// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    fn assert_boolean(&mut self, x: Self::Variable) {
-        Self::check_boolean(&x);
-        self.add_constraint(x.clone() * x.clone() - x);
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        Self::check_boolean(x);
+        self.add_constraint(x.clone() * x.clone() - x.clone());
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
@@ -2140,7 +2140,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
 pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
     let _next_instruction_pointer = env.get_next_instruction_pointer();
-
+    /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -2151,19 +2151,12 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             + (v1 * Env::constant(1 << 8))
             + v0
     };
-
     let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
-    env.range_check8(&opcode, 7);
 
-    // FIXME: trickier
-    let imm1 = {
-        let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 12, 7, pos) }
-    };
-    env.range_check8(&imm1, 5);
+    env.range_check8(&opcode, 7);
 
     let funct3 = {
         let pos = env.alloc_scratch();
@@ -2183,14 +2176,52 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     };
     env.range_check8(&rs2, 5);
 
-    // FIXME: trickier
-    let imm2 = {
-        let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 25, pos) }
-    };
-    env.range_check16(&imm2, 12);
+    let imm0_12 = {
+        let imm11 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 8, 7, pos) }
+        };
 
-    // FIXME: check correctness of decomposition
+        env.assert_boolean(&imm11);
+
+        let imm1_4 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 12, 8, pos) }
+        };
+        env.range_check8(&imm1_4, 4);
+
+        let imm5_10 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 31, 25, pos) }
+        };
+        env.range_check8(&imm5_10, 6);
+
+        let imm12 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 32, 31, pos) }
+        };
+        env.assert_boolean(&imm12);
+
+        // check correctness of decomposition of SB type function
+        env.add_constraint(
+            instruction.clone()
+                - (opcode * Env::constant(1 << 0))    // opcode at bits 0-7
+                - (imm11.clone() * Env::constant(1 << 7))     // imm11 at bits 8
+                - (imm1_4.clone() * Env::constant(1 << 8))    // imm1_4 at bits 9-11
+                - (funct3 * Env::constant(1 << 11))   // funct3 at bits 11-14
+                - (rs1 * Env::constant(1 << 14))      // rs1 at bits 15-20
+                - (rs2 * Env::constant(1 << 19))      // rs2 at bits 20-24
+                - (imm5_10.clone() * Env::constant(1 << 24))  // imm5_10 at bits 25-30
+                - (imm12.clone() * Env::constant(1 << 31)), // imm12 at bits 31
+        );
+
+        (imm12 * Env::constant(1 << 12))
+            + (imm11 * Env::constant(1 << 11))
+            + (imm5_10 * Env::constant(1 << 5))
+            + (imm1_4 * Env::constant(1 << 1))
+    };
+    // extra bit is because the 0th bit in the immediate is always 0 i.e you cannot jump to an odd address
+    let _imm0_12 = env.sign_extend(&imm0_12, 13);
 
     match instr {
         SBInstruction::BranchEq => {
