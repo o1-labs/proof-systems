@@ -191,7 +191,7 @@ fn build_proof_inputs(
         write_to_proof_inputs(mips_wit_env, curr_proof_inputs, rng);
     }
     if curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE {
-        while !(curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE) {
+        while (curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE) {
             mips_wit_env.pad();
             write_to_proof_inputs(mips_wit_env, curr_proof_inputs, rng);
         }
