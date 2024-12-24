@@ -548,9 +548,9 @@
         <span class="comment">// No-op, witness only
     </span>}
 
-    <span class="kw">fn </span>check_boolean(_x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// No-op, witness only
-    </span>}
+    <span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_constraint(x.clone() * x.clone() - x.clone());
+    }
 
     <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="self">self</span>.lookups.push(lookup);

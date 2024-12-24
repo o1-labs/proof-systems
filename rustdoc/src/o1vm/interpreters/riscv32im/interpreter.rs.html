@@ -2570,12 +2570,6 @@
 <a href="#2570" id="2570">2570</a>
 <a href="#2571" id="2571">2571</a>
 <a href="#2572" id="2572">2572</a>
-<a href="#2573" id="2573">2573</a>
-<a href="#2574" id="2574">2574</a>
-<a href="#2575" id="2575">2575</a>
-<a href="#2576" id="2576">2576</a>
-<a href="#2577" id="2577">2577</a>
-<a href="#2578" id="2578">2578</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3176,14 +3170,8 @@
         <span class="self">self</span>.add_constraint(x - y);
     }
 
-    <span class="doccomment">/// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
-    </span><span class="kw">fn </span>check_boolean(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
     <span class="doccomment">/// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    </span><span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="self">Self</span>::check_boolean(x);
-        <span class="self">self</span>.add_constraint(x.clone() * x.clone() - x.clone());
-    }
+    </span><span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
 

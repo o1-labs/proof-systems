@@ -1036,8 +1036,8 @@
         <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>x, <span class="kw-2">*</span>y);
     }
 
-    <span class="kw">fn </span>check_boolean(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="kw">if </span>!(<span class="kw-2">*</span>x == <span class="number">0 </span>|| <span class="kw-2">*</span>x == <span class="number">1</span>) {
+    <span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="kw">if </span><span class="kw-2">*</span>x != <span class="number">0 </span>&amp;&amp; <span class="kw-2">*</span>x != <span class="number">1 </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;The value {} is not a boolean&quot;</span>, <span class="kw-2">*</span>x);
         }
     }
