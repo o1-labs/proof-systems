@@ -598,14 +598,8 @@ pub trait InterpreterEnv {
         self.add_constraint(x - y);
     }
 
-    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
-    fn check_boolean(x: &Self::Variable);
-
     /// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    fn assert_boolean(&mut self, x: Self::Variable) {
-        Self::check_boolean(&x);
-        self.add_constraint(x.clone() * x.clone() - x);
-    }
+    fn assert_boolean(&mut self, x: &Self::Variable);
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
@@ -2138,11 +2132,8 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
 /// Following the documentation found
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction) {
-    /* fetch instruction pointer from the program state */
     let instruction_pointer = env.get_instruction_pointer();
-    /* compute the next instruction ptr and add one, as well record raml lookup */
     let next_instruction_pointer = env.get_next_instruction_pointer();
-    /* read instruction from ip address */
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -2153,13 +2144,11 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             + (v1 * Env::constant(1 << 8))
             + v0
     };
-    /* fetch opcode from instruction bit 0 - 6 for a total len of 7 */
-
     let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
-    /* verify opcode is 7 bits */
+
     env.range_check8(&opcode, 7);
 
     let funct3 = {
@@ -2186,7 +2175,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             unsafe { env.bitmask(&instruction, 8, 7, pos) }
         };
 
-        env.range_check8(&imm11, 1);
+        env.assert_boolean(&imm11);
 
         let imm1_4 = {
             let pos = env.alloc_scratch();
@@ -2204,7 +2193,7 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             let pos = env.alloc_scratch();
             unsafe { env.bitmask(&instruction, 32, 31, pos) }
         };
-        env.range_check8(&imm12, 1);
+        env.assert_boolean(&imm12);
 
         // check correctness of decomposition of SB type function
         env.add_constraint(

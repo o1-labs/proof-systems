@@ -77,8 +77,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // No-op, witness only
     }
 
-    fn check_boolean(_x: &Self::Variable) {
-        // No-op, witness only
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        self.add_constraint(x.clone() * x.clone() - x.clone());
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
