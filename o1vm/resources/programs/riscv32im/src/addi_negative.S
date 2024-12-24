@@ -10,6 +10,9 @@ _start:
     # Subtract 100 using addi (addi with negative immediate)
     addi t2, t1, -100     # t2 = t1 + (-100) (Expected: t2 = -50)
 
+    li t3, -1000          # t3 = -1000
+    addi t4, t3, -500     # t4 = t0 + (-500) (Expected: t4 = -1500)
+
     # Custom exit syscall
     li a0, 0
     li a1, 0
