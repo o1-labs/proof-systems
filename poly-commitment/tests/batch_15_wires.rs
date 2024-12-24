@@ -12,7 +12,8 @@ use mina_poseidon::{
 use o1_utils::ExtendedDensePolynomial as _;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
-    ipa::{DensePolynomialOrEvaluations, SRS},
+    ipa::SRS,
+    utils::DensePolynomialOrEvaluations,
     SRS as _,
 };
 use rand::Rng;

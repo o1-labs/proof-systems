@@ -9,7 +9,7 @@ This needs to be fixed.
 The URS comprises of:
 
 * `Gs`: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.
-* `H`: a blinding curve point that can be used to add hidding to a polynomial commitment scheme.
+* `H`: a blinding curve point that can be used to add hiding to a polynomial commitment scheme.
 
 The URS is generated deterministically, and thus can be rederived if not stored.
 
