@@ -302,3 +302,21 @@ fn test_sub_3() {
     assert_eq!(witness.registers[T1], 0);
     assert_eq!(witness.registers[T4], -2147483648_i32 as u32);
 }
+
+#[test]
+fn test_xor() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/xor",
+    ));
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    assert_eq!(witness.registers[T2], 0b0110); // Result: t2 = 0b0110
+    assert_eq!(witness.registers[T5], 0b1010); // Result: t5 = 0b1010
+    assert_eq!(witness.registers[T1], 0); // Result: t1 = 0
+}
