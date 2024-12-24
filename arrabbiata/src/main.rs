@@ -1,10 +1,12 @@
-use arrabiata::{
+use arrabbiata::{
+    curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
     witness::Env,
-    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE, POSEIDON_STATE_SIZE,
+    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use std::time::Instant;
 
@@ -47,7 +49,8 @@ pub fn main() {
     let domain_size = 1 << srs_log2_size;
 
     // FIXME: setup correctly the initial sponge state
-    let sponge_e1: [BigInt; POSEIDON_STATE_SIZE] = std::array::from_fn(|_i| BigInt::from(42u64));
+    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        std::array::from_fn(|_i| BigInt::from(42u64));
     // FIXME: make a setup phase to build the selectors
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
         *srs_log2_size,
@@ -100,6 +103,12 @@ pub fn main() {
 
         // FIXME:
         // Compute the accumulator for the permutation argument
+
+        // FIXME:
+        // Commit to the accumulator and absorb the commitment
+
+        // FIXME:
+        // Coin challenge α for combining the constraints
 
         // FIXME:
         // Compute the cross-terms

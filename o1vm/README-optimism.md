@@ -3,7 +3,7 @@
 Install the first dependencies:
 ```
 sudo apt update
-# chrony will ensure the system clock is open to date
+# chrony will ensure the system clock is up to date
 sudo apt install build-essential git vim chrony ufw -y
 ```
 

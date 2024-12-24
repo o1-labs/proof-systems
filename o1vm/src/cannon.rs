@@ -147,33 +147,36 @@ pub enum StepFrequency {
     Range(u64, Option<u64>),
 }
 
-// Simple parser for Cannon's "frequency format"
-// A frequency input is either
-// - never/always
-// - =<n> (only at step n)
-// - %<n> (every steps multiple of n)
-// - n..[m] (from n on, until m excluded if specified, until the end otherwise)
-pub fn step_frequency_parser(s: &str) -> std::result::Result<StepFrequency, String> {
-    use StepFrequency::*;
+impl FromStr for StepFrequency {
+    type Err = String;
+    // Simple parser for Cannon's "frequency format"
+    // A frequency input is either
+    // - never/always
+    // - =<n> (only at step n)
+    // - %<n> (every steps multiple of n)
+    // - n..[m] (from n on, until m excluded if specified, until the end otherwise)
+    fn from_str(s: &str) -> std::result::Result<StepFrequency, String> {
+        use StepFrequency::*;
 
-    let mod_re = Regex::new(r"^%([0-9]+)").unwrap();
-    let eq_re = Regex::new(r"^=([0-9]+)").unwrap();
-    let ival_re = Regex::new(r"^([0-9]+)..([0-9]+)?").unwrap();
+        let mod_re = Regex::new(r"^%([0-9]+)").unwrap();
+        let eq_re = Regex::new(r"^=([0-9]+)").unwrap();
+        let ival_re = Regex::new(r"^([0-9]+)..([0-9]+)?").unwrap();
 
-    match s {
-        "never" => Ok(Never),
-        "always" => Ok(Always),
-        s => {
-            if let Some(m) = mod_re.captures(s) {
-                Ok(Every(m[1].parse::<u64>().unwrap()))
-            } else if let Some(m) = eq_re.captures(s) {
-                Ok(Exactly(m[1].parse::<u64>().unwrap()))
-            } else if let Some(m) = ival_re.captures(s) {
-                let lo = m[1].parse::<u64>().unwrap();
-                let hi_opt = m.get(2).map(|x| x.as_str().parse::<u64>().unwrap());
-                Ok(Range(lo, hi_opt))
-            } else {
-                Err(format!("Unknown frequency format {}", s))
+        match s {
+            "never" => Ok(Never),
+            "always" => Ok(Always),
+            s => {
+                if let Some(m) = mod_re.captures(s) {
+                    Ok(Every(m[1].parse::<u64>().unwrap()))
+                } else if let Some(m) = eq_re.captures(s) {
+                    Ok(Exactly(m[1].parse::<u64>().unwrap()))
+                } else if let Some(m) = ival_re.captures(s) {
+                    let lo = m[1].parse::<u64>().unwrap();
+                    let hi_opt = m.get(2).map(|x| x.as_str().parse::<u64>().unwrap());
+                    Ok(Range(lo, hi_opt))
+                } else {
+                    Err(format!("Unknown frequency format {}", s))
+                }
             }
         }
     }
@@ -296,13 +299,13 @@ mod tests {
     #[test]
     fn sp_parser() {
         use StepFrequency::*;
-        assert_eq!(step_frequency_parser("never"), Ok(Never));
-        assert_eq!(step_frequency_parser("always"), Ok(Always));
-        assert_eq!(step_frequency_parser("=123"), Ok(Exactly(123)));
-        assert_eq!(step_frequency_parser("%123"), Ok(Every(123)));
-        assert_eq!(step_frequency_parser("1..3"), Ok(Range(1, Some(3))));
-        assert_eq!(step_frequency_parser("1.."), Ok(Range(1, None)));
-        assert!(step_frequency_parser("@123").is_err());
+        assert_eq!(StepFrequency::from_str("never"), Ok(Never));
+        assert_eq!(StepFrequency::from_str("always"), Ok(Always));
+        assert_eq!(StepFrequency::from_str("=123"), Ok(Exactly(123)));
+        assert_eq!(StepFrequency::from_str("%123"), Ok(Every(123)));
+        assert_eq!(StepFrequency::from_str("1..3"), Ok(Range(1, Some(3))));
+        assert_eq!(StepFrequency::from_str("1.."), Ok(Range(1, None)));
+        assert!(StepFrequency::from_str("@123").is_err());
     }
 
     // This sample is a subset taken from a Cannon-generated "meta.json" file

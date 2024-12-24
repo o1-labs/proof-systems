@@ -1,7 +1,6 @@
 //! A prover for the folding/accumulation scheme
 
-use crate::proof::Proof;
-use ark_ec::AffineRepr;
+use crate::{curve::ArrabbiataCurve, proof::Proof};
 use ark_ff::PrimeField;
 
 use crate::witness::Env;
@@ -12,8 +11,8 @@ use crate::witness::Env;
 pub fn prove<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: AffineRepr<ScalarField = Fp, BaseField = Fq>,
-    E2: AffineRepr<ScalarField = Fq, BaseField = Fp>,
+    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
 >(
     _env: &Env<Fp, Fq, E1, E2>,
 ) -> Result<Proof, String> {
