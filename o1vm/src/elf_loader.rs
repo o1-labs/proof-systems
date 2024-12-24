@@ -1,24 +1,19 @@
 use crate::cannon::{Page, State, PAGE_SIZE};
-use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
+use elf::{
+    endian::{BigEndian, EndianParse, LittleEndian},
+    section::SectionHeader,
+    ElfBytes,
+};
 use log::debug;
 use std::{collections::HashMap, path::Path};
 
-/// Parse an ELF file and return the parsed data as a structure that is expected
-/// by the o1vm RISC-V 32 bits edition.
-// FIXME: parametrize by an architecture. We should return a state depending on the
-// architecture. In the meantime, we can have parse_riscv32i and parse_mips.
-// FIXME: for now, we return a State structure, either for RISC-V 32i or MIPS.
-// We should return a structure specifically built for the o1vm, and not tight
-// to Cannon. It will be done in a future PR to avoid breaking the current code
-// and have a huge diff.
-pub fn parse_riscv32(path: &Path) -> Result<State, String> {
-    debug!("Start parsing the ELF file to load a RISC-V 32i compatible state");
-    let file_data = std::fs::read(path).expect("Could not read file.");
-    let slice = file_data.as_slice();
-    let file = ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
+pub enum Architecture {
+    Mips,
+    RiscV,
+}
 
+pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
     // Checking it is RISC-V
-    assert_eq!(file.ehdr.e_machine, 243);
 
     let (shdrs_opt, strtab_opt) = file
         .section_headers_with_strtab()
@@ -51,9 +46,11 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
         .section_data(text_section)
         .expect("Failed to read data from .text section");
 
+    // address of starting instruction in code section
     let code_section_starting_address = text_section.sh_addr as usize;
     let code_section_size = text_section.sh_size as usize;
-    let code_section_end_address = code_section_starting_address + code_section_size;
+    // address of last instruction in code section
+    let code_section_end_address = code_section_starting_address + code_section_size - 1;
     debug!(
         "The executable code starts at address {}, has size {} bytes, and ends at address {}.",
         code_section_starting_address, code_section_size, code_section_end_address
@@ -64,17 +61,22 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
     let page_size_usize: usize = PAGE_SIZE.try_into().unwrap();
     // Padding to get the right number of pages. We suppose that the memory
     // index starts at 0.
+
+    // the address that the first page starts on
     let start_page_address: usize =
         (code_section_starting_address / page_size_usize) * page_size_usize;
-    let end_page_address =
-        (code_section_end_address / (page_size_usize - 1)) * page_size_usize + page_size_usize;
+
+    // the address that the last page starts on
+    let end_page_address = (code_section_end_address / page_size_usize) * page_size_usize;
 
     let first_page_index = start_page_address / page_size_usize;
-    let last_page_index = (end_page_address - 1) / page_size_usize;
+
+    let last_page_index = end_page_address / page_size_usize;
+
     let mut data_offset = 0;
     (first_page_index..=last_page_index).for_each(|page_index| {
         let mut data = vec![0; page_size_usize];
-        // Special case of only one page
+        // Special case where all code fits in one page
         if first_page_index == last_page_index {
             let data_length = code_section_end_address - code_section_starting_address;
             let page_offset = code_section_starting_address - start_page_address;
@@ -82,18 +84,25 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
                 .copy_from_slice(&text_section_data[0..data_length]);
             data_offset += data_length;
         } else {
-            let data_length = if page_index == last_page_index {
-                code_section_end_address - (page_index * page_size_usize)
-            } else {
-                page_size_usize
-            };
             let page_offset = if page_index == first_page_index {
                 code_section_starting_address - start_page_address
             } else {
                 0
             };
-            data[page_offset..]
+            let data_length = if page_index == last_page_index {
+                let data_length = code_section_end_address - end_page_address;
+                // for the last page, we might need to pad with zeros if the text_section_data is not
+                // a multiple of the page size.
+                if page_size_usize > data_length {
+                    data[page_offset + data_length..page_offset + page_size_usize].fill(0);
+                }
+                data_length
+            } else {
+                page_size_usize
+            };
+            data[page_offset..page_offset + data_length]
                 .copy_from_slice(&text_section_data[data_offset..data_offset + data_length]);
+
             data_offset += data_length;
         }
         let page = Page {
@@ -115,7 +124,7 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
 
     // Entry point of the program
     let pc: u32 = file.ehdr.e_entry as u32;
-    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported. This can happen if the binary given is an object file and not an executable file. You might need to call the linker (ld) before running the binary.");
+    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported.");
     let next_pc: u32 = pc + 4u32;
 
     let state = State {
@@ -142,4 +151,23 @@ pub fn parse_riscv32(path: &Path) -> Result<State, String> {
     };
 
     Ok(state)
+}
+
+pub fn parse_elf(arch: Architecture, path: &Path) -> Result<State, String> {
+    debug!("Start parsing the ELF file to load a compatible state");
+    let file_data = std::fs::read(path).expect("Could not read file.");
+    let slice = file_data.as_slice();
+    match arch {
+        Architecture::Mips => {
+            let file = ElfBytes::<BigEndian>::minimal_parse(slice).expect("Open ELF file failed.");
+            assert_eq!(file.ehdr.e_machine, 8);
+            make_state(file)
+        }
+        Architecture::RiscV => {
+            let file =
+                ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
+            assert_eq!(file.ehdr.e_machine, 243);
+            make_state(file)
+        }
+    }
 }
