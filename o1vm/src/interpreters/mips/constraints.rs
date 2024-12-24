@@ -6,7 +6,7 @@ use crate::{
             MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
             MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY, N_MIPS_REL_COLS,
         },
-        interpreter::InterpreterEnv,
+        interpreter::{interpret_instruction, InterpreterEnv},
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
@@ -19,6 +19,7 @@ use kimchi::circuits::{
 };
 use kimchi_msm::columns::ColumnIndexer as _;
 use std::array;
+use strum::IntoEnumIterator;
 
 use super::column::N_MIPS_SEL_COLS;
 
@@ -672,4 +673,24 @@ impl<Fp: Field> Env<Fp> {
     pub fn get_lookups(&self) -> Vec<Lookup<E<Fp>>> {
         self.lookups.clone()
     }
+}
+
+pub fn get_all_constraints<Fp: Field>() -> Vec<E<Fp>> {
+    let mut mips_con_env = Env::<Fp>::default();
+    let mut constraints = Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .fold(vec![], |mut acc, instr| {
+            interpret_instruction(&mut mips_con_env, instr);
+            let selector = mips_con_env.get_selector();
+            let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                .get_constraints()
+                .into_iter()
+                .map(|c| selector.clone() * c)
+                .collect();
+            acc.extend(constraints_with_selector);
+            mips_con_env.reset();
+            acc
+        });
+    constraints.extend(mips_con_env.get_selector_constraints());
+    constraints
 }

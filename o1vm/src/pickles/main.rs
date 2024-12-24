@@ -1,7 +1,6 @@
 use ark_ff::UniformRand;
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::expr::E;
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -14,7 +13,6 @@ use o1vm::{
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints as mips_constraints,
-        interpreter::{self, InterpreterEnv},
         witness::{self as mips_witness},
         Instruction,
     },
@@ -24,7 +22,6 @@ use o1vm::{
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
-use strum::IntoEnumIterator;
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
@@ -71,25 +68,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut mips_wit_env =
         mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let constraints = {
-        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
-        let mut constraints = Instruction::iter()
-            .flat_map(|instr_typ| instr_typ.into_iter())
-            .fold(vec![], |mut acc, instr| {
-                interpreter::interpret_instruction(&mut mips_con_env, instr);
-                let selector = mips_con_env.get_selector();
-                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
-                    .get_constraints()
-                    .into_iter()
-                    .map(|c| selector.clone() * c)
-                    .collect();
-                acc.extend(constraints_with_selector);
-                mips_con_env.reset();
-                acc
-            });
-        constraints.extend(mips_con_env.get_selector_constraints());
-        constraints
-    };
+    let constraints = mips_constraints::get_all_constraints::<Fp>();
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
@@ -121,7 +100,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
-            // FIXME
             let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
             let proof = prover::prove::<
@@ -131,7 +109,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 _,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
             .unwrap();
-            // FIXME: check that the proof is correct. This is for testing purposes.
+            // Check that the proof is correct. This is for testing purposes.
             // Leaving like this for now.
             debug!(
                 "Proof generated in {elapsed} μs",
