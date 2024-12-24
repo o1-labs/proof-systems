@@ -2570,6 +2570,26 @@
 <a href="#2570" id="2570">2570</a>
 <a href="#2571" id="2571">2571</a>
 <a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
+<a href="#2580" id="2580">2580</a>
+<a href="#2581" id="2581">2581</a>
+<a href="#2582" id="2582">2582</a>
+<a href="#2583" id="2583">2583</a>
+<a href="#2584" id="2584">2584</a>
+<a href="#2585" id="2585">2585</a>
+<a href="#2586" id="2586">2586</a>
+<a href="#2587" id="2587">2587</a>
+<a href="#2588" id="2588">2588</a>
+<a href="#2589" id="2589">2589</a>
+<a href="#2590" id="2590">2590</a>
+<a href="#2591" id="2591">2591</a>
+<a href="#2592" id="2592">2592</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4705,9 +4725,8 @@
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 </span><span class="kw">pub fn </span>interpret_sbtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: SBInstruction) {
     <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
-    <span class="kw">let </span>_next_instruction_pointer = env.get_next_instruction_pointer();
-    <span class="comment">/* read instruction from ip address */
-    </span><span class="kw">let </span>instruction = {
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
+    <span class="kw">let </span>instruction = {
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
@@ -4775,8 +4794,8 @@
                 </span>- (imm11.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">7</span>))     <span class="comment">// imm11 at bits 8
                 </span>- (imm1_4.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))    <span class="comment">// imm1_4 at bits 9-11
                 </span>- (funct3 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))   <span class="comment">// funct3 at bits 11-14
-                </span>- (rs1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">14</span>))      <span class="comment">// rs1 at bits 15-20
-                </span>- (rs2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">19</span>))      <span class="comment">// rs2 at bits 20-24
+                </span>- (rs1.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">14</span>))      <span class="comment">// rs1 at bits 15-20
+                </span>- (rs2.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">19</span>))      <span class="comment">// rs2 at bits 20-24
                 </span>- (imm5_10.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))  <span class="comment">// imm5_10 at bits 25-30
                 </span>- (imm12.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">31</span>)), <span class="comment">// imm12 at bits 31
         </span>);
@@ -4787,14 +4806,35 @@
             + (imm1_4 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">1</span>))
     };
     <span class="comment">// extra bit is because the 0th bit in the immediate is always 0 i.e you cannot jump to an odd address
-    </span><span class="kw">let </span>_imm0_12 = env.sign_extend(<span class="kw-2">&amp;</span>imm0_12, <span class="number">13</span>);
+    </span><span class="kw">let </span>imm0_12 = env.sign_extend(<span class="kw-2">&amp;</span>imm0_12, <span class="number">13</span>);
 
     <span class="kw">match </span>instr {
         SBInstruction::BranchEq =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchEq&quot;</span>)
         }
         SBInstruction::BranchNeq =&gt; {
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchNeq&quot;</span>)
+            <span class="comment">// bne: if (x[rs1] != x[rs2]) pc += sext(offset)
+            </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
+            <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
+
+            <span class="kw">let </span>equals = env.equal(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2);
+            <span class="kw">let </span>offset = equals.clone() * Env::constant(<span class="number">4</span>) + (Env::constant(<span class="number">1</span>) - equals) * imm0_12;
+            <span class="kw">let </span>addr = {
+                <span class="kw">let </span>res_scratch = env.alloc_scratch();
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(res, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(
+                        <span class="kw-2">&amp;</span>next_instruction_pointer,
+                        <span class="kw-2">&amp;</span>offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                <span class="comment">// FIXME: Requires a range check
+                </span>res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchLessThan =&gt; {
             <span class="macro">unimplemented!</span>(<span class="string">&quot;BranchLessThan&quot;</span>)
