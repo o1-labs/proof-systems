@@ -2708,6 +2708,14 @@
 <a href="#2708" id="2708">2708</a>
 <a href="#2709" id="2709">2709</a>
 <a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
+<a href="#2717" id="2717">2717</a>
+<a href="#2718" id="2718">2718</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -3990,6 +3998,10 @@
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     </span><span class="kw">unsafe fn </span>div_signed(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
@@ -4018,6 +4030,10 @@
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     </span><span class="kw">unsafe fn </span>div(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
