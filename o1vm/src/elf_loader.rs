@@ -84,21 +84,15 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
                 .copy_from_slice(&text_section_data[0..data_length]);
             data_offset += data_length;
         } else {
+            let data_length = if page_index == last_page_index {
+                code_section_end_address - end_page_address
+            } else {
+                page_size_usize
+            };
             let page_offset = if page_index == first_page_index {
                 code_section_starting_address - start_page_address
             } else {
                 0
-            };
-            let data_length = if page_index == last_page_index {
-                let data_length = code_section_end_address - end_page_address;
-                // for the last page, we might need to pad with zeros if the text_section_data is not
-                // a multiple of the page size.
-                if page_size_usize > data_length {
-                    data[page_offset + data_length..page_offset + page_size_usize].fill(0);
-                }
-                data_length
-            } else {
-                page_size_usize
             };
             data[page_offset..page_offset + data_length]
                 .copy_from_slice(&text_section_data[data_offset..data_offset + data_length]);
@@ -124,7 +118,7 @@ pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
 
     // Entry point of the program
     let pc: u32 = file.ehdr.e_entry as u32;
-    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported.");
+    assert!(pc != 0, "Entry point is 0. The documentation of the ELF library says that it means the ELF doesn't have an entry point. This is not supported. This can happen if the binary given is an object file and not an executable file. You might need to call the linker (ld) before running the binary.");
     let next_pc: u32 = pc + 4u32;
 
     let state = State {

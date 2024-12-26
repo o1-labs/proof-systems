@@ -3,11 +3,24 @@ use o1vm::{
     elf_loader::Architecture,
     interpreters::riscv32im::{
         interpreter::{IInstruction, Instruction, RInstruction},
-        registers::RegisterAlias::{T0, T1, T2, T3, T4, T5, T6},
+        registers::RegisterAlias::*,
         witness::Env,
         PAGE_SIZE,
     },
 };
+
+#[test]
+fn test_registers_indexed_by_alias() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/sll",
+    ));
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV, &path).unwrap();
+    let witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    assert_eq!(witness.registers[Ip], 65652);
+    assert_eq!(witness.registers[NextIp], 65656);
+}
 
 #[test]
 // Checking an instruction can be converted into a string.
@@ -76,10 +89,7 @@ fn test_fibonacci_7() {
     }
 }
 
-// FIXME: stop ignore when all the instructions necessary for running this
-// program are implemented.
 #[test]
-#[ignore]
 fn test_sll() {
     let curr_dir = std::env::current_dir().unwrap();
     let path = curr_dir.join(std::path::PathBuf::from(
