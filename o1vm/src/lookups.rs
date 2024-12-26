@@ -25,23 +25,29 @@ pub(crate) type LookupTable<F> = LogupTable<F, LookupTableIDs>;
 /// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum LookupTableIDs {
-    // PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
-    // This way, it is guaranteed that the 0 value is not always in the tables after the
-    // randomization with the joint combiner is applied.
-    /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    // PadLookup ID is 0 because this is the only fixed table whose first entry
+    // is not 0. This way, it is guaranteed that the 0 value is not always in
+    // the tables after the randomization with the joint combiner is applied.
+    /// All [1..136] values of possible padding lengths, the value 2^len, and
+    /// the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup = 0,
-    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
+    /// 24-row table with all possible values for round and their round constant
+    /// in expanded form (in big endian) [0..=23]
     RoundConstantsLookup = 1,
     /// Values from 0 to 4 to check the number of bytes read from syscalls
     AtMost4Lookup = 2,
-    /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    /// All values that can be stored in a byte (amortized table, better than
+    /// model as RangeCheck16 (x and scaled x)
     ByteLookup = 3,
-    // Read tables come first to allow indexing with the table ID for the multiplicities
+    // Read tables come first to allow indexing with the table ID for the
+    // multiplicities
     /// Single-column table of all values in the range [0, 2^16)
     RangeCheck16Lookup = 4,
-    /// Single-column table of 2^16 entries with the sparse representation of all values
+    /// Single-column table of 2^16 entries with the sparse representation of
+    /// all values
     SparseLookup = 5,
-    /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    /// Dual-column table of all values in the range [0, 2^16) and their sparse
+    /// representation
     ResetLookup = 6,
 
     // RAM Tables
@@ -123,7 +129,8 @@ impl LookupTableID for LookupTableIDs {
 
 /// Trait that creates all the fixed lookup tables used in the VM
 pub(crate) trait FixedLookupTables<F> {
-    /// Checks whether a value is in a table and returns the position if it is or None otherwise.
+    /// Checks whether a value is in a table and returns the position if it is
+    /// or None otherwise.
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize>;
     /// Returns the pad table
     fn table_pad() -> LookupTable<F>;
@@ -144,7 +151,8 @@ pub(crate) trait FixedLookupTables<F> {
 impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
         let id = table.table_id;
-        // In these tables, the first value of the vector is related to the index within the table.
+        // In these tables, the first value of the vector is related to the
+        // index within the table.
         let idx = value[0]
             .to_bytes()
             .iter()
