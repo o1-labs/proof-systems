@@ -1,7 +1,5 @@
 /// The minimal number of columns required for the VM
-// FIXME: the value will be updated when the interpreter is fully
-// implemented. Using a small value for now.
-pub const SCRATCH_SIZE: usize = 80;
+pub const SCRATCH_SIZE: usize = 39;
 
 /// Number of instructions in the ISA
 pub const INSTRUCTION_SET_SIZE: usize = 48;
