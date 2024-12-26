@@ -1523,9 +1523,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* sub: x[rd] = x[rs1] - x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let underflow_scratch = env.alloc_scratch();
-            let rd_scratch = env.alloc_scratch();
             let local_rd = unsafe {
+                let underflow_scratch = env.alloc_scratch();
+                let rd_scratch = env.alloc_scratch();
                 let (local_rd, _underflow) =
                     env.sub_witness(&local_rs1, &local_rs2, rd_scratch, underflow_scratch);
                 local_rd
@@ -1895,11 +1895,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&(rs1.clone()));
             let local_imm = env.sign_extend(&imm, 12);
-            let overflow_scratch = env.alloc_scratch();
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe {
-                let (local_rd, _overflow) =
-                    env.add_witness(&local_rs1, &local_imm, rd_scratch, overflow_scratch);
+            let local_rd = {
+                let overflow_scratch = env.alloc_scratch();
+                let rd_scratch = env.alloc_scratch();
+                let (local_rd, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, rd_scratch, overflow_scratch)
+                };
                 local_rd
             };
             env.write_register(&rd, local_rd);
@@ -1910,8 +1911,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // xori: x[rd] = x[rs1] ^ sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1920,8 +1923,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // ori: x[rd] = x[rs1] | sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1930,8 +1935,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // andi: x[rd] = x[rs1] & sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -2438,8 +2445,10 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
         UInstruction::LoadUpperImmediate => {
             // lui: x[rd] = sext(immediate[31:12] << 12)
             let local_imm = {
-                let pos = env.alloc_scratch();
-                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                let shifted_imm = {
+                    let pos = env.alloc_scratch();
+                    unsafe { env.shift_left(&imm, &Env::constant(12), pos) }
+                };
                 env.sign_extend(&shifted_imm, 32)
             };
             env.write_register(&rd, local_imm);
