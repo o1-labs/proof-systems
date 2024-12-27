@@ -447,3 +447,22 @@ fn test_jal() {
     assert_eq!(witness.registers[T0], 12);
     assert_eq!(witness.registers[T1], 7);
 }
+
+#[test]
+fn test_mersenne_prime() {
+    let curr_dir = std::env::current_dir().unwrap();
+    let path = curr_dir.join(std::path::PathBuf::from(
+        "resources/programs/riscv32im/bin/mersenne_31",
+    ));
+
+    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+
+    while !witness.halt {
+        witness.step();
+    }
+
+    let sp = witness.registers[Sp];
+    let v = witness.get_uint32(sp);
+    assert_eq!(v, 4);
+}
