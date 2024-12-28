@@ -2716,6 +2716,17 @@
 <a href="#2716" id="2716">2716</a>
 <a href="#2717" id="2717">2717</a>
 <a href="#2718" id="2718">2718</a>
+<a href="#2719" id="2719">2719</a>
+<a href="#2720" id="2720">2720</a>
+<a href="#2721" id="2721">2721</a>
+<a href="#2722" id="2722">2722</a>
+<a href="#2723" id="2723">2723</a>
+<a href="#2724" id="2724">2724</a>
+<a href="#2725" id="2725">2725</a>
+<a href="#2726" id="2726">2726</a>
+<a href="#2727" id="2727">2727</a>
+<a href="#2728" id="2728">2728</a>
+<a href="#2729" id="2729">2729</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implement an interpreter for the RISCV32 IM instruction set
 //! architecture.
 //!
@@ -4225,11 +4236,12 @@
             <span class="comment">// add: x[rd] = x[rs1] + x[rs2]
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>(local_rd, _overflow) =
-                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch, overflow_scratch);
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(local_rd, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch, overflow_scratch)
+                };
                 local_rd
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
@@ -4241,11 +4253,12 @@
             <span class="comment">/* sub: x[rd] = x[rs1] - x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>underflow_scratch = env.alloc_scratch();
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>(local_rd, _underflow) =
-                    env.sub_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch, underflow_scratch);
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>underflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(local_rd, _underflow) = <span class="kw">unsafe </span>{
+                    env.sub_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch, underflow_scratch)
+                };
                 local_rd
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
@@ -4257,9 +4270,9 @@
             <span class="comment">/* sll: x[rd] = x[rs1] &lt;&lt; x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-                env.shift_left(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch)
+                <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4270,9 +4283,9 @@
             <span class="comment">/* slt: x[rd] = (x[rs1] &lt; x[rs2]) ? 1 : 0 */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-                env.test_less_than_signed(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch)
+                <span class="kw">unsafe </span>{ env.test_less_than_signed(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, rd_scratch) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4283,9 +4296,9 @@
             <span class="comment">/* sltu: x[rd] = (x[rs1] &lt; (u)x[rs2]) ? 1 : 0 */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.test_less_than(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.test_less_than(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4296,9 +4309,9 @@
             <span class="comment">/* xor: x[rd] = x[rs1] ^ x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.xor_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.xor_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4309,9 +4322,9 @@
             <span class="comment">/* srl: x[rd] = x[rs1] &gt;&gt; x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.shift_right(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.shift_right(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4322,9 +4335,9 @@
             <span class="comment">/* sra: x[rd] = x[rs1] &gt;&gt; x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.shift_right_arithmetic(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.shift_right_arithmetic(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4335,9 +4348,9 @@
             <span class="comment">/* or: x[rd] = x[rs1] | x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.or_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.or_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4348,9 +4361,9 @@
             <span class="comment">/* and: x[rd] = x[rs1] &amp; x[rs2] */
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_rs2 = env.read_register(<span class="kw-2">&amp;</span>rs2);
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>local_rd = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.and_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos)
+                <span class="kw">unsafe </span>{ env.and_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_rs2, pos) }
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
 
@@ -4613,11 +4626,12 @@
             <span class="comment">// addi: x[rd] = x[rs1] + sext(immediate)
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>(rs1.clone()));
             <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
-            <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>(local_rd, _overflow) =
-                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch, overflow_scratch);
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>overflow_scratch = env.alloc_scratch();
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">let </span>(local_rd, _overflow) = <span class="kw">unsafe </span>{
+                    env.add_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch, overflow_scratch)
+                };
                 local_rd
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
@@ -4628,8 +4642,10 @@
             <span class="comment">// xori: x[rd] = x[rs1] ^ sext(immediate)
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{ env.xor_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) };
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.xor_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) }
+            };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -4638,8 +4654,10 @@
             <span class="comment">// ori: x[rd] = x[rs1] | sext(immediate)
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{ env.or_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) };
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.or_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) }
+            };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -4648,8 +4666,10 @@
             <span class="comment">// andi: x[rd] = x[rs1] &amp; sext(immediate)
             </span><span class="kw">let </span>local_rs1 = env.read_register(<span class="kw-2">&amp;</span>rs1);
             <span class="kw">let </span>local_imm = env.sign_extend(<span class="kw-2">&amp;</span>imm, <span class="number">12</span>);
-            <span class="kw">let </span>rd_scratch = env.alloc_scratch();
-            <span class="kw">let </span>local_rd = <span class="kw">unsafe </span>{ env.and_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) };
+            <span class="kw">let </span>local_rd = {
+                <span class="kw">let </span>rd_scratch = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.and_witness(<span class="kw-2">&amp;</span>local_rs1, <span class="kw-2">&amp;</span>local_imm, rd_scratch) }
+            };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -5156,8 +5176,10 @@
         UInstruction::LoadUpperImmediate =&gt; {
             <span class="comment">// lui: x[rd] = sext(immediate[31:12] &lt;&lt; 12)
             </span><span class="kw">let </span>local_imm = {
-                <span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">let </span>shifted_imm = <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>imm, <span class="kw-2">&amp;</span>Env::constant(<span class="number">12</span>), pos) };
+                <span class="kw">let </span>shifted_imm = {
+                    <span class="kw">let </span>pos = env.alloc_scratch();
+                    <span class="kw">unsafe </span>{ env.shift_left(<span class="kw-2">&amp;</span>imm, <span class="kw-2">&amp;</span>Env::constant(<span class="number">12</span>), pos) }
+                };
                 env.sign_extend(<span class="kw-2">&amp;</span>shifted_imm, <span class="number">32</span>)
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, local_imm);

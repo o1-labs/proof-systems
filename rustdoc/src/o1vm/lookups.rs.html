@@ -276,6 +276,14 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -303,23 +311,29 @@
 <span class="doccomment">/// All of the possible lookup table IDs used in the zkVM
 </span><span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>LookupTableIDs {
-    <span class="comment">// PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
-    // This way, it is guaranteed that the 0 value is not always in the tables after the
-    // randomization with the joint combiner is applied.
-    </span><span class="doccomment">/// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    <span class="comment">// PadLookup ID is 0 because this is the only fixed table whose first entry
+    // is not 0. This way, it is guaranteed that the 0 value is not always in
+    // the tables after the randomization with the joint combiner is applied.
+    </span><span class="doccomment">/// All [1..136] values of possible padding lengths, the value 2^len, and
+    /// the 5 corresponding pad suffixes with the 10*1 rule
     </span>PadLookup = <span class="number">0</span>,
-    <span class="doccomment">/// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
+    <span class="doccomment">/// 24-row table with all possible values for round and their round constant
+    /// in expanded form (in big endian) [0..=23]
     </span>RoundConstantsLookup = <span class="number">1</span>,
     <span class="doccomment">/// Values from 0 to 4 to check the number of bytes read from syscalls
     </span>AtMost4Lookup = <span class="number">2</span>,
-    <span class="doccomment">/// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    <span class="doccomment">/// All values that can be stored in a byte (amortized table, better than
+    /// model as RangeCheck16 (x and scaled x)
     </span>ByteLookup = <span class="number">3</span>,
-    <span class="comment">// Read tables come first to allow indexing with the table ID for the multiplicities
+    <span class="comment">// Read tables come first to allow indexing with the table ID for the
+    // multiplicities
     </span><span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
     </span>RangeCheck16Lookup = <span class="number">4</span>,
-    <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
+    <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of
+    /// all values
     </span>SparseLookup = <span class="number">5</span>,
-    <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse
+    /// representation
     </span>ResetLookup = <span class="number">6</span>,
 
     <span class="comment">// RAM Tables
@@ -401,7 +415,8 @@
 
 <span class="doccomment">/// Trait that creates all the fixed lookup tables used in the VM
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FixedLookupTables&lt;F&gt; {
-    <span class="doccomment">/// Checks whether a value is in a table and returns the position if it is or None otherwise.
+    <span class="doccomment">/// Checks whether a value is in a table and returns the position if it is
+    /// or None otherwise.
     </span><span class="kw">fn </span>is_in_table(table: <span class="kw-2">&amp;</span>LookupTable&lt;F&gt;, value: Vec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt;;
     <span class="doccomment">/// Returns the pad table
     </span><span class="kw">fn </span>table_pad() -&gt; LookupTable&lt;F&gt;;
@@ -422,7 +437,8 @@
 <span class="kw">impl</span>&lt;F: Field&gt; FixedLookupTables&lt;F&gt; <span class="kw">for </span>LookupTable&lt;F&gt; {
     <span class="kw">fn </span>is_in_table(table: <span class="kw-2">&amp;</span>LookupTable&lt;F&gt;, value: Vec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>id = table.table_id;
-        <span class="comment">// In these tables, the first value of the vector is related to the index within the table.
+        <span class="comment">// In these tables, the first value of the vector is related to the
+        // index within the table.
         </span><span class="kw">let </span>idx = value[<span class="number">0</span>]
             .to_bytes()
             .iter()
