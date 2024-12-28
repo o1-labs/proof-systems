@@ -2482,14 +2482,30 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
 /// Interpret an UJ-type instruction.
 /// The encoding of an UJ-type instruction is as follows:
 /// ```text
-/// | 31     12 | 11    7 | 6      0 |
-/// | immediate |    rd   |  opcode  |
+/// | 31                12  | 11    7 | 6      0 |
+/// | imm[20|10:1|11|19:12] |    rd   |  opcode  |
 /// ```
 /// Following the documentation found
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+///
+/// The interpretation of the immediate is as follow:
+/// ```text
+/// imm_20    = instruction[31]
+/// imm_10_1  = instruction[30..21]
+/// imm_11    = instruction[20]
+/// imm_19_12 = instruction[19..12]
+///
+/// imm = imm_20    << 19   +
+///       imm_19_12 << 11   +
+///       imm_11    << 10   +
+///       imm_10_1
+///
+/// # The immediate is then sign-extended. The sign-extension is in the bit imm20
+/// imm = imm << 1
+/// ```
 pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -2514,18 +2530,55 @@ pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction
     };
     env.range_check8(&rd, 5);
 
-    // FIXME: trickier
-    let _imm = {
+    let imm20 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 12, pos) }
+        unsafe { env.bitmask(&instruction, 32, 31, pos) }
+    };
+    env.assert_boolean(&imm20);
+
+    let imm10_1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 31, 21, pos) }
+    };
+    env.range_check16(&imm10_1, 10);
+
+    let imm11 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 20, pos) }
+    };
+    env.assert_boolean(&imm11);
+
+    let imm19_12 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 12, pos) }
+    };
+    env.range_check8(&imm19_12, 8);
+
+    let offset = {
+        imm10_1.clone() * Env::constant(1 << 1)
+            + imm11.clone() * Env::constant(1 << 11)
+            + imm19_12.clone() * Env::constant(1 << 12)
+            + imm20.clone() * Env::constant(1 << 20)
     };
 
     // FIXME: check correctness of decomposition
+
     match instr {
         UJInstruction::JumpAndLink => {
-            unimplemented!("JumpAndLink")
+            let offset = env.sign_extend(&offset, 21);
+            let new_addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
+                };
+                res
+            };
+            env.write_register(&rd, next_instruction_pointer.clone());
+            env.set_instruction_pointer(new_addr.clone());
+            env.set_next_instruction_pointer(new_addr + Env::constant(4u32));
         }
-    };
+    }
 }
 
 pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInstruction) {
