@@ -842,7 +842,12 @@ impl<Fp: Field> Env<Fp> {
     /// Execute a single step in the RISCV32i program
     pub fn step(&mut self) -> Instruction {
         self.reset_scratch_state();
-        let (opcode, _instruction) = self.decode_instruction();
+        let (opcode, instruction) = self.decode_instruction();
+
+        println!(
+            "Executing {:#10x}: {:} {:#10x}",
+            self.registers.current_instruction_pointer, opcode, instruction
+        );
 
         interpreter::interpret_instruction(self, opcode);
 
