@@ -48,7 +48,7 @@ The wrapper is designed to be used in different ways, depending on the fields se
 
 ```admonish
 Ideally, we would like to only run this once and obtain a result that's an immutable compiled artifact.
-Currently, `public_input`, `private_input`, `eval_constriants`, `next_var`, and `mode` all need to be mutable.
+Currently, `public_input`, `private_input`, `eval_constraints`, `next_var`, and `mode` all need to be mutable.
 In the future these should be passed as arguments to functions, and should not exist in the state.
 ```
 
