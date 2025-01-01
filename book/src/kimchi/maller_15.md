@@ -84,7 +84,7 @@ To compute it, there are two rules to follow:
 
 * when two commitment are **added** together, their associated blinding factors get added as well:
     $$\mathsf{com}(a) + \mathsf{com}(b) \implies r_a + r_b$$
-* when **scaling** a commitment, its blinding factor gets scalled too:
+* when **scaling** a commitment, its blinding factor gets scaled too:
     $$n \cdot \mathsf{com}(a) \implies n \cdot r_a$$
 
 As such, if we know $r_f$ and $r_t$, we can compute:
