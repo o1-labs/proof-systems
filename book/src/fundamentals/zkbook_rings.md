@@ -8,7 +8,7 @@ A ring is like a field, but where elements may not be invertible. Basically, it'
 
 - subtract
 
-but not necessarily divide. If you know what polynomials are already, you can think of it as the minimal necessary structure for polynomials to make sense. That is, if $R$ is a ring, then we can define the set of polynomials $R[x]$ (basically arithmetic expressions in the variable $x$) and think of any polynomial $f \in R[x]$ giving rise to a function $R \to R$ defined by substituing in for $x$ in $f$ and computing using $+$ and $\cdot$ as defined in $R$.
+but not necessarily divide. If you know what polynomials are already, you can think of it as the minimal necessary structure for polynomials to make sense. That is, if $R$ is a ring, then we can define the set of polynomials $R[x]$ (basically arithmetic expressions in the variable $x$) and think of any polynomial $f \in R[x]$ giving rise to a function $R \to R$ defined by substituting in for $x$ in $f$ and computing using $+$ and $\cdot$ as defined in $R$.
 
 So, in full, a ring $R$ is a set equipped with
 
