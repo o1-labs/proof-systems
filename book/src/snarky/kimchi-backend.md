@@ -20,7 +20,7 @@ One can also perform two additional operations once the constraint system has be
 
 ## A circuit
 
-A circuit is either being built, or has been contructed during a circuit generation phase:
+A circuit is either being built, or has been constructed during a circuit generation phase:
 
 ```rust
 enum Circuit<F>
