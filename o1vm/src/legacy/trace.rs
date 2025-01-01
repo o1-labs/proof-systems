@@ -81,7 +81,7 @@ where
     }
 
     /// Returns a boolean indicating whether the witness for the given selector
-    /// was ever found in the cirucit or not.
+    /// was ever found in the circuit or not.
     pub fn in_circuit(&self, opcode: C::Selector) -> bool {
         self.number_of_rows(opcode) != 0
     }
