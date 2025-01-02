@@ -348,6 +348,22 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>folding::decomposable_folding::DecomposableFoldingScheme;
@@ -379,7 +395,7 @@
         BaseSponge, Fp, OpeningProof, ScalarSponge,
     },
     lookups::LookupTableIDs,
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 <span class="kw">use </span>poly_commitment::SRS <span class="kw">as _</span>;
@@ -409,9 +425,6 @@
             .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Error deserializing metadata file {}&quot;</span>, f))
     });
 
-    <span class="kw">let </span><span class="kw-2">mut </span>po = PreImageOracle::create(<span class="kw-2">&amp;</span>configuration.host);
-    <span class="kw">let </span>_child = po.start();
-
     <span class="comment">// Initialize some data used for statistical computations
     </span><span class="kw">let </span>start = Start::create(state.step <span class="kw">as </span>usize);
 
@@ -428,8 +441,27 @@
 
     <span class="comment">// Initialize the environments
     // The Keccak environment is extracted inside the loop
-    </span><span class="kw">let </span><span class="kw-2">mut </span>mips_wit_env =
-        mips_witness::Env::&lt;Fp, PreImageOracle&gt;::create(cannon::PAGE_SIZE <span class="kw">as </span>usize, state, po);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>mips_wit_env = <span class="kw">match </span>configuration.host.clone() {
+        <span class="prelude-val">Some</span>(host) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>po = PreImageOracle::create(host);
+            <span class="kw">let </span>_child = po.start();
+            mips_witness::Env::&lt;Fp, Box&lt;<span class="kw">dyn </span>PreImageOracleT&gt;&gt;::create(
+                cannon::PAGE_SIZE <span class="kw">as </span>usize,
+                state,
+                Box::new(po),
+            )
+        }
+        <span class="prelude-val">None </span>=&gt; {
+            <span class="macro">debug!</span>(<span class="string">&quot;No preimage oracle provided 🤞&quot;</span>);
+            <span class="comment">// warning: the null preimage oracle has no data and will crash the program if used
+            </span>mips_witness::Env::&lt;Fp, Box&lt;<span class="kw">dyn </span>PreImageOracleT&gt;&gt;::create(
+                cannon::PAGE_SIZE <span class="kw">as </span>usize,
+                state,
+                Box::new(NullPreImageOracle),
+            )
+        }
+    };
+
     <span class="kw">let </span><span class="kw-2">mut </span>mips_con_env = mips_constraints::Env::&lt;Fp&gt;::default();
     <span class="comment">// The keccak environment is extracted inside the loop
 

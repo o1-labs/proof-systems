@@ -74,6 +74,7 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{PreimageKey, VmConfiguration},
     cli,
@@ -94,7 +95,8 @@
     <span class="kw">let </span>preimage_db_dir = args.preimage_db_dir;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(preimage_key_dir) = preimage_db_dir {
-        <span class="kw">let </span><span class="kw-2">mut </span>po = PreImageOracle::create(<span class="kw-2">&amp;</span>configuration.host);
+        <span class="kw">let </span>host_program = configuration.host.expect(<span class="string">&quot;No host program specified&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>po = PreImageOracle::create(host_program);
         <span class="kw">let </span>_child = po.start();
         <span class="macro">debug!</span>(<span class="string">&quot;Let server start&quot;</span>);
         std::thread::sleep(std::time::Duration::from_secs(<span class="number">5</span>));

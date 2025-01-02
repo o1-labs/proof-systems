@@ -300,6 +300,26 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{
     Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
@@ -408,9 +428,7 @@
 }
 
 <span class="kw">impl </span>PreImageOracle {
-    <span class="kw">pub fn </span>create(hp_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HostProgram&gt;) -&gt; PreImageOracle {
-        <span class="kw">let </span>host_program = hp_opt.as_ref().expect(<span class="string">&quot;No host program given&quot;</span>);
-
+    <span class="kw">pub fn </span>create(host_program: HostProgram) -&gt; PreImageOracle {
         <span class="kw">let </span><span class="kw-2">mut </span>cmd = Command::new(<span class="kw-2">&amp;</span>host_program.name);
         cmd.args(<span class="kw-2">&amp;</span>host_program.arguments);
 
@@ -456,6 +474,18 @@
         </span><span class="self">self</span>.cmd
             .spawn()
             .expect(<span class="string">&quot;Could not spawn pre-image oracle process&quot;</span>)
+    }
+}
+
+<span class="kw">pub struct </span>NullPreImageOracle;
+
+<span class="kw">impl </span>PreImageOracleT <span class="kw">for </span>NullPreImageOracle {
+    <span class="kw">fn </span>get_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _key: [u8; <span class="number">32</span>]) -&gt; Preimage {
+        <span class="macro">panic!</span>(<span class="string">&quot;No preimage oracle specified for preimage retrieval&quot;</span>);
+    }
+
+    <span class="kw">fn </span>hint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _hint: Hint) {
+        <span class="macro">panic!</span>(<span class="string">&quot;No preimage oracle specified for hints&quot;</span>);
     }
 }
 
@@ -523,6 +553,16 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0_u8</span>];
         <span class="comment">// And do nothing with it anyway
         </span><span class="kw">let _ </span>= reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+    }
+}
+
+<span class="kw">impl </span>PreImageOracleT <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>PreImageOracleT&gt; {
+    <span class="kw">fn </span>get_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: [u8; <span class="number">32</span>]) -&gt; Preimage {
+        <span class="self">self</span>.as_mut().get_preimage(key)
+    }
+
+    <span class="kw">fn </span>hint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hint: Hint) {
+        <span class="self">self</span>.as_mut().hint(hint)
     }
 }
 
