@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse_riscv32"]};
+window.SIDEBAR_ITEMS = {"enum":["Architecture"],"fn":["make_state","parse_elf"]};

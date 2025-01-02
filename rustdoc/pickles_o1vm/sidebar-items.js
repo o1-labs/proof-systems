@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["DOMAIN_SIZE"],"fn":["cannon_main","main"]};
+window.SIDEBAR_ITEMS = {"constant":["DOMAIN_SIZE"],"fn":["cannon_main","gen_state_json","main"]};

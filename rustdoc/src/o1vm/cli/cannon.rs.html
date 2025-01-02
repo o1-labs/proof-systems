@@ -110,6 +110,17 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::<span class="kw-2">*</span>;
 <span class="kw">use </span>clap::{arg, Parser, Subcommand};
 
@@ -131,13 +142,8 @@
     </span>)]
     </span>output: String,
 
-    <span class="attr">#[arg(
-        long,
-        value_name = <span class="string">&quot;FILE&quot;</span>,
-        default_value = <span class="string">&quot;meta.json&quot;</span>,
-        help = <span class="string">&quot;metadata file&quot;
-    </span>)]
-    </span>meta: String,
+    <span class="attr">#[arg(long, value_name = <span class="string">&quot;FILE&quot;</span>, help = <span class="string">&quot;metadata file&quot;</span>)]
+    </span>meta: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="attr">#[arg(
         long = <span class="string">&quot;proof-at&quot;</span>,
@@ -216,10 +222,26 @@
     </span><span class="kw">pub </span>vm_cfg: MipsVmConfigurationArgs,
 }
 
+<span class="attr">#[derive(Parser, Debug, Clone)]
+</span><span class="kw">pub struct </span>GenStateJsonArgs {
+    <span class="attr">#[arg(short = <span class="string">&#39;i&#39;</span>, long, value_name = <span class="string">&quot;FILE&quot;</span>, help = <span class="string">&quot;input ELF file&quot;</span>)]
+    </span><span class="kw">pub </span>input: String,
+    <span class="attr">#[arg(
+        short = <span class="string">&#39;o&#39;</span>,
+        long,
+        value_name = <span class="string">&quot;FILE&quot;</span>,
+        default_value = <span class="string">&quot;state.json&quot;</span>,
+        help = <span class="string">&quot;output state.json file&quot;
+    </span>)]
+    </span><span class="kw">pub </span>output: String,
+}
+
 <span class="attr">#[derive(Subcommand, Clone, Debug)]
 </span><span class="kw">pub enum </span>Cannon {
     Run(RunArgs),
     <span class="attr">#[command(name = <span class="string">&quot;test-optimism-preimage-read&quot;</span>)]
     </span>TestPreimageRead(RunArgs),
+    <span class="attr">#[command(name = <span class="string">&quot;gen-state-json&quot;</span>)]
+    </span>GenStateJson(GenStateJsonArgs),
 }
 </code></pre></div></section></main></body></html>

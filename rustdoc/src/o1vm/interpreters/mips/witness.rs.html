@@ -1296,6 +1296,7 @@
 <a href="#1296" id="1296">1296</a>
 <a href="#1297" id="1297">1297</a>
 <a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -2441,7 +2442,7 @@
     </span><span class="kw">pub fn </span>step(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         config: <span class="kw-2">&amp;</span>VmConfiguration,
-        metadata: <span class="kw-2">&amp;</span>Meta,
+        metadata: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Meta&gt;,
         start: <span class="kw-2">&amp;</span>Start,
     ) -&gt; Instruction {
         <span class="self">self</span>.reset_scratch_state();
@@ -2565,7 +2566,7 @@
         }
     }
 
-    <span class="kw">fn </span>pp_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency, meta: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
+    <span class="kw">fn </span>pp_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency, meta: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Meta&gt;, start: <span class="kw-2">&amp;</span>Start) {
         <span class="kw">if </span><span class="self">self</span>.should_trigger_at(at) {
             <span class="kw">let </span>elapsed = start.time.elapsed();
             <span class="comment">// Compute the step number removing the MAX_ACC factor
@@ -2584,8 +2585,9 @@
 
             <span class="kw">let </span>mem = <span class="self">self</span>.memory_usage();
             <span class="kw">let </span>name = meta
-                .find_address_symbol(pc)
-                .unwrap_or_else(|| <span class="string">&quot;n/a&quot;</span>.to_string());
+                .as_ref()
+                .and_then(|m| m.find_address_symbol(pc))
+                .unwrap_or(<span class="string">&quot;n/a&quot;</span>.to_string());
 
             <span class="macro">info!</span>(
                 <span class="string">&quot;processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}&quot;</span>,

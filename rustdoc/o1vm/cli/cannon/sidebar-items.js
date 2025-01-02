@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Cannon"],"struct":["MipsVmConfigurationArgs","RunArgs"]};
+window.SIDEBAR_ITEMS = {"enum":["Cannon"],"struct":["GenStateJsonArgs","MipsVmConfigurationArgs","RunArgs"]};

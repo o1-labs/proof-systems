@@ -171,6 +171,10 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -182,8 +186,8 @@
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 <span class="kw">use </span>o1vm::{
-    cannon::{<span class="self">self</span>, Meta, Start, State},
-    cli,
+    cannon::{<span class="self">self</span>, Start, State},
+    cli, elf_loader,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
         constraints <span class="kw">as </span>mips_constraints,
@@ -196,7 +200,7 @@
     test_preimage_read,
 };
 <span class="kw">use </span>poly_commitment::{ipa::SRS, SRS <span class="kw">as _</span>};
-<span class="kw">use </span>std::{fs::File, io::BufReader, process::ExitCode, time::Instant};
+<span class="kw">use </span>std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -213,18 +217,11 @@
     <span class="comment">// Read the JSON contents of the file as an instance of `State`.
     </span><span class="kw">let </span>state: State = serde_json::from_reader(reader).expect(<span class="string">&quot;Error reading input state file&quot;</span>);
 
-    <span class="kw">let </span>meta_file = File::open(<span class="kw-2">&amp;</span>configuration.metadata_file).unwrap_or_else(|<span class="kw">_</span>| {
-        <span class="macro">panic!</span>(
-            <span class="string">&quot;Could not open metadata file {}&quot;</span>,
-            <span class="kw-2">&amp;</span>configuration.metadata_file
-        )
-    });
-
-    <span class="kw">let </span>meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|<span class="kw">_</span>| {
-        <span class="macro">panic!</span>(
-            <span class="string">&quot;Error deserializing metadata file {}&quot;</span>,
-            <span class="kw-2">&amp;</span>configuration.metadata_file
-        )
+    <span class="kw">let </span>meta = <span class="kw-2">&amp;</span>configuration.metadata_file.as_ref().map(|f| {
+        <span class="kw">let </span>meta_file =
+            File::open(f).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Could not open metadata file {}&quot;</span>, f));
+        serde_json::from_reader(BufReader::new(meta_file))
+            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Error deserializing metadata file {}&quot;</span>, f))
     });
 
     <span class="kw">let </span><span class="kw-2">mut </span>po = PreImageOracle::create(<span class="kw-2">&amp;</span>configuration.host);
@@ -266,7 +263,7 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
     <span class="kw">while </span>!mips_wit_env.halt {
-        <span class="kw">let </span>_instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, <span class="kw-2">&amp;</span>meta, <span class="kw-2">&amp;</span>start);
+        <span class="kw">let </span>_instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, meta, <span class="kw-2">&amp;</span>start);
         <span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
             .scratch_state
             .iter()
@@ -329,6 +326,14 @@
     }
 }
 
+<span class="kw">fn </span>gen_state_json(arg: cli::cannon::GenStateJsonArgs) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    <span class="kw">let </span>path = Path::new(<span class="kw-2">&amp;</span>arg.input);
+    <span class="kw">let </span>state = elf_loader::parse_elf(elf_loader::Architecture::Mips, path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>file = File::create(<span class="kw-2">&amp;</span>arg.output).expect(<span class="string">&quot;Error creating output state file&quot;</span>);
+    serde_json::to_writer_pretty(file, <span class="kw-2">&amp;</span>state).expect(<span class="string">&quot;Error writing output state file&quot;</span>);
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="kw">pub fn </span>main() -&gt; ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(<span class="string">&quot;info&quot;</span>)).init();
     <span class="kw">let </span>args = cli::Commands::parse();
@@ -339,6 +344,9 @@
             }
             cli::cannon::Cannon::TestPreimageRead(args) =&gt; {
                 test_preimage_read::main(args);
+            }
+            cli::cannon::Cannon::GenStateJson(args) =&gt; {
+                gen_state_json(args).expect(<span class="string">&quot;Error generating state.json&quot;</span>);
             }
         },
     }

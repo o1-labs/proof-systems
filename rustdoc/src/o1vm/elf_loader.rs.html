@@ -143,29 +143,46 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State, PAGE_SIZE};
-<span class="kw">use </span>elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
+<span class="kw">use </span>elf::{
+    endian::{BigEndian, EndianParse, LittleEndian},
+    section::SectionHeader,
+    ElfBytes,
+};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>std::{collections::HashMap, path::Path};
 
-<span class="doccomment">/// Parse an ELF file and return the parsed data as a structure that is expected
-/// by the o1vm RISC-V 32 bits edition.
-</span><span class="comment">// FIXME: parametrize by an architecture. We should return a state depending on the
-// architecture. In the meantime, we can have parse_riscv32i and parse_mips.
-// FIXME: for now, we return a State structure, either for RISC-V 32i or MIPS.
-// We should return a structure specifically built for the o1vm, and not tight
-// to Cannon. It will be done in a future PR to avoid breaking the current code
-// and have a huge diff.
-</span><span class="kw">pub fn </span>parse_riscv32(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;State, String&gt; {
-    <span class="macro">debug!</span>(<span class="string">&quot;Start parsing the ELF file to load a RISC-V 32i compatible state&quot;</span>);
-    <span class="kw">let </span>file_data = std::fs::read(path).expect(<span class="string">&quot;Could not read file.&quot;</span>);
-    <span class="kw">let </span>slice = file_data.as_slice();
-    <span class="kw">let </span>file = ElfBytes::&lt;LittleEndian&gt;::minimal_parse(slice).expect(<span class="string">&quot;Open ELF file failed.&quot;</span>);
+<span class="kw">pub enum </span>Architecture {
+    Mips,
+    RiscV32,
+}
 
+<span class="kw">pub fn </span>make_state&lt;T: EndianParse&gt;(file: ElfBytes&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;State, String&gt; {
     <span class="comment">// Checking it is RISC-V
-    </span><span class="macro">assert_eq!</span>(file.ehdr.e_machine, <span class="number">243</span>);
 
-    <span class="kw">let </span>(shdrs_opt, strtab_opt) = file
+    </span><span class="kw">let </span>(shdrs_opt, strtab_opt) = file
         .section_headers_with_strtab()
         .expect(<span class="string">&quot;shdrs offsets should be valid&quot;</span>);
     <span class="kw">let </span>(shdrs, strtab) = (
@@ -196,9 +213,11 @@
         .section_data(text_section)
         .expect(<span class="string">&quot;Failed to read data from .text section&quot;</span>);
 
-    <span class="kw">let </span>code_section_starting_address = text_section.sh_addr <span class="kw">as </span>usize;
+    <span class="comment">// address of starting instruction in code section
+    </span><span class="kw">let </span>code_section_starting_address = text_section.sh_addr <span class="kw">as </span>usize;
     <span class="kw">let </span>code_section_size = text_section.sh_size <span class="kw">as </span>usize;
-    <span class="kw">let </span>code_section_end_address = code_section_starting_address + code_section_size;
+    <span class="comment">// address of last instruction in code section
+    </span><span class="kw">let </span>code_section_end_address = code_section_starting_address + code_section_size - <span class="number">1</span>;
     <span class="macro">debug!</span>(
         <span class="string">&quot;The executable code starts at address {}, has size {} bytes, and ends at address {}.&quot;</span>,
         code_section_starting_address, code_section_size, code_section_end_address
@@ -209,17 +228,22 @@
     <span class="kw">let </span>page_size_usize: usize = PAGE_SIZE.try_into().unwrap();
     <span class="comment">// Padding to get the right number of pages. We suppose that the memory
     // index starts at 0.
+
+    // the address that the first page starts on
     </span><span class="kw">let </span>start_page_address: usize =
         (code_section_starting_address / page_size_usize) * page_size_usize;
-    <span class="kw">let </span>end_page_address =
-        (code_section_end_address / (page_size_usize - <span class="number">1</span>)) * page_size_usize + page_size_usize;
+
+    <span class="comment">// the address that the last page starts on
+    </span><span class="kw">let </span>end_page_address = (code_section_end_address / page_size_usize) * page_size_usize;
 
     <span class="kw">let </span>first_page_index = start_page_address / page_size_usize;
-    <span class="kw">let </span>last_page_index = (end_page_address - <span class="number">1</span>) / page_size_usize;
+
+    <span class="kw">let </span>last_page_index = end_page_address / page_size_usize;
+
     <span class="kw">let </span><span class="kw-2">mut </span>data_offset = <span class="number">0</span>;
     (first_page_index..=last_page_index).for_each(|page_index| {
         <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">vec!</span>[<span class="number">0</span>; page_size_usize];
-        <span class="comment">// Special case of only one page
+        <span class="comment">// Special case where all code fits in one page
         </span><span class="kw">if </span>first_page_index == last_page_index {
             <span class="kw">let </span>data_length = code_section_end_address - code_section_starting_address;
             <span class="kw">let </span>page_offset = code_section_starting_address - start_page_address;
@@ -228,7 +252,7 @@
             data_offset += data_length;
         } <span class="kw">else </span>{
             <span class="kw">let </span>data_length = <span class="kw">if </span>page_index == last_page_index {
-                code_section_end_address - (page_index * page_size_usize)
+                code_section_end_address - end_page_address
             } <span class="kw">else </span>{
                 page_size_usize
             };
@@ -237,8 +261,9 @@
             } <span class="kw">else </span>{
                 <span class="number">0
             </span>};
-            data[page_offset..]
+            data[page_offset..page_offset + data_length]
                 .copy_from_slice(<span class="kw-2">&amp;</span>text_section_data[data_offset..data_offset + data_length]);
+
             data_offset += data_length;
         }
         <span class="kw">let </span>page = Page {
@@ -287,5 +312,24 @@
     };
 
     <span class="prelude-val">Ok</span>(state)
+}
+
+<span class="kw">pub fn </span>parse_elf(arch: Architecture, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;State, String&gt; {
+    <span class="macro">debug!</span>(<span class="string">&quot;Start parsing the ELF file to load a compatible state&quot;</span>);
+    <span class="kw">let </span>file_data = std::fs::read(path).expect(<span class="string">&quot;Could not read file.&quot;</span>);
+    <span class="kw">let </span>slice = file_data.as_slice();
+    <span class="kw">match </span>arch {
+        Architecture::Mips =&gt; {
+            <span class="kw">let </span>file = ElfBytes::&lt;BigEndian&gt;::minimal_parse(slice).expect(<span class="string">&quot;Open ELF file failed.&quot;</span>);
+            <span class="macro">assert_eq!</span>(file.ehdr.e_machine, <span class="number">8</span>);
+            make_state(file)
+        }
+        Architecture::RiscV32 =&gt; {
+            <span class="kw">let </span>file =
+                ElfBytes::&lt;LittleEndian&gt;::minimal_parse(slice).expect(<span class="string">&quot;Open ELF file failed.&quot;</span>);
+            <span class="macro">assert_eq!</span>(file.ehdr.e_machine, <span class="number">243</span>);
+            make_state(file)
+        }
+    }
 }
 </code></pre></div></section></main></body></html>

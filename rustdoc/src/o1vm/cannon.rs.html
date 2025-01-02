@@ -700,7 +700,7 @@
 </span><span class="kw">pub struct </span>VmConfiguration {
     <span class="kw">pub </span>input_state_file: String,
     <span class="kw">pub </span>output_state_file: String,
-    <span class="kw">pub </span>metadata_file: String,
+    <span class="kw">pub </span>metadata_file: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="kw">pub </span>proof_at: StepFrequency,
     <span class="kw">pub </span>stop_at: StepFrequency,
     <span class="kw">pub </span>snapshot_state_at: StepFrequency,
