@@ -1,3 +1,9 @@
+//! This file contains an entry point to run a zkApp written in Rust.
+//! Until the first version is complete, this file will contain code that
+//! will need to be moved later into the Arrabbiata library.
+//! The end goal is to allow the end-user to simply select the zkApp they want,
+//! specify the number of iterations, and keep this file relatively simple.
+
 use arrabbiata::{
     curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
