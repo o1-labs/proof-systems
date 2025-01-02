@@ -673,6 +673,27 @@
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
 <a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::{
         column::{
@@ -681,7 +702,7 @@
             MIPS_LENGTH_BYTES_OFF, MIPS_NUM_BYTES_READ_OFF, MIPS_PREIMAGE_BYTES_OFF,
             MIPS_PREIMAGE_CHUNK_OFF, MIPS_PREIMAGE_KEY, N_MIPS_REL_COLS,
         },
-        interpreter::InterpreterEnv,
+        interpreter::{interpret_instruction, InterpreterEnv},
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
@@ -694,6 +715,7 @@
 };
 <span class="kw">use </span>kimchi_msm::columns::ColumnIndexer <span class="kw">as _</span>;
 <span class="kw">use </span>std::array;
+<span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">use </span><span class="kw">super</span>::column::N_MIPS_SEL_COLS;
 
@@ -1347,5 +1369,25 @@
     <span class="kw">pub fn </span>get_lookups(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt; {
         <span class="self">self</span>.lookups.clone()
     }
+}
+
+<span class="kw">pub fn </span>get_all_constraints&lt;Fp: Field&gt;() -&gt; Vec&lt;E&lt;Fp&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>mips_con_env = Env::&lt;Fp&gt;::default();
+    <span class="kw">let </span><span class="kw-2">mut </span>constraints = Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>acc, instr| {
+            interpret_instruction(<span class="kw-2">&amp;mut </span>mips_con_env, instr);
+            <span class="kw">let </span>selector = mips_con_env.get_selector();
+            <span class="kw">let </span>constraints_with_selector: Vec&lt;E&lt;Fp&gt;&gt; = mips_con_env
+                .get_constraints()
+                .into_iter()
+                .map(|c| selector.clone() * c)
+                .collect();
+            acc.extend(constraints_with_selector);
+            mips_con_env.reset();
+            acc
+        });
+    constraints.extend(mips_con_env.get_selector_constraints());
+    constraints
 }
 </code></pre></div></section></main></body></html>

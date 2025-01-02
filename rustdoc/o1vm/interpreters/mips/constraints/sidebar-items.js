@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Env"]};
+window.SIDEBAR_ITEMS = {"fn":["get_all_constraints"],"struct":["Env"]};
