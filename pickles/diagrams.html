@@ -188,7 +188,7 @@
 </li>
 <li>The blue boxes are computations. Sometimes, when the computation is trivial or only vaguely indicated, it is denoted as a text sign directly on an arrow.</li>
 <li>Arrows are blue by default and denote moving a piece of data from one place to another with no (or very little) change. Light blue arrows are denoting witness query that is implemented through the <code>handler</code> mechanism. The “chicken foot” connector means that this arrow accesses just one field in an array: such an arrow could connect e.g. a input field of type <code>old_a: A</code> in a structure <code>Vec&lt;(A,B)&gt;</code> to an output <code>new_a: A</code>, which just means that we are inside a <code>for</code> loop and this computation is done for all the elemnts in the vector/array.</li>
-<li>Colour of the field is sometimes introduced and denotes how many steps ago was this piece of data created. The absense of the colour means either that (1) the data structure contains different subfields of different origin, or that (2) it was not coloured but it could be. The colours are assigned according to the following convention:</li>
+<li>Colour of the field is sometimes introduced and denotes how many steps ago was this piece of data created. The absence of the colour means either that (1) the data structure contains different subfields of different origin, or that (2) it was not coloured but it could be. The colours are assigned according to the following convention:</li>
 </ul>
 <p><img src="./pickles_structure_legend_1.svg" alt="" /></p>
 <h3 id="wrap-computatiton-and-deferred-values"><a class="header" href="#wrap-computatiton-and-deferred-values">Wrap Computatiton and Deferred Values</a></h3>
