@@ -67,7 +67,7 @@ environment variable `RUST_LOG=debug`.
 ### Run tests
 
 ```
-cargo nextest run --all-features --release --nocapture -p arrabiata
+cargo nextest run --all-features --release --nocapture -p arrabbiata
 ```
 
 ### Registry of zkApps
