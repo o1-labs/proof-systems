@@ -217,6 +217,7 @@ pub struct VmConfiguration {
     pub proof_fmt: String,
     pub snapshot_fmt: String,
     pub pprof_cpu: bool,
+    pub halt_address: Option<u32>,
     pub host: Option<HostProgram>,
 }
 
