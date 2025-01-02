@@ -43,3 +43,4 @@ state.json
 # Directory for the RISC-V 32bits toolchain
 _riscv32-gnu-toolchain
 o1vm/resources/programs/riscv32im/bin/*.o
+o1vm/resources/programs/mips/bin/*.o
