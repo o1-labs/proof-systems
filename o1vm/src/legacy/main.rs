@@ -29,7 +29,7 @@ use o1vm::{
         BaseSponge, Fp, OpeningProof, ScalarSponge,
     },
     lookups::LookupTableIDs,
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 use poly_commitment::SRS as _;
@@ -59,9 +59,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .unwrap_or_else(|_| panic!("Error deserializing metadata file {}", f))
     });
 
-    let mut po = PreImageOracle::create(&configuration.host);
-    let _child = po.start();
-
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
@@ -78,8 +75,27 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     // Initialize the environments
     // The Keccak environment is extracted inside the loop
-    let mut mips_wit_env =
-        mips_witness::Env::<Fp, PreImageOracle>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_wit_env = match configuration.host.clone() {
+        Some(host) => {
+            let mut po = PreImageOracle::create(host);
+            let _child = po.start();
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(po),
+            )
+        }
+        None => {
+            debug!("No preimage oracle provided 🤞");
+            // warning: the null preimage oracle has no data and will crash the program if used
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state,
+                Box::new(NullPreImageOracle),
+            )
+        }
+    };
+
     let mut mips_con_env = mips_constraints::Env::<Fp>::default();
     // The keccak environment is extracted inside the loop
 
