@@ -9,7 +9,7 @@ use std::{collections::HashMap, path::Path};
 
 pub enum Architecture {
     Mips,
-    RiscV,
+    RiscV32,
 }
 
 pub fn make_state<T: EndianParse>(file: ElfBytes<T>) -> Result<State, String> {
@@ -157,7 +157,7 @@ pub fn parse_elf(arch: Architecture, path: &Path) -> Result<State, String> {
             assert_eq!(file.ehdr.e_machine, 8);
             make_state(file)
         }
-        Architecture::RiscV => {
+        Architecture::RiscV32 => {
             let file =
                 ElfBytes::<LittleEndian>::minimal_parse(slice).expect("Open ELF file failed.");
             assert_eq!(file.ehdr.e_machine, 243);
