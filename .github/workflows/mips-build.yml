@@ -2,10 +2,6 @@ name: MIPS Build and Package
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'o1vm/resources/programs/mips/**'
-      - 'Makefile'
 
 jobs:
   build:
