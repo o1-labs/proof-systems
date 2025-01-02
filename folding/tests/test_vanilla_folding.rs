@@ -33,7 +33,7 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 
 /// The instance is the commitments to the polynomials and the challenges
-/// There are 3 commitments and challanges because there are 3 columns, A, B and
+/// There are 3 commitments and challenges because there are 3 columns, A, B and
 /// C.
 #[derive(PartialEq, Eq, Debug, Clone)]
 struct TestInstance {
@@ -228,7 +228,7 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 3] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later
+    // here we should absorb the commitments and similar things to later
     // compute challenges but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);

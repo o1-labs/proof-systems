@@ -110,7 +110,7 @@ impl From<Instruction> for usize {
 /// - the current instruction pointer
 /// - the next instruction pointer
 /// - the heap pointer
-/// - the preimage key, splitted in 8 consecutive columns representing 4 bytes
+/// - the preimage key, split in 8 consecutive columns representing 4 bytes
 /// of the 32 bytes long preimage key
 /// - the preimage offset, i.e. the number of bytes that have been read for the
 /// currently processing preimage

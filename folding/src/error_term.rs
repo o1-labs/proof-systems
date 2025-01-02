@@ -185,7 +185,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
 /// Computes the error terms of a folding/homogeneous expression.
 /// The extended environment contains all the evaluations of the columns,
 /// including the ones added by the quadraticization process.
-/// `u` is the variables used to homogeneize the expression.
+/// `u` is the variables used to homogenize the expression.
 /// The output is a pair of error terms. To see how it is computed, see the
 /// [top-level documentation of the expressions module](crate::expressions).
 pub(crate) fn compute_error<C: FoldingConfig>(

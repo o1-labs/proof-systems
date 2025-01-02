@@ -40,7 +40,7 @@ Note that this kind of aggregation forces us to provide all combinations of eval
 
 ### Splitting a polynomial
 
-If a polynomial is too large to fit in one SRS, you can split it in chuncks of size at most $n$
+If a polynomial is too large to fit in one SRS, you can split it in chunks of size at most $n$
 
 ### Proof of correct commitment to a polynomial
 

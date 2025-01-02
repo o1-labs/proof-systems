@@ -41,7 +41,7 @@ The solution to the first problem is simple:
 
 In the $\mathbb{F}_q$-side decompose $v = 2 \cdot h + l$ with $h \in [0, 2^{\lfloor \log p \rfloor})$ (high bits) and $l \in \{ 0, 1 \}$ (low bit). Note $l, h < p$ since $2 p > q$; always the case for any cycle of curves, $p$ is only $\approx \sqrt{q}$ smaller than $q$, by Hasse. Now "$\tilde{v}$" is "represented" by the two values $\tilde{h}, \tilde{l} \in \mathbb{F}_p$.
 
-Note that no decomposition is nessary if the "original value" $v$ was in $\mathbb{F}_p$, since $\mathbb{F}_q$ is big enough to hold the lift of any element in $\mathbb{F}_p$.
+Note that no decomposition is necessary if the "original value" $v$ was in $\mathbb{F}_p$, since $\mathbb{F}_q$ is big enough to hold the lift of any element in $\mathbb{F}_p$.
 
 #### Problem 2: Compute Commitment to the Public Input of other side
 
@@ -67,7 +67,7 @@ $$
 
 ### We recurse onwards...
 
-At this point the statement of the proof in $\mathbb{F}_q$-side is: the $\mathbb{F}_q$-proof is sound, __condition__ on providing an opening of $P_p$ that satisifies the $\mathbb{F}_p$-relation.
+At this point the statement of the proof in $\mathbb{F}_q$-side is: the $\mathbb{F}_q$-proof is sound, __condition__ on providing an opening of $P_p$ that satisfies the $\mathbb{F}_p$-relation.
 
 At this point you can stop and verify the proof (in the case of a "step proof" you would), by recomputing $P_p$ outside the circuit while checking the $\mathbb{F}_p$-relation manually "in the clear".
 
