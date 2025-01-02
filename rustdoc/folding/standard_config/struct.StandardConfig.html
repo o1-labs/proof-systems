@@ -11,7 +11,7 @@
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
 
-<span class="comment">// instanciating the config with our types and the defaults for selectors and structure
+<span class="comment">// instantiating the config with our types and the defaults for selectors and structure
 </span><span class="kw">type </span>MyConfig = StandardConfig&lt;Curve, MyCol, MyChallenge, MyInstance&lt;Curve&gt;, MyWitness&lt;Curve&gt;&gt;;
 <span class="kw">let </span>constraints = <span class="macro">vec!</span>[constraint()];
 <span class="kw">let </span>domain = Radix2EvaluationDomain::&lt;Fp&gt;::new(<span class="number">2</span>).unwrap();

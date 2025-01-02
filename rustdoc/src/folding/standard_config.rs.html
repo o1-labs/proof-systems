@@ -485,7 +485,7 @@
 /// use mina_poseidon::FqSponge;
 /// use folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
 ///
-/// // instanciating the config with our types and the defaults for selectors and structure
+/// // instantiating the config with our types and the defaults for selectors and structure
 /// type MyConfig = StandardConfig&lt;Curve, MyCol, MyChallenge, MyInstance&lt;Curve&gt;, MyWitness&lt;Curve&gt;&gt;;
 /// let constraints = vec![constraint()];
 /// let domain = Radix2EvaluationDomain::&lt;Fp&gt;::new(2).unwrap();
@@ -715,7 +715,7 @@
         <span class="kw">where
             </span>I: FnOnce() -&gt; Vec&lt;F&gt;,
         {
-            <span class="comment">// this will find or asign an id for the column and then
+            <span class="comment">// this will find or assign an id for the column and then
             // search the segments using the id
             </span><span class="kw">let </span><span class="kw-2">mut </span>ids = <span class="self">self</span>.ids.borrow_mut();
             <span class="kw">let </span>new_id = || <span class="self">self</span>.next.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
