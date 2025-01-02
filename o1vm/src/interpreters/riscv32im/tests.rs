@@ -2,14 +2,14 @@ use super::{registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE,
 use crate::interpreters::riscv32im::{
     constraints,
     interpreter::{
-        IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
-        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
+        interpret_instruction, IInstruction, Instruction, InterpreterEnv, MInstruction,
+        RInstruction, SBInstruction, SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
 };
 use ark_ff::Zero;
 use mina_curves::pasta::Fp;
 use rand::{CryptoRng, Rng, RngCore};
-use strum::EnumCount;
+use strum::{EnumCount, IntoEnumIterator};
 
 // Sanity check that we have as many selector as we have instructions
 #[test]
@@ -734,4 +734,183 @@ pub fn test_instruction_decoding_remu() {
     env.memory[0].1[3] = instruction[3];
     let (opcode, _instruction) = env.decode_instruction();
     assert_eq!(opcode, Instruction::MType(MInstruction::Remu));
+}
+
+#[test]
+fn test_regression_number_of_constraints_per_instruction() {
+    let mut env = constraints::Env::<Fp>::default();
+    let unimplemented_instructions = [
+        Instruction::RType(RInstruction::Fence),
+        Instruction::RType(RInstruction::FenceI),
+    ];
+    let instructions = Instruction::iter()
+        .flat_map(|x| x.into_iter())
+        .filter(|x| !unimplemented_instructions.contains(x));
+    for instruction in instructions {
+        interpret_instruction(&mut env, instruction);
+        println!("{:?}", instruction);
+        match instruction {
+            Instruction::RType(rtype) => match rtype {
+                RInstruction::Add => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Sub => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftLeftLogical => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::SetLessThan => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::SetLessThanUnsigned => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Xor => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftRightLogical => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::ShiftRightArithmetic => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Or => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::And => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                RInstruction::Fence => {
+                    unimplemented!("Fence should not be implemented");
+                }
+                RInstruction::FenceI => {
+                    unimplemented!("FenceI should not be implemented");
+                }
+            },
+            Instruction::IType(itype) => match itype {
+                IInstruction::LoadByte => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::LoadHalf => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::LoadWord => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::LoadByteUnsigned => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::LoadHalfUnsigned => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::AddImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::SetLessThanImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::SetLessThanImmediateUnsigned => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::XorImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::OrImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::AndImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::ShiftLeftLogicalImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::ShiftRightLogicalImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::ShiftRightArithmeticImmediate => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                IInstruction::JumpAndLinkRegister => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+            },
+            Instruction::SType(stype) => match stype {
+                SInstruction::StoreByte => {
+                    assert_eq!(env.constraints.len(), 1);
+                }
+                SInstruction::StoreHalf => {
+                    assert_eq!(env.constraints.len(), 1);
+                }
+                SInstruction::StoreWord => {
+                    assert_eq!(env.constraints.len(), 1);
+                }
+            },
+            Instruction::SBType(sbtype) => match sbtype {
+                SBInstruction::BranchEq => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                SBInstruction::BranchNeq => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+                SBInstruction::BranchLessThan => {
+                    assert_eq!(env.constraints.len(), 3);
+                }
+                SBInstruction::BranchLessThanUnsigned => {
+                    assert_eq!(env.constraints.len(), 3);
+                }
+                SBInstruction::BranchGreaterThanEqual => {
+                    assert_eq!(env.constraints.len(), 3);
+                }
+                SBInstruction::BranchGreaterThanEqualUnsigned => {
+                    assert_eq!(env.constraints.len(), 3);
+                }
+            },
+            Instruction::UType(utype) => match utype {
+                UInstruction::LoadUpperImmediate => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                UInstruction::AddUpperImmediate => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+            },
+            Instruction::UJType(ujtype) => match ujtype {
+                UJInstruction::JumpAndLink => {
+                    assert_eq!(env.constraints.len(), 5);
+                }
+            },
+            Instruction::SyscallType(syscall) => match syscall {
+                SyscallInstruction::SyscallSuccess => {
+                    assert_eq!(env.constraints.len(), 0);
+                }
+            },
+            Instruction::MType(mtype) => match mtype {
+                MInstruction::Mul => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Mulh => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Mulhsu => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Mulhu => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Div => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Divu => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Rem => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+                MInstruction::Remu => {
+                    assert_eq!(env.constraints.len(), 4);
+                }
+            },
+        }
+        env.reset()
+    }
 }
