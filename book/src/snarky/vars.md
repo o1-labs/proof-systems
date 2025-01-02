@@ -18,7 +18,7 @@ where
     /// A constant.
     Constant(F),
 
-    /// A variable that can be refered to via a `usize`.
+    /// A variable that can be referred to via a `usize`.
     Var(usize),
 
     /// The addition of two other [FieldVar]s.
@@ -65,7 +65,7 @@ In some situations, we might not want to constrain the
 In general, a circuit variable only gets constrained by an assertion call like `assert` or `assert_equals`.
 
 When variables are added together, or scaled, they do not directly get constrained. 
-This is due to optimizations targetting R1CS (which we don't support anymore) that were implemented in the original snarky library, and that we have kept in snarky-rs.
+This is due to optimizations targeting R1CS (which we don't support anymore) that were implemented in the original snarky library, and that we have kept in snarky-rs.
 
 Imagine the following example:
 

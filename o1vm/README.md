@@ -55,7 +55,7 @@ gvm use go1.21s
 ```
 
 You also will need to install the [Foundry](https://getfoundry.sh/) toolkit
-in order to utilize applicaitons like `cast`.
+in order to utilize applications like `cast`.
 
 ```shell
 foundryup
