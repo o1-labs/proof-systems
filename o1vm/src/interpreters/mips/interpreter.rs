@@ -31,6 +31,7 @@ pub enum Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
+    NoOp,
 }
 
 #[derive(
@@ -153,6 +154,7 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
+            Instruction::NoOp => vec![Instruction::NoOp].into_iter(),
         }
     }
 }
@@ -970,7 +972,29 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::RType(instr) => interpret_rtype(env, instr),
         Instruction::JType(instr) => interpret_jtype(env, instr),
         Instruction::IType(instr) => interpret_itype(env, instr),
+        Instruction::NoOp => interpret_noop(env),
     }
+}
+
+pub fn interpret_noop<Env: InterpreterEnv>(env: &mut env) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+
+    env.range_check8(&opcode, 6);
+    env.assert_zero(&opcode);
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
