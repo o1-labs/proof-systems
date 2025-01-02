@@ -209,7 +209,7 @@ pub struct HostProgram {
 pub struct VmConfiguration {
     pub input_state_file: String,
     pub output_state_file: String,
-    pub metadata_file: String,
+    pub metadata_file: Option<String>,
     pub proof_at: StepFrequency,
     pub stop_at: StepFrequency,
     pub snapshot_state_at: StepFrequency,

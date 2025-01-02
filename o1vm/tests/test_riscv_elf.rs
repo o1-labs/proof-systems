@@ -1,9 +1,12 @@
 use mina_curves::pasta::Fp;
-use o1vm::interpreters::riscv32im::{
-    interpreter::{IInstruction, Instruction, RInstruction},
-    registers::RegisterAlias::*,
-    witness::Env,
-    PAGE_SIZE,
+use o1vm::{
+    elf_loader::Architecture,
+    interpreters::riscv32im::{
+        interpreter::{IInstruction, Instruction, RInstruction},
+        registers::RegisterAlias::*,
+        witness::Env,
+        PAGE_SIZE,
+    },
 };
 
 #[test]
@@ -12,7 +15,7 @@ fn test_registers_indexed_by_alias() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/sll",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     assert_eq!(witness.registers[Ip], 65652);
@@ -43,7 +46,7 @@ fn test_no_action() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/no-action",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
     // This is the output we get by running objdump -d no-action
     assert_eq!(witness.registers.current_instruction_pointer, 69844);
@@ -70,7 +73,7 @@ fn test_fibonacci_7() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/fibonacci-7",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
     // This is the output we get by running objdump -d fibonacci-7
     assert_eq!(witness.registers.current_instruction_pointer, 69932);
@@ -92,7 +95,7 @@ fn test_sll() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/sll",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -109,7 +112,7 @@ fn test_addi() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/addi",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -125,7 +128,7 @@ fn test_add_1() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/add_1",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -141,7 +144,7 @@ fn test_add_2() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/add_2",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -163,7 +166,7 @@ fn test_add_overflow() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/add_overflow",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -183,7 +186,7 @@ fn test_addi_negative() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/addi_negative",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -203,7 +206,7 @@ fn test_add_sub_swap() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/add_sub_swap",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -221,7 +224,7 @@ fn test_addi_overflow() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/addi_overflow",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -239,7 +242,7 @@ fn test_addi_boundary_immediate() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/addi_boundary_immediate",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -256,7 +259,7 @@ fn test_sub() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/sub",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -273,7 +276,7 @@ fn test_sub_2() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/sub_2",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -290,7 +293,7 @@ fn test_sub_3() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/sub_3",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -307,7 +310,7 @@ fn test_xor() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/xor",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -325,7 +328,7 @@ fn test_and() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/and",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -343,7 +346,7 @@ fn test_slt() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/slt",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -362,7 +365,7 @@ fn test_div_by_zero() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/div_by_zero",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -377,7 +380,7 @@ fn test_divu_by_zero() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/divu_by_zero",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -392,7 +395,7 @@ fn test_rem_by_zero() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/rem_by_zero",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -407,7 +410,7 @@ fn test_remu_by_zero() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/remu_by_zero",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -421,7 +424,7 @@ fn test_mul_overflow() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/mul_overflow",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {
@@ -437,7 +440,7 @@ fn test_jal() {
     let path = curr_dir.join(std::path::PathBuf::from(
         "resources/programs/riscv32im/bin/jal",
     ));
-    let state = o1vm::elf_loader::parse_riscv32(&path).unwrap();
+    let state = o1vm::elf_loader::parse_elf(Architecture::RiscV32, &path).unwrap();
     let mut witness = Env::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
 
     while !witness.halt {

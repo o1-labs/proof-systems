@@ -39,8 +39,13 @@ o1vm/op-program-db*
 o1vm/state.json
 meta.json
 state.json
+o1vm/meta_test.json
 
 # Directory for the RISC-V 32bits toolchain
 _riscv32-gnu-toolchain
 o1vm/resources/programs/riscv32im/bin/*.o
-o1vm/resources/programs/mips/bin/*.o
+
+# modified assembly files generated from cannon's open mips tests
+o1vm/resources/programs/mips/src
+# mips binary files for open mips tests
+o1vm/resources/programs/mips/bin
