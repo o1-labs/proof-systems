@@ -58,7 +58,7 @@ $$
   = Z(\omega h)[(a(h) + \beta S_{\sigma1}(h) + \gamma)(b(h) + \beta S_{\sigma2}(h) + \gamma)(c(h) + \beta S_{\sigma3}(h) + \gamma)]$$
 
 
-The modified permuation checks that ensures that the check is performed only on all the values except the last $k$ elements in the witness polynomials are as follows.
+The modified permutation checks that ensures that the check is performed only on all the values except the last $k$ elements in the witness polynomials are as follows.
 
 * For all $h \in H$, $L_1(h)(Z(h) - 1) = 0$
 * For all $h \in \blue{H\setminus \{h_{n-k}, \ldots, h_n\}}$, $$\begin{aligned}  & Z(h)[(a(h) + \beta h + \gamma)(b(h) + \beta k_1 h + \gamma)(c(h) + \beta k_2 h + \gamma)] \\

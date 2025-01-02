@@ -5,8 +5,8 @@ use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use log::debug;
 use o1vm::{
-    cannon::{self, Meta, Start, State},
-    cli,
+    cannon::{self, Start, State},
+    cli, elf_loader,
     interpreters::{
         keccak::{
             column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
@@ -33,7 +33,9 @@ use o1vm::{
     test_preimage_read,
 };
 use poly_commitment::SRS as _;
-use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
+use std::{
+    cmp::Ordering, collections::HashMap, fs::File, io::BufReader, path::Path, process::ExitCode,
+};
 use strum::IntoEnumIterator;
 
 /// Domain size shared by the Keccak evaluations, MIPS evaluation and main
@@ -50,18 +52,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
-    let meta_file = File::open(&configuration.metadata_file).unwrap_or_else(|_| {
-        panic!(
-            "Could not open metadata file {}",
-            &configuration.metadata_file
-        )
-    });
-
-    let meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|_| {
-        panic!(
-            "Error deserializing metadata file {}",
-            &configuration.metadata_file
-        )
+    let meta = &configuration.metadata_file.as_ref().map(|f| {
+        let meta_file =
+            File::open(f).unwrap_or_else(|_| panic!("Could not open metadata file {}", f));
+        serde_json::from_reader(BufReader::new(meta_file))
+            .unwrap_or_else(|_| panic!("Error deserializing metadata file {}", f))
     });
 
     let mut po = PreImageOracle::create(&configuration.host);
@@ -124,7 +119,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     }
 
     while !mips_wit_env.halt {
-        let instr = mips_wit_env.step(&configuration, &meta, &start);
+        let instr = mips_wit_env.step(&configuration, meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
@@ -327,6 +322,14 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // TODO: Logic
 }
 
+fn gen_state_json(arg: cli::cannon::GenStateJsonArgs) -> Result<(), String> {
+    let path = Path::new(&arg.input);
+    let state = elf_loader::parse_elf(elf_loader::Architecture::Mips, path)?;
+    let file = File::create(&arg.output).expect("Error creating output state file");
+    serde_json::to_writer_pretty(file, &state).expect("Error writing output state file");
+    Ok(())
+}
+
 pub fn main() -> ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = cli::Commands::parse();
@@ -337,6 +340,9 @@ pub fn main() -> ExitCode {
             }
             cli::cannon::Cannon::TestPreimageRead(args) => {
                 test_preimage_read::main(args);
+            }
+            cli::cannon::Cannon::GenStateJson(args) => {
+                gen_state_json(args).expect("Error generating state.json");
             }
         },
     }

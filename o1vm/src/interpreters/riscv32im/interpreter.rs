@@ -598,14 +598,8 @@ pub trait InterpreterEnv {
         self.add_constraint(x - y);
     }
 
-    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
-    fn check_boolean(x: &Self::Variable);
-
     /// Assert that the value `x` is boolean, and add a constraint in the proof system.
-    fn assert_boolean(&mut self, x: Self::Variable) {
-        Self::check_boolean(&x);
-        self.add_constraint(x.clone() * x.clone() - x);
-    }
+    fn assert_boolean(&mut self, x: &Self::Variable);
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
@@ -1286,6 +1280,10 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     unsafe fn div_signed(
         &mut self,
         x: &Self::Variable,
@@ -1314,6 +1312,10 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    ///
+    /// Division by zero will create a panic! exception. The RISC-V
+    /// specification leaves the case unspecified, and therefore we prefer to
+    /// forbid this case while building the witness.
     unsafe fn div(
         &mut self,
         x: &Self::Variable,
@@ -1388,12 +1390,19 @@ pub trait InterpreterEnv {
     /// Given a variable `x`, this function extends it to a signed integer of
     /// `bitlength` bits.
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
+        assert!(bitlength <= 32);
         // FIXME: Constrain `high_bit`
         let high_bit = {
             let pos = self.alloc_scratch();
             unsafe { self.bitmask(x, bitlength, bitlength - 1, pos) }
         };
-        high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
+        // Casting in u64 for special case of bitlength = 0 to avoid overflow.
+        // No condition for constant time execution.
+        // Decomposing the steps for readability.
+        let v: u64 = (1u64 << (32 - bitlength)) - 1;
+        let v: u64 = v << bitlength;
+        let v: u32 = v as u32;
+        high_bit * Self::constant(v) + x.clone()
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
@@ -1498,11 +1507,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             // add: x[rd] = x[rs1] + x[rs2]
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let overflow_scratch = env.alloc_scratch();
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe {
-                let (local_rd, _overflow) =
-                    env.add_witness(&local_rs1, &local_rs2, rd_scratch, overflow_scratch);
+            let local_rd = {
+                let overflow_scratch = env.alloc_scratch();
+                let rd_scratch = env.alloc_scratch();
+                let (local_rd, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_rs2, rd_scratch, overflow_scratch)
+                };
                 local_rd
             };
             env.write_register(&rd, local_rd);
@@ -1514,11 +1524,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* sub: x[rd] = x[rs1] - x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let underflow_scratch = env.alloc_scratch();
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe {
-                let (local_rd, _underflow) =
-                    env.sub_witness(&local_rs1, &local_rs2, rd_scratch, underflow_scratch);
+            let local_rd = {
+                let underflow_scratch = env.alloc_scratch();
+                let rd_scratch = env.alloc_scratch();
+                let (local_rd, _underflow) = unsafe {
+                    env.sub_witness(&local_rs1, &local_rs2, rd_scratch, underflow_scratch)
+                };
                 local_rd
             };
             env.write_register(&rd, local_rd);
@@ -1530,9 +1541,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* sll: x[rd] = x[rs1] << x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let rd_scratch = env.alloc_scratch();
-                env.shift_left(&local_rs1, &local_rs2, rd_scratch)
+                unsafe { env.shift_left(&local_rs1, &local_rs2, rd_scratch) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1543,9 +1554,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* slt: x[rd] = (x[rs1] < x[rs2]) ? 1 : 0 */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let rd_scratch = env.alloc_scratch();
-                env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch)
+                unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1556,9 +1567,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* sltu: x[rd] = (x[rs1] < (u)x[rs2]) ? 1 : 0 */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.test_less_than(&local_rs1, &local_rs2, pos)
+                unsafe { env.test_less_than(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1569,9 +1580,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* xor: x[rd] = x[rs1] ^ x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.xor_witness(&local_rs1, &local_rs2, pos)
+                unsafe { env.xor_witness(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1582,9 +1593,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* srl: x[rd] = x[rs1] >> x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.shift_right(&local_rs1, &local_rs2, pos)
+                unsafe { env.shift_right(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1595,9 +1606,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* sra: x[rd] = x[rs1] >> x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.shift_right_arithmetic(&local_rs1, &local_rs2, pos)
+                unsafe { env.shift_right_arithmetic(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1608,9 +1619,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* or: x[rd] = x[rs1] | x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.or_witness(&local_rs1, &local_rs2, pos)
+                unsafe { env.or_witness(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1621,9 +1632,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RInstruction) 
             /* and: x[rd] = x[rs1] & x[rs2] */
             let local_rs1 = env.read_register(&rs1);
             let local_rs2 = env.read_register(&rs2);
-            let local_rd = unsafe {
+            let local_rd = {
                 let pos = env.alloc_scratch();
-                env.and_witness(&local_rs1, &local_rs2, pos)
+                unsafe { env.and_witness(&local_rs1, &local_rs2, pos) }
             };
             env.write_register(&rd, local_rd);
 
@@ -1886,11 +1897,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // addi: x[rd] = x[rs1] + sext(immediate)
             let local_rs1 = env.read_register(&(rs1.clone()));
             let local_imm = env.sign_extend(&imm, 12);
-            let overflow_scratch = env.alloc_scratch();
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe {
-                let (local_rd, _overflow) =
-                    env.add_witness(&local_rs1, &local_imm, rd_scratch, overflow_scratch);
+            let local_rd = {
+                let overflow_scratch = env.alloc_scratch();
+                let rd_scratch = env.alloc_scratch();
+                let (local_rd, _overflow) = unsafe {
+                    env.add_witness(&local_rs1, &local_imm, rd_scratch, overflow_scratch)
+                };
                 local_rd
             };
             env.write_register(&rd, local_rd);
@@ -1901,8 +1913,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // xori: x[rd] = x[rs1] ^ sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.xor_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1911,8 +1925,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // ori: x[rd] = x[rs1] | sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.or_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1921,8 +1937,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: IInstruction) 
             // andi: x[rd] = x[rs1] & sext(immediate)
             let local_rs1 = env.read_register(&rs1);
             let local_imm = env.sign_extend(&imm, 12);
-            let rd_scratch = env.alloc_scratch();
-            let local_rd = unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) };
+            let local_rd = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.and_witness(&local_rs1, &local_imm, rd_scratch) }
+            };
             env.write_register(&rd, local_rd);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -2132,8 +2150,7 @@ pub fn interpret_stype<Env: InterpreterEnv>(env: &mut Env, instr: SInstruction) 
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
 pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
-
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -2144,19 +2161,12 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
             + (v1 * Env::constant(1 << 8))
             + v0
     };
-
     let opcode = {
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 7, 0, pos) }
     };
-    env.range_check8(&opcode, 7);
 
-    // FIXME: trickier
-    let imm1 = {
-        let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 12, 7, pos) }
-    };
-    env.range_check8(&imm1, 5);
+    env.range_check8(&opcode, 7);
 
     let funct3 = {
         let pos = env.alloc_scratch();
@@ -2176,33 +2186,210 @@ pub fn interpret_sbtype<Env: InterpreterEnv>(env: &mut Env, instr: SBInstruction
     };
     env.range_check8(&rs2, 5);
 
-    // FIXME: trickier
-    let imm2 = {
-        let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 25, pos) }
-    };
-    env.range_check16(&imm2, 12);
+    let imm0_12 = {
+        let imm11 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 8, 7, pos) }
+        };
 
-    // FIXME: check correctness of decomposition
+        env.assert_boolean(&imm11);
+
+        let imm1_4 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 12, 8, pos) }
+        };
+        env.range_check8(&imm1_4, 4);
+
+        let imm5_10 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 31, 25, pos) }
+        };
+        env.range_check8(&imm5_10, 6);
+
+        let imm12 = {
+            let pos = env.alloc_scratch();
+            unsafe { env.bitmask(&instruction, 32, 31, pos) }
+        };
+        env.assert_boolean(&imm12);
+
+        // check correctness of decomposition of SB type function
+        env.add_constraint(
+            instruction.clone()
+                - (opcode * Env::constant(1 << 0))    // opcode at bits 0-7
+                - (imm11.clone() * Env::constant(1 << 7))     // imm11 at bits 8
+                - (imm1_4.clone() * Env::constant(1 << 8))    // imm1_4 at bits 9-11
+                - (funct3 * Env::constant(1 << 11))   // funct3 at bits 11-14
+                - (rs1.clone() * Env::constant(1 << 14))      // rs1 at bits 15-20
+                - (rs2.clone() * Env::constant(1 << 19))      // rs2 at bits 20-24
+                - (imm5_10.clone() * Env::constant(1 << 24))  // imm5_10 at bits 25-30
+                - (imm12.clone() * Env::constant(1 << 31)), // imm12 at bits 31
+        );
+
+        (imm12 * Env::constant(1 << 12))
+            + (imm11 * Env::constant(1 << 11))
+            + (imm5_10 * Env::constant(1 << 5))
+            + (imm1_4 * Env::constant(1 << 1))
+    };
+    // extra bit is because the 0th bit in the immediate is always 0 i.e you cannot jump to an odd address
+    let imm0_12 = env.sign_extend(&imm0_12, 13);
 
     match instr {
         SBInstruction::BranchEq => {
-            unimplemented!("BranchEq")
+            // beq: if (x[rs1] == x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let equals = env.equal(&local_rs1, &local_rs2);
+            let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * imm0_12;
+            let offset = env.sign_extend(&offset, 12);
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchNeq => {
-            unimplemented!("BranchNeq")
+            // bne: if (x[rs1] != x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let equals = env.equal(&local_rs1, &local_rs2);
+            let offset = equals.clone() * Env::constant(4) + (Env::constant(1) - equals) * imm0_12;
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchLessThan => {
-            unimplemented!("BranchLessThan")
+            // blt: if (x[rs1] < x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let less_than = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) }
+            };
+            let offset = (less_than.clone()) * imm0_12
+                + (Env::constant(1) - less_than.clone()) * Env::constant(4);
+
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchGreaterThanEqual => {
-            unimplemented!("BranchGreaterThanEqual")
+            // bge: if (x[rs1] >= x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let less_than = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&local_rs1, &local_rs2, rd_scratch) }
+            };
+
+            let offset =
+                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * imm0_12;
+            // greater than equal is the negation of less than
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchLessThanUnsigned => {
-            unimplemented!("BranchLessThanUnsigned")
+            // bltu: if (x[rs1] <u x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let less_than = {
+                let rd_scratch = env.alloc_scratch();
+                unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) }
+            };
+
+            let offset = (Env::constant(1) - less_than.clone()) * Env::constant(4)
+                + less_than.clone() * imm0_12;
+
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
+                };
+                // FIXME: Requires a range check
+                res
+            };
+
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
         SBInstruction::BranchGreaterThanEqualUnsigned => {
-            unimplemented!("BranchGreaterThanEqualUnsigned")
+            // bgeu: if (x[rs1] >=u x[rs2]) pc += sext(offset)
+            let local_rs1 = env.read_register(&rs1);
+            let local_rs2 = env.read_register(&rs2);
+
+            let rd_scratch = env.alloc_scratch();
+            let less_than = unsafe { env.test_less_than(&local_rs1, &local_rs2, rd_scratch) };
+            let offset =
+                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * imm0_12;
+
+            // greater than equal is the negation of less than
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
+                };
+                res
+            };
+
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
         }
     };
 }
@@ -2260,8 +2447,10 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
         UInstruction::LoadUpperImmediate => {
             // lui: x[rd] = sext(immediate[31:12] << 12)
             let local_imm = {
-                let pos = env.alloc_scratch();
-                let shifted_imm = unsafe { env.shift_left(&imm, &Env::constant(12), pos) };
+                let shifted_imm = {
+                    let pos = env.alloc_scratch();
+                    unsafe { env.shift_left(&imm, &Env::constant(12), pos) }
+                };
                 env.sign_extend(&shifted_imm, 32)
             };
             env.write_register(&rd, local_imm);
@@ -2293,14 +2482,30 @@ pub fn interpret_utype<Env: InterpreterEnv>(env: &mut Env, instr: UInstruction) 
 /// Interpret an UJ-type instruction.
 /// The encoding of an UJ-type instruction is as follows:
 /// ```text
-/// | 31     12 | 11    7 | 6      0 |
-/// | immediate |    rd   |  opcode  |
+/// | 31                12  | 11    7 | 6      0 |
+/// | imm[20|10:1|11|19:12] |    rd   |  opcode  |
 /// ```
 /// Following the documentation found
 /// [here](https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf)
+///
+/// The interpretation of the immediate is as follow:
+/// ```text
+/// imm_20    = instruction[31]
+/// imm_10_1  = instruction[30..21]
+/// imm_11    = instruction[20]
+/// imm_19_12 = instruction[19..12]
+///
+/// imm = imm_20    << 19   +
+///       imm_19_12 << 11   +
+///       imm_11    << 10   +
+///       imm_10_1
+///
+/// # The immediate is then sign-extended. The sign-extension is in the bit imm20
+/// imm = imm << 1
+/// ```
 pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
-    let _next_instruction_pointer = env.get_next_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
 
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -2325,18 +2530,55 @@ pub fn interpret_ujtype<Env: InterpreterEnv>(env: &mut Env, instr: UJInstruction
     };
     env.range_check8(&rd, 5);
 
-    // FIXME: trickier
-    let _imm = {
+    let imm20 = {
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 12, pos) }
+        unsafe { env.bitmask(&instruction, 32, 31, pos) }
+    };
+    env.assert_boolean(&imm20);
+
+    let imm10_1 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 31, 21, pos) }
+    };
+    env.range_check16(&imm10_1, 10);
+
+    let imm11 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 20, pos) }
+    };
+    env.assert_boolean(&imm11);
+
+    let imm19_12 = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 20, 12, pos) }
+    };
+    env.range_check8(&imm19_12, 8);
+
+    let offset = {
+        imm10_1.clone() * Env::constant(1 << 1)
+            + imm11.clone() * Env::constant(1 << 11)
+            + imm19_12.clone() * Env::constant(1 << 12)
+            + imm20.clone() * Env::constant(1 << 20)
     };
 
     // FIXME: check correctness of decomposition
+
     match instr {
         UJInstruction::JumpAndLink => {
-            unimplemented!("JumpAndLink")
+            let offset = env.sign_extend(&offset, 21);
+            let new_addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&instruction_pointer, &offset, res_scratch, overflow_scratch)
+                };
+                res
+            };
+            env.write_register(&rd, next_instruction_pointer.clone());
+            env.set_instruction_pointer(new_addr.clone());
+            env.set_next_instruction_pointer(new_addr + Env::constant(4u32));
         }
-    };
+    }
 }
 
 pub fn interpret_syscall<Env: InterpreterEnv>(env: &mut Env, _instr: SyscallInstruction) {

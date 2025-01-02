@@ -88,8 +88,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         assert_eq!(*x, *y);
     }
 
-    fn check_boolean(x: &Self::Variable) {
-        if !(*x == 0 || *x == 1) {
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        if *x != 0 && *x != 1 {
             panic!("The value {} is not a boolean", *x);
         }
     }
@@ -214,6 +214,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
+        assert!(
+            lowest_bit < highest_bit,
+            "The lowest bit must be strictly lower than the highest bit"
+        );
+        assert!(
+            highest_bit <= 32,
+            "The interpreter is for a 32bits architecture"
+        );
         let x: u32 = (*x).try_into().unwrap();
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res = res as u64;
