@@ -221,6 +221,25 @@ pub struct VmConfiguration {
     pub host: Option<HostProgram>,
 }
 
+impl Default for VmConfiguration {
+    fn default() -> Self {
+        VmConfiguration {
+            input_state_file: "state.json".to_string(),
+            output_state_file: "out.json".to_string(),
+            metadata_file: None,
+            proof_at: StepFrequency::Never,
+            stop_at: StepFrequency::Never,
+            snapshot_state_at: StepFrequency::Never,
+            info_at: StepFrequency::Never,
+            proof_fmt: "proof-%d.json".to_string(),
+            snapshot_fmt: "state-%d.json".to_string(),
+            pprof_cpu: false,
+            halt_address: None,
+            host: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Start {
     pub time: std::time::Instant,

@@ -1997,6 +1997,7 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
+ "once_cell",
  "os_pipe",
  "poly-commitment",
  "rand",
