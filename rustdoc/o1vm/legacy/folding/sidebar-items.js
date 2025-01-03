@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Challenge"],"mod":["keccak","mips"],"struct":["ChallengeIter","DecomposedFoldingEnvironment","FoldingEnvironment","FoldingInstance","FoldingWitness"]};
