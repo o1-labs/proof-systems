@@ -1,25 +1,19 @@
 //! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-use crate::{
-    interpreters::keccak::{
-        column::{
-            Absorbs::{self, *},
-            KeccakWitness,
-            Sponges::{self, *},
-            Steps,
-            Steps::*,
-            PAD_SUFFIX_LEN,
-        },
-        constraints::Env as ConstraintsEnv,
-        grid_index,
-        interpreter::KeccakInterpreter,
-        pad_blocks, standardize,
-        witness::Env as WitnessEnv,
-        KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+use crate::interpreters::keccak::{
+    column::{
+        Absorbs::{self, *},
+        KeccakWitness,
+        Sponges::{self, *},
+        Steps,
+        Steps::*,
+        PAD_SUFFIX_LEN,
     },
-    lookups::Lookup,
-    E,
+    constraints::Env as ConstraintsEnv,
+    grid_index, pad_blocks, standardize,
+    witness::Env as WitnessEnv,
+    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
 use ark_ff::Field;
@@ -436,25 +430,5 @@ impl<F: Field> KeccakEnv<F> {
         }
 
         state_g
-    }
-
-    /// Returns the list of constraints used in a specific Keccak step
-    pub(crate) fn constraints_of(step: Steps) -> Vec<E<F>> {
-        let mut env = ConstraintsEnv {
-            constraints: vec![],
-            lookups: vec![],
-        };
-        env.constraints(step);
-        env.constraints
-    }
-
-    /// Returns the list of lookups used in a specific Keccak step
-    pub(crate) fn lookups_of(step: Steps) -> Vec<Lookup<E<F>>> {
-        let mut env = ConstraintsEnv {
-            constraints: vec![],
-            lookups: vec![],
-        };
-        env.lookups(step);
-        env.lookups
     }
 }

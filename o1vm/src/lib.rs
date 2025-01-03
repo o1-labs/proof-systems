@@ -8,11 +8,6 @@ pub mod elf_loader;
 
 pub mod interpreters;
 
-/// Legacy implementation of the recursive proof composition.
-/// It does use the folding and ivc libraries defined in this monorepo, and aims
-/// to be compatible with Ethereum natively, using the curve bn254.
-pub mod legacy;
-
 /// Pickles flavor of the o1vm.
 pub mod pickles;
 
