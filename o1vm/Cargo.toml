@@ -13,10 +13,6 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [[bin]]
-name = "legacy_o1vm"
-path = "src/legacy/main.rs"
-
-[[bin]]
 name = "pickles_o1vm"
 path = "src/pickles/main.rs"
 

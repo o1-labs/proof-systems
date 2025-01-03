@@ -126,7 +126,6 @@ In either case, `run-code.sh` will:
 
 Different versions/flavors of the o1vm are available.
 
-- [legacy](./src/legacy/mod.rs) - to be deprecated.
 - [pickles](./src/pickles/mod.rs) (currently the default)
 
 You can select the flavor you want to run with `run-code.sh` by using the
