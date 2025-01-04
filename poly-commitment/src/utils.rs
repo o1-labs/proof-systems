@@ -63,7 +63,7 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 
 /// Combine the polynomials using a scalar (`polyscale`), creating a single
 /// unified polynomial to open. This function also accepts polynomials in
-/// evaluations form. In this case it applies an IFFT, and, if necessarry,
+/// evaluations form. In this case it applies an IFFT, and, if necessary,
 /// applies chunking to it (ie. split it in multiple polynomials of
 /// degree less than the SRS size).
 ///
