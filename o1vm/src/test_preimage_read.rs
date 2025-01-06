@@ -1,10 +1,9 @@
-use clap::Arg;
-use log::{debug, error};
-use o1vm::{
-    cannon::PreimageKey,
-    cannon_cli::{main_cli, read_configuration},
+use crate::{
+    cannon::{PreimageKey, VmConfiguration},
+    cli,
     preimage_oracle::{PreImageOracle, PreImageOracleT},
 };
+use log::{debug, error};
 use std::{
     io::{self},
     path::{Path, PathBuf},
@@ -12,28 +11,15 @@ use std::{
     str::FromStr,
 };
 
-fn main() -> ExitCode {
+pub fn main(args: cli::cannon::RunArgs) -> ExitCode {
     use rand::Rng;
 
-    env_logger::init();
-
-    // Add command-line parameter to read the Optimism op-program DB directory
-    let cli = main_cli().arg(
-        Arg::new("preimage-db-dir")
-            .long("preimage-db-dir")
-            .value_name("PREIMAGE_DB_DIR"),
-    );
-
-    // Now read matches with the additional argument(s)
-    let matches = cli.get_matches();
-
-    let configuration = read_configuration(&matches);
-
-    // Get DB directory and abort if unset
-    let preimage_db_dir = matches.get_one::<String>("preimage-db-dir");
+    let configuration: VmConfiguration = args.vm_cfg.into();
+    let preimage_db_dir = args.preimage_db_dir;
 
     if let Some(preimage_key_dir) = preimage_db_dir {
-        let mut po = PreImageOracle::create(&configuration.host);
+        let host_program = configuration.host.expect("No host program specified");
+        let mut po = PreImageOracle::create(host_program);
         let _child = po.start();
         debug!("Let server start");
         std::thread::sleep(std::time::Duration::from_secs(5));

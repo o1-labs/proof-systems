@@ -317,7 +317,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     assert_eq!(witness_env[0].pad_suffix(0), Fp::zero());
     assert_eq!(witness_env[0].pad_suffix(1), Fp::zero());
     assert_eq!(witness_env[0].pad_suffix(2), Fp::zero());
-    // Check that the padding blocks are corrrect
+    // Check that the padding blocks are correct
     assert_eq!(witness_env[0].block_in_padding(0), Fp::zero());
     assert_eq!(witness_env[0].block_in_padding(1), Fp::zero());
     assert_eq!(witness_env[0].block_in_padding(2), Fp::zero());

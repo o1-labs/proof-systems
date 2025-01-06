@@ -2,11 +2,28 @@
 # Known coverage limitations and issues:
 # - https://github.com/rust-lang/rust/issues/79417
 # - https://github.com/nextest-rs/nextest/issues/16
-# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage report and the corresponding PR check,
-#        once situation with the Rust's Doctests will be improved.
+# FIXME: Update or remove the `codecov.yml` file to enable the `patch` coverage
+# report and the corresponding PR check, once situation with the Rust's Doctests
+# will be improved.
 COVERAGE_ENV = CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' RUSTDOCFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE=$(shell pwd)/target/profraw/cargo-test-%p-%m.profraw
-# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of custom output types, hence, no need in double invocation
+# FIXME: In latest 0.8.19+ -t CLI argument can accept comma separated list of
+# custom output types, hence, no need in double invocation
 GRCOV_CALL = grcov ./target/profraw --binary-path ./target/release/deps/ -s . --branch --ignore-not-existing --ignore "**/tests/**"
+RISCV32_TOOLCHAIN_PATH = $(shell pwd)/_riscv32-gnu-toolchain
+
+O1VM_RESOURCES_PATH = $(shell pwd)/o1vm/resources/programs
+O1VM_RISCV32IM_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/src
+O1VM_RISCV32IM_SOURCE_FILES = $(wildcard ${O1VM_RISCV32IM_SOURCE_DIR}/*.S)
+O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
+O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
+RISCV32_AS_FLAGS = --warn --fatal-warnings
+
+OPTIMISM_MIPS_SOURCE_DIR = $(shell pwd)/o1vm/ethereum-optimism/cannon/mipsevm/open_mips_tests/test
+OPTIMISM_MIPS_SOURCE_FILES = $(wildcard ${OPTIMISM_MIPS_SOURCE_DIR}/*.asm)
+O1VM_MIPS_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/mips/src
+O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_SOURCE_DIR}/%.asm,${OPTIMISM_MIPS_SOURCE_FILES})
+O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
+O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
 
 # Default target
 all: release
@@ -21,11 +38,10 @@ setup:
 		@echo "Git submodules synced."
 		@echo ""
 
-# Install test dependencies
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
 # FIXME: latest 0.8.19+ requires rustc 1.74+
-install-test-deps:
+install-test-deps: ## Install test dependencies
 		@echo ""
 		@echo "Installing the test dependencies."
 		@echo ""
@@ -36,76 +52,78 @@ install-test-deps:
 		@echo "Test dependencies installed."
 		@echo ""
 
-# Clean the project
-clean:
-		cargo clean
 
-# Build the project
-build:
+clean: ## Clean the project
+		@cargo clean
+		@rm -rf $(O1VM_RISCV32IM_BIN_FILES)
+		@rm -rf $(O1VM_MIPS_BIN_DIR)
+
+
+build: ## Build the project
 		cargo build --all-targets --all-features
 
-# Build the project in release mode
-release:
+
+release: ## Build the project in release mode
 		cargo build --release --all-targets --all-features
 
-# Test the project's docs comments
-test-doc:
+
+test-doc: ## Test the project's docs comments
 		cargo test --all-features --release --doc
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
-# Test the project with non-heavy tests and using native cargo test runner
-test:
+
+test: ## Test the project with non-heavy tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
-# Test the project with heavy tests and using native cargo test runner
-test-heavy:
+
+test-heavy: ## Test the project with heavy tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
-# Test the project with all tests and using native cargo test runner
-test-all:
+
+test-all: ## Test the project with all tests and using native cargo test runner
 		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
-# Test the project with non-heavy tests and using nextest test runner
-nextest:
+
+nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
-# Test the project with heavy tests and using nextest test runner
-nextest-heavy:
+
+nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
-# Test the project with all tests and using nextest test runner
-nextest-all:
+
+nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run --all-features --release --profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
-# Format the code
-format:
+
+format: ## Format the code
 		cargo +nightly fmt -- --check
 
-# Lint the code
-lint:
+
+lint: ## Lint the code
 		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
-generate-test-coverage-report:
+generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
 		@echo "Generating the test coverage report."
 		@echo ""
@@ -119,7 +137,7 @@ generate-test-coverage-report:
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-generate-doc:
+generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
@@ -128,4 +146,59 @@ generate-doc:
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc
+help: ## Ask for help!
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+
+setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
+		@echo ""
+		@echo "Setting up the RISC-V 32-bit toolchain"
+		@echo ""
+		if [ ! -d $(RISCV32_TOOLCHAIN_PATH) ]; then \
+			git clone https://github.com/riscv-collab/riscv-gnu-toolchain ${RISCV32_TOOLCHAIN_PATH}; \
+		fi
+		cd ${RISCV32_TOOLCHAIN_PATH} && ./configure --with-arch=rv32gc --with-abi=ilp32d --prefix=${RISCV32_TOOLCHAIN_PATH}/build
+		cd ${RISCV32_TOOLCHAIN_PATH} && make -j 32 # require a good internet connection and some minutes
+		@echo ""
+		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
+		@echo ""
+
+build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES} ## Build all RISC-V 32 bits programs written for the o1vm
+
+${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
+		@echo ""
+		@echo "Building the RISC-V 32-bits binary: $@ using $<"
+		@echo ""
+		mkdir -p ${O1VM_RISCV32IM_BIN_DIR}
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-as ${RISCV32_AS_FLAGS} -o $@ $<
+		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
+		@echo ""
+
+build-mips-programs: ${O1VM_MIPS_SOURCE_FILES} ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
+
+${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
+		@mkdir -p ${O1VM_MIPS_SOURCE_DIR}
+		@echo "Transforming $< to $@, making it compatible for o1vm"
+		@sed \
+				-e '/\.balign 4/d' \
+				-e '/\.set\s*noreorder/d' \
+				-e '/\.ent\s*test/d' \
+				-e '/\.end test/d' \
+				-e 's/\.section .test, "x"/.section .text/' \
+				-e 's/\s*\.section .text/.section .text/' \
+				-e 's/\.global test/.global __start/' \
+				-e "s/^\s*\.global __start/.global __start/" \
+				-e "s/test\:/__start:/" \
+				-e "/\.global __start/a\\" \
+				$< > $@
+
+${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
+		@echo "Building the MIPS binary: $(basename $@) using $<"
+		@mkdir -p ${O1VM_MIPS_BIN_DIR}
+		@mips-linux-gnu-as -defsym big_endian=1 -march=mips32r2 -o $@ $<
+		@mips-linux-gnu-ld -s -o $(basename $@) $@
+
+fclean: clean ## Clean the tooling artefacts in addition to running clean
+		rm -rf ${RISCV32_TOOLCHAIN_PATH}
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs

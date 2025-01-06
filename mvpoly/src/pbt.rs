@@ -556,12 +556,6 @@ pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVP
         p.add_monomial(monomials_exponents, c);
         assert!(p.is_multilinear());
     }
-
-    // Test with a random polynomial (very unlikely to be multilinear)
-    {
-        let p = unsafe { T::random(&mut rng, None) };
-        assert!(!p.is_multilinear());
-    }
 }
 
 pub fn test_is_constant<F: PrimeField, const N: usize, const D: usize, T: MVPoly<F, N, D>>() {

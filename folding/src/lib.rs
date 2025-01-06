@@ -218,7 +218,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
         // Committing to the cross terms
-        // Default blinder for commiting to the cross terms
+        // Default blinder for committing to the cross terms
         let blinders = PolyComm::new(vec![ScalarField::<CF>::one()]);
         let error_commitments = error_evals
             .iter()

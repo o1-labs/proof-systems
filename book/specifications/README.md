@@ -49,4 +49,4 @@ The idea is to keep as much of the specification close to the source, so that mo
 
 The specifications are built into the Mina book, and deployed to Github pages, via [this Github Action](/.github/workflows/website.yml).
 
-The Github Action ensures that the generated specifications that are pushed to the remote repository are also up to date.
+The Github Action ensures that the generated specifications that are pushed to the remote repository are also up-to-date.

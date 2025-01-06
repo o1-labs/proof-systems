@@ -31,7 +31,7 @@ The code above also defines a generator $g$ for it, such that $g^{2^{32}} = 1$ a
 
 [Lagrange's theorem](https://en.wikipedia.org/wiki/Lagrange%27s_theorem_(group_theory)) tells us that if we have a group of order $n$, then we'll have subgroups with orders dividing $n$. So in our case, we have subgroups with all the powers of 2, up to the 32-th power of 2.
 
-To find any of these groups, it is pretty straight forward as well. Notice that:
+To find any of these groups, it is pretty straightforward as well. Notice that:
 
 * let $h = g^2$, then $h^{2^{31}} = g^{2^{32}} = 1$ and so $h$ generates a subgroup of order 31
 * let $t = g^{2^2}$, then $t^{2^{30}} = g^{2^{32}} = 1$ and so $t$ generates a subgroup of order 30

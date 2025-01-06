@@ -162,7 +162,7 @@ pub fn constrain_test_fixed_sel_degree_7_with_constants<
     env: &mut Env,
 ) {
     let a0 = Env::read_column(env, TestColumn::A(0));
-    let fourty_two = Env::constant(F::from(42u32));
+    let forty_two = Env::constant(F::from(42u32));
     let three = Env::constant(F::from(3u32));
     let b0 = Env::read_column(env, TestColumn::B(0));
     let fixed_e = Env::read_column(env, TestColumn::FixedSel1);
@@ -170,7 +170,7 @@ pub fn constrain_test_fixed_sel_degree_7_with_constants<
     let a0_4 = a0_2.clone() * a0_2.clone();
     let a0_6 = a0_4.clone() * a0_2.clone();
     let a0_7 = a0_6.clone() * a0.clone();
-    let equation = three * a0_7.clone() + fourty_two * b0.clone() - fixed_e;
+    let equation = three * a0_7.clone() + forty_two * b0.clone() - fixed_e;
     env.assert_zero(equation.clone());
 }
 

@@ -380,7 +380,7 @@ impl ColumnIndexer for ColumnAlias {
     }
 }
 
-// IMPLEMENTAIONS FOR SELECTOR
+// IMPLEMENTATIONS FOR SELECTOR
 
 impl<T: Clone> Index<Steps> for KeccakWitness<T> {
     type Output = T;

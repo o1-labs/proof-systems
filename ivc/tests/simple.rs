@@ -271,7 +271,7 @@ pub fn heavy_test_simple_add() {
             .map(|x| FoldingCompatibleExpr::from(x.clone()))
             .collect();
 
-        // IVC column expression should be shifted to the right to accomodate
+        // IVC column expression should be shifted to the right to accommodate
         // app witness.
         let ivc_mapper = &(|Variable { col, row }| {
             let rel_offset: usize = AdditionColumn::COUNT;

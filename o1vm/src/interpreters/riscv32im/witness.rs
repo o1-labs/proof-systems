@@ -3,8 +3,8 @@
 use super::{
     column::Column,
     interpreter::{
-        self, IInstruction, Instruction, InterpreterEnv, RInstruction, SBInstruction, SInstruction,
-        SyscallInstruction, UInstruction, UJInstruction,
+        self, IInstruction, Instruction, InterpreterEnv, MInstruction, RInstruction, SBInstruction,
+        SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
     INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
@@ -88,8 +88,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         assert_eq!(*x, *y);
     }
 
-    fn check_boolean(x: &Self::Variable) {
-        if !(*x == 0 || *x == 1) {
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        if *x != 0 && *x != 1 {
             panic!("The value {} is not a boolean", *x);
         }
     }
@@ -214,6 +214,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
+        assert!(
+            lowest_bit < highest_bit,
+            "The lowest bit must be strictly lower than the highest bit"
+        );
+        assert!(
+            highest_bit <= 32,
+            "The interpreter is for a 32bits architecture"
+        );
         let x: u32 = (*x).try_into().unwrap();
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res = res as u64;
@@ -471,78 +479,105 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn mul_hi_lo_signed(
+    unsafe fn mul_hi(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let mul = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
-        let hi = (mul >> 32) as u32;
-        let lo = (mul & ((1 << 32) - 1)) as u32;
-        let hi = hi as u64;
-        let lo = lo as u64;
-        self.write_column(position_hi, hi);
-        self.write_column(position_lo, lo);
-        (hi, lo)
+        let res = (x as u64) * (y as u64);
+        let res = (res >> 32) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn mul_hi_lo(
+    unsafe fn mul_hi_signed_unsigned(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_hi: Self::Position,
-        position_lo: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let mul = (x as u64) * (y as u64);
-        let hi = (mul >> 32) as u32;
-        let lo = (mul & ((1 << 32) - 1)) as u32;
-        let hi = hi as u64;
-        let lo = lo as u64;
-        self.write_column(position_hi, hi);
-        self.write_column(position_lo, lo);
-        (hi, lo)
+        let res = (((x as i32) as i64) * (y as i64)) as u64;
+        let res = (res >> 32) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn divmod_signed(
+    unsafe fn div_signed(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
-        let x: u32 = (*x).try_into().unwrap();
-        let y: u32 = (*y).try_into().unwrap();
-        let q = ((x as i32) / (y as i32)) as u32;
-        let r = ((x as i32) % (y as i32)) as u32;
-        let q = q as u64;
-        let r = r as u64;
-        self.write_column(position_quotient, q);
-        self.write_column(position_remainder, r);
-        (q, r)
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x / y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
-    unsafe fn divmod(
+    unsafe fn mul_lo(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
-        position_quotient: Self::Position,
-        position_remainder: Self::Position,
-    ) -> (Self::Variable, Self::Variable) {
+        position: Self::Position,
+    ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let y: u32 = (*y).try_into().unwrap();
-        let q = x / y;
-        let r = x % y;
-        let q = q as u64;
-        let r = r as u64;
-        self.write_column(position_quotient, q);
-        self.write_column(position_remainder, r);
-        (q, r)
+        let res = (x as u64) * (y as u64);
+        let res = (res & ((1 << 32) - 1)) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: i32 = (*x).try_into().unwrap();
+        let y: i32 = (*y).try_into().unwrap();
+        let res = (x % y) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn div(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = x / y;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn mod_unsigned(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = x % y;
+        let res = res as u64;
+        self.write_column(position, res);
+        res
     }
 
     unsafe fn count_leading_zeros(
@@ -723,31 +758,70 @@ impl<Fp: Field> Env<Fp> {
                     },
                     _ => panic!("Unknown IType instruction with full inst {}", instruction),
                 },
-                0b0110011 =>
-                match (instruction >> 12) & 0x7 // bits 12-14 for func3
-                {
-                    0b000 =>
-                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
-                    {
-                    0b0 => Instruction::RType(RInstruction::Add),
-                    0b1 => Instruction::RType(RInstruction::Sub),
-                     _ => panic!("Unknown RType in add/sub instructions with full inst {}", instruction),
-                    },
-                    0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
-                    0b010 => Instruction::RType(RInstruction::SetLessThan),
-                    0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
-                    0b100 => Instruction::RType(RInstruction::Xor),
-                    0b101 =>
-                    match (instruction >> 30) & 0x1 // bit 30 of funct5 component in RType
-                    {
-                        0b0 => Instruction::RType(RInstruction::ShiftRightLogical),
-                        0b1 => Instruction::RType(RInstruction::ShiftRightArithmetic),
-                        _ => panic!("Unknown RType in shift right instructions with full inst {}", instruction),
-                    },
-                    0b110 => Instruction::RType(RInstruction::Or),
-                    0b111 => Instruction::RType(RInstruction::And),
-                    _ => panic!("Unknown RType 0110011 instruction with full inst {}", instruction),
-                },
+                0b0110011 => {
+                    let funct5 = instruction >> 27 & 0x1F; // bits 27-31 for funct5
+                    let funct2 = instruction >> 25 & 0x3; // bits 25-26 for func2
+                    let funct3 = instruction >> 12 & 0x7; // bits 12-14 for func3
+                    match funct2 {
+                        // These are the instructions for the base integer set
+                        0b00 => {
+                            // The integer set have two sets of instructions
+                            // using a different funct5 value
+                            match funct5 {
+                                0b00000 => {
+                                    // Note: all possible values are handled here
+                                    match funct3 {
+                                        0b000 => Instruction::RType(RInstruction::Add),
+                                        0b001 => Instruction::RType(RInstruction::ShiftLeftLogical),
+                                        0b010 => Instruction::RType(RInstruction::SetLessThan),
+                                        0b011 => Instruction::RType(RInstruction::SetLessThanUnsigned),
+                                        0b100 => Instruction::RType(RInstruction::Xor),
+                                        0b101 => Instruction::RType(RInstruction::ShiftRightLogical),
+                                        0b110 => Instruction::RType(RInstruction::Or),
+                                        0b111 => Instruction::RType(RInstruction::And),
+                                        _ => panic!("This case should never happen as funct3 is 8 bits long and all possible case are implemented. However, we still have an unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // Note that there are still some values unhandled here.
+                                0b01000 => {
+                                    // Note that there are still 6 values unhandled here.
+                                    match funct3 {
+                                        0b000 => Instruction::RType(RInstruction::Sub),
+                                        0b101 => Instruction::RType(RInstruction::ShiftRightArithmetic),
+                                        _ => panic!("Unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // All the unhandled cases
+                                1_u32..=7_u32 | 9_u32..=u32::MAX =>
+                                    panic!("Unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                            }
+                        },
+                        // These are the instructions for the M type
+                        0b01 => {
+                            match funct5 {
+                                // All instructions for the M type have the same
+                                // funct5 value. Still catching it here to be
+                                // sure we do not misinterpret an instruction
+                                0b00000 => {
+                                    match funct3 {
+                                        0b000 => Instruction::MType(MInstruction::Mul),
+                                        0b001 => Instruction::MType(MInstruction::Mulh),
+                                        0b010 => Instruction::MType(MInstruction::Mulhsu),
+                                        0b011 => Instruction::MType(MInstruction::Mulhu),
+                                        0b100 => Instruction::MType(MInstruction::Div),
+                                        0b101 => Instruction::MType(MInstruction::Divu),
+                                        0b110 => Instruction::MType(MInstruction::Rem),
+                                        0b111 => Instruction::MType(MInstruction::Remu),
+                                        _ => panic!("This case should never happen as funct3 is 8 bits long and all possible case are implemented. However, we still have an unknown opcode 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                                    }
+                                },
+                                // Note that there are still some values unhandled here.
+                                1_u32..=u32::MAX => panic!("Unknown 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                            }
+                        },
+                        _ => panic!("Unknown RType 0110011 instruction with full inst {} (funct5 = {}, funct2 = {}, funct3 = {})", instruction, funct5, funct2, funct3),
+                    }
+                }
                 0b0001111 =>
                 match (instruction >> 12) & 0x7 // bits 12-14 for func3
                 {

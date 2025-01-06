@@ -12,7 +12,7 @@ pub type SnarkyRuntimeResult<T> = std::result::Result<T, Box<SnarkyRuntimeError>
 pub type SnarkyCompileResult<T> = std::result::Result<T, SnarkyCompilationError>;
 
 #[derive(Debug, Error)]
-#[error("an error ocurred in snarky")]
+#[error("an error occurred in snarky")]
 pub struct RealSnarkyError {
     /// The actual error.
     pub source: SnarkyError,

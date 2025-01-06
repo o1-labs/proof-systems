@@ -289,7 +289,7 @@ pub fn constrain_ec_addition<
         .enumerate()
     {
         if i % 6 == 5 {
-            // This should be a diferent range check depending on which big-limb we're processing?
+            // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
             env.lookup(LookupTable::RangeCheck9Abs, vec![x.clone()]);
         } else {

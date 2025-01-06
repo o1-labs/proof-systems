@@ -20,7 +20,7 @@ One can also perform two additional operations once the constraint system has be
 
 ## A circuit
 
-A circuit is either being built, or has been contructed during a circuit generation phase:
+A circuit is either being built, or has been constructed during a circuit generation phase:
 
 ```rust
 enum Circuit<F>
@@ -107,7 +107,7 @@ It is the role of the `add_constrain` logic to enforce that at this point consta
 This is done by adding enough generic gates (using the `reduce_lincom()` or `reduce_to_var()` functions).
 
 ```admonish
-This is a remnant of an optimization targetting R1CS (in which additions are for free).
+This is a remnant of an optimization targeting R1CS (in which additions are for free).
 An issue with this approach is the following: imagine that two circuit variables are created from the same circuit variable, imagine also that the original circuit variable contained a long AST, then both variables might end up creating the same constraints to convert that AST.
 Currently, snarkyjs and pickles expose a `seal()` function that allows you to reduce this issue, at the cost of some manual work and mental tracking on the developer.
 We should probably get rid of this, while making sure that we can continue to optimize generic gates 
@@ -142,7 +142,7 @@ The `finalization()` function of the kimchi backend does the following:
 
 * add as many generic rows as there are public inputs.
 * construct the permutation 
-* computes a cache of the circuit (TODO: this is so unecessary)
+* computes a cache of the circuit (TODO: this is so unnecessary)
 * and other things that are not that important
 
 ## Witness generation

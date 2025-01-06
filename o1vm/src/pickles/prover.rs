@@ -22,7 +22,8 @@ use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
-    ipa::{DensePolynomialOrEvaluations, OpeningProof, SRS},
+    ipa::{OpeningProof, SRS},
+    utils::DensePolynomialOrEvaluations,
     OpenProof as _, SRS as _,
 };
 use rand::{CryptoRng, RngCore};
@@ -394,7 +395,7 @@ where
 
         let fail_final_q_division = || panic!("Fail division by vanishing poly");
         let fail_remainder_not_zero =
-            || panic!("The constraints are not satisifed since the remainder is not zero");
+            || panic!("The constraints are not satisfied since the remainder is not zero");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
         let (quotient, rem) = expr_evaluation_interpolated
