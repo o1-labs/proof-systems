@@ -1,4 +1,4 @@
-name: MIPS Build, Test, and Package
+name: ov1m CI
 
 on:
   workflow_dispatch:
@@ -8,7 +8,8 @@ on:
       - master
 
 jobs:
-  build:
+  build_test_package:
+    name: Build, test, and package simple MIPS programs
     runs-on: ubuntu-latest
     strategy:
       matrix:
