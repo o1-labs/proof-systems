@@ -151,16 +151,20 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        if let Some(idx) = LookupTable::is_in_table(&lookup.table_id, lookup.value) {
+        if let Some(table) = self.lookup_fixed_tables.get(&lookup.table_id) {
             // We found the table, so just add one to the multiplicity.
-            self.lookup_multiplicities
-                .get_mut(&lookup.table_id)
-                .unwrap()[idx] += 1;
+            if let Some(idx) = LookupTable::is_in_table(
+                table,
+                lookup.value.into_iter().map(|x| Fp::from(x)).collect(),
+            ) {
+                self.lookup_multiplicities
+                    .get_mut(&lookup.table_id)
+                    .unwrap()[idx] += 1;
+            } else {
+                panic!("Value is not in the table!")
+            }
         } else {
-            panic!(
-                "Tried to lookup in non-fixed table: {:?}",
-                LookupTableIDs::from_u32(lookup.table_id)
-            );
+            panic!("Tried to lookup in non-fixed table: {:?}", lookup.table_id);
         }
     }
 

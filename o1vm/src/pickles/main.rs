@@ -12,10 +12,7 @@ use o1vm::{
     cannon::{self, Start, State},
     cli, elf_loader,
     interpreters::mips::{
-        column::N_MIPS_REL_COLS,
-        constraints as mips_constraints,
-        witness::{self as mips_witness},
-        Instruction,
+        column::N_MIPS_REL_COLS, constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, witness::{self as mips_witness}, Instruction
     },
     lookups::{partition_lookups, LookupTableIDs},
     pickles::{proof::ProofInputs, prover, verifier},
@@ -24,6 +21,7 @@ use o1vm::{
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
+use strum::IntoEnumIterator;
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
