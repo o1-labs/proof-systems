@@ -1,7 +1,11 @@
-name: MIPS Build and Package
+name: MIPS Build, Test, and Package
 
 on:
   workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -36,8 +40,9 @@ jobs:
       with:
         rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-    - name: Test elf_loader against mips programs
-      run: ./o1vm/test-gen-state-json.sh
+    - name: Test interpreter against mips programs
+      run: |
+        cargo test --features open_mips --test test_mips_elf -- --nocapture
 
     - name: Create tar archive
       run: |
