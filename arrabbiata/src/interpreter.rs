@@ -28,6 +28,7 @@
 //! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
+//! - [Folding](#folding)
 //!
 //! ## Gadgets implemented
 //!
