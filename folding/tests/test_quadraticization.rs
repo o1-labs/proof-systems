@@ -1,4 +1,4 @@
-//! quadraticization test, check that diferent cases result in the expected number of columns
+//! quadraticization test, check that different cases result in the expected number of columns
 //! being added
 use ark_poly::Radix2EvaluationDomain;
 use folding::{
