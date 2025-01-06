@@ -38,9 +38,9 @@
 //! particular additions and scalar multiplications.
 //!
 //! To reduce the number of operations, we consider the affine coordinates.
-//! As a reminder, here the equations to compute the addition of two different
-//! points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let define `P3 = (X3, Y3) = P1 +
-//! P2`.
+//! As a reminder, here are the equations to compute the addition of two
+//! different points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let define `P3 = (X3,
+//! Y3) = P1 + P2`.
 //!
 //! ```text
 //! - λ = (Y1 - Y2) / (X1 - X2)
@@ -68,9 +68,9 @@
 //! For given inputs (x1, y1) and (x2, y2), the layout will be as follow:
 //!
 //! ```text
-//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- | --- | --- |
-//! | x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |     |     |
+//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+//! | x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |
 //! ```
 //!
 //! where `b0` is equal two `1` if the points are the same, and `0` otherwise.
@@ -116,33 +116,12 @@
 //!
 //! #### Gadget layout
 //!
-//! We start with the assumption that 17 columns are available for the whole
-//! circuit, and we can support constraints up to degree 5.
-//! Therefore, we can compute 4 full rounds per row if we rely on the
-//! permutation argument, or 5 full rounds per row if we use the "next row".
-//!
-//! We provide two implementations of the Poseidon hash function. The first one
-//! does not use the "next row" and is limited to 4 full rounds per row. The
-//! second one uses the "next row" and can compute 5 full rounds per row.
-//! The second implementation is more efficient as it allows to compute one
-//! additional round per row.
-//! For the second implementation, the permutation argument will only be
-//! activated on the first and last group of 5 rounds.
-//!
-//! The layout for the one not using the "next row" is as follow (4 full rounds):
-//! ```text
-//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
-//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
-//! | x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | o1  | o2  | o3  |
-//! ```
-//! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
-//! output, and the other values are intermediary values. And we have the following equalities:
-//! ```text
-//! (a1, a2, a3) = PoseidonRound(x, y, z)
-//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
-//! (o1, o2, o3) = PoseidonRound(c1, c2, c3)
-//! ```
+//! We start with the assumption that [crate::NUMBER_OF_COLUMNS] columns are
+//! available for the whole circuit, and we can support constraints up to degree
+//! [crate::MAX_DEGREE].
+//! Therefore, we can compute 5 full rounds per row by using the "next row"
+//! (i.e. adding an evaluation point at ζω). An implementation is provided in
+//! the gadget [crate::columns::Gadget::Poseidon].
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
 //! ```text
@@ -162,7 +141,7 @@
 //! (o1, o2, o3) = PoseidonRound(d1, d2, d3)
 //! ```
 //!
-//! For both implementations, round constants are passed as public inputs. As a
+//! Round constants are passed as public inputs. As a
 //! reminder, public inputs are simply additional columns known by the prover
 //! and verifier.
 //! Also, the elements to absorb are added to the initial state at the beginning
@@ -177,7 +156,7 @@
 //!
 //! We will consider a basic implementation using the "next row". The
 //! accumulators will be saved on the "next row". The decomposition of the
-//! scalar will be incrementally on each row.
+//! scalar will be incremental on each row.
 //! The scalar used for the scalar multiplication will be fetched using the
 //! permutation argument (FIXME: to be implemented).
 //! More than one bit can be decomposed at the same time, and we could reduce
@@ -200,8 +179,8 @@
 //! We have the following layout:
 //!
 //! ```text
-//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- | --- | --- |
+//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 |
+//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- |
 //! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ' |  b  |
 //! | o'_x |  o'_y  | double_tmp'_x | double_tmp'_y |  r_(i+1)  |
 //! ```
@@ -225,8 +204,8 @@
 //!
 //! Using this technique requires us a folding scheme that handles degree
 //! `5 + 1` constraints, as the challenge will be considered as a variable.
-//! The reader can refer to the folding library available in this monorepo for
-//! more contexts.
+//! The reader can refer to this [HackMD
+//! document](https://hackmd.io/@dannywillems/Syo5MBq90) for more details.
 //!
 //! ## Permutation argument
 //!
@@ -301,8 +280,8 @@
 //! circuit.
 //!
 //! For a step `i + 1`, the challenges of the step `i` must be computed by the
-//! verifier, and check that it corresponds to the ones received as a public
-//! input.
+//! verifier in the circuit, and check that it corresponds to the ones received
+//! as a public input.
 //!
 //! TBD/FIXME: specify. Might require foreign field arithmetic.
 //!
@@ -320,8 +299,8 @@
 //! This computation depends on the constraints, and in particular on the
 //! monomials describing the constraints.
 //! The computation of the cross-terms and the error terms happen after the
-//! witness has been built and the different arguments like the permutation or
-//! lookup have been done. Therefore, the interpreter must provide a method to
+//! witness has been built and the different arguments like the permutation and
+//! lookups have been done. Therefore, the interpreter must provide a method to
 //! compute it, and the constraints should be passed as an argument.
 //!
 //! When computing the cross-terms, we must compute the contribution of each
