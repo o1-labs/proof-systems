@@ -7,6 +7,8 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::{One, Zero};
+use kimchi::circuits::lookup::lookups::LookupTableID;
+use kimchi_msm::LogupTableID;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
@@ -171,6 +173,8 @@ pub trait InterpreterEnv {
     /// an instruction, increase the value
     /// [crate::interpreters::mips::column::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
+
+    fn alloc_lookup(&mut self, table_id: LookupTableID) -> Self::Position;
 
     fn alloc_scratch_inverse(&mut self) -> Self::Position;
 

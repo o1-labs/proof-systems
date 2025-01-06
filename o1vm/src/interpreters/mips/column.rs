@@ -1,9 +1,10 @@
 use crate::interpreters::mips::Instruction::{self, IType, JType, RType};
+use kimchi::circuits::lookup::lookups::LookupTableID;
 use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
 };
-use std::ops::{Index, IndexMut};
+use std::{collections::HashMap, ops::{Index, IndexMut}};
 use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
@@ -52,7 +53,7 @@ pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
 
 /// Abstract columns (or variables of our multi-variate polynomials) that will
 /// be used to describe our constraints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
@@ -61,26 +62,29 @@ pub enum ColumnAlias {
     ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
+    Lookup(LookupTableID, usize),
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three
 /// main opcodes: RType, JType, IType. The columns are shared between different
 /// instruction types. (the total number of columns refers to the maximum of
 /// columns used by each mode)
-impl From<ColumnAlias> for usize {
-    fn from(alias: ColumnAlias) -> usize {
+impl TryFrom<ColumnAlias> for usize {
+    type Error = String;
+    fn try_from(alias: ColumnAlias) -> Result<usize, String> {
         // Note that SCRATCH_SIZE + 1 is for the error
         match alias {
             ColumnAlias::ScratchState(i) => {
                 assert!(i < SCRATCH_SIZE);
-                i
+                Ok(i)
             }
             ColumnAlias::ScratchStateInverse(i) => {
                 assert!(i < SCRATCH_SIZE_INVERSE);
-                SCRATCH_SIZE + i
+                Ok(SCRATCH_SIZE + i)
             }
-            ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
-            ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
+            ColumnAlias::InstructionCounter => Ok(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
+            ColumnAlias::Selector(s) => Ok(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s),
+            ColumnAlias::Lookup(table_id, idx) => Err(format!("Could not convert a lookup in table {:?} at index {} to a usize.", table_id, idx)),
         }
     }
 }
@@ -124,7 +128,11 @@ impl From<Instruction> for usize {
 /// - the (at most) 4 bytes of the preimage key that are currently being
 ///   processed
 /// - 4 helpers to check if at least n bytes were read in the current row
-pub type MIPSWitness<T> = Witness<N_MIPS_COLS, T>;
+pub struct MIPSWitness<T> {
+    lookup_witness: HashMap<LookupTableID, Vec<T>>,
+    // TODO: Name better
+    column_witness: Witness<N_MIPS_COLS, T>,
+}
 
 // IMPLEMENTATIONS FOR COLUMN ALIAS
 
@@ -133,17 +141,31 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
 
     /// Map the column alias to the actual column index.
     fn index(&self, index: ColumnAlias) -> &Self::Output {
-        &self.cols[usize::from(index)]
+        match index {
+            ColumnAlias::ScratchState(_) | ColumnAlias::ScratchStateInverse(_) | ColumnAlias::InstructionCounter | ColumnAlias::Selector(_) => {
+                &self.column_witness.cols[usize::try_from(index).unwrap()]
+            },
+            ColumnAlias::Lookup(table_idx, idx) => {
+                &self.lookup_witness.get(&table_idx).unwrap()[idx]
+            },
+        }
     }
 }
 
 impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
-        &mut self.cols[usize::from(index)]
+        match index {
+            ColumnAlias::ScratchState(_) | ColumnAlias::ScratchStateInverse(_) | ColumnAlias::InstructionCounter | ColumnAlias::Selector(_) => {
+                &mut self.column_witness.cols[usize::try_from(index).unwrap()]
+            },
+            ColumnAlias::Lookup(table_idx, idx) => {
+                &mut self.lookup_witness.get_mut(&table_idx).unwrap()[idx]
+            },
+        }
     }
 }
 
-impl ColumnIndexer for ColumnAlias {
+/* impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
 
     fn to_column(self) -> Column {
@@ -180,7 +202,7 @@ impl ColumnIndexer for ColumnAlias {
         }
     }
 }
-
+ */
 // IMPLEMENTATIONS FOR SELECTOR
 
 impl<T: Clone> Index<Instruction> for MIPSWitness<T> {
@@ -188,13 +210,13 @@ impl<T: Clone> Index<Instruction> for MIPSWitness<T> {
 
     /// Map the column alias to the actual column index.
     fn index(&self, index: Instruction) -> &Self::Output {
-        &self.cols[usize::from(index)]
+        &self.column_witness.cols[usize::from(index)]
     }
 }
 
 impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
     fn index_mut(&mut self, index: Instruction) -> &mut Self::Output {
-        &mut self.cols[usize::from(index)]
+        &mut self.column_witness.cols[usize::from(index)]
     }
 }
 

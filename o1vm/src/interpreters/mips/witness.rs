@@ -26,7 +26,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::o1_utils::Two;
+use kimchi::{circuits::lookup::lookups::LookupTableID, o1_utils::Two};
 use kimchi_msm::LogupTableID as _;
 use log::{debug, info};
 use std::{
@@ -69,6 +69,7 @@ impl SyscallEnv {
 // Some type aliases to aid in refactoring to something faster later
 type FixedTableMap<ID, F> = HashMap<ID, LookupTable<F>>;
 type MultiplicityMap<ID> = HashMap<ID, Vec<u32>>;
+type LookupMap<ID, F> = HashMap<ID, Vec<F>>;
 
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
@@ -87,6 +88,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
+    pub scratch_lookup: LookupMap<LookupTableID, Fp>, // use len for the idx
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -111,6 +113,13 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_lookup(&mut self, table_id: LookupTableID) -> Self::Position {
+        let lookup_vec = self.scratch_lookup.get_mut(table_id).unwrap();
+        let lookup_idx = lookup_vec.len();
+        lookup_vec.push(Fp::zero());
+        Column::Lookup(table_id, lookup_idx);
     }
 
     fn alloc_scratch_inverse(&mut self) -> Self::Position {
