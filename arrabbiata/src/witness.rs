@@ -990,9 +990,6 @@ impl<
     /// z_(i + 1) = F(w_i, z_i)
     /// ```
     ///
-    /// - We decompose the scalar `r`, the random combiner, into bits to compute
-    /// the MSM for the next step.
-    ///
     /// - We compute the MSM (verifier)
     ///
     /// ```text
