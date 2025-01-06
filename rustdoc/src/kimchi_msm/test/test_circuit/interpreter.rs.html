@@ -532,7 +532,7 @@
     env: <span class="kw-2">&amp;mut </span>Env,
 ) {
     <span class="kw">let </span>a0 = Env::read_column(env, TestColumn::A(<span class="number">0</span>));
-    <span class="kw">let </span>fourty_two = Env::constant(F::from(<span class="number">42u32</span>));
+    <span class="kw">let </span>forty_two = Env::constant(F::from(<span class="number">42u32</span>));
     <span class="kw">let </span>three = Env::constant(F::from(<span class="number">3u32</span>));
     <span class="kw">let </span>b0 = Env::read_column(env, TestColumn::B(<span class="number">0</span>));
     <span class="kw">let </span>fixed_e = Env::read_column(env, TestColumn::FixedSel1);
@@ -540,7 +540,7 @@
     <span class="kw">let </span>a0_4 = a0_2.clone() * a0_2.clone();
     <span class="kw">let </span>a0_6 = a0_4.clone() * a0_2.clone();
     <span class="kw">let </span>a0_7 = a0_6.clone() * a0.clone();
-    <span class="kw">let </span>equation = three * a0_7.clone() + fourty_two * b0.clone() - fixed_e;
+    <span class="kw">let </span>equation = three * a0_7.clone() + forty_two * b0.clone() - fixed_e;
     env.assert_zero(equation.clone());
 }
 

@@ -686,7 +686,7 @@
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
 
         <span class="comment">// Committing to the cross terms
-        // Default blinder for commiting to the cross terms
+        // Default blinder for committing to the cross terms
         </span><span class="kw">let </span>blinders = PolyComm::new(<span class="macro">vec!</span>[ScalarField::&lt;CF&gt;::one()]);
         <span class="kw">let </span>error_commitments = error_evals
             .iter()

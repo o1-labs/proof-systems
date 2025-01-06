@@ -1446,7 +1446,7 @@
 
         <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_bigint()).collect();
 
-        <span class="comment">// chunk while commiting
+        <span class="comment">// chunk while committing
         </span><span class="kw">let </span><span class="kw-2">mut </span>chunks = <span class="macro">vec!</span>[];
         <span class="kw">if </span>is_zero {
             chunks.push(G::zero());
