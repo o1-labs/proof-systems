@@ -29,6 +29,7 @@
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
 //! - [Folding](#folding)
+//! - [Message passing](#message-passing)
 //!
 //! ## Gadgets implemented
 //!
@@ -277,7 +278,9 @@
 //! ## Fiat-Shamir challenges
 //!
 //! The challenges sent by the verifier must also be simulated by the IVC
-//! circuit.
+//! circuit. It is done by passing "messages" as public inputs to the next
+//! instances. Diagrams recapitulating the messages that must be passed are
+//! available in the section [Message passing](#message-passing).
 //!
 //! For a step `i + 1`, the challenges of the step `i` must be computed by the
 //! verifier in the circuit, and check that it corresponds to the ones received
@@ -317,6 +320,115 @@
 //! implementing the trait [MVPoly](mvpoly::MVPoly) and the method
 //! [compute_cross_terms](mvpoly::MVPoly::compute_cross_terms) can be used from
 //! there.
+//!
+//! ## Message passing
+//!
+//! The message passing is a crucial part of the IVC scheme. The messages are
+//! mostly commitments and challenges that must be passed from one step to
+//! another, and by "jumping" between curves. In the implementation,
+//! the messages are kept in an "application environment", located in the
+//! "witness environment". The structure [crate::witness::Env] is used to keep
+//! track of the messages that must be passed.
+//! Each step starts with an "application state" and end with another that are
+//! accumuated. The final state is passed through a "digest" to the next
+//! instance. The digest is performed using a hash function (see [Hash -
+//! Poseidon](#hash---poseidon)). We often use the term "sponge" to refer to the
+//! hash function or the state of the hash function.
+//!
+//! The sponge state will be forked at different steps, to provide a
+//! consistent state between the different instances and the different curves.
+//! The challenges will be computed using the sponge state after hashing the
+//! appropriate values from the appropriate initial state, and be kept in the
+//! environment.
+//!
+//! In the diagram below, each object subscripted by `(p, n)` (resp. `(q, n)`)
+//! means that they are related to the instance `n` whose circuit is defined in
+//! the field `Fp` (resp. `Fq`), the scalar field of Vesta (resp. Pallas).
+//!
+//! In addition to that, we use
+//! - `w_(p, n)` for the witness.
+//! - `W_(p, n)` for the aggregated witness.
+//! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
+//! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
+//! `W_(p, n)`.
+//! - `α_(p, n)` for the challenge used to combine constraints.
+//! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
+//! permutation argument.
+//! - `r_(p, n)` for the challenge used for the accumulation of the
+//! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
+//! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
+//! witness/commitments.
+//! - `u_(p, n)` for the challenge used to homogenize the constraints.
+//! - `o_(p, n)` for the final digest of the application state.
+//!
+//! Here a diagram (FIXME: this is not complete) that shows the messages that
+//! must be passed:
+//!
+//! ```text
+//! +------------------------------------------+                      +------------------------+
+//! |            Instance n                    |                      |     Instance n + 2     |
+//! |        (witness w_(p, n))                |                      | (witness W_(p, n + 1)) |
+//! |            ----------                    |                      |     ----------         |
+//! |               Vesta                      |                      |         Vesta          |
+//! |         (scalar field = Fp)              |                      |   (scalar field = Fp)  |
+//! |         (base field   = Fq)              |                      |   (base field   = Fq)  |
+//! |          (Sponge over Fq)                |                      |    (Sponge over Fq)    |
+//! |                                          |                      |                        |
+//! |          Generate as output              |                      |   Generate as output   |
+//! |          ------------------              |                      |   ------------------   |
+//! | Challenges:                              |                      | Challenges:            |
+//! | - α_(p, n)                               |                      | - α_(p, n + 1)         |
+//! | - β_(p, n)                               |                      | - β_(p, n + 1)         |
+//! | - γ_(p, n)                               |                      | - γ_(p, n + 1)         |
+//! | - r_(p, n)                               |                      | - r_(p, n + 1)         |
+//! | - u_(p, n)                               |                      | - u_(p, n + 1)         |
+//! | Commitments:                             |                      |          (...)         |
+//! | - Cross-terms (`Ct_(p, n)`)              |                      +------------------------+
+//! | - Witness columns (`w_(p, n)`)           |                                   ^
+//! | Fiat-Shamir:                             |                                   |
+//! | - digest of all messages read until      |                                   |
+//! | now -> `o_(p, n)`                        |                                   |
+//! |                                          |                                   |
+//! |             Receive in PI                |                                   |
+//! |             --------------               |                                   |
+//! | - Commitments to w_(p, (n - 1))          |                                   |
+//! | - Final digest of the application        |                                   |
+//! | state at instance (n - 1)                |                                   |
+//! | (o_(q, n - 1)).                          |                                   |
+//! | - Final digest of the application        |                                   |
+//! | state at instance (n - 2)                |                                   |
+//! | (o_(p, n - 1)).                          |                                   |
+//! |                                          |                                   |
+//! |             Responsibility               |                                   |
+//! |             --------------               |                                   |
+//! | - Verify FS challenges (α_(q, n - 1),    |                                   |
+//! | β_(q, n - 1), γ_(q, n - 1),              |                                   |
+//! | r_(q, n - 1), u_(q, n - 1)               |                                   |
+//! | (i.e. challenges of instance n - 1)      |                                   |
+//! | from o_(q, n - 1)                        |                                   |
+//! | - Aggregate witness columns w_(p, n)     |                                   |
+//! | into W_(p, n).                           |                                   |
+//! | - Aggregate error terms                  |                                   |
+//! | from instance n - 2 with cross terms of  |                                   |
+//! | instance n - 2                           |                                   |
+//! +------------------------------------------+                                   |
+//!                      |                                                         |
+//!                      |                                                         |
+//!                      |             +----------------------------+              |
+//!                      |             |       Instance n + 1       |              |
+//!                      |             |   (witness w_(q, n))       |              |
+//!                      |             |       --------------       |              |
+//!                      |             |           Pallas           |              |
+//!                      |             |      (scalar field = Fq)   |              |
+//!                      |-----------> |      (base field   = Fp)   |--------------
+//!                                    |       (Sponge over Fp)     |
+//! TODO: define msgs                  |                            |    TODO: define msgs
+//!       format to pass               |            TODO            |     format to pass
+//!         IO                         |                            |          IO
+//!                                    |                            |
+//!                                    |                            |
+//!                                    +----------------------------+
+//! ```
 
 use crate::{
     columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
