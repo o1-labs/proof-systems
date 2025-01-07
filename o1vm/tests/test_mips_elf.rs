@@ -1,18 +1,44 @@
 use ark_ff::Field;
 use mina_curves::pasta::Fp;
 use o1vm::{
-    cannon::{self, State, VmConfiguration},
+    cannon::{self, State, VmConfiguration, Preimage, Hint},
     elf_loader::Architecture,
     interpreters::mips::witness::{self},
     preimage_oracle::{NullPreImageOracle, PreImageOracleT},
 };
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, collections::HashMap,
 };
 
-struct MipsTest {
-    bin_file: PathBuf,
+struct TestPreImageOracle {
+    preimage: HashMap<[u8; 32], Preimage>
+}
+
+impl PreImageOracleT for TestPreImageOracle {
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+        match self.preimage.get(&key) {
+            Some(preimage) => preimage.clone(),
+            None => {
+                let key_str = hex::encode(&key);
+                panic!("Preimage not found for key {:?}", key)
+            }
+        }
+    }
+
+    fn hint(&mut self, hint: Hint) {
+
+    }
+}
+
+enum MipsTest {
+    BasicMipsTest {
+        bin_file: PathBuf,
+    },
+    OracleTest {
+        bin_file: PathBuf,
+        preimage_oracle: TestPreImageOracle,
+    },
 }
 
 // currently excluding any oracle based tests and a select group of tests that are failing
@@ -23,9 +49,16 @@ fn is_test_excluded(bin_file: &Path) -> bool {
 }
 
 impl MipsTest {
+    fn bin_file(&self) -> &Path {
+        match self {
+            MipsTest::BasicMipsTest { bin_file } => bin_file,
+            MipsTest::OracleTest { bin_file, .. } => bin_file,
+        }
+    }
+
     fn parse_state(&self) -> State {
         let curr_dir = std::env::current_dir().unwrap();
-        let path = curr_dir.join(&self.bin_file);
+        let path = curr_dir.join(self.bin_file());
         o1vm::elf_loader::parse_elf(Architecture::Mips, &path).unwrap()
     }
 
@@ -40,7 +73,7 @@ impl MipsTest {
     }
 
     fn run(&self) -> Result<(), String> {
-        println!("Running test: {:?}", self.bin_file);
+        println!("Running test: {:?}", self.bin_file());
         let mut state = self.parse_state();
         let halt_address = 0xa7ef00d0_u32;
         state.registers[31] = halt_address;
@@ -78,7 +111,7 @@ impl MipsTest {
         if result_value != 1 {
             return Err(format!(
                 "Program {:?} failure: expected result register to contain 1, got {:#x}",
-                self.bin_file, result_value
+                self.bin_file(), result_value
             ));
         }
 
@@ -99,11 +132,11 @@ mod tests {
             .filter_map(|entry| entry.ok())
             .map(|entry| entry.path())
             .filter(|f| f.is_file() && f.extension().is_none() && !is_test_excluded(f))
-            .map(|f| MipsTest { bin_file: f })
+            .map(|f| MipsTest::BasicMipsTest { bin_file: f })
             .collect();
 
         for test in test_files {
-            let test_name = test.bin_file.file_name().unwrap().to_str().unwrap();
+            let test_name = test.bin_file().file_name().unwrap().to_str().unwrap();
             if let Err(err) = test.run() {
                 panic!("Test '{}' failed: {}", test_name, err);
             }

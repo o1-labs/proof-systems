@@ -486,6 +486,7 @@ pub const HINT_CLIENT_WRITE_FD: i32 = 4;
 pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
 pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
 
+#[derive(Clone)]
 pub struct Preimage(Vec<u8>);
 
 impl Preimage {
