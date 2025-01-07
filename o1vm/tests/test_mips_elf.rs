@@ -18,7 +18,7 @@ struct MipsTest {
 // currently excluding any oracle based tests and a select group of tests that are failing
 fn is_test_excluded(bin_file: &Path) -> bool {
     let file_name = bin_file.file_name().unwrap().to_str().unwrap();
-    let untested_programs = ["exit_group", "jal", "mul", "jalr"];
+    let untested_programs = ["exit_group", "mul"];
     file_name.starts_with("oracle") || untested_programs.contains(&file_name)
 }
 
@@ -40,6 +40,7 @@ impl MipsTest {
     }
 
     fn run(&self) -> Result<(), String> {
+        println!("Running test: {:?}", self.bin_file);
         let mut state = self.parse_state();
         let halt_address = 0xa7ef00d0_u32;
         state.registers[31] = halt_address;
@@ -47,6 +48,7 @@ impl MipsTest {
         let start = cannon::Start::create(state.step as usize);
         let configuration = VmConfiguration {
             halt_address: Some(halt_address),
+            stop_at: cannon::StepFrequency::Exactly(1000),
             ..Default::default()
         };
 

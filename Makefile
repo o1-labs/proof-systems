@@ -181,7 +181,7 @@ ${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
 		@echo "Transforming $< to $@, making it compatible for o1vm"
 		@sed \
 				-e '/\.balign 4/d' \
-				-e '/\.set\s*noreorder/d' \
+				-e 's/^\s*\.set\s*noreorder/.set noreorder/' \
 				-e '/\.ent\s*test/d' \
 				-e '/\.end test/d' \
 				-e 's/\.section .test, "x"/.section .text/' \
