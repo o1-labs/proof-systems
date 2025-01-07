@@ -76,8 +76,10 @@ fn test_small_circuit() {
                 .map(|i| -Fq::from((i * SCRATCH_SIZE + (i + 1)) as u64))
                 .collect(),
             selector: zero_to_n_minus_one(8),
+            lookup: BTreeMap::new(),
+            lookup_agg: Vec::new(),
         },
-        logups: BTreeMap::new(),
+        lookups: BTreeMap::new(),
     };
     let mut expr = Expr::zero();
     for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {

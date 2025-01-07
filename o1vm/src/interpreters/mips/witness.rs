@@ -116,10 +116,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 
     fn alloc_lookup(&mut self, table_id: LookupTableID) -> Self::Position {
-        let lookup_vec = self.scratch_lookup.get_mut(table_id).unwrap();
+        let lookup_vec = self.scratch_lookup.get_mut(&table_id).unwrap();
         let lookup_idx = lookup_vec.len();
         lookup_vec.push(Fp::zero());
-        Column::Lookup(table_id, lookup_idx);
+        Column::Lookup(table_id, lookup_idx)
     }
 
     fn alloc_scratch_inverse(&mut self) -> Self::Position {
@@ -928,6 +928,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
             scratch_state_inverse: fresh_scratch_state(),
+            scratch_lookup: HashMap::new(),
             halt: state.exited,
             syscall_env,
             selector,

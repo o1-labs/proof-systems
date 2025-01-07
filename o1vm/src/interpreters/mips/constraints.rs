@@ -15,12 +15,11 @@ use crate::{
 use ark_ff::{Field, One};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext, lookup::lookups::LookupTableID,
+    gate::CurrOrNext,
+    lookup::lookups::LookupTableID,
 };
-use kimchi_msm::columns::ColumnIndexer as _;
-use std::array;
-use strum::IntoEnumIterator;
 use std::{array, collections::HashMap};
+use strum::IntoEnumIterator;
 
 use super::column::N_MIPS_SEL_COLS;
 
@@ -28,7 +27,7 @@ use super::column::N_MIPS_SEL_COLS;
 pub struct Env<Fp> {
     scratch_state_idx: usize,
     scratch_state_idx_inverse: usize,
-    scratch_lookups: HashMap<LookupTableID, Vec<E<Fp>>>,
+    scratch_lookups: HashMap<LookupTableID, usize>,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     constraints: Vec<E<Fp>>,
@@ -69,10 +68,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn alloc_lookup(&mut self, table_id: LookupTableID) -> Self::Position {
-        let lookup_vec = self.scratch_lookup.get_mut(table_id).unwrap();
-        let lookup_idx = lookup_vec.len();
-        lookup_vec.push(Fp::zero());
-        MIPSColumn::Lookup(table_id, lookup_idx);
+        let idx = self.scratch_lookups.get_mut(&table_id).unwrap();
+        *idx = *idx + 1;
+        MIPSColumn::Lookup(table_id, *idx - 1)
+        // TODO
     }
 
     fn alloc_scratch_inverse(&mut self) -> Self::Position {
@@ -85,7 +84,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: column.to_column(),
+            col: column,
             row: CurrOrNext::Curr,
         }))
     }

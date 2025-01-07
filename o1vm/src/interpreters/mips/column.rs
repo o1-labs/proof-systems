@@ -4,7 +4,10 @@ use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
 };
-use std::{collections::HashMap, ops::{Index, IndexMut}};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
@@ -63,6 +66,15 @@ pub enum ColumnAlias {
     InstructionCounter,
     Selector(usize),
     Lookup(LookupTableID, usize),
+    // TODO add
+    /* LookupPartialSum((u32, usize)),
+    /// Multiplicities, indexed. This corresponds to the `m_i`. First
+    /// indexed by table ID, then internal index.
+    LookupMultiplicity((u32, usize)),
+    /// The lookup aggregation, i.e. `phi`
+    LookupAggregation,
+    /// The fixed tables. The parameter is considered to the indexed table.
+    LookupFixedTable(u32), */
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three
@@ -84,7 +96,10 @@ impl TryFrom<ColumnAlias> for usize {
             }
             ColumnAlias::InstructionCounter => Ok(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
             ColumnAlias::Selector(s) => Ok(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s),
-            ColumnAlias::Lookup(table_id, idx) => Err(format!("Could not convert a lookup in table {:?} at index {} to a usize.", table_id, idx)),
+            ColumnAlias::Lookup(table_id, idx) => Err(format!(
+                "Could not convert a lookup in table {:?} at index {} to a usize.",
+                table_id, idx
+            )),
         }
     }
 }
@@ -142,12 +157,15 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
     /// Map the column alias to the actual column index.
     fn index(&self, index: ColumnAlias) -> &Self::Output {
         match index {
-            ColumnAlias::ScratchState(_) | ColumnAlias::ScratchStateInverse(_) | ColumnAlias::InstructionCounter | ColumnAlias::Selector(_) => {
+            ColumnAlias::ScratchState(_)
+            | ColumnAlias::ScratchStateInverse(_)
+            | ColumnAlias::InstructionCounter
+            | ColumnAlias::Selector(_) => {
                 &self.column_witness.cols[usize::try_from(index).unwrap()]
-            },
+            }
             ColumnAlias::Lookup(table_idx, idx) => {
                 &self.lookup_witness.get(&table_idx).unwrap()[idx]
-            },
+            }
         }
     }
 }
@@ -155,17 +173,20 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
 impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
         match index {
-            ColumnAlias::ScratchState(_) | ColumnAlias::ScratchStateInverse(_) | ColumnAlias::InstructionCounter | ColumnAlias::Selector(_) => {
+            ColumnAlias::ScratchState(_)
+            | ColumnAlias::ScratchStateInverse(_)
+            | ColumnAlias::InstructionCounter
+            | ColumnAlias::Selector(_) => {
                 &mut self.column_witness.cols[usize::try_from(index).unwrap()]
-            },
+            }
             ColumnAlias::Lookup(table_idx, idx) => {
                 &mut self.lookup_witness.get_mut(&table_idx).unwrap()[idx]
-            },
+            }
         }
     }
 }
 
-/* impl ColumnIndexer for ColumnAlias {
+impl ColumnIndexer for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
 
     fn to_column(self) -> Column {
@@ -202,7 +223,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
         }
     }
 }
- */
+
 // IMPLEMENTATIONS FOR SELECTOR
 
 impl<T: Clone> Index<Instruction> for MIPSWitness<T> {

@@ -8,7 +8,6 @@ use crate::{
 };
 use ark_ff::{One, Zero};
 use kimchi::circuits::lookup::lookups::LookupTableID;
-use kimchi_msm::LogupTableID;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
