@@ -121,6 +121,17 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::<span class="kw-2">*</span>;
 <span class="kw">use </span>clap::{arg, Parser, Subcommand};
 
@@ -184,6 +195,13 @@
     </span>)]
     </span>snapshot_state_at: StepFrequency,
 
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;halt-address&quot;</span>,
+        value_name = <span class="string">&quot;ADDR&quot;</span>,
+        help = <span class="string">&quot;halt address (in hexadecimal). Jumping to this address will halt the program.&quot;
+    </span>)]
+    </span>halt_address: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
     <span class="attr">#[arg(name = <span class="string">&quot;host&quot;</span>, value_name = <span class="string">&quot;HOST&quot;</span>, help = <span class="string">&quot;host program specification &lt;host program&gt; [host program arguments]&quot;</span>, num_args = <span class="number">1</span>.., last = <span class="bool-val">true</span>)]
     </span>host: Vec&lt;String&gt;,
 }
@@ -201,6 +219,10 @@
             proof_fmt: cfg.proof_fmt,
             snapshot_fmt: cfg.snapshot_fmt,
             pprof_cpu: cfg.pprof_cpu,
+            halt_address: cfg.halt_address.map(|s| {
+                u32::from_str_radix(s.trim_start_matches(<span class="string">&quot;0x&quot;</span>), <span class="number">16</span>)
+                    .expect(<span class="string">&quot;Failed to parse halt address as hex&quot;</span>)
+            }),
             host: <span class="kw">if </span>cfg.host.is_empty() {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
