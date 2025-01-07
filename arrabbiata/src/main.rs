@@ -73,16 +73,23 @@ pub fn main() {
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
 
         // Build the application circuit
-        info!("Running N iterations of the application circuit");
+        info!("Running {n_iteration_per_fold} iterations of the application circuit");
         for _i in 0..n_iteration_per_fold {
             interpreter::run_app(&mut env);
             env.reset();
         }
 
-        info!("Building the IVC circuit");
+        info!(
+            "Building the IVC circuit. A total number of {} rows will be filled from the witness row {}",
+            IVC_CIRCUIT_SIZE, env.current_row,
+        );
         // Build the IVC circuit
-        for _i in 0..IVC_CIRCUIT_SIZE {
+        for i in 0..IVC_CIRCUIT_SIZE {
             let instr = env.fetch_instruction();
+            debug!(
+                "Running IVC row {} (instruction = {:?}, witness row = {})",
+                i, instr, env.current_row
+            );
             interpreter::run_ivc(&mut env, instr);
             env.current_instruction = env.fetch_next_instruction();
             env.reset();
