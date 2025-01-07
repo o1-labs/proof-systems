@@ -1017,7 +1017,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         state.iter().enumerate().for_each(|(i, x)| {
                             unsafe { env.save_poseidon_state(x.clone(), i) };
                         });
-                        env.reset();
                     };
                     state
                 });
