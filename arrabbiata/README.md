@@ -91,3 +91,12 @@ circuit for now -->
 
 - The name is not only used as a reference to Kimchi and Pickles, but also to
   the mathematician [Aryabhata](https://en.wikipedia.org/wiki/Aryabhata).
+
+## Resources
+
+- [Nova: Recursive Zero-Knowledge Arguments from Folding Schemes](https://eprint.iacr.org/2021/370)
+- [ProtoStar: Generic Efficient Accumulation/Folding for Special Sound Protocols](https://eprint.iacr.org/2023/620)
+- [ProtoGalaxy: Efficient ProtoStar-style folding of multiple instances](https://eprint.iacr.org/2023/1106)
+- [Behind Nova: cross-terms computation for high degree gates](https://hackmd.io/qq_Awc1AR3ywzkruE4Wq9Q)
+- [CycleFold: Folding-scheme-based recursive arguments over a cycle of elliptic curves](https://eprint.iacr.org/2023/1192)
+- [Revisiting the Nova Proof System on a Cycle of Curves](https://eprint.iacr.org/2023/969)
