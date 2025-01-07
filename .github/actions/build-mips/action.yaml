@@ -1,0 +1,22 @@
+name: 'Build MIPS Programs'
+description: 'Builds MIPS programs for testing'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache apt packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives/*.deb
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/o1vm-mips-build.yml') }}
+
+    - name: Install MIPS tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y binutils-mips-linux-gnu
+
+    - name: Build MIPS programs
+      shell: bash
+      run: make build-mips-programs

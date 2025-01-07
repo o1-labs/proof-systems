@@ -52,6 +52,9 @@ jobs:
         run: |
           make install-test-deps
 
+      - name: Build the MIPS binaries
+        uses: ./.github/actions/build-mips
+
       - name: Run all tests with the code coverage
         run: |
           eval $(opam env)

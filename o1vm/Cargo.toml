@@ -16,6 +16,9 @@ path = "src/lib.rs"
 name = "pickles_o1vm"
 path = "src/pickles/main.rs"
 
+[features]
+open_mips = []
+
 [dependencies]
 # FIXME: Only activate this when legacy_o1vm is built
 ark-bn254.workspace = true

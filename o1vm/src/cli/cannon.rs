@@ -61,6 +61,13 @@ pub struct MipsVmConfigurationArgs {
     )]
     snapshot_state_at: StepFrequency,
 
+    #[arg(
+        long = "halt-address",
+        value_name = "ADDR",
+        help = "halt address (in hexadecimal). Jumping to this address will halt the program."
+    )]
+    halt_address: Option<String>,
+
     #[arg(name = "host", value_name = "HOST", help = "host program specification <host program> [host program arguments]", num_args = 1.., last = true)]
     host: Vec<String>,
 }
@@ -78,6 +85,10 @@ impl From<MipsVmConfigurationArgs> for VmConfiguration {
             proof_fmt: cfg.proof_fmt,
             snapshot_fmt: cfg.snapshot_fmt,
             pprof_cpu: cfg.pprof_cpu,
+            halt_address: cfg.halt_address.map(|s| {
+                u32::from_str_radix(s.trim_start_matches("0x"), 16)
+                    .expect("Failed to parse halt address as hex")
+            }),
             host: if cfg.host.is_empty() {
                 None
             } else {

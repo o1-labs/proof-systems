@@ -162,6 +162,9 @@ jobs:
         run: |
           make install-test-deps
 
+      - name: Build the MIPS binaries
+        uses: ./.github/actions/build-mips
+
       - name: Doc tests
         if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
