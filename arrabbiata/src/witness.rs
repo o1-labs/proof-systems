@@ -19,6 +19,8 @@ use crate::{
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
+/// The first instruction in the IVC is the Poseidon permutation. It is used to
+/// start hashing the public input.
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment that can be shared between IVC instances.
