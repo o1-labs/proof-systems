@@ -2,7 +2,7 @@ use crate::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
-        REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
+        REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET,
     },
     lookups::{Lookup, LookupTableIDs},
 };
@@ -1342,6 +1342,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 env.copy(&value, pos)
             };
 
+            // Shift the preimage key registers down by one to make room for the new value.
+            for i in (REGISTER_PREIMAGE_KEY_START + 1)..=REGISTER_PREIMAGE_KEY_END {
+                let w = env.read_register(&Env::constant(i as u32));
+                env.write_register(&Env::constant((i - 1) as u32), w);
+            }
             // Update the preimage key.
             env.write_register(&register_idx, value);
             // Reset the preimage offset.

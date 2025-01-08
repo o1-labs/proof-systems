@@ -13,6 +13,7 @@ use std::{
 
 mod test_oracle {
 
+    use log::debug;
     use o1vm::{
         cannon::{Hint, Preimage},
         preimage_oracle::PreImageOracleT,
@@ -21,6 +22,7 @@ mod test_oracle {
     use std::collections::HashMap;
 
     #[allow(dead_code)]
+    #[derive(Debug)]
     enum KeyType {
         // LocalKeyType is for input-type pre-images, specific to the local program instance.
         Local,
@@ -46,6 +48,18 @@ mod test_oracle {
                 KeyType::Sha256 => 4,
                 KeyType::Blob => 5,
                 KeyType::Precompile => 6,
+            }
+        }
+
+        fn from_prefix(prefix: u8) -> Self {
+            match prefix {
+                1 => KeyType::Local,
+                2 => KeyType::Keccak256,
+                3 => KeyType::GlobalGeneric,
+                4 => KeyType::Sha256,
+                5 => KeyType::Blob,
+                6 => KeyType::Precompile,
+                _ => panic!("Unknown key type prefix: {}", prefix),
             }
         }
     }
@@ -74,6 +88,7 @@ mod test_oracle {
             };
             let preimage: HashMap<[u8; 32], Preimage> = {
                 let mut m = HashMap::new();
+                debug!("Inserting preimage for key: {}", hex::encode(key));
                 m.insert(key, Preimage::create(data));
                 m
             };
@@ -121,7 +136,8 @@ mod test_oracle {
 
     impl PreImageOracleT for TestPreImageOracle {
         fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
-            let key_type = key[0];
+            let key_type = KeyType::from_prefix(key[0]);
+            debug!("Asking oracle for key type {:?}", key_type);
             let m = &self.preimage[key_type as usize];
             match m.get(&key) {
                 Some(preimage) => preimage.clone(),
@@ -145,9 +161,9 @@ struct MipsTest {
 fn is_test_excluded(bin_file: &Path) -> bool {
     let file_name = bin_file.file_name().unwrap().to_str().unwrap();
     let untested_programs = [
-        "oracle",
-        "oracle_kzg",
-        "oracle_unaligned_read",
+        // "oracle",
+        //"oracle_kzg",
+        //"oracle_unaligned_read",
         "oracle_unaligned_write",
         "exit_group",
         "mul",
@@ -247,6 +263,7 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "open_mips"), ignore)]
     fn open_mips_tests() {
+        env_logger::init();
         let test_dir = "resources/programs/mips/bin";
         let test_files: Vec<MipsTest> = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Error reading directory {}", test_dir))
