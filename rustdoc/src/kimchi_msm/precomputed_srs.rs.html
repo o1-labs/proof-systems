@@ -143,6 +143,7 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Clone of kimchi/precomputed_srs.rs but for MSM project with BN254
 
 </span><span class="kw">use crate</span>::{Fp, BN254, DOMAIN_SIZE};
@@ -234,6 +235,7 @@
         <span class="comment">// Open/create the file
         </span><span class="kw">let </span><span class="kw-2">mut </span>file = std::fs::OpenOptions::new()
             .create(<span class="bool-val">true</span>)
+            .truncate(<span class="bool-val">true</span>)
             .write(<span class="bool-val">true</span>)
             .open(srs_path.clone())
             .expect(<span class="string">&quot;failed to open SRS file&quot;</span>);
