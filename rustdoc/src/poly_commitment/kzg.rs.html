@@ -538,7 +538,7 @@
 /// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
 /// ```
 </span><span class="kw">pub fn </span>combine_evaluations&lt;G: CommitmentCurve&gt;(
-    evaluations: <span class="kw-2">&amp;</span>Vec&lt;Evaluation&lt;G&gt;&gt;,
+    evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;],
     polyscale: G::ScalarField,
 ) -&gt; Vec&lt;G::ScalarField&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = G::ScalarField::one();
@@ -918,10 +918,10 @@
     /// Also, chunking is not supported.
     </span><span class="kw">pub fn </span>verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,           <span class="comment">// SRS
-        </span>evaluations: <span class="kw-2">&amp;</span>Vec&lt;Evaluation&lt;G&gt;&gt;, <span class="comment">// commitments to the polynomials
-        </span>polyscale: F,                     <span class="comment">// scaling factor for polynoms
-        </span>elm: <span class="kw-2">&amp;</span>[F],                        <span class="comment">// vector of evaluation points
+        srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,        <span class="comment">// SRS
+        </span>evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;], <span class="comment">// commitments to the polynomials
+        </span>polyscale: F,                  <span class="comment">// scaling factor for polynoms
+        </span>elm: <span class="kw-2">&amp;</span>[F],                     <span class="comment">// vector of evaluation points
     </span>) -&gt; bool {
         <span class="kw">let </span>poly_commitment: G::Group = {
             <span class="kw">let </span><span class="kw-2">mut </span>scalars: Vec&lt;F&gt; = Vec::new();

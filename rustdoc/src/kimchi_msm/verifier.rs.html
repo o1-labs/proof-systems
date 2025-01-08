@@ -380,7 +380,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
+    constraints: <span class="kw-2">&amp;</span>[E&lt;G::ScalarField&gt;],
     fixed_selectors: Box&lt;[Vec&lt;G::ScalarField&gt;; N_FSEL]&gt;,
     proof: <span class="kw-2">&amp;</span>Proof&lt;N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID&gt;,
     public_inputs: Witness&lt;NPUB, Vec&lt;G::ScalarField&gt;&gt;,
@@ -621,7 +621,7 @@
     };
 
     <span class="kw">let </span>combined_expr =
-        Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
+        Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.to_vec());
     <span class="comment">// Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
     </span><span class="kw">let </span>ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),

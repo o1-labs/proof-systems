@@ -651,7 +651,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
+    constraints: <span class="kw-2">&amp;</span>[E&lt;G::ScalarField&gt;],
     fixed_selectors: Box&lt;[Vec&lt;G::ScalarField&gt;; N_FSEL]&gt;,
     inputs: ProofInputs&lt;N_WIT, G::ScalarField, ID&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
@@ -875,7 +875,7 @@
 
         <span class="comment">// Compute ∑ α^i constraint_i as an expression
         </span><span class="kw">let </span>combined_expr =
-            Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
+            Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.to_vec());
 
         <span class="comment">// We want to compute the quotient polynomial, i.e.
         // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
