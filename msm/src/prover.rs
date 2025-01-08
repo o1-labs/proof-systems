@@ -64,7 +64,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<E<G::ScalarField>>,
+    constraints: &[E<G::ScalarField>],
     fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
     inputs: ProofInputs<N_WIT, G::ScalarField, ID>,
     rng: &mut RNG,
@@ -288,7 +288,7 @@ where
 
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
-            Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+            Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_vec());
 
         // We want to compute the quotient polynomial, i.e.
         // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
