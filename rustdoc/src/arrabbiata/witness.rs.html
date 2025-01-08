@@ -1048,7 +1048,6 @@
 <a href="#1048" id="1048">1048</a>
 <a href="#1049" id="1049">1049</a>
 <a href="#1050" id="1050">1050</a>
-<a href="#1051" id="1051">1051</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1070,7 +1069,9 @@
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
-<span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
+<span class="doccomment">/// The first instruction in the IVC is the Poseidon permutation. It is used to
+/// start hashing the public input.
+</span><span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
 
 <span class="doccomment">/// An environment that can be shared between IVC instances.
 ///
@@ -2040,9 +2041,6 @@
     /// ```text
     /// z_(i + 1) = F(w_i, z_i)
     /// ```
-    ///
-    /// - We decompose the scalar `r`, the random combiner, into bits to compute
-    /// the MSM for the next step.
     ///
     /// - We compute the MSM (verifier)
     ///
