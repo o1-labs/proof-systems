@@ -131,11 +131,6 @@ jobs:
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
 
-      - name: Build cargo docs
-        run: |
-          eval $(opam env)
-          make generate-doc
-
       #
       # Coding guidelines
       #
