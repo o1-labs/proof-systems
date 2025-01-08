@@ -19,6 +19,8 @@ use crate::{
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
+/// The first instruction in the IVC is the Poseidon permutation. It is used to
+/// start hashing the public input.
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment that can be shared between IVC instances.
@@ -989,9 +991,6 @@ impl<
     /// ```text
     /// z_(i + 1) = F(w_i, z_i)
     /// ```
-    ///
-    /// - We decompose the scalar `r`, the random combiner, into bits to compute
-    /// the MSM for the next step.
     ///
     /// - We compute the MSM (verifier)
     ///
