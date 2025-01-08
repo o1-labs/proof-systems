@@ -561,6 +561,8 @@ pub trait InterpreterEnv {
     /// [crate::interpreters::riscv32im::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
+    fn alloc_scratch_inverse(&mut self) -> Self::Position;
+
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -1060,21 +1062,6 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
-
-    /// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// `x`.
-    ///
-    /// The value returned may be a placeholder; callers should be careful not to depend directly
-    /// on the value stored in the variable.
-    unsafe fn inverse_or_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable;
 
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable;
 
