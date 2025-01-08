@@ -1,6 +1,6 @@
-## Arrabbiata - a generic recursive zero-knowledge argument implementation based on folding schemes
+# Arrabbiata - a generic recursive zero-knowledge argument implementation based on folding schemes
 
-### Motivation
+## Motivation
 
 This library provides an implementation of a generic recursive zero-knowledge
 argument based on folding schemes (initially defined in
@@ -28,7 +28,7 @@ Not even sure it is possible right now.
 **This will change. We might go up to degree 6 or 7, as we're building the
 different gadgets (EC addition, EC scalar multiplication, Poseidon).
 
-### Implementation details
+## Implementation details
 
 We provide a binary to run arbitrarily large computation.
 The implementation of the circuits will follow the one used by the o1vm
@@ -50,7 +50,7 @@ While building the witness, the cross terms are also computed on the fly, to be
 used in the next iteration. This way, the prover only pays the price of the
 activated gate on each row.
 
-### Examples
+## Examples
 
 Different built-in examples are provided. For instance:
 ```
@@ -64,13 +64,13 @@ the end.
 You can also activate logging which contains benchmarking by using the
 environment variable `RUST_LOG=debug`.
 
-### Run tests
+## Run tests
 
 ```
 cargo nextest run --all-features --release --nocapture -p arrabbiata
 ```
 
-### Registry of zkApps
+## Registry of zkApps
 
 A registry of zkApps is already preconfigured.
 To write a zkApp, check TODO.
@@ -87,7 +87,16 @@ lib.rs file. In this registry, we could have for instance o1VM -->
 versions over time. It can also be done using a registry. We keep only one IVC
 circuit for now -->
 
-### References
+## References
 
 - The name is not only used as a reference to Kimchi and Pickles, but also to
   the mathematician [Aryabhata](https://en.wikipedia.org/wiki/Aryabhata).
+
+## Resources
+
+- [Nova: Recursive Zero-Knowledge Arguments from Folding Schemes](https://eprint.iacr.org/2021/370)
+- [ProtoStar: Generic Efficient Accumulation/Folding for Special Sound Protocols](https://eprint.iacr.org/2023/620)
+- [ProtoGalaxy: Efficient ProtoStar-style folding of multiple instances](https://eprint.iacr.org/2023/1106)
+- [Behind Nova: cross-terms computation for high degree gates](https://hackmd.io/qq_Awc1AR3ywzkruE4Wq9Q)
+- [CycleFold: Folding-scheme-based recursive arguments over a cycle of elliptic curves](https://eprint.iacr.org/2023/1192)
+- [Revisiting the Nova Proof System on a Cycle of Curves](https://eprint.iacr.org/2023/969)
