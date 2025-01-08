@@ -43,7 +43,6 @@ pub fn poseidon_circuit<
     init_state: [Env::Variable; STATE_SIZE],
 ) -> [Env::Variable; STATE_SIZE]
 where
-    F: PrimeField,
     PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_TOTAL_ROUND>,
     Env: ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>,
@@ -88,7 +87,6 @@ pub fn apply_permutation<
     param: &PARAMETERS,
 ) -> [Env::Variable; STATE_SIZE]
 where
-    F: PrimeField,
     PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_TOTAL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>,
@@ -257,7 +255,6 @@ fn compute_one_partial_round<
     state: &[Env::Variable; STATE_SIZE],
 ) -> [Env::Variable; STATE_SIZE]
 where
-    F: PrimeField,
     PARAMETERS: PoseidonParams<F, STATE_SIZE, NB_TOTAL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>,

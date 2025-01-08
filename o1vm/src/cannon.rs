@@ -2,6 +2,10 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
+use core::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -182,10 +186,10 @@ impl FromStr for StepFrequency {
     }
 }
 
-impl ToString for State {
+impl Display for State {
     // A very debatable and incomplete, but serviceable, `to_string` implementation.
-    fn to_string(&self) -> String {
-        format!(
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f,
             "memory_size (length): {}\nfirst page size: {}\npreimage key: {:#?}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} ",
             self.memory.len(),
             self.memory[0].data.len(),
