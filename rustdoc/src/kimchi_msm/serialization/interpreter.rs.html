@@ -1573,7 +1573,7 @@
 ) -&gt; Ff {
     <span class="kw">let </span>coeff_result = chal * coeff_input;
 
-    <span class="kw">let </span>two_bi: BigInt = TryFrom::try_from(<span class="number">2</span>).unwrap();
+    <span class="kw">let </span>two_bi: BigInt = BigInt::from(<span class="number">2</span>);
 
     <span class="kw">let </span>large_limb_size: F = From::from(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
 

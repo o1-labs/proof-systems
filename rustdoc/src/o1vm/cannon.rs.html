@@ -818,6 +818,35 @@
     }
 }
 
+<span class="kw">pub const </span>HINT_CLIENT_READ_FD: i32 = <span class="number">3</span>;
+<span class="kw">pub const </span>HINT_CLIENT_WRITE_FD: i32 = <span class="number">4</span>;
+<span class="kw">pub const </span>PREIMAGE_CLIENT_READ_FD: i32 = <span class="number">5</span>;
+<span class="kw">pub const </span>PREIMAGE_CLIENT_WRITE_FD: i32 = <span class="number">6</span>;
+
+<span class="kw">pub struct </span>Preimage(Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>Preimage {
+    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        Preimage(v)
+    }
+
+    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+}
+
+<span class="kw">pub struct </span>Hint(Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>Hint {
+    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        Hint(v)
+    }
+
+    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
@@ -990,34 +1019,5 @@
         );
         <span class="macro">assert!</span>(PreimageKey::from_str(<span class="string">&quot;0x01&quot;</span>).is_err());
     }
-}
-
-<span class="kw">pub const </span>HINT_CLIENT_READ_FD: i32 = <span class="number">3</span>;
-<span class="kw">pub const </span>HINT_CLIENT_WRITE_FD: i32 = <span class="number">4</span>;
-<span class="kw">pub const </span>PREIMAGE_CLIENT_READ_FD: i32 = <span class="number">5</span>;
-<span class="kw">pub const </span>PREIMAGE_CLIENT_WRITE_FD: i32 = <span class="number">6</span>;
-
-<span class="kw">pub struct </span>Preimage(Vec&lt;u8&gt;);
-
-<span class="kw">impl </span>Preimage {
-    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-        Preimage(v)
-    }
-
-    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.<span class="number">0
-    </span>}
-}
-
-<span class="kw">pub struct </span>Hint(Vec&lt;u8&gt;);
-
-<span class="kw">impl </span>Hint {
-    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-        Hint(v)
-    }
-
-    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.<span class="number">0
-    </span>}
 }
 </code></pre></div></section></main></body></html>
