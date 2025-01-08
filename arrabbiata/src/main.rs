@@ -106,7 +106,7 @@ pub fn main() {
         // env.next_commitments)
         // update next instance with current commitments
         // FIXME: Check twice the updated commitments
-        env.compute_and_update_previous_commitments();
+        env.commit_state();
 
         // FIXME:
         // Absorb all commitments in the sponge.

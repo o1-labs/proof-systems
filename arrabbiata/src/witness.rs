@@ -61,9 +61,9 @@ pub struct Env<
     // FIXME: use a blinded comm and also fold the blinder
     pub ivc_accumulator_e2: Vec<PolyComm<E2>>,
 
-    /// Commitments to the previous instances
-    pub previous_commitments_e1: Vec<PolyComm<E1>>,
-    pub previous_commitments_e2: Vec<PolyComm<E2>>,
+    /// Commitments to the previous program states.
+    pub previous_committed_state_e1: Vec<PolyComm<E1>>,
+    pub previous_committed_state_e2: Vec<PolyComm<E2>>,
     // ----------------
 
     // ----------------
@@ -498,7 +498,7 @@ where
                     if self.current_iteration % 2 == 0 {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e2[i_comm].get_first_chunk();
+                                let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -524,7 +524,7 @@ where
                     } else {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e1[i_comm].get_first_chunk();
+                                let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -568,11 +568,11 @@ where
                     }
                     Side::Right => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.previous_commitments_e2[i_comm].get_first_chunk();
+                            let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.previous_commitments_e1[i_comm].get_first_chunk();
+                            let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -822,10 +822,10 @@ impl<
         };
 
         // Default set to the blinders. Using double to make the EC scaling happy.
-        let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+        let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(srs_e1.h + srs_e1.h).into()]))
             .collect();
-        let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
+        let previous_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
             .collect();
         // FIXME: zero will not work.
@@ -851,8 +851,8 @@ impl<
             // IVC only
             ivc_accumulator_e1,
             ivc_accumulator_e2,
-            previous_commitments_e1,
-            previous_commitments_e2,
+            previous_committed_state_e1,
+            previous_committed_state_e2,
             // ------
             // ------
             idx_var: 0,
@@ -909,11 +909,19 @@ impl<
         // TODO
     }
 
-    /// Compute the commitments to the current witness, and update the previous
-    /// instances.
-    // Might be worth renaming this function
-    pub fn compute_and_update_previous_commitments(&mut self) {
+    /// Commit to the program state and updating the environment with the
+    /// result.
+    ///
+    /// This method is supposed to be called after a new iteration of the
+    /// program has been executed.
+    pub fn commit_state(&mut self) {
         if self.current_iteration % 2 == 0 {
+            assert_eq!(
+                self.current_row as u64,
+                self.domain_fp.d1.size,
+                "The program has not been fully executed. Missing {} rows",
+                self.domain_fp.d1.size - self.current_row as u64,
+            );
             let comms: Vec<PolyComm<E1>> = self
                 .witness
                 .par_iter()
@@ -927,8 +935,14 @@ impl<
                         .commit_evaluations_non_hiding(self.domain_fp.d1, &evals)
                 })
                 .collect();
-            self.previous_commitments_e1 = comms
+            self.previous_committed_state_e1 = comms
         } else {
+            assert_eq!(
+                self.current_row as u64,
+                self.domain_fq.d1.size,
+                "The program has not been fully executed. Missing {} rows",
+                self.domain_fq.d1.size - self.current_row as u64,
+            );
             let comms: Vec<PolyComm<E2>> = self
                 .witness
                 .iter()
@@ -942,7 +956,7 @@ impl<
                         .commit_evaluations_non_hiding(self.domain_fq.d1, &evals)
                 })
                 .collect();
-            self.previous_commitments_e2 = comms
+            self.previous_committed_state_e2 = comms
         }
     }
 
