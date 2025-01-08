@@ -147,7 +147,7 @@ pub fn create_chain<F: PrimeField>(
     // Make sure that the inputs are smaller than the modulus just in case
     let inputs: Vec<BigUint> = inputs.iter().map(|input| input % modulus.clone()).collect();
 
-    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
     let foreign_modulus = ForeignElement::from_biguint(modulus);
 
