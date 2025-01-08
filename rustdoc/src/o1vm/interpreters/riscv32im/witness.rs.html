@@ -946,6 +946,18 @@
 <a href="#946" id="946">946</a>
 <a href="#947" id="947">947</a>
 <a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO: do we want to be more restrictive and refer to the number of accesses
 //       to the SAME register/memory addrss?
 </span><span class="kw">use super</span>::{
@@ -955,7 +967,7 @@
         SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
-    INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
+    INSTRUCTION_SET_SIZE, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE,
 };
 <span class="kw">use crate</span>::{
     cannon::{State, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
@@ -994,6 +1006,8 @@
     <span class="kw">pub </span>registers_write_index: Registers&lt;u64&gt;,
     <span class="kw">pub </span>scratch_state_idx: usize,
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
+    <span class="kw">pub </span>scratch_state_inverse_idx: usize,
+    <span class="kw">pub </span>scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>selector: usize,
 }
@@ -1009,6 +1023,12 @@
         <span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx;
         <span class="self">self</span>.scratch_state_idx += <span class="number">1</span>;
         Column::ScratchState(scratch_idx)
+    }
+
+    <span class="kw">fn </span>alloc_scratch_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
+        <span class="kw">let </span>scratch_inverse_idx = <span class="self">self</span>.scratch_state_inverse_idx;
+        <span class="self">self</span>.scratch_state_inverse_idx += <span class="number">1</span>;
+        Column::ScratchStateInverse(scratch_inverse_idx)
     }
 
     <span class="kw">type </span>Variable = u64;
@@ -1225,44 +1245,39 @@
         res
     }
 
-    <span class="kw">unsafe fn </span>inverse_or_zero(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{
-            <span class="self">self</span>.write_column(position, <span class="number">0</span>);
-            <span class="number">0
-        </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.write_field_column(position, Fp::from(<span class="kw-2">*</span>x).inverse().unwrap());
-            <span class="number">1 </span><span class="comment">// Placeholder value
-        </span>}
-    }
-
     <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// write the result
         </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
         <span class="kw">let </span>res = <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
         <span class="self">self</span>.write_column(pos, res);
         <span class="comment">// write the non deterministic advice inv_or_zero
-        </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-        <span class="kw">let </span>inv_or_zero = <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{
-            Fp::zero()
+        </span><span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch_inverse();
+        <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{
+            <span class="self">self</span>.write_field_column(pos, Fp::zero());
         } <span class="kw">else </span>{
-            Fp::inverse(<span class="kw-2">&amp;</span>Fp::from(<span class="kw-2">*</span>x)).unwrap()
+            <span class="self">self</span>.write_field_column(pos, Fp::from(<span class="kw-2">*</span>x));
         };
-        <span class="self">self</span>.write_field_column(pos, inv_or_zero);
         <span class="comment">// return the result
         </span>res
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="comment">// To avoid subtraction overflow in the witness interpreter for u32
-        </span><span class="kw">if </span>x &gt; y {
-            <span class="self">self</span>.is_zero(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>x - <span class="kw-2">*</span>y))
+        <span class="comment">// We replicate is_zero(x-y), but working on field elt,
+        // to avoid subtraction overflow in the witness interpreter for u32
+        </span><span class="kw">let </span>to_zero_test = Fp::from(<span class="kw-2">*</span>x) - Fp::from(<span class="kw-2">*</span>y);
+        <span class="kw">let </span>res = {
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">let </span>is_zero: u64 = <span class="kw">if </span>to_zero_test == Fp::zero() { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
+            <span class="self">self</span>.write_column(pos, is_zero);
+            is_zero
+        };
+        <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch_inverse();
+        <span class="kw">if </span>to_zero_test == Fp::zero() {
+            <span class="self">self</span>.write_field_column(pos, Fp::zero());
         } <span class="kw">else </span>{
-            <span class="self">self</span>.is_zero(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>y - <span class="kw-2">*</span>x))
-        }
+            <span class="self">self</span>.write_field_column(pos, to_zero_test);
+        };
+        res
     }
 
     <span class="kw">unsafe fn </span>test_less_than(
@@ -1632,6 +1647,8 @@
             registers_write_index: Registers::default(),
             scratch_state_idx: <span class="number">0</span>,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse_idx: <span class="number">0</span>,
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             selector,
         }
@@ -1790,6 +1807,7 @@
     <span class="doccomment">/// Execute a single step in the RISCV32i program
     </span><span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Instruction {
         <span class="self">self</span>.reset_scratch_state();
+        <span class="self">self</span>.reset_scratch_state_inverse();
         <span class="kw">let </span>(opcode, _instruction) = <span class="self">self</span>.decode_instruction();
 
         interpreter::interpret_instruction(<span class="self">self</span>, opcode);
@@ -1813,6 +1831,11 @@
         <span class="self">self</span>.selector = INSTRUCTION_SET_SIZE;
     }
 
+    <span class="kw">pub fn </span>reset_scratch_state_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.scratch_state_inverse_idx = <span class="number">0</span>;
+        <span class="self">self</span>.scratch_state_inverse = fresh_scratch_state();
+    }
+
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: u64) {
         <span class="self">self</span>.write_field_column(column, value.into())
     }
@@ -1820,6 +1843,7 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) =&gt; <span class="self">self</span>.scratch_state_inverse[idx] = value,
             Column::InstructionCounter =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Cannot overwrite the column {:?}&quot;</span>, column),
             Column::Selector(s) =&gt; <span class="self">self</span>.selector = s,
         }

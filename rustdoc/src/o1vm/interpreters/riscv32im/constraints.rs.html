@@ -486,6 +486,7 @@
 
 <span class="kw">pub struct </span>Env&lt;F: Field&gt; {
     <span class="kw">pub </span>scratch_state_idx: usize,
+    <span class="kw">pub </span>scratch_state_idx_inverse: usize,
     <span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;,
     <span class="kw">pub </span>constraints: Vec&lt;E&lt;F&gt;&gt;,
     <span class="kw">pub </span>selector: <span class="prelude-ty">Option</span>&lt;E&lt;F&gt;&gt;,
@@ -495,6 +496,7 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             scratch_state_idx: <span class="number">0</span>,
+            scratch_state_idx_inverse: <span class="number">0</span>,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: <span class="prelude-val">None</span>,
@@ -518,6 +520,12 @@
         </span><span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx;
         <span class="self">self</span>.scratch_state_idx += <span class="number">1</span>;
         Column::ScratchState(scratch_idx)
+    }
+
+    <span class="kw">fn </span>alloc_scratch_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
+        <span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx_inverse;
+        <span class="self">self</span>.scratch_state_idx_inverse += <span class="number">1</span>;
+        Column::ScratchStateInverse(scratch_idx)
     }
 
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
@@ -677,22 +685,14 @@
             <span class="kw">unsafe </span>{ <span class="self">self</span>.test_zero(x, pos) }
         };
         <span class="kw">let </span>x_inv_or_zero = {
-            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
-            <span class="kw">unsafe </span>{ <span class="self">self</span>.inverse_or_zero(x, pos) }
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch_inverse();
+            <span class="self">self</span>.variable(pos)
         };
         <span class="comment">// If x = 0, then res = 1 and x_inv_or_zero = 0
         // If x &lt;&gt; 0, then res = 0 and x_inv_or_zero = x^(-1)
         </span><span class="self">self</span>.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - <span class="self">Self</span>::constant(<span class="number">1</span>));
         <span class="self">self</span>.add_constraint(x.clone() * res.clone());
         res
-    }
-
-    <span class="kw">unsafe fn </span>inverse_or_zero(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(position)
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {

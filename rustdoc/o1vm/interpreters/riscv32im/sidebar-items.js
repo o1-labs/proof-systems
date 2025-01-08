@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["INSTRUCTION_SET_SIZE","PAGE_ADDRESS_MASK","PAGE_ADDRESS_SIZE","PAGE_SIZE","SCRATCH_SIZE"],"mod":["column","constraints","interpreter","registers","witness"]};
+window.SIDEBAR_ITEMS = {"constant":["INSTRUCTION_SET_SIZE","PAGE_ADDRESS_MASK","PAGE_ADDRESS_SIZE","PAGE_SIZE","SCRATCH_SIZE","SCRATCH_SIZE_INVERSE"],"mod":["column","constraints","interpreter","registers","witness"]};
