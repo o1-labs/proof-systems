@@ -1215,7 +1215,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::SyscallWritePreimage => {
             let addr = env.read_register(&Env::constant(5));
+            debug!("SyscallWritePreimage: addr = {:?}", addr);
             let write_length = env.read_register(&Env::constant(6));
+            debug!("SyscallWritePreimage: write_length = {:?}", write_length);
 
             // Cannon assumes that the remaining `byte_length` represents how much remains to be
             // read (i.e. all write calls send the full data in one syscall, and attempt to retry
@@ -1225,6 +1227,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&write_length, 2, 0, pos) }
             };
+            debug!(
+                "SyscallWritePreimage: bytes_to_preserve_in_register = {:?}",
+                bytes_to_preserve_in_register
+            );
             env.range_check2(&bytes_to_preserve_in_register);
             let register_idx = {
                 let registers_left_to_write_after_this = {
@@ -1233,9 +1239,16 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     // register has an incorrect value, it will be unprovable and we'll fault.
                     unsafe { env.bitmask(&write_length, 6, 2, pos) }
                 };
+                debug!(
+                    "SyscallWritePreimage: registers_left_to_write_after_this = {:?}",
+                    registers_left_to_write_after_this
+                );
                 env.range_check8(&registers_left_to_write_after_this, 4);
-                Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
+                let curr_write_register_idx = 
+                  env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32)) + Env::constant(REGISTER_PREIMAGE_KEY_START as u32);
+                curr_write_register_idx - registers_left_to_write_after_this
             };
+            debug!("SyscallWritePreimage: register_idx = {:?}", register_idx);
 
             let [r0, r1, r2, r3] = {
                 let register_value = {
@@ -1275,6 +1288,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.lookup_8bits(&r2);
             env.lookup_8bits(&r3);
 
+            debug!("r values {:?}", [r0.clone(), r1.clone(), r2.clone(), r3.clone()]);
+
             // We choose our read address so that the bytes we read come aligned with the target
             // bytes in the register, to avoid an expensive bitshift.
             let read_address = addr.clone() - bytes_to_preserve_in_register.clone();
@@ -1283,6 +1298,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let m1 = env.read_memory(&(read_address.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
             let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
+
+            debug!("m values {:?}", [m0.clone(), m1.clone(), m2.clone(), m3.clone()]);
 
             // Now, for some complexity. From the perspective of the write operation, we should be
             // reading the `4 - bytes_to_preserve_in_register`. However, to match cannon 1:1, we
@@ -1332,6 +1349,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
 
+            debug!(
+                "overwrite values {:?}",
+                [overwrite_0.clone(), overwrite_1.clone(), overwrite_2.clone(), overwrite_3.clone()]
+            );
+
             let value = {
                 let value = ((overwrite_0.clone() * m0
                     + (Env::constant(1) - overwrite_0.clone()) * r0)
@@ -1368,15 +1390,16 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 );
                 Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + curr_write_index
             };
-            // 4cb01fad17328500a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa25
             // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad = keccak("hello world").key
-            // 2FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
-            // 2FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
+            // 0002FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
+            // 0002FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
             //       4cb01fad 17328500 a8d7341e5 e972fc6 77286384 f802f8ef 42a5ec5 Af03bbfa25
             // FFFF02FF
-            debug!("Writing value {:?} to register {:?}", value, write_idx);
+            let curr_value = env.read_register(&write_idx);
+            debug!("overriding curr_value {:?} with value {:?} in register {:?}", curr_value, value, write_idx);
             // Update the preimage key.
             env.write_register(&write_idx, value);
+            debug!("-------------------------------------------------------------------------------------------");
             // Reset the preimage offset.
             env.write_register(
                 &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
