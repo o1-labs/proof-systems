@@ -30,7 +30,7 @@ pub struct Env<C: ArrabbiataCurve> {
 
 impl<C: ArrabbiataCurve> Env<C>
 where
-    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    C::BaseField: PrimeField,
 {
     pub fn new() -> Self {
         // This check might not be useful

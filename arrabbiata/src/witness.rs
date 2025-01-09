@@ -3,11 +3,11 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
-use mina_poseidon::constants::SpongeConstants;
+use mina_poseidon::{constants::SpongeConstants, sponge::DefaultFqSponge, FqSponge};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
@@ -49,7 +49,10 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-> {
+> where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+{
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
@@ -970,6 +973,24 @@ impl<
                 })
                 .collect();
             self.previous_committed_state_e2 = comms
+        }
+    }
+
+    fn absorb_state(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let sponge: DefaultFqSponge<E1::Params, PlonkSpongeConstants> =
+                DefaultFqSponge::new(E1::other_curve_sponge_params());
+            self.sponge_e1.iter().for_each(|v| {
+                let v = Fq::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                sponge.absorb(v);
+            });
+        } else {
+            let sponge: DefaultFqSponge<E2::Params, PlonkSpongeConstants> =
+                DefaultFqSponge::new(E2::other_curve_sponge_params());
+            self.sponge_e2.iter().for_each(|v| {
+                let v = Fp::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                sponge.absorb(v);
+            });
         }
     }
 
