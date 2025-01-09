@@ -1166,6 +1166,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         }
 
         interpreter::interpret_instruction(self, opcode);
+        let preimage_key: [u32; 8] = self.registers.preimage_key;
+
+        debug!("Preimage Key {:?}",preimage_key);
 
         self.instruction_counter = self.next_instruction_counter();
 

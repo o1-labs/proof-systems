@@ -1214,194 +1214,115 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RTypeInstruction::SyscallWritePreimage => {
-            // Align the read address to the word boundary
-            let addr = {
-                let a = env.read_register(&Env::constant(5));
+            let requested_addr = env.read_register(&Env::constant(5));
+            debug!("SyscallWritePreimage: requested_addr = {:?}", requested_addr);
+            let requested_write_length = env.read_register(&Env::constant(6));
+            debug!("SyscallWritePreimage: requested_write_length = {:?}", requested_write_length);
+
+            // Offset within the aligned word, i.e. alignment = 1 means we can only write 3 bytes.
+            let alignment = {
                 let pos = env.alloc_scratch();
-                unsafe { env.and_witness(&a, &Env::constant(0xFFFFFFFC), pos) }
+                unsafe { env.and_witness(&requested_addr, &Env::constant(3), pos) }
             };
-            debug!("SyscallWritePreimage: addr = {:?}", addr);
-            let write_length = env.read_register(&Env::constant(6));
+            debug!("SyscallWritePreimage: alignment = {:?}", alignment);
+            
+            // Align the read address to the word boundary
+            let read_address = {
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&requested_addr, &Env::constant(0xFFFFFFFC), pos) }
+            };
+            debug!("SyscallWritePreimage: read_address = {:?}", read_address);
+
+            // our actual write length
+            let write_length = {
+                // number of bytes we are allowed to write till we reach the end of the word boundary.
+                let num_available_bytes = Env::constant(4) - alignment.clone();
+                let requested_too_much = {
+                    let pos= env.alloc_scratch();
+                    unsafe {
+                        env.test_less_than(&num_available_bytes, &requested_write_length, pos)
+                    }
+                };
+
+                (Env::constant(1) - requested_too_much.clone()) * requested_write_length
+                    + requested_too_much * num_available_bytes
+            };
             debug!("SyscallWritePreimage: write_length = {:?}", write_length);
 
-            // Cannon assumes that the remaining `byte_length` represents how much remains to be
-            // read (i.e. all write calls send the full data in one syscall, and attempt to retry
-            // with the rest until there is a success). This also simplifies the implementation
-            // here, so we will follow suit.
-            let bytes_to_preserve_in_register = {
-                let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&write_length, 2, 0, pos) }
-            };
-            debug!(
-                "SyscallWritePreimage: bytes_to_preserve_in_register = {:?}",
-                bytes_to_preserve_in_register
-            );
-            env.range_check2(&bytes_to_preserve_in_register);
-            let (register_idx, registers_left_to_write_after_this) = {
-                let registers_left_to_write_after_this = {
+            let [overwrite_0, overwrite_1, overwrite_2, overwrite_3] = {
+                let cap = alignment.clone() + write_length.clone();
+                // i \elem [alignment, alignment + write_length)
+                let mut make_condition = |i: u32| {
+                    let c1 = {
+                        let pos = env.alloc_scratch();
+                        Env::constant(1)
+                            - unsafe { env.test_less_than(&Env::constant(i), &alignment, pos) }
+                    };
+                    let c2 = {
+                        let pos = env.alloc_scratch();
+                        unsafe { env.test_less_than(&Env::constant(i), &cap, pos) }
+                    };
                     let pos = env.alloc_scratch();
-                    // The virtual register is 32 bits wide, so we can just read 6 bytes. If the
-                    // register has an incorrect value, it will be unprovable and we'll fault.
-                    unsafe { env.bitmask(&write_length, 6, 2, pos) }
+                    unsafe { env.and_witness(&c1, &c2, pos) }
                 };
-                debug!(
-                    "SyscallWritePreimage: registers_left_to_write_after_this = {:?}",
-                    registers_left_to_write_after_this
-                );
-                env.range_check8(&registers_left_to_write_after_this, 4);
-                let curr_write_register_idx = 
-                  env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32)) + Env::constant(REGISTER_PREIMAGE_KEY_START as u32);
-                (curr_write_register_idx - registers_left_to_write_after_this.clone(), registers_left_to_write_after_this)
+                let overwrite_0 = make_condition(0);
+                let overwrite_1 = make_condition(1);
+                let overwrite_2 = make_condition(2);
+                let overwrite_3 = make_condition(3);
+                [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
-            debug!("SyscallWritePreimage: register_idx = {:?}", register_idx);
 
-            let [r0, r1, r2, r3] = {
-                let register_value = {
-                    let initial_register_value = env.read_register(&register_idx);
-
-                    // We should clear the register if our offset into the read will replace all of its
-                    // bytes.
-                    let should_clear_register = env.is_zero(&bytes_to_preserve_in_register);
-
-                    let pos = env.alloc_scratch();
-                    env.copy(
-                        &((Env::constant(1) - should_clear_register) * initial_register_value),
-                        pos,
-                    )
-                };
-                [
-                    {
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&register_value, 32, 24, pos) }
-                    },
-                    {
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&register_value, 24, 16, pos) }
-                    },
-                    {
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&register_value, 16, 8, pos) }
-                    },
-                    {
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&register_value, 8, 0, pos) }
-                    },
-                ]
-            };
-            env.lookup_8bits(&r0);
-            env.lookup_8bits(&r1);
-            env.lookup_8bits(&r2);
-            env.lookup_8bits(&r3);
-
-            debug!("r values {:?}", [r0.clone(), r1.clone(), r2.clone(), r3.clone()]);
-
-            // We choose our read address so that the bytes we read come aligned with the target
-            // bytes in the register, to avoid an expensive bitshift.
-            let read_address = addr.clone() - bytes_to_preserve_in_register.clone();
+            debug!("overwrite values {:?}", [overwrite_0.clone(), overwrite_1.clone(), overwrite_2.clone(), overwrite_3.clone()]);
 
             let m0 = env.read_memory(&read_address);
             let m1 = env.read_memory(&(read_address.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
             let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
 
-            debug!("m values {:?}", [m0.clone(), m1.clone(), m2.clone(), m3.clone()]);
-
-            // Now, for some complexity. From the perspective of the write operation, we should be
-            // reading the `4 - bytes_to_preserve_in_register`. However, to match cannon 1:1, we
-            // only want to read the bytes up to the end of the current word.
-            let [overwrite_0, overwrite_1, overwrite_2, overwrite_3] = {
-                let next_word_addr = {
-                    let byte_subaddr = {
-                        // FIXME: Requires a range check
-                        let pos = env.alloc_scratch();
-                        unsafe { env.bitmask(&addr, 2, 0, pos) }
-                    };
-                    env.range_check2(&byte_subaddr);
-                    addr.clone() + Env::constant(4) - byte_subaddr
-                };
-                let overwrite_0 = {
-                    // We always write the first byte if we're not preserving it, since it will
-                    // have been read from `addr`.
-                    env.equal(&bytes_to_preserve_in_register, &Env::constant(0))
-                };
-                let overwrite_1 = {
-                    // We write the second byte if:
-                    //   we wrote the first byte
-                    overwrite_0.clone()
-                    //   and this isn't the start of the next word (which implies `overwrite_0`),
-                    - env.equal(&(read_address.clone() + Env::constant(1)), &next_word_addr)
-                    //   or this byte was read from `addr`
-                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(1))
-                };
-                let overwrite_2 = {
-                    // We write the third byte if:
-                    //   we wrote the second byte
-                    overwrite_1.clone()
-                    //   and this isn't the start of the next word (which implies `overwrite_1`),
-                    - env.equal(&(read_address.clone() + Env::constant(2)), &next_word_addr)
-                    //   or this byte was read from `addr`
-                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(2))
-                };
-                let overwrite_3 = {
-                    // We write the fourth byte if:
-                    //   we wrote the third byte
-                    overwrite_2.clone()
-                    //   and this isn't the start of the next word (which implies `overwrite_2`),
-                    - env.equal(&(read_address.clone() + Env::constant(3)), &next_word_addr)
-                    //   or this byte was read from `addr`
-                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(3))
-                };
-                [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
-            };
-
-            debug!(
-                "overwrite values {:?}",
-                [overwrite_0.clone(), overwrite_1.clone(), overwrite_2.clone(), overwrite_3.clone()]
-            );
-
             let value = {
-                let value = ((overwrite_0.clone() * m0
-                    + (Env::constant(1) - overwrite_0.clone()) * r0)
-                    * Env::constant(1 << 24))
-                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1.clone()) * r1)
-                        * Env::constant(1 << 16))
-                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2.clone()) * r2)
-                        * Env::constant(1 << 8))
-                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3.clone()) * r3);
+                let value = (overwrite_0.clone() * m0 * Env::constant(1 << 24))
+                    + (overwrite_1.clone() * m1 * Env::constant(1 << 16))
+                    + (overwrite_2.clone() * m2 * Env::constant(1 << 8))
+                    + (overwrite_3.clone() * m3);
                 let pos = env.alloc_scratch();
                 env.copy(&value, pos)
             };
 
+            let num_bytes_to_write = overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3;
             let write_idx = {
-                let curr_write_offset =
+                let curr_num_written =
                     env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32));
                 let quot_pos = env.alloc_scratch();
                 let rem_pos = env.alloc_scratch();
-                let (_, next_write_offset) = unsafe {
+                let (word_idx, _) = unsafe {
                     env.divmod(
-                        &(curr_write_offset.clone() + registers_left_to_write_after_this),
-                        &Env::constant(8),
+                        &curr_num_written,
+                        &Env::constant(4),
                         quot_pos,
                         rem_pos,
                     )
                 };
-                debug!(
-                    "write_idx: {:?}, next_write_offset: {:?}",
-                    curr_write_offset, next_write_offset
-                );
+
                 env.write_register(
                     &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32),
-                    next_write_offset,
+                    curr_num_written + num_bytes_to_write.clone()
                 );
-                Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + curr_write_offset
+                (Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + word_idx)
             };
-            // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad = keccak("hello world").key
-            // 0002FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
-            // 0002FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
-            //       4cb01fad 17328500 a8d7341e5 e972fc6 77286384 f802f8ef 42a5ec5 Af03bbfa25
-            // FFFF02FF
+
+            debug!("Value before the change {:?}", value);
+
+            debug!("Value after the change {:?}", value);
+
+
+
+            // 00173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad
+            // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad
             let curr_value = env.read_register(&write_idx);
-            debug!("overriding curr_value {:?} with value {:?} in register {:?}", curr_value, value, write_idx);
+            debug!(
+                "overriding curr_value {:?} with value {:?} in register {:?}",
+                curr_value, value, write_idx
+            );
             // Update the preimage key.
             env.write_register(&write_idx, value);
             debug!("-------------------------------------------------------------------------------------------");
@@ -1413,7 +1334,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             // Return the number of bytes read.
             env.write_register(
                 &Env::constant(2),
-                overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3,
+                num_bytes_to_write
             );
             // Set the error register to 0.
             env.write_register(&Env::constant(7), Env::constant(0u32));
