@@ -1392,7 +1392,6 @@ fn run_test<G: KimchiCurve>(
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
     G::BaseField: PrimeField,
-    G: KimchiCurve,
 {
     let rng = &mut make_test_rng(None);
 

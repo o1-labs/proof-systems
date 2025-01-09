@@ -835,10 +835,7 @@ pub fn heavy_test_simple_add() {
                         .divide_by_vanishing_poly(domain.d1)
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
-                        panic!(
-                            "Remainder is not zero for expression #{expr_i}: {}",
-                            expr.to_string()
-                        );
+                        panic!("Remainder is not zero for expression #{expr_i}: {}", expr,);
                     }
                 }
             }
@@ -924,7 +921,7 @@ pub fn heavy_test_simple_add() {
                 if !remainder.is_zero() {
                     panic!(
                         "ERROR: Remainder is not zero for joint expression: {}",
-                        expr.to_string()
+                        expr
                     );
                 } else {
                     println!("Interpolated expression is divisible by vanishing poly d1");

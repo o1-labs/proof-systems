@@ -26,7 +26,7 @@ where
 
     pub fn make_set(&mut self, x: T) {
         let len = &mut self.set_size;
-        if self.map.get(&x).is_some() {
+        if self.map.contains_key(&x) {
             return;
         }
 
