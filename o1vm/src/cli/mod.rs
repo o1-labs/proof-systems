@@ -1,6 +1,7 @@
 use clap::Parser;
 
 pub mod cannon;
+pub mod riscv;
 
 #[derive(Parser, Debug, Clone)]
 #[command(
@@ -10,5 +11,7 @@ pub mod cannon;
 )]
 pub enum Commands {
     #[command(subcommand)]
-    Cannon(cannon::Cannon),
+    Cannon(Box<cannon::Cannon>),
+    #[command(subcommand)]
+    RiscV(riscv::Command),
 }
