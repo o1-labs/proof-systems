@@ -189,9 +189,6 @@
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper [&quot;Poseidon: A New Hash
 //! Function&quot;](https://eprint.iacr.org/2019/458.pdf).
@@ -236,8 +233,7 @@
     init_state: [Env::Variable; STATE_SIZE],
 ) -&gt; [Env::Variable; STATE_SIZE]
 <span class="kw">where
-    </span>F: PrimeField,
-    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    </span>PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColWriteCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
@@ -263,8 +259,7 @@
     param: <span class="kw-2">&amp;</span>PARAMETERS,
 ) -&gt; [Env::Variable; STATE_SIZE]
 <span class="kw">where
-    </span>F: PrimeField,
-    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    </span>PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
@@ -316,8 +311,7 @@
     elements: <span class="kw-2">&amp;</span>[PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;; STATE_SIZE],
 ) -&gt; [Env::Variable; STATE_SIZE]
 <span class="kw">where
-    </span>F: PrimeField,
-    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    </span>PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {

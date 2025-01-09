@@ -1,4 +1,0 @@
-(function() {var implementors = {
-"folding":[["impl&lt;C: <a class=\"trait\" href=\"folding/trait.FoldingConfig.html\" title=\"trait folding::FoldingConfig\">FoldingConfig</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.72.1/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a> for <a class=\"enum\" href=\"folding/expressions/enum.FoldingCompatibleExpr.html\" title=\"enum folding::expressions::FoldingCompatibleExpr\">FoldingCompatibleExpr</a>&lt;C&gt;"]],
-"o1vm":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.72.1/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a> for <a class=\"struct\" href=\"o1vm/cannon/struct.State.html\" title=\"struct o1vm::cannon::State\">State</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

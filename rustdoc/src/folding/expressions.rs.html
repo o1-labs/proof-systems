@@ -1153,6 +1153,9 @@
 <a href="#1153" id="1153">1153</a>
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1433,6 +1436,10 @@
 };
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::One;
+<span class="kw">use </span>core::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::circuits::{
@@ -1575,20 +1582,19 @@
 }
 
 <span class="doccomment">/// Implement a human-readable version of a folding compatible expression.
-</span><span class="comment">// FIXME: use Display instead, to follow the recommendation of the trait.
-</span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; ToString <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
-    <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+</span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; Display <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             FoldingCompatibleExpr::Atom(c) =&gt; <span class="kw">match </span>c {
                 FoldingCompatibleExprInner::Constant(c) =&gt; {
                     <span class="kw">if </span>c.is_zero() {
-                        <span class="string">&quot;0&quot;</span>.to_string()
+                        <span class="macro">write!</span>(f, <span class="string">&quot;0&quot;</span>)
                     } <span class="kw">else </span>{
-                        c.to_string()
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, c)
                     }
                 }
                 FoldingCompatibleExprInner::Challenge(c) =&gt; {
-                    <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, c)
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, c)
                 }
                 FoldingCompatibleExprInner::Cell(cell) =&gt; {
                     <span class="kw">let </span>Variable { col, row } = cell;
@@ -1596,32 +1602,32 @@
                         CurrOrNext::Curr =&gt; <span class="string">&quot;&quot;</span>,
                         CurrOrNext::Next =&gt; <span class="string">&quot; * ω&quot;</span>,
                     };
-                    <span class="macro">format!</span>(<span class="string">&quot;Col({:?}){}&quot;</span>, col, next)
+                    <span class="macro">write!</span>(f, <span class="string">&quot;Col({:?}){}&quot;</span>, col, next)
                 }
                 FoldingCompatibleExprInner::Extensions(e) =&gt; <span class="kw">match </span>e {
-                    ExpExtension::U =&gt; <span class="string">&quot;U&quot;</span>.to_string(),
-                    ExpExtension::Error =&gt; <span class="string">&quot;E&quot;</span>.to_string(),
+                    ExpExtension::U =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;U&quot;</span>),
+                    ExpExtension::Error =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;E&quot;</span>),
                     ExpExtension::ExtendedWitness(i) =&gt; {
-                        <span class="macro">format!</span>(<span class="string">&quot;ExWit({})&quot;</span>, i)
+                        <span class="macro">write!</span>(f, <span class="string">&quot;ExWit({})&quot;</span>, i)
                     }
-                    ExpExtension::Alpha(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;α_{i}&quot;</span>),
-                    ExpExtension::Selector(s) =&gt; <span class="macro">format!</span>(<span class="string">&quot;Selec({:?})&quot;</span>, s),
+                    ExpExtension::Alpha(i) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;α_{i}&quot;</span>),
+                    ExpExtension::Selector(s) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Selec({:?})&quot;</span>, s),
                 },
             },
             FoldingCompatibleExpr::Double(e) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;2 {}&quot;</span>, e.to_string())
+                <span class="macro">write!</span>(f, <span class="string">&quot;2 {}&quot;</span>, e)
             }
             FoldingCompatibleExpr::Square(e) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{} ^ 2&quot;</span>, e.to_string())
+                <span class="macro">write!</span>(f, <span class="string">&quot;{} ^ 2&quot;</span>, e)
             }
             FoldingCompatibleExpr::Add(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{} + {}&quot;</span>, e1.to_string(), e2.to_string())
+                <span class="macro">write!</span>(f, <span class="string">&quot;{} + {}&quot;</span>, e1, e2)
             }
             FoldingCompatibleExpr::Sub(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{} - {}&quot;</span>, e1.to_string(), e2.to_string())
+                <span class="macro">write!</span>(f, <span class="string">&quot;{} - {}&quot;</span>, e1, e2)
             }
             FoldingCompatibleExpr::Mul(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;({}) ({})&quot;</span>, e1.to_string(), e2.to_string())
+                <span class="macro">write!</span>(f, <span class="string">&quot;({}) ({})&quot;</span>, e1, e2)
             }
             FoldingCompatibleExpr::Pow(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }

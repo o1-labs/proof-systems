@@ -1299,10 +1299,10 @@
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
         <span class="kw">match </span>row {
             CurrOrNext::Curr =&gt; {
-                <span class="self">self</span>.state[idx] = v.clone();
+                <span class="self">self</span>.state[idx].clone_from(<span class="kw-2">&amp;</span>v);
             }
             CurrOrNext::Next =&gt; {
-                <span class="self">self</span>.next_state[idx] = v.clone();
+                <span class="self">self</span>.next_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
             }
         }
         v
@@ -1319,7 +1319,7 @@
             Fq::modulus_biguint().into()
         };
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
-        <span class="self">self</span>.public_state[idx] = v.clone();
+        <span class="self">self</span>.public_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
         v
     }
 
@@ -1397,7 +1397,7 @@
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Save the current state in the witness
         </span><span class="self">self</span>.state.iter().enumerate().for_each(|(i, x)| {
-            <span class="self">self</span>.witness[i][<span class="self">self</span>.current_row] = x.clone();
+            <span class="self">self</span>.witness[i][<span class="self">self</span>.current_row].clone_from(x);
         });
         <span class="comment">// We increment the row
         // TODO: should we check that we are not going over the domain size?
@@ -1407,7 +1407,7 @@
         <span class="self">self</span>.idx_var_next_row = <span class="number">0</span>;
         <span class="self">self</span>.idx_var_pi = <span class="number">0</span>;
         <span class="comment">// We keep track of the values we already set.
-        </span><span class="self">self</span>.state = <span class="self">self</span>.next_state.clone();
+        </span><span class="self">self</span>.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.next_state);
         <span class="comment">// And we reset the next state
         </span><span class="self">self</span>.next_state = std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
     }
@@ -1423,8 +1423,8 @@
         <span class="kw">let </span>Column::X(idx) = col <span class="kw">else </span>{
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Only works for private columns&quot;</span>)
         };
-        <span class="self">self</span>.state[idx] = r.clone();
-        <span class="self">self</span>.r = r.clone();
+        <span class="self">self</span>.state[idx].clone_from(<span class="kw-2">&amp;</span>r);
+        <span class="self">self</span>.r.clone_from(<span class="kw-2">&amp;</span>r);
         r
     }
 

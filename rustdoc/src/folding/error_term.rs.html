@@ -845,7 +845,7 @@
         <span class="kw">use </span>ExtendedFoldingColumn::<span class="kw-2">*</span>;
         <span class="kw">let </span>relaxed_witness = <span class="self">self</span>.get_relaxed_witness(side);
         <span class="kw">match </span>col {
-            WitnessExtended(i) =&gt; relaxed_witness.extended_witness.extended.get(i).is_some(),
+            WitnessExtended(i) =&gt; relaxed_witness.extended_witness.extended.contains_key(i),
             Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
             Inner(<span class="kw">_</span>) | Constant(<span class="kw">_</span>) | Challenge(<span class="kw">_</span>) | Alpha(<span class="kw">_</span>) | Selector(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }

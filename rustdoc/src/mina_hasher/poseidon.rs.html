@@ -167,7 +167,7 @@
     <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
         <span class="comment">// Efficient reset
         </span><span class="self">self</span>.sponge.sponge_state = <span class="self">self</span>.sponge_state.clone();
-        <span class="self">self</span>.sponge.state = <span class="self">self</span>.state.clone();
+        <span class="self">self</span>.sponge.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.state);
 
         <span class="self">self
     </span>}
@@ -185,7 +185,7 @@
 
         <span class="comment">// Save initial state for efficient reset
         </span><span class="self">self</span>.sponge_state = <span class="self">self</span>.sponge.sponge_state.clone();
-        <span class="self">self</span>.state = <span class="self">self</span>.sponge.state.clone();
+        <span class="self">self</span>.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.sponge.state);
 
         <span class="self">self
     </span>}

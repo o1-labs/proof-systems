@@ -246,7 +246,7 @@
     <span class="kw">pub fn </span>to_pub_columns&lt;<span class="kw">const </span>NPUB: usize&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Witness&lt;NPUB, Vec&lt;T&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>newcols: [Vec&lt;T&gt;; NPUB] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
         <span class="kw">for </span>(i, vec) <span class="kw">in </span><span class="self">self</span>.cols[<span class="number">0</span>..NPUB].iter().enumerate() {
-            newcols[i] = vec.clone();
+            newcols[i].clone_from(vec);
         }
         Witness {
             cols: Box::new(newcols),
