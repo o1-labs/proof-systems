@@ -6,11 +6,12 @@ pub const REGISTER_LO: usize = 33;
 pub const REGISTER_CURRENT_IP: usize = 34;
 pub const REGISTER_NEXT_IP: usize = 35;
 pub const REGISTER_HEAP_POINTER: usize = 36;
-pub const REGISTER_PREIMAGE_KEY_START: usize = 37;
-pub const REGISTER_PREIMAGE_KEY_END: usize = REGISTER_PREIMAGE_KEY_START + 8 /* 37 + 8 = 45 */;
-pub const REGISTER_PREIMAGE_OFFSET: usize = 45;
+pub const REGISTER_PREIMAGE_KEY_WRITE_OFFSET: usize = 37;
+pub const REGISTER_PREIMAGE_KEY_START: usize = 38;
+pub const REGISTER_PREIMAGE_KEY_END: usize = REGISTER_PREIMAGE_KEY_START + 8 /* 38 + 8 = 46 */;
+pub const REGISTER_PREIMAGE_OFFSET: usize = 46;
 
-pub const NUM_REGISTERS: usize = 46;
+pub const NUM_REGISTERS: usize = 47;
 
 /// This represents the internal state of the virtual machine.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -21,6 +22,7 @@ pub struct Registers<T> {
     pub current_instruction_pointer: T,
     pub next_instruction_pointer: T,
     pub heap_pointer: T,
+    pub preimage_key_write_offset: T,
     pub preimage_key: [T; 8],
     pub preimage_offset: T,
 }
@@ -35,6 +37,7 @@ impl<T> Registers<T> {
                 &self.current_instruction_pointer,
                 &self.next_instruction_pointer,
                 &self.heap_pointer,
+                &self.preimage_key_write_offset,
             ])
             .chain(self.preimage_key.iter())
             .chain([&self.preimage_offset])
@@ -57,6 +60,8 @@ impl<T: Clone> Index<usize> for Registers<T> {
             &self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &self.heap_pointer
+        } else if index == REGISTER_PREIMAGE_KEY_WRITE_OFFSET {
+            &self.preimage_key_write_offset
         } else if (REGISTER_PREIMAGE_KEY_START..REGISTER_PREIMAGE_KEY_END).contains(&index) {
             &self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
         } else if index == REGISTER_PREIMAGE_OFFSET {
@@ -81,6 +86,8 @@ impl<T: Clone> IndexMut<usize> for Registers<T> {
             &mut self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &mut self.heap_pointer
+        } else if index == REGISTER_PREIMAGE_KEY_WRITE_OFFSET {
+            &mut self.preimage_key_write_offset
         } else if (REGISTER_PREIMAGE_KEY_START..REGISTER_PREIMAGE_KEY_END).contains(&index) {
             &mut self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
         } else if index == REGISTER_PREIMAGE_OFFSET {

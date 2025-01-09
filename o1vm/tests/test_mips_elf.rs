@@ -136,6 +136,7 @@ mod test_oracle {
 
     impl PreImageOracleT for TestPreImageOracle {
         fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+            debug!("Asking oracle for key: {}", hex::encode(key));
             let key_type = KeyType::from_prefix(key[0]);
             debug!("Asking oracle for key type {:?}", key_type);
             let m = &self.preimage[key_type as usize];

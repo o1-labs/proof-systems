@@ -7,8 +7,11 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::{One, Zero};
+use log::debug;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
+
+use super::registers::REGISTER_PREIMAGE_KEY_WRITE_OFFSET;
 
 pub const FD_STDIN: u32 = 0;
 pub const FD_STDOUT: u32 = 1;
@@ -1342,13 +1345,38 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 env.copy(&value, pos)
             };
 
-            // Shift the preimage key registers down by one to make room for the new value.
-            for i in (REGISTER_PREIMAGE_KEY_START + 1)..=REGISTER_PREIMAGE_KEY_END {
-                let w = env.read_register(&Env::constant(i as u32));
-                env.write_register(&Env::constant((i - 1) as u32), w);
-            }
+            let write_idx = {
+                let curr_write_index =
+                    env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32));
+                let quot_pos = env.alloc_scratch();
+                let rem_pos = env.alloc_scratch();
+                let (_, next_write_offset) = unsafe {
+                    env.divmod(
+                        &(curr_write_index.clone() + Env::constant(1)),
+                        &Env::constant(8),
+                        quot_pos,
+                        rem_pos,
+                    )
+                };
+                debug!(
+                    "write_idx: {:?}, next_write_offset: {:?}",
+                    curr_write_index, next_write_offset
+                );
+                env.write_register(
+                    &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32),
+                    next_write_offset,
+                );
+                Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + curr_write_index
+            };
+            // 4cb01fad17328500a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa25
+            // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad = keccak("hello world").key
+            // 2FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
+            // 2FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
+            //       4cb01fad 17328500 a8d7341e5 e972fc6 77286384 f802f8ef 42a5ec5 Af03bbfa25
+            // FFFF02FF
+            debug!("Writing value {:?} to register {:?}", value, write_idx);
             // Update the preimage key.
-            env.write_register(&register_idx, value);
+            env.write_register(&write_idx, value);
             // Reset the preimage offset.
             env.write_register(
                 &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),

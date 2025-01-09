@@ -862,6 +862,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 current_instruction_pointer: initial_instruction_pointer,
                 next_instruction_pointer,
                 heap_pointer: state.heap,
+                preimage_key_write_offset: 0,
                 preimage_key,
                 preimage_offset: state.preimage_offset,
             }

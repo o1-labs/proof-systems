@@ -8,7 +8,7 @@ use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
-pub(crate) const SCRATCH_SIZE_WITHOUT_KECCAK: usize = 94;
+pub(crate) const SCRATCH_SIZE_WITHOUT_KECCAK: usize = 54;
 /// The number of hashes performed so far in the block
 pub(crate) const MIPS_HASH_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK;
 /// The number of bytes of the preimage that have been read so far in this hash
@@ -38,7 +38,7 @@ pub const SCRATCH_SIZE: usize = SCRATCH_SIZE_WITHOUT_KECCAK + 5 + 4 + 4 + 4 + 1;
 
 /// Number of columns used by the MIPS interpreter to keep values to be
 /// inverted.
-pub const SCRATCH_SIZE_INVERSE: usize = 20;
+pub const SCRATCH_SIZE_INVERSE: usize = 13;
 
 /// The number of columns used for relation witness in the MIPS circuit
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
