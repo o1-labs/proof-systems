@@ -1,6 +1,6 @@
 use ark_ff::UniformRand;
 use clap::Parser;
-use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -48,10 +48,37 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let start = Start::create(state.step as usize);
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-    let srs: SRS<Vesta> = {
-        let srs = SRS::create(DOMAIN_SIZE);
-        srs.get_lagrange_basis(domain_fp.d1);
-        srs
+    let srs: SRS<Vesta> = match &args.srs_cache {
+        Some(cache) => {
+            debug!("Loading SRS from cache {}", cache);
+            let file_path = Path::new(cache);
+            let file = File::open(file_path).expect("Error opening SRS cache file");
+            let srs: SRS<Vesta> = {
+                // By convention, proof systems serializes a TestSRS with filename 'test_<CURVE_NAME>.srs'.
+                // The benefit of using this is you don't waste time verifying the SRS.
+                if file_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("test_")
+                {
+                    let test_srs: TestSRS<Vesta> = rmp_serde::from_read(&file).unwrap();
+                    From::from(test_srs)
+                } else {
+                    rmp_serde::from_read(&file).unwrap()
+                }
+            };
+            debug!("SRS loaded successfully from cache");
+            srs
+        }
+        None => {
+            debug!("No SRS cache provided. Creating SRS from scratch");
+            let srs = SRS::create(DOMAIN_SIZE);
+            srs.get_lagrange_basis(domain_fp.d1);
+            debug!("SRS created successfully");
+            srs
+        }
     };
 
     // Initialize the environments
