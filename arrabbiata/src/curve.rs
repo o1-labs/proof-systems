@@ -6,6 +6,7 @@
 //! different curves.
 
 use ark_ec::short_weierstrass::Affine;
+use ark_ff::PrimeField;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
@@ -28,7 +29,10 @@ impl SpongeConstants for PlonkSpongeConstants {
 
 /// Represents additional information that a curve needs in order to be used
 /// with Arrabbiata.
-pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve {
+pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve
+where
+    Self::BaseField: PrimeField,
+{
     /// A human readable name.
     const NAME: &'static str;
 

@@ -3,11 +3,11 @@ use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
-use mina_poseidon::constants::SpongeConstants;
+use mina_poseidon::{constants::SpongeConstants, sponge::DefaultFqSponge, FqSponge};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
@@ -49,7 +49,10 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-> {
+> where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+{
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
