@@ -49,7 +49,10 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-> {
+> where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+{
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
