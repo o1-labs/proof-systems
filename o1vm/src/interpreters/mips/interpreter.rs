@@ -1214,7 +1214,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         RTypeInstruction::SyscallWritePreimage => {
-            let addr = env.read_register(&Env::constant(5));
+            // Align the read address to the word boundary
+            let addr = {
+                let a = env.read_register(&Env::constant(5));
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&a, &Env::constant(0xFFFFFFFC), pos) }
+            };
             debug!("SyscallWritePreimage: addr = {:?}", addr);
             let write_length = env.read_register(&Env::constant(6));
             debug!("SyscallWritePreimage: write_length = {:?}", write_length);
@@ -1232,7 +1237,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 bytes_to_preserve_in_register
             );
             env.range_check2(&bytes_to_preserve_in_register);
-            let register_idx = {
+            let (register_idx, registers_left_to_write_after_this) = {
                 let registers_left_to_write_after_this = {
                     let pos = env.alloc_scratch();
                     // The virtual register is 32 bits wide, so we can just read 6 bytes. If the
@@ -1246,7 +1251,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 env.range_check8(&registers_left_to_write_after_this, 4);
                 let curr_write_register_idx = 
                   env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32)) + Env::constant(REGISTER_PREIMAGE_KEY_START as u32);
-                curr_write_register_idx - registers_left_to_write_after_this
+                (curr_write_register_idx - registers_left_to_write_after_this.clone(), registers_left_to_write_after_this)
             };
             debug!("SyscallWritePreimage: register_idx = {:?}", register_idx);
 
@@ -1368,13 +1373,13 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             };
 
             let write_idx = {
-                let curr_write_index =
+                let curr_write_offset =
                     env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32));
                 let quot_pos = env.alloc_scratch();
                 let rem_pos = env.alloc_scratch();
                 let (_, next_write_offset) = unsafe {
                     env.divmod(
-                        &(curr_write_index.clone() + Env::constant(1)),
+                        &(curr_write_offset.clone() + registers_left_to_write_after_this),
                         &Env::constant(8),
                         quot_pos,
                         rem_pos,
@@ -1382,13 +1387,13 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 };
                 debug!(
                     "write_idx: {:?}, next_write_offset: {:?}",
-                    curr_write_index, next_write_offset
+                    curr_write_offset, next_write_offset
                 );
                 env.write_register(
                     &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32),
                     next_write_offset,
                 );
-                Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + curr_write_index
+                Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + curr_write_offset
             };
             // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad = keccak("hello world").key
             // 0002FF00 17328500 A8D7341E 5E972FC6 77286384 F802F8EF 42A5EC5F 3BBFA25 4CB01FAD
