@@ -152,6 +152,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
             LookupTableIDs::RangeCheck16Lookup => (),
             LookupTableIDs::SparseLookup => (),
             LookupTableIDs::ResetLookup => (),
+            // RAM ones, no multiplicities
             LookupTableIDs::MemoryLookup => (),
             LookupTableIDs::RegisterLookup => (),
             LookupTableIDs::SyscallLookup => (),
