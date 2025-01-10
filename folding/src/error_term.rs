@@ -378,7 +378,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         use ExtendedFoldingColumn::*;
         let relaxed_witness = self.get_relaxed_witness(side);
         match col {
-            WitnessExtended(i) => relaxed_witness.extended_witness.extended.get(i).is_some(),
+            WitnessExtended(i) => relaxed_witness.extended_witness.extended.contains_key(i),
             Error => panic!("shouldn't happen"),
             Inner(_) | Constant(_) | Challenge(_) | Alpha(_) | Selector(_) => true,
         }

@@ -1,4 +1,7 @@
-use super::{registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE, SCRATCH_SIZE};
+use super::{
+    registers::Registers, witness::Env, INSTRUCTION_SET_SIZE, PAGE_SIZE, SCRATCH_SIZE,
+    SCRATCH_SIZE_INVERSE,
+};
 use crate::interpreters::riscv32im::{
     constraints,
     interpreter::{
@@ -49,6 +52,8 @@ pub fn dummy_env() -> Env<Fp> {
         registers_write_index: Registers::default(),
         scratch_state_idx: 0,
         scratch_state: [Fp::zero(); SCRATCH_SIZE],
+        scratch_state_inverse_idx: 0,
+        scratch_state_inverse: [Fp::zero(); SCRATCH_SIZE_INVERSE],
         halt: false,
         selector: INSTRUCTION_SET_SIZE,
     }

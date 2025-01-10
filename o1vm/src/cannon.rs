@@ -2,6 +2,10 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
+use core::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -182,10 +186,10 @@ impl FromStr for StepFrequency {
     }
 }
 
-impl ToString for State {
+impl Display for State {
     // A very debatable and incomplete, but serviceable, `to_string` implementation.
-    fn to_string(&self) -> String {
-        format!(
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f,
             "memory_size (length): {}\nfirst page size: {}\npreimage key: {:#?}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} ",
             self.memory.len(),
             self.memory[0].data.len(),
@@ -304,6 +308,35 @@ impl Meta {
                 },
             )
             .map_or_else(|_| None, |idx| Some(self.symbols[idx].name.to_string()))
+    }
+}
+
+pub const HINT_CLIENT_READ_FD: i32 = 3;
+pub const HINT_CLIENT_WRITE_FD: i32 = 4;
+pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
+pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
+
+pub struct Preimage(Vec<u8>);
+
+impl Preimage {
+    pub fn create(v: Vec<u8>) -> Self {
+        Preimage(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+pub struct Hint(Vec<u8>);
+
+impl Hint {
+    pub fn create(v: Vec<u8>) -> Self {
+        Hint(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
     }
 }
 
@@ -478,35 +511,5 @@ mod tests {
             ]))
         );
         assert!(PreimageKey::from_str("0x01").is_err());
-    }
-}
-
-pub const HINT_CLIENT_READ_FD: i32 = 3;
-pub const HINT_CLIENT_WRITE_FD: i32 = 4;
-pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
-pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
-
-#[derive(Clone)]
-pub struct Preimage(Vec<u8>);
-
-impl Preimage {
-    pub fn create(v: Vec<u8>) -> Self {
-        Preimage(v)
-    }
-
-    pub fn get(self) -> Vec<u8> {
-        self.0
-    }
-}
-
-pub struct Hint(Vec<u8>);
-
-impl Hint {
-    pub fn create(v: Vec<u8>) -> Self {
-        Hint(v)
-    }
-
-    pub fn get(self) -> Vec<u8> {
-        self.0
     }
 }

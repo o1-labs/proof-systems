@@ -185,6 +185,7 @@ mod tests {
         if std::env::var("SRS_OVERWRITE").is_ok() {
             let mut file = std::fs::OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .open(srs_path)
                 .expect("failed to open SRS file");

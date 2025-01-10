@@ -38,7 +38,7 @@ fn test_combine_evaluations() {
             ],
         };
 
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1], polyscale);
+        let output = combine_evaluations::<VestaG>(&[eval_p1], polyscale);
         // We have 2 evaluation points.
         assert_eq!(output.len(), 2);
         // polyscale is not used.
@@ -60,7 +60,7 @@ fn test_combine_evaluations() {
             ],
         };
 
-        let output = combine_evaluations::<VestaG>(&vec![eval_p2], polyscale);
+        let output = combine_evaluations::<VestaG>(&[eval_p2], polyscale);
         // We have 2 evaluation points
         assert_eq!(output.len(), 2);
         // polyscale is not used.
@@ -92,7 +92,7 @@ fn test_combine_evaluations() {
             ],
         };
 
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
+        let output = combine_evaluations::<VestaG>(&[eval_p1, eval_p2], polyscale);
         // We have 2 evaluation points
         assert_eq!(output.len(), 2);
         let exp_output = [Fp::from(1 + 3 * 2), Fp::from(2 + 4 * 2)];
@@ -123,7 +123,7 @@ fn test_combine_evaluations() {
             ],
         };
 
-        let output = combine_evaluations::<VestaG>(&vec![eval_p1, eval_p2], polyscale);
+        let output = combine_evaluations::<VestaG>(&[eval_p1, eval_p2], polyscale);
         // We have 2 evaluation points
         assert_eq!(output.len(), 2);
         let o1 = Fp::from(1 + 3 * 2 + 5 * 4 + 7 * 8);

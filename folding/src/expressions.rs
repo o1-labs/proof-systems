@@ -278,6 +278,10 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
+use core::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 use derivative::Derivative;
 use itertools::Itertools;
 use kimchi::circuits::{
@@ -420,20 +424,19 @@ impl<C: FoldingConfig> std::ops::Mul for FoldingCompatibleExpr<C> {
 }
 
 /// Implement a human-readable version of a folding compatible expression.
-// FIXME: use Display instead, to follow the recommendation of the trait.
-impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
-    fn to_string(&self) -> String {
+impl<C: FoldingConfig> Display for FoldingCompatibleExpr<C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             FoldingCompatibleExpr::Atom(c) => match c {
                 FoldingCompatibleExprInner::Constant(c) => {
                     if c.is_zero() {
-                        "0".to_string()
+                        write!(f, "0")
                     } else {
-                        c.to_string()
+                        write!(f, "{}", c)
                     }
                 }
                 FoldingCompatibleExprInner::Challenge(c) => {
-                    format!("{:?}", c)
+                    write!(f, "{:?}", c)
                 }
                 FoldingCompatibleExprInner::Cell(cell) => {
                     let Variable { col, row } = cell;
@@ -441,32 +444,32 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
                         CurrOrNext::Curr => "",
                         CurrOrNext::Next => " * ω",
                     };
-                    format!("Col({:?}){}", col, next)
+                    write!(f, "Col({:?}){}", col, next)
                 }
                 FoldingCompatibleExprInner::Extensions(e) => match e {
-                    ExpExtension::U => "U".to_string(),
-                    ExpExtension::Error => "E".to_string(),
+                    ExpExtension::U => write!(f, "U"),
+                    ExpExtension::Error => write!(f, "E"),
                     ExpExtension::ExtendedWitness(i) => {
-                        format!("ExWit({})", i)
+                        write!(f, "ExWit({})", i)
                     }
-                    ExpExtension::Alpha(i) => format!("α_{i}"),
-                    ExpExtension::Selector(s) => format!("Selec({:?})", s),
+                    ExpExtension::Alpha(i) => write!(f, "α_{i}"),
+                    ExpExtension::Selector(s) => write!(f, "Selec({:?})", s),
                 },
             },
             FoldingCompatibleExpr::Double(e) => {
-                format!("2 {}", e.to_string())
+                write!(f, "2 {}", e)
             }
             FoldingCompatibleExpr::Square(e) => {
-                format!("{} ^ 2", e.to_string())
+                write!(f, "{} ^ 2", e)
             }
             FoldingCompatibleExpr::Add(e1, e2) => {
-                format!("{} + {}", e1.to_string(), e2.to_string())
+                write!(f, "{} + {}", e1, e2)
             }
             FoldingCompatibleExpr::Sub(e1, e2) => {
-                format!("{} - {}", e1.to_string(), e2.to_string())
+                write!(f, "{} - {}", e1, e2)
             }
             FoldingCompatibleExpr::Mul(e1, e2) => {
-                format!("({}) ({})", e1.to_string(), e2.to_string())
+                write!(f, "({}) ({})", e1, e2)
             }
             FoldingCompatibleExpr::Pow(_, _) => todo!(),
         }
