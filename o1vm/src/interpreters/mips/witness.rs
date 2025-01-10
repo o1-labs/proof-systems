@@ -92,6 +92,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
+    pub lookup_state_idx: usize,
+    pub lookup_state: Vec<u64>,
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -915,6 +917,8 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
             scratch_state_inverse: fresh_scratch_state(),
+            lookup_state_idx: 0,
+            lookup_state: vec![],
             halt: state.exited,
             syscall_env,
             selector,
@@ -945,6 +949,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn reset_scratch_state_inverse(&mut self) {
         self.scratch_state_idx_inverse = 0;
         self.scratch_state_inverse = fresh_scratch_state();
+    }
+
+    pub fn reset_lookup_state(&mut self) {
+        self.lookup_state_idx = 0;
+        self.lookup_state = vec![];
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
@@ -1190,6 +1199,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     ) -> Instruction {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
+        self.reset_lookup_state();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
