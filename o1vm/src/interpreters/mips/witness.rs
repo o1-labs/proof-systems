@@ -64,6 +64,15 @@ impl SyscallEnv {
     }
 }
 
+pub struct LookupMultiplicities {
+    pub pad_lookup: Vec<u64>,
+    pub round_constants_lookup: Vec<u64>,
+    pub at_most_4_lookup: Vec<u64>,
+    pub byte_lookup: Vec<u64>,
+    pub sparse_lookup: Vec<u64>,
+    pub reset_lookup: Vec<u64>,
+}
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
