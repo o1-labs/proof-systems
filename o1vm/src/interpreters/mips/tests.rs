@@ -83,19 +83,13 @@ mod rtype {
             0x05, 0x67, 0xbd, 0xa4, 0x08, 0x77, 0xa7, 0xe8, 0x5d, 0xce, 0xb6, 0xff, 0x1f, 0x37,
             0x48, 0x0f, 0xef, 0x3d,
         ];
-        let chunks = preimage_key
-            .chunks(4)
-            .map(|chunk| {
-                ((chunk[0] as u32) << 24)
-                    + ((chunk[1] as u32) << 16)
-                    + ((chunk[2] as u32) << 8)
-                    + (chunk[3] as u32)
-            })
-            .collect::<Vec<_>>();
-        dummy_env.registers.preimage_key = std::array::from_fn(|i| chunks[i]);
+        dummy_env.registers.preimage_key = preimage_key;
 
         // The whole preimage
-        let preimage = dummy_env.preimage_oracle.get_preimage(preimage_key).get();
+        let preimage = dummy_env
+            .preimage_oracle
+            .get_preimage(preimage_key.map(|x| x as u8))
+            .get();
 
         // Total number of bytes that need to be processed (includes length)
         let total_length = 8 + preimage.len() as u32;
