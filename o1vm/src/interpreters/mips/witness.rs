@@ -614,10 +614,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     ) -> Self::Variable {
         // The beginning of the syscall
         if self.registers.preimage_offset == 0 {
-            let mut preimage_key =[0u8; 32];
-            for i in 0..32 {
-                    preimage_key[i] = self.registers.preimage_key[i] as u8;
-            }
+            let preimage_key = self.registers.preimage_key.map(|x| x as u8);
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);

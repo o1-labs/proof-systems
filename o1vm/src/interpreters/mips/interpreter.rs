@@ -2,16 +2,14 @@ use crate::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
-        REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET, REGISTER_PREIMAGE_KEY_WRITE_SIZE,
+        REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_KEY_WRITE_SIZE, REGISTER_PREIMAGE_OFFSET,
     },
     lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::{One, Zero};
 use itertools::enumerate;
-use log::debug;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
-
 
 pub const FD_STDIN: u32 = 0;
 pub const FD_STDOUT: u32 = 1;
@@ -1267,86 +1265,35 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
 
-            for (index,overwrite) in enumerate(overwrites) {
+            for (index, overwrite) in enumerate(overwrites) {
+                let offset =
+                    env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32));
 
-                let num_bytes_written = 
-                  env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32));
-
-                let offset = {
-                    let quot = env.alloc_scratch();
-                    let rem = env.alloc_scratch();
-                    let (_, offset) = unsafe { env.divmod(&(num_bytes_written), &Env::constant(32), quot, rem) };
-                    offset
-                };
-                debug!("offset {:?}", offset);
-
-                let current_write_register = 
-                   Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + offset.clone();
-                debug!("current_write_address {:?}", current_write_register);
+                let current_write_register =
+                    Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + offset.clone();
 
                 let byte_to_write = {
                     let curr = env.read_register(&current_write_register);
                     let m = env.read_memory(&(read_address.clone() + Env::constant(index as u32)));
                     overwrite.clone() * m + (Env::constant(1) - overwrite.clone()) * curr
                 };
-                debug!("byte_to_write {:?}", byte_to_write);
 
                 env.write_register(&current_write_register, byte_to_write);
 
-                env.write_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32), num_bytes_written + overwrite);
-            }
-            /*
-
-            let value = {
-                let value = (overwrite_0.clone() * m0 * Env::constant(1 << 24))
-                    + (overwrite_1.clone() * m1 * Env::constant(1 << 16))
-                    + (overwrite_2.clone() * m2 * Env::constant(1 << 8))
-                    + (overwrite_3.clone() * m3);
-                let pos = env.alloc_scratch();
-                env.copy(&value, pos)
-            };
-
-            let num_bytes_to_write = overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3;
-            let (write_idx, byte_idx) = {
-                let curr_num_written =
-                    env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32));
-                let quot_pos = env.alloc_scratch();
-                let rem_pos = env.alloc_scratch();
-                let (word_idx, byte_idx) =
-                    unsafe { env.divmod(&curr_num_written, &Env::constant(4), quot_pos, rem_pos) };
-
-                debug!("word_idx {:?} byte_idx {:?}", word_idx, byte_idx);
+                let new_offset = {
+                    let quot = env.alloc_scratch();
+                    let rem = env.alloc_scratch();
+                    let (_, r) =
+                        unsafe { env.divmod(&(offset + overwrite), &Env::constant(32), quot, rem) };
+                    r
+                };
 
                 env.write_register(
-                    &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32),
-                    curr_num_written + num_bytes_to_write.clone(),
+                    &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32),
+                    new_offset,
                 );
-                (
-                    Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + word_idx,
-                    byte_idx,
-                )
-            };
+            }
 
-            debug!("Value before the change {:?}", value);
-
-            let value = {
-                let pos = env.alloc_scratch();
-                unsafe { env.shift_left(&value, &(Env::constant(8) * (alignment - byte_idx)), pos) }
-            };
-
-            debug!("Value after the change {:?}", value);
-
-            // 00173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad
-            // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad
-            let curr_value = env.read_register(&write_idx);
-            debug!(
-                "overriding curr_value {:?} with value {:?} in register {:?}",
-                curr_value, value, write_idx
-            );
-            // Update the preimage key.
-            env.write_register(&write_idx, value);
-            */
-            debug!("-------------------------------------------------------------------------------------------");
             // Reset the preimage offset.
             env.write_register(
                 &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),

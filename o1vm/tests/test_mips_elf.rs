@@ -161,14 +161,7 @@ struct MipsTest {
 // currently excluding any oracle based tests and a select group of tests that are failing
 fn is_test_excluded(bin_file: &Path) -> bool {
     let file_name = bin_file.file_name().unwrap().to_str().unwrap();
-    let untested_programs = [
-        //"oracle",
-        //"oracle_kzg",
-        //"oracle_unaligned_read",
-        //"oracle_unaligned_write",
-        "exit_group",
-        "mul",
-    ];
+    let untested_programs = ["exit_group", "mul"];
     untested_programs.contains(&file_name)
 }
 
