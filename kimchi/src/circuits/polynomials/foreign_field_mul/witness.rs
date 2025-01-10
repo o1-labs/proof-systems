@@ -152,7 +152,7 @@ pub fn create<F: PrimeField>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
 ) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
-    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
     let mut external_checks = ExternalChecks::<F>::default();
 
     // Compute quotient and remainder using foreign field modulus
