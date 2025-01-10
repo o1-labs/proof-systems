@@ -1242,7 +1242,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     + requested_too_much * num_available_bytes
             };
 
-            let overwrites = {
+            let write_flags = {
                 let cap = alignment.clone() + write_length.clone();
                 // i \elem [alignment, alignment + write_length)
                 let mut make_condition = |i: u32| {
@@ -1258,14 +1258,14 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     let pos = env.alloc_scratch();
                     unsafe { env.and_witness(&c1, &c2, pos) }
                 };
-                let overwrite_0 = make_condition(0);
-                let overwrite_1 = make_condition(1);
-                let overwrite_2 = make_condition(2);
-                let overwrite_3 = make_condition(3);
-                [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
+                let write_flag_0 = make_condition(0);
+                let write_flag_1 = make_condition(1);
+                let write_flag_2 = make_condition(2);
+                let write_flag_3 = make_condition(3);
+                [write_flag_0, write_flag_1, write_flag_2, write_flag_3]
             };
 
-            for (index, overwrite) in enumerate(overwrites) {
+            for (index, write_flag) in enumerate(write_flags) {
                 let offset =
                     env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32));
 
@@ -1275,7 +1275,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let byte_to_write = {
                     let curr = env.read_register(&current_write_register);
                     let m = env.read_memory(&(read_address.clone() + Env::constant(index as u32)));
-                    overwrite.clone() * m + (Env::constant(1) - overwrite.clone()) * curr
+                    write_flag.clone() * m + (Env::constant(1) - write_flag.clone()) * curr
                 };
 
                 env.write_register(&current_write_register, byte_to_write);
@@ -1283,8 +1283,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let new_offset = {
                     let quot = env.alloc_scratch();
                     let rem = env.alloc_scratch();
-                    let (_, r) =
-                        unsafe { env.divmod(&(offset + overwrite), &Env::constant(32), quot, rem) };
+                    let (_, r) = unsafe {
+                        env.divmod(&(offset + write_flag), &Env::constant(32), quot, rem)
+                    };
                     r
                 };
 
