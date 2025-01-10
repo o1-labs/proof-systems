@@ -614,12 +614,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     ) -> Self::Variable {
         // The beginning of the syscall
         if self.registers.preimage_offset == 0 {
-            let mut preimage_key = [0u8; 32];
-            for i in 0..8 {
-                let bytes = u32::to_be_bytes(self.registers.preimage_key[i]);
-                for j in 0..4 {
-                    preimage_key[4 * i + j] = bytes[j]
-                }
+            let mut preimage_key =[0u8; 32];
+            for i in 0..32 {
+                    preimage_key[i] = self.registers.preimage_key[i] as u8;
             }
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage.clone());
@@ -846,12 +843,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             .collect::<Vec<_>>();
 
         let initial_registers = {
-            let preimage_key = {
-                let mut preimage_key = [0u32; 8];
+            let preimage_key: [u32; 32] = {
+                let mut preimage_key = [0u32; 32];
                 for (i, preimage_key_word) in preimage_key.iter_mut().enumerate() {
-                    *preimage_key_word = u32::from_be_bytes(
-                        state.preimage_key[i * 4..(i + 1) * 4].try_into().unwrap(),
-                    )
+                    *preimage_key_word = state.preimage_key[i] as u32;
                 }
                 preimage_key
             };
@@ -1166,9 +1161,6 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         }
 
         interpreter::interpret_instruction(self, opcode);
-        let preimage_key: [u32; 8] = self.registers.preimage_key;
-
-        debug!("Preimage Key {:?}",preimage_key);
 
         self.instruction_counter = self.next_instruction_counter();
 

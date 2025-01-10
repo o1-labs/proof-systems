@@ -2,16 +2,16 @@ use crate::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
-        REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET,
+        REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET, REGISTER_PREIMAGE_KEY_WRITE_SIZE,
     },
     lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::{One, Zero};
+use itertools::enumerate;
 use log::debug;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
-use super::registers::REGISTER_PREIMAGE_KEY_WRITE_OFFSET;
 
 pub const FD_STDIN: u32 = 0;
 pub const FD_STDOUT: u32 = 1;
@@ -1215,30 +1215,26 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::SyscallWritePreimage => {
             let requested_addr = env.read_register(&Env::constant(5));
-            debug!("SyscallWritePreimage: requested_addr = {:?}", requested_addr);
             let requested_write_length = env.read_register(&Env::constant(6));
-            debug!("SyscallWritePreimage: requested_write_length = {:?}", requested_write_length);
 
             // Offset within the aligned word, i.e. alignment = 1 means we can only write 3 bytes.
             let alignment = {
                 let pos = env.alloc_scratch();
                 unsafe { env.and_witness(&requested_addr, &Env::constant(3), pos) }
             };
-            debug!("SyscallWritePreimage: alignment = {:?}", alignment);
-            
+
             // Align the read address to the word boundary
             let read_address = {
                 let pos = env.alloc_scratch();
                 unsafe { env.and_witness(&requested_addr, &Env::constant(0xFFFFFFFC), pos) }
             };
-            debug!("SyscallWritePreimage: read_address = {:?}", read_address);
 
-            // our actual write length
+            // Our actual write length given the word boundary restriction
             let write_length = {
                 // number of bytes we are allowed to write till we reach the end of the word boundary.
                 let num_available_bytes = Env::constant(4) - alignment.clone();
                 let requested_too_much = {
-                    let pos= env.alloc_scratch();
+                    let pos = env.alloc_scratch();
                     unsafe {
                         env.test_less_than(&num_available_bytes, &requested_write_length, pos)
                     }
@@ -1247,9 +1243,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 (Env::constant(1) - requested_too_much.clone()) * requested_write_length
                     + requested_too_much * num_available_bytes
             };
-            debug!("SyscallWritePreimage: write_length = {:?}", write_length);
 
-            let [overwrite_0, overwrite_1, overwrite_2, overwrite_3] = {
+            let overwrites = {
                 let cap = alignment.clone() + write_length.clone();
                 // i \elem [alignment, alignment + write_length)
                 let mut make_condition = |i: u32| {
@@ -1272,12 +1267,35 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
 
-            debug!("overwrite values {:?}", [overwrite_0.clone(), overwrite_1.clone(), overwrite_2.clone(), overwrite_3.clone()]);
+            for (index,overwrite) in enumerate(overwrites) {
 
-            let m0 = env.read_memory(&read_address);
-            let m1 = env.read_memory(&(read_address.clone() + Env::constant(1)));
-            let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
-            let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
+                let num_bytes_written = 
+                  env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32));
+
+                let offset = {
+                    let quot = env.alloc_scratch();
+                    let rem = env.alloc_scratch();
+                    let (_, offset) = unsafe { env.divmod(&(num_bytes_written), &Env::constant(32), quot, rem) };
+                    offset
+                };
+                debug!("offset {:?}", offset);
+
+                let current_write_register = 
+                   Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + offset.clone();
+                debug!("current_write_address {:?}", current_write_register);
+
+                let byte_to_write = {
+                    let curr = env.read_register(&current_write_register);
+                    let m = env.read_memory(&(read_address.clone() + Env::constant(index as u32)));
+                    overwrite.clone() * m + (Env::constant(1) - overwrite.clone()) * curr
+                };
+                debug!("byte_to_write {:?}", byte_to_write);
+
+                env.write_register(&current_write_register, byte_to_write);
+
+                env.write_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_SIZE as u32), num_bytes_written + overwrite);
+            }
+            /*
 
             let value = {
                 let value = (overwrite_0.clone() * m0 * Env::constant(1 << 24))
@@ -1289,32 +1307,34 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             };
 
             let num_bytes_to_write = overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3;
-            let write_idx = {
+            let (write_idx, byte_idx) = {
                 let curr_num_written =
                     env.read_register(&Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32));
                 let quot_pos = env.alloc_scratch();
                 let rem_pos = env.alloc_scratch();
-                let (word_idx, _) = unsafe {
-                    env.divmod(
-                        &curr_num_written,
-                        &Env::constant(4),
-                        quot_pos,
-                        rem_pos,
-                    )
-                };
+                let (word_idx, byte_idx) =
+                    unsafe { env.divmod(&curr_num_written, &Env::constant(4), quot_pos, rem_pos) };
+
+                debug!("word_idx {:?} byte_idx {:?}", word_idx, byte_idx);
 
                 env.write_register(
                     &Env::constant(REGISTER_PREIMAGE_KEY_WRITE_OFFSET as u32),
-                    curr_num_written + num_bytes_to_write.clone()
+                    curr_num_written + num_bytes_to_write.clone(),
                 );
-                (Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + word_idx)
+                (
+                    Env::constant(REGISTER_PREIMAGE_KEY_START as u32) + word_idx,
+                    byte_idx,
+                )
             };
 
             debug!("Value before the change {:?}", value);
 
+            let value = {
+                let pos = env.alloc_scratch();
+                unsafe { env.shift_left(&value, &(Env::constant(8) * (alignment - byte_idx)), pos) }
+            };
+
             debug!("Value after the change {:?}", value);
-
-
 
             // 00173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad
             // 02173285 a8d7341e 5e972fc6 77286384 f802f8ef 42a5ec5f 03bbfa25 4cb01fad
@@ -1325,6 +1345,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             );
             // Update the preimage key.
             env.write_register(&write_idx, value);
+            */
             debug!("-------------------------------------------------------------------------------------------");
             // Reset the preimage offset.
             env.write_register(
@@ -1332,10 +1353,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 Env::constant(0u32),
             );
             // Return the number of bytes read.
-            env.write_register(
-                &Env::constant(2),
-                num_bytes_to_write
-            );
+            env.write_register(&Env::constant(2), write_length);
             // Set the error register to 0.
             env.write_register(&Env::constant(7), Env::constant(0u32));
 

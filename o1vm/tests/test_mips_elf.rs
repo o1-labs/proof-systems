@@ -162,9 +162,9 @@ struct MipsTest {
 fn is_test_excluded(bin_file: &Path) -> bool {
     let file_name = bin_file.file_name().unwrap().to_str().unwrap();
     let untested_programs = [
-        "oracle",
-        "oracle_kzg",
-        "oracle_unaligned_read",
+        //"oracle",
+        //"oracle_kzg",
+        //"oracle_unaligned_read",
         //"oracle_unaligned_write",
         "exit_group",
         "mul",
