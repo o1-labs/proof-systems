@@ -506,7 +506,7 @@
     right_input: <span class="kw-2">&amp;</span>BigUint,
     foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
 ) -&gt; ([Vec&lt;F&gt;; COLUMNS], ExternalChecks&lt;F&gt;) {
-    <span class="kw">let </span><span class="kw-2">mut </span>witness = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">0</span>]);
+    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
     <span class="kw">let </span><span class="kw-2">mut </span>external_checks = ExternalChecks::&lt;F&gt;::default();
 
     <span class="comment">// Compute quotient and remainder using foreign field modulus

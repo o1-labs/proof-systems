@@ -95,7 +95,7 @@
         <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024_usize</span>), <span class="string">&quot;1.0 KiB&quot;</span>);
         <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">&quot;1.0 MiB&quot;</span>);
         <span class="macro">assert_eq!</span>(memory_size(<span class="number">2100 </span>* <span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">&quot;2.1 GiB&quot;</span>);
-        <span class="macro">assert_eq!</span>(memory_size(std::usize::MAX), <span class="string">&quot;16.0 EiB&quot;</span>);
+        <span class="macro">assert_eq!</span>(memory_size(usize::MAX), <span class="string">&quot;16.0 EiB&quot;</span>);
     }
 }
 </code></pre></div></section></main></body></html>

@@ -931,10 +931,6 @@
 <a href="#931" id="931">931</a>
 <a href="#932" id="932">932</a>
 <a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
 </pre></div><pre class="rust"><code><span class="comment">// Interpreter for IVC circuit (for folding).
 
 // Imports only used for docs
@@ -1755,15 +1751,11 @@
     }
 
     <span class="kw">for </span>i <span class="kw">in </span>N_BLOCKS..N_FSEL_IVC - N_BLOCKS {
-        PoseidonBN254Parameters
-            .constants()
-            .iter()
-            .enumerate()
-            .for_each(|(_round, rcs)| {
-                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
-                    selectors[i] = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
-                });
+        PoseidonBN254Parameters.constants().iter().for_each(|rcs| {
+            rcs.iter().for_each(|rc| {
+                selectors[i] = <span class="macro">vec!</span>[<span class="kw-2">*</span>rc; domain_size];
             });
+        });
     }
 
     selectors
