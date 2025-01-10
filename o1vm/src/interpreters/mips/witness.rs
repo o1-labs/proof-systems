@@ -27,6 +27,7 @@ use crate::{
 use ark_ff::Field;
 use core::panic;
 use kimchi::o1_utils::Two;
+use kimchi_msm::LogupTableID;
 use log::{debug, info};
 use std::{
     array,
@@ -99,6 +100,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub lookup_multiplicities: LookupMultiplicities,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -913,6 +915,14 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            lookup_multiplicities: LookupMultiplicities {
+                pad_lookup: vec![0; LookupTableIDs::PadLookup.length()],
+                round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
+                at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
+                byte_lookup: vec![0; LookupTableIDs::ByteLookup.length()],
+                sparse_lookup: vec![0; LookupTableIDs::SparseLookup.length()],
+                reset_lookup: vec![0; LookupTableIDs::ResetLookup.length()],
+            },
         }
     }
 
