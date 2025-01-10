@@ -8,7 +8,7 @@ use strum::EnumCount;
 
 use super::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
-pub(crate) const SCRATCH_SIZE_WITHOUT_KECCAK: usize = 45;
+pub(crate) const SCRATCH_SIZE_WITHOUT_KECCAK: usize = 93;
 /// The number of hashes performed so far in the block
 pub(crate) const MIPS_HASH_COUNTER_OFF: usize = SCRATCH_SIZE_WITHOUT_KECCAK;
 /// The number of bytes of the preimage that have been read so far in this hash
