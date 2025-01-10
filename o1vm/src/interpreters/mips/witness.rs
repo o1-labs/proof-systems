@@ -20,7 +20,7 @@ use crate::{
             registers::Registers,
         },
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
     utils::memory_size,
 };
@@ -142,9 +142,21 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         // No-op, constraints only
-        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
+        match lookup.table_id {
+            LookupTableIDs::PadLookup => (),
+            LookupTableIDs::RoundConstantsLookup => (),
+            LookupTableIDs::AtMost4Lookup => (),
+            LookupTableIDs::ByteLookup => (),
+            LookupTableIDs::RangeCheck16Lookup => (),
+            LookupTableIDs::SparseLookup => (),
+            LookupTableIDs::ResetLookup => (),
+            LookupTableIDs::MemoryLookup => (),
+            LookupTableIDs::RegisterLookup => (),
+            LookupTableIDs::SyscallLookup => (),
+            LookupTableIDs::KeccakStepLookup => (),
+        }
     }
 
     fn instruction_counter(&self) -> Self::Variable {
