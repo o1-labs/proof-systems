@@ -24,7 +24,7 @@ use crate::{
     preimage_oracle::PreImageOracleT,
     utils::memory_size,
 };
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use core::panic;
 use kimchi::o1_utils::Two;
 use kimchi_msm::LogupTableID;
@@ -107,7 +107,7 @@ fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -843,7 +843,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
