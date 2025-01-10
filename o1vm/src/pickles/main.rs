@@ -12,7 +12,10 @@ use o1vm::{
     cli, elf_loader,
     interpreters::{
         mips::{
-            column::N_MIPS_REL_COLS,
+            column::{
+                N_MIPS_REL_COLS, SCRATCH_SIZE as MIPS_SCRATCH_SIZE,
+                SCRATCH_SIZE_INVERSE as MIPS_SCRATCH_SIZE_INVERSE,
+            },
             constraints as mips_constraints,
             witness::{self as mips_witness},
             Instruction,
@@ -81,7 +84,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     let constraints = mips_constraints::get_all_constraints::<Fp>();
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta, MIPS_SCRATCH_SIZE, MIPS_SCRATCH_SIZE_INVERSE> =
+        ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -116,6 +120,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             let proof = prover::prove::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                MIPS_SCRATCH_SIZE,
+                MIPS_SCRATCH_SIZE_INVERSE,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)

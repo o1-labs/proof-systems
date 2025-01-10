@@ -30,7 +30,13 @@ use super::{
     proof::{Proof, ProofInputs, WitnessColumns},
     DEGREE_QUOTIENT_POLYNOMIAL,
 };
-use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
+use crate::{
+    interpreters::mips::column::{
+        N_MIPS_SEL_COLS, SCRATCH_SIZE as MIPS_SCRATCH_SIZE,
+        SCRATCH_SIZE_INVERSE as MIPS_SCRATCH_SIZE_INVERSE,
+    },
+    E,
+};
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -55,15 +61,17 @@ pub enum ProverError {
 pub fn prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
+    const SCRATCH_SIZE: usize,
+    const SCRATCH_SIZE_INVERSE: usize,
     EFrSponge: FrSponge<G::ScalarField>,
     RNG,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<G>,
+    inputs: ProofInputs<G, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Result<Proof<G>, ProverError>
+) -> Result<Proof<G, N_MIPS_SEL_COLS>, ProverError>
 where
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -82,6 +90,8 @@ where
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
+        SCRATCH_SIZE,
+        SCRATCH_SIZE_INVERSE,
     > = {
         let WitnessColumns {
             scratch,
@@ -130,7 +140,12 @@ where
     };
 
     debug!("Prover: committing to all columns, including the selectors");
-    let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]> = {
+    let commitments: WitnessColumns<
+        PolyComm<G>,
+        [PolyComm<G>; N_MIPS_SEL_COLS],
+        MIPS_SCRATCH_SIZE,
+        MIPS_SCRATCH_SIZE_INVERSE,
+    > = {
         let WitnessColumns {
             scratch,
             scratch_inverse,
@@ -331,12 +346,20 @@ where
         }
     };
     // All evaluations at ζ
-    let zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
-        evals(&zeta);
+    let zeta_evaluations: WitnessColumns<
+        G::ScalarField,
+        [G::ScalarField; N_MIPS_SEL_COLS],
+        MIPS_SCRATCH_SIZE,
+        MIPS_SCRATCH_SIZE_INVERSE,
+    > = evals(&zeta);
 
     // All evaluations at ζω
-    let zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
-        evals(&zeta_omega);
+    let zeta_omega_evaluations: WitnessColumns<
+        G::ScalarField,
+        [G::ScalarField; N_MIPS_SEL_COLS],
+        MIPS_SCRATCH_SIZE,
+        MIPS_SCRATCH_SIZE_INVERSE,
+    > = evals(&zeta_omega);
 
     let chunked_quotient = quotient_poly
         .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize);
