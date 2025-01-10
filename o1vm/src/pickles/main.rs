@@ -69,6 +69,13 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                     rmp_serde::from_read(&file).unwrap()
                 }
             };
+            if srs.size() != DOMAIN_SIZE {
+                panic!(
+                    "SRS size mismatch. Expected {}, got {}",
+                    DOMAIN_SIZE,
+                    srs.size()
+                );
+            }
             debug!("SRS loaded successfully from cache");
             srs
         }
