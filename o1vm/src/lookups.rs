@@ -107,7 +107,7 @@ impl LookupTableID for LookupTableIDs {
     }
 
     fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
-        todo!()
+        None
     }
 
     fn all_variants() -> Vec<Self> {

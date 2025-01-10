@@ -70,6 +70,7 @@ pub struct LookupMultiplicities {
     pub round_constants_lookup: Vec<u64>,
     pub at_most_4_lookup: Vec<u64>,
     pub byte_lookup: Vec<u64>,
+    pub range_check_16_lookup: Vec<u64>,
     pub sparse_lookup: Vec<u64>,
     pub reset_lookup: Vec<u64>,
 }
@@ -154,20 +155,28 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        // No-op, constraints only
-        match lookup.table_id {
-            LookupTableIDs::PadLookup => (),
-            LookupTableIDs::RoundConstantsLookup => (),
-            LookupTableIDs::AtMost4Lookup => (),
-            LookupTableIDs::ByteLookup => (),
-            LookupTableIDs::RangeCheck16Lookup => (),
-            LookupTableIDs::SparseLookup => (),
-            LookupTableIDs::ResetLookup => (),
-            // RAM ones, no multiplicities
-            LookupTableIDs::MemoryLookup => (),
-            LookupTableIDs::RegisterLookup => (),
-            LookupTableIDs::SyscallLookup => (),
-            LookupTableIDs::KeccakStepLookup => (),
+        let values: Vec<_> = lookup.value.iter().map(|x| Fp::from(*x)).collect();
+        if let Some(idx) = lookup.table_id.ix_by_value(values.as_slice()) {
+            match lookup.table_id {
+                LookupTableIDs::PadLookup => self.lookup_multiplicities.pad_lookup[idx] += 1,
+                LookupTableIDs::RoundConstantsLookup => {
+                    self.lookup_multiplicities.round_constants_lookup[idx] += 1
+                }
+                LookupTableIDs::AtMost4Lookup => {
+                    self.lookup_multiplicities.at_most_4_lookup[idx] += 1
+                }
+                LookupTableIDs::ByteLookup => self.lookup_multiplicities.byte_lookup[idx] += 1,
+                LookupTableIDs::RangeCheck16Lookup => {
+                    self.lookup_multiplicities.range_check_16_lookup[idx] += 1
+                }
+                LookupTableIDs::SparseLookup => self.lookup_multiplicities.sparse_lookup[idx] += 1,
+                LookupTableIDs::ResetLookup => self.lookup_multiplicities.reset_lookup[idx] += 1,
+                // RAM ones, no multiplicities
+                LookupTableIDs::MemoryLookup => (),
+                LookupTableIDs::RegisterLookup => (),
+                LookupTableIDs::SyscallLookup => (),
+                LookupTableIDs::KeccakStepLookup => (),
+            }
         }
     }
 
@@ -920,6 +929,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
                 at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
                 byte_lookup: vec![0; LookupTableIDs::ByteLookup.length()],
+                range_check_16_lookup: vec![0; LookupTableIDs::RangeCheck16Lookup.length()],
                 sparse_lookup: vec![0; LookupTableIDs::SparseLookup.length()],
                 reset_lookup: vec![0; LookupTableIDs::ResetLookup.length()],
             },
