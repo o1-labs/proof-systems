@@ -44,15 +44,18 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
 }
 
-pub fn get_all_columns() -> Vec<Column<RelationColumnType>> {
+pub fn get_all_columns(num_lookup_columns: usize) -> Vec<Column<RelationColumnType>> {
     let mut cols = Vec::<Column<RelationColumnType>>::with_capacity(
-        SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 + N_MIPS_SEL_COLS,
+        SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + num_lookup_columns + 2 + N_MIPS_SEL_COLS,
     );
     for i in 0..SCRATCH_SIZE {
         cols.push(Column::Relation(RelationColumnType::Scratch(i)));
     }
     for i in 0..SCRATCH_SIZE_INVERSE {
         cols.push(Column::Relation(RelationColumnType::ScratchInverse(i)));
+    }
+    for i in 0..num_lookup_columns {
+        cols.push(Column::Relation(RelationColumnType::LookupState(i)));
     }
     cols.push(Column::Relation(RelationColumnType::InstructionCounter));
     cols.push(Column::Relation(RelationColumnType::Error));
