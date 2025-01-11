@@ -1,4 +1,7 @@
-use crate::interpreters::mips::Instruction::{self, IType, JType, RType};
+use crate::{
+    interpreters::mips::Instruction::{self, IType, JType, RType},
+    RelationColumnType,
+};
 use kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
@@ -143,10 +146,10 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     }
 }
 
-impl ColumnIndexer<usize> for ColumnAlias {
+impl ColumnIndexer<RelationColumnType> for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
 
-    fn to_column(self) -> Column<usize> {
+    fn to_column(self) -> Column<RelationColumnType> {
         match self {
             Self::ScratchState(ss) => {
                 assert!(
@@ -155,7 +158,7 @@ impl ColumnIndexer<usize> for ColumnAlias {
                     SCRATCH_SIZE,
                     ss
                 );
-                Column::Relation(ss)
+                Column::Relation(RelationColumnType::Scratch(ss))
             }
             Self::ScratchStateInverse(ss) => {
                 assert!(
@@ -164,9 +167,9 @@ impl ColumnIndexer<usize> for ColumnAlias {
                     SCRATCH_SIZE_INVERSE,
                     ss
                 );
-                Column::Relation(SCRATCH_SIZE + ss)
+                Column::Relation(RelationColumnType::ScratchInverse(ss))
             }
-            Self::InstructionCounter => Column::Relation(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE),
+            Self::InstructionCounter => Column::Relation(RelationColumnType::InstructionCounter),
             // TODO: what happens with error? It does not have a corresponding alias
             Self::Selector(s) => {
                 assert!(
