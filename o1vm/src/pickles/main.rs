@@ -1,4 +1,4 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
@@ -94,6 +94,29 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
         {
             scratch_chunk.push(*scratch);
+        }
+        // Lookup state
+        {
+            let lookup_state_size = std::cmp::max(
+                curr_proof_inputs.evaluations.lookup_state.len(),
+                mips_wit_env.lookup_state.len(),
+            );
+            for idx in 0..lookup_state_size {
+                if idx < mips_wit_env.lookup_state.len() {
+                    // We pad with 0s for dummy lookups.
+                    curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } else if idx < curr_proof_inputs.evaluations.lookup_state.len() {
+                    // We create a new column filled with 0s.
+                    let mut new_vec =
+                        vec![Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state[idx] = new_vec;
+                } else {
+                    // Push the value to the column.
+                    curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
         }
         curr_proof_inputs
             .evaluations
