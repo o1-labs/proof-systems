@@ -151,27 +151,35 @@ where
 /// impossible to instantiate `SubEnv` with two /completely/ different
 /// lenses and then write proper trait implementations. Rust complains
 /// about conflicting trait implementations.
-struct SubEnv<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> {
+struct SubEnv<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L> {
     env: &'a mut Env1,
     lens: L,
     phantom: PhantomData<(F, CIx1)>,
 }
 
 /// Sub environment with a lens that is mapping columns.
-pub struct SubEnvColumn<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>(
-    SubEnv<'a, F, CIx1, Env1, L>,
-);
+pub struct SubEnvColumn<
+    'a,
+    F: PrimeField,
+    CIx1: ColumnIndexer<usize>,
+    Env1: ColAccessCap<F, CIx1>,
+    L,
+>(SubEnv<'a, F, CIx1, Env1, L>);
 
 /// Sub environment with a lens that is mapping lookup tables.
-pub struct SubEnvLookup<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>(
-    SubEnv<'a, F, CIx1, Env1, L>,
-);
+pub struct SubEnvLookup<
+    'a,
+    F: PrimeField,
+    CIx1: ColumnIndexer<usize>,
+    Env1: ColAccessCap<F, CIx1>,
+    L,
+>(SubEnv<'a, F, CIx1, Env1, L>);
 
 ////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 ////////////////////////////////////////////////////////////////////////////
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
     SubEnv<'a, F, CIx1, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
@@ -183,7 +191,7 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
     SubEnvColumn<'a, F, CIx1, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
@@ -191,7 +199,7 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
     SubEnvLookup<'a, F, CIx1, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
@@ -202,8 +210,8 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: ColAccessCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > ColAccessCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
@@ -230,8 +238,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: ColWriteCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > ColWriteCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
@@ -244,8 +252,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: HybridCopyCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > HybridCopyCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
@@ -258,8 +266,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: ColAccessCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > ColAccessCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
@@ -286,8 +294,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: ColWriteCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > ColWriteCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
@@ -300,8 +308,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         Env1: HybridCopyCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > HybridCopyCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
@@ -311,8 +319,8 @@ impl<
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> ColAccessCap<F, CIx1>
-    for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
+    ColAccessCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -333,16 +341,16 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> Col
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColWriteCap<F, CIx1>, L> ColWriteCap<F, CIx1>
-    for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColWriteCap<F, CIx1>, L>
+    ColWriteCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
 {
     fn write_column(&mut self, ix: CIx1, value: &Self::Variable) {
         self.0.env.write_column(ix, value);
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: HybridCopyCap<F, CIx1>, L> HybridCopyCap<F, CIx1>
-    for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: HybridCopyCap<F, CIx1>, L>
+    HybridCopyCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
 {
     fn hcopy(&mut self, x: &Self::Variable, ix: CIx1) -> Self::Variable {
         self.0.env.hcopy(x, ix)
@@ -352,7 +360,7 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: HybridCopyCap<F, CIx1>, L> Hy
 impl<
         'a,
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         LT1: LookupTableID,
         LT2: LookupTableID,
         Env1: LookupCap<F, CIx, LT1>,
@@ -373,8 +381,8 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer<usize>,
+        CIx2: ColumnIndexer<usize>,
         LT: LookupTableID,
         Env1: LookupCap<F, CIx1, LT>,
         L: MPrism<Source = CIx1, Target = CIx2>,
@@ -389,7 +397,7 @@ impl<
     }
 }
 
-impl<'a, F: PrimeField, CIx: ColumnIndexer, Env1: MultiRowReadCap<F, CIx>, L>
+impl<'a, F: PrimeField, CIx: ColumnIndexer<usize>, Env1: MultiRowReadCap<F, CIx>, L>
     MultiRowReadCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
 {
     /// Read value from a (row,column) position.
@@ -408,7 +416,7 @@ impl<'a, F: PrimeField, CIx: ColumnIndexer, Env1: MultiRowReadCap<F, CIx>, L>
     }
 }
 
-impl<'a, F: PrimeField, CIx: ColumnIndexer, Env1: DirectWitnessCap<F, CIx>, L>
+impl<'a, F: PrimeField, CIx: ColumnIndexer<usize>, Env1: DirectWitnessCap<F, CIx>, L>
     DirectWitnessCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
 {
     fn variable_to_field(value: Self::Variable) -> F {
