@@ -35,9 +35,10 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
 }
 
-pub fn get_all_columns() -> Vec<Column> {
-    let mut cols =
-        Vec::<Column>::with_capacity(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 + N_MIPS_SEL_COLS);
+pub fn get_all_columns() -> Vec<Column<usize>> {
+    let mut cols = Vec::<Column<usize>>::with_capacity(
+        SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 + N_MIPS_SEL_COLS,
+    );
     for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
         cols.push(Column::Relation(i));
     }
@@ -48,7 +49,7 @@ pub fn get_all_columns() -> Vec<Column> {
 }
 
 impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
-    pub fn get_column(&self, col: &Column) -> Option<&G> {
+    pub fn get_column(&self, col: &Column<usize>) -> Option<&G> {
         match *col {
             Column::Relation(i) => {
                 if i < SCRATCH_SIZE {
@@ -92,7 +93,7 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
 {
     // FIXME: do we change to the MIPS column type?
     // We do not want to keep kimchi_msm/generic prover
-    type Column = Column;
+    type Column = Column<usize>;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evals<F>> {
         self.witness.get_column(col)

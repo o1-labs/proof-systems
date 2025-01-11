@@ -42,7 +42,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
     // - STATE_SIZE * NB_FULL_ROUND constants
     const N_COL: usize = STATE_SIZE + 5 * NB_FULL_ROUND * STATE_SIZE;
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             PoseidonColumn::Input(i) => {
                 assert!(i < STATE_SIZE);

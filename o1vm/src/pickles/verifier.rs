@@ -40,7 +40,7 @@ struct ColumnEval<'a, G: AffineRepr> {
 }
 
 impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
-    type Column = Column;
+    type Column = Column<usize>;
     fn evaluate(
         &self,
         col: Self::Column,

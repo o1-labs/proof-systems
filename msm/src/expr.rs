@@ -48,16 +48,16 @@ use crate::columns::Column;
 /// ```
 /// A list of such constraints is used to represent the entire circuit and will
 /// be used to build the quotient polynomial.
-pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column<usize>>;
 
-pub fn curr_cell<F: Field>(col: Column) -> E<F> {
+pub fn curr_cell<F: Field>(col: Column<usize>) -> E<F> {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Curr,
     }))
 }
 
-pub fn next_cell<F: Field>(col: Column) -> E<F> {
+pub fn next_cell<F: Field>(col: Column<usize>) -> E<F> {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Next,
