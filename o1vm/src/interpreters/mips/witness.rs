@@ -22,6 +22,7 @@ use crate::{
     },
     lookups::{Lookup, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
+    ramlookup::LookupMode,
     utils::memory_size,
 };
 use ark_ff::{Field, PrimeField};
@@ -93,7 +94,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub lookup_state_idx: usize,
-    pub lookup_state: Vec<u64>,
+    pub lookup_state: Vec<Fp>,
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -157,9 +158,32 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        let values: Vec<_> = lookup.value.iter().map(|x| Fp::from(*x)).collect();
-        if let Some(idx) = lookup.table_id.ix_by_value(values.as_slice()) {
-            match lookup.table_id {
+        let mut add_value = |x: Fp| {
+            self.lookup_state_idx += 1;
+            self.lookup_state.push(x);
+        };
+        let Lookup {
+            table_id,
+            magnitude: numerator,
+            mode,
+            value: values,
+        } = lookup;
+        let values: Vec<_> = values.into_iter().map(|x| Fp::from(x)).collect();
+
+        // Add lookup numerator
+        match mode {
+            LookupMode::Write => add_value(Fp::from(numerator)),
+            LookupMode::Read => add_value(-Fp::from(numerator)),
+        };
+        // Add lookup table ID
+        add_value(Fp::from(table_id.to_u32()));
+        // Add values
+        for value in values.iter() {
+            add_value(Fp::from(*value));
+        }
+
+        if let Some(idx) = table_id.ix_by_value(values.as_slice()) {
+            match table_id {
                 LookupTableIDs::PadLookup => self.lookup_multiplicities.pad_lookup[idx] += 1,
                 LookupTableIDs::RoundConstantsLookup => {
                     self.lookup_multiplicities.round_constants_lookup[idx] += 1
