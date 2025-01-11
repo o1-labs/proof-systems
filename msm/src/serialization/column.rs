@@ -42,7 +42,7 @@ pub enum SerializationColumn {
 
 impl ColumnIndexer for SerializationColumn {
     const N_COL: usize = N_COL_SER;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             Self::CurrentRow => Column::FixedSelector(0),
             Self::PreviousCoeffRow => Column::FixedSelector(1),

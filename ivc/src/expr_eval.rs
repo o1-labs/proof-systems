@@ -23,10 +23,10 @@ use strum::EnumCount;
 /// Generic structure containing column vectors.
 pub struct GenericVecStructure<G: KimchiCurve>(pub Vec<Vec<G::ScalarField>>);
 
-impl<G: KimchiCurve> Index<GenericColumn> for GenericVecStructure<G> {
+impl<G: KimchiCurve> Index<GenericColumn<usize>> for GenericVecStructure<G> {
     type Output = [G::ScalarField];
 
-    fn index(&self, index: GenericColumn) -> &Self::Output {
+    fn index(&self, index: GenericColumn<usize>) -> &Self::Output {
         match index {
             GenericColumn::FixedSelector(i) => &self.0[i],
             _ => panic!("should not happen"),
@@ -73,7 +73,7 @@ impl<
     }
 
     pub fn process_extended_folding_column<
-        FC: FoldingConfig<Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge>,
+        FC: FoldingConfig<Column = GenericColumn<usize>, Curve = Curve, Challenge = PlonkishChallenge>,
     >(
         &self,
         col: &ExtendedFoldingColumn<FC>,
@@ -105,7 +105,7 @@ impl<
     /// Evaluates the expression in the provided side
     pub fn eval_naive_fexpr<
         'a,
-        FC: FoldingConfig<Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge>,
+        FC: FoldingConfig<Column = GenericColumn<usize>, Curve = Curve, Challenge = PlonkishChallenge>,
     >(
         &'a self,
         exp: &FoldingExp<FC>,
@@ -136,7 +136,7 @@ impl<
     /// For FoldingCompatibleExp
     pub fn eval_naive_fcompat<
         'a,
-        FC: FoldingConfig<Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge>,
+        FC: FoldingConfig<Column = GenericColumn<usize>, Curve = Curve, Challenge = PlonkishChallenge>,
     >(
         &'a self,
         exp: &FoldingCompatibleExpr<FC>,
