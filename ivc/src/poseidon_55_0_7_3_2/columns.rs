@@ -29,7 +29,7 @@ pub enum PoseidonColumn<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> {
     RoundConstant(usize, usize),
 }
 
-impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
+impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer<usize>
     for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>
 {
     // - STATE_SIZE input columns

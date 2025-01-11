@@ -373,7 +373,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
     }
 }
 
-impl ColumnIndexer for ColumnAlias {
+impl ColumnIndexer<usize> for ColumnAlias {
     const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column<usize> {
         Column::Relation(usize::from(self))
@@ -401,7 +401,7 @@ impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
     }
 }
 
-impl ColumnIndexer for Steps {
+impl ColumnIndexer<usize> for Steps {
     const N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     fn to_column(self) -> Column<usize> {
         Column::DynamicSelector(usize::from(self) - N_ZKVM_KECCAK_REL_COLS)

@@ -67,7 +67,7 @@ pub enum AdditionColumn {
     C,
 }
 
-impl ColumnIndexer for AdditionColumn {
+impl ColumnIndexer<usize> for AdditionColumn {
     const N_COL: usize = 3;
 
     fn to_column(self) -> Column<usize> {
@@ -119,7 +119,7 @@ pub fn heavy_test_simple_add() {
     const N_FSEL_TOTAL: usize = N_FSEL_IVC;
 
     // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_FSEL_IVC;
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer<usize>>::N_COL - N_FSEL_IVC;
 
     // Number of witness columns in the circuit.
     // It consists of the columns of the inner circuit and the columns for the

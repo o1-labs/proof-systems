@@ -23,8 +23,8 @@ mod tests {
     type FFAWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         FFAColumn,
-        { <FFAColumn as ColumnIndexer>::N_COL },
-        { <FFAColumn as ColumnIndexer>::N_COL },
+        { <FFAColumn as ColumnIndexer<usize>>::N_COL },
+        { <FFAColumn as ColumnIndexer<usize>>::N_COL },
         0,
         0,
         LookupTable,
@@ -86,8 +86,8 @@ mod tests {
         let proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
         crate::test::test_completeness_generic::<
-            { <FFAColumn as ColumnIndexer>::N_COL },
-            { <FFAColumn as ColumnIndexer>::N_COL },
+            { <FFAColumn as ColumnIndexer<usize>>::N_COL },
+            { <FFAColumn as ColumnIndexer<usize>>::N_COL },
             0,
             0,
             LookupTable,
