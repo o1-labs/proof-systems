@@ -18,6 +18,7 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 pub enum RelationColumnType {
     Scratch(usize),
     ScratchInverse(usize),
+    LookupState(usize),
     InstructionCounter,
     Error,
 }
@@ -67,6 +68,7 @@ impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
             Column::Relation(i) => match i {
                 RelationColumnType::Scratch(i) => Some(&self.scratch[i]),
                 RelationColumnType::ScratchInverse(i) => Some(&self.scratch_inverse[i]),
+                RelationColumnType::LookupState(_) => todo!(),
                 RelationColumnType::InstructionCounter => Some(&self.instruction_counter),
                 RelationColumnType::Error => Some(&self.error),
             },
