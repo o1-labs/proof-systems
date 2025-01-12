@@ -75,6 +75,20 @@ pub struct LookupMultiplicities {
     pub reset_lookup: Vec<u64>,
 }
 
+impl LookupMultiplicities {
+    pub fn new() -> Self {
+        LookupMultiplicities {
+            pad_lookup: vec![0; LookupTableIDs::PadLookup.length()],
+            round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
+            at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
+            byte_lookup: vec![0; LookupTableIDs::ByteLookup.length()],
+            range_check_16_lookup: vec![0; LookupTableIDs::RangeCheck16Lookup.length()],
+            sparse_lookup: vec![0; LookupTableIDs::SparseLookup.length()],
+            reset_lookup: vec![0; LookupTableIDs::ResetLookup.length()],
+        }
+    }
+}
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
@@ -924,15 +938,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
-            lookup_multiplicities: LookupMultiplicities {
-                pad_lookup: vec![0; LookupTableIDs::PadLookup.length()],
-                round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
-                at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
-                byte_lookup: vec![0; LookupTableIDs::ByteLookup.length()],
-                range_check_16_lookup: vec![0; LookupTableIDs::RangeCheck16Lookup.length()],
-                sparse_lookup: vec![0; LookupTableIDs::SparseLookup.length()],
-                reset_lookup: vec![0; LookupTableIDs::ResetLookup.length()],
-            },
+            lookup_multiplicities: LookupMultiplicities::new(),
         }
     }
 
