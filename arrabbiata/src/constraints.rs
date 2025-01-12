@@ -17,7 +17,10 @@ use o1_utils::FieldHelpers;
 use poly_commitment::commitment::CommitmentCurve;
 
 #[derive(Clone, Debug)]
-pub struct Env<C: ArrabbiataCurve> {
+pub struct Env<C: ArrabbiataCurve>
+where
+    C::BaseField: PrimeField,
+{
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     pub a: BigInt,
@@ -31,10 +34,12 @@ pub struct Env<C: ArrabbiataCurve> {
 impl<C: ArrabbiataCurve> Env<C>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new() -> Self {
         // This check might not be useful
-        let a: BigInt = <C as CommitmentCurve>::Params::COEFF_A.to_biguint().into();
+        let a = <C as CommitmentCurve>::Params::COEFF_A;
+        let a: BigInt = a.to_biguint().into();
         assert!(
             a < C::ScalarField::modulus_biguint().into(),
             "a is too large"
@@ -55,7 +60,10 @@ where
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-impl<C: ArrabbiataCurve> InterpreterEnv for Env<C> {
+impl<C: ArrabbiataCurve> InterpreterEnv for Env<C>
+where
+    C::BaseField: PrimeField,
+{
     type Position = (Column, CurrOrNext);
 
     type Variable = E<C::ScalarField>;
@@ -311,7 +319,10 @@ impl<C: ArrabbiataCurve> InterpreterEnv for Env<C> {
     }
 }
 
-impl<C: ArrabbiataCurve> Env<C> {
+impl<C: ArrabbiataCurve> Env<C>
+where
+    C::BaseField: PrimeField,
+{
     /// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
@@ -380,6 +391,7 @@ impl<C: ArrabbiataCurve> Env<C> {
 
 impl<C: ArrabbiataCurve> Default for Env<C>
 where
+    C::BaseField: PrimeField,
     <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     fn default() -> Self {

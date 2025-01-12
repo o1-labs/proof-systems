@@ -56,10 +56,10 @@ pub struct Env<
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
-    pub domain_fp: EvaluationDomains<Fp>,
+    pub domain_fp: EvaluationDomains<E1::ScalarField>,
 
     /// Domain for Fq
-    pub domain_fq: EvaluationDomains<Fq>,
+    pub domain_fq: EvaluationDomains<E2::ScalarField>,
 
     /// SRS for the first curve
     pub srs_e1: SRS<E1>,
@@ -209,6 +209,8 @@ impl<
 where
     <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
     <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -258,9 +260,9 @@ where
             unimplemented!("Only works for private inputs")
         };
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
         match row {
@@ -280,9 +282,9 @@ where
             unimplemented!("Only works for public input columns")
         };
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
         self.public_state[idx].clone_from(&v);
@@ -297,9 +299,9 @@ where
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let x = x.mod_floor(&modulus);
         assert!(x == BigInt::from(0_usize) || x == BigInt::from(1_usize));
@@ -431,10 +433,10 @@ where
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
-            let modulus: BigInt = Fp::modulus_biguint().into();
+            let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
         } else {
-            let modulus: BigInt = Fq::modulus_biguint().into();
+            let modulus: BigInt = E2::ScalarField::modulus_biguint().into();
             self.sponge_e2[i] = x.mod_floor(&modulus)
         }
     }
@@ -650,14 +652,14 @@ where
     /// Zero is not allowed as an input.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = if self.current_iteration % 2 == 0 {
-            Fp::from_biguint(&x.to_biguint().unwrap())
+            E1::ScalarField::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
                 .to_biguint()
                 .into()
         } else {
-            Fq::from_biguint(&x.to_biguint().unwrap())
+            E2::ScalarField::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
@@ -677,9 +679,9 @@ where
         y2: Self::Variable,
     ) -> Self::Variable {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         // If it is not the same point, we compute lambda as:
         // - λ = (Y1 - Y2) / (X1 - X2)
@@ -725,9 +727,9 @@ where
         y1: Self::Variable,
     ) -> (Self::Variable, Self::Variable) {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         // - λ = (3X1^2 + a) / (2Y1)
         // We compute λ and use an additional column as a temporary value
@@ -773,6 +775,13 @@ impl<
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, E1, E2>
+where
+    <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    <E1::BaseField as PrimeField>::BigInt: Into<<E1::ScalarField as PrimeField>::BigInt>,
+    <E2::BaseField as PrimeField>::BigInt: Into<<E2::ScalarField as PrimeField>::BigInt>,
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     pub fn new(
         srs_log2_size: usize,
@@ -781,16 +790,16 @@ impl<
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     ) -> Self {
         {
-            assert!(Fp::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            let modulus_fp = Fp::modulus_biguint();
+            let modulus_fp = E1::ScalarField::modulus_biguint();
             let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
                 (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
                     == BigUint::from(1_u64),
                 "The modulus of Fp should be coprime with {alpha}"
             );
-            let modulus_fq = Fq::modulus_biguint();
+            let modulus_fq = E2::ScalarField::modulus_biguint();
             let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
                 (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
@@ -799,8 +808,8 @@ impl<
             );
         }
         let srs_size = 1 << srs_log2_size;
-        let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
-        let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
+        let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
+        let domain_fq = EvaluationDomains::<E2::ScalarField>::create(srs_size).unwrap();
 
         info!("Create an SRS of size {srs_log2_size} for the first curve");
         let srs_e1: SRS<E1> = {
@@ -942,9 +951,9 @@ impl<
                 .witness
                 .par_iter()
                 .map(|evals| {
-                    let evals: Vec<Fp> = evals
+                    let evals: Vec<E1::ScalarField> = evals
                         .par_iter()
-                        .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
                     self.srs_e1
@@ -963,9 +972,9 @@ impl<
                 .witness
                 .iter()
                 .map(|evals| {
-                    let evals: Vec<Fq> = evals
+                    let evals: Vec<E2::ScalarField> = evals
                         .par_iter()
-                        .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E2::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
                     self.srs_e2
@@ -979,17 +988,19 @@ impl<
     fn absorb_state(&mut self) {
         if self.current_iteration % 2 == 0 {
             let sponge: DefaultFqSponge<E1::Params, PlonkSpongeConstants> =
-                DefaultFqSponge::new(E1::other_curve_sponge_params());
+                DefaultFqSponge::new(E2::other_curve_sponge_params());
             self.sponge_e1.iter().for_each(|v| {
-                let v = Fq::from_biguint(&v.to_biguint().unwrap()).unwrap();
-                sponge.absorb(v);
+                // let v = Fq::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                let v = E1::BaseField::zero();
+                sponge.absorb_fq(&[v]);
             });
         } else {
             let sponge: DefaultFqSponge<E2::Params, PlonkSpongeConstants> =
-                DefaultFqSponge::new(E2::other_curve_sponge_params());
+                DefaultFqSponge::new(E1::other_curve_sponge_params());
             self.sponge_e2.iter().for_each(|v| {
-                let v = Fp::from_biguint(&v.to_biguint().unwrap()).unwrap();
-                sponge.absorb(v);
+                let v = E2::BaseField::zero();
+                // let v = Fp::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                sponge.absorb_fq(&[v]);
             });
         }
     }
