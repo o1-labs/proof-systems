@@ -199,7 +199,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         add_value(Fp::from(table_id.to_u32()));
         // Add values
         for value in values.iter() {
-            add_value(Fp::from(*value));
+            add_value(*value);
         }
 
         if let Some(idx) = table_id.ix_by_value(values.as_slice()) {

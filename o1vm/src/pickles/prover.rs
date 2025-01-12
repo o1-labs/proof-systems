@@ -128,7 +128,7 @@ where
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
-            lookup_state: lookup_state,
+            lookup_state,
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
