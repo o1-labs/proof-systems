@@ -23,9 +23,10 @@ use crate::columns::Column;
 /// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
 /// use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
-/// use kimchi_msm::columns::Column;
+/// use kimchi_msm::columns::{Column as GenericColumn};
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;
+/// pub type Column = GenericColumn<usize>;
 /// let x1 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp, BerkeleyChallengeTerm>>, Column>::Cell(Variable {
 ///         col: Column::Relation(1),
