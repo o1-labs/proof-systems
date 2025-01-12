@@ -35,7 +35,7 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// use mina_poseidon::FqSponge;
 /// use folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
 ///
-/// // instanciating the config with our types and the defaults for selectors and structure
+/// // instantiating the config with our types and the defaults for selectors and structure
 /// type MyConfig = StandardConfig<Curve, MyCol, MyChallenge, MyInstance<Curve>, MyWitness<Curve>>;
 /// let constraints = vec![constraint()];
 /// let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
@@ -265,7 +265,7 @@ mod memoization {
         where
             I: FnOnce() -> Vec<F>,
         {
-            // this will find or asign an id for the column and then
+            // this will find or assign an id for the column and then
             // search the segments using the id
             let mut ids = self.ids.borrow_mut();
             let new_id = || self.next.fetch_add(1, Ordering::Relaxed);

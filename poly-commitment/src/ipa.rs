@@ -410,7 +410,7 @@ where
 
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
 
-        // chunk while commiting
+        // chunk while committing
         let mut chunks = vec![];
         if is_zero {
             chunks.push(G::zero());

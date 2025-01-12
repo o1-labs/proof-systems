@@ -84,9 +84,7 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        big.clone()
-            .try_into()
-            .map_err(|_| FieldHelpersError::DeserializeBytes)
+        Ok(F::from(big.clone()))
     }
 
     /// Serialize to bytes

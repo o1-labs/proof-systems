@@ -73,7 +73,7 @@ jobs:
       RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
-        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
+        rust_toolchain_version: ["1.72", "1.73", "1.74", "1.75", "1.76", "1.77", "1.78", "1.79"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
@@ -131,11 +131,6 @@ jobs:
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
 
-      - name: Build cargo docs
-        run: |
-          eval $(opam env)
-          make generate-doc
-
       #
       # Coding guidelines
       #
@@ -161,6 +156,9 @@ jobs:
       - name: Install test dependencies
         run: |
           make install-test-deps
+
+      - name: Build the MIPS binaries
+        uses: ./.github/actions/build-mips
 
       - name: Doc tests
         if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}

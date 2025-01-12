@@ -625,7 +625,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         let public_input_size = self.public_input_size.unwrap();
         let pub_selectors: Vec<_> = vec![
             Field::one(),
-            // TODO: unecessary
+            // TODO: unnecessary
             Field::zero(),
             Field::zero(),
             Field::zero(),

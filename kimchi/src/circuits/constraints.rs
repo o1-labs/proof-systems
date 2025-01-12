@@ -356,7 +356,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.cs.public && gate.coeffs.get(0) != Some(&F::one()) {
+            if row < self.cs.public && gate.coeffs.first() != Some(&F::one()) {
                 return Err(GateError::IncorrectPublic(row));
             }
 

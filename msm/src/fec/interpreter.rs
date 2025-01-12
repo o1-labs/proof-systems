@@ -289,7 +289,7 @@ pub fn constrain_ec_addition<
         .enumerate()
     {
         if i % 6 == 5 {
-            // This should be a diferent range check depending on which big-limb we're processing?
+            // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
             env.lookup(LookupTable::RangeCheck9Abs, vec![x.clone()]);
         } else {
@@ -427,7 +427,7 @@ pub fn ec_add_circuit<
     let xr: Ff = slope * slope - xp - xq;
     let yr: Ff = slope * (xp - xr) - yp;
 
-    let two_bi: BigInt = TryFrom::try_from(2).unwrap();
+    let two_bi: BigInt = BigInt::from(2);
 
     let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
 

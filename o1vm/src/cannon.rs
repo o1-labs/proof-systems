@@ -2,6 +2,10 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
+use core::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -147,42 +151,45 @@ pub enum StepFrequency {
     Range(u64, Option<u64>),
 }
 
-// Simple parser for Cannon's "frequency format"
-// A frequency input is either
-// - never/always
-// - =<n> (only at step n)
-// - %<n> (every steps multiple of n)
-// - n..[m] (from n on, until m excluded if specified, until the end otherwise)
-pub fn step_frequency_parser(s: &str) -> std::result::Result<StepFrequency, String> {
-    use StepFrequency::*;
+impl FromStr for StepFrequency {
+    type Err = String;
+    // Simple parser for Cannon's "frequency format"
+    // A frequency input is either
+    // - never/always
+    // - =<n> (only at step n)
+    // - %<n> (every steps multiple of n)
+    // - n..[m] (from n on, until m excluded if specified, until the end otherwise)
+    fn from_str(s: &str) -> std::result::Result<StepFrequency, String> {
+        use StepFrequency::*;
 
-    let mod_re = Regex::new(r"^%([0-9]+)").unwrap();
-    let eq_re = Regex::new(r"^=([0-9]+)").unwrap();
-    let ival_re = Regex::new(r"^([0-9]+)..([0-9]+)?").unwrap();
+        let mod_re = Regex::new(r"^%([0-9]+)").unwrap();
+        let eq_re = Regex::new(r"^=([0-9]+)").unwrap();
+        let ival_re = Regex::new(r"^([0-9]+)..([0-9]+)?").unwrap();
 
-    match s {
-        "never" => Ok(Never),
-        "always" => Ok(Always),
-        s => {
-            if let Some(m) = mod_re.captures(s) {
-                Ok(Every(m[1].parse::<u64>().unwrap()))
-            } else if let Some(m) = eq_re.captures(s) {
-                Ok(Exactly(m[1].parse::<u64>().unwrap()))
-            } else if let Some(m) = ival_re.captures(s) {
-                let lo = m[1].parse::<u64>().unwrap();
-                let hi_opt = m.get(2).map(|x| x.as_str().parse::<u64>().unwrap());
-                Ok(Range(lo, hi_opt))
-            } else {
-                Err(format!("Unknown frequency format {}", s))
+        match s {
+            "never" => Ok(Never),
+            "always" => Ok(Always),
+            s => {
+                if let Some(m) = mod_re.captures(s) {
+                    Ok(Every(m[1].parse::<u64>().unwrap()))
+                } else if let Some(m) = eq_re.captures(s) {
+                    Ok(Exactly(m[1].parse::<u64>().unwrap()))
+                } else if let Some(m) = ival_re.captures(s) {
+                    let lo = m[1].parse::<u64>().unwrap();
+                    let hi_opt = m.get(2).map(|x| x.as_str().parse::<u64>().unwrap());
+                    Ok(Range(lo, hi_opt))
+                } else {
+                    Err(format!("Unknown frequency format {}", s))
+                }
             }
         }
     }
 }
 
-impl ToString for State {
+impl Display for State {
     // A very debatable and incomplete, but serviceable, `to_string` implementation.
-    fn to_string(&self) -> String {
-        format!(
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f,
             "memory_size (length): {}\nfirst page size: {}\npreimage key: {:#?}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} ",
             self.memory.len(),
             self.memory[0].data.len(),
@@ -206,7 +213,7 @@ pub struct HostProgram {
 pub struct VmConfiguration {
     pub input_state_file: String,
     pub output_state_file: String,
-    pub metadata_file: String,
+    pub metadata_file: Option<String>,
     pub proof_at: StepFrequency,
     pub stop_at: StepFrequency,
     pub snapshot_state_at: StepFrequency,
@@ -214,7 +221,27 @@ pub struct VmConfiguration {
     pub proof_fmt: String,
     pub snapshot_fmt: String,
     pub pprof_cpu: bool,
+    pub halt_address: Option<u32>,
     pub host: Option<HostProgram>,
+}
+
+impl Default for VmConfiguration {
+    fn default() -> Self {
+        VmConfiguration {
+            input_state_file: "state.json".to_string(),
+            output_state_file: "out.json".to_string(),
+            metadata_file: None,
+            proof_at: StepFrequency::Never,
+            stop_at: StepFrequency::Never,
+            snapshot_state_at: StepFrequency::Never,
+            info_at: StepFrequency::Never,
+            proof_fmt: "proof-%d.json".to_string(),
+            snapshot_fmt: "state-%d.json".to_string(),
+            pprof_cpu: false,
+            halt_address: None,
+            host: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -284,6 +311,35 @@ impl Meta {
     }
 }
 
+pub const HINT_CLIENT_READ_FD: i32 = 3;
+pub const HINT_CLIENT_WRITE_FD: i32 = 4;
+pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
+pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
+
+pub struct Preimage(Vec<u8>);
+
+impl Preimage {
+    pub fn create(v: Vec<u8>) -> Self {
+        Preimage(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+pub struct Hint(Vec<u8>);
+
+impl Hint {
+    pub fn create(v: Vec<u8>) -> Self {
+        Hint(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -296,13 +352,13 @@ mod tests {
     #[test]
     fn sp_parser() {
         use StepFrequency::*;
-        assert_eq!(step_frequency_parser("never"), Ok(Never));
-        assert_eq!(step_frequency_parser("always"), Ok(Always));
-        assert_eq!(step_frequency_parser("=123"), Ok(Exactly(123)));
-        assert_eq!(step_frequency_parser("%123"), Ok(Every(123)));
-        assert_eq!(step_frequency_parser("1..3"), Ok(Range(1, Some(3))));
-        assert_eq!(step_frequency_parser("1.."), Ok(Range(1, None)));
-        assert!(step_frequency_parser("@123").is_err());
+        assert_eq!(StepFrequency::from_str("never"), Ok(Never));
+        assert_eq!(StepFrequency::from_str("always"), Ok(Always));
+        assert_eq!(StepFrequency::from_str("=123"), Ok(Exactly(123)));
+        assert_eq!(StepFrequency::from_str("%123"), Ok(Every(123)));
+        assert_eq!(StepFrequency::from_str("1..3"), Ok(Range(1, Some(3))));
+        assert_eq!(StepFrequency::from_str("1.."), Ok(Range(1, None)));
+        assert!(StepFrequency::from_str("@123").is_err());
     }
 
     // This sample is a subset taken from a Cannon-generated "meta.json" file
@@ -455,34 +511,5 @@ mod tests {
             ]))
         );
         assert!(PreimageKey::from_str("0x01").is_err());
-    }
-}
-
-pub const HINT_CLIENT_READ_FD: i32 = 3;
-pub const HINT_CLIENT_WRITE_FD: i32 = 4;
-pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
-pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
-
-pub struct Preimage(Vec<u8>);
-
-impl Preimage {
-    pub fn create(v: Vec<u8>) -> Self {
-        Preimage(v)
-    }
-
-    pub fn get(self) -> Vec<u8> {
-        self.0
-    }
-}
-
-pub struct Hint(Vec<u8>);
-
-impl Hint {
-    pub fn create(v: Vec<u8>) -> Self {
-        Hint(v)
-    }
-
-    pub fn get(self) -> Vec<u8> {
-        self.0
     }
 }

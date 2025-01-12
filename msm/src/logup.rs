@@ -553,7 +553,7 @@ pub mod prover {
         /// Create an environment for the prover to create a proof for the Logup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
-        /// Therefore, the protocol only focus on commiting to the "grand
+        /// Therefore, the protocol only focus on committing to the "grand
         /// product sum" and the "row-accumulated" values.
         pub fn create<
             OpeningProof: OpenProof<G>,

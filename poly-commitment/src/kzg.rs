@@ -51,7 +51,7 @@ use std::ops::Neg;
 /// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
 /// ```
 pub fn combine_evaluations<G: CommitmentCurve>(
-    evaluations: &Vec<Evaluation<G>>,
+    evaluations: &[Evaluation<G>],
     polyscale: G::ScalarField,
 ) -> Vec<G::ScalarField> {
     let mut polyscale_i = G::ScalarField::one();
@@ -431,10 +431,10 @@ impl<
     /// Also, chunking is not supported.
     pub fn verify(
         &self,
-        srs: &PairingSRS<Pair>,           // SRS
-        evaluations: &Vec<Evaluation<G>>, // commitments to the polynomials
-        polyscale: F,                     // scaling factor for polynoms
-        elm: &[F],                        // vector of evaluation points
+        srs: &PairingSRS<Pair>,        // SRS
+        evaluations: &[Evaluation<G>], // commitments to the polynomials
+        polyscale: F,                  // scaling factor for polynoms
+        elm: &[F],                     // vector of evaluation points
     ) -> bool {
         let poly_commitment: G::Group = {
             let mut scalars: Vec<F> = Vec::new();

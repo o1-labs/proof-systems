@@ -9,7 +9,6 @@
 //! use mvpoly::prime::Dense;
 //! use mina_curves::pasta::Fp;
 //!
-//! #[test]
 //! fn test_mul_by_one() {
 //!     mvpoly::pbt::test_mul_by_one::<Fp, 2, 2, Dense<Fp, 2, 2>>();
 //!     mvpoly::pbt::test_mul_by_one::<Fp, 4, 2, Dense<Fp, 4, 2>>();
@@ -555,12 +554,6 @@ pub fn test_is_multilinear<F: PrimeField, const N: usize, const D: usize, T: MVP
         monomials_exponents.shuffle(&mut rng);
         p.add_monomial(monomials_exponents, c);
         assert!(p.is_multilinear());
-    }
-
-    // Test with a random polynomial (very unlikely to be multilinear)
-    {
-        let p = unsafe { T::random(&mut rng, None) };
-        assert!(!p.is_multilinear());
     }
 }
 

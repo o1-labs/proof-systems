@@ -1,18 +1,12 @@
 /// Modules mimicking the defined structures used by Cannon CLI.
 pub mod cannon;
 
-/// A CLI mimicking the Cannon CLI.
-pub mod cannon_cli;
+pub mod cli;
 
 /// A module to load ELF files.
 pub mod elf_loader;
 
 pub mod interpreters;
-
-/// Legacy implementation of the recursive proof composition.
-/// It does use the folding and ivc libraries defined in this monorepo, and aims
-/// to be compatible with Ethereum natively, using the curve bn254.
-pub mod legacy;
 
 /// Pickles flavor of the o1vm.
 pub mod pickles;
@@ -27,6 +21,8 @@ pub mod preimage_oracle;
 pub mod ramlookup;
 
 pub mod utils;
+
+pub mod test_preimage_read;
 
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,

@@ -701,8 +701,7 @@ where
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, selector)),
+                        .map(|gate_type| (*gate_type, selector)),
                 );
             }
 

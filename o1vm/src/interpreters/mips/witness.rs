@@ -1143,7 +1143,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn step(
         &mut self,
         config: &VmConfiguration,
-        metadata: &Meta,
+        metadata: &Option<Meta>,
         start: &Start,
     ) -> Instruction {
         self.reset_scratch_state();
@@ -1168,9 +1168,16 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
         self.instruction_counter = self.next_instruction_counter();
 
+        config.halt_address.iter().for_each(|halt_address: &u32| {
+            if self.get_instruction_pointer() == (*halt_address as u64) {
+                debug!("Program jumped to halt address: {:#X}", halt_address);
+                self.halt = true;
+            }
+        });
+
         // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {
-            println!(
+            debug!(
                 "Halted at step={} instruction={:?}",
                 self.normalized_instruction_counter(),
                 opcode
@@ -1267,7 +1274,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         }
     }
 
-    fn pp_info(&mut self, at: &StepFrequency, meta: &Meta, start: &Start) {
+    fn pp_info(&mut self, at: &StepFrequency, meta: &Option<Meta>, start: &Start) {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             // Compute the step number removing the MAX_ACC factor
@@ -1286,8 +1293,9 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
             let mem = self.memory_usage();
             let name = meta
-                .find_address_symbol(pc)
-                .unwrap_or_else(|| "n/a".to_string());
+                .as_ref()
+                .and_then(|m| m.find_address_symbol(pc))
+                .unwrap_or("n/a".to_string());
 
             info!(
                 "processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}",

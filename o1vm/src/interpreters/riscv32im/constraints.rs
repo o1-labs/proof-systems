@@ -15,6 +15,7 @@ use kimchi::circuits::{
 
 pub struct Env<F: Field> {
     pub scratch_state_idx: usize,
+    pub scratch_state_idx_inverse: usize,
     pub lookups: Vec<Lookup<E<F>>>,
     pub constraints: Vec<E<F>>,
     pub selector: Option<E<F>>,
@@ -24,6 +25,7 @@ impl<Fp: Field> Default for Env<Fp> {
     fn default() -> Self {
         Self {
             scratch_state_idx: 0,
+            scratch_state_idx_inverse: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
@@ -47,6 +49,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx_inverse;
+        self.scratch_state_idx_inverse += 1;
+        Column::ScratchStateInverse(scratch_idx)
     }
 
     type Variable = E<Fp>;
@@ -77,8 +85,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // No-op, witness only
     }
 
-    fn check_boolean(_x: &Self::Variable) {
-        // No-op, witness only
+    fn assert_boolean(&mut self, x: &Self::Variable) {
+        self.add_constraint(x.clone() * x.clone() - x.clone());
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
@@ -206,22 +214,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
-            unsafe { self.inverse_or_zero(x, pos) }
+            let pos = self.alloc_scratch_inverse();
+            self.variable(pos)
         };
         // If x = 0, then res = 1 and x_inv_or_zero = 0
         // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
         self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
         self.add_constraint(x.clone() * res.clone());
         res
-    }
-
-    unsafe fn inverse_or_zero(
-        &mut self,
-        _x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable {
-        self.variable(position)
     }
 
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {

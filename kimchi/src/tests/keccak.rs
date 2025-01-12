@@ -15,8 +15,7 @@ fn create_keccak_witness<G: KimchiCurve>(message: BigUint) -> [Vec<G::ScalarFiel
 where
     G::BaseField: PrimeField,
 {
-    let mut witness: [Vec<G::ScalarField>; KECCAK_COLS] =
-        array::from_fn(|_| vec![G::ScalarField::zero(); 0]);
+    let mut witness: [Vec<G::ScalarField>; KECCAK_COLS] = array::from_fn(|_| vec![]);
     extend_keccak_witness(&mut witness, message);
     // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
     let dummy_row: [Vec<G::ScalarField>; KECCAK_COLS] =

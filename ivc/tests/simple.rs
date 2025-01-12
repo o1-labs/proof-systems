@@ -271,7 +271,7 @@ pub fn heavy_test_simple_add() {
             .map(|x| FoldingCompatibleExpr::from(x.clone()))
             .collect();
 
-        // IVC column expression should be shifted to the right to accomodate
+        // IVC column expression should be shifted to the right to accommodate
         // app witness.
         let ivc_mapper = &(|Variable { col, row }| {
             let rel_offset: usize = AdditionColumn::COUNT;
@@ -835,10 +835,7 @@ pub fn heavy_test_simple_add() {
                         .divide_by_vanishing_poly(domain.d1)
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
-                        panic!(
-                            "Remainder is not zero for expression #{expr_i}: {}",
-                            expr.to_string()
-                        );
+                        panic!("Remainder is not zero for expression #{expr_i}: {}", expr,);
                     }
                 }
             }
@@ -924,7 +921,7 @@ pub fn heavy_test_simple_add() {
                 if !remainder.is_zero() {
                     panic!(
                         "ERROR: Remainder is not zero for joint expression: {}",
-                        expr.to_string()
+                        expr
                     );
                 } else {
                     println!("Interpolated expression is divisible by vanishing poly d1");
