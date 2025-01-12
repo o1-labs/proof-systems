@@ -27,8 +27,8 @@ mod tests {
     type FECWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         FECColumn,
-        { <FECColumn as ColumnIndexer>::N_COL },
-        { <FECColumn as ColumnIndexer>::N_COL },
+        { <FECColumn as ColumnIndexer<usize>>::N_COL },
+        { <FECColumn as ColumnIndexer<usize>>::N_COL },
         0,
         0,
         LookupTable<Ff1>,
