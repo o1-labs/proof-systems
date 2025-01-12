@@ -79,7 +79,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
         let res: Pallas = (env.ivc_accumulator_e2[0].get_first_chunk()
-            + env.previous_commitments_e2[0].get_first_chunk())
+            + env.previous_committed_state_e2[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -99,7 +99,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
         let res: Vesta = (env.ivc_accumulator_e1[0].get_first_chunk()
-            + env.previous_commitments_e1[0].get_first_chunk())
+            + env.previous_committed_state_e1[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -119,7 +119,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
         let res: Pallas = (env.ivc_accumulator_e2[0].get_first_chunk()
-            + env.previous_commitments_e2[0].get_first_chunk())
+            + env.previous_committed_state_e2[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -188,7 +188,7 @@ where
         let x = Fq::rand(rng);
         Pallas::generator().mul_bigint(x.into_bigint()).into()
     };
-    env.previous_commitments_e2[0] = PolyComm::new(vec![p1]);
+    env.previous_committed_state_e2[0] = PolyComm::new(vec![p1]);
 
     // We only go up to the maximum bit field size.
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
