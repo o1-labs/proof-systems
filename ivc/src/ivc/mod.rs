@@ -74,8 +74,8 @@ mod tests {
     type IVCWitnessBuilderEnvRaw<LT> = WitnessBuilderEnv<
         Fp,
         IVCColumn,
-        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
-        { <IVCColumn as ColumnIndexer>::N_COL - N_BLOCKS },
+        { <IVCColumn as ColumnIndexer<usize>>::N_COL - N_BLOCKS },
+        { <IVCColumn as ColumnIndexer<usize>>::N_COL - N_BLOCKS },
         0,
         N_FSEL_IVC,
         LT,
