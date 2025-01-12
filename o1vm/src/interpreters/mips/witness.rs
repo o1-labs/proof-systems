@@ -89,6 +89,12 @@ impl LookupMultiplicities {
     }
 }
 
+impl Default for LookupMultiplicities {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
