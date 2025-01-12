@@ -109,7 +109,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                     let mut new_vec =
                         vec![Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
                     new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
-                    curr_proof_inputs.evaluations.lookup_state[idx] = new_vec;
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
                 } else {
                     // Push the value to the column.
                     curr_proof_inputs.evaluations.lookup_state[idx]
