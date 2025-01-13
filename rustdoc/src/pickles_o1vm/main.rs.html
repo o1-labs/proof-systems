@@ -168,7 +168,29 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{UniformRand, Zero};
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>log::debug;
@@ -264,6 +286,28 @@
             .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
         {
             scratch_chunk.push(<span class="kw-2">*</span>scratch);
+        }
+        <span class="comment">// Lookup state
+        </span>{
+            <span class="kw">let </span>proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
+            <span class="kw">let </span>environment_length = mips_wit_env.lookup_state.len();
+            <span class="kw">let </span>lookup_state_size = std::cmp::max(proof_inputs_length, environment_length);
+            <span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..lookup_state_size {
+                <span class="kw">if </span>idx &gt;= environment_length {
+                    <span class="comment">// We pad with 0s for dummy lookups missing from the environment.
+                    </span>curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } <span class="kw">else if </span>idx &gt;= proof_inputs_length {
+                    <span class="comment">// We create a new column filled with 0s in the proof inputs.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>new_vec =
+                        <span class="macro">vec!</span>[Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
+                } <span class="kw">else </span>{
+                    <span class="comment">// Push the value to the column.
+                    </span>curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
         }
         curr_proof_inputs
             .evaluations
