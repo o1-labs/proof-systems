@@ -1,5 +1,6 @@
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
+use log::debug;
 use rand::thread_rng;
 
 use kimchi::{
@@ -262,6 +263,12 @@ where
             (res, zeta_i_n)
         },
     );
-    (quotient_zeta == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one()))
-        && OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
+    let c1 = quotient_zeta == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one());
+    debug!(
+        "Verification condition 1 (numerator_zeta vanishes on domain): {}",
+        c1
+    );
+    let c2 = OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng());
+    debug!("Verification condition 2 (verify opening proof): {}", c2);
+    c1 && c2
 }
