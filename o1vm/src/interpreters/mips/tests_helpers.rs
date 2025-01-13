@@ -3,7 +3,7 @@ use crate::{
     interpreters::mips::{
         interpreter::{debugging::InstructionParts, InterpreterEnv},
         registers::Registers,
-        witness::{Env as WEnv, SyscallEnv},
+        witness::{Env as WEnv, LookupMultiplicities, SyscallEnv},
     },
     preimage_oracle::PreImageOracleT,
 };
@@ -92,6 +92,7 @@ where
         scratch_state_idx_inverse: 0,
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
         scratch_state_inverse: [Fp::from(0); SCRATCH_SIZE_INVERSE],
+        lookup_multiplicities: LookupMultiplicities::new(),
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related
