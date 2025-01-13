@@ -67,14 +67,14 @@ pub enum ColumnAlias {
     Selector(usize),
     Lookup(LookupTableID, usize),
     // TODO add
-    /* LookupPartialSum((u32, usize)),
+    LookupPartialSum((u32, usize)),
     /// Multiplicities, indexed. This corresponds to the `m_i`. First
     /// indexed by table ID, then internal index.
     LookupMultiplicity((u32, usize)),
     /// The lookup aggregation, i.e. `phi`
     LookupAggregation,
     /// The fixed tables. The parameter is considered to the indexed table.
-    LookupFixedTable(u32), */
+    LookupFixedTable(u32),
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three

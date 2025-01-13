@@ -20,7 +20,6 @@ use kimchi::circuits::{
 };
 use std::{array, collections::HashMap};
 use strum::IntoEnumIterator;
-
 use super::column::N_MIPS_SEL_COLS;
 
 /// The environment keeping the constraints between the different polynomials
@@ -69,7 +68,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn alloc_lookup(&mut self, table_id: LookupTableID) -> Self::Position {
         let idx = self.scratch_lookups.get_mut(&table_id).unwrap();
-        *idx = *idx + 1;
+        *idx += 1;
         MIPSColumn::Lookup(table_id, *idx - 1)
         // TODO
     }
