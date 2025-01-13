@@ -4,7 +4,7 @@ use super::{
         Instruction::{self, IType, MType, RType, SBType, SType, SyscallType, UJType, UType},
         RInstruction, SBInstruction, SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
-    INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
+    INSTRUCTION_SET_SIZE, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE,
 };
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
@@ -15,6 +15,7 @@ use strum::EnumCount;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Column {
     ScratchState(usize),
+    ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
 }
@@ -26,13 +27,17 @@ impl From<Column> for usize {
                 assert!(i < SCRATCH_SIZE);
                 i
             }
-            Column::InstructionCounter => SCRATCH_SIZE,
+            Column::ScratchStateInverse(i) => {
+                assert!(i < SCRATCH_SIZE_INVERSE);
+                SCRATCH_SIZE + i
+            }
+            Column::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
             Column::Selector(s) => {
                 assert!(
                     s < INSTRUCTION_SET_SIZE,
                     "There is only {INSTRUCTION_SET_SIZE}"
                 );
-                SCRATCH_SIZE + 1 + s
+                SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s
             }
         }
     }
@@ -41,13 +46,21 @@ impl From<Column> for usize {
 impl From<Instruction> for usize {
     fn from(instr: Instruction) -> usize {
         match instr {
-            RType(rtype) => SCRATCH_SIZE + 1 + rtype as usize,
-            IType(itype) => SCRATCH_SIZE + 1 + RInstruction::COUNT + itype as usize,
+            RType(rtype) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + rtype as usize,
+            IType(itype) => {
+                SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + RInstruction::COUNT + itype as usize
+            }
             SType(stype) => {
-                SCRATCH_SIZE + 1 + RInstruction::COUNT + IInstruction::COUNT + stype as usize
+                SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
+                    + 1
+                    + RInstruction::COUNT
+                    + IInstruction::COUNT
+                    + stype as usize
             }
             SBType(sbtype) => {
                 SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT
@@ -56,6 +69,7 @@ impl From<Instruction> for usize {
             }
             UType(utype) => {
                 SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT
@@ -65,6 +79,7 @@ impl From<Instruction> for usize {
             }
             UJType(ujtype) => {
                 SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT
@@ -75,6 +90,7 @@ impl From<Instruction> for usize {
             }
             SyscallType(syscalltype) => {
                 SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT
@@ -86,6 +102,7 @@ impl From<Instruction> for usize {
             }
             MType(mtype) => {
                 SCRATCH_SIZE
+                    + SCRATCH_SIZE_INVERSE
                     + 1
                     + RInstruction::COUNT
                     + IInstruction::COUNT

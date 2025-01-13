@@ -427,7 +427,7 @@ pub fn ec_add_circuit<
     let xr: Ff = slope * slope - xp - xq;
     let yr: Ff = slope * (xp - xr) - yp;
 
-    let two_bi: BigInt = TryFrom::try_from(2).unwrap();
+    let two_bi: BigInt = BigInt::from(2);
 
     let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
 

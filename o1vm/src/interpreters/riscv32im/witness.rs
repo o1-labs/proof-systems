@@ -7,7 +7,7 @@ use super::{
         SInstruction, SyscallInstruction, UInstruction, UJInstruction,
     },
     registers::Registers,
-    INSTRUCTION_SET_SIZE, SCRATCH_SIZE,
+    INSTRUCTION_SET_SIZE, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE,
 };
 use crate::{
     cannon::{State, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
@@ -46,6 +46,8 @@ pub struct Env<Fp> {
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state_inverse_idx: usize,
+    pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub halt: bool,
     pub selector: usize,
 }
@@ -61,6 +63,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_scratch_inverse(&mut self) -> Self::Position {
+        let scratch_inverse_idx = self.scratch_state_inverse_idx;
+        self.scratch_state_inverse_idx += 1;
+        Column::ScratchStateInverse(scratch_inverse_idx)
     }
 
     type Variable = u64;
@@ -277,44 +285,39 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn inverse_or_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable {
-        if *x == 0 {
-            self.write_column(position, 0);
-            0
-        } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
-            1 // Placeholder value
-        }
-    }
-
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
         // write the result
         let pos = self.alloc_scratch();
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(pos, res);
         // write the non deterministic advice inv_or_zero
-        let pos = self.alloc_scratch();
-        let inv_or_zero = if *x == 0 {
-            Fp::zero()
+        let pos = self.alloc_scratch_inverse();
+        if *x == 0 {
+            self.write_field_column(pos, Fp::zero());
         } else {
-            Fp::inverse(&Fp::from(*x)).unwrap()
+            self.write_field_column(pos, Fp::from(*x));
         };
-        self.write_field_column(pos, inv_or_zero);
         // return the result
         res
     }
 
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
-        // To avoid subtraction overflow in the witness interpreter for u32
-        if x > y {
-            self.is_zero(&(*x - *y))
+        // We replicate is_zero(x-y), but working on field elt,
+        // to avoid subtraction overflow in the witness interpreter for u32
+        let to_zero_test = Fp::from(*x) - Fp::from(*y);
+        let res = {
+            let pos = self.alloc_scratch();
+            let is_zero: u64 = if to_zero_test == Fp::zero() { 1 } else { 0 };
+            self.write_column(pos, is_zero);
+            is_zero
+        };
+        let pos = self.alloc_scratch_inverse();
+        if to_zero_test == Fp::zero() {
+            self.write_field_column(pos, Fp::zero());
         } else {
-            self.is_zero(&(*y - *x))
-        }
+            self.write_field_column(pos, to_zero_test);
+        };
+        res
     }
 
     unsafe fn test_less_than(
@@ -684,6 +687,8 @@ impl<Fp: Field> Env<Fp> {
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
+            scratch_state_inverse_idx: 0,
+            scratch_state_inverse: fresh_scratch_state(),
             halt: state.exited,
             selector,
         }
@@ -842,6 +847,7 @@ impl<Fp: Field> Env<Fp> {
     /// Execute a single step in the RISCV32i program
     pub fn step(&mut self) -> Instruction {
         self.reset_scratch_state();
+        self.reset_scratch_state_inverse();
         let (opcode, _instruction) = self.decode_instruction();
 
         interpreter::interpret_instruction(self, opcode);
@@ -865,6 +871,11 @@ impl<Fp: Field> Env<Fp> {
         self.selector = INSTRUCTION_SET_SIZE;
     }
 
+    pub fn reset_scratch_state_inverse(&mut self) {
+        self.scratch_state_inverse_idx = 0;
+        self.scratch_state_inverse = fresh_scratch_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         self.write_field_column(column, value.into())
     }
@@ -872,6 +883,7 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
         }

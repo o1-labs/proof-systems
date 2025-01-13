@@ -68,7 +68,7 @@ impl<const N_WIT: usize, T: Zero + Clone> Witness<N_WIT, Vec<T>> {
     pub fn to_pub_columns<const NPUB: usize>(&self) -> Witness<NPUB, Vec<T>> {
         let mut newcols: [Vec<T>; NPUB] = std::array::from_fn(|_| vec![]);
         for (i, vec) in self.cols[0..NPUB].iter().enumerate() {
-            newcols[i] = vec.clone();
+            newcols[i].clone_from(vec);
         }
         Witness {
             cols: Box::new(newcols),

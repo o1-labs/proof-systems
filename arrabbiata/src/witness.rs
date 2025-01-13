@@ -19,6 +19,8 @@ use crate::{
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
+/// The first instruction in the IVC is the Poseidon permutation. It is used to
+/// start hashing the public input.
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment that can be shared between IVC instances.
@@ -247,10 +249,10 @@ where
         let v = v.mod_floor(&modulus);
         match row {
             CurrOrNext::Curr => {
-                self.state[idx] = v.clone();
+                self.state[idx].clone_from(&v);
             }
             CurrOrNext::Next => {
-                self.next_state[idx] = v.clone();
+                self.next_state[idx].clone_from(&v);
             }
         }
         v
@@ -267,7 +269,7 @@ where
             Fq::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
-        self.public_state[idx] = v.clone();
+        self.public_state[idx].clone_from(&v);
         v
     }
 
@@ -345,7 +347,7 @@ where
     fn reset(&mut self) {
         // Save the current state in the witness
         self.state.iter().enumerate().for_each(|(i, x)| {
-            self.witness[i][self.current_row] = x.clone();
+            self.witness[i][self.current_row].clone_from(x);
         });
         // We increment the row
         // TODO: should we check that we are not going over the domain size?
@@ -355,7 +357,7 @@ where
         self.idx_var_next_row = 0;
         self.idx_var_pi = 0;
         // We keep track of the values we already set.
-        self.state = self.next_state.clone();
+        self.state.clone_from(&self.next_state);
         // And we reset the next state
         self.next_state = std::array::from_fn(|_| BigInt::from(0_usize));
     }
@@ -371,8 +373,8 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private columns")
         };
-        self.state[idx] = r.clone();
-        self.r = r.clone();
+        self.state[idx].clone_from(&r);
+        self.r.clone_from(&r);
         r
     }
 
@@ -989,9 +991,6 @@ impl<
     /// ```text
     /// z_(i + 1) = F(w_i, z_i)
     /// ```
-    ///
-    /// - We decompose the scalar `r`, the random combiner, into bits to compute
-    /// the MSM for the next step.
     ///
     /// - We compute the MSM (verifier)
     ///

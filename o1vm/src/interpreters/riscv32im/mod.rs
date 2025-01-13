@@ -1,5 +1,6 @@
 /// The minimal number of columns required for the VM
 pub const SCRATCH_SIZE: usize = 39;
+pub const SCRATCH_SIZE_INVERSE: usize = 1;
 
 /// Number of instructions in the ISA
 pub const INSTRUCTION_SET_SIZE: usize = 48;

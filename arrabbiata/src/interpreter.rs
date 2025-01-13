@@ -28,6 +28,8 @@
 //! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
+//! - [Folding](#folding)
+//! - [Message passing](#message-passing)
 //!
 //! ## Gadgets implemented
 //!
@@ -37,9 +39,9 @@
 //! particular additions and scalar multiplications.
 //!
 //! To reduce the number of operations, we consider the affine coordinates.
-//! As a reminder, here the equations to compute the addition of two different
-//! points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let define `P3 = (X3, Y3) = P1 +
-//! P2`.
+//! As a reminder, here are the equations to compute the addition of two
+//! different points `P1 = (X1, Y1)` and `P2 = (X2, Y2)`. Let define `P3 = (X3,
+//! Y3) = P1 + P2`.
 //!
 //! ```text
 //! - λ = (Y1 - Y2) / (X1 - X2)
@@ -67,9 +69,9 @@
 //! For given inputs (x1, y1) and (x2, y2), the layout will be as follow:
 //!
 //! ```text
-//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- | --- | --- |
-//! | x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |     |     |
+//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
+//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
+//! | x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |
 //! ```
 //!
 //! where `b0` is equal two `1` if the points are the same, and `0` otherwise.
@@ -115,33 +117,12 @@
 //!
 //! #### Gadget layout
 //!
-//! We start with the assumption that 17 columns are available for the whole
-//! circuit, and we can support constraints up to degree 5.
-//! Therefore, we can compute 4 full rounds per row if we rely on the
-//! permutation argument, or 5 full rounds per row if we use the "next row".
-//!
-//! We provide two implementations of the Poseidon hash function. The first one
-//! does not use the "next row" and is limited to 4 full rounds per row. The
-//! second one uses the "next row" and can compute 5 full rounds per row.
-//! The second implementation is more efficient as it allows to compute one
-//! additional round per row.
-//! For the second implementation, the permutation argument will only be
-//! activated on the first and last group of 5 rounds.
-//!
-//! The layout for the one not using the "next row" is as follow (4 full rounds):
-//! ```text
-//! | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
-//! | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
-//! | x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | o1  | o2  | o3  |
-//! ```
-//! where (x, y, z) is the input of the current step, (o1, o2, o3) is the
-//! output, and the other values are intermediary values. And we have the following equalities:
-//! ```text
-//! (a1, a2, a3) = PoseidonRound(x, y, z)
-//! (b1, b2, b3) = PoseidonRound(a1, a2, a3)
-//! (c1, c2, c3) = PoseidonRound(b1, b2, b3)
-//! (o1, o2, o3) = PoseidonRound(c1, c2, c3)
-//! ```
+//! We start with the assumption that [crate::NUMBER_OF_COLUMNS] columns are
+//! available for the whole circuit, and we can support constraints up to degree
+//! [crate::MAX_DEGREE].
+//! Therefore, we can compute 5 full rounds per row by using the "next row"
+//! (i.e. adding an evaluation point at ζω). An implementation is provided in
+//! the gadget [crate::columns::Gadget::Poseidon].
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
 //! ```text
@@ -161,7 +142,7 @@
 //! (o1, o2, o3) = PoseidonRound(d1, d2, d3)
 //! ```
 //!
-//! For both implementations, round constants are passed as public inputs. As a
+//! Round constants are passed as public inputs. As a
 //! reminder, public inputs are simply additional columns known by the prover
 //! and verifier.
 //! Also, the elements to absorb are added to the initial state at the beginning
@@ -176,7 +157,7 @@
 //!
 //! We will consider a basic implementation using the "next row". The
 //! accumulators will be saved on the "next row". The decomposition of the
-//! scalar will be incrementally on each row.
+//! scalar will be incremental on each row.
 //! The scalar used for the scalar multiplication will be fetched using the
 //! permutation argument (FIXME: to be implemented).
 //! More than one bit can be decomposed at the same time, and we could reduce
@@ -199,8 +180,8 @@
 //! We have the following layout:
 //!
 //! ```text
-//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 | C16 | C17 |
-//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- | --- | --- |
+//! | C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 |
+//! | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- |
 //! | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ' |  b  |
 //! | o'_x |  o'_y  | double_tmp'_x | double_tmp'_y |  r_(i+1)  |
 //! ```
@@ -224,8 +205,8 @@
 //!
 //! Using this technique requires us a folding scheme that handles degree
 //! `5 + 1` constraints, as the challenge will be considered as a variable.
-//! The reader can refer to the folding library available in this monorepo for
-//! more contexts.
+//! The reader can refer to this [HackMD
+//! document](https://hackmd.io/@dannywillems/Syo5MBq90) for more details.
 //!
 //! ## Permutation argument
 //!
@@ -297,11 +278,13 @@
 //! ## Fiat-Shamir challenges
 //!
 //! The challenges sent by the verifier must also be simulated by the IVC
-//! circuit.
+//! circuit. It is done by passing "messages" as public inputs to the next
+//! instances. Diagrams recapitulating the messages that must be passed are
+//! available in the section [Message passing](#message-passing).
 //!
 //! For a step `i + 1`, the challenges of the step `i` must be computed by the
-//! verifier, and check that it corresponds to the ones received as a public
-//! input.
+//! verifier in the circuit, and check that it corresponds to the ones received
+//! as a public input.
 //!
 //! TBD/FIXME: specify. Might require foreign field arithmetic.
 //!
@@ -319,8 +302,8 @@
 //! This computation depends on the constraints, and in particular on the
 //! monomials describing the constraints.
 //! The computation of the cross-terms and the error terms happen after the
-//! witness has been built and the different arguments like the permutation or
-//! lookup have been done. Therefore, the interpreter must provide a method to
+//! witness has been built and the different arguments like the permutation and
+//! lookups have been done. Therefore, the interpreter must provide a method to
 //! compute it, and the constraints should be passed as an argument.
 //!
 //! When computing the cross-terms, we must compute the contribution of each
@@ -337,6 +320,115 @@
 //! implementing the trait [MVPoly](mvpoly::MVPoly) and the method
 //! [compute_cross_terms](mvpoly::MVPoly::compute_cross_terms) can be used from
 //! there.
+//!
+//! ## Message passing
+//!
+//! The message passing is a crucial part of the IVC scheme. The messages are
+//! mostly commitments and challenges that must be passed from one step to
+//! another, and by "jumping" between curves. In the implementation,
+//! the messages are kept in an "application environment", located in the
+//! "witness environment". The structure [crate::witness::Env] is used to keep
+//! track of the messages that must be passed.
+//! Each step starts with an "application state" and end with another that are
+//! accumuated. The final state is passed through a "digest" to the next
+//! instance. The digest is performed using a hash function (see [Hash -
+//! Poseidon](#hash---poseidon)). We often use the term "sponge" to refer to the
+//! hash function or the state of the hash function.
+//!
+//! The sponge state will be forked at different steps, to provide a
+//! consistent state between the different instances and the different curves.
+//! The challenges will be computed using the sponge state after hashing the
+//! appropriate values from the appropriate initial state, and be kept in the
+//! environment.
+//!
+//! In the diagram below, each object subscripted by `(p, n)` (resp. `(q, n)`)
+//! means that they are related to the instance `n` whose circuit is defined in
+//! the field `Fp` (resp. `Fq`), the scalar field of Vesta (resp. Pallas).
+//!
+//! In addition to that, we use
+//! - `w_(p, n)` for the witness.
+//! - `W_(p, n)` for the aggregated witness.
+//! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
+//! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
+//! `W_(p, n)`.
+//! - `α_(p, n)` for the challenge used to combine constraints.
+//! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
+//! permutation argument.
+//! - `r_(p, n)` for the challenge used for the accumulation of the
+//! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
+//! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
+//! witness/commitments.
+//! - `u_(p, n)` for the challenge used to homogenize the constraints.
+//! - `o_(p, n)` for the final digest of the application state.
+//!
+//! Here a diagram (FIXME: this is not complete) that shows the messages that
+//! must be passed:
+//!
+//! ```text
+//! +------------------------------------------+                      +------------------------+
+//! |            Instance n                    |                      |     Instance n + 2     |
+//! |        (witness w_(p, n))                |                      | (witness W_(p, n + 1)) |
+//! |            ----------                    |                      |     ----------         |
+//! |               Vesta                      |                      |         Vesta          |
+//! |         (scalar field = Fp)              |                      |   (scalar field = Fp)  |
+//! |         (base field   = Fq)              |                      |   (base field   = Fq)  |
+//! |          (Sponge over Fq)                |                      |    (Sponge over Fq)    |
+//! |                                          |                      |                        |
+//! |          Generate as output              |                      |   Generate as output   |
+//! |          ------------------              |                      |   ------------------   |
+//! | Challenges:                              |                      | Challenges:            |
+//! | - α_(p, n)                               |                      | - α_(p, n + 1)         |
+//! | - β_(p, n)                               |                      | - β_(p, n + 1)         |
+//! | - γ_(p, n)                               |                      | - γ_(p, n + 1)         |
+//! | - r_(p, n)                               |                      | - r_(p, n + 1)         |
+//! | - u_(p, n)                               |                      | - u_(p, n + 1)         |
+//! | Commitments:                             |                      |          (...)         |
+//! | - Cross-terms (`Ct_(p, n)`)              |                      +------------------------+
+//! | - Witness columns (`w_(p, n)`)           |                                   ^
+//! | Fiat-Shamir:                             |                                   |
+//! | - digest of all messages read until      |                                   |
+//! | now -> `o_(p, n)`                        |                                   |
+//! |                                          |                                   |
+//! |             Receive in PI                |                                   |
+//! |             --------------               |                                   |
+//! | - Commitments to w_(p, (n - 1))          |                                   |
+//! | - Final digest of the application        |                                   |
+//! | state at instance (n - 1)                |                                   |
+//! | (o_(q, n - 1)).                          |                                   |
+//! | - Final digest of the application        |                                   |
+//! | state at instance (n - 2)                |                                   |
+//! | (o_(p, n - 1)).                          |                                   |
+//! |                                          |                                   |
+//! |             Responsibility               |                                   |
+//! |             --------------               |                                   |
+//! | - Verify FS challenges (α_(q, n - 1),    |                                   |
+//! | β_(q, n - 1), γ_(q, n - 1),              |                                   |
+//! | r_(q, n - 1), u_(q, n - 1)               |                                   |
+//! | (i.e. challenges of instance n - 1)      |                                   |
+//! | from o_(q, n - 1)                        |                                   |
+//! | - Aggregate witness columns w_(p, n)     |                                   |
+//! | into W_(p, n).                           |                                   |
+//! | - Aggregate error terms                  |                                   |
+//! | from instance n - 2 with cross terms of  |                                   |
+//! | instance n - 2                           |                                   |
+//! +------------------------------------------+                                   |
+//!                      |                                                         |
+//!                      |                                                         |
+//!                      |             +----------------------------+              |
+//!                      |             |       Instance n + 1       |              |
+//!                      |             |   (witness w_(q, n))       |              |
+//!                      |             |       --------------       |              |
+//!                      |             |           Pallas           |              |
+//!                      |             |      (scalar field = Fq)   |              |
+//!                      |-----------> |      (base field   = Fp)   |--------------
+//!                                    |       (Sponge over Fp)     |
+//! TODO: define msgs                  |                            |    TODO: define msgs
+//!       format to pass               |            TODO            |     format to pass
+//!         IO                         |                            |          IO
+//!                                    |                            |
+//!                                    |                            |
+//!                                    +----------------------------+
+//! ```
 
 use crate::{
     columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
@@ -925,7 +1017,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                         state.iter().enumerate().for_each(|(i, x)| {
                             unsafe { env.save_poseidon_state(x.clone(), i) };
                         });
-                        env.reset();
                     };
                     state
                 });

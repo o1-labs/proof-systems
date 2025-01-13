@@ -45,7 +45,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<E<G::ScalarField>>,
+    constraints: &[E<G::ScalarField>],
     fixed_selectors: Box<[Vec<G::ScalarField>; N_FSEL]>,
     proof: &Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
@@ -286,7 +286,7 @@ where
     };
 
     let combined_expr =
-        Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+        Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_vec());
     // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),

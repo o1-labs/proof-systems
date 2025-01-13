@@ -542,7 +542,7 @@ pub fn multiplication_circuit<
 ) -> Ff {
     let coeff_result = chal * coeff_input;
 
-    let two_bi: BigInt = TryFrom::try_from(2).unwrap();
+    let two_bi: BigInt = BigInt::from(2);
 
     let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
 

@@ -89,6 +89,7 @@ fn create_and_store_srs_with_path(
         // Open/create the file
         let mut file = std::fs::OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(srs_path.clone())
             .expect("failed to open SRS file");

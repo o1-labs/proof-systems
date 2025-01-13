@@ -9,7 +9,6 @@
 //! use mvpoly::prime::Dense;
 //! use mina_curves::pasta::Fp;
 //!
-//! #[test]
 //! fn test_mul_by_one() {
 //!     mvpoly::pbt::test_mul_by_one::<Fp, 2, 2, Dense<Fp, 2, 2>>();
 //!     mvpoly::pbt::test_mul_by_one::<Fp, 4, 2, Dense<Fp, 4, 2>>();

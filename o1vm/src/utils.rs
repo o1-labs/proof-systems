@@ -45,6 +45,6 @@ mod tests {
         assert_eq!(memory_size(1024_usize), "1.0 KiB");
         assert_eq!(memory_size(1024 * 1024_usize), "1.0 MiB");
         assert_eq!(memory_size(2100 * 1024 * 1024_usize), "2.1 GiB");
-        assert_eq!(memory_size(std::usize::MAX), "16.0 EiB");
+        assert_eq!(memory_size(usize::MAX), "16.0 EiB");
     }
 }

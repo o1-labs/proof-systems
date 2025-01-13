@@ -1,5 +1,6 @@
+use ark_ec::AffineRepr;
 use ark_ff::{Field, UniformRand};
-use mina_curves::pasta::{Fp, Fq, PallasParameters, VestaParameters};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
     pasta::{fp_kimchi, fp_legacy, fq_kimchi},
@@ -135,4 +136,26 @@ fn test_poseidon_pallas_kimchi_challenge_is_squeezed_to_128_bits() {
     let challenge = sponge.challenge();
     let two_128 = Fq::from(2).pow([128]);
     assert!(challenge < two_128);
+}
+
+#[test]
+fn test_poseidon_pallas_absorb_point_to_infinity() {
+    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
+        fp_kimchi::static_params(),
+    );
+    let point = Pallas::zero();
+    sponge.absorb_g(&[point]);
+    let exp_output = [Fp::from(0); 3];
+    assert_eq!(sponge.sponge.state, exp_output);
+}
+
+#[test]
+fn test_poseidon_vesta_absorb_point_to_infinity() {
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        fq_kimchi::static_params(),
+    );
+    let point = Vesta::zero();
+    sponge.absorb_g(&[point]);
+    let exp_output = [Fq::from(0); 3];
+    assert_eq!(sponge.sponge.state, exp_output);
 }

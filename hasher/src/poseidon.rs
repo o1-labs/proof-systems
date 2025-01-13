@@ -65,7 +65,7 @@ where
     fn reset(&mut self) -> &mut dyn Hasher<H> {
         // Efficient reset
         self.sponge.sponge_state = self.sponge_state.clone();
-        self.sponge.state = self.state.clone();
+        self.sponge.state.clone_from(&self.state);
 
         self
     }
@@ -83,7 +83,7 @@ where
 
         // Save initial state for efficient reset
         self.sponge_state = self.sponge.sponge_state.clone();
-        self.state = self.sponge.state.clone();
+        self.state.clone_from(&self.sponge.state);
 
         self
     }

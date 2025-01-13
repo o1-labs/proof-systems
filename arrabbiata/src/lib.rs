@@ -1,3 +1,5 @@
+use curve::PlonkSpongeConstants;
+use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
 
 pub mod column_env;
@@ -21,12 +23,16 @@ pub const MAX_DEGREE: u64 = 5;
 /// Requiring at least 2^16 to perform 16bits range checks.
 pub const MIN_SRS_LOG2_SIZE: usize = 16;
 
-/// The number of rows the IVC circuit requires.
-// FIXME: that might change. We use a vertical layout for now.
-pub const IVC_CIRCUIT_SIZE: usize = 1 << 13;
-
 /// The maximum number of columns that can be used in the circuit.
 pub const NUMBER_OF_COLUMNS: usize = 15;
+
+/// The number of rows the IVC circuit requires.
+// FIXME:
+// We will increase the IVC circuit size step by step, while we are finishing
+// the implementation.
+// 1. We start by absorbing all the accumulators of each column.
+pub const IVC_CIRCUIT_SIZE: usize =
+    (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5) * NUMBER_OF_COLUMNS;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
