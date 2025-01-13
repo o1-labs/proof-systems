@@ -71,7 +71,7 @@ impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
             Column::Relation(i) => match i {
                 RelationColumnType::Scratch(i) => Some(&self.scratch[i]),
                 RelationColumnType::ScratchInverse(i) => Some(&self.scratch_inverse[i]),
-                RelationColumnType::LookupState(_) => todo!(),
+                RelationColumnType::LookupState(i) => Some(&self.lookup_state[i]),
                 RelationColumnType::InstructionCounter => Some(&self.instruction_counter),
                 RelationColumnType::Error => Some(&self.error),
             },
