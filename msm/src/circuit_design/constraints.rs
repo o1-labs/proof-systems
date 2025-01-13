@@ -15,7 +15,7 @@ use crate::{
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
-    pub constraints: Vec<Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>>,
+    pub constraints: Vec<Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column<usize>>>,
     /// Aggregated lookups or "reads".
     pub lookup_reads: BTreeMap<LT, Vec<Vec<E<F>>>>,
     /// Aggregated "write" lookups, for runtime tables.
@@ -35,7 +35,7 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> ColAccessCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
     type Variable = E<F>;
@@ -61,7 +61,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> HybridCopyCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
     fn hcopy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
@@ -77,7 +77,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> LookupCap<F, CIx, LT>
     for ConstraintBuilderEnv<F, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {

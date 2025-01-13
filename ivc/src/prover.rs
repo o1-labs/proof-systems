@@ -91,7 +91,7 @@ impl<
         F: Clone,
     > ColumnEvaluations<F> for ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, F>
 {
-    type Column = kimchi_msm::columns::Column;
+    type Column = kimchi_msm::columns::Column<usize>;
 
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
         // TODO: substitute when non-literal generic constants are available
@@ -147,7 +147,7 @@ pub struct Proof<
 pub fn prove<
     EFqSponge: Clone + FqSponge<Fq, G, Fp>,
     EFrSponge: FrSponge<Fp>,
-    FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
+    FC: FoldingConfig<Column = GenericColumn<usize>, Curve = G, Challenge = PlonkishChallenge>,
     RNG,
     const N_WIT: usize,
     const N_WIT_QUAD: usize, // witness columns + quad columns

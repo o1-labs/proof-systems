@@ -24,7 +24,7 @@ use poly_commitment::{
 };
 
 use super::{
-    column_env::get_all_columns,
+    column_env::{get_all_columns, RelationColumnType},
     proof::{Proof, WitnessColumns},
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
@@ -40,7 +40,7 @@ struct ColumnEval<'a, G: AffineRepr> {
 }
 
 impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
-    type Column = Column;
+    type Column = Column<RelationColumnType>;
     fn evaluate(
         &self,
         col: Self::Column,

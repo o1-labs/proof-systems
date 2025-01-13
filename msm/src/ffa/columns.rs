@@ -20,9 +20,9 @@ pub enum FFAColumn {
     Quotient,
 }
 
-impl ColumnIndexer for FFAColumn {
+impl ColumnIndexer<usize> for FFAColumn {
     const N_COL: usize = FFA_N_COLUMNS;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);
             Column::Relation(N_LIMBS * offset + i)

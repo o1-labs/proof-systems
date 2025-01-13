@@ -30,7 +30,7 @@ pub enum PoseidonColumn<
 }
 
 impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND: usize>
-    ColumnIndexer for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>
+    ColumnIndexer<usize> for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>
 {
     // - STATE_SIZE input columns
     // - for each partial round:
@@ -54,7 +54,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND
             + (4 + STATE_SIZE - 1) * NB_PARTIAL_ROUND // partial round
             + STATE_SIZE * (NB_PARTIAL_ROUND + NB_FULL_ROUND); // fixed selectors
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         // number of reductions for
         // x -> x^2 -> x^4 -> x^5 -> x^5 * MDS
         let nb_red = 4;

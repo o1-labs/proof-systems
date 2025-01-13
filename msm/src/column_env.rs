@@ -54,7 +54,7 @@ impl<
     > TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyChallenges<F>>
     for ColumnEnvironment<'a, N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
 {
-    type Column = crate::columns::Column;
+    type Column = crate::columns::Column<usize>;
 
     fn get_column(
         &self,

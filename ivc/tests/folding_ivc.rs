@@ -71,7 +71,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
     impl Witness<Curve> for TestWitness {}
 
     impl FoldingConfig for TestConfig {
-        type Column = Column;
+        type Column = Column<usize>;
 
         type Selector = ();
 
@@ -92,7 +92,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
 
     struct Env;
 
-    impl FoldingEnv<Fp, TestInstance, TestWitness, Column, Challenge, ()> for Env {
+    impl FoldingEnv<Fp, TestInstance, TestWitness, Column<usize>, Challenge, ()> for Env {
         type Structure = ();
 
         fn new(
@@ -103,7 +103,7 @@ fn test_regression_additional_columns_reduction_to_degree_2() {
             todo!()
         }
 
-        fn col(&self, _col: Column, _curr_or_next: CurrOrNext, _side: Side) -> &[Fp] {
+        fn col(&self, _col: Column<usize>, _curr_or_next: CurrOrNext, _side: Side) -> &[Fp] {
             todo!()
         }
 

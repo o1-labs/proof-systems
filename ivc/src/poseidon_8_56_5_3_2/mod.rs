@@ -32,8 +32,8 @@ mod tests {
     type PoseidonWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         Column,
-        { <Column as ColumnIndexer>::N_COL },
-        { <Column as ColumnIndexer>::N_COL },
+        { <Column as ColumnIndexer<usize>>::N_COL },
+        { <Column as ColumnIndexer<usize>>::N_COL },
         N_DSEL,
         N_FSEL,
         DummyLookupTable,

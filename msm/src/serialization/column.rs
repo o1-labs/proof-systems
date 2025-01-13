@@ -40,9 +40,9 @@ pub enum SerializationColumn {
     CoeffResult(usize),
 }
 
-impl ColumnIndexer for SerializationColumn {
+impl ColumnIndexer<usize> for SerializationColumn {
     const N_COL: usize = N_COL_SER;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             Self::CurrentRow => Column::FixedSelector(0),
             Self::PreviousCoeffRow => Column::FixedSelector(1),
