@@ -1,6 +1,7 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use clap::Parser;
 use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
+use kimchi_msm::expr::E;
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -8,7 +9,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
-    cannon::{self, Start, State},
+    cannon::{self, Meta, Start, State},
     cli, elf_loader,
     interpreters::mips::{
         column::N_MIPS_REL_COLS,
@@ -21,6 +22,7 @@ use o1vm::{
     test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
+use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
@@ -48,7 +50,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let start = Start::create(state.step as usize);
 
     let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-
     let srs: SRS<Vesta> = match &args.srs_cache {
         Some(cache) => {
             debug!("Loading SRS from cache {}", cache);
@@ -107,70 +108,137 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let constraints = mips_constraints::get_all_constraints::<Fp>();
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
-    while !mips_wit_env.halt {
-        let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
-        for (scratch, scratch_chunk) in mips_wit_env
-            .scratch_state
-            .iter()
-            .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
-        {
-            scratch_chunk.push(*scratch);
-        }
-        for (scratch, scratch_chunk) in mips_wit_env
-            .scratch_state_inverse
-            .iter()
-            .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
-        {
-            scratch_chunk.push(*scratch);
-        }
-        curr_proof_inputs
-            .evaluations
-            .instruction_counter
-            .push(Fp::from(mips_wit_env.instruction_counter));
-        // FIXME: Might be another value
-        curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
 
-        curr_proof_inputs
-            .evaluations
-            .selector
-            .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
+    while !mips_wit_env.halt {
+        step_prover(
+            &mut mips_wit_env,
+            &configuration,
+            meta,
+            &start,
+            &mut curr_proof_inputs,
+            &mut rng,
+        );
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
-            let start_iteration = Instant::now();
             debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
-            let proof = prover::prove::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                _,
-            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
-            .unwrap();
-            // Check that the proof is correct. This is for testing purposes.
-            // Leaving like this for now.
-            debug!(
-                "Proof generated in {elapsed} μs",
-                elapsed = start_iteration.elapsed().as_micros()
-            );
-            {
-                let start_iteration = Instant::now();
-                let verif = verifier::verify::<
-                    Vesta,
-                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-                >(domain_fp, &srs, &constraints, &proof);
-                debug!(
-                    "Verification done in {elapsed} μs",
-                    elapsed = start_iteration.elapsed().as_micros()
-                );
-                assert!(verif);
-            }
+            prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
 
             curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
         }
     }
-    if curr_proof_inputs.evaluations.instruction_counter.is_empty() {
-        debug!("Didn't create proof for the last chunk");
+
+    if curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE {
+        debug!(
+            "Evaluation ended with {} elements. Pad it to prove and verify",
+            curr_proof_inputs.evaluations.instruction_counter.len()
+        );
+        pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
+        prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
     }
+}
+
+fn step_prover(
+    mips_wit_env: &mut mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
+    configuration: &cannon::VmConfiguration,
+    meta: &Option<Meta>,
+    start: &Start,
+    curr_proof_inputs: &mut ProofInputs<Vesta>,
+    rng: &mut ThreadRng,
+) {
+    let _instr: Instruction = mips_wit_env.step(configuration, meta, start);
+    for (scratch, scratch_chunk) in mips_wit_env
+        .scratch_state
+        .iter()
+        .zip(curr_proof_inputs.evaluations.scratch.iter_mut())
+    {
+        scratch_chunk.push(*scratch);
+    }
+    for (scratch, scratch_chunk) in mips_wit_env
+        .scratch_state_inverse
+        .iter()
+        .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
+    {
+        scratch_chunk.push(*scratch);
+    }
+    curr_proof_inputs
+        .evaluations
+        .instruction_counter
+        .push(Fp::from(mips_wit_env.instruction_counter));
+    // FIXME: Might be another value
+    curr_proof_inputs.evaluations.error.push(Fp::rand(rng));
+
+    curr_proof_inputs
+        .evaluations
+        .selector
+        .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
+}
+
+fn pad(
+    witness_env: &mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
+    curr_proof_inputs: &mut ProofInputs<Vesta>,
+    rng: &mut ThreadRng,
+) {
+    let zero = Fp::zero();
+    let noop_selector: Fp = {
+        let noop: usize = Instruction::NoOp.into();
+        Fp::from((noop - N_MIPS_REL_COLS) as u64)
+    };
+    curr_proof_inputs
+        .evaluations
+        .scratch
+        .iter_mut()
+        .for_each(|x| x.resize(x.capacity(), zero));
+    curr_proof_inputs
+        .evaluations
+        .scratch_inverse
+        .iter_mut()
+        .for_each(|x| x.resize(x.capacity(), zero));
+    curr_proof_inputs.evaluations.instruction_counter.resize(
+        curr_proof_inputs.evaluations.instruction_counter.capacity(),
+        Fp::from(witness_env.instruction_counter),
+    );
+    curr_proof_inputs
+        .evaluations
+        .error
+        .resize_with(curr_proof_inputs.evaluations.error.capacity(), || {
+            Fp::rand(rng)
+        });
+    curr_proof_inputs.evaluations.selector.resize(
+        curr_proof_inputs.evaluations.selector.capacity(),
+        noop_selector,
+    );
+}
+
+fn prove_and_verify(
+    domain_fp: EvaluationDomains<Fp>,
+    srs: &SRS<Vesta>,
+    constraints: &[E<Fp>],
+    curr_proof_inputs: ProofInputs<Vesta>,
+    rng: &mut ThreadRng,
+) {
+    let start_iteration = Instant::now();
+    let proof = prover::prove::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+        _,
+    >(domain_fp, srs, curr_proof_inputs, constraints, rng)
+    .unwrap();
+    debug!(
+        "Proof generated in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    let start_iteration = Instant::now();
+    let verif = verifier::verify::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+    >(domain_fp, srs, constraints, &proof);
+    debug!(
+        "Verification done in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    assert!(verif);
 }
 
 fn gen_state_json(arg: cli::cannon::GenStateJsonArgs) -> Result<(), String> {
