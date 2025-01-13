@@ -1,6 +1,7 @@
 use ark_ff::UniformRand;
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi_msm::{expr::E, logup::constraint_lookups};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -11,19 +12,20 @@ use o1vm::{
     cannon::{self, Start, State},
     cli, elf_loader,
     interpreters::mips::{
-        column::N_MIPS_REL_COLS,
-        constraints as mips_constraints,
-        witness::{self as mips_witness},
-        Instruction,
+        column::N_MIPS_REL_COLS, constraints as mips_constraints, interpreter, interpreter::InterpreterEnv, witness::{self as mips_witness}, Instruction
     },
+    lookups::{partition_lookups, LookupTableIDs},
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
+use strum::IntoEnumIterator;
 
 pub const DOMAIN_SIZE: usize = 1 << 15;
+
+type ID = LookupTableIDs;
 
 pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut rng = rand::thread_rng();
@@ -76,9 +78,32 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
     };
 
-    let constraints = mips_constraints::get_all_constraints::<Fp>();
+    let constraints = {
+        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
+        let mut constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(vec![], |mut acc, instr| {
+                interpreter::interpret_instruction(&mut mips_con_env, instr);
+                let selector = mips_con_env.get_selector();
+                let partitioned_lookups = partition_lookups(mips_con_env.get_lookups());
+                let lookup_constraints =
+                    constraint_lookups(&partitioned_lookups.reads, &partitioned_lookups.writes)
+                        .into_iter();
+                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .zip(lookup_constraints)
+                    .map(|(cst, lookup_cst)| selector.clone() * cst * lookup_cst)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                mips_con_env.reset();
+                acc
+            });
+        constraints.extend(mips_con_env.get_selector_constraints());
+        constraints
+    };
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta, ID> = ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -115,6 +140,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
+                ID,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
             .unwrap();
             // Check that the proof is correct. This is for testing purposes.
@@ -129,6 +155,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                     Vesta,
                     DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
                     DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                    ID,
                 >(domain_fp, &srs, &constraints, &proof);
                 debug!(
                     "Verification done in {elapsed} μs",

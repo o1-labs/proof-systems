@@ -1,4 +1,4 @@
-use std::array;
+use std::{array, collections::BTreeMap};
 
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
@@ -12,6 +12,10 @@ use kimchi::{
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
+};
+use kimchi_msm::{
+    logup::{prover::Env, LookupProof},
+    LookupTableID,
 };
 use log::debug;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -27,7 +31,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 
 use super::{
     column_env::ColumnEnvironment,
-    proof::{Proof, ProofInputs, WitnessColumns},
+    proof::{Lookup, Proof, ProofInputs, WitnessColumns},
     DEGREE_QUOTIENT_POLYNOMIAL,
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
@@ -57,13 +61,14 @@ pub fn prove<
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
     EFrSponge: FrSponge<G::ScalarField>,
     RNG,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<G>,
+    inputs: ProofInputs<G, ID>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Result<Proof<G>, ProverError>
+) -> Result<Proof<G, ID>, ProverError>
 where
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -78,10 +83,14 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     debug!("Prover: interpolating all columns, including the selectors");
-    let ProofInputs { evaluations } = inputs;
+    let ProofInputs {
+        evaluations,
+        lookups,
+    } = inputs;
     let polys: WitnessColumns<
         DensePolynomial<G::ScalarField>,
         [DensePolynomial<G::ScalarField>; N_MIPS_SEL_COLS],
+        ID,
     > = {
         let WitnessColumns {
             scratch,
@@ -89,6 +98,8 @@ where
             instruction_counter,
             error,
             selector,
+            lookup,
+            lookup_agg,
         } = evaluations;
 
         let domain_size = domain.d1.size as usize;
@@ -110,6 +121,25 @@ where
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
+
+        let eval_lookup = |lookup: Lookup<Vec<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .into_par_iter()
+                .map(eval_col)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .into_par_iter()
+                .map(eval_col)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: eval_col(lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse
@@ -120,23 +150,32 @@ where
             })
             .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, eval_lookup(l)))
+            .collect::<BTreeMap<ID, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
+            lookup,
+            lookup_agg: eval_col(lookup_agg.clone()),
         }
     };
 
     debug!("Prover: committing to all columns, including the selectors");
-    let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]> = {
+    let commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID> = {
         let WitnessColumns {
             scratch,
             scratch_inverse,
             instruction_counter,
             error,
             selector,
+            lookup,
+            lookup_agg,
         } = &polys;
 
         let comm = |poly: &DensePolynomial<G::ScalarField>| {
@@ -148,16 +187,41 @@ where
             .unwrap()
             .commitment
         };
+        let comm_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(comm)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(comm)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: comm(&lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, comm_lookup(l)))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: comm(instruction_counter),
             error: comm(error),
             selector: selector.try_into().unwrap(),
+            lookup,
+            lookup_agg: comm(&lookup_agg),
         }
     };
 
@@ -173,9 +237,31 @@ where
             instruction_counter,
             error,
             selector,
+            lookup,
+            lookup_agg,
         } = &polys;
+
         let eval_d8 =
             |poly: &DensePolynomial<G::ScalarField>| poly.evaluate_over_domain_by_ref(domain.d8);
+
+        let eval_d8_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(eval_d8)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(eval_d8)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: eval_d8(&lookup.t),
+        };
+
         // Doing in parallel
         let scratch = scratch.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse
@@ -183,12 +269,18 @@ where
             .map(eval_d8)
             .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
+        let lookup = lookup
+            .into_par_iter()
+            .map(|(&id, l)| (id, eval_d8_lookup(l.clone())))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
             selector: selector.try_into().unwrap(),
+            lookup,
+            lookup_agg: eval_d8(lookup_agg),
         }
     };
 
@@ -206,6 +298,26 @@ where
         absorb_commitment(&mut fq_sponge, comm)
     }
 
+    let lookup_env = if !lookups.is_empty() {
+        Some(Env::create::<OpeningProof<G>, EFqSponge>(
+            lookups,
+            domain,
+            &mut fq_sponge,
+            srs,
+        ))
+    } else {
+        None
+    };
+
+    // Don't need to be absorbed. Already absorbed in logup::prover::Env::create
+    // FIXME: remove clone
+    let lookup_commitments = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+        m: lookup_env.lookup_counters_comm_d1.clone(),
+        h: lookup_env.lookup_terms_comms_d1.clone(),
+        sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+        fixed_tables: lookup_env.fixed_lookup_tables_comms_d1.clone(),
+    });
+
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -216,15 +328,18 @@ where
     let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
-    let column_env: ColumnEnvironment<'_, G::ScalarField> = {
+    let column_env: ColumnEnvironment<'_, G::ScalarField, ID> = {
         // FIXME: use a proper Challenge structure
         let challenges = BerkeleyChallenges {
             alpha,
-            // No permutation argument for the moment
+            // TODO: No permutation argument for the moment
             beta: G::ScalarField::zero(),
             gamma: G::ScalarField::zero(),
-            // No lookup for the moment
-            joint_combiner: G::ScalarField::zero(),
+            // TODO: No lookup for the moment
+            joint_combiner: lookup_env
+                .as_ref()
+                .map(|le| le.joint_combiner)
+                .unwrap_or(G::ScalarField::zero()),
         };
         ColumnEnvironment {
             constants: Constants {
@@ -235,6 +350,14 @@ where
             challenges,
             witness: &evaluations_d8,
             l0_1: l0_1(domain.d1),
+            lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
+                kimchi_msm::logup::prover::QuotientPolynomialEnvironment {
+                    lookup_terms_evals_d8: &lookup_env.lookup_terms_evals_d8,
+                    lookup_aggregation_evals_d8: &lookup_env.lookup_aggregation_evals_d8,
+                    lookup_counters_evals_d8: &lookup_env.lookup_counters_evals_d8,
+                    fixed_tables_evals_d8: &lookup_env.fixed_lookup_tables_evals_d8,
+                }
+            }),
             domain,
         }
     };
@@ -317,26 +440,58 @@ where
             instruction_counter,
             error,
             selector,
+            lookup,
+            lookup_agg,
         } = &polys;
+
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+
+        let eval_lookup = |lookup: Lookup<DensePolynomial<G::ScalarField>>| Lookup {
+            f: lookup
+                .f
+                .par_iter()
+                .map(eval)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            m: lookup
+                .m
+                .par_iter()
+                .map(eval)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            t: eval(&lookup.t),
+        };
+
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse.par_iter().map(eval).collect::<Vec<_>>();
         let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
+        let lookup = lookup
+            .clone()
+            .into_par_iter()
+            .map(|(id, l)| (id, eval_lookup(l)))
+            .collect::<BTreeMap<_, _>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
             instruction_counter: eval(instruction_counter),
             error: eval(error),
             selector: selector.try_into().unwrap(),
+            lookup,
+            lookup_agg: eval(&lookup_agg),
         }
     };
     // All evaluations at ζ
-    let zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
+    let zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS], ID> =
         evals(&zeta);
 
     // All evaluations at ζω
-    let zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]> =
-        evals(&zeta_omega);
+    let zeta_omega_evaluations: WitnessColumns<
+        G::ScalarField,
+        [G::ScalarField; N_MIPS_SEL_COLS],
+        ID,
+    > = evals(&zeta_omega);
 
     let chunked_quotient = quotient_poly
         .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL as usize, domain.d1.size as usize);
@@ -352,6 +507,55 @@ where
             .map(|p| p.evaluate(&zeta_omega))
             .collect(),
     };
+
+    let lookup_evaluations = lookup_env.as_ref().map(|lookup_env| LookupProof {
+        m: lookup_env
+            .lookup_counters_poly_d1
+            .iter()
+            .map(|(id, polys)| {
+                (
+                    *id,
+                    polys
+                        .iter()
+                        .map(|poly| {
+                            let zeta = poly.evaluate(&zeta);
+                            let zeta_omega = poly.evaluate(&zeta_omega);
+                            PointEvaluations { zeta, zeta_omega }
+                        })
+                        .collect(),
+                )
+            })
+            .collect(),
+        h: lookup_env
+            .lookup_terms_poly_d1
+            .iter()
+            .map(|(id, polys)| {
+                let polys_evals: Vec<_> = polys
+                    .iter()
+                    .map(|poly| PointEvaluations {
+                        zeta: poly.evaluate(&zeta),
+                        zeta_omega: poly.evaluate(&zeta_omega),
+                    })
+                    .collect();
+                (*id, polys_evals)
+            })
+            .collect(),
+        sum: PointEvaluations {
+            zeta: lookup_env.lookup_aggregation_poly_d1.evaluate(&zeta),
+            zeta_omega: lookup_env.lookup_aggregation_poly_d1.evaluate(&zeta_omega),
+        },
+        fixed_tables: {
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .iter()
+                .map(|(id, poly)| {
+                    let zeta = poly.evaluate(&zeta);
+                    let zeta_omega = poly.evaluate(&zeta_omega);
+                    (*id, PointEvaluations { zeta, zeta_omega })
+                })
+                .collect()
+        },
+    });
 
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
@@ -395,6 +599,15 @@ where
         fr_sponge.absorb(quotient_zeta_eval);
         fr_sponge.absorb(quotient_zeta_omega_eval);
     }
+
+    if lookup_env.is_some() {
+        for PointEvaluations { zeta, zeta_omega } in
+            lookup_evaluations.as_ref().unwrap().into_iter()
+        {
+            fr_sponge.absorb(zeta);
+            fr_sponge.absorb(zeta_omega);
+        }
+    }
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -422,6 +635,61 @@ where
         DensePolynomialOrEvaluations::DensePolynomial(&quotient_poly),
         quotient_commitment.blinders,
     ));
+
+    if let Some(ref lookup_env) = lookup_env {
+        // -- first m(X)
+        polynomials.extend(
+            lookup_env
+                .lookup_counters_poly_d1
+                .values()
+                .flat_map(|polys| {
+                    polys
+                        .iter()
+                        .map(|poly| {
+                            (
+                                DensePolynomialOrEvaluations::DensePolynomial(poly),
+                                PolyComm::new(vec![G::ScalarField::one()]),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        );
+        // -- after that the partial sums
+        polynomials.extend({
+            let polys = lookup_env.lookup_terms_poly_d1.values().map(|polys| {
+                polys
+                    .iter()
+                    .map(|poly| {
+                        (
+                            DensePolynomialOrEvaluations::DensePolynomial(poly),
+                            PolyComm::new(vec![G::ScalarField::one()]),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            });
+            let polys: Vec<_> = polys.flatten().collect();
+            polys
+        });
+        // -- after that the running sum
+        polynomials.push((
+            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
+            PolyComm::new(vec![G::ScalarField::one()]),
+        ));
+        // -- Adding fixed lookup tables
+        polynomials.extend(
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .values()
+                .map(|poly| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(poly),
+                        PolyComm::new(vec![G::ScalarField::one()]),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
 
     // poly scale
     let v_chal = fr_sponge.challenge();
@@ -451,6 +719,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment: quotient_commitment.commitment,
         quotient_evaluations,
+        lookup_commitments,
+        lookup_evaluations,
         opening_proof,
     })
 }

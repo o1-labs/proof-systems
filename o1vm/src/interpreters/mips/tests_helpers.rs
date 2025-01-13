@@ -8,7 +8,7 @@ use crate::{
     preimage_oracle::PreImageOracleT,
 };
 use rand::{CryptoRng, Rng, RngCore};
-use std::{fs, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf};
 
 // FIXME: we should parametrize the tests with different fields.
 use ark_bn254::Fr as Fp;
@@ -92,6 +92,9 @@ where
         scratch_state_idx_inverse: 0,
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
         scratch_state_inverse: [Fp::from(0); SCRATCH_SIZE_INVERSE],
+        scratch_lookup: HashMap::new(),
+        lookup_fixed_tables: HashMap::new(),
+        lookup_multiplicities: HashMap::new(),
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related

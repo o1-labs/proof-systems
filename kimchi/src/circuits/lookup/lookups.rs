@@ -300,7 +300,7 @@ impl<F: Copy> SingleLookup<F> {
 }
 
 /// The table ID associated with a particular lookup
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LookupTableID {
     /// Look up the value from the given fixed table ID
     Constant(i32),

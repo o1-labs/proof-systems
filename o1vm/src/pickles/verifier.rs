@@ -24,22 +24,28 @@ use poly_commitment::{
 };
 
 use super::{
-    column_env::get_all_columns,
+    column_env::{get_all_columns, get_column},
     proof::{Proof, WitnessColumns},
 };
 use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
-use kimchi_msm::columns::Column;
+use kimchi_msm::{columns::Column, LookupTableID};
 
-type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
-type EvaluationColumns<F> = WitnessColumns<F, [F; N_MIPS_SEL_COLS]>;
+type CommitmentColumns<G, ID> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], ID>;
+type EvaluationColumns<G, ID> = WitnessColumns<
+    <G as AffineRepr>::ScalarField,
+    [<G as AffineRepr>::ScalarField; N_MIPS_SEL_COLS],
+    ID,
+>;
 
-struct ColumnEval<'a, G: AffineRepr> {
-    commitment: &'a CommitmentColumns<G>,
-    zeta_eval: &'a EvaluationColumns<G::ScalarField>,
-    zeta_omega_eval: &'a EvaluationColumns<G::ScalarField>,
+struct ColumnEval<'a, G: KimchiCurve, ID: LookupTableID> {
+    commitment: &'a CommitmentColumns<G, ID>,
+    zeta_eval: &'a EvaluationColumns<G, ID>,
+    zeta_omega_eval: &'a EvaluationColumns<G, ID>,
 }
 
-impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
+impl<G: KimchiCurve, ID: LookupTableID> ColumnEvaluations<G::ScalarField>
+    for ColumnEval<'_, G, ID>
+{
     type Column = Column;
     fn evaluate(
         &self,
@@ -49,9 +55,9 @@ impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
             commitment: _,
             zeta_eval,
             zeta_omega_eval,
-        } = self;
-        if let Some(&zeta) = zeta_eval.get_column(&col) {
-            if let Some(&zeta_omega) = zeta_omega_eval.get_column(&col) {
+        } = *self;
+        if let Some(&zeta) = get_column::<G::ScalarField, ID>(zeta_eval, &col) {
+            if let Some(&zeta_omega) = get_column(zeta_omega_eval, &col) {
                 Ok(PointEvaluations { zeta, zeta_omega })
             } else {
                 Err(ExprError::MissingEvaluation(col, CurrOrNext::Next))
@@ -66,11 +72,12 @@ pub fn verify<
     G: KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &[E<G::ScalarField>],
-    proof: &Proof<G>,
+    proof: &Proof<G, ID>,
 ) -> bool
 where
     <G as AffineRepr>::BaseField: PrimeField,
@@ -81,6 +88,8 @@ where
         zeta_omega_evaluations,
         quotient_commitment,
         quotient_evaluations,
+        lookup_commitments: _,
+        lookup_evaluations: _,
         opening_proof,
     } = proof;
 
@@ -123,8 +132,8 @@ where
 
     let column_eval = ColumnEval {
         commitment: commitments,
-        zeta_eval: zeta_evaluations,
-        zeta_omega_eval: zeta_omega_evaluations,
+        zeta_eval: &zeta_evaluations.clone(),
+        zeta_omega_eval: &zeta_omega_evaluations.clone(),
     };
 
     // -- Absorb all commitments_and_evaluations
@@ -207,9 +216,7 @@ where
     let mut evaluations: Vec<_> = get_all_columns()
         .into_iter()
         .map(|column| {
-            let commitment = column_eval
-                .commitment
-                .get_column(&column)
+            let commitment = get_column(column_eval.commitment, &column)
                 .unwrap_or_else(|| panic!("Could not get `commitment` for `Evaluation`"))
                 .clone();
 
