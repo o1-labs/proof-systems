@@ -27,11 +27,16 @@ use super::{
     column_env::get_all_columns,
     proof::{Proof, WitnessColumns},
 };
-use crate::{interpreters::mips::column::N_MIPS_SEL_COLS, E};
+use crate::{
+    interpreters::mips::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
+    E,
+};
 use kimchi_msm::columns::Column;
 
-type CommitmentColumns<G> = WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>;
-type EvaluationColumns<F> = WitnessColumns<F, [F; N_MIPS_SEL_COLS]>;
+type CommitmentColumns<G> =
+    WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS], SCRATCH_SIZE, SCRATCH_SIZE_INVERSE>;
+type EvaluationColumns<F> =
+    WitnessColumns<F, [F; N_MIPS_SEL_COLS], SCRATCH_SIZE, SCRATCH_SIZE_INVERSE>;
 
 struct ColumnEval<'a, G: AffineRepr> {
     commitment: &'a CommitmentColumns<G>,
@@ -70,7 +75,7 @@ pub fn verify<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &[E<G::ScalarField>],
-    proof: &Proof<G>,
+    proof: &Proof<G, N_MIPS_SEL_COLS>,
 ) -> bool
 where
     <G as AffineRepr>::BaseField: PrimeField,

@@ -10,11 +10,17 @@ use mina_poseidon::{
 use o1vm::{
     cannon::{self, Start, State},
     cli, elf_loader,
-    interpreters::mips::{
-        column::N_MIPS_REL_COLS,
-        constraints as mips_constraints,
-        witness::{self as mips_witness},
-        Instruction,
+    interpreters::{
+        mips::{
+            column::{
+                N_MIPS_REL_COLS, SCRATCH_SIZE as MIPS_SCRATCH_SIZE,
+                SCRATCH_SIZE_INVERSE as MIPS_SCRATCH_SIZE_INVERSE,
+            },
+            constraints as mips_constraints,
+            witness::{self as mips_witness},
+            Instruction,
+        },
+        riscv32im::{witness::Env as RiscEnv, PAGE_SIZE},
     },
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
@@ -78,7 +84,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     let constraints = mips_constraints::get_all_constraints::<Fp>();
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta, MIPS_SCRATCH_SIZE, MIPS_SCRATCH_SIZE_INVERSE> =
+        ProofInputs::new(DOMAIN_SIZE);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -113,6 +120,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             let proof = prover::prove::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                MIPS_SCRATCH_SIZE,
+                MIPS_SCRATCH_SIZE_INVERSE,
                 DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
                 _,
             >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
@@ -154,7 +163,7 @@ pub fn main() -> ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = cli::Commands::parse();
     match args {
-        cli::Commands::Cannon(args) => match args {
+        cli::Commands::Cannon(args) => match *args {
             cli::cannon::Cannon::Run(args) => {
                 cannon_main(args);
             }
@@ -163,6 +172,18 @@ pub fn main() -> ExitCode {
             }
             cli::cannon::Cannon::GenStateJson(args) => {
                 gen_state_json(args).expect("Error generating state.json");
+            }
+        },
+        cli::Commands::RiscV(args) => match args {
+            cli::riscv::Command::Run(args) => {
+                let path = Path::new(&args.path);
+                let state = elf_loader::parse_elf(elf_loader::Architecture::RiscV32, path)
+                    .expect("Error parsing ELF file");
+
+                let mut witness = RiscEnv::<Fp>::create(PAGE_SIZE.try_into().unwrap(), state);
+                while !witness.halt {
+                    witness.step();
+                }
             }
         },
     }

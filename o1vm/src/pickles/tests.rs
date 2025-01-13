@@ -1,18 +1,18 @@
 use std::time::Instant;
 
-use super::{
-    super::interpreters::mips::column::SCRATCH_SIZE,
-    proof::{ProofInputs, WitnessColumns},
-    prover::prove,
-};
 use crate::{
     interpreters::mips::{
-        column::SCRATCH_SIZE_INVERSE,
+        column::{SCRATCH_SIZE, SCRATCH_SIZE_INVERSE},
         constraints as mips_constraints,
         interpreter::{self, InterpreterEnv},
         Instruction,
     },
-    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+    pickles::{
+        proof::{ProofInputs, WitnessColumns},
+        prover::prove,
+        verifier::verify,
+        MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS,
+    },
 };
 use ark_ff::{Field, One, UniformRand, Zero};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
@@ -63,7 +63,7 @@ fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
-    let proof_input = ProofInputs::<Pallas> {
+    let proof_input = ProofInputs::<Pallas, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
@@ -86,7 +86,7 @@ fn test_small_circuit() {
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
-    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+    let proof = prove::<Pallas, BaseSponge, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE, ScalarSponge, _>(
         domain,
         &srs,
         proof_input,

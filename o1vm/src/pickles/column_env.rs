@@ -21,7 +21,12 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials. Includes relation columns and dynamic
     /// selector columns.
-    pub witness: &'a WitnessColumns<Evals<F>, [Evals<F>; N_MIPS_SEL_COLS]>,
+    pub witness: &'a WitnessColumns<
+        Evals<F>,
+        [Evals<F>; N_MIPS_SEL_COLS],
+        SCRATCH_SIZE,
+        SCRATCH_SIZE_INVERSE,
+    >,
     /// The value `prod_{j != 1} (1 - ω^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis
     /// polynomials.
@@ -47,7 +52,7 @@ pub fn get_all_columns() -> Vec<Column> {
     cols
 }
 
-impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS]> {
+impl<G> WitnessColumns<G, [G; N_MIPS_SEL_COLS], SCRATCH_SIZE, SCRATCH_SIZE_INVERSE> {
     pub fn get_column(&self, col: &Column) -> Option<&G> {
         match *col {
             Column::Relation(i) => {
