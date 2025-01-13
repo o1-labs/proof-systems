@@ -346,8 +346,8 @@
     <span class="kw">type </span>IVCWitnessBuilderEnvRaw&lt;LT&gt; = WitnessBuilderEnv&lt;
         Fp,
         IVCColumn,
-        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_BLOCKS },
-        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_BLOCKS },
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL - N_BLOCKS },
+        { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL - N_BLOCKS },
         <span class="number">0</span>,
         N_FSEL_IVC,
         LT,

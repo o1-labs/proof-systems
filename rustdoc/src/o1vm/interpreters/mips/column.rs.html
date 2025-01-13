@@ -349,7 +349,7 @@
     }
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>ColumnAlias {
     <span class="kw">const </span>N_COL: usize = N_MIPS_COLS;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
@@ -404,7 +404,7 @@
     }
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Instruction {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>Instruction {
     <span class="kw">const </span>N_COL: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         Column::DynamicSelector(usize::from(<span class="self">self</span>) - N_MIPS_REL_COLS)

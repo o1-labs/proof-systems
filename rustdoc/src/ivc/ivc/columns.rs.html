@@ -950,7 +950,7 @@
     </span>Block6UOutput,
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>IVCColumn {
     <span class="doccomment">/// Number of columns used by the IVC circuit
     /// It contains at least the columns used for Poseidon.
     /// It does not include the additional columns that might be required

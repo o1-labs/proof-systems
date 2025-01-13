@@ -126,8 +126,8 @@
     <span class="kw">type </span>FFAWitnessBuilderEnv = WitnessBuilderEnv&lt;
         Fp,
         FFAColumn,
-        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
-        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
+        { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
         <span class="number">0</span>,
         <span class="number">0</span>,
         LookupTable,
@@ -189,8 +189,8 @@
         <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain_size, lookup_tables_data);
 
         <span class="kw">crate</span>::test::test_completeness_generic::&lt;
-            { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
-            { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+            { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
+            { &lt;FFAColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
             <span class="number">0</span>,
             <span class="number">0</span>,
             LookupTable,

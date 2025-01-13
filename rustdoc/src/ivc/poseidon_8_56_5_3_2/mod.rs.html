@@ -217,8 +217,8 @@
     <span class="kw">type </span>PoseidonWitnessBuilderEnv = WitnessBuilderEnv&lt;
         Fp,
         Column,
-        { &lt;Column <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
-        { &lt;Column <span class="kw">as </span>ColumnIndexer&gt;::N_COL },
+        { &lt;Column <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
+        { &lt;Column <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL },
         N_DSEL,
         N_FSEL,
         DummyLookupTable,

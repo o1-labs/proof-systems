@@ -417,6 +417,14 @@
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Tools to /compose/ different circuit designers.
 ///
 /// Assume we have several sets of columns:
@@ -570,27 +578,35 @@
 /// impossible to instantiate `SubEnv` with two /completely/ different
 /// lenses and then write proper trait implementations. Rust complains
 /// about conflicting trait implementations.
-</span><span class="kw">struct </span>SubEnv&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt; {
+</span><span class="kw">struct </span>SubEnv&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt; {
     env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Env1,
     lens: L,
     phantom: PhantomData&lt;(F, CIx1)&gt;,
 }
 
 <span class="doccomment">/// Sub environment with a lens that is mapping columns.
-</span><span class="kw">pub struct </span>SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;(
-    SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;,
-);
+</span><span class="kw">pub struct </span>SubEnvColumn&lt;
+    <span class="lifetime">&#39;a</span>,
+    F: PrimeField,
+    CIx1: ColumnIndexer&lt;usize&gt;,
+    Env1: ColAccessCap&lt;F, CIx1&gt;,
+    L,
+&gt;(SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;);
 
 <span class="doccomment">/// Sub environment with a lens that is mapping lookup tables.
-</span><span class="kw">pub struct </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;(
-    SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;,
-);
+</span><span class="kw">pub struct </span>SubEnvLookup&lt;
+    <span class="lifetime">&#39;a</span>,
+    F: PrimeField,
+    CIx1: ColumnIndexer&lt;usize&gt;,
+    Env1: ColAccessCap&lt;F, CIx1&gt;,
+    L,
+&gt;(SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;);
 
 <span class="comment">////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 ////////////////////////////////////////////////////////////////////////////
 
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
     SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">pub fn </span>new(env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Env1, lens: L) -&gt; <span class="self">Self </span>{
@@ -602,7 +618,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
     SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">pub fn </span>new(env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Env1, lens: L) -&gt; <span class="self">Self </span>{
@@ -610,7 +626,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
     SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">pub fn </span>new(env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Env1, lens: L) -&gt; <span class="self">Self </span>{
@@ -621,8 +637,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: ColAccessCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; ColAccessCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -649,8 +665,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: ColWriteCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; ColWriteCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -663,8 +679,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: HybridCopyCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; HybridCopyCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnv&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -677,8 +693,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: ColAccessCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; ColAccessCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -705,8 +721,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: ColWriteCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; ColWriteCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -719,8 +735,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         Env1: HybridCopyCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; HybridCopyCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
@@ -730,8 +746,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt; ColAccessCap&lt;F, CIx1&gt;
-    <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt;
+    ColAccessCap&lt;F, CIx1&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">type </span>Variable = Env1::Variable;
 
@@ -752,16 +768,16 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColWriteCap&lt;F, CIx1&gt;, L&gt; ColWriteCap&lt;F, CIx1&gt;
-    <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: ColWriteCap&lt;F, CIx1&gt;, L&gt;
+    ColWriteCap&lt;F, CIx1&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx1, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="self">self</span>.<span class="number">0</span>.env.write_column(ix, value);
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: HybridCopyCap&lt;F, CIx1&gt;, L&gt; HybridCopyCap&lt;F, CIx1&gt;
-    <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx1: ColumnIndexer&lt;usize&gt;, Env1: HybridCopyCap&lt;F, CIx1&gt;, L&gt;
+    HybridCopyCap&lt;F, CIx1&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx1, Env1, L&gt;
 {
     <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx1) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.<span class="number">0</span>.env.hcopy(x, ix)
@@ -771,7 +787,7 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         LT1: LookupTableID,
         LT2: LookupTableID,
         Env1: LookupCap&lt;F, CIx, LT1&gt;,
@@ -792,8 +808,8 @@
 <span class="kw">impl</span>&lt;
         <span class="lifetime">&#39;a</span>,
         F: PrimeField,
-        CIx1: ColumnIndexer,
-        CIx2: ColumnIndexer,
+        CIx1: ColumnIndexer&lt;usize&gt;,
+        CIx2: ColumnIndexer&lt;usize&gt;,
         LT: LookupTableID,
         Env1: LookupCap&lt;F, CIx1, LT&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
@@ -808,7 +824,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx: ColumnIndexer, Env1: MultiRowReadCap&lt;F, CIx&gt;, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx: ColumnIndexer&lt;usize&gt;, Env1: MultiRowReadCap&lt;F, CIx&gt;, L&gt;
     MultiRowReadCap&lt;F, CIx&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx, Env1, L&gt;
 {
     <span class="doccomment">/// Read value from a (row,column) position.
@@ -827,7 +843,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx: ColumnIndexer, Env1: DirectWitnessCap&lt;F, CIx&gt;, L&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField, CIx: ColumnIndexer&lt;usize&gt;, Env1: DirectWitnessCap&lt;F, CIx&gt;, L&gt;
     DirectWitnessCap&lt;F, CIx&gt; <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">&#39;a</span>, F, CIx, Env1, L&gt;
 {
     <span class="kw">fn </span>variable_to_field(value: <span class="self">Self</span>::Variable) -&gt; F {

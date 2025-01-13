@@ -174,12 +174,12 @@
 
 <span class="doccomment">/// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
-</span><span class="kw">pub trait </span>ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
+</span><span class="kw">pub trait </span>ColumnIndexer&lt;T&gt;: core::fmt::Debug + Copy + Eq + Ord {
     <span class="doccomment">/// Total number of columns in this index.
     </span><span class="kw">const </span>N_COL: usize;
 
     <span class="doccomment">/// Flatten the column &quot;alias&quot; into the integer-like column.
-    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt;;
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;T&gt;;
 }
 
 <span class="comment">// Implementation to be compatible with folding if we use generic column

@@ -153,8 +153,8 @@
     <span class="kw">type </span>SerializationWitnessBuilderEnv = WitnessBuilderEnv&lt;
         Fp,
         SerializationColumn,
-        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_FSEL_SER },
-        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::N_COL - N_FSEL_SER },
+        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL - N_FSEL_SER },
+        { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&lt;usize&gt;&gt;::N_COL - N_FSEL_SER },
         <span class="number">0</span>,
         N_FSEL_SER,
         LookupTable&lt;Ff1&gt;,

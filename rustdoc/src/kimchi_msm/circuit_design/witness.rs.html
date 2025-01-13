@@ -693,7 +693,7 @@
 /// separately is due to a rust limitation.
 </span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;
     F: PrimeField,
-    CIx: ColumnIndexer,
+    CIx: ColumnIndexer&lt;usize&gt;,
     <span class="kw">const </span>N_WIT: usize,
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_DSEL: usize,
@@ -745,7 +745,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -780,7 +780,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -801,7 +801,7 @@
 /// for every `T: ColWriteCap`.
 </span><span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -819,7 +819,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -848,7 +848,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -864,7 +864,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -953,7 +953,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,
@@ -1098,7 +1098,7 @@
 
 <span class="kw">impl</span>&lt;
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer&lt;usize&gt;,
         <span class="kw">const </span>N_WIT: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_DSEL: usize,

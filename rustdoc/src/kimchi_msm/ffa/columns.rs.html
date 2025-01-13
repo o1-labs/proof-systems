@@ -62,7 +62,7 @@
     Quotient,
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FFAColumn {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>FFAColumn {
     <span class="kw">const </span>N_COL: usize = FFA_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">let </span>to_column_inner = |offset, i| {

@@ -96,7 +96,7 @@
     RoundConstant(usize, usize),
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUND: usize&gt; ColumnIndexer
+<span class="kw">impl</span>&lt;<span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUND: usize&gt; ColumnIndexer&lt;usize&gt;
     <span class="kw">for </span>PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;
 {
     <span class="comment">// - STATE_SIZE input columns

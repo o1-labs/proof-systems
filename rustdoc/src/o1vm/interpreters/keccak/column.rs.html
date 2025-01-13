@@ -782,7 +782,7 @@
     }
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>ColumnAlias {
     <span class="kw">const </span>N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         Column::Relation(usize::from(<span class="self">self</span>))
@@ -810,7 +810,7 @@
     }
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Steps {
+<span class="kw">impl </span>ColumnIndexer&lt;usize&gt; <span class="kw">for </span>Steps {
     <span class="kw">const </span>N_COL: usize = N_ZKVM_KECCAK_REL_COLS + N_ZKVM_KECCAK_SEL_COLS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         Column::DynamicSelector(usize::from(<span class="self">self</span>) - N_ZKVM_KECCAK_REL_COLS)
