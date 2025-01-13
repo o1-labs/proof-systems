@@ -143,7 +143,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     }
 }
 
-impl ColumnIndexer for ColumnAlias {
+impl ColumnIndexer<usize> for ColumnAlias {
     const N_COL: usize = N_MIPS_COLS;
 
     fn to_column(self) -> Column<usize> {
@@ -198,7 +198,7 @@ impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
     }
 }
 
-impl ColumnIndexer for Instruction {
+impl ColumnIndexer<usize> for Instruction {
     const N_COL: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
     fn to_column(self) -> Column<usize> {
         Column::DynamicSelector(usize::from(self) - N_MIPS_REL_COLS)

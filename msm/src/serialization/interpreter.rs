@@ -26,7 +26,7 @@ use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 // Such "helpers" defeat the whole purpose of the interpreter.
 // TODO remove
-pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
+pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> {
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
@@ -41,7 +41,7 @@ pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
         Self: ColAccessCap<F, CIx>;
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, CIx, LT>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> HybridSerHelpers<F, CIx, LT>
     for crate::circuit_design::ConstraintBuilderEnv<F, LT>
 {
     fn bitmask_be(
@@ -62,7 +62,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, C
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_COL: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -350,7 +350,11 @@ pub fn combine_limbs_m_to_n<
 /// Helper function for limb recombination.
 ///
 /// Combines small limbs into big limbs.
-pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+pub fn combine_small_to_large<
+    F: PrimeField,
+    CIx: ColumnIndexer<usize>,
+    Env: ColAccessCap<F, CIx>,
+>(
     x: [Env::Variable; N_LIMBS_SMALL],
 ) -> [Env::Variable; N_LIMBS_LARGE] {
     combine_limbs_m_to_n::<
@@ -367,7 +371,7 @@ pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessC
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer<usize>, Env: ColAccessCap<F, CIx>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -816,8 +820,8 @@ mod tests {
     type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         SerializationColumn,
-        { <SerializationColumn as ColumnIndexer>::N_COL },
-        { <SerializationColumn as ColumnIndexer>::N_COL },
+        { <SerializationColumn as ColumnIndexer<usize>>::N_COL },
+        { <SerializationColumn as ColumnIndexer<usize>>::N_COL },
         0,
         0,
         LookupTable<Ff1>,

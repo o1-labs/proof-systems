@@ -30,7 +30,7 @@ pub enum PoseidonColumn<
 }
 
 impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize, const NB_PARTIAL_ROUND: usize>
-    ColumnIndexer for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>
+    ColumnIndexer<usize> for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>
 {
     // - STATE_SIZE input columns
     // - for each partial round:

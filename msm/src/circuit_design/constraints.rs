@@ -35,7 +35,7 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> ColAccessCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
     type Variable = E<F>;
@@ -61,7 +61,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> HybridCopyCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
     fn hcopy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
@@ -77,7 +77,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID> LookupCap<F, CIx, LT>
     for ConstraintBuilderEnv<F, LT>
 {
     fn lookup(&mut self, table_id: LT, value: Vec<<Self as ColAccessCap<F, CIx>>::Variable>) {

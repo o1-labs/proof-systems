@@ -378,7 +378,7 @@ pub enum IVCColumn {
     Block6UOutput,
 }
 
-impl ColumnIndexer for IVCColumn {
+impl ColumnIndexer<usize> for IVCColumn {
     /// Number of columns used by the IVC circuit
     /// It contains at least the columns used for Poseidon.
     /// It does not include the additional columns that might be required

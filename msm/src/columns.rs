@@ -73,12 +73,12 @@ impl FormattedOutput for Column<usize> {
 
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
-pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
+pub trait ColumnIndexer<T>: core::fmt::Debug + Copy + Eq + Ord {
     /// Total number of columns in this index.
     const N_COL: usize;
 
     /// Flatten the column "alias" into the integer-like column.
-    fn to_column(self) -> Column<usize>;
+    fn to_column(self) -> Column<T>;
 }
 
 // Implementation to be compatible with folding if we use generic column

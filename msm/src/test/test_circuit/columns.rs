@@ -21,7 +21,7 @@ pub enum TestColumn {
     FixedSel3,
 }
 
-impl ColumnIndexer for TestColumn {
+impl ColumnIndexer<usize> for TestColumn {
     const N_COL: usize = N_COL_TEST;
     fn to_column(self) -> Column<usize> {
         let to_column_inner = |offset, i| {
