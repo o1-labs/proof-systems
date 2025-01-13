@@ -155,7 +155,7 @@ pub struct ArgumentData<F: 'static> {
     pub challenges: BerkeleyChallenges<F>,
 }
 
-/// Witness data for a argument
+/// Witness data for an argument
 pub struct ArgumentWitness<T> {
     /// Witness for current row
     pub curr: [T; COLUMNS],
