@@ -146,6 +146,14 @@
 
 <span class="kw">type </span>Evals&lt;F&gt; = Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;;
 
+<span class="attr">#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+</span><span class="kw">pub enum </span>RelationColumnType {
+    Scratch(usize),
+    ScratchInverse(usize),
+    InstructionCounter,
+    Error,
+}
+
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
@@ -167,13 +175,18 @@
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
 }
 
-<span class="kw">pub fn </span>get_all_columns() -&gt; Vec&lt;Column&lt;usize&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>cols = Vec::&lt;Column&lt;usize&gt;&gt;::with_capacity(
+<span class="kw">pub fn </span>get_all_columns() -&gt; Vec&lt;Column&lt;RelationColumnType&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>cols = Vec::&lt;Column&lt;RelationColumnType&gt;&gt;::with_capacity(
         SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2 </span>+ N_MIPS_SEL_COLS,
     );
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2 </span>{
-        cols.push(Column::Relation(i));
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SCRATCH_SIZE {
+        cols.push(Column::Relation(RelationColumnType::Scratch(i)));
     }
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SCRATCH_SIZE_INVERSE {
+        cols.push(Column::Relation(RelationColumnType::ScratchInverse(i)));
+    }
+    cols.push(Column::Relation(RelationColumnType::InstructionCounter));
+    cols.push(Column::Relation(RelationColumnType::Error));
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_MIPS_SEL_COLS {
         cols.push(Column::DynamicSelector(i));
     }
@@ -181,25 +194,14 @@
 }
 
 <span class="kw">impl</span>&lt;G&gt; WitnessColumns&lt;G, [G; N_MIPS_SEL_COLS]&gt; {
-    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column&lt;usize&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>G&gt; {
+    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column&lt;RelationColumnType&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>G&gt; {
         <span class="kw">match </span><span class="kw-2">*</span>col {
-            Column::Relation(i) =&gt; {
-                <span class="kw">if </span>i &lt; SCRATCH_SIZE {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.scratch[i];
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else if </span>i &lt; SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.scratch_inverse[i - SCRATCH_SIZE];
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else if </span>i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE {
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.instruction_counter;
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else if </span>i == SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">1 </span>{
-                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.error;
-                    <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;We should not have that many relation columns. We have {} columns and index {} was given&quot;</span>, SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2</span>, i);
-                }
-            }
+            Column::Relation(i) =&gt; <span class="kw">match </span>i {
+                RelationColumnType::Scratch(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.scratch[i]),
+                RelationColumnType::ScratchInverse(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.scratch_inverse[i]),
+                RelationColumnType::InstructionCounter =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.instruction_counter),
+                RelationColumnType::Error =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.error),
+            },
             Column::DynamicSelector(i) =&gt; {
                 <span class="macro">assert!</span>(
                     i &lt; N_MIPS_SEL_COLS,
@@ -223,9 +225,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; TColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, BerkeleyChallengeTerm, BerkeleyChallenges&lt;F&gt;&gt;
     <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;
 {
-    <span class="comment">// FIXME: do we change to the MIPS column type?
-    // We do not want to keep kimchi_msm/generic prover
-    </span><span class="kw">type </span>Column = Column&lt;usize&gt;;
+    <span class="kw">type </span>Column = Column&lt;RelationColumnType&gt;;
 
     <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evals&lt;F&gt;&gt; {
         <span class="self">self</span>.witness.get_column(col)
