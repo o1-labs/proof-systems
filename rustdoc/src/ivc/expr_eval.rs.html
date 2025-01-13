@@ -216,10 +216,10 @@
 </span><span class="doccomment">/// Generic structure containing column vectors.
 </span><span class="kw">pub struct </span>GenericVecStructure&lt;G: KimchiCurve&gt;(<span class="kw">pub </span>Vec&lt;Vec&lt;G::ScalarField&gt;&gt;);
 
-<span class="kw">impl</span>&lt;G: KimchiCurve&gt; Index&lt;GenericColumn&gt; <span class="kw">for </span>GenericVecStructure&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: KimchiCurve&gt; Index&lt;GenericColumn&lt;usize&gt;&gt; <span class="kw">for </span>GenericVecStructure&lt;G&gt; {
     <span class="kw">type </span>Output = [G::ScalarField];
 
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: GenericColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: GenericColumn&lt;usize&gt;) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             GenericColumn::FixedSelector(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[i],
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;should not happen&quot;</span>),
@@ -266,7 +266,7 @@
     }
 
     <span class="kw">pub fn </span>process_extended_folding_column&lt;
-        FC: FoldingConfig&lt;Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge&gt;,
+        FC: FoldingConfig&lt;Column = GenericColumn&lt;usize&gt;, Curve = Curve, Challenge = PlonkishChallenge&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         col: <span class="kw-2">&amp;</span>ExtendedFoldingColumn&lt;FC&gt;,
@@ -298,7 +298,7 @@
     <span class="doccomment">/// Evaluates the expression in the provided side
     </span><span class="kw">pub fn </span>eval_naive_fexpr&lt;
         <span class="lifetime">&#39;a</span>,
-        FC: FoldingConfig&lt;Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge&gt;,
+        FC: FoldingConfig&lt;Column = GenericColumn&lt;usize&gt;, Curve = Curve, Challenge = PlonkishChallenge&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
         exp: <span class="kw-2">&amp;</span>FoldingExp&lt;FC&gt;,
@@ -329,7 +329,7 @@
     <span class="doccomment">/// For FoldingCompatibleExp
     </span><span class="kw">pub fn </span>eval_naive_fcompat&lt;
         <span class="lifetime">&#39;a</span>,
-        FC: FoldingConfig&lt;Column = GenericColumn, Curve = Curve, Challenge = PlonkishChallenge&gt;,
+        FC: FoldingConfig&lt;Column = GenericColumn&lt;usize&gt;, Curve = Curve, Challenge = PlonkishChallenge&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
         exp: <span class="kw-2">&amp;</span>FoldingCompatibleExpr&lt;FC&gt;,

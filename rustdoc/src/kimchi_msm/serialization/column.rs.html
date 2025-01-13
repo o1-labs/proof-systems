@@ -132,7 +132,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {
     <span class="kw">const </span>N_COL: usize = N_COL_SER;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::CurrentRow =&gt; Column::FixedSelector(<span class="number">0</span>),
             <span class="self">Self</span>::PreviousCoeffRow =&gt; Column::FixedSelector(<span class="number">1</span>),

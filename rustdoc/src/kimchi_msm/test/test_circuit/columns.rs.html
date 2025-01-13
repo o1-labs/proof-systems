@@ -64,7 +64,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumn {
     <span class="kw">const </span>N_COL: usize = N_COL_TEST;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);
             Column::Relation(N_LIMBS * offset + i)

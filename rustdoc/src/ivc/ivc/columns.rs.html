@@ -963,7 +963,7 @@
     // We also add 1 for the FoldIteration column.
     </span><span class="kw">const </span>N_COL: usize = IVCPoseidonColumn::N_COL + <span class="number">1 </span>+ N_BLOCKS;
 
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// We keep a column that will be used for the folding iteration.
             // Question: do we need it for all the rows or does it appear only

@@ -213,7 +213,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumnInput {
     <span class="kw">const </span>N_COL: usize = <span class="number">4 </span>* N_LIMBS_LARGE;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumnInput::XP(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
@@ -237,7 +237,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumnOutput {
     <span class="kw">const </span>N_COL: usize = <span class="number">2 </span>* N_LIMBS_SMALL;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumnOutput::XR(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
@@ -253,7 +253,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumnInter {
     <span class="kw">const </span>N_COL: usize = <span class="number">4 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumnInter::F(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
@@ -308,7 +308,7 @@
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumn {
     <span class="kw">const </span>N_COL: usize = FEC_N_COLUMNS;
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             FECColumn::Input(input) =&gt; input.to_column(),
             FECColumn::Inter(inter) =&gt; inter.to_column().add_rel_offset(FECColumnInput::N_COL),

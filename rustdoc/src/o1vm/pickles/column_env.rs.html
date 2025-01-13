@@ -129,6 +129,7 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi_msm::columns::Column;
@@ -166,9 +167,10 @@
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
 }
 
-<span class="kw">pub fn </span>get_all_columns() -&gt; Vec&lt;Column&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>cols =
-        Vec::&lt;Column&gt;::with_capacity(SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2 </span>+ N_MIPS_SEL_COLS);
+<span class="kw">pub fn </span>get_all_columns() -&gt; Vec&lt;Column&lt;usize&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>cols = Vec::&lt;Column&lt;usize&gt;&gt;::with_capacity(
+        SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2 </span>+ N_MIPS_SEL_COLS,
+    );
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2 </span>{
         cols.push(Column::Relation(i));
     }
@@ -179,7 +181,7 @@
 }
 
 <span class="kw">impl</span>&lt;G&gt; WitnessColumns&lt;G, [G; N_MIPS_SEL_COLS]&gt; {
-    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>G&gt; {
+    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column&lt;usize&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>G&gt; {
         <span class="kw">match </span><span class="kw-2">*</span>col {
             Column::Relation(i) =&gt; {
                 <span class="kw">if </span>i &lt; SCRATCH_SIZE {
@@ -223,7 +225,7 @@
 {
     <span class="comment">// FIXME: do we change to the MIPS column type?
     // We do not want to keep kimchi_msm/generic prover
-    </span><span class="kw">type </span>Column = Column;
+    </span><span class="kw">type </span>Column = Column&lt;usize&gt;;
 
     <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evals&lt;F&gt;&gt; {
         <span class="self">self</span>.witness.get_column(col)

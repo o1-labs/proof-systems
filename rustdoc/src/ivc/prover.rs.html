@@ -591,7 +591,7 @@
         F: Clone,
     &gt; ColumnEvaluations&lt;F&gt; <span class="kw">for </span>ProofEvaluations&lt;N_WIT, N_REL, N_DSEL, N_FSEL, F&gt;
 {
-    <span class="kw">type </span>Column = kimchi_msm::columns::Column;
+    <span class="kw">type </span>Column = kimchi_msm::columns::Column&lt;usize&gt;;
 
     <span class="kw">fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;F&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
         <span class="comment">// TODO: substitute when non-literal generic constants are available
@@ -647,7 +647,7 @@
 <span class="kw">pub fn </span>prove&lt;
     EFqSponge: Clone + FqSponge&lt;Fq, G, Fp&gt;,
     EFrSponge: FrSponge&lt;Fp&gt;,
-    FC: FoldingConfig&lt;Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge&gt;,
+    FC: FoldingConfig&lt;Column = GenericColumn&lt;usize&gt;, Curve = G, Challenge = PlonkishChallenge&gt;,
     RNG,
     <span class="kw">const </span>N_WIT: usize,
     <span class="kw">const </span>N_WIT_QUAD: usize, <span class="comment">// witness columns + quad columns

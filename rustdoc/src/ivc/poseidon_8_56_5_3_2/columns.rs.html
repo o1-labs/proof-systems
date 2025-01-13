@@ -143,7 +143,7 @@
             </span>+ (<span class="number">4 </span>+ STATE_SIZE - <span class="number">1</span>) * NB_PARTIAL_ROUND <span class="comment">// partial round
             </span>+ STATE_SIZE * (NB_PARTIAL_ROUND + NB_FULL_ROUND); <span class="comment">// fixed selectors
 
-    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt; {
         <span class="comment">// number of reductions for
         // x -&gt; x^2 -&gt; x^4 -&gt; x^5 -&gt; x^5 * MDS
         </span><span class="kw">let </span>nb_red = <span class="number">4</span>;

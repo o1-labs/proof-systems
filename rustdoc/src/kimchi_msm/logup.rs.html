@@ -1307,7 +1307,7 @@
 /// h(X) * (β + t(X)) * (β + f(X)) = (β + t(X)) + m(X) * (β + f(X))
 /// ```
 </span><span class="kw">pub fn </span>combine_lookups&lt;F: PrimeField, ID: LookupTableID&gt;(
-    column: Column,
+    column: Column&lt;usize&gt;,
     lookups: Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;,
 ) -&gt; E&lt;F&gt; {
     <span class="kw">let </span>joint_combiner = {
@@ -1377,7 +1377,7 @@
     lookup_writes: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Vec&lt;E&lt;F&gt;&gt;&gt;&gt;,
 ) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
-    <span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_cols: Vec&lt;Column&gt; = <span class="macro">vec!</span>[];
+    <span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_cols: Vec&lt;Column&lt;usize&gt;&gt; = <span class="macro">vec!</span>[];
     lookup_reads.iter().for_each(|(table_id, reads)| {
         <span class="kw">let </span><span class="kw-2">mut </span>idx_partial_sum = <span class="number">0</span>;
         <span class="kw">let </span>table_id_u32 = table_id.to_u32();

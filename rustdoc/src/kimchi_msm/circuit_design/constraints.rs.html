@@ -137,7 +137,7 @@
 
 <span class="kw">pub struct </span>ConstraintBuilderEnv&lt;F: PrimeField, LT: LookupTableID&gt; {
     <span class="doccomment">/// An indexed set of constraints.
-    </span><span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;&gt;,
+    </span><span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&lt;usize&gt;&gt;&gt;,
     <span class="doccomment">/// Aggregated lookups or &quot;reads&quot;.
     </span><span class="kw">pub </span>lookup_reads: BTreeMap&lt;LT, Vec&lt;Vec&lt;E&lt;F&gt;&gt;&gt;&gt;,
     <span class="doccomment">/// Aggregated &quot;write&quot; lookups, for runtime tables.

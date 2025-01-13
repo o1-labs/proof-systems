@@ -290,7 +290,7 @@
 <span class="kw">pub fn </span>verify&lt;
     EFqSponge: Clone + FqSponge&lt;Fq, G, Fp&gt;,
     EFrSponge: FrSponge&lt;Fp&gt;,
-    FC: FoldingConfig&lt;Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge&gt;,
+    FC: FoldingConfig&lt;Column = GenericColumn&lt;usize&gt;, Curve = G, Challenge = PlonkishChallenge&gt;,
     <span class="kw">const </span>N_WIT: usize,
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_DSEL: usize,

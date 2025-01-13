@@ -69,6 +69,7 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="comment">// @volhovm Not sure a whole file is necessary for just one type
 // alias, but maybe more code will come.
 // Consider moving to lib.rs
@@ -94,9 +95,10 @@
 /// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
 /// use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
-/// use kimchi_msm::columns::Column;
+/// use kimchi_msm::columns::{Column as GenericColumn};
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;
+/// pub type Column = GenericColumn&lt;usize&gt;;
 /// let x1 = E::&lt;Fp&gt;::Atom(
 ///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp, BerkeleyChallengeTerm&gt;&gt;, Column&gt;::Cell(Variable {
 ///         col: Column::Relation(1),
@@ -119,16 +121,16 @@
 /// ```
 /// A list of such constraints is used to represent the entire circuit and will
 /// be used to build the quotient polynomial.
-</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&gt;;
+</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, Column&lt;usize&gt;&gt;;
 
-<span class="kw">pub fn </span>curr_cell&lt;F: Field&gt;(col: Column) -&gt; E&lt;F&gt; {
+<span class="kw">pub fn </span>curr_cell&lt;F: Field&gt;(col: Column&lt;usize&gt;) -&gt; E&lt;F&gt; {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Curr,
     }))
 }
 
-<span class="kw">pub fn </span>next_cell&lt;F: Field&gt;(col: Column) -&gt; E&lt;F&gt; {
+<span class="kw">pub fn </span>next_cell&lt;F: Field&gt;(col: Column&lt;usize&gt;) -&gt; E&lt;F&gt; {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Next,

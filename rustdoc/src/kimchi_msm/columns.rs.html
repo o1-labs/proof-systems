@@ -106,9 +106,9 @@
 
 <span class="doccomment">/// Describe a generic indexed variable X_{i}.
 </span><span class="attr">#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-</span><span class="kw">pub enum </span>Column {
+</span><span class="kw">pub enum </span>Column&lt;T&gt; {
     <span class="doccomment">/// Columns related to the relation encoded in the circuit
-    </span>Relation(usize),
+    </span>Relation(T),
     <span class="doccomment">/// Columns related to dynamic selectors to indicate gate type
     </span>DynamicSelector(usize),
     <span class="doccomment">/// Constant column that is /always/ fixed for a given circuit.
@@ -126,9 +126,9 @@
     </span>LookupFixedTable(u32),
 }
 
-<span class="kw">impl </span>Column {
+<span class="kw">impl </span>Column&lt;usize&gt; {
     <span class="doccomment">/// Adds offset if the column is `Relation`. Fails otherwise.
-    </span><span class="kw">pub fn </span>add_rel_offset(<span class="self">self</span>, offset: usize) -&gt; Column {
+    </span><span class="kw">pub fn </span>add_rel_offset(<span class="self">self</span>, offset: usize) -&gt; Column&lt;usize&gt; {
         <span class="kw">let </span>Column::Relation(i) = <span class="self">self </span><span class="kw">else </span>{
             <span class="macro">todo!</span>(<span class="string">&quot;add_rel_offset is only implemented for the relation columns&quot;</span>)
         };
@@ -136,7 +136,7 @@
     }
 }
 
-<span class="kw">impl </span>FormattedOutput <span class="kw">for </span>Column {
+<span class="kw">impl </span>FormattedOutput <span class="kw">for </span>Column&lt;usize&gt; {
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Column::Relation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;x_{{{i}}}&quot;</span>),
@@ -179,12 +179,12 @@
     </span><span class="kw">const </span>N_COL: usize;
 
     <span class="doccomment">/// Flatten the column &quot;alias&quot; into the integer-like column.
-    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column;
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column&lt;usize&gt;;
 }
 
 <span class="comment">// Implementation to be compatible with folding if we use generic column
 // constraints
-</span><span class="kw">impl </span>FoldingColumnTrait <span class="kw">for </span>Column {
+</span><span class="kw">impl</span>&lt;T: Copy&gt; FoldingColumnTrait <span class="kw">for </span>Column&lt;T&gt; {
     <span class="kw">fn </span>is_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// Witness
