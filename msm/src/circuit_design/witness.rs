@@ -284,7 +284,7 @@ impl<
         LT: LookupTableID,
     > WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
-    pub fn write_column_raw(&mut self, position: Column, value: F) {
+    pub fn write_column_raw(&mut self, position: Column<usize>, value: F) {
         match position {
             Column::Relation(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::FixedSelector(_) => {

@@ -349,7 +349,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// h(X) * (β + t(X)) * (β + f(X)) = (β + t(X)) + m(X) * (β + f(X))
 /// ```
 pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
-    column: Column,
+    column: Column<usize>,
     lookups: Vec<Logup<E<F>, ID>>,
 ) -> E<F> {
     let joint_combiner = {
@@ -419,7 +419,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
     lookup_writes: &BTreeMap<ID, Vec<Vec<E<F>>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
-    let mut lookup_terms_cols: Vec<Column> = vec![];
+    let mut lookup_terms_cols: Vec<Column<usize>> = vec![];
     lookup_reads.iter().for_each(|(table_id, reads)| {
         let mut idx_partial_sum = 0;
         let table_id_u32 = table_id.to_u32();

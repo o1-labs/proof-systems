@@ -15,7 +15,7 @@ use crate::{
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
-    pub constraints: Vec<Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>>,
+    pub constraints: Vec<Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column<usize>>>,
     /// Aggregated lookups or "reads".
     pub lookup_reads: BTreeMap<LT, Vec<Vec<E<F>>>>,
     /// Aggregated "write" lookups, for runtime tables.

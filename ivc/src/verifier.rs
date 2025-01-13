@@ -40,7 +40,7 @@ pub type Fq = ark_bn254::Fq;
 pub fn verify<
     EFqSponge: Clone + FqSponge<Fq, G, Fp>,
     EFrSponge: FrSponge<Fp>,
-    FC: FoldingConfig<Column = GenericColumn, Curve = G, Challenge = PlonkishChallenge>,
+    FC: FoldingConfig<Column = GenericColumn<usize>, Curve = G, Challenge = PlonkishChallenge>,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,

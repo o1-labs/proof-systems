@@ -53,7 +53,7 @@ pub enum FECColumn {
 
 impl ColumnIndexer for FECColumnInput {
     const N_COL: usize = 4 * N_LIMBS_LARGE;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             FECColumnInput::XP(i) => {
                 assert!(i < N_LIMBS_LARGE);
@@ -77,7 +77,7 @@ impl ColumnIndexer for FECColumnInput {
 
 impl ColumnIndexer for FECColumnOutput {
     const N_COL: usize = 2 * N_LIMBS_SMALL;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             FECColumnOutput::XR(i) => {
                 assert!(i < N_LIMBS_SMALL);
@@ -93,7 +93,7 @@ impl ColumnIndexer for FECColumnOutput {
 
 impl ColumnIndexer for FECColumnInter {
     const N_COL: usize = 4 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 9;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             FECColumnInter::F(i) => {
                 assert!(i < N_LIMBS_LARGE);
@@ -148,7 +148,7 @@ impl ColumnIndexer for FECColumnInter {
 
 impl ColumnIndexer for FECColumn {
     const N_COL: usize = FEC_N_COLUMNS;
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             FECColumn::Input(input) => input.to_column(),
             FECColumn::Inter(inter) => inter.to_column().add_rel_offset(FECColumnInput::N_COL),

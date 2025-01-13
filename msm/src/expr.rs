@@ -23,9 +23,10 @@ use crate::columns::Column;
 /// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
 /// use kimchi::circuits::berkeley_columns::BerkeleyChallengeTerm;
-/// use kimchi_msm::columns::Column;
+/// use kimchi_msm::columns::{Column as GenericColumn};
 /// use kimchi_msm::expr::E;
 /// pub type Fp = ark_bn254::Fr;
+/// pub type Column = GenericColumn<usize>;
 /// let x1 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp, BerkeleyChallengeTerm>>, Column>::Cell(Variable {
 ///         col: Column::Relation(1),
@@ -48,16 +49,16 @@ use crate::columns::Column;
 /// ```
 /// A list of such constraints is used to represent the entire circuit and will
 /// be used to build the quotient polynomial.
-pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column<usize>>;
 
-pub fn curr_cell<F: Field>(col: Column) -> E<F> {
+pub fn curr_cell<F: Field>(col: Column<usize>) -> E<F> {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Curr,
     }))
 }
 
-pub fn next_cell<F: Field>(col: Column) -> E<F> {
+pub fn next_cell<F: Field>(col: Column<usize>) -> E<F> {
     E::Atom(ExprInner::Cell(Variable {
         col,
         row: CurrOrNext::Next,

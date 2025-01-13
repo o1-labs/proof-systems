@@ -391,7 +391,7 @@ impl ColumnIndexer for IVCColumn {
     // We also add 1 for the FoldIteration column.
     const N_COL: usize = IVCPoseidonColumn::N_COL + 1 + N_BLOCKS;
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             // We keep a column that will be used for the folding iteration.
             // Question: do we need it for all the rows or does it appear only
