@@ -176,7 +176,9 @@ impl PreImageOracleT for PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
+    #[allow(unreachable_code)]
     fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+        panic!("Attempted to get preimage for key {}", hex::encode(&key));
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
         let r = writer.write_all(&key);

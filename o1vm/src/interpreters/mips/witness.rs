@@ -606,6 +606,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         );
     }
 
+    #[allow(unreachable_code)]
     fn request_preimage_write(
         &mut self,
         addr: &Self::Variable,
@@ -621,7 +622,10 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
                     preimage_key[4 * i + j] = bytes[j]
                 }
             }
-            let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
+            let preimage: Vec<u8> = panic!(
+                "Attempted to get preimage key {}",
+                hex::encode(preimage_key)
+            );
             self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
         }
