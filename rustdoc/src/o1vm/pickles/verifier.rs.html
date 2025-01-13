@@ -265,17 +265,6 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>rand::thread_rng;
@@ -377,9 +366,6 @@
     <span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch_inverse.iter() {
         absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
     }
-    <span class="kw">for </span>comm <span class="kw">in </span>commitments.lookup_state.iter() {
-        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
-    }
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.instruction_counter);
     absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>commitments.error);
     <span class="kw">for </span>comm <span class="kw">in </span>commitments.selector.iter() {
@@ -425,14 +411,6 @@
         .scratch_inverse
         .iter()
         .zip(zeta_omega_evaluations.scratch_inverse.iter())
-    {
-        fr_sponge.absorb(zeta_eval);
-        fr_sponge.absorb(zeta_omega_eval);
-    }
-    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-        .lookup_state
-        .iter()
-        .zip(zeta_omega_evaluations.lookup_state.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
@@ -493,7 +471,7 @@
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = get_all_columns(column_eval.commitment.lookup_state.len())
+    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = get_all_columns()
         .into_iter()
         .map(|column| {
             <span class="kw">let </span>commitment = column_eval
