@@ -70,7 +70,7 @@ pub enum AdditionColumn {
 impl ColumnIndexer for AdditionColumn {
     const N_COL: usize = 3;
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             AdditionColumn::A => Column::Relation(0),
             AdditionColumn::B => Column::Relation(1),
@@ -189,7 +189,7 @@ pub fn heavy_test_simple_add() {
         const N_ALPHAS: usize,
     > = StandardConfig<
         Curve,
-        Column,
+        Column<usize>,
         PlonkishChallenge,
         PlonkishInstance<Curve, N_COL_TOTAL, N_CHALS, N_ALPHAS>, // TODO check if it's quad or not
         PlonkishWitness<N_COL_TOTAL, N_FSEL, Fp>,
