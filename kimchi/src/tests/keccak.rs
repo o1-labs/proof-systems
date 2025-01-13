@@ -1,11 +1,8 @@
 use std::array;
 
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, GateType},
-        polynomials::keccak::{constants::KECCAK_COLS, witness::extend_keccak_witness, Keccak},
-        wires::Wire,
+    circuits::polynomials::keccak::{
+        constants::KECCAK_COLS, witness::extend_keccak_witness, Keccak,
     },
     curve::KimchiCurve,
 };
@@ -13,24 +10,6 @@ use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::Pallas;
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, FieldHelpers};
-
-fn create_test_constraint_system<G: KimchiCurve>(
-    bytelength: usize,
-) -> ConstraintSystem<G::ScalarField>
-where
-    G::BaseField: PrimeField,
-{
-    let mut gates = vec![];
-    let next_row = CircuitGate::extend_keccak(&mut gates, bytelength);
-    // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
-    gates.push(CircuitGate {
-        typ: GateType::Zero,
-        wires: Wire::for_row(next_row),
-        coeffs: vec![],
-    });
-
-    ConstraintSystem::create(gates).build().unwrap()
-}
 
 fn create_keccak_witness<G: KimchiCurve>(message: BigUint) -> [Vec<G::ScalarField>; KECCAK_COLS]
 where
@@ -88,13 +67,6 @@ fn setup_keccak_test<G: KimchiCurve>(message: BigUint) -> BigUint
 where
     G::BaseField: PrimeField,
 {
-    let bytelength = message.to_bytes_be().len();
-    let padded_len = {
-        let mut sized = message.to_bytes_be();
-        sized.resize(bytelength - sized.len(), 0);
-        Keccak::pad(&sized).len()
-    };
-    let _index = create_test_constraint_system::<G>(padded_len);
     let witness = create_keccak_witness::<G>(message);
 
     for r in 1..=24 {

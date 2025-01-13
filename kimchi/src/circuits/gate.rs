@@ -6,7 +6,7 @@ use crate::{
         berkeley_columns::BerkeleyChallenges,
         constraints::ConstraintSystem,
         polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
             poseidon, range_check, rot, turshi, varbasemul, xor,
         },
         wires::*,
@@ -108,8 +108,6 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
-    KeccakRound,
-    KeccakSponge,
 }
 
 /// Gate error
@@ -209,12 +207,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
-                .map_err(|e| e.to_string()),
-            KeccakRound => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
-                .map_err(|e| e.to_string()),
-            KeccakSponge => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
@@ -319,12 +311,6 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
-            GateType::KeccakRound => {
-                keccak::circuitgates::KeccakRound::constraint_checks(&env, &mut cache)
-            }
-            GateType::KeccakSponge => {
-                keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)
-            }
         };
 
         // Check for failed constraints
