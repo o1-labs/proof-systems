@@ -71,6 +71,7 @@ fn test_small_circuit() {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
+            lookup_state: vec![],
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
                 .map(|x| x + Fq::one())

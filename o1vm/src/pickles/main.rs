@@ -1,4 +1,4 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
@@ -94,6 +94,28 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .zip(curr_proof_inputs.evaluations.scratch_inverse.iter_mut())
         {
             scratch_chunk.push(*scratch);
+        }
+        // Lookup state
+        {
+            let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
+            let environment_length = mips_wit_env.lookup_state.len();
+            let lookup_state_size = std::cmp::max(proof_inputs_length, environment_length);
+            for idx in 0..lookup_state_size {
+                if idx >= environment_length {
+                    // We pad with 0s for dummy lookups missing from the environment.
+                    curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } else if idx >= proof_inputs_length {
+                    // We create a new column filled with 0s in the proof inputs.
+                    let mut new_vec =
+                        vec![Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
+                } else {
+                    // Push the value to the column.
+                    curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
         }
         curr_proof_inputs
             .evaluations

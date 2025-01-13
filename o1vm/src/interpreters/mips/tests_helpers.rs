@@ -93,6 +93,8 @@ where
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
         scratch_state_inverse: [Fp::from(0); SCRATCH_SIZE_INVERSE],
         lookup_multiplicities: LookupMultiplicities::new(),
+        lookup_state_idx: 0,
+        lookup_state: vec![],
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related
