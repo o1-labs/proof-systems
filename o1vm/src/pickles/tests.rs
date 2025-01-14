@@ -86,7 +86,7 @@ fn test_small_circuit() {
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
     type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
-    let (proof,a) = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+    let (proof, a, cs) = prove::<Pallas, BaseSponge, ScalarSponge, _>(
         domain,
         &srs,
         proof_input,
@@ -96,7 +96,8 @@ fn test_small_circuit() {
     .unwrap();
 
     let instant_before_verification = Instant::now();
-    let verif = verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof, a);
+    let verif =
+        verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof, a, cs);
     let instant_after_verification = Instant::now();
     debug!(
         "Verification took: {} ms",

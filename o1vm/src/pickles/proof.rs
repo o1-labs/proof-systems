@@ -21,7 +21,7 @@ impl<G: KimchiCurve> fmt::Debug for ProofInputs<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "ProofInputs {{")?;
         writeln!(f, "    evaluations: [")?;
-        
+
         // Print scratch columns
         write!(f, "        scratch:           [")?;
         for (i, val) in self.evaluations.scratch.iter().enumerate() {
@@ -31,7 +31,7 @@ impl<G: KimchiCurve> fmt::Debug for ProofInputs<G> {
                 writeln!(f, "{:?}]", val)?;
             }
         }
-        
+
         // Print scratch_inverse columns
         write!(f, "        scratch_inverse:   [")?;
         for (i, val) in self.evaluations.scratch_inverse.iter().enumerate() {
@@ -41,12 +41,24 @@ impl<G: KimchiCurve> fmt::Debug for ProofInputs<G> {
                 writeln!(f, "{:?}]", val)?;
             }
         }
-        
+
         // Print single vector fields
-        writeln!(f, "        instruction_counter: {:?}", self.evaluations.instruction_counter)?;
-        writeln!(f, "        error:              {:?}", self.evaluations.error)?;
-        writeln!(f, "        selector:           {:?}", self.evaluations.selector)?;
-        
+        writeln!(
+            f,
+            "        instruction_counter: {:?}",
+            self.evaluations.instruction_counter
+        )?;
+        writeln!(
+            f,
+            "        error:              {:?}",
+            self.evaluations.error
+        )?;
+        writeln!(
+            f,
+            "        selector:           {:?}",
+            self.evaluations.selector
+        )?;
+
         writeln!(f, "    ]")?;
         write!(f, "}}")
     }

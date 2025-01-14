@@ -72,7 +72,8 @@ pub fn verify<
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &[E<G::ScalarField>],
     proof: &Proof<G>,
-    _: G::ScalarField,
+    prover_ip: G::ScalarField,
+    prover_commitments: Vec<PolyComm<G>>,
 ) -> bool
 where
     <G as AffineRepr>::BaseField: PrimeField,
@@ -243,11 +244,17 @@ where
         combined_inner_product(&v, &u, es.as_slice())
     };
 
-    let _commitments : Vec<PolyComm<G>>=  evaluations.clone().into_iter().map(|e| {
-        e.commitment.clone()
-    }).collect();
+    let _commitments: Vec<PolyComm<G>> = evaluations
+        .clone()
+        .into_iter()
+        .map(|e| e.commitment.clone())
+        .collect();
 
-    debug!("combined_inner_product {:?}", combined_inner_product);
+    debug!("Asserting that the commitments are what they should be");
+    assert_eq!(prover_commitments, _commitments);
+
+    debug!("Asserting that the combined_inner_product is what it should be");
+    assert_eq!(prover_ip, combined_inner_product);
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_commitments_and_evaluations,
@@ -256,7 +263,7 @@ where
         polyscale: v,
         evalscale: u,
         opening: opening_proof,
-        combined_inner_product,
+        combined_inner_product: prover_ip,
     };
 
     let group_map = G::Map::setup();

@@ -127,7 +127,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
     }
 
-//    debug!("Before padding {:?}", curr_proof_inputs);
+    //    debug!("Before padding {:?}", curr_proof_inputs);
 
     if curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE {
         debug!(
@@ -219,7 +219,7 @@ fn prove_and_verify(
     rng: &mut ThreadRng,
 ) {
     let start_iteration = Instant::now();
-    let (proof, a) = prover::prove::<
+    let (proof, a, cs) = prover::prove::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
@@ -235,7 +235,7 @@ fn prove_and_verify(
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-    >(domain_fp, srs, constraints, &proof, a);
+    >(domain_fp, srs, constraints, &proof, a, cs);
     debug!(
         "Verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
