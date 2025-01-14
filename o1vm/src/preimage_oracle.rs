@@ -3,7 +3,7 @@ use crate::cannon::{
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
 };
 use command_fds::{CommandFdExt, FdMapping};
-use log::debug;
+//use log::debug;
 use os_pipe::{PipeReader, PipeWriter};
 use std::{
     io::{Read, Write},
@@ -20,7 +20,9 @@ pub struct PreImageOracle {
 }
 
 pub trait PreImageOracleT {
-    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage;
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+        panic!("This function is never being used {}", hex::encode(key));
+    }
 
     fn hint(&mut self, hint: Hint);
 }
@@ -178,35 +180,35 @@ impl PreImageOracleT for PreImageOracle {
     //   b. the preimage data, with a size of <length> bits
     #[allow(unreachable_code)]
     fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
-        panic!("Attempted to get preimage for key {}", hex::encode(&key));
-        let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
+        panic!("Attempted to get preimage for key {}", hex::encode(key));
+        //let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
-        let r = writer.write_all(&key);
-        assert!(r.is_ok());
-        let r = writer.flush();
-        assert!(r.is_ok());
+        //let r = writer.write_all(&key);
+        //assert!(r.is_ok());
+        //let r = writer.flush();
+        //assert!(r.is_ok());
 
-        debug!("Reading response");
-        let mut buf = [0_u8; 8];
-        let resp = reader.read_exact(&mut buf);
-        assert!(resp.is_ok());
+        //debug!("Reading response");
+        //let mut buf = [0_u8; 8];
+        //let resp = reader.read_exact(&mut buf);
+        //assert!(resp.is_ok());
 
-        debug!("Extracting contents");
-        let length = u64::from_be_bytes(buf);
-        let mut preimage = vec![0_u8; length as usize];
-        let resp = reader.read_exact(&mut preimage);
+        //debug!("Extracting contents");
+        //let length = u64::from_be_bytes(buf);
+        //let mut preimage = vec![0_u8; length as usize];
+        //let resp = reader.read_exact(&mut preimage);
 
-        assert!(resp.is_ok());
+        //assert!(resp.is_ok());
 
-        debug!(
-            "Got preimage of length {}\n {}",
-            preimage.len(),
-            hex::encode(&preimage)
-        );
-        // We should have read exactly <length> bytes
-        assert_eq!(preimage.len(), length as usize);
+        //debug!(
+        //    "Got preimage of length {}\n {}",
+        //    preimage.len(),
+        //    hex::encode(&preimage)
+        //);
+        //// We should have read exactly <length> bytes
+        //assert_eq!(preimage.len(), length as usize);
 
-        Preimage::create(preimage)
+        //Preimage::create(preimage)
     }
 
     // The hint protocol goes as follows:
