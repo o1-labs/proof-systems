@@ -1,5 +1,6 @@
 use std::array;
 
+use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
@@ -66,7 +67,7 @@ pub fn prove<
     inputs: ProofInputs<G>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Result<Proof<G>, ProverError>
+) -> Result<(Proof<G>, G::ScalarField), ProverError>
 where
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -483,8 +484,8 @@ where
     debug!("zetas: {:?} {:?}", zeta, zeta_omega);
 
     // Computing the opening proof for the IPA PCS
-    let opening_proof = OpeningProof::open::<_, _, D<G::ScalarField>>(
-        srs,
+    let (opening_proof, a) =
+       srs._open::<_, _, D<G::ScalarField>>(
         &group_map,
         polynomials.as_slice(),
         &[zeta, zeta_omega],
@@ -494,12 +495,12 @@ where
         rng,
     );
 
-    Ok(Proof {
+    Ok((Proof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
         quotient_commitment: quotient_commitment.commitment,
         quotient_evaluations,
         opening_proof,
-    })
+    },a))
 }

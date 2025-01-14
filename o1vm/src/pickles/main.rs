@@ -219,7 +219,7 @@ fn prove_and_verify(
     rng: &mut ThreadRng,
 ) {
     let start_iteration = Instant::now();
-    let proof = prover::prove::<
+    let (proof, a) = prover::prove::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
@@ -235,7 +235,7 @@ fn prove_and_verify(
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-    >(domain_fp, srs, constraints, &proof);
+    >(domain_fp, srs, constraints, &proof, a);
     debug!(
         "Verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()

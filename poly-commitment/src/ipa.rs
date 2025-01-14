@@ -530,7 +530,10 @@ where
     }
 }
 
+
 impl<G: CommitmentCurve> SRS<G> {
+
+
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
     // NB: a slight modification to the original protocol is done when absorbing
@@ -543,9 +546,43 @@ impl<G: CommitmentCurve> SRS<G> {
         elm: &[G::ScalarField],
         polyscale: G::ScalarField,
         evalscale: G::ScalarField,
-        mut sponge: EFqSponge,
+        sponge: EFqSponge,
         rng: &mut RNG,
     ) -> OpeningProof<G>
+    where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
+        G: EndoCurve,
+    {
+        let (p, _) = self._open(
+            group_map,
+            plnms,
+            elm,
+            polyscale,
+            evalscale,
+            sponge,
+            rng,
+        );
+        p
+
+    }
+
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
+    // NB: a slight modification to the original protocol is done when absorbing
+    // the first prover message to improve the efficiency in a recursive
+    // setting.
+    pub fn _open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(
+        &self,
+        group_map: &G::Map,
+        plnms: PolynomialsToCombine<G, D>,
+        elm: &[G::ScalarField],
+        polyscale: G::ScalarField,
+        evalscale: G::ScalarField,
+        mut sponge: EFqSponge,
+        rng: &mut RNG,
+    ) -> (OpeningProof<G>,<G as AffineRepr>::ScalarField)
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         RNG: RngCore + CryptoRng,
@@ -759,13 +796,13 @@ impl<G: CommitmentCurve> SRS<G> {
         let z1 = a0 * c + d;
         let z2 = r_prime * c + r_delta;
 
-        OpeningProof {
+        (OpeningProof {
             delta,
             lr,
             z1,
             z2,
             sg: g0,
-        }
+        }, combined_inner_product)
     }
 
     fn lagrange_basis(&self, domain: D<G::ScalarField>) -> Vec<PolyComm<G>> {

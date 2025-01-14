@@ -72,6 +72,7 @@ pub fn verify<
     srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
     constraints: &[E<G::ScalarField>],
     proof: &Proof<G>,
+    _: G::ScalarField,
 ) -> bool
 where
     <G as AffineRepr>::BaseField: PrimeField,
