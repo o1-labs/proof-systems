@@ -3,7 +3,7 @@ use crate::cannon::{
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
 };
 use command_fds::{CommandFdExt, FdMapping};
-use log::debug;
+//use log::debug;
 use os_pipe::{PipeReader, PipeWriter};
 use std::{
     io::{Read, Write},
@@ -20,7 +20,9 @@ pub struct PreImageOracle {
 }
 
 pub trait PreImageOracleT {
-    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage;
+    fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+        panic!("This function is not being used {}", hex::encode(key))
+    }
 
     fn hint(&mut self, hint: Hint);
 }
@@ -166,6 +168,7 @@ impl PreImageOracleT for PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
+    /*
     fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
@@ -195,7 +198,7 @@ impl PreImageOracleT for PreImageOracle {
         assert_eq!(preimage.len(), length as usize);
 
         Preimage::create(preimage)
-    }
+    } */
 
     // The hint protocol goes as follows:
     // 1. Write a hint request with the following byte-stream format
