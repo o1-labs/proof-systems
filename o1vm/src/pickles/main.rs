@@ -127,6 +127,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
     }
 
+//    debug!("Before padding {:?}", curr_proof_inputs);
+
     if curr_proof_inputs.evaluations.instruction_counter.len() < DOMAIN_SIZE {
         debug!(
             "Evaluation ended with {} elements. Pad it to prove and verify",

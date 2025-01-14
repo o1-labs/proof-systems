@@ -55,7 +55,7 @@ pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeser
     pub mds: Vec<Vec<F>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,

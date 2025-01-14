@@ -608,6 +608,8 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|(a, b)| *a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
+        log::debug!("combined_inner_product: {:?}", combined_inner_product);
+
         // Usually, the prover sends `combined_inner_product`` to the verifier
         // So we should absorb `combined_inner_product``
         // However it is more efficient in the recursion circuit

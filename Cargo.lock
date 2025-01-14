@@ -2274,6 +2274,7 @@ dependencies = [
  "criterion 0.5.1",
  "groupmap",
  "itertools 0.12.1",
+ "log",
  "mina-curves",
  "mina-poseidon",
  "o1-utils",

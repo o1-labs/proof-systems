@@ -25,7 +25,7 @@ impl SpongeConstants for PlonkSpongeConstantsLegacy {
     const PERM_INITIAL_ARK: bool = true;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PlonkSpongeConstantsKimchi {}
 
 impl SpongeConstants for PlonkSpongeConstantsKimchi {

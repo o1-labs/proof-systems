@@ -538,6 +538,7 @@ pub fn combined_inner_product<F: PrimeField>(
     res
 }
 
+#[derive(Clone)]
 /// Contains the evaluation of a polynomial commitment at a set of points.
 pub struct Evaluation<G>
 where

@@ -65,7 +65,7 @@ impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
 
 pub fn verify<
     G: KimchiCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField> + core::fmt::Debug,
     EFrSponge: FrSponge<G::ScalarField>,
 >(
     domain: EvaluationDomains<G::ScalarField>,
@@ -241,6 +241,12 @@ where
 
         combined_inner_product(&v, &u, es.as_slice())
     };
+
+    let _commitments : Vec<PolyComm<G>>=  evaluations.clone().into_iter().map(|e| {
+        e.commitment.clone()
+    }).collect();
+
+    debug!("combined_inner_product {:?}", combined_inner_product);
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_commitments_and_evaluations,

@@ -34,6 +34,8 @@ mina-poseidon.workspace = true
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
+log.workspace = true
+
 [dev-dependencies]
 criterion.workspace = true
 colored.workspace = true

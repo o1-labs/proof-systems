@@ -1,3 +1,5 @@
+use core::fmt;
+
 use kimchi::{curve::KimchiCurve, proof::PointEvaluations};
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 
@@ -13,6 +15,41 @@ pub struct WitnessColumns<G, S> {
 
 pub struct ProofInputs<G: KimchiCurve> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
+}
+
+impl<G: KimchiCurve> fmt::Debug for ProofInputs<G> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "ProofInputs {{")?;
+        writeln!(f, "    evaluations: [")?;
+        
+        // Print scratch columns
+        write!(f, "        scratch:           [")?;
+        for (i, val) in self.evaluations.scratch.iter().enumerate() {
+            if i < self.evaluations.scratch.len() - 1 {
+                write!(f, "{:?}, ", val)?;
+            } else {
+                writeln!(f, "{:?}]", val)?;
+            }
+        }
+        
+        // Print scratch_inverse columns
+        write!(f, "        scratch_inverse:   [")?;
+        for (i, val) in self.evaluations.scratch_inverse.iter().enumerate() {
+            if i < self.evaluations.scratch_inverse.len() - 1 {
+                write!(f, "{:?}, ", val)?;
+            } else {
+                writeln!(f, "{:?}]", val)?;
+            }
+        }
+        
+        // Print single vector fields
+        writeln!(f, "        instruction_counter: {:?}", self.evaluations.instruction_counter)?;
+        writeln!(f, "        error:              {:?}", self.evaluations.error)?;
+        writeln!(f, "        selector:           {:?}", self.evaluations.selector)?;
+        
+        writeln!(f, "    ]")?;
+        write!(f, "}}")
+    }
 }
 
 impl<G: KimchiCurve> ProofInputs<G> {

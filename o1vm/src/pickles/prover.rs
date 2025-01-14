@@ -38,6 +38,9 @@ use thiserror::Error;
 pub enum ProverError {
     #[error("the provided constraint has degree {0} > allowed {1}; expr: {2}")]
     ConstraintDegreeTooHigh(u64, u64, String),
+    #[error("the provided constraint was not satisfied: {0}")]
+    ConstraintNotSatisfied(String),
+
 }
 
 /// Make a PlonKish proof for the given circuit. As inputs, we get the execution
@@ -54,7 +57,7 @@ pub enum ProverError {
 /// evaluations at ζ and ζω.
 pub fn prove<
     G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone + core::fmt::Debug,
     EFrSponge: FrSponge<G::ScalarField>,
     RNG,
 >(
@@ -247,6 +250,32 @@ where
     // git revert 8e87244a98d55b90d175ad389611a3c98bd16b34
     // git revert 96d42c127ef025869c91e5fed680e0e383108706
     // ```
+
+    let mut last_constraint_failed = None;
+        // Only for debugging purposes
+        for expr in constraints.iter() {
+            let fail_q_division =
+                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
+            // Check this expression are witness satisfied
+            let (_, res) = expr
+                .evaluations(&column_env)
+                .interpolate_by_ref()
+                .divide_by_vanishing_poly(domain.d1)
+                .ok_or(fail_q_division.clone())?;
+            if !res.is_zero() {
+                eprintln!("Unsatisfied expression: {}", expr);
+                //return Err(fail_q_division);
+                last_constraint_failed = Some(expr.clone());
+            }
+        }
+        if let Some(expr) = last_constraint_failed {
+            return Err(ProverError::ConstraintNotSatisfied(format!(
+                "Unsatisfied expression: {:}",
+                expr
+            )));
+        }
+
+
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
@@ -416,12 +445,26 @@ where
             )
         })
         .collect();
+
+    let mut _commitments = polynomials.iter().map(|(poly,_)| {
+        let p = match poly {
+          DensePolynomialOrEvaluations::DensePolynomial(p) => p,
+          DensePolynomialOrEvaluations::Evaluations(..) => panic!("unexpected evaluations"),
+        };
+        let c = srs.commit_custom(p, num_chunks, &PolyComm::new(vec![G::ScalarField::one()]));
+        c.ok().unwrap().commitment
+    }).collect::<Vec<_>>();
+
+
+
     // we handle the quotient separately because the number of blinders =
     // number of chunks, which is different for just the quotient polynomial.
     polynomials.push((
         DensePolynomialOrEvaluations::DensePolynomial(&quotient_poly),
         quotient_commitment.blinders,
     ));
+
+    _commitments.push(quotient_commitment.commitment.clone());
 
     // poly scale
     let v_chal = fr_sponge.challenge();
@@ -433,6 +476,12 @@ where
     let group_map = G::Map::setup();
 
     debug!("Prover: computing the (batched) opening proof using the IPA PCS");
+
+
+//    debug!("_commitments: {:?}", _commitments);
+
+    debug!("zetas: {:?} {:?}", zeta, zeta_omega);
+
     // Computing the opening proof for the IPA PCS
     let opening_proof = OpeningProof::open::<_, _, D<G::ScalarField>>(
         srs,
