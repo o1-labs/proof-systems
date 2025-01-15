@@ -17,12 +17,19 @@ name = "saffron"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0"
 ark-ff.workspace = true
+ark-serialize.workspace = true
+bytes = "1.0"
 clap = { workspace = true, features = ["derive"] }
 mina-curves.workspace = true
-num-bigint.workspace = true
+o1-utils.workspace = true
+futures = "0.3"
+serde.workspace = true
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+
 
 [dev-dependencies]
-proptest.workspace = true
-num-bigint = {workspace = true, features = ["arbitrary"]}
 ark-std.workspace = true
+proptest.workspace = true
