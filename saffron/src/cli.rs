@@ -26,14 +26,6 @@ pub struct DecodeFileArgs {
 
     #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
     pub output: String,
-
-    #[arg(
-        long,
-        short = 'n',
-        value_name = "NUM",
-        help = "number of bytes to decode"
-    )]
-    pub length: usize
 }
 
 #[derive(Parser, Debug, Clone)]

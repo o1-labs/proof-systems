@@ -1,26 +1,91 @@
-use ark_ff::{BigInteger, Field, PrimeField};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress};
+use ark_ff::{BigInteger, PrimeField};
+use ark_serialize::{
+    CanonicalDeserialize, CanonicalSerialize, Compress, Read, SerializationError, Valid, Validate,
+    Write,
+};
+use o1_utils::FieldHelpers;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
-pub fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
+fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
     Fp::from_be_bytes_mod_order(bytes)
 }
 
-pub fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
-pub fn serialize_vec<F: Field>(xs: &[F]) -> Vec<u8> {
-    let n = xs.serialized_size(Compress::Yes);
-    let mut writer = Vec::with_capacity(n);
-    xs.serialize_compressed(&mut writer)
-        .expect("Failed to serialize field elements");
-    writer
+// A FieldBlob<F> represents the encoding of a Vec<u8> as a Vec<F> where F is a prime field.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FieldBlob<F> {
+    pub n_bytes: usize,
+    pub data: Vec<F>,
 }
 
-pub fn deserialize_vec<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
-    Vec::<F>::deserialize_compressed(bytes).expect("Failed to deserialize field elements")
+impl<F: CanonicalSerialize> CanonicalSerialize for FieldBlob<F> {
+    fn serialize_with_mode<W: Write>(
+        &self,
+        mut writer: W,
+        mode: Compress,
+    ) -> Result<(), SerializationError> {
+        self.n_bytes.serialize_with_mode(&mut writer, mode)?;
+        self.data.serialize_with_mode(&mut writer, mode)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self, mode: Compress) -> usize {
+        self.n_bytes.serialized_size(mode) + self.data.serialized_size(mode)
+    }
+}
+
+impl<F: Valid> Valid for FieldBlob<F> {
+    fn check(&self) -> Result<(), SerializationError> {
+        self.n_bytes.check()?;
+        self.data.check()?;
+        Ok(())
+    }
+}
+
+impl<F: CanonicalDeserialize> CanonicalDeserialize for FieldBlob<F> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let n_bytes = usize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let data = Vec::<F>::deserialize_with_mode(&mut reader, compress, validate)?;
+        Ok(Self { n_bytes, data })
+    }
+}
+
+impl<F: PrimeField> FieldBlob<F> {
+    // Encode a bytestring as a list of field elements.
+    pub fn encode(bytes: &[u8]) -> FieldBlob<F> {
+        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+        let data = bytes
+            .chunks(n)
+            .map(|chunk| {
+                let mut bytes = vec![0u8; n];
+                bytes[..chunk.len()].copy_from_slice(chunk);
+                encode(&bytes)
+            })
+            .collect::<Vec<F>>();
+        FieldBlob {
+            n_bytes: bytes.len(),
+            data,
+        }
+    }
+
+    // Decode a list of field elements as a bytestring.
+    pub fn decode(blob: FieldBlob<F>) -> Vec<u8> {
+        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+        let m = F::size_in_bytes();
+        blob.data
+            .into_iter()
+            .flat_map(|x| decode(x).as_slice()[(m - n)..m].to_vec())
+            .take(blob.n_bytes)
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -30,6 +95,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
 
+    // Check that [u8] -> Fp -> [u8] is the identity function.
     proptest! {
         #[test]
         fn test_round_trip_from_bytes(xs in any::<[u8;31]>())
@@ -39,6 +105,7 @@ mod tests {
           }
     }
 
+    // Check that Fp -> [u8] -> Fp is the identity function.
     proptest! {
         #[test]
         fn test_round_trip_from_fp(
@@ -50,18 +117,19 @@ mod tests {
         }
     }
 
-    fn fp_strategy() -> impl Strategy<Value = Fp> {
-        prop::strategy::Just(Fp::rand(&mut ark_std::rand::thread_rng()))
-    }
-
+    // check that Vec<u8> -> FieldBlob<Fp> -> Vec<u8> is the identity function
     proptest! {
-        #[test]
-        fn test_round_trip_vec(
-            xs in prop::collection::vec(fp_strategy(), 0..100)
-        ) {
-            let bytes = serialize_vec(&xs);
-            let ys = deserialize_vec(&bytes);
-            prop_assert_eq!(xs,ys);
-        }
+    #[test]
+    fn test_round_trip_blob_encoding( xs in any::<Vec<u8>>())
+      { let blob = FieldBlob::<Fp>::encode(&xs);
+        let mut buf = Vec::new();
+        blob.serialize_compressed(&mut buf).unwrap();
+        let a = FieldBlob::<Fp>::deserialize_compressed(&buf[..]).unwrap();
+        // check that ark-serialize is behaving as expected
+        prop_assert_eq!(blob.clone(), a);
+        let ys = FieldBlob::<Fp>::decode(blob);
+        // check that we get the byte blob back again
+        prop_assert_eq!(xs,ys);
+      }
     }
 }

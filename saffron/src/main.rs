@@ -1,7 +1,8 @@
 use anyhow::Result;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use clap::Parser;
 use mina_curves::pasta::Fp;
-use saffron::cli;
+use saffron::{cli, serialization::FieldBlob};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -11,15 +12,10 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let xs = saffron::serialization::deserialize_vec::<Fp>(&buf);
-    let bytes: Vec<u8> = xs
-        .into_iter()
-        .flat_map(|x| { 
-            saffron::serialization::decode(x).as_slice()[1..32].to_vec()
-         })
-        .collect();
+    let blob: FieldBlob<Fp> = FieldBlob::<Fp>::deserialize_compressed(&buf[..])?;
+    let data = FieldBlob::<Fp>::decode(blob);
     let mut writer = File::create(args.output)?;
-    writer.write_all(&bytes)?;
+    writer.write_all(&data)?;
     Ok(())
 }
 
@@ -27,17 +23,11 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let xs = buf
-        .chunks(31)
-        .map(|chunk| {
-            let mut bytes = [0u8; 31];
-            bytes[..chunk.len()].copy_from_slice(chunk);
-            saffron::serialization::encode(&bytes)
-        })
-        .collect::<Vec<Fp>>();
-    let bytes = saffron::serialization::serialize_vec(&xs);
+    let blob = FieldBlob::<Fp>::encode(&buf);
+    let mut bytes_to_write = Vec::with_capacity(buf.len());
+    blob.serialize_compressed(&mut bytes_to_write)?;
     let mut writer = File::create(args.output)?;
-    writer.write_all(&bytes)?;
+    writer.write_all(&bytes_to_write)?;
     Ok(())
 }
 

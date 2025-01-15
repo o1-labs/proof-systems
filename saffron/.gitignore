@@ -1,1 +1,3 @@
 proptest-regressions
+fixtures/lorem.bin
+fixtures/lorem-decoded.txt
