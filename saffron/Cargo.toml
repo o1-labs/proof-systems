@@ -1,0 +1,28 @@
+[package]
+name = "saffron"
+version = "0.1.0"
+description = "He who controls the spice controls the universe."
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+# [lib]
+# path = "src/lib.rs"
+
+[[bin]]
+name = "saffron"
+path = "src/main.rs"
+
+[dependencies]
+ark-ff.workspace = true
+clap = { workspace = true, features = ["derive"] }
+mina-curves.workspace = true
+num-bigint.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+num-bigint = {workspace = true, features = ["arbitrary"]}
+ark-std.workspace = true
