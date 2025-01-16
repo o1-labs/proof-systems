@@ -976,7 +976,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
     }
 }
 
-pub fn interpret_noop<Env: InterpreterEnv>(env: &mut env) {
+pub fn interpret_noop<Env: InterpreterEnv>(env: &mut Env) {
     let instruction_pointer = env.get_instruction_pointer();
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
@@ -994,7 +994,9 @@ pub fn interpret_noop<Env: InterpreterEnv>(env: &mut env) {
     };
 
     env.range_check8(&opcode, 6);
-    env.assert_zero(&opcode);
+    env.assert_is_zero(opcode);
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+    env.set_instruction_pointer(next_instruction_pointer);
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
