@@ -168,9 +168,59 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{UniformRand, Zero};
 <span class="kw">use </span>clap::Parser;
-<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta, VestaParameters};
 <span class="kw">use </span>mina_poseidon::{
@@ -192,8 +242,6 @@
 };
 <span class="kw">use </span>poly_commitment::{ipa::SRS, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
-
-<span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
 <span class="kw">pub fn </span>cannon_main(args: cli::cannon::RunArgs) {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
@@ -217,11 +265,40 @@
     <span class="comment">// Initialize some data used for statistical computations
     </span><span class="kw">let </span>start = Start::create(state.step <span class="kw">as </span>usize);
 
-    <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
-    <span class="kw">let </span>srs: SRS&lt;Vesta&gt; = {
-        <span class="kw">let </span>srs = SRS::create(DOMAIN_SIZE);
-        srs.get_lagrange_basis(domain_fp.d1);
-        srs
+    <span class="kw">let </span>(srs, domain_fp) = <span class="kw">match </span><span class="kw-2">&amp;</span>args.srs_cache {
+        <span class="prelude-val">Some</span>(cache) =&gt; {
+            <span class="macro">debug!</span>(<span class="string">&quot;Loading SRS from cache {}&quot;</span>, cache);
+            <span class="kw">let </span>file_path = Path::new(cache);
+            <span class="kw">let </span>file = File::open(file_path).expect(<span class="string">&quot;Error opening SRS cache file&quot;</span>);
+            <span class="kw">let </span>srs: SRS&lt;Vesta&gt; = {
+                <span class="comment">// By convention, proof systems serializes a TestSRS with filename &#39;test_&lt;CURVE_NAME&gt;.srs&#39;.
+                // The benefit of using this is you don&#39;t waste time verifying the SRS.
+                </span><span class="kw">if </span>file_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with(<span class="string">&quot;test_&quot;</span>)
+                {
+                    <span class="kw">let </span>test_srs: TestSRS&lt;Vesta&gt; = rmp_serde::from_read(<span class="kw-2">&amp;</span>file).unwrap();
+                    From::from(test_srs)
+                } <span class="kw">else </span>{
+                    rmp_serde::from_read(<span class="kw-2">&amp;</span>file).unwrap()
+                }
+            };
+            <span class="macro">debug!</span>(<span class="string">&quot;SRS loaded successfully from cache&quot;</span>);
+            <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(srs.size()).unwrap();
+            (srs, domain_fp)
+        }
+        <span class="prelude-val">None </span>=&gt; {
+            <span class="macro">debug!</span>(<span class="string">&quot;No SRS cache provided. Creating SRS from scratch with domain size 2^16&quot;</span>);
+            <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
+            <span class="kw">let </span>srs = SRS::create(domain_size);
+            <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(srs.size()).unwrap();
+            srs.get_lagrange_basis(domain_fp.d1);
+            <span class="macro">debug!</span>(<span class="string">&quot;SRS created successfully&quot;</span>);
+            (srs, domain_fp)
+        }
     };
 
     <span class="comment">// Initialize the environments
@@ -247,8 +324,9 @@
     };
 
     <span class="kw">let </span>constraints = mips_constraints::get_all_constraints::&lt;Fp&gt;();
+    <span class="kw">let </span>domain_size = domain_fp.d1.size <span class="kw">as </span>usize;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(DOMAIN_SIZE);
+    <span class="kw">let </span><span class="kw-2">mut </span>curr_proof_inputs: ProofInputs&lt;Vesta&gt; = ProofInputs::new(domain_size);
     <span class="kw">while </span>!mips_wit_env.halt {
         <span class="kw">let </span>_instr: Instruction = mips_wit_env.step(<span class="kw-2">&amp;</span>configuration, meta, <span class="kw-2">&amp;</span>start);
         <span class="kw">for </span>(scratch, scratch_chunk) <span class="kw">in </span>mips_wit_env
@@ -265,6 +343,28 @@
         {
             scratch_chunk.push(<span class="kw-2">*</span>scratch);
         }
+        <span class="comment">// Lookup state
+        </span>{
+            <span class="kw">let </span>proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
+            <span class="kw">let </span>environment_length = mips_wit_env.lookup_state.len();
+            <span class="kw">let </span>lookup_state_size = std::cmp::max(proof_inputs_length, environment_length);
+            <span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..lookup_state_size {
+                <span class="kw">if </span>idx &gt;= environment_length {
+                    <span class="comment">// We pad with 0s for dummy lookups missing from the environment.
+                    </span>curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } <span class="kw">else if </span>idx &gt;= proof_inputs_length {
+                    <span class="comment">// We create a new column filled with 0s in the proof inputs.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>new_vec =
+                        <span class="macro">vec!</span>[Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
+                } <span class="kw">else </span>{
+                    <span class="comment">// Push the value to the column.
+                    </span>curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
+        }
         curr_proof_inputs
             .evaluations
             .instruction_counter
@@ -277,9 +377,9 @@
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) <span class="kw">as </span>u64));
 
-        <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+        <span class="kw">if </span>curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
             <span class="kw">let </span>start_iteration = Instant::now();
-            <span class="macro">debug!</span>(<span class="string">&quot;Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk&quot;</span>);
+            <span class="macro">debug!</span>(<span class="string">&quot;Limit of {domain_size} reached. We make a proof, verify it (for testing) and start with a new chunk&quot;</span>);
             <span class="kw">let </span>proof = prover::prove::&lt;
                 Vesta,
                 DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;,
@@ -307,7 +407,7 @@
                 <span class="macro">assert!</span>(verif);
             }
 
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            curr_proof_inputs = ProofInputs::new(domain_size);
         }
     }
 }

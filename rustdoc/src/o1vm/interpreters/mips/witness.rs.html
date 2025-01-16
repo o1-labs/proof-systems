@@ -1304,6 +1304,94 @@
 <a href="#1304" id="1304">1304</a>
 <a href="#1305" id="1305">1305</a>
 <a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -1326,13 +1414,15 @@
             registers::Registers,
         },
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
+    ramlookup::LookupMode,
     utils::memory_size,
 };
-<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>core::panic;
 <span class="kw">use </span>kimchi::o1_utils::Two;
+<span class="kw">use </span>kimchi_msm::LogupTableID;
 <span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>std::{
     array,
@@ -1370,6 +1460,36 @@
     }
 }
 
+<span class="kw">pub struct </span>LookupMultiplicities {
+    <span class="kw">pub </span>pad_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>round_constants_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>at_most_4_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>byte_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>range_check_16_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>sparse_lookup: Vec&lt;u64&gt;,
+    <span class="kw">pub </span>reset_lookup: Vec&lt;u64&gt;,
+}
+
+<span class="kw">impl </span>LookupMultiplicities {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        LookupMultiplicities {
+            pad_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::PadLookup.length()],
+            round_constants_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::RoundConstantsLookup.length()],
+            at_most_4_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::AtMost4Lookup.length()],
+            byte_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::ByteLookup.length()],
+            range_check_16_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::RangeCheck16Lookup.length()],
+            sparse_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::SparseLookup.length()],
+            reset_lookup: <span class="macro">vec!</span>[<span class="number">0</span>; LookupTableIDs::ResetLookup.length()],
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>LookupMultiplicities {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
 <span class="doccomment">/// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
@@ -1387,6 +1507,8 @@
     <span class="kw">pub </span>scratch_state_idx_inverse: usize,
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
+    <span class="kw">pub </span>lookup_state_idx: usize,
+    <span class="kw">pub </span>lookup_state: Vec&lt;Fp&gt;,
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
     <span class="kw">pub </span>selector: usize,
@@ -1396,13 +1518,14 @@
     <span class="kw">pub </span>preimage_key: <span class="prelude-ty">Option</span>&lt;[u8; <span class="number">32</span>]&gt;,
     <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
     <span class="kw">pub </span>hash_counter: u64,
+    <span class="kw">pub </span>lookup_multiplicities: LookupMultiplicities,
 }
 
 <span class="kw">fn </span>fresh_scratch_state&lt;Fp: Field, <span class="kw">const </span>N: usize&gt;() -&gt; [Fp; N] {
     array::from_fn(|<span class="kw">_</span>| Fp::zero())
 }
 
-<span class="kw">impl</span>&lt;Fp: Field, PreImageOracle: PreImageOracleT&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp, PreImageOracle&gt; {
+<span class="kw">impl</span>&lt;Fp: PrimeField, PreImageOracle: PreImageOracleT&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp, PreImageOracle&gt; {
     <span class="kw">type </span>Position = Column;
 
     <span class="kw">fn </span>alloc_scratch(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
@@ -1448,10 +1571,54 @@
         }
     }
 
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="comment">// No-op, constraints only
-        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
-    </span>}
+    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="kw">let </span><span class="kw-2">mut </span>add_value = |x: Fp| {
+            <span class="self">self</span>.lookup_state_idx += <span class="number">1</span>;
+            <span class="self">self</span>.lookup_state.push(x);
+        };
+        <span class="kw">let </span>Lookup {
+            table_id,
+            magnitude: numerator,
+            mode,
+            value: values,
+        } = lookup;
+        <span class="kw">let </span>values: Vec&lt;<span class="kw">_</span>&gt; = values.into_iter().map(|x| Fp::from(x)).collect();
+
+        <span class="comment">// Add lookup numerator
+        </span><span class="kw">match </span>mode {
+            LookupMode::Write =&gt; add_value(Fp::from(numerator)),
+            LookupMode::Read =&gt; add_value(-Fp::from(numerator)),
+        };
+        <span class="comment">// Add lookup table ID
+        </span>add_value(Fp::from(table_id.to_u32()));
+        <span class="comment">// Add values
+        </span><span class="kw">for </span>value <span class="kw">in </span>values.iter() {
+            add_value(<span class="kw-2">*</span>value);
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = table_id.ix_by_value(values.as_slice()) {
+            <span class="kw">match </span>table_id {
+                LookupTableIDs::PadLookup =&gt; <span class="self">self</span>.lookup_multiplicities.pad_lookup[idx] += <span class="number">1</span>,
+                LookupTableIDs::RoundConstantsLookup =&gt; {
+                    <span class="self">self</span>.lookup_multiplicities.round_constants_lookup[idx] += <span class="number">1
+                </span>}
+                LookupTableIDs::AtMost4Lookup =&gt; {
+                    <span class="self">self</span>.lookup_multiplicities.at_most_4_lookup[idx] += <span class="number">1
+                </span>}
+                LookupTableIDs::ByteLookup =&gt; <span class="self">self</span>.lookup_multiplicities.byte_lookup[idx] += <span class="number">1</span>,
+                LookupTableIDs::RangeCheck16Lookup =&gt; {
+                    <span class="self">self</span>.lookup_multiplicities.range_check_16_lookup[idx] += <span class="number">1
+                </span>}
+                LookupTableIDs::SparseLookup =&gt; <span class="self">self</span>.lookup_multiplicities.sparse_lookup[idx] += <span class="number">1</span>,
+                LookupTableIDs::ResetLookup =&gt; <span class="self">self</span>.lookup_multiplicities.reset_lookup[idx] += <span class="number">1</span>,
+                <span class="comment">// RAM ones, no multiplicities
+                </span>LookupTableIDs::MemoryLookup =&gt; (),
+                LookupTableIDs::RegisterLookup =&gt; (),
+                LookupTableIDs::SyscallLookup =&gt; (),
+                LookupTableIDs::KeccakStepLookup =&gt; (),
+            }
+        }
+    }
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.instruction_counter
@@ -2125,7 +2292,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;Fp: Field, PreImageOracle: PreImageOracleT&gt; Env&lt;Fp, PreImageOracle&gt; {
+<span class="kw">impl</span>&lt;Fp: PrimeField, PreImageOracle: PreImageOracleT&gt; Env&lt;Fp, PreImageOracle&gt; {
     <span class="kw">pub fn </span>create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>initial_instruction_pointer = state.pc;
         <span class="kw">let </span>next_instruction_pointer = state.next_pc;
@@ -2188,6 +2355,8 @@
             scratch_state_idx_inverse: <span class="number">0</span>,
             scratch_state: fresh_scratch_state(),
             scratch_state_inverse: fresh_scratch_state(),
+            lookup_state_idx: <span class="number">0</span>,
+            lookup_state: <span class="macro">vec!</span>[],
             halt: state.exited,
             syscall_env,
             selector,
@@ -2197,6 +2366,7 @@
             preimage_key: <span class="prelude-val">None</span>,
             keccak_env: <span class="prelude-val">None</span>,
             hash_counter: <span class="number">0</span>,
+            lookup_multiplicities: LookupMultiplicities::new(),
         }
     }
 
@@ -2209,6 +2379,11 @@
     <span class="kw">pub fn </span>reset_scratch_state_inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.scratch_state_idx_inverse = <span class="number">0</span>;
         <span class="self">self</span>.scratch_state_inverse = fresh_scratch_state();
+    }
+
+    <span class="kw">pub fn </span>reset_lookup_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.lookup_state_idx = <span class="number">0</span>;
+        <span class="self">self</span>.lookup_state = <span class="macro">vec!</span>[];
     }
 
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: u64) {
@@ -2454,6 +2629,7 @@
     ) -&gt; Instruction {
         <span class="self">self</span>.reset_scratch_state();
         <span class="self">self</span>.reset_scratch_state_inverse();
+        <span class="self">self</span>.reset_lookup_state();
         <span class="kw">let </span>(opcode, _instruction) = <span class="self">self</span>.decode_instruction();
 
         <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);
