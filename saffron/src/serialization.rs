@@ -7,11 +7,11 @@ use o1_utils::FieldHelpers;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
-fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
+pub fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
     Fp::from_be_bytes_mod_order(bytes)
 }
 
-fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+pub fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
