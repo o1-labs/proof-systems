@@ -23,8 +23,6 @@ use o1vm::{
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
-pub const DOMAIN_SIZE: usize = 1 << 15;
-
 pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut rng = rand::thread_rng();
 
@@ -47,8 +45,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
-    let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-    let srs: SRS<Vesta> = match &args.srs_cache {
+    let (srs, domain_fp) = match &args.srs_cache {
         Some(cache) => {
             debug!("Loading SRS from cache {}", cache);
             let file_path = Path::new(cache);
@@ -69,22 +66,18 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                     rmp_serde::from_read(&file).unwrap()
                 }
             };
-            if srs.size() != DOMAIN_SIZE {
-                panic!(
-                    "SRS size mismatch. Expected {}, got {}",
-                    DOMAIN_SIZE,
-                    srs.size()
-                );
-            }
             debug!("SRS loaded successfully from cache");
-            srs
+            let domain_fp = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
+            (srs, domain_fp)
         }
         None => {
-            debug!("No SRS cache provided. Creating SRS from scratch");
-            let srs = SRS::create(DOMAIN_SIZE);
+            debug!("No SRS cache provided. Creating SRS from scratch with domain size 2^16");
+            let domain_size = 1 << 16;
+            let srs = SRS::create(domain_size);
+            let domain_fp = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
             srs.get_lagrange_basis(domain_fp.d1);
             debug!("SRS created successfully");
-            srs
+            (srs, domain_fp)
         }
     };
 
@@ -111,8 +104,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     let constraints = mips_constraints::get_all_constraints::<Fp>();
+    let domain_size = domain_fp.d1.size as usize;
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -141,9 +135,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
-        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+        if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
             let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
+            debug!("Limit of {domain_size} reached. We make a proof, verify it (for testing) and start with a new chunk");
             let proof = prover::prove::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
@@ -171,7 +165,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 assert!(verif);
             }
 
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            curr_proof_inputs = ProofInputs::new(domain_size);
         }
     }
 }
