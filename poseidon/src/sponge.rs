@@ -17,6 +17,7 @@ pub trait FqSponge<Fq: Field, G, Fr> {
     fn absorb_fq(&mut self, x: &[Fq]);
 
     /// Absorbs a base field point, that is a pair of `Fq` elements.
+    /// In the case of the point to infinity, the values `(0, 0)` are absorbed.
     fn absorb_g(&mut self, g: &[G]);
 
     /// Absorbs an element of the scalar field `Fr` --- it is done

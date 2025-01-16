@@ -106,8 +106,36 @@ impl LookupTableID for LookupTableIDs {
         panic!("No runtime tables specified");
     }
 
-    fn ix_by_value<F: PrimeField>(&self, _value: &[F]) -> Option<usize> {
-        todo!()
+    fn ix_by_value<F: PrimeField>(&self, value: &[F]) -> Option<usize> {
+        // Shamelessly copied from below, where it is likely also incorrect.
+        let idx = value[0]
+            .to_bytes()
+            .iter()
+            .rev()
+            .fold(0u64, |acc, &x| acc * 256 + x as u64) as usize;
+        match self {
+            // Fixed tables
+            Self::RoundConstantsLookup
+            | Self::AtMost4Lookup
+            | Self::ByteLookup
+            | Self::RangeCheck16Lookup
+            | Self::ResetLookup => Some(idx),
+            Self::PadLookup => Some(idx - 1),
+            Self::SparseLookup => {
+                // Big yikes. This is copied from below.
+                let res = u64::from_str_radix(&format!("{:x}", idx), 2);
+                if let Ok(ok) = res {
+                    Some(ok as usize)
+                } else {
+                    panic!("Help");
+                }
+            }
+            // Non-fixed tables
+            Self::MemoryLookup
+            | Self::RegisterLookup
+            | Self::SyscallLookup
+            | Self::KeccakStepLookup => None,
+        }
     }
 
     fn all_variants() -> Vec<Self> {

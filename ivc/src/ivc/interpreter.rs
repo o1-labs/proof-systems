@@ -818,15 +818,11 @@ pub fn build_fixed_selectors<const N_COL_TOTAL: usize, const N_CHALS: usize>(
     }
 
     for i in N_BLOCKS..N_FSEL_IVC - N_BLOCKS {
-        PoseidonBN254Parameters
-            .constants()
-            .iter()
-            .enumerate()
-            .for_each(|(_round, rcs)| {
-                rcs.iter().enumerate().for_each(|(_state_index, rc)| {
-                    selectors[i] = vec![*rc; domain_size];
-                });
+        PoseidonBN254Parameters.constants().iter().for_each(|rcs| {
+            rcs.iter().for_each(|rc| {
+                selectors[i] = vec![*rc; domain_size];
             });
+        });
     }
 
     selectors

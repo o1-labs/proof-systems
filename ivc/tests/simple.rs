@@ -67,10 +67,10 @@ pub enum AdditionColumn {
     C,
 }
 
-impl ColumnIndexer for AdditionColumn {
+impl ColumnIndexer<usize> for AdditionColumn {
     const N_COL: usize = 3;
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             AdditionColumn::A => Column::Relation(0),
             AdditionColumn::B => Column::Relation(1),
@@ -119,7 +119,7 @@ pub fn heavy_test_simple_add() {
     const N_FSEL_TOTAL: usize = N_FSEL_IVC;
 
     // Total number of witness columns in IVC. The blocks are public selectors.
-    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer>::N_COL - N_FSEL_IVC;
+    const N_WIT_IVC: usize = <IVCColumn as ColumnIndexer<usize>>::N_COL - N_FSEL_IVC;
 
     // Number of witness columns in the circuit.
     // It consists of the columns of the inner circuit and the columns for the
@@ -189,7 +189,7 @@ pub fn heavy_test_simple_add() {
         const N_ALPHAS: usize,
     > = StandardConfig<
         Curve,
-        Column,
+        Column<usize>,
         PlonkishChallenge,
         PlonkishInstance<Curve, N_COL_TOTAL, N_CHALS, N_ALPHAS>, // TODO check if it's quad or not
         PlonkishWitness<N_COL_TOTAL, N_FSEL, Fp>,
@@ -835,10 +835,7 @@ pub fn heavy_test_simple_add() {
                         .divide_by_vanishing_poly(domain.d1)
                         .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
                     if !remainder.is_zero() {
-                        panic!(
-                            "Remainder is not zero for expression #{expr_i}: {}",
-                            expr.to_string()
-                        );
+                        panic!("Remainder is not zero for expression #{expr_i}: {}", expr,);
                     }
                 }
             }
@@ -924,7 +921,7 @@ pub fn heavy_test_simple_add() {
                 if !remainder.is_zero() {
                     panic!(
                         "ERROR: Remainder is not zero for joint expression: {}",
-                        expr.to_string()
+                        expr
                     );
                 } else {
                     println!("Interpolated expression is divisible by vanishing poly d1");

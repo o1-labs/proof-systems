@@ -95,7 +95,7 @@ impl<
         ID: LookupTableID,
     > ColumnEvaluations<F> for ProofEvaluations<N_WIT, N_REL, N_DSEL, N_FSEL, F, ID>
 {
-    type Column = crate::columns::Column;
+    type Column = crate::columns::Column<usize>;
 
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
         // TODO: substitute when non-literal generic constants are available

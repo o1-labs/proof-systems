@@ -10,17 +10,6 @@ use ark_ff::PrimeField;
 
 use super::{errors::SnarkyResult, runner::Constraint};
 
-trait OutOfCircuitSnarkyType2<F> {
-    type InCircuit;
-}
-
-impl<F> OutOfCircuitSnarkyType2<F> for bool
-where
-    F: PrimeField,
-{
-    type InCircuit = Boolean<F>;
-}
-
 /// A boolean variable.
 #[derive(Debug, Clone)]
 pub struct Boolean<F: PrimeField>(FieldVar<F>);

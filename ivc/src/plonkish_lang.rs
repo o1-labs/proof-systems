@@ -75,13 +75,13 @@ impl<
 {
 }
 
-impl<const N_COL: usize, const N_FSEL: usize, F: FftField, Evals: CombinableEvals<F>> Index<Column>
-    for PlonkishWitnessGeneric<N_COL, N_FSEL, F, Evals>
+impl<const N_COL: usize, const N_FSEL: usize, F: FftField, Evals: CombinableEvals<F>>
+    Index<Column<usize>> for PlonkishWitnessGeneric<N_COL, N_FSEL, F, Evals>
 {
     type Output = [F];
 
     /// Map a column alias to the corresponding witness column.
-    fn index(&self, index: Column) -> &Self::Output {
+    fn index(&self, index: Column<usize>) -> &Self::Output {
         match index {
             Column::Relation(i) => self.witness.cols[i].e_as_slice(),
             Column::FixedSelector(i) => self.fixed_selectors[i].e_as_slice(),

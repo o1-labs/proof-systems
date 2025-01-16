@@ -24,6 +24,7 @@ pub mod utils;
 
 pub mod test_preimage_read;
 
+use crate::pickles::column_env::RelationColumnType;
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr},
@@ -43,4 +44,4 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// `P(X, Y, Z) = q_x X + q_y Y + q_m X Y + q_o Z + q_c`
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
-pub(crate) type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+pub(crate) type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column<RelationColumnType>>;

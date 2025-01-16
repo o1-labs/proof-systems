@@ -10,7 +10,11 @@ use kimchi_msm::{
 use super::{LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE};
 
 /// Helper. Combines small limbs into big limbs.
-pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+pub fn combine_large_to_xlarge<
+    F: PrimeField,
+    CIx: ColumnIndexer<usize>,
+    Env: ColAccessCap<F, CIx>,
+>(
     x: [Env::Variable; N_LIMBS_LARGE],
 ) -> [Env::Variable; N_LIMBS_XLARGE] {
     combine_limbs_m_to_n::<
@@ -25,7 +29,11 @@ pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccess
 }
 
 /// Helper. Combines 17x15bit limbs into 1 native field element.
-pub fn combine_small_to_full<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+pub fn combine_small_to_full<
+    F: PrimeField,
+    CIx: ColumnIndexer<usize>,
+    Env: ColAccessCap<F, CIx>,
+>(
     x: [Env::Variable; N_LIMBS_SMALL],
 ) -> Env::Variable {
     let [res] =
