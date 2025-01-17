@@ -996,7 +996,8 @@ pub fn interpret_noop<Env: InterpreterEnv>(env: &mut Env) {
     env.range_check8(&opcode, 6);
     env.assert_is_zero(opcode);
     let next_instruction_pointer = env.get_next_instruction_pointer();
-    env.set_instruction_pointer(next_instruction_pointer);
+    env.set_instruction_pointer(next_instruction_pointer.clone());
+    env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
