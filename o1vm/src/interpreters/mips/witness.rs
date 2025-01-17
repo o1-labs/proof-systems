@@ -1247,6 +1247,17 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);
 
+        // Force stops at given iteration
+        if self.should_trigger_at(&config.stop_at) {
+            self.halt = true;
+            println!(
+                "Halted as requested at step={} instruction={:?}",
+                self.normalized_instruction_counter(),
+                opcode
+            );
+            return opcode;
+        }
+
         interpreter::interpret_instruction(self, opcode);
 
         self.instruction_counter = self.next_instruction_counter();
@@ -1257,16 +1268,6 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 self.halt = true;
             }
         });
-
-        // Force stops at given iteration
-        if self.should_trigger_at(&config.stop_at) {
-            self.halt = true;
-            println!(
-                "Halted as requested at step={} instruction={:?}",
-                self.normalized_instruction_counter(),
-                opcode
-            );
-        }
 
         // Integer division by MAX_ACC to obtain the actual instruction count
         if self.halt {

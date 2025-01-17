@@ -18,10 +18,9 @@ use o1vm::{
     },
     pickles::{proof::ProofInputs, prover, verifier},
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
-    test_preimage_read, E,
+    test_preimage_read,
 };
 use poly_commitment::{ipa::SRS, SRS as _};
-use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
 pub fn cannon_main(args: cli::cannon::RunArgs) {
@@ -159,87 +158,38 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
-            prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+            let start_iteration = Instant::now();
+            debug!("Limit of {domain_size} reached. We make a proof, verify it (for testing) and start with a new chunk");
+            let proof = prover::prove::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                _,
+            >(domain_fp, &srs, curr_proof_inputs, &constraints, &mut rng)
+            .unwrap();
+            // Check that the proof is correct. This is for testing purposes.
+            // Leaving like this for now.
+            debug!(
+                "Proof generated in {elapsed} μs",
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+            {
+                let start_iteration = Instant::now();
+                let verif = verifier::verify::<
+                    Vesta,
+                    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+                    DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+                >(domain_fp, &srs, &constraints, &proof);
+                debug!(
+                    "Verification done in {elapsed} μs",
+                    elapsed = start_iteration.elapsed().as_micros()
+                );
+                assert!(verif);
+            }
 
             curr_proof_inputs = ProofInputs::new(domain_size);
         }
     }
-
-    if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size {
-        debug!("Padding witness for proof generation");
-        pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
-        prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
-    }
-}
-
-fn prove_and_verify(
-    domain_fp: EvaluationDomains<Fp>,
-    srs: &SRS<Vesta>,
-    constraints: &[E<Fp>],
-    curr_proof_inputs: ProofInputs<Vesta>,
-    rng: &mut ThreadRng,
-) {
-    let start_iteration = Instant::now();
-    let proof = prover::prove::<
-        Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-        _,
-    >(domain_fp, srs, curr_proof_inputs, constraints, rng)
-    .unwrap();
-    debug!(
-        "Proof generated in {elapsed} μs",
-        elapsed = start_iteration.elapsed().as_micros()
-    );
-    let start_iteration = Instant::now();
-    let verif = verifier::verify::<
-        Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
-    >(domain_fp, srs, constraints, &proof);
-    debug!(
-        "Verification done in {elapsed} μs",
-        elapsed = start_iteration.elapsed().as_micros()
-    );
-    assert!(verif);
-}
-
-fn pad(
-    witness_env: &mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
-    curr_proof_inputs: &mut ProofInputs<Vesta>,
-    rng: &mut ThreadRng,
-) {
-    let zero = Fp::zero();
-    // FIXME: Find a better way to get instruction selectors that doesn't
-    // reveal internals.
-    let noop_selector: Fp = {
-        let noop: usize = Instruction::NoOp.into();
-        Fp::from((noop - N_MIPS_REL_COLS) as u64)
-    };
-    curr_proof_inputs
-        .evaluations
-        .scratch
-        .iter_mut()
-        .for_each(|x| x.resize(x.capacity(), zero));
-    curr_proof_inputs
-        .evaluations
-        .scratch_inverse
-        .iter_mut()
-        .for_each(|x| x.resize(x.capacity(), zero));
-    curr_proof_inputs.evaluations.instruction_counter.resize(
-        curr_proof_inputs.evaluations.instruction_counter.capacity(),
-        Fp::from(witness_env.instruction_counter),
-    );
-    curr_proof_inputs
-        .evaluations
-        .error
-        .resize_with(curr_proof_inputs.evaluations.error.capacity(), || {
-            Fp::rand(rng)
-        });
-    curr_proof_inputs.evaluations.selector.resize(
-        curr_proof_inputs.evaluations.selector.capacity(),
-        noop_selector,
-    );
 }
 
 fn gen_state_json(arg: cli::cannon::GenStateJsonArgs) -> Result<(), String> {
