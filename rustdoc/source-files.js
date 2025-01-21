@@ -19,6 +19,7 @@ var sourcesIndex = JSON.parse('{\
 "o1vm":["",[["cli",[],["cannon.rs","mod.rs"]],["interpreters",[["keccak",[],["column.rs","constraints.rs","environment.rs","helpers.rs","interpreter.rs","mod.rs","witness.rs"]],["mips",[],["column.rs","constraints.rs","interpreter.rs","mod.rs","registers.rs","witness.rs"]],["riscv32im",[],["column.rs","constraints.rs","interpreter.rs","mod.rs","registers.rs","witness.rs"]]],["mod.rs"]],["pickles",[],["column_env.rs","mod.rs","proof.rs","prover.rs","verifier.rs"]]],["cannon.rs","elf_loader.rs","lib.rs","lookups.rs","preimage_oracle.rs","ramlookup.rs","test_preimage_read.rs","utils.rs"]],\
 "pickles_o1vm":["",[],["main.rs"]],\
 "poly_commitment":["",[],["combine.rs","commitment.rs","error.rs","hash_map_cache.rs","ipa.rs","kzg.rs","lib.rs","pbt_srs.rs","utils.rs"]],\
+"saffron":["",[],["cli.rs","lib.rs","serialization.rs"]],\
 "turshi":["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]\
 }');
 createSourceSidebar();
