@@ -1,6 +1,6 @@
 use clap::{arg, Parser};
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser)]
 pub struct EncodeFileArgs {
     #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
     pub input: String,
@@ -14,7 +14,7 @@ pub struct EncodeFileArgs {
     pub output: String,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser)]
 pub struct DecodeFileArgs {
     #[arg(
         long,
@@ -28,7 +28,7 @@ pub struct DecodeFileArgs {
     pub output: String,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",

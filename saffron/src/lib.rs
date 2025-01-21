@@ -1,3 +1,2 @@
-pub mod serialization;
-
 pub mod cli;
+pub mod serialization;

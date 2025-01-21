@@ -18,11 +18,17 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+ark-ec.workspace = true
 ark-ff.workspace = true
+ark-poly.workspace = true
 ark-serialize = { workspace = true, features = ["derive"]}
 clap = { workspace = true, features = ["derive"] }
+env_logger.workspace = true
+log.workspace = true
 mina-curves.workspace = true
 o1-utils.workspace = true
+poly-commitment.workspace = true
+rayon.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
@@ -31,3 +37,4 @@ tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt"
 [dev-dependencies]
 ark-std.workspace = true
 proptest.workspace = true
+once_cell.workspace = true
