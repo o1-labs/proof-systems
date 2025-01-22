@@ -52,4 +52,68 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         }
     }
 
+    fn add_multiplicities(&mut self, multiplicities: LookupMultiplicities) {
+        for (x, y) in self
+            .multiplicities
+            .pad_lookup
+            .iter_mut()
+            .zip(multiplicities.pad_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .round_constants_lookup
+            .iter_mut()
+            .zip(multiplicities.round_constants_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .at_most_4_lookup
+            .iter_mut()
+            .zip(multiplicities.at_most_4_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .byte_lookup
+            .iter_mut()
+            .zip(multiplicities.byte_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .range_check_16_lookup
+            .iter_mut()
+            .zip(multiplicities.range_check_16_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .sparse_lookup
+            .iter_mut()
+            .zip(multiplicities.sparse_lookup.iter())
+        {
+            *x += y
+        }
+
+        for (x, y) in self
+            .multiplicities
+            .reset_lookup
+            .iter_mut()
+            .zip(multiplicities.reset_lookup.iter())
+        {
+            *x += y
+        }
+    }
 }
