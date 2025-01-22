@@ -14,8 +14,9 @@ fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
     Fp::from_be_bytes_mod_order(bytes)
 }
 
-fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
-    x.into_bigint().to_bytes_be()
+fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
+    let bytes = x.into_bigint().to_bytes_be();
+    buffer.copy_from_slice(&bytes);
 }
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a Vec<F> where F is a prime field.
@@ -111,22 +112,19 @@ impl<F: PrimeField> FieldBlob<F> {
     pub fn decode<D: EvaluationDomain<F>>(domain: D, blob: FieldBlob<F>) -> Vec<u8> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
+        let mut bytes = Vec::with_capacity(blob.n_bytes);
+        let mut buffer = vec![0u8; m];
 
-        let bytes: Vec<u8> = blob
-            .data
-            .into_par_iter()
-            .flat_map(|p: DensePolynomial<F>| {
-                let evals = p.evaluate_over_domain(domain).evals;
+        for p in blob.data {
+            let evals = p.evaluate_over_domain(domain).evals;
+            for x in evals {
+                decode_into(&mut buffer, x);
+                bytes.extend_from_slice(&buffer[(m - n)..m]);
+            }
+        }
 
-                // Convert evaluations to bytes
-                evals
-                    .into_par_iter()
-                    .flat_map(|x| decode(x).as_slice()[(m - n)..m].to_vec())
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
-        bytes.into_iter().take(blob.n_bytes).collect()
+        bytes.truncate(blob.n_bytes);
+        bytes
     }
 }
 
@@ -138,6 +136,12 @@ mod tests {
     use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
+
+    fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+        let mut buffer = vec![0u8; Fp::size_in_bytes()];
+        decode_into(&mut buffer, x);
+        buffer
+    }
 
     // Check that [u8] -> Fp -> [u8] is the identity function.
     proptest! {
