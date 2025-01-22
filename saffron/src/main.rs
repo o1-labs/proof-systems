@@ -20,11 +20,10 @@ const SRS_SIZE: usize = 1 << 16;
 fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
     let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
     debug!(
-        input_file = args.input,
         domain_size = domain.size(),
+        input_file = args.input,
         "Decoding file"
     );
-    debug!("Decoding file using domain of size {}", domain.size());
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
@@ -39,15 +38,15 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
 fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
     debug!(
-        input_file = args.input,
         domain_size = domain.size(),
+        input_file = args.input,
         "Encoding file"
     );
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let blob = FieldBlob::<Fp>::encode(domain, &buf);
-    debug!("Writing encoded blob to file {} ", args.output);
+    debug!(output_file = args.output, "Writing encoded blob to file",);
     let mut bytes_to_write = Vec::with_capacity(buf.len());
     blob.serialize_compressed(&mut bytes_to_write)?;
     debug!(output_file = args.output, "Writing encoded blob to file",);

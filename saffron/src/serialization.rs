@@ -4,10 +4,9 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Compress, Read, SerializationError, Valid, Validate,
     Write,
 };
-use log::debug;
 use o1_utils::FieldHelpers;
 use rayon::prelude::*;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -76,6 +75,7 @@ impl<F: CanonicalDeserialize + Field> CanonicalDeserialize for FieldBlob<F> {
 impl<F: PrimeField> FieldBlob<F> {
     #[instrument(skip_all)]
     // Encode a bytestring as a list of polynomials in coefficient form.
+    #[instrument(skip_all)]
     pub fn encode<D: EvaluationDomain<F>>(domain: D, bytes: &[u8]) -> FieldBlob<F> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let domain_size = domain.size();
@@ -108,7 +108,6 @@ impl<F: PrimeField> FieldBlob<F> {
     }
 
     #[instrument(skip_all)]
-    // Decode a list of polynomials (in coefficient form) as a bytestring.
     pub fn decode<D: EvaluationDomain<F>>(domain: D, blob: FieldBlob<F>) -> Vec<u8> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
