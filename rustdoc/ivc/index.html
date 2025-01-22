@@ -56,7 +56,7 @@ env.process_hash(comm, OutputCommitment)
 })
 env.assert_eq(env.output_left, env.hash_state[OutputCommitment])
 </code></pre></div>
-<p>The order of the execution is encoded in the fact the the hash contains the
+<p>The order of the execution is encoded in the fact the hash contains the
 step <code>i</code> when we check the left input and <code>i + 1</code> when we compress the
 folded output. The fact that the prover encodes the computation on the same
 initial input is encoded by adding the initial value <code>z0</code> into the hash for
