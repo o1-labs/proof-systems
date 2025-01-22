@@ -18,14 +18,14 @@ fi
 
 # Run encode
 echo "Encoding $INPUT_FILE to $ENCODED_FILE"
-if ! cargo run --bin saffron encode -i "$INPUT_FILE" -o "$ENCODED_FILE"; then
+if ! cargo run --release --bin saffron encode -i "$INPUT_FILE" -o "$ENCODED_FILE"; then
     echo "Encoding failed"
     exit 1
 fi
 
 # Run decode
 echo "Decoding $ENCODED_FILE to $DECODED_FILE"
-if ! cargo run --bin saffron decode -i "$ENCODED_FILE" -o "$DECODED_FILE"; then
+if ! cargo run --release --bin saffron decode -i "$ENCODED_FILE" -o "$DECODED_FILE"; then
     echo "Decoding failed"
     exit 1
 fi
