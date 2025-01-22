@@ -317,7 +317,7 @@ where
     OpeningProof::SRS: Clone,
     VerifierIndex<G, OpeningProof>: Clone,
 {
-    /// Regression test: Create a proof and check that is is equal to
+    /// Regression test: Create a proof and check that is equal to
     /// the given serialized implementation (and that deserializes
     /// correctly).
     pub(crate) fn prove_and_check_serialization_regression<
