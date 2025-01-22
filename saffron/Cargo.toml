@@ -23,6 +23,9 @@ ark-serialize = { workspace = true, features = ["derive"]}
 clap = { workspace = true, features = ["derive"] }
 mina-curves.workspace = true
 o1-utils.workspace = true
+time = { version = "0.3", features = ["macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
 
 
 [dev-dependencies]
