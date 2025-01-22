@@ -19,6 +19,7 @@ pub mod verifier;
 
 ///Lookup related modules
 pub mod lookup_columns;
+pub mod lookup_env;
 pub mod lookup_prover;
 pub mod lookup_verifier;
 
