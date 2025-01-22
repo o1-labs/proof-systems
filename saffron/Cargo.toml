@@ -1,7 +1,7 @@
 [package]
 name = "saffron"
 version = "0.1.0"
-description = "He who controls the spice controls the universe."
+description = "A mutable state layer"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"

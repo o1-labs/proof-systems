@@ -32,7 +32,7 @@ pub struct DecodeFileArgs {
 #[command(
     name = "saffron",
     version = "0.1",
-    about = "saffron - a data availability layer"
+    about = "saffron - a mutable state layer"
 )]
 pub enum Commands {
     #[command(name = "encode")]
