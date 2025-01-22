@@ -19,7 +19,8 @@ fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
     buffer.copy_from_slice(&bytes);
 }
 
-// A FieldBlob<F> represents the encoding of a Vec<u8> as a Vec<F> where F is a prime field.
+// A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
+// where F is a prime field. The polyonomials are represented in the monomial basis.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldBlob<F: Field> {
     pub n_bytes: usize,
@@ -75,8 +76,6 @@ impl<F: CanonicalDeserialize + Field> CanonicalDeserialize for FieldBlob<F> {
 
 impl<F: PrimeField> FieldBlob<F> {
     #[instrument(skip_all)]
-    // Encode a bytestring as a list of polynomials in coefficient form.
-    #[instrument(skip_all)]
     pub fn encode<D: EvaluationDomain<F>>(domain: D, bytes: &[u8]) -> FieldBlob<F> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let domain_size = domain.size();
@@ -110,6 +109,14 @@ impl<F: PrimeField> FieldBlob<F> {
 
     #[instrument(skip_all)]
     pub fn decode<D: EvaluationDomain<F>>(domain: D, blob: FieldBlob<F>) -> Vec<u8> {
+        // TODO: find an Error type and use Result
+        if domain.size() != blob.domain_size {
+            panic!(
+                "Domain size mismatch, got {}, expected {}",
+                blob.domain_size,
+                domain.size()
+            );
+        }
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
         let mut bytes = Vec::with_capacity(blob.n_bytes);

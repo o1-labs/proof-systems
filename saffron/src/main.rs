@@ -46,7 +46,6 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let blob = FieldBlob::<Fp>::encode(domain, &buf);
-    debug!(output_file = args.output, "Writing encoded blob to file",);
     let mut bytes_to_write = Vec::with_capacity(buf.len());
     blob.serialize_compressed(&mut bytes_to_write)?;
     debug!(output_file = args.output, "Writing encoded blob to file",);
