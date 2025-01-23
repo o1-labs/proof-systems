@@ -1,3 +1,3 @@
 pub mod cli;
-pub mod serialization;
+pub mod blob;
 pub mod utils;

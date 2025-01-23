@@ -3,7 +3,7 @@ use ark_poly::EvaluationDomain;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
-pub fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
+fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
     Fp::from_be_bytes_mod_order(bytes)
 }
 
