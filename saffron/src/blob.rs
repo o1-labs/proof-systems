@@ -133,7 +133,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
-    fn test_round_trip_blob_encoding( xs in prop::collection::vec(any::<u8>(), 0..=2 * DOMAIN.size()))
+    fn test_round_trip_blob_encoding( xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size()))
       { let blob = FieldBlob::<Fp>::encode(*DOMAIN, &xs);
         let mut buf = Vec::new();
         blob.serialize_compressed(&mut buf).unwrap();

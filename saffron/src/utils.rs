@@ -103,10 +103,17 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
-        fn test_round_trip_blob_encoding(xs in prop::collection::vec(any::<u8>(), 0..=2 * DOMAIN.size())
+        fn test_round_trip_blob_encoding(xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size())
     )
           { let chunked = encode_for_domain(&*DOMAIN, &xs);
-            let ys = decode_from_field_elements(chunked.into_iter().flatten().collect()).into_iter().take(xs.len()).collect::<Vec<u8>>();
+            let elems = chunked
+              .into_iter()
+              .flatten()
+              .collect();
+            let ys = decode_from_field_elements(elems)
+              .into_iter()
+              .take(xs.len())
+              .collect::<Vec<u8>>();
             prop_assert_eq!(xs,ys);
           }
         }
