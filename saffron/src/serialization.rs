@@ -4,6 +4,7 @@ use ark_serialize::{
     Write,
 };
 use o1_utils::FieldHelpers;
+use tracing::instrument;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -59,6 +60,7 @@ impl<F: CanonicalDeserialize> CanonicalDeserialize for FieldBlob<F> {
 }
 
 impl<F: PrimeField> FieldBlob<F> {
+    #[instrument(skip_all)]
     // Encode a bytestring as a list of field elements.
     pub fn encode(bytes: &[u8]) -> FieldBlob<F> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
@@ -76,6 +78,7 @@ impl<F: PrimeField> FieldBlob<F> {
         }
     }
 
+    #[instrument(skip_all)]
     // Decode a list of field elements as a bytestring.
     pub fn decode(blob: FieldBlob<F>) -> Vec<u8> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;

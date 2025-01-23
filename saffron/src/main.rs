@@ -7,31 +7,60 @@ use std::{
     fs::File,
     io::{Read, Write},
 };
+use time::macros::format_description;
+use tracing::debug;
+use tracing_subscriber::{
+    fmt::{format::FmtSpan, time::UtcTime},
+    EnvFilter,
+};
 
 fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
+    debug!(input_file = args.input, "Decoding file");
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let blob: FieldBlob<Fp> = FieldBlob::<Fp>::deserialize_compressed(&buf[..])?;
     let data = FieldBlob::<Fp>::decode(blob);
+    debug!(output_file = args.output, "Writing decoded blob to file");
     let mut writer = File::create(args.output)?;
     writer.write_all(&data)?;
     Ok(())
 }
 
 fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
+    debug!(input_file = args.input, "Encoding file");
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let blob = FieldBlob::<Fp>::encode(&buf);
     let mut bytes_to_write = Vec::with_capacity(buf.len());
     blob.serialize_compressed(&mut bytes_to_write)?;
+    debug!(output_file = args.output, "Writing encoded blob to file",);
     let mut writer = File::create(args.output)?;
     writer.write_all(&bytes_to_write)?;
     Ok(())
 }
 
+pub fn init_subscriber() {
+    let timer = UtcTime::new(format_description!(
+        "[year]-[month]-[day]T[hour repr:24]:[minute]:[second].[subsecond digits:3]Z"
+    ));
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_span_events(FmtSpan::CLOSE)
+        .with_timer(timer)
+        .with_target(true)
+        .with_thread_ids(false)
+        .with_line_number(false)
+        .with_file(false)
+        .with_level(true)
+        .with_ansi(true)
+        .with_writer(std::io::stdout)
+        .init();
+}
+
 pub fn main() -> Result<()> {
+    init_subscriber();
     let args = cli::Commands::parse();
     match args {
         cli::Commands::Encode(args) => encode_file(args),
