@@ -51,8 +51,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             let file_path = Path::new(cache);
             let file = File::open(file_path).expect("Error opening SRS cache file");
             let srs: SRS<Vesta> = {
-                // By convention, proof systems serializes a TestSRS with filename 'test_<CURVE_NAME>.srs'.
-                // The benefit of using this is you don't waste time verifying the SRS.
+                // By convention, proof systems serializes a TestSRS with filename
+                // 'test_<CURVE_NAME>.srs'. The benefit of using this is you
+                // don't waste time verifying the SRS.
                 if file_path
                     .file_name()
                     .unwrap()
@@ -94,7 +95,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
         None => {
             debug!("No preimage oracle provided 🤞");
-            // warning: the null preimage oracle has no data and will crash the program if used
+            // warning: the null preimage oracle has no data and will crash the program if
+            // used
             mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
                 cannon::PAGE_SIZE as usize,
                 state,

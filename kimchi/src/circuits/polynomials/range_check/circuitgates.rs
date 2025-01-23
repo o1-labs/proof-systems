@@ -1,27 +1,27 @@
-//~ The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
-//~ `RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
-//~ v_1$ and $v_2$) of up to 88 bits each.
+//~ The multi range check gadget is comprised of three circuit gates
+//~ (`RangeCheck0`, `RangeCheck1` and `Zero`) and can perform range checks on
+//~ three values ($v_0, v_1$ and $v_2$) of up to 88 bits each.
 //~
 //~ Values can be copied as inputs to the multi range check gadget in two ways:
 //~
-//~ * (Standard mode) With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
-//~     cells of the first 3 rows of the gadget.  In this mode the first gate
-//~     coefficient is set to `0`.
-//~ * (Compact mode) With 2 copies, by copying $v_2$ to the first cell of the first
-//~     row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
-//~     In this mode the first gate coefficient is set to `1`.
+//~ * (Standard mode) With 3 copies, by copying $v_0, v_1$ and $v_2$ to the
+//~   first cells of the first 3 rows of the gadget.  In this mode the first
+//~   gate coefficient is set to `0`.
+//~ * (Compact mode) With 2 copies, by copying $v_2$ to the first cell of the
+//~   first row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell
+//~   of row 2. In this mode the first gate coefficient is set to `1`.
 //~
-//~ The `RangeCheck0` gate can also be used on its own to perform 64-bit range checks by
-//~ constraining witness cells 1-2 to zero.
+//~ The `RangeCheck0` gate can also be used on its own to perform 64-bit range
+//~ checks by constraining witness cells 1-2 to zero.
 //~
 //~ **Byte-order:**
 //~
 //~ * Each cell value is in little-endian byte order
 //~ * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
 //~   contain the highest bits)
-//~ * We also have the highest bits covered by copy constraints and plookups, so that
-//~   we can copy the highest two constraints to zero and get a 64-bit lookup, which
-//~   are envisioned to be a common case
+//~ * We also have the highest bits covered by copy constraints and plookups, so
+//~   that we can copy the highest two constraints to zero and get a 64-bit
+//~   lookup, which are envisioned to be a common case
 //~
 //~ The values are decomposed into limbs as follows:
 //~
@@ -45,12 +45,12 @@
 //~ |  2  | $v_2$           |
 //~ |  3  | $v_0, v_1, v_2$ |
 //~
-//~ * The first 2 rows contain $v_0$ and $v_1$ and their respective decompositions
-//~   into 12-bit and 2-bit limbs
-//~ * The 3rd row contains $v_2$ and part of its decomposition: four 12-bit limbs and
-//~   the 1st 10 crumbs
-//~ * The final row contains $v_0$'s and $v_1$'s 5th and 6th 12-bit limbs as well as the
-//~   remaining 10 crumbs of $v_2$
+//~ * The first 2 rows contain $v_0$ and $v_1$ and their respective
+//~   decompositions into 12-bit and 2-bit limbs
+//~ * The 3rd row contains $v_2$ and part of its decomposition: four 12-bit
+//~   limbs and the 1st 10 crumbs
+//~ * The final row contains $v_0$'s and $v_1$'s 5th and 6th 12-bit limbs as
+//~   well as the remaining 10 crumbs of $v_2$
 //~
 //~ ```admonish
 //~ Because we are constrained to 4 lookups per row, we are forced to postpone
@@ -59,14 +59,16 @@
 //~
 //~ **Constraints:**
 //~
-//~ For efficiency, the limbs are constrained differently according to their type:
+//~ For efficiency, the limbs are constrained differently according to their
+//~ type:
 //~
 //~ * 12-bit limbs are constrained with plookups
 //~ * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 //~
 //~ **Layout:**
 //~
-//~ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are laid out and constrained.
+//~ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are laid out and
+//~ constrained.
 //~
 //~ * `vipj` is the jth 12-bit limb of value $v_i$
 //~ * `vicj` is the jth 2-bit crumb limb of value $v_i$
@@ -92,11 +94,12 @@
 //~ | LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb    `v2c8` | crumb   `v2c19` |
 //~
 //~ The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
-//~ constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
+//~ constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x -
+//~ 3)$.
 //~
-//~ Note that copy denotes a plookup that is deferred to the 4th gate (i.e. `Zero`).
-//~ This is because of the limitation that we have at most 4 lookups per row.
-//~ The copies are constrained using the permutation argument.
+//~ Note that copy denotes a plookup that is deferred to the 4th gate (i.e.
+//~ `Zero`). This is because of the limitation that we have at most 4 lookups
+//~ per row. The copies are constrained using the permutation argument.
 //~
 //~ **Gate types:**
 //~
@@ -128,13 +131,13 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 
-//~
 //~ **`RangeCheck0` - Range check constraints**
 //~
 //~ * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 //~ * Optionally, it can be used on its own as a single 64-bit range check by
 //~   constraining columns 1 and 2 to zero
-//~ * The rest of $v_0$ and $v_1$ are constrained by the lookups in the `Zero` gate row
+//~ * The rest of $v_0$ and $v_1$ are constrained by the lookups in the `Zero`
+//~   gate row
 //~ * This gate operates on the `Curr` row
 //~
 //~ It uses three different types of constraints:
@@ -177,7 +180,8 @@ where
 
     // Constraints for RangeCheck0
     //   * Operates on Curr row
-    //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
+    //   * Range constrain all limbs except vp0 and vp1 (barring plookup
+    //     constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,
@@ -185,11 +189,12 @@ where
     ) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
-        //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
-        //          triggered by RangeCheck1 on the Next row
-        //        * Optionally, they can be constrained to zero to convert the RangeCheck0 gate into
-        //          a single 64-bit range check
-        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
+        //        * They are copied 3 rows ahead (to the final row) and are constrained
+        //          by lookups triggered by RangeCheck1 on the Next row
+        //        * Optionally, they can be constrained to zero to convert the
+        //          RangeCheck0 gate into a single 64-bit range check
+        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in
+        //      the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
@@ -199,8 +204,8 @@ where
         //
         //        w(0) = v = vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7
         //
-        //    where the value and limbs are stored in little-endian byte order, but mapped
-        //    to cells in big-endian order.
+        //    where the value and limbs are stored in little-endian byte order, but
+        // mapped    to cells in big-endian order.
         //
         //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
         //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  <- LSB
@@ -223,8 +228,8 @@ where
         // Check value v against the sum of limbs
         constraints.push(sum_of_limbs - env.witness_curr(0));
 
-        // Optional compact limbs format (enabled when coeff[0] == 1, disabled when coeff[1] = 0)
-        //   Constrain decomposition of compact limb next(1)
+        // Optional compact limbs format (enabled when coeff[0] == 1, disabled when
+        // coeff[1] = 0)   Constrain decomposition of compact limb next(1)
         //   next(1) = curr(0) + 2^L * next(0)
         constraints.push(
             env.coeff(0)
@@ -236,7 +241,6 @@ where
     }
 }
 
-//~
 //~ **`RangeCheck1` - Range check constraints**
 //~
 //~ * This circuit gate is used to fully constrain $v_2$
@@ -281,8 +285,10 @@ where
 
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
-    //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
-    //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
+    //   * Range constrain all limbs (barring plookup constraints, which are done
+    //     elsewhere)
+    //   * Constrain that combining all limbs equals the value v2 stored in row
+    //     Curr, column 0
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
@@ -291,8 +297,8 @@ where
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];
 
-        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified
-        //      in the lookup gate)
+        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in
+        //      the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         constraints.append(
             &mut (7..COLUMNS)
@@ -318,15 +324,16 @@ where
 
         // 2) Constrain that the combined limbs equals the value v2 stored in w(0) where
         //
-        //    w(0) = v2 = vc0 vc1 vp0 vp1 vp2 vp3 vc2 vc3 vc4 vc5 vc6 vc7 vc8 vc9 vc10 vc11 vc12
-        //                vc13 vc14 vc15 vc16 vc17 vc18 vc19
+        //    w(0) = v2 = vc0 vc1 vp0 vp1 vp2 vp3 vc2 vc3 vc4 vc5 vc6 vc7 vc8 vc9 vc10
+        // vc11 vc12                vc13 vc14 vc15 vc16 vc17 vc18 vc19
         //
-        //    where the value and limbs are stored in little-endian byte order, but mapped
-        //    to cells in big-endian order.
+        //    where the value and limbs are stored in little-endian byte order, but
+        // mapped    to cells in big-endian order.
         //
         //          0  1   2   3   4   5    6    7    8    9    10   11   12   13   14
         //    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9
-        //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 <- LSB
+        //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19
+        // <- LSB
 
         let mut power_of_2 = T::one();
         let mut sum_of_limbs = T::zero();

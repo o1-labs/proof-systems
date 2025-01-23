@@ -43,7 +43,8 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
         assert_eq!(commitment.len(), k);
     }
 
-    // Same than the two previous cases, but with the special polynomial equals to zero.
+    // Same than the two previous cases, but with the special polynomial equals to
+    // zero.
     {
         let k = rng.gen_range(1..10);
         let poly = DensePolynomial::<G::ScalarField>::zero();

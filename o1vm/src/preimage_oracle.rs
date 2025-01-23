@@ -32,10 +32,11 @@ pub struct ReadWrite<R, W> {
 
 pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 
-// Here, we implement `os_pipe::pipe` in a way that allows us to pass flags. In particular, we
-// don't pass the `CLOEXEC` flag, because we want these pipes to survive an exec, and we set
-// `DIRECT` to handle writes as single atomic operations (up to splitting at the buffer size).
-// This fixes the IPC hangs. This is bad, but the hang is worse.
+// Here, we implement `os_pipe::pipe` in a way that allows us to pass flags. In
+// particular, we don't pass the `CLOEXEC` flag, because we want these pipes to
+// survive an exec, and we set `DIRECT` to handle writes as single atomic
+// operations (up to splitting at the buffer size). This fixes the IPC hangs.
+// This is bad, but the hang is worse.
 
 #[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "haiku", windows)))]
 fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
@@ -171,9 +172,8 @@ impl PreImageOracleT for PreImageOracle {
     // The preimage protocol goes as follows
     // 1. Ask for data through a key
     // 2. Get the answers in the following format
-    //      +------------+--------------------+
-    //      | length <8> | pre-image <length> |
-    //      +---------------------------------+
+    //    +------------+--------------------+ | length <8> | pre-image <length> |
+    //    +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
     fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
@@ -209,9 +209,8 @@ impl PreImageOracleT for PreImageOracle {
 
     // The hint protocol goes as follows:
     // 1. Write a hint request with the following byte-stream format
-    //       +------------+---------------+
-    //       | length <8> | hint <length> |
-    //       +----------------------------+
+    //    +------------+---------------+ | length <8> | hint <length> |
+    //    +----------------------------+
     //
     // 2. Get back a single ack byte informing the hint has been processed.
     fn hint(&mut self, hint: Hint) {
@@ -299,7 +298,8 @@ mod tests {
         // Read back the length from the other end of the bidirectionnal channel
         let reader_joiner = std::thread::spawn(move || {
             let mut response_vec = vec![];
-            // We do a single read to mirror go, even though we should *really* do 2. 'Go' figure.
+            // We do a single read to mirror go, even though we should *really* do 2. 'Go'
+            // figure.
             let r = c0.0.reader.read_to_end(&mut response_vec);
             assert!(r.is_ok());
 

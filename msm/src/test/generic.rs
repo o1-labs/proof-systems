@@ -54,8 +54,9 @@ pub fn test_completeness_generic_no_lookups<
     )
 }
 
-// Generic function to test with different circuits with the generic prover/verifier.
-// It doesn't use the interpreter to build the witness and compute the constraints.
+// Generic function to test with different circuits with the generic
+// prover/verifier. It doesn't use the interpreter to build the witness and
+// compute the constraints.
 pub fn test_completeness_generic<
     const N_WIT: usize,
     const N_REL: usize,

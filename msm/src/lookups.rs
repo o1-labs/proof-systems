@@ -6,7 +6,8 @@ use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::{cmp::Ord, iter};
 
-/// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
+/// Dummy lookup table. For the cases when you don't need one -- a single dummy
+/// element 0.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum DummyLookupTable {
     DummyLookupTable,
@@ -114,7 +115,8 @@ impl LookupTableID for LookupTableIDs {
 /// Additive lookups used in the MSM project based on Logup
 pub type Lookup<F> = Logup<F, LookupTableIDs>;
 
-/// Represents a witness of one instance of the lookup argument of the MSM project
+/// Represents a witness of one instance of the lookup argument of the MSM
+/// project
 pub type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
 
 // This should be used only for testing purposes.

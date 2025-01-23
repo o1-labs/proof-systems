@@ -4,7 +4,8 @@ use crate::{
     N_LIMBS,
 };
 
-/// Total number of columns in the serialization circuit, including fixed selectors.
+/// Total number of columns in the serialization circuit, including fixed
+/// selectors.
 pub const N_COL_SER: usize = N_INTERMEDIATE_LIMBS + 6 * N_LIMBS + N_LIMBS_LARGE + 12;
 
 /// Number of fixed selectors for serialization circuit.
@@ -17,14 +18,16 @@ pub enum SerializationColumn {
     CurrentRow,
     /// For current row i, this is i - 2^{ceil(log(i)) - 1}
     PreviousCoeffRow,
-    /// 3 88-bit inputs. For the row #i this represents the IPA challenge xi_{log(i)}.
+    /// 3 88-bit inputs. For the row #i this represents the IPA challenge
+    /// xi_{log(i)}.
     ChalKimchi(usize),
-    /// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long. Represent parts of the IPA challenge.
+    /// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long. Represent parts
+    /// of the IPA challenge.
     ChalIntermediate(usize),
     /// N_LIMBS values, representing the converted IPA challenge.
     ChalConverted(usize),
-    /// Previous coefficient C_j, this one is looked up. For the row i, the expected
-    /// value is (C_i >> 1).
+    /// Previous coefficient C_j, this one is looked up. For the row i, the
+    /// expected value is (C_i >> 1).
     CoeffInput(usize),
     /// Trusted (for range) foreign field modulus, in 4 big limbs.
     FFieldModulus(usize),
@@ -36,7 +39,8 @@ pub enum SerializationColumn {
     QuotientSign,
     /// Carry limbs
     Carry(usize),
-    /// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} * xi_{log(i)}. In small limbs.
+    /// The resulting coefficient C_i = C_{i - 2^{ceil(log i) - 1}} *
+    /// xi_{log(i)}. In small limbs.
     CoeffResult(usize),
 }
 

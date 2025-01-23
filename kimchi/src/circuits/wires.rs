@@ -36,9 +36,9 @@ impl Wire {
     }
 }
 
-/// `GateWires` document the wiring of a gate. More specifically, each value either
-/// represents the same cell (row and column) or a different cell in another row.
-/// (This is to help the permutation argument.)
+/// `GateWires` document the wiring of a gate. More specifically, each value
+/// either represents the same cell (row and column) or a different cell in
+/// another row. (This is to help the permutation argument.)
 pub type GateWires = [Wire; PERMUTS];
 
 /// Since we don't have a specific type for the wires of a row,

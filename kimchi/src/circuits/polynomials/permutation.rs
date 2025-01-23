@@ -96,7 +96,8 @@ pub fn vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64) -> DensePolyno
     acc
 }
 
-/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
+/// Returns the end of the circuit, which is used for introducing zero-knowledge
+/// in the permutation polynomial
 pub fn zk_w<F: FftField>(domain: D<F>, zk_rows: u64) -> F {
     domain.group_gen.pow([domain.size - zk_rows])
 }
@@ -124,11 +125,12 @@ pub fn permutation_vanishing_polynomial<F: FftField>(
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
-    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
+    /// The coefficients `k` (in the Plonk paper) that create a coset when
+    /// multiplied with the generator of our domain.
     pub(crate) shifts: [F; PERMUTS],
-    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
-    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
-    /// which lives in `map[2][1]`
+    /// A matrix that maps all cells coordinates `{col, row}` to their shifted
+    /// field element. For example the cell `{col:2, row:1}` will map to
+    /// `omega * k2`, which lives in `map[2][1]`
     pub(crate) map: [Vec<F>; PERMUTS],
 }
 
@@ -223,8 +225,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
 
-        //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
-        //~ They will be used by the prover.
+        //~ The quotient contribution of the permutation is split into two parts $perm$
+        //~ and $bnd$. They will be used by the prover.
         //~
         //~ $$
         //~ \begin{align}
@@ -337,7 +339,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         gamma: F,
         alphas: impl Iterator<Item = F>,
     ) -> Evaluations<F, D<F>> {
-        //~
         //~ The linearization:
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
@@ -478,8 +479,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
 
-        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
-        //~ zero-knowledge to the protocol.
+        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in
+        //~ order to add zero-knowledge to the protocol.
         //~
         for j in 0..n - 1 {
             if j != n - zk_rows && j != n - zk_rows + 1 {

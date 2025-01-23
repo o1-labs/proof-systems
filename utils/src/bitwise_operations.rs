@@ -1,5 +1,5 @@
-//! This module provides a set of functions to perform bit operations on big integers.
-//! In particular, it gives XOR and NOT for BigUint.
+//! This module provides a set of functions to perform bit operations on big
+//! integers. In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use std::cmp::{max, Ordering};
 
@@ -10,12 +10,14 @@ pub trait BitwiseOps<Rhs = Self> {
     /// Bitwise XOR of two BigUint inputs
     fn bitwise_xor(input1: &Rhs, input: &Rhs) -> Rhs;
 
-    /// Conjunction of the bits of two BigUint inputs for a given number of bytes
+    /// Conjunction of the bits of two BigUint inputs for a given number of
+    /// bytes
     fn bitwise_and(input1: &Rhs, input: &Rhs, bytes: usize) -> Rhs;
 
     /// Negate the bits of a Self input
-    /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
-    /// Otherwise it only takes the bits of the input.
+    /// If it provides a larger desired `bits` than the input length then it
+    /// takes the padded input of `bits` length. Otherwise it only takes the
+    /// bits of the input.
     fn bitwise_not(input: &Rhs, bits: Option<usize>) -> Rhs;
 }
 

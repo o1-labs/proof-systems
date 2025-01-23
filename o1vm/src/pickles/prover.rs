@@ -47,7 +47,8 @@ pub enum ProverError {
 /// The proof is made of the following steps:
 /// 1. For each column, we create a commitment and absorb it in the sponge.
 /// 2. We compute the quotient polynomial.
-/// 3. We evaluate each polynomial (columns + quotient) to two challenges ζ and ζω.
+/// 3. We evaluate each polynomial (columns + quotient) to two challenges ζ and
+///    ζω.
 /// 4. We make a batch opening proof using the IPA PCS.
 ///
 /// The final proof consists of the opening proof, the commitments and the
@@ -259,8 +260,8 @@ where
 
     debug!("Prover: computing the quotient polynomial");
     // Hint:
-    // To debug individual constraint, you can revert the following commits that implement the
-    // check for individual constraints.
+    // To debug individual constraint, you can revert the following commits that
+    // implement the check for individual constraints.
     // ```
     // git revert 8e87244a98d55b90d175ad389611a3c98bd16b34
     // git revert 96d42c127ef025869c91e5fed680e0e383108706

@@ -209,7 +209,8 @@ pub fn verify<
             _ => panic!("eval_leaf is not Result"),
         };
 
-        // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
+        // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the
+        // expression.
         -eval_res[0]
     };
 

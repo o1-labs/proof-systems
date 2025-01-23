@@ -117,8 +117,9 @@ impl<
 
 #[derive(Debug, Clone)]
 pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve> {
-    /// Commitments to the N columns of the circuits, also called the 'witnesses'.
-    /// If some columns are considered as public inputs, it is counted in the witness.
+    /// Commitments to the N columns of the circuits, also called the
+    /// 'witnesses'. If some columns are considered as public inputs, it is
+    /// counted in the witness.
     pub witness_comms: Witness<N_WIT, PolyComm<G>>,
     /// Commitments to the quotient polynomial.
     /// The value contains the chunked polynomials.
@@ -408,7 +409,8 @@ where
     let ft: DensePolynomial<Fp> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         // Compute \sum_i t_i(X) ζ^{i n}
-        // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
+        // First we split t in t_i, and we reduce to degree (n - 1) after using
+        // `linearize`
         let t_chunked: DensePolynomial<Fp> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);

@@ -84,8 +84,8 @@ where
     /// The joint combiner used to join the columns of lookup tables
     joint_combiner: Option<F>,
 
-    /// The power of the joint_combiner that can be used to add a table_id column
-    /// to the concatenated lookup tables.
+    /// The power of the joint_combiner that can be used to add a table_id
+    /// column to the concatenated lookup tables.
     table_id_combiner: Option<F>,
 
     /// The combined lookup entry that can be used as dummy value
@@ -127,7 +127,8 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
-    /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
+    /// This function constructs prover's zk-proof from the witness & the
+    /// `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
@@ -195,18 +196,18 @@ where
             d1_size / index.max_poly_size
         };
 
-        // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
-        // Catch mistakes before proof generation.
+        // Verify the circuit satisfiability by the computed witness (baring plookup
+        // constraints) Catch mistakes before proof generation.
         if cfg!(debug_assertions) && !index.cs.disable_gates_checks {
             let public = witness[0][0..index.cs.public].to_vec();
             index.verify(&witness, &public).expect("incorrect witness");
         }
 
-        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
-        //~    We currently expect the witness not to be of the same length as the domain,
-        //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `zk_rows` rows to the columns of the witness before reaching
-        //~    the size of the domain, abort.
+        //~ 1. Ensure we have room in the witness for the zero-knowledge rows. We
+        //~    currently expect the witness not to be of the same length as the domain,
+        //~    but instead be of the length of the (smaller) circuit. If we cannot add
+        //~    `zk_rows` rows to the columns of the witness before reaching the size of
+        //~    the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
@@ -232,8 +233,8 @@ where
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
-        //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `zk_rows` of each columns.
+        //~ 1. Pad the witness columns with Zero gates to make them the same length as
+        //~    the domain. Then, randomize the last `zk_rows` of each columns.
         internal_tracing::checkpoint!(internal_traces; pad_witness);
         for w in &mut witness {
             if w.len() != length_witness {
@@ -262,9 +263,9 @@ where
             absorb_commitment(&mut fq_sponge, comm)
         }
 
-        //~ 1. Compute the negated public input polynomial as
-        //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
-        //~    and $0$ for the rest.
+        //~ 1. Compute the negated public input polynomial as the polynomial that
+        //~    evaluates to $-p_i$ for the first `public_input_size` values of the
+        //~    domain, and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             public,
@@ -288,8 +289,9 @@ where
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
         //~    Note: unlike the original PLONK protocol,
-        //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
-        //~    This is why we need to absorb the commitment to the public polynomial at this point.
+        //~    the prover also provides evaluations of the public polynomial to help the
+        //~ verifier circuit.    This is why we need to absorb the commitment to
+        //~ the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
         //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
@@ -336,10 +338,11 @@ where
             .iter()
             .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
 
-        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    As mentioned above, we commit using the evaluations form rather than the coefficients
-        //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
-        //~    0 entries and entries that have less-than-full-size field elemnts.)
+        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the
+        //~    witness. As mentioned above, we commit using the evaluations form rather
+        //~    than the coefficients form so we can take advantage of the sparsity of
+        //~    the evaluations (i.e., there are many 0 entries and entries that have
+        //~    less-than-full-size field elemnts.)
         let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -635,14 +638,15 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        //~ 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-        //~    The quotient polynomial is computed by adding all these polynomials together:
+        //~ 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$). The
+        //~    quotient polynomial is computed by adding all these polynomials together:
         //~~ * the combined constraints for all the gates
         //~~ * the combined constraints for the permutation
         //~~ * TODO: lookup
         //~~ * the negated public polynomial
-        //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-        //~    TODO: specify the split of the permutation polynomial into perm and bnd?
+        //~    and by then dividing the resulting polynomial with the vanishing
+        //~ polynomial $Z_H$.    TODO: specify the split of the permutation
+        //~ polynomial into perm and bnd?
         let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -896,7 +900,8 @@ where
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
 
-        //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+        //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and
+        //~    $\zeta \omega$:
         if index.cs.lookup_constraint_system.is_some() {
             //~~ * the aggregation polynomial
             let aggreg = lookup_context
@@ -948,7 +953,8 @@ where
                 });
         }
 
-        //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+        //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta
+        //~    \omega$:
         //~~ * $s_i$
         //~~ * $w_i$
         //~~ * $z$
@@ -956,16 +962,20 @@ where
         //~~ * generic selector
         //~~ * poseidon selector
         //~
-        //~    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
-        //~    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
-        //~    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
-        //~    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
+        //~    By "chunk evaluate" we mean that the evaluation of each polynomial can
+        //~ potentially be a vector of values.    This is because the index's
+        //~ `max_poly_size` parameter dictates the maximum size of a polynomial in the
+        //~ protocol.    If a polynomial $f$ exceeds this size, it must be split
+        //~ into several polynomials like so:    $$f(x) = f_0(x) + x^n f_1(x) +
+        //~ x^{2n} f_2(x) + \cdots$$
         //~
-        //~    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
+        //~    And the evaluation of such a polynomial is the following list for $x \in
+        //~ {\zeta, \zeta\omega}$:
         //~
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
-        //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        //~    TODO: do we want to specify more on that? It seems unnecessary except for
+        //~ the t polynomial (or if for some reason someone sets that to a low value)
 
         internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
         let zeta_evals =
@@ -1113,8 +1123,8 @@ where
         let zeta_omega_to_srs_len = zeta_omega.pow([index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow([d1_size as u64]);
 
-        //~ 1. Evaluate the same polynomials without chunking them
-        //~    (so that each polynomial should correspond to a single value this time).
+        //~ 1. Evaluate the same polynomials without chunking them (so that each
+        //~    polynomial should correspond to a single value this time).
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> = {
             let powers_of_eval_points_for_chunks = PointEvaluations {
                 zeta: zeta_to_srs_len,
@@ -1123,8 +1133,7 @@ where
             chunked_evals.combine(&powers_of_eval_points_for_chunks)
         };
 
-        //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
+        //~ 1. Compute the ft polynomial. This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
         internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
@@ -1159,8 +1168,7 @@ where
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
-        //~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
+        //~ 1. construct the blinding part of the ft polynomial commitment [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
             let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             let blinding_f = G::ScalarField::zero();
@@ -1234,9 +1242,9 @@ where
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
         let u = u_chal.to_field(endo_r);
 
-        //~ 1. Create a list of all polynomials that will require evaluations
-        //~    (and evaluation proofs) in the protocol.
-        //~    First, include the previous challenges, in case we are in a recursive prover.
+        //~ 1. Create a list of all polynomials that will require evaluations (and
+        //~    evaluation proofs) in the protocol. First, include the previous
+        //~    challenges, in case we are in a recursive prover.
         let non_hiding = |n_chunks: usize| PolyComm {
             chunks: vec![G::ScalarField::zero(); n_chunks],
         };
@@ -1450,7 +1458,8 @@ where
             }
         }
 
-        //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+        //~ 1. Create an aggregated evaluation proof for all of these polynomials at
+        //~    $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_ipa);
         let proof = OpenProof::open(
             &*index.srs,
@@ -1594,9 +1603,9 @@ pub mod caml {
     // For example, to implement the conversion
     // ProverCommitments<G> -> CamlProverCommitments<CamlG>
     // we need to know how to convert G to CamlG.
-    // we don't know that information, unless we implemented some trait (e.g. ToCaml)
-    // we can do that, but instead we implemented the From trait for the reverse
-    // operations (From<G> for CamlG).
+    // we don't know that information, unless we implemented some trait (e.g.
+    // ToCaml) we can do that, but instead we implemented the From trait for the
+    // reverse operations (From<G> for CamlG).
     // it reduces the complexity, but forces us to do the conversion in two
     // phases instead of one.
 

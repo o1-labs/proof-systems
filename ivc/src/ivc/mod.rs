@@ -7,7 +7,8 @@ pub mod lookups;
 use self::columns::N_BLOCKS;
 use crate::poseidon_8_56_5_3_2::bn254::NB_CONSTRAINTS as N_CONSTRAINTS_POSEIDON;
 
-/// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
+/// The biggest packing variant for foreign field. Used for hashing. 150-bit
+/// limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
 
 /// The biggest packing format, 2 limbs.

@@ -287,7 +287,8 @@ where
 
     let combined_expr =
         Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_vec());
-    // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the expression.
+    // Note the minus! ft polynomial at zeta (ft_eval0) is minus evaluation of the
+    // expression.
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,

@@ -19,19 +19,22 @@ use ark_ff::PrimeField;
 use std::{borrow::Cow, fmt::Debug};
 
 /// A snarky type is a type that can be used in a circuit.
-/// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
-/// (For example, to construct private or public inputs, or a public output, to the circuit.)
+/// It references an equivalent "out-of-circuit" type that one can use outside
+/// of the circuit. (For example, to construct private or public inputs, or a
+/// public output, to the circuit.)
 pub trait SnarkyType<F>: Debug + Sized
 where
     F: PrimeField,
 {
     /// Some 'out-of-circuit' data, which is carried as part of Self.
-    /// This data isn't encoded as CVars in the circuit, since the data may be large (e.g. a sparse merkle tree),
-    /// or may only be used by witness computations / for debugging.
+    /// This data isn't encoded as CVars in the circuit, since the data may be
+    /// large (e.g. a sparse merkle tree), or may only be used by witness
+    /// computations / for debugging.
     type Auxiliary;
 
     /// The equivalent "out-of-circuit" type.
-    /// For example, the [super::boolean::Boolean] snarky type has an out-of-circuit type of [bool].
+    /// For example, the [super::boolean::Boolean] snarky type has an
+    /// out-of-circuit type of [bool].
     type OutOfCircuit;
 
     /// The number of field elements that this type takes.
@@ -40,20 +43,23 @@ where
     /// Returns the circuit variables (and auxiliary data) behind this type.
     fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary);
 
-    /// Creates a new instance of this type from the given circuit variables (And some auxiliary data).
+    /// Creates a new instance of this type from the given circuit variables
+    /// (And some auxiliary data).
     fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self;
 
     /// Checks that the circuit variables behind this type are valid.
     /// For some definition of valid.
-    /// For example, a Boolean snarky type would check that the field element representing it is either 0 or 1.
-    /// The function does this by adding constraints to your constraint system.
+    /// For example, a Boolean snarky type would check that the field element
+    /// representing it is either 0 or 1. The function does this by adding
+    /// constraints to your constraint system.
     fn check(&self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<()>;
 
     /// The "default" value of [Self::Auxiliary].
-    /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
-    /// since we have no candidate value to get the auxiliary data from.
-    /// Note that we use an explicit value here rather than Auxiliary: Default,
-    /// since the default value for the type may not match the default value we actually want to pass!
+    /// This is passed to [Self::from_cvars_unsafe] when we are not generating a
+    /// witness, since we have no candidate value to get the auxiliary data
+    /// from. Note that we use an explicit value here rather than Auxiliary:
+    /// Default, since the default value for the type may not match the
+    /// default value we actually want to pass!
     fn constraint_system_auxiliary() -> Self::Auxiliary;
 
     /// Converts an out-of-circuit value
@@ -87,7 +93,8 @@ where
 }
 
 /// A trait to convert between a snarky type and its out-of-circuit equivalent.
-// TODO: should we then remove these functions + OutOfCircuit from SnarkyType? (And have SnarkyType : CircuitAndValue)
+// TODO: should we then remove these functions + OutOfCircuit from SnarkyType?
+// (And have SnarkyType : CircuitAndValue)
 pub trait CircuitAndValue<F>: SnarkyType<F>
 where
     F: PrimeField,

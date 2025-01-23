@@ -6,19 +6,20 @@
 //! (The proof is in the use of the Schwartz-Zippel lemma.)
 //! As such, we want two properties from this:
 //!
-//! - we should keep track of a mapping between type of constraint and range of powers
-//! - when powers of alphas are used, we should ensure that no more no less are used
+//! - we should keep track of a mapping between type of constraint and range of
+//!   powers
+//! - when powers of alphas are used, we should ensure that no more no less are
+//!   used
 //!
 //! We use powers of alpha in two different places in the codebase:
 //!
-//! - when creating the index, we do not know alpha at this point so we
-//!   simply keep track of what constraints will use what powers
-//! - when creating a proof or verifying a proof, at this point we know alpha
-//!   so we can use the mapping we created during the creation of the index.
+//! - when creating the index, we do not know alpha at this point so we simply
+//!   keep track of what constraints will use what powers
+//! - when creating a proof or verifying a proof, at this point we know alpha so
+//!   we can use the mapping we created during the creation of the index.
 //!
-//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,
-//! for the various [ArgumentType]s.
-//!
+//! For this to work, we use the type [Alphas] to register ranges of powers of
+//! alpha, for the various [ArgumentType]s.
 
 use crate::circuits::{argument::ArgumentType, gate::GateType};
 use ark_ff::Field;
@@ -34,8 +35,8 @@ use std::{
 
 // ------------------------------------------
 
-/// This type can be used to create a mapping between powers of alpha and constraint types.
-/// See [Self::default] to create one,
+/// This type can be used to create a mapping between powers of alpha and
+/// constraint types. See [Self::default] to create one,
 /// and [Self::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -78,8 +79,9 @@ impl<F: Field> Alphas<F> {
             .expect("too many powers of alphas were registered");
     }
 
-    /// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.
-    /// Note that this function will panic if you did not register enough powers of alpha.
+    /// Returns a range of exponents, for a given [ArgumentType], upperbounded
+    /// by `num`. Note that this function will panic if you did not register
+    /// enough powers of alpha.
     pub fn get_exponents(
         &self,
         ty: ArgumentType,
@@ -113,7 +115,8 @@ impl<F: Field> Alphas<F> {
     }
 
     /// Instantiates the ranges with an actual field element `alpha`.
-    /// Once you call this function, you cannot register new constraints via [Self::register].
+    /// Once you call this function, you cannot register new constraints via
+    /// [Self::register].
     pub fn instantiate(&mut self, alpha: F) {
         let mut last_power = F::one();
         let mut alphas = Vec::with_capacity(self.next_power as usize);
@@ -125,7 +128,8 @@ impl<F: Field> Alphas<F> {
         self.alphas = Some(alphas);
     }
 
-    /// This function allows us to retrieve the powers of alpha, upperbounded by `num`
+    /// This function allows us to retrieve the powers of alpha, upperbounded by
+    /// `num`
     pub fn get_alphas(
         &self,
         ty: ArgumentType,

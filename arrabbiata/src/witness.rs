@@ -154,8 +154,8 @@ pub struct Env<
     pub idx_values_to_absorb: usize,
     // ----------------
     /// The witness of the current instance of the circuit.
-    /// The size of the outer vector must be equal to the number of columns in the
-    /// circuit.
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
     ///

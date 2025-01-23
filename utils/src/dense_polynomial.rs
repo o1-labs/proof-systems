@@ -12,13 +12,15 @@ use crate::chunked_polynomial::ChunkedPolynomial;
 
 /// An extension for the [DensePolynomial] type.
 pub trait ExtendedDensePolynomial<F: Field> {
-    /// This function "scales" (multiplies all the coefficients of) a polynomial with a scalar.
+    /// This function "scales" (multiplies all the coefficients of) a polynomial
+    /// with a scalar.
     fn scale(&self, elm: F) -> Self;
 
     /// Shifts all the coefficients to the right.
     fn shiftr(&self, size: usize) -> Self;
 
-    /// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
+    /// `eval_polynomial(coeffs, x)` evaluates a polynomial given its
+    /// coefficients `coeffs` and a point `x`.
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
 
     /// Convert a polynomial into chunks.

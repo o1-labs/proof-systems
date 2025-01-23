@@ -27,8 +27,8 @@ pub trait Sponge<Input: Field, Digest> {
 
 pub fn sbox<F: Field, SC: SpongeConstants>(mut x: F) -> F {
     if SC::PERM_SBOX == 7 {
-        // This is much faster than using the generic `pow`. Hard-code to get the ~50% speed-up
-        // that it gives to hashing.
+        // This is much faster than using the generic `pow`. Hard-code to get the ~50%
+        // speed-up that it gives to hashing.
         let mut square = x;
         square.square_in_place();
         x *= square;

@@ -58,8 +58,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     // crate::interpreters::mips::column::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
-        // to the index. See crate::interpreters::mips::column::SCRATCH_SIZE for the maximum number of
-        // columns the circuit can use.
+        // to the index. See crate::interpreters::mips::column::SCRATCH_SIZE for the
+        // maximum number of columns the circuit can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
@@ -454,7 +454,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFF + i))
         });
 
-        // The actual number of bytes read in this instruction, will be 0 <= x <= len <= 4
+        // The actual number of bytes read in this instruction, will be 0 <= x <= len <=
+        // 4
         let actual_read_bytes = self.variable(pos);
 
         // EXTRA 13 CONSTRAINTS

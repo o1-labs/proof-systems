@@ -11,8 +11,9 @@ pub struct VariableBitsCell<'a> {
 }
 
 impl<'a> VariableBitsCell<'a> {
-    /// Create witness cell assigned from the bits [start, end) of named variable.
-    /// If end is None, then the final bit corresponds to the position of the highest bit of the variable.
+    /// Create witness cell assigned from the bits [start, end) of named
+    /// variable. If end is None, then the final bit corresponds to the
+    /// position of the highest bit of the variable.
     pub fn create(name: &'a str, start: usize, end: Option<usize>) -> Box<VariableBitsCell<'a>> {
         Box::new(VariableBitsCell { name, start, end })
     }

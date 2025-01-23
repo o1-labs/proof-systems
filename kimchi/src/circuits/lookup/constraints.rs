@@ -73,10 +73,11 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~ if i % 2 = 0 { Increasing } else { Decreasing }
 //~ ```
 //~
-//~ Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
-//~ last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
+//~ Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that
+//~ the last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
 //~ and if `i % 2 = 1`, we enforce that
-//~ the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
+//~ the first element of `LookupSorted(i) = first element of LookupSorted(i +
+//~ 1)`.
 
 /// Computes the sorted lookup tables required by the lookup argument.
 ///
@@ -111,14 +112,17 @@ pub fn sorted<F: PrimeField>(
         .step_by(8)
         .take(lookup_rows)
     {
-        // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
-        // duplicate!
-        // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
-        // times at its first occurrence, then a further 2 times as each duplicate is encountered.
+        // Don't multiply-count duplicate values in the table, or they'll be duplicated
+        // for each duplicate!
+        // E.g. A value duplicated in the table 3 times would be entered into the sorted
+        // array 3 times at its first occurrence, then a further 2 times as each
+        // duplicate is encountered.
         counts.entry(t).or_insert(1);
     }
 
-    // TODO: shouldn't we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?
+    // TODO: shouldn't we make sure that lookup rows is the same as the number of
+    // active gates in the circuit as well? danger: What if we have gates that use
+    // lookup but are not counted here?
     for (i, row) in by_row
         .iter()
         .enumerate()
@@ -179,10 +183,10 @@ pub fn sorted<F: PrimeField>(
             sorted[i].push(end_val);
         }
 
-        // Duplicate the final sorted value, to fix the off-by-one in the last lookup row.
-        // This is caused by the snakification: all other sorted columns have the value from the
-        // next column added to their end, but the final sorted column has no subsequent column to
-        // pull this value from.
+        // Duplicate the final sorted value, to fix the off-by-one in the last lookup
+        // row. This is caused by the snakification: all other sorted columns
+        // have the value from the next column added to their end, but the final
+        // sorted column has no subsequent column to pull this value from.
         let final_sorted_col = &mut sorted[max_lookups_per_row];
         final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1]);
 
@@ -197,30 +201,38 @@ pub fn sorted<F: PrimeField>(
     Ok(sorted)
 }
 
-/// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms
+/// Computes the aggregation polynomial for maximum n lookups per row, whose kth
+/// entry is the product of terms
 ///
-///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 <= j < n} ( (1 + beta) (gamma + f_{i,j}) )
+///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 <= j < n} ( (1 + beta)
+/// (gamma + f_{i,j}) )
 /// -------------------------------------------------------------------------------------------
 ///  \prod_{0 <= j < n+1} (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
 ///
 /// for i < k.
 ///
-/// t_i is the ith entry in the table, f_{i, j} is the jth lookup in the ith row of the witness
+/// t_i is the ith entry in the table, f_{i, j} is the jth lookup in the ith row
+/// of the witness
 ///
-/// for every instance of a value in t_i and f_{i,j}, there is an instance of the same value in s_{i,j}
-/// s_{i,j} is sorted in the same order as t_i, increasing along the 'snake-shape'
+/// for every instance of a value in t_i and f_{i,j}, there is an instance of
+/// the same value in s_{i,j} s_{i,j} is sorted in the same order as t_i,
+/// increasing along the 'snake-shape'
 ///
-/// whenever the same value is in s_{i,j} and s_{i+1,j}, that term in the denominator product becomes
-/// (1 + beta) (gamma + s_{i,j})
-/// this will cancel with the corresponding looked-up value in the witness (1 + beta) (gamma + f_{i,j})
+/// whenever the same value is in s_{i,j} and s_{i+1,j}, that term in the
+/// denominator product becomes (1 + beta) (gamma + s_{i,j})
+/// this will cancel with the corresponding looked-up value in the witness (1 +
+/// beta) (gamma + f_{i,j})
 ///
-/// whenever the values s_{i,j} and s_{i+1,j} differ, that term in the denominator product will cancel with some matching
-/// (gamma(1 + beta) + t_{i'} + beta t_{i'+1})
-/// because the sorting is the same in s and t.
-/// there will be exactly the same number of these as the number of values in t if f only contains values from t.
+/// whenever the values s_{i,j} and s_{i+1,j} differ, that term in the
+/// denominator product will cancel with some matching (gamma(1 + beta) + t_{i'}
+/// + beta t_{i'+1}) because the sorting is the same in s and t.
+/// there will be exactly the same number of these as the number of values in t
+/// if f only contains values from t.
 ///
-/// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
-/// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
+/// after multiplying all of the values, all of the terms will have cancelled if
+/// s is a sorting of f and t, and the final term will be 1 because of the
+/// random choice of beta and gamma, there is negligible probability that the
+/// terms will cancel if s is not a sorting of f and t
 ///
 /// # Panics
 ///
@@ -344,16 +356,17 @@ pub struct LookupConfiguration<F> {
     pub lookup_info: LookupInfo,
 
     /// A placeholder value that is known to appear in the lookup table.
-    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
-    /// particular row, so that we can treat each row uniformly as having the same number of
-    /// lookups.
+    /// This is used to pad the lookups to `max_lookups_per_row` when fewer
+    /// lookups are used in a particular row, so that we can treat each row
+    /// uniformly as having the same number of lookups.
     #[serde_as(as = "JointLookupValue<o1_utils::serialization::SerdeAs>")]
     pub dummy_lookup: JointLookupValue<F>,
 }
 
 impl<F: Zero> LookupConfiguration<F> {
     pub fn new(lookup_info: LookupInfo) -> LookupConfiguration<F> {
-        // For computational efficiency, we choose the dummy lookup value to be all 0s in table 0.
+        // For computational efficiency, we choose the dummy lookup value to be all 0s
+        // in table 0.
         let dummy_lookup = JointLookup {
             entry: vec![],
             table_id: F::zero(),
@@ -384,8 +397,8 @@ pub fn constraints<F: FftField>(
     // This is because computing the lookup-product requires
     // num_lookup_rows + 1
     // rows, so we need to have
-    // num_lookup_rows + 1 = n - 2 (the last 2 being reserved for the zero-knowledge random
-    // values) and thus
+    // num_lookup_rows + 1 = n - 2 (the last 2 being reserved for the zero-knowledge
+    // random values) and thus
     //
     // num_lookup_rows = n - 3
     let lookup_info = &configuration.lookup_info;
@@ -472,9 +485,10 @@ pub fn constraints<F: FftField>(
             res
         };
 
-        // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
-        // each value is also multiplied with (1 + beta)^max_per_row
-        // as we need to multiply the denominator with this eventually
+        // pre-compute the padding dummies we can use depending on the number of lookups
+        // to the `max_per_row` lookups each value is also multiplied with (1 +
+        // beta)^max_per_row as we need to multiply the denominator with this
+        // eventually
         let dummy_padding = |spec_len| {
             let mut res = E::one();
             let dummy: E<_> = E::from(BerkeleyChallengeTerm::Gamma) + dummy_lookup.clone();
@@ -491,8 +505,8 @@ pub fn constraints<F: FftField>(
             }
 
             // NOTE: We multiply by beta1_per_row here instead of at the end, because the
-            // expression framework will fold the constants together rather than multiplying the
-            // whole d8-sized polynomial evaluations by multiple constants.
+            // expression framework will fold the constants together rather than multiplying
+            // the whole d8-sized polynomial evaluations by multiple constants.
             res * beta1_per_row.clone()
         };
 
@@ -651,8 +665,8 @@ pub fn constraints<F: FftField>(
         .collect();
     res.extend(compatibility_checks);
 
-    // Padding to make sure that the position of the runtime tables constraints is always
-    // consistent.
+    // Padding to make sure that the position of the runtime tables constraints is
+    // always consistent.
     res.extend((lookup_info.max_per_row..4).map(|_| E::zero()));
 
     // if we are using runtime tables, we add:

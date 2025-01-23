@@ -80,12 +80,14 @@ pub trait FoldingConfig: Debug + 'static {
     /// the additional columns that are added by the quadraticization.
     type Srs: SRS<Self::Curve>;
 
-    /// For Plonk, it will be the commitments to the polynomials and the challenges
+    /// For Plonk, it will be the commitments to the polynomials and the
+    /// challenges
     type Instance: Instance<Self::Curve> + Clone;
 
     /// For PlonK, it will be the polynomials in evaluation form that we commit
     /// to, i.e. the columns.
-    /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
+    /// In the generic prover/verifier, it would be
+    /// `kimchi_msm::witness::Witness`.
     type Witness: Witness<Self::Curve> + Clone;
 
     type Structure: Clone;
@@ -121,11 +123,12 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
-    /// Returns the evaluations of a given column witness at omega or zeta*omega.
+    /// Returns the evaluations of a given column witness at omega or
+    /// zeta*omega.
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &[F];
 
-    /// similar to [Self::col], but folding may ask for a dynamic selector directly
-    /// instead of just column that happens to be a selector
+    /// similar to [Self::col], but folding may ask for a dynamic selector
+    /// directly instead of just column that happens to be a selector
     fn selector(&self, s: &Selector, side: Side) -> &[F];
 }
 

@@ -82,7 +82,8 @@ mod tests {
             witness_env.get_runtime_tables(domain_size);
 
         // TODO remove this clone
-        // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        // Fixed tables can be generated inside lookup_tables_data. Runtime should be
+        // generated here.
         let multiplication_bus: Vec<Vec<Vec<Fp>>> = runtime_tables
             .get(&LookupTable::MultiplicationBus)
             .unwrap()

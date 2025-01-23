@@ -20,7 +20,8 @@ use super::{
 };
 use CurrOrNext::{Curr, Next};
 
-/// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
+/// A constraint type represents a polynomial that will be part of the final
+/// equation f (the circuit equation)
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
 pub enum ArgumentType {
     /// Gates in the PLONK constraint system.
@@ -33,20 +34,22 @@ pub enum ArgumentType {
     Lookup,
 }
 
-/// The argument environment is used to specify how the argument's constraints are
-/// represented when they are built.  If the environment is created without ArgumentData
-/// and with `F = Expr<F>`, then the constraints are built as Expr expressions (e.g. for
-/// use with the prover/verifier).  On the other hand, if the environment is
-/// created with ArgumentData and F = Field or F = PrimeField, then the constraints
-/// are built as expressions of real field elements and can be evaluated directly on
-/// the witness without using the prover.
+/// The argument environment is used to specify how the argument's constraints
+/// are represented when they are built.  If the environment is created without
+/// ArgumentData and with `F = Expr<F>`, then the constraints are built as Expr
+/// expressions (e.g. for use with the prover/verifier).  On the other hand, if
+/// the environment is created with ArgumentData and F = Field or F =
+/// PrimeField, then the constraints are built as expressions of real field
+/// elements and can be evaluated directly on the witness without using the
+/// prover.
 pub struct ArgumentEnv<F: 'static, T> {
     data: Option<ArgumentData<F>>,
     phantom_data: PhantomData<T>,
 }
 
 impl<F, T> Default for ArgumentEnv<F, T> {
-    /// Initialize the environment for creating Expr constraints for use with prover/verifier
+    /// Initialize the environment for creating Expr constraints for use with
+    /// prover/verifier
     fn default() -> Self {
         ArgumentEnv {
             data: None,
@@ -56,8 +59,9 @@ impl<F, T> Default for ArgumentEnv<F, T> {
 }
 
 impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
-    /// Initialize the environment for creating constraints of real field elements that can be
-    /// evaluated directly over the witness without the prover/verifier
+    /// Initialize the environment for creating constraints of real field
+    /// elements that can be evaluated directly over the witness without the
+    /// prover/verifier
     pub fn create(
         witness: ArgumentWitness<F>,
         coeffs: Vec<F>,
@@ -178,7 +182,8 @@ impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
 pub trait Argument<F: PrimeField> {
     /// The type of constraints that this will produce.
     /// This is important to enforce that we don't combine the constraints
-    /// with powers of alpha that collide with other mutually inclusive arguments.
+    /// with powers of alpha that collide with other mutually inclusive
+    /// arguments.
     const ARGUMENT_TYPE: ArgumentType;
 
     /// The number of constraints created by the argument.

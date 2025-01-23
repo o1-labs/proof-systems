@@ -1,7 +1,8 @@
 //! Describes helpers for foreign field arithmetics
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb
-//! - `N` is a number of limbs that is used to represent one foreign field element
+//! - `N` is a number of limbs that is used to represent one foreign field
+//!   element
 
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
@@ -58,10 +59,11 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
         }
     }
 
-    /// Initializes a new foreign element from an absolute `BigUint` but the equivalent
-    /// foreign element obtained corresponds to the negated input. It first converts the
-    /// input big element to a big integer modulo the foreign field modulus, and then
-    /// computes the negation of the result.
+    /// Initializes a new foreign element from an absolute `BigUint` but the
+    /// equivalent foreign element obtained corresponds to the negated
+    /// input. It first converts the input big element to a big integer
+    /// modulo the foreign field modulus, and then computes the negation of
+    /// the result.
     pub fn neg(&self, modulus: &BigUint) -> Self {
         let big = self.to_biguint();
         let ok = big % modulus;
@@ -104,8 +106,8 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
         BigUint::from_bytes_le(&bytes)
     }
 
-    /// Split a foreign field element into a vector of `B` (limb bitsize) bits field
-    /// elements of type `F` in little-endian. Right now it is written
+    /// Split a foreign field element into a vector of `B` (limb bitsize) bits
+    /// field elements of type `F` in little-endian. Right now it is written
     /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
         if B % 8 == 0 {

@@ -33,10 +33,10 @@ type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const NOT: bool = false;
 
-// Creates as many negations as the number of inputs. The inputs must fit in the native field.
-// We start at the row 0 using generic gates to perform the negations.
-// Input: a vector of words to be negated, and the number of bits (all the same)
-// Panics if the bits length is too small for the inputs
+// Creates as many negations as the number of inputs. The inputs must fit in the
+// native field. We start at the row 0 using generic gates to perform the
+// negations. Input: a vector of words to be negated, and the number of bits
+// (all the same) Panics if the bits length is too small for the inputs
 fn create_not_witness_unchecked_length<F: PrimeField>(
     inputs: &[F],
     bits: usize,
@@ -52,8 +52,9 @@ fn create_not_witness_unchecked_length<F: PrimeField>(
 
 // Create a Not witness for less than 255 bits (native field) starting at row 0
 // Input: first input and optional bit length
-// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
-// If `bits` is provided, the negation takes the maximum length of `bits` and `input`.
+// If `bits` is not provided, the negation is performed using the length of the
+// `input` in bits. If `bits` is provided, the negation takes the maximum length
+// of `bits` and `input`.
 fn create_not_witness_checked_length<F: PrimeField>(
     input: F,
     bits: Option<usize>,
@@ -120,8 +121,8 @@ where
 
     let input = rng.gen(input, bits);
 
-    // If user specified a concrete number of bits, use that (if they are sufficient to hold the input)
-    // Otherwise, use the length of the input
+    // If user specified a concrete number of bits, use that (if they are sufficient
+    // to hold the input) Otherwise, use the length of the input
     let bits_real = max(input.to_biguint().bitlen(), bits.unwrap_or(0));
 
     let cs = create_test_constraint_system_not_xor::<G>(bits_real);
@@ -316,7 +317,8 @@ fn test_prove_and_verify_five_not_gnrc() {
 }
 
 #[test]
-// Tests all possible 16 values for a crumb, for both full 4, 8, 12, and 16 bits, and smallest
+// Tests all possible 16 values for a crumb, for both full 4, 8, 12, and 16
+// bits, and smallest
 fn test_not_xor_all_crumb() {
     for i in 0..2u8.pow(4) {
         let input = PallasField::from(i);
@@ -329,7 +331,8 @@ fn test_not_xor_all_crumb() {
 }
 
 #[test]
-// Tests NOT for bitlengths of 4, 8, 16, 32, 64, 128, for both exact output width and varying
+// Tests NOT for bitlengths of 4, 8, 16, 32, 64, 128, for both exact output
+// width and varying
 fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
         let bits = 2u32.pow(i) as usize;
@@ -365,7 +368,8 @@ fn test_not_gnrc_single() {
 }
 
 #[test]
-// Tests a chain of 5 NOTs with different lengths but padded to 254 bits with the generic builder
+// Tests a chain of 5 NOTs with different lengths but padded to 254 bits with
+// the generic builder
 fn test_not_gnrc_vector() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     // up to 2^16, 2^32, 2^64, 2^128, 2^254
@@ -383,7 +387,8 @@ fn test_not_gnrc_vector() {
 // Test a bad NOT with gnrc builder
 fn test_bad_not_gnrc() {
     let (mut witness, cs) = setup_not_gnrc::<Vesta>(None, 64, Some(1));
-    // modify public input row to make sure the copy constraint fails and the generic gate also fails
+    // modify public input row to make sure the copy constraint fails and the
+    // generic gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
         cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
@@ -413,7 +418,8 @@ fn test_bad_not_gnrc() {
 // Test a bad NOT with XOR builder
 fn test_bad_not_xor() {
     let (mut witness, cs) = setup_not_xor::<Vesta>(None, Some(16));
-    // modify public input row to make sure the copy constraint fails and the XOR gate also fails
+    // modify public input row to make sure the copy constraint fails and the XOR
+    // gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
         cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
@@ -429,7 +435,8 @@ fn test_bad_not_xor() {
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Xor16, 2))
     );
-    // Make the second input zero with correct decomposition to make sure XOR table fails
+    // Make the second input zero with correct decomposition to make sure XOR table
+    // fails
     witness[0][0] = PallasField::zero();
     witness[1][1] = PallasField::zero();
     witness[7][1] = PallasField::zero();

@@ -1,6 +1,6 @@
-//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
-//! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
-//! Function"](https://eprint.iacr.org/2019/458.pdf).
+//! Implement an interpreter for a specific instance of the Poseidon inner
+//! permutation. The Poseidon construction is defined in the paper ["Poseidon: A
+//! New Hash Function"](https://eprint.iacr.org/2019/458.pdf).
 //! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
 //! to work only with full rounds. As a reminder, the Poseidon permutation is a
 //! mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
@@ -20,8 +20,9 @@ use num_integer::Integer;
 /// Represents the parameters of the instance of the Poseidon permutation.
 /// Constants are the round constants for each round, and MDS is the matrix used
 /// by the linear layer.
-/// The type is parametrized by the field, the state size, and the number of full rounds.
-/// Note that the parameters are only for instances using full rounds.
+/// The type is parametrized by the field, the state size, and the number of
+/// full rounds. Note that the parameters are only for instances using full
+/// rounds.
 // IMPROVEME merge constants and mds in a flat array, to use the CPU cache
 // IMPROVEME generalise init_state for more than 3 elements
 pub trait PoseidonParams<F: PrimeField, const STATE_SIZE: usize, const NB_FULL_ROUNDS: usize> {

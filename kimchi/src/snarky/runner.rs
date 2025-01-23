@@ -28,7 +28,8 @@ impl<F> Constraint<F>
 where
     F: PrimeField,
 {
-    /// In witness generation, this checks if the constraint is satisfied by some witness values.
+    /// In witness generation, this checks if the constraint is satisfied by
+    /// some witness values.
     pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) -> SnarkyRuntimeResult<()> {
         match self {
             Constraint::BasicSnarkyConstraint(c) => c.check_constraint(env),
@@ -37,7 +38,8 @@ where
     }
 }
 
-/// An enum that wraps either a [`BasicSnarkyConstraint`] or a \[`KimchiConstraintSystem`\].
+/// An enum that wraps either a [`BasicSnarkyConstraint`] or a
+/// \[`KimchiConstraintSystem`\].
 // TODO: we should get rid of this once basic constraint system is gone
 #[derive(Debug)]
 pub enum Constraint<F: PrimeField> {
@@ -48,7 +50,8 @@ pub enum Constraint<F: PrimeField> {
     KimchiConstraint(KimchiConstraint<FieldVar<F>, F>),
 }
 
-/// The state used when compiling a circuit in snarky, or used in witness generation as well.
+/// The state used when compiling a circuit in snarky, or used in witness
+/// generation as well.
 #[derive(Debug)]
 pub struct RunState<F>
 where
@@ -65,29 +68,35 @@ where
     // TODO: we could also just store `usize` here
     pub(crate) public_output: Vec<FieldVar<F>>,
 
-    /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
+    /// The private input of the circuit used in witness generation. Still not
+    /// sure what that is, or why we care about this.
     private_input: Vec<F>,
 
-    /// If set, the witness generation will check if the constraints are satisfied.
-    /// This is useful to simulate running the circuit and return an error if an assertion fails.
+    /// If set, the witness generation will check if the constraints are
+    /// satisfied. This is useful to simulate running the circuit and return
+    /// an error if an assertion fails.
     pub eval_constraints: bool,
 
-    /// The size of the public input part. This contains the public output as well.
+    /// The size of the public input part. This contains the public output as
+    /// well.
     // TODO: maybe remove the public output part here? This will affect OCaml-side though.
     pub num_public_inputs: usize,
 
-    /// A counter used to track variables (this includes public inputs) as they're being created.
+    /// A counter used to track variables (this includes public inputs) as
+    /// they're being created.
     pub next_var: usize,
 
     /// Indication that we're running the witness generation.
     /// This does not necessarily mean that constraints are not created,
     /// as we can do both at the same time.
-    // TODO: perhaps we should try to make the distinction between witness/constraint generation clearer
+    // TODO: perhaps we should try to make the distinction between witness/constraint generation
+    // clearer
     pub has_witness: bool,
 
     /// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
-    // TODO: I think we should be able to safely remove this as we don't use this in Rust. Check with snarkyJS if they need this here though.
+    // TODO: I think we should be able to safely remove this as we don't use this in Rust. Check
+    // with snarkyJS if they need this here though.
     pub as_prover: bool,
 
     /// A stack of labels, to get better errors.
@@ -107,7 +116,8 @@ where
 //
 
 /// A witness generation environment.
-/// This is passed to any closure in [RunState::compute] so that they can access the witness generation environment.
+/// This is passed to any closure in [RunState::compute] so that they can access
+/// the witness generation environment.
 pub trait WitnessGeneration<F>
 where
     F: PrimeField,
@@ -223,7 +233,8 @@ where
     }
 
     /// Returns the public input snarky variable.
-    // TODO: perhaps this should be renamed `compile_circuit` and encapsulate more logic (since this is only used to compile a given circuit)
+    // TODO: perhaps this should be renamed `compile_circuit` and encapsulate more
+    // logic (since this is only used to compile a given circuit)
     pub fn public_input<T: SnarkyType<F>>(&self) -> T {
         assert_eq!(
             T::SIZE_IN_FIELD_ELEMENTS,
@@ -253,8 +264,9 @@ where
         FieldVar::Var(v)
     }
 
-    /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
-    /// and a closure that can compute it when in witness generation mode.
+    /// Creates a new non-deterministic variable associated to a value type
+    /// ([SnarkyType]), and a closure that can compute it when in witness
+    /// generation mode.
     pub fn compute<T, FUNC>(
         &mut self,
         loc: Cow<'static, str>,
@@ -267,8 +279,9 @@ where
         self.compute_inner(true, loc, to_compute_value)
     }
 
-    /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
-    /// This is to be used internally only, when we know that the value cannot be malformed.
+    /// Same as [Self::compute] except that it does not attempt to constrain the
+    /// value it computes. This is to be used internally only, when we know
+    /// that the value cannot be malformed.
     pub(crate) fn compute_unsafe<T, FUNC>(
         &mut self,
         loc: Cow<'static, str>,
@@ -376,7 +389,8 @@ where
         &mut self,
         constraint: Constraint<F>,
         label: Option<Cow<'static, str>>,
-        // TODO: we don't need to pass that through all the calls down the stack, we can just save it at this point (and the latest loc in the state is the one that threw)
+        // TODO: we don't need to pass that through all the calls down the stack, we can just save
+        // it at this point (and the latest loc in the state is the one that threw)
         loc: Cow<'static, str>,
     ) -> SnarkyResult<()> {
         self.with_label(label, |env| {
@@ -386,17 +400,21 @@ where
             // TODO:
             // [START_TODO]
             // my understanding is that this should work with the OCaml side,
-            // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can't be created (see next line)
-            // instead, I just ensure that when we're in witness generation we don't create constraints
-            // I don't think we ever do both at the same time on the OCaml side side anyway.
-            // Note: if we want to address the TODO below, I think we should instead do this:
+            // as `generate_witness_conv` on the OCaml side will have an empty
+            // constraint_system at this point which means constraints can't be created (see
+            // next line) instead, I just ensure that when we're in witness
+            // generation we don't create constraints I don't think we ever do
+            // both at the same time on the OCaml side side anyway. Note: if we
+            // want to address the TODO below, I think we should instead do this:
             // have an enum: 1) compile 2) witness generation 3) both
             // and have the both enum variant be used from an API that does both
             // [END_TODO]
             env.constraints_locations.push(loc.clone());
 
             // We check the constraint
-            // TODO: this is checked at the front end level, perhaps we should check at the constraint system / backend level so that we can tell exactly what row is messed up? (for internal debugging that would really help)
+            // TODO: this is checked at the front end level, perhaps we should check at the
+            // constraint system / backend level so that we can tell exactly what row is
+            // messed up? (for internal debugging that would really help)
             if env.has_witness && env.eval_constraints {
                 constraint
                     .check_constraint(env)
@@ -404,7 +422,8 @@ where
             }
 
             if !env.has_witness {
-                // TODO: we should have a mode "don't create constraints" instead of having an option here
+                // TODO: we should have a mode "don't create constraints" instead of having an
+                // option here
                 let cs = match &mut env.system {
                     Some(cs) => cs,
                     None => return Ok(()),
@@ -424,8 +443,8 @@ where
         })
     }
 
-    /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
-    /// Equivalent to `if b { then_ } else { else_ }`.
+    /// Adds a constraint that returns `then_` if `b` is `true`, `else_`
+    /// otherwise. Equivalent to `if b { then_ } else { else_ }`.
     // TODO: move this out
     pub fn if_(
         &mut self,
@@ -476,7 +495,8 @@ where
         }
     }
 
-    /// Wires the given snarky variable to the public output part of the public input.
+    /// Wires the given snarky variable to the public output part of the public
+    /// input.
     pub(crate) fn wire_public_output(
         &mut self,
         return_var: impl SnarkyType<F>,
@@ -510,7 +530,8 @@ where
         Ok(())
     }
 
-    /// Finalizes the public output using the actual variables returned by the circuit.
+    /// Finalizes the public output using the actual variables returned by the
+    /// circuit.
     pub(crate) fn wire_output_and_compile(
         &mut self,
         return_var: impl SnarkyType<F>,
@@ -601,7 +622,8 @@ where
         // pad with zeros for the public output part
         public_input.extend(std::iter::repeat(F::zero()).take(self.public_output.len()));
 
-        // re-initialize `next_var` (which will grow every time we compile or generate a witness)
+        // re-initialize `next_var` (which will grow every time we compile or generate a
+        // witness)
         self.next_var = self.num_public_inputs;
 
         // set the mode to "witness generation"
@@ -642,7 +664,8 @@ where
         };
 
         // compute witness
-        // TODO: can we avoid passing a closure here? a reference to a Inputs struct would be better perhaps.
+        // TODO: can we avoid passing a closure here? a reference to a Inputs struct
+        // would be better perhaps.
         let witness = system.compute_witness(get_one);
 
         // clear state (TODO: find better solution)

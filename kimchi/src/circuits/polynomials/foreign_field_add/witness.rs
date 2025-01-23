@@ -36,8 +36,9 @@ impl FFOps {
     }
 }
 
-// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
-// all necessary values needed for the witness layout. Meaning, it returns an [FFAddValues] instance
+// Given a left and right inputs to an addition or subtraction, and a modulus,
+// it computes all necessary values needed for the witness layout. Meaning, it
+// returns an [FFAddValues] instance
 // - the result of the addition/subtraction as a ForeignElement
 // - the sign of the operation
 // - the overflow flag
@@ -79,8 +80,9 @@ fn compute_ffadd_values<F: PrimeField>(
 
     // Compute the result
     // result = left + sign * right - field_overflow * modulus
-    // TODO: unluckily, we cannot do it in one line if we keep these types, because one
-    //       cannot combine field elements and biguints in the same operation automatically
+    // TODO: unluckily, we cannot do it in one line if we keep these types, because
+    // one       cannot combine field elements and biguints in the same
+    // operation automatically
     let result = ForeignElement::from_biguint({
         if opcode == FFOps::Add {
             if !has_overflow {
@@ -103,8 +105,8 @@ fn compute_ffadd_values<F: PrimeField>(
         }
     });
 
-    // c = [ (a1 * 2^88 + a0) + s * (b1 * 2^88 + b0) - q * (f1 * 2^88 + f0) - (r1 * 2^88 + r0) ] / 2^176
-    //  <=>
+    // c = [ (a1 * 2^88 + a0) + s * (b1 * 2^88 + b0) - q * (f1 * 2^88 + f0) - (r1 *
+    // 2^88 + r0) ] / 2^176  <=>
     // c = r2 - a2 - s*b2 + q*f2
 
     let carry_bot: F = (compact_limb(&left_input[LO], &left_input[MI])
@@ -122,9 +124,9 @@ fn compute_ffadd_values<F: PrimeField>(
     (result, sign, field_overflow, carry_bot)
 }
 
-/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound)
-/// inputs: list of all inputs to the chain of additions/subtractions
-/// opcode: true for addition, false for subtraction
+/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final
+/// `ForeignFieldAdd` row for bound) inputs: list of all inputs to the chain of
+/// additions/subtractions opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
 pub fn create_chain<F: PrimeField>(
     inputs: &[BigUint],

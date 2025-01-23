@@ -59,8 +59,9 @@ pub struct Private<F, const N: usize> {
     i: F,
 }
 
-/// This should run the inner circuit and provide its output, in our case it may be simpler
-/// to just run the circuit separatly and provide the variables pointing to the output
+/// This should run the inner circuit and provide its output, in our case it may
+/// be simpler to just run the circuit separatly and provide the variables
+/// pointing to the output
 fn apply<F: PrimeField, const N: usize>(
     _z_i: Argument<FieldVar<F>, N>,
 ) -> Argument<FieldVar<F>, N> {

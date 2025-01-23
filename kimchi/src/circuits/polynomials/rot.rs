@@ -32,14 +32,18 @@ pub enum RotMode {
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
-    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and excess witness of the rotation
+    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and
+    ///   excess witness of the rotation
     ///
     /// It has:
     /// - 1 Rot64 gate to rotate the word
-    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the rotation
-    /// - 1 RangeCheck0 to constrain the size of the excess witness of the rotation
+    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the
+    ///   rotation
+    /// - 1 RangeCheck0 to constrain the size of the excess witness of the
+    ///   rotation
     /// Assumes:
-    /// - the witness word is 64-bits, otherwise, will need to append a new RangeCheck0 for the word
+    /// - the witness word is 64-bits, otherwise, will need to append a new
+    ///   RangeCheck0 for the word
     pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -67,9 +71,11 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - gates : the full circuit
     /// - rot : the rotation offset
     /// - side : the rotation side
-    /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    /// - zero_row : the row of the Generic gate to constrain the 64-bit check
+    ///   of shifted word
     /// Warning:
-    /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - witness word should come from the copy of another cell so it is
+    ///   intrinsic that it is 64-bits length,
     /// - same with rotated word
     pub fn extend_rot(gates: &mut Vec<Self>, rot: u32, side: RotMode, zero_row: usize) -> usize {
         let (new_row, mut rot_gates) = Self::create_rot(gates.len(), rot, side);
@@ -90,7 +96,8 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - rot : the rotation offset
     /// - side : the rotation side
     /// Warning:
-    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - Word should come from the copy of another cell so it is intrinsic that
+    ///   it is 64-bits length,
     /// - same with rotated word
     /// - need to check that the 2 most significant limbs of shifted are zero
     pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
@@ -112,8 +119,10 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 
 //~ `Rot64` onstrains known-length rotation of 64-bit words:
 //~
-//~ * This circuit gate is used to constrain that a 64-bit word is rotated by $r < 64$ bits to the "left".
-//~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
+//~ * This circuit gate is used to constrain that a 64-bit word is rotated by $r
+//~   < 64$ bits to the "left".
+//~ * The rotation is performed towards the most significant side (thus, the new
+//~   LSB is fed with the old MSB).
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
 //~ The idea is to split the rotation operation into two parts:
@@ -121,21 +130,25 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * Shift to the left
 //~ * Add the excess bits to the right
 //~
-//~ We represent shifting with multiplication modulo $2^{64}$. That is, for each word to be rotated, we provide in
-//~ the witness a quotient and a remainder, similarly to `ForeignFieldMul` such that the following operation holds:
+//~ We represent shifting with multiplication modulo $2^{64}$. That is, for each
+//~ word to be rotated, we provide in the witness a quotient and a remainder,
+//~ similarly to `ForeignFieldMul` such that the following operation holds:
 //~
 //~ $$word \cdot 2^{rot} = quotient \cdot 2^{64} + remainder$$
 //~
-//~ Then, the remainder corresponds to the shifted word, and the quotient corresponds to the excess bits.
+//~ Then, the remainder corresponds to the shifted word, and the quotient
+//~ corresponds to the excess bits.
 //~
 //~ $$word \cdot 2^{rot} = excess \cdot 2^{64} + shifted$$
 //~
-//~ Thus, in order to obtain the rotated word, we need to add the quotient and the remainder as follows:
+//~ Thus, in order to obtain the rotated word, we need to add the quotient and
+//~ the remainder as follows:
 //~
 //~ $$rotated = shifted + excess$$
 //~
-//~ The input word is known to be of length 64 bits. All we need for soundness is check that the shifted and
-//~ excess parts of the word have the correct size as well. That means, we need to range check that:
+//~ The input word is known to be of length 64 bits. All we need for soundness
+//~ is check that the shifted and excess parts of the word have the correct size
+//~ as well. That means, we need to range check that:
 //~
 //~ $$
 //~ \begin{aligned}
@@ -144,14 +157,16 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ \end{aligned}
 //~ $$
 //~
-//~ The latter can be obtained with a `RangeCheck0` gate setting the two most significant limbs to zero.
-//~ The former is equivalent to the following check:
+//~ The latter can be obtained with a `RangeCheck0` gate setting the two most
+//~ significant limbs to zero. The former is equivalent to the following check:
 //~
 //~ $$bound = excess - 2^{rot} + 2^{64} < 2^{64}$$
 //~
-//~ which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `Rot64` gate
-//~ is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
-//~ and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
+//~ which is doable with the constraints in a `RangeCheck0` gate. Since our
+//~ current row within the `Rot64` gate is almost empty, we can use it to
+//~ perform the range check within the same gate. Then, using the following
+//~ layout and assuming that the gate has a coefficient storing the value
+//~ $2^{rot}$, which is publicly known
 //~
 //~ | Gate   | `Rot64`             | `RangeCheck0` gadgets (designer's duty)                   |
 //~ | ------ | ------------------- | --------------------------------------------------------- |
@@ -173,9 +188,10 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ |     13 |      `bound_crumb6` | `shifted_crumb6` | `excess_crumb6` |       `word_crumb6`  |
 //~ |     14 |      `bound_crumb7` | `shifted_crumb7` | `excess_crumb7` |       `word_crumb7`  |
 //~
-//~ In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
-//~ to perform the rotation are fixed, public, and known in advance, according to the following table,
-//~ depending on the coordinate of each cell within the 5x5 matrix state:
+//~ In Keccak, rotations are performed over a 5x5 matrix state of w-bit words
+//~ each cell. The values used to perform the rotation are fixed, public, and
+//~ known in advance, according to the following table, depending on the
+//~ coordinate of each cell within the 5x5 matrix state:
 //~
 //~ | y \ x |   0 |   1 |   2 |   3 |   4 |
 //~ | ----- | --- | --- | --- | --- | --- |
@@ -185,8 +201,9 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ | 3     |  28 |  55 | 153 |  21 | 120 |
 //~ | 4     |  91 | 276 | 231 | 136 |  78 |
 //~
-//~ But since we will always be using 64-bit words in our Keccak usecase ($w = 64$), we can have an equivalent
-//~ table with these values modulo 64 to avoid needing multiple passes of the rotation gate (a single step would
+//~ But since we will always be using 64-bit words in our Keccak usecase ($w =
+//~ 64$), we can have an equivalent table with these values modulo 64 to avoid
+//~ needing multiple passes of the rotation gate (a single step would
 //~ cause overflows otherwise):
 //~
 //~ | y \ x |   0 |   1 |   2 |   3 |   4 |
@@ -197,8 +214,9 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ | 3     |  28 |  55 |  25 |  21 |  56 |
 //~ | 4     |  27 |  20 |  39 |   8 |  14 |
 //~
-//~ Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
-//~ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
+//~ Since there is one value of the coordinates (x, y) where the rotation is 0
+//~ bits, we can skip that step in the gadget. This will save us one gate, and
+//~ thus the whole 25-1=24 rotations will be performed in just 48 rows.
 //~
 #[derive(Default)]
 pub struct Rot64<F>(PhantomData<F>);
@@ -210,10 +228,11 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Rot64);
     const CONSTRAINTS: u32 = 11;
 
-    // Constraints for rotation of three 64-bit words by any three number of bits modulo 64
-    // (stored in coefficient as a power-of-two form)
+    // Constraints for rotation of three 64-bit words by any three number of bits
+    // modulo 64 (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
-    //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
+    //   * Shifts the words by `rot` bits and then adds the excess to obtain the
+    //     rotated word.
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
@@ -225,8 +244,9 @@ where
             .collect::<Vec<T>>();
 
         // NOTE:
-        // If we ever want to make this gate more generic, the power of two for the length
-        // could be a coefficient of the gate instead of a fixed value in the constraints.
+        // If we ever want to make this gate more generic, the power of two for the
+        // length could be a coefficient of the gate instead of a fixed value in
+        // the constraints.
         let two_to_64 = T::two_pow(64);
 
         let word = env.witness_curr(0);
@@ -339,14 +359,14 @@ pub fn extend_rot<F: PrimeField>(
     } else {
         rot
     };
-    // Split word into shifted and excess parts to compute the witnesses for rotation as follows
-    //          <   64     >  bits
+    // Split word into shifted and excess parts to compute the witnesses for
+    // rotation as follows          <   64     >  bits
     // word   = [---|------]
     //          <rot>         bits
     // excess = [---]
     // shifted      [------] * 2^rot
     // rot    = [------|000]
-    //        +        [---] excess
+    //        + [---] excess
     let shifted = (word as u128) * 2u128.pow(rot) % 2u128.pow(64);
     let excess = (word as u128) / 2u128.pow(64 - rot);
     let rotated = shifted + excess;

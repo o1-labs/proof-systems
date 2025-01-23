@@ -9,7 +9,8 @@ pub struct CopyCell {
 }
 
 impl CopyCell {
-    /// Create a witness cell copied from the witness cell at position (row, col)
+    /// Create a witness cell copied from the witness cell at position (row,
+    /// col)
     pub fn create(row: usize, col: usize) -> Box<CopyCell> {
         Box::new(CopyCell { row, col })
     }

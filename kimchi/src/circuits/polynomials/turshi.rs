@@ -34,22 +34,28 @@
 //!  - `next_fp`: pointer to stack (can remain the same as fp)
 //!
 //!Cairo words are field elements of characteristic > 2^64
-//!Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)
-//!Instructions with immediate values are stored in 2 words
-//!- The first word stores instruction
-//!- The second word stores the value
+//!Cairo instructions are stored as words (63 or 64 bits - actual instruction
+//! or immediate value) Instructions with immediate values are stored in 2 words
+//! - The first word stores instruction
+//! - The second word stores the value
 //!Words of instructions consist of
-//!* 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation
-//! - `off_dst` (= offset from destination address): used to compute address of assignment
-//! - `off_op0` (= offset from first operand): used to compute address of first operand in instruction
-//! - `off_op1` (= offset from second operand): used to compute address of second operand in instruction
-//!* 15 bits of flags divided into 7 groups
+//! * 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased
+//!   representation
+//! - `off_dst` (= offset from destination address): used to compute address of
+//!   assignment
+//! - `off_op0` (= offset from first operand): used to compute address of first
+//!   operand in instruction
+//! - `off_op1` (= offset from second operand): used to compute address of
+//!   second operand in instruction
+//! * 15 bits of flags divided into 7 groups
 //!  When multiple bits, at most one can be 1 and the rest must be 0
-//! - `dst_reg` \[0\] = fDST_REG : indicates what pointer `off_dst` refers to ( 0 => ap , 1 => fp )
-//! - `op0_reg` \[1\] = fOP0_REG : indicates what pointer `off_op0` refers to ( 0 => ap , 1 => fp )
+//! - `dst_reg` \[0\] = fDST_REG : indicates what pointer `off_dst` refers to (
+//!   0 => ap , 1 => fp )
+//! - `op0_reg` \[1\] = fOP0_REG : indicates what pointer `off_op0` refers to (
+//!   0 => ap , 1 => fp )
 //! - `op1_src` \[2..4\] : encodes the type of second operand
-//!  · 0: indicates `off_op1` is b in the double indexing \[\[ point + a \] + b \]
-//!  · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
+//!  · 0: indicates `off_op1` is b in the double indexing \[\[ point + a \] + b
+//! \]  · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
 //!  · 2: indicates offset `off_op1` relative to fp = `fOP1_FP` = 1
 //!  · 4: indicates offset `off_op1` relative to ap = `fOP1_AP` = 1
 //! - `res_logic` \[5..6\]: defines (if any) arithmetic operation in right part
@@ -69,14 +75,15 @@
 //!  · 0: jumps or increments instruction
 //!  · 1: call instruction = `fOPC_CALL` = 1
 //!  · 2: return instruction = `fOPC_RET` = 1
-//!  · 4: assert equal instruction (assignment to value or check equality) = `fOPC_ASSEQ` = 1
-//!* in little-endian form = leftmost least significant bit
+//!  · 4: assert equal instruction (assignment to value or check equality) =
+//! `fOPC_ASSEQ` = 1
+//! * in little-endian form = leftmost least significant bit
 //!
 //!The transition function uses 4 auxiliary values:
-//!- dst: left part of instruction, destination
-//!- op0: content of first operand of right part
-//!- op1: content of second operand of right part
-//!- res: result of the operation in the right part
+//! - dst: left part of instruction, destination
+//! - op0: content of first operand of right part
+//! - op1: content of second operand of right part
+//! - res: result of the operation in the right part
 
 use crate::{
     alphas::Alphas,
@@ -124,8 +131,9 @@ impl<F: PrimeField> CircuitGate<F> {
         CircuitGate::new(GateType::CairoTransition, wires, vec![])
     }
 
-    /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
-    /// Returns a vector of gates, and the next available row after the gadget
+    /// Gadget generator of the whole cairo circuits from an absolute row and
+    /// number of instructions Returns a vector of gates, and the next
+    /// available row after the gadget
     pub fn create_cairo_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -167,7 +175,8 @@ impl<F: PrimeField> CircuitGate<F> {
         (gates, next)
     }
 
-    /// verifies that the Cairo gate constraints are solved by the witness depending on its type
+    /// verifies that the Cairo gate constraints are solved by the witness
+    /// depending on its type
     ///
     /// # Errors
     ///
@@ -256,7 +265,8 @@ impl<F: PrimeField> CircuitGate<F> {
 pub mod witness {
     use super::*;
 
-    /// Returns the witness of an execution of a Cairo program in `CircuitGate` format
+    /// Returns the witness of an execution of a Cairo program in `CircuitGate`
+    /// format
     pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
         // 0: 1 row for final check CairoClaim gate
         // 4i+1: 1 row per instruction for CairoInstruction gate
@@ -407,7 +417,8 @@ pub mod witness {
 pub mod testing {
     use super::*;
 
-    /// verifies that the Cairo gate constraints are solved by the witness depending on its type
+    /// verifies that the Cairo gate constraints are solved by the witness
+    /// depending on its type
     ///
     /// # Errors
     ///
@@ -575,7 +586,8 @@ pub mod testing {
 
         // * Check value of result
         ensure_eq!(
-            (one - f_pc_jnz) * res, //               if  pc_up != 4 : res = ..  // no res in conditional jumps
+            (one - f_pc_jnz) * res, /*               if  pc_up != 4 : res = ..  // no res in
+                                     * conditional jumps */
             f_res_mul * op0 * op1                 // if res_log = 2 : op0 * op1
             + f_res_add * (op0 + op1)             // if res_log = 1 : op0 + op1
             + (one - f_res_add - f_res_mul) * op1, // if res_log = 0 : op1
@@ -649,7 +661,9 @@ pub mod testing {
         // * Check next program counter
         ensure_eq!(
             zero,
-            f_pc_jnz * (dst * res - one) * (pcup - (pc + size)), // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
+            f_pc_jnz * (dst * res - one) * (pcup - (pc + size)), /* <=> pc_up = 4 and dst = 0 :
+                                                                  * next_pc = pc + size // no
+                                                                  * jump */
             "wrong pc update"
         );
         ensure_eq!(
@@ -658,7 +672,8 @@ pub mod testing {
             + (one - f_pc_jnz) * pcup                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
                 - (one - f_pc_abs - f_pc_rel - f_pc_jnz) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
                 - f_pc_abs * res                                     // <=> pc_up = 1 : next_pc = res       // absolute jump
-                - f_pc_rel * (pc + res), //                             <=> pc_up = 2 : next_pc = pc + res  // relative jump
+                - f_pc_rel * (pc + res), /*                             <=> pc_up = 2 : next_pc
+                                          * = pc + res  // relative jump */
             "wrong pc update"
         );
 
@@ -712,7 +727,8 @@ pub mod testing {
 //~ The Kimchi 15 columns could be:
 //~ GateType     Claim       Instruction   Zero | (Flags+Transition+Aux)
 //~    row   ->  0           4i+1          4i+2       4i+3        4n-2
-//~             ---------------------------------------------------------------------------------
+//~
+//~ ---------------------------------------------------------------------------------
 //~     0  ·  ®  pc_ini      pc            fDST_FP    © pc        © next_pc
 //~     1  ·  ®  ap_ini      ap            fOP0_FP    © ap        © next_ap
 //~  c  2  ·  ®  pc_fin      fp            fOP1_VAL   © fp        © next_fp
@@ -740,7 +756,8 @@ fn two<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>() -> T {
 ///
 /// # Panics
 ///
-/// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
+/// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate
+/// type.
 pub fn circuit_gate_combined_constraints<F: PrimeField>(
     typ: GateType,
     alphas: &Alphas<F>,
@@ -765,8 +782,8 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
     const CONSTRAINTS: u32 = 5;
 
-    /// Generates the constraints for the Cairo initial claim and first memory checks
-    ///     Accesses Curr and Next rows
+    /// Generates the constraints for the Cairo initial claim and first memory
+    /// checks     Accesses Curr and Next rows
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,
         _cache: &mut Cache,
@@ -862,7 +879,8 @@ where
         }
 
         // * Check no two flagbits of the same flagset are nonzero
-        // TODO(querolita): perhaps these are redundant considering all of the logics below
+        // TODO(querolita): perhaps these are redundant considering all of the logics
+        // below
         let op1_src = cache.cache(f_op1_ap.clone() + f_op1_fp.clone() + f_op1_val.clone());
         let res_log = cache.cache(f_res_mul.clone() + f_res_add.clone());
         let pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
@@ -934,7 +952,8 @@ where
         constraints.push(f_opc_call.clone() * (dst.clone() - fp)); // if opcode = 1 : dst = fp
 
         // * Check storage of next instruction after a call instruction
-        // <=> assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call
+        // <=> assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after
+        // call
         constraints.push(f_opc_call * (op0 - (pc + size))); // if opcode = 1 : op0 = pc + size
 
         // * Check destination = result after assert-equal

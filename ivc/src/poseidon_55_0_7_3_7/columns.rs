@@ -7,7 +7,8 @@
 //! where (x', y', z') = MDS(x^7, y^7, z^7), i.e. the result of the linear layer
 //! We will have, for N full rounds:
 //! - `3` input columns
-//! - `N * 3` round columns, indexed by the round number and the index in the state,
+//! - `N * 3` round columns, indexed by the round number and the index in the
+//!   state,
 //! the number of rounds.
 //! The round constants are added as fixed selectors.
 

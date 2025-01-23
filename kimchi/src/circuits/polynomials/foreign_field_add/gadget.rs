@@ -12,7 +12,8 @@ use crate::circuits::{
 use super::witness::FFOps;
 
 impl<F: PrimeField> CircuitGate<F> {
-    /// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
+    /// Create foreign field addition gate chain without range checks (needs to
+    /// wire the range check for result bound manually)
     /// - Inputs
     ///   - starting row
     ///   - operations to perform
@@ -26,13 +27,14 @@ impl<F: PrimeField> CircuitGate<F> {
     ///      {
     ///        (i) ->      -> 1 ForeignFieldAdd row
     ///      } * num times
-    ///      (n)           -> 1 ForeignFieldAdd row (this is where the final result goes)
-    ///      (n+1)         -> 1 Zero row for bound result
+    ///      (n)           -> 1 ForeignFieldAdd row (this is where the final
+    /// result goes)      (n+1)         -> 1 Zero row for bound result
     /// ]
     ///
     /// Warning:
     /// - Wire the range check for result bound manually
-    /// - Connect to public input containing the 1 value for the overflow in the final bound check
+    /// - Connect to public input containing the 1 value for the overflow in the
+    ///   final bound check
     /// - If the inputs of the addition come from public input, wire it as well
     pub fn create_chain_ffadd(
         start_row: usize,
@@ -82,7 +84,8 @@ impl<F: PrimeField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    /// Create a single foreign field addition gate. This is used for example in the final bound check.
+    /// Create a single foreign field addition gate. This is used for example in
+    /// the final bound check.
     /// - Inputs
     ///   - starting row
     ///   - operation to perform
@@ -122,7 +125,8 @@ impl<F: PrimeField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    /// Extend a chain of foreign field addition gates. It already wires 1 value to the overflow cell.
+    /// Extend a chain of foreign field addition gates. It already wires 1 value
+    /// to the overflow cell.
     /// - Inputs
     ///   - gates: vector of gates to extend
     ///   - pub_row: row of the public input
@@ -144,7 +148,8 @@ impl<F: PrimeField> CircuitGate<F> {
         gates.connect_cell_pair((pub_row, 0), (*curr_row - 2, 6));
     }
 
-    /// Extend a single foreign field addition gate followed by a zero row containing the result
+    /// Extend a single foreign field addition gate followed by a zero row
+    /// containing the result
     pub fn extend_single_ffadd(
         gates: &mut Vec<Self>,
         curr_row: &mut usize,

@@ -104,7 +104,8 @@ pub struct EvaluatedColumnCoefficients<F: PrimeField> {
 }
 
 /// The polynomials representing columns, in evaluation form.
-/// The evaluations are expanded to the domain size required for their constraints.
+/// The evaluations are expanded to the domain size required for their
+/// constraints.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ColumnEvaluations<F: PrimeField> {
@@ -261,8 +262,8 @@ pub fn selector_polynomial<F: PrimeField>(
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    /// Initializes the [`ConstraintSystem<F>`] on input `gates` and `fr_sponge_params`.
-    /// Returns a [`Builder<F>`]
+    /// Initializes the [`ConstraintSystem<F>`] on input `gates` and
+    /// `fr_sponge_params`. Returns a [`Builder<F>`]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
     /// - `prev_challenges: 0`
@@ -272,9 +273,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `disable_gates_checks: false`,
     ///
     /// How to use it:
-    /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
-    /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
+    /// 1. Create your instance of your builder for the constraint system using
+    ///    `crate(gates, sponge params)`
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(),
+    ///    runtime(), precomputations()``
+    /// 3. Finally call the `build()` method and unwrap the `Result` to obtain
+    ///    your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
             gates,
@@ -303,7 +307,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// test helpers
     pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
         let public = 0;
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        // not sure if theres a smarter way instead of the double unwrap, but should be
+        // fine in the test
         ConstraintSystem::<F>::create(gates)
             .public(public)
             .build()
@@ -392,7 +397,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             d4: WitnessShifts {
                 next: WitnessEvals {
                     w: array::from_fn(|i| w4[i].shift(4)),
-                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
+                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this
+                    // dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
                 this: WitnessEvals {
@@ -424,8 +430,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
         }
 
-        // Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
-        // quasi-random for those rows.
+        // Zero out the sigmas in the zk rows, to ensure that the permutation
+        // aggregation is quasi-random for those rows.
         for row in n + 2 - (self.zk_rows as usize)..n - 1 {
             for sigma in sigmal1.iter_mut() {
                 sigma[row] = F::zero();
@@ -628,7 +634,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
         };
 
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
+        // TODO: This doesn't need to be degree 8 but that would require some changes in
+        // expr
         let coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
                 .evaluate_over_domain_by_ref(self.domain.d8)
@@ -656,7 +663,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
 /// The default number of chunks in a circuit is one (< 2^16 rows)
 pub const NUM_CHUNKS_BY_DEFAULT: usize = 1;
 
-/// The number of rows required for zero knowledge in circuits with one single chunk
+/// The number of rows required for zero knowledge in circuits with one single
+/// chunk
 pub const ZK_ROWS_BY_DEFAULT: u64 = 3;
 
 /// This function computes a strict lower bound in the number of rows required
@@ -733,8 +741,8 @@ impl<F: PrimeField> Builder<F> {
     /// If not invoked, it is `vec![]` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the lookup tables,
-    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
-    /// the error will be raised.
+    /// are unique and not colliding with IDs of built-in lookup tables,
+    /// otherwise the error will be raised.
     ///
     /// (see [crate::circuits::lookup::tables]).
     pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
@@ -746,8 +754,8 @@ impl<F: PrimeField> Builder<F> {
     /// If not invoked, it is `None` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the runtime
-    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
-    /// otherwise error will be raised.
+    /// lookup tables, are unique, i.e. not colliding internaly (with other
+    /// runtime tables), otherwise error will be raised.
     /// (see [crate::circuits::lookup::tables]).
     pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
         self.runtime_tables = runtime_tables;
@@ -782,7 +790,8 @@ impl<F: PrimeField> Builder<F> {
         let runtime_tables = self.runtime_tables;
 
         //~ 1. If the circuit is less than 2 gates, abort.
-        // for some reason we need more than 1 gate for the circuit to work, see TODO below
+        // for some reason we need more than 1 gate for the circuit to work, see TODO
+        // below
         assert!(gates.len() > 1);
 
         let feature_flags = FeatureFlags::from_gates(&gates, runtime_tables.is_some());
@@ -836,23 +845,29 @@ impl<F: PrimeField> Builder<F> {
             }
         };
 
-        //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
-        //~    achieve zero-knowledge. The following constraints apply to `zk_rows`:
-        //~    * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
-        //~      each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
-        //~    * The permutation argument interacts with the `c` chunks in parallel, so it is
-        //~      possible to cross-correlate between them to compromise zero knowledge. We know
-        //~      that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
-        //~      attempting to find the evaluation at a new point, we find that:
-        //~      * the evaluation of every witness column in the permutation contains `k` unknowns;
-        //~      * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+        //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be
+        //~    required to achieve zero-knowledge. The following constraints apply to
+        //~    `zk_rows`:
+        //~    * The number of chunks `c` results in an evaluation at `zeta` and `zeta *
+        //~      omega` in each column for `2*c` evaluations per column, so `zk_rows >=
+        //~      2*c + 1`.
+        //~    * The permutation argument interacts with the `c` chunks in parallel, so
+        //~      it is possible to cross-correlate between them to compromise zero
+        //~      knowledge. We know that there is some `c >= 1` such that `zk_rows = 2*c
+        //~      + k` from the above. Thus, attempting to find the evaluation at a new
+        //~      point, we find that:
+        //~      * the evaluation of every witness column in the permutation contains
+        //~        `k` unknowns;
+        //~      * the evaluations of the permutation argument aggregation has `k-1`
+        //~        unknowns;
         //~      * the permutation argument applies on all but `zk_rows - 3` rows;
-        //~      * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
-        //~        can construct fewer equations than we have unknowns.
+        //~      * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to
+        //~        ensure that we can construct fewer equations than we have unknowns.
         //~
-        //~    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
-        //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
-        //~    `zk_rows` and `domain_size` satisfying the fixpoint
+        //~    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2)
+        //~ / 7`.    We can derive `c` from the `max_poly_size` supported by the
+        //~ URS, and thus we find    `zk_rows` and `domain_size` satisfying the
+        //~ fixpoint
         //~
         //~    ```text
         //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
@@ -892,9 +907,8 @@ impl<F: PrimeField> Builder<F> {
             (zk_rows, domain_size_lower_bound)
         };
 
-        //~ 1. Create a domain for the circuit. That is,
-        //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + zk_rows` elements.
+        //~ 1. Create a domain for the circuit. That is, compute the smallest subgroup
+        //~    of the field that has order greater or equal to `n + zk_rows` elements.
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)
             .map_err(SetupError::DomainCreation)?;
 

@@ -27,15 +27,18 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// `Col`: any column implementing [FoldingColumnTrait]
 /// `Chall`: any challenge
 /// `Sel`: any dynamic selector
-/// `Str`: structures that can be indexed by `Col`, thus implementing `Index<Col>`
-/// `I`: instances (implementing [Instance]) that can be indexed by `Chall`
-/// `W`: witnesses (implementing [Witness]) that can be indexed by `Col` and `Sel`
+/// `Str`: structures that can be indexed by `Col`, thus implementing
+/// `Index<Col>` `I`: instances (implementing [Instance]) that can be indexed by
+/// `Chall` `W`: witnesses (implementing [Witness]) that can be indexed by `Col`
+/// and `Sel`
+///
 /// ```ignore
 /// use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 /// use mina_poseidon::FqSponge;
 /// use folding::{examples::{BaseSponge, Curve, Fp}, FoldingScheme};
 ///
-/// // instantiating the config with our types and the defaults for selectors and structure
+/// // instantiating the config with our types and the defaults for selectors
+/// // and structure
 /// type MyConfig = StandardConfig<Curve, MyCol, MyChallenge, MyInstance<Curve>, MyWitness<Curve>>;
 /// let constraints = vec![constraint()];
 /// let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
@@ -54,7 +57,8 @@ impl<G: KimchiCurve, Col> Index<Col> for EmptyStructure<G> {
 /// let right = (right.0, right.1);
 ///
 /// let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
-/// let _output = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
+/// let _output = scheme.fold_instance_witness_pair(left, right, &mut
+/// fq_sponge);
 /// ```
 #[derive(Derivative)]
 #[derivative(Hash, PartialEq, Eq, Debug)]
@@ -128,8 +132,8 @@ where
     type Structure = Str;
 
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self {
-        // cloning for now, ideally should work with references, but that requires deeper
-        // refactorings of folding
+        // cloning for now, ideally should work with references, but that requires
+        // deeper refactorings of folding
         let instances = instances.map(Clone::clone);
         let witnesses = witnesses.map(Clone::clone);
         let structure = structure.clone();
@@ -168,8 +172,8 @@ where
                         // where you push its first element and offer either evals[0..] or
                         // evals[1..].
                         // that would relatively easy to implement in a custom implementation
-                        // with just a small change to this trait, but in this generic implementation
-                        // it is harder to implement.
+                        // with just a small change to this trait, but in this generic
+                        // implementation it is harder to implement.
                         // The cost is mostly the cost of a clone
                         let evals = &witness[col];
                         let mut next = Vec::with_capacity(evals.len());
@@ -398,8 +402,8 @@ mod example {
         }
     }
 
-    // now we can get an instance of StandardConfig, where selectors and structures have
-    // default for cases like this where we don't need them
+    // now we can get an instance of StandardConfig, where selectors and structures
+    // have default for cases like this where we don't need them
     type MyConfig<G> = StandardConfig<G, MyCol, MyChallenge, MyInstance<G>, MyWitness<G>>;
 
     // creating some example constraint

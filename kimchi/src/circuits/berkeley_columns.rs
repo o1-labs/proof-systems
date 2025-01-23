@@ -314,14 +314,16 @@ pub struct Environment<'a, F: FftField> {
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
     pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
+    /// The polynomial that vanishes on the zero-knowledge rows and the row
+    /// before.
     pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
     pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
-    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    /// computing the evaluations of the unnormalized Lagrange basis
+    /// polynomials.
     pub l0_1: F,
     /// Constant values required
     pub constants: Constants<F>,
@@ -337,7 +339,8 @@ pub struct Environment<'a, F: FftField> {
 // Helpers
 //
 
-/// An alias for the intended usage of the expression type in constructing constraints.
+/// An alias for the intended usage of the expression type in constructing
+/// constraints.
 pub type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
 
 /// Convenience function to create a constant as [Expr].

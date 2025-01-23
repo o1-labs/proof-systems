@@ -14,8 +14,9 @@ fn test_biased() {
 
 #[test]
 fn test_cairo_word() {
-    // Tests the structure of a Cairo word corresponding to the Cairo instruction: tempvar x = val
-    // This unit test checks offsets computation, flagbits and flagsets.
+    // Tests the structure of a Cairo word corresponding to the Cairo instruction:
+    // tempvar x = val This unit test checks offsets computation, flagbits and
+    // flagsets.
     let word = CairoWord::new(F::from(0x480680017fff8000u64));
 
     assert_eq!(word.off_dst(), F::zero());

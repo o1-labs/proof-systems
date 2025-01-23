@@ -10,7 +10,7 @@
 //! Vertically stacked blocks are as follows:
 //!
 //!```text
-//!
+//! 
 //!         Inputs:
 //!      Each point is 2 base field coordinates in 17 15-bit limbs
 //!       recomposed as 8 75-bit limbs
@@ -179,7 +179,7 @@
 //!
 //!
 //! 2^15 |---- --------------------------------------|
-//!```
+//! ```
 //!
 //!
 //! Assume that IVC circuit takess CELL cells, e.g. CELL = 10000*N.
@@ -197,7 +197,8 @@
 //! - Inputs:              2 * 17 * 3N = 102N
 //! - Inputs repacked 75:  2 * 4 * 3N = 24N
 //! - Inputs repacked 150: 2 * 2 * 3N = 12N
-//! - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165 constants to every call)
+//! - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165
+//!   constants to every call)
 //! - scalars:             4 N + 17 * 3 * N = 55 N
 //! - ECADDs:              230 * 35 * N = 8050N
 //! Total (CELL):         ~9233*N
@@ -280,7 +281,8 @@ pub fn total_height<const N_COL_TOTAL: usize, const N_CHALS: usize>() -> usize {
 pub const N_FSEL_IVC: usize = IVC_POSEIDON_NB_ROUND_CONSTANTS + N_BLOCKS;
 
 // NB: We can reuse hash constants.
-// TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
+// TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for
+// hashing?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IVCColumn {
     /// A single column containing the folding iteration number,
@@ -343,7 +345,8 @@ pub enum IVCColumn {
 
     /// 2*4 75-bit limbs
     Block4Input1(usize),
-    /// Coeffifient which is indexing a bucket. Used for both lookups in this row.
+    /// Coeffifient which is indexing a bucket. Used for both lookups in this
+    /// row.
     Block4Coeff,
     /// RAM lookup access time for input 1.
     Block4Input2AccessTime,

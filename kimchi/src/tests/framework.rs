@@ -122,7 +122,8 @@ where
         self
     }
 
-    // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
+    // Re allow(dead_code): this method is used in tests; without the annotation it
+    // warns unnecessarily.
     /// creates the indexes
     #[must_use]
     #[allow(dead_code)]

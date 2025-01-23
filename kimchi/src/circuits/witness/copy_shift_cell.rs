@@ -9,7 +9,8 @@ pub struct CopyShiftCell {
 }
 
 impl CopyShiftCell {
-    /// Create witness cell copied from the witness cell at position (row, col) and then scaled by 2^shift
+    /// Create witness cell copied from the witness cell at position (row, col)
+    /// and then scaled by 2^shift
     pub fn create(row: usize, col: usize, shift: u64) -> Box<CopyShiftCell> {
         Box::new(CopyShiftCell { row, col, shift })
     }

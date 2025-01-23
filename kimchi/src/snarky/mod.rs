@@ -1,7 +1,8 @@
 // TODO: uncomment
 // #![deny(missing_docs)]
 
-//! Snarky is the front end to kimchi, allowing users to write their own programs and convert them to kimchi circuits.
+//! Snarky is the front end to kimchi, allowing users to write their own
+//! programs and convert them to kimchi circuits.
 //!
 //! See the Mina book for more detail about this implementation.
 //!

@@ -14,8 +14,8 @@
 ///
 /// Some columns might be even shared (e.g. Col1 and Col1' share column#0).
 ///
-/// Using capabilities one can define functions that operate over different sets of columns,
-/// and does not "know" in which bigger context it operates.
+/// Using capabilities one can define functions that operate over different sets
+/// of columns, and does not "know" in which bigger context it operates.
 /// - function0<Env: ColumnAccess<Col0>>(env: Env, ...)
 /// - function1<Env: ColumnAccess<Col1>>(env: Env, ...)
 /// - function1'<Env: ColumnAccess<Col1'>>(env: Env, ...)
@@ -56,7 +56,8 @@ use crate::{
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
-/// `MPrism` allows one to Something like a Prism, but for Maybe and not just any Applicative.
+/// `MPrism` allows one to Something like a Prism, but for Maybe and not just
+/// any Applicative.
 ///
 /// See
 /// - <https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html>

@@ -1,4 +1,5 @@
-//! The Cairo language works natively for field elements in the finite field with
+//! The Cairo language works natively for field elements in the finite field
+//! with
 //! modulus 0x800000000000011000000000000000000000000000000000000000000000001
 //! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
 //! Our Pallas curves have 255 bits, so Cairo native instructions will fit.

@@ -99,7 +99,8 @@ pub const N_LIMBS_SMALL: usize = N_LIMBS;
 pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
 pub const N_LIMBS_LARGE: usize = 4;
 
-/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
+/// Returns the highest limb of the foreign field modulus. Is used by the
+/// lookups.
 pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
     let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::MODULUS).unwrap();
     f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
@@ -122,8 +123,8 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 /// (2) and (3): c11 = limbs1[77]..limbs1[87] || limbs2[0]..limbs2[3]
 /// (3) c12 = 4...18, c13 = 19..33, c14 = 34..48, c15 = 49..63, c16 = 64..78
 /// ```
-/// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
-/// is 254bits long.
+/// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field
+/// element is 254bits long.
 pub fn deserialize_field_element<
     F: PrimeField,
     Ff: PrimeField,
@@ -311,8 +312,8 @@ where
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `K = BITSIZE_N / BITSIZE_M` from the first, and recombining them as
-/// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
+/// chunks `a_i` of size `K = BITSIZE_N / BITSIZE_M` from the first, and
+/// recombining them as `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
 pub fn combine_limbs_m_to_n<
     const M: usize,
     const N: usize,
@@ -445,7 +446,8 @@ pub fn constrain_multiplication<
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
+            // If it's the highest limb, we need to check that it's representing a field
+            // element.
             env.lookup(
                 LookupTable::RangeCheckFfHighest(PhantomData),
                 vec![x.clone()],
@@ -455,7 +457,8 @@ pub fn constrain_multiplication<
         }
     }
 
-    // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
+    // Quotient limbs must fit into 15 bits, but we don't care if they're in the
+    // field.
     for x in quotient_limbs_small.iter() {
         env.lookup(LookupTable::RangeCheck15, vec![x.clone()]);
     }
@@ -463,18 +466,21 @@ pub fn constrain_multiplication<
     // Carry limbs need to be in particular ranges.
     for (i, x) in carry_limbs_small.iter().enumerate() {
         if i % 6 == 5 {
-            // This should be a different range check depending on which big-limb we're processing?
-            // So instead of one type of lookup we will have 5 different ones?
+            // This should be a different range check depending on which big-limb we're
+            // processing? So instead of one type of lookup we will have 5
+            // different ones?
             env.lookup(LookupTable::RangeCheck9Abs, vec![x.clone()]); // 4 + 5 ?
         } else {
             // TODO add actual lookup
             env.lookup(LookupTable::RangeCheck14Abs, vec![x.clone()]);
             //env.range_check_abs15(x);
-            // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
+            // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64
+            // << 15));
         }
     }
 
-    // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
+    // FIXME: Some of these /have/ to be in the [0,F), and carries have very
+    // specific ranges!
 
     let chal_converted_limbs_large =
         combine_small_to_large::<_, _, Env>(chal_converted_limbs_small.clone());
@@ -512,7 +518,8 @@ pub fn constrain_multiplication<
 
     // Equation 1
     // General form:
-    // \sum_{k,j | k+j = i} xi_j cprev_k - c_i - \sum_{k,j} q_k f_j - c_i * 2^B + c_{i-1} =  0
+    // \sum_{k,j | k+j = i} xi_j cprev_k - c_i - \sum_{k,j} q_k f_j - c_i * 2^B +
+    // c_{i-1} =  0
     #[allow(clippy::needless_range_loop)]
     for i in 0..2 * N_LIMBS_LARGE - 1 {
         let mut constraint = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
@@ -669,7 +676,8 @@ pub fn multiplication_circuit<
         let assign_carry = |env: &mut Env, newcarry: F, carryvar: &mut F| {
             // Last carry should be zero, otherwise we record it
             if i < N_LIMBS_LARGE * 2 - 2 {
-                // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
+                // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I
+                // think.
                 let newcarry_sign = if newcarry.to_bigint_positive() > n_half_bi {
                     F::zero() - F::one()
                 } else {
@@ -677,8 +685,9 @@ pub fn multiplication_circuit<
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
-                // However we split them into 14-bit chunks -- each chunk is signed, so in the end
-                // the layout is [14bitabs,14bitabs,14bitabs,14bitabs,14bitabs,9bitabs]
+                // However we split them into 14-bit chunks -- each chunk is signed, so in the
+                // end the layout is
+                // [14bitabs,14bitabs,14bitabs,14bitabs,14bitabs,9bitabs]
                 // altogether giving a 79bit number (signed).
                 let newcarry_limbs: [F; 6] =
                     limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(

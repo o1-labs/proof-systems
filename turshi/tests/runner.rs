@@ -14,7 +14,8 @@ fn test_cairo_step() {
         .collect();
     let mut mem = CairoMemory::new(instrs);
     // Need to know how to find out
-    // Is it final ap and/or final fp? Will write to starkware guys to learn about this
+    // Is it final ap and/or final fp? Will write to starkware guys to learn about
+    // this
     mem.write(F::from(4u32), F::from(7u32));
     mem.write(F::from(5u32), F::from(7u32));
     let ptrs = CairoState::new(F::from(1u32), F::from(6u32), F::from(6u32));
@@ -36,7 +37,8 @@ fn test_cairo_program() {
         .collect();
     let mut mem = CairoMemory::<F>::new(instrs);
     // Need to know how to find out
-    // Is it final ap and/or final fp? Will write to starkware guys to learn about this
+    // Is it final ap and/or final fp? Will write to starkware guys to learn about
+    // this
     mem.write(F::from(4u32), F::from(7u32)); //beginning of output
     mem.write(F::from(5u32), F::from(7u32)); //end of output
     let prog = CairoProgram::new(&mut mem, 1);

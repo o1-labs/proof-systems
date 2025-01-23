@@ -200,8 +200,8 @@ fn field<F: PrimeField>(input: &[u64]) -> Vec<F> {
     input.iter().map(|x| F::from(*x)).collect::<Vec<F>>()
 }
 
-// Contains the quotient, remainder, bound, dense rotated as quarters of at most 16 bits each
-// Contains the expansion of the rotated word
+// Contains the quotient, remainder, bound, dense rotated as quarters of at most
+// 16 bits each Contains the expansion of the rotated word
 pub struct Rotation {
     quotient: Vec<u64>,
     remainder: Vec<u64>,
@@ -210,7 +210,8 @@ pub struct Rotation {
 }
 
 impl Rotation {
-    // On input the dense quarters of a word, rotate the word offset bits to the left
+    // On input the dense quarters of a word, rotate the word offset bits to the
+    // left
     fn new(dense: &[u64], offset: u32) -> Self {
         let word = Keccak::compose(dense);
         let rem = word as u128 * 2u128.pow(offset) % 2u128.pow(64);
@@ -229,7 +230,8 @@ impl Rotation {
         }
     }
 
-    // On input the dense quarters of many words, rotate the word offset bits to the left
+    // On input the dense quarters of many words, rotate the word offset bits to the
+    // left
     fn many(words: &[u64], offsets: &[u32]) -> Self {
         assert!(words.len() == QUARTERS * offsets.len());
         let mut quotient = vec![];

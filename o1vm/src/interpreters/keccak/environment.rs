@@ -1,6 +1,6 @@
-//! This module contains the definition and implementation of the Keccak environment
-//! including the common functions between the witness and the constraints environments
-//! for arithmetic, boolean, and column operations.
+//! This module contains the definition and implementation of the Keccak
+//! environment including the common functions between the witness and the
+//! constraints environments for arithmetic, boolean, and column operations.
 use crate::interpreters::keccak::{
     column::{
         Absorbs::{self, *},
@@ -27,7 +27,8 @@ use kimchi::{
 };
 use std::array;
 
-/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+/// This struct contains all that needs to be kept track of during the execution
+/// of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
     /// Environment for the constraints (includes lookups).
@@ -40,7 +41,8 @@ pub struct KeccakEnv<F> {
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
-    /// Step counter of the total number of steps executed so far in the current hash (starts with 0)
+    /// Step counter of the total number of steps executed so far in the current
+    /// hash (starts with 0)
     pub(crate) step_idx: u64,
     /// Current block of preimage data
     pub(crate) block_idx: u64,
@@ -81,7 +83,8 @@ impl<F: Field> Default for KeccakEnv<F> {
 }
 
 impl<F: Field> KeccakEnv<F> {
-    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
+    /// Starts a new Keccak environment for a given hash index and bytestring of
+    /// preimage data
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         // Must update the flag type at each step from the witness interpretation
         let mut env = KeccakEnv::<F> {
@@ -92,10 +95,12 @@ impl<F: Field> KeccakEnv<F> {
         // Store hash index in the witness
         env.write_column(KeccakColumn::HashIndex, env.hash_idx);
 
-        // Update the number of blocks left to be absorbed depending on the length of the preimage
+        // Update the number of blocks left to be absorbed depending on the length of
+        // the preimage
         env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
-        // Configure first step depending on number of blocks remaining, updating the selector for the row
+        // Configure first step depending on number of blocks remaining, updating the
+        // selector for the row
         env.step = if env.blocks_left_to_absorb == 1 {
             Some(Sponge(Absorb(Only)))
         } else {
@@ -124,8 +129,9 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the Witness and Constraint environments by resetting it to default values (except for table-related)
-    /// This way, each row only adds the constraints of that step (do not nullify the step)
+    /// Nullifies the Witness and Constraint environments by resetting it to
+    /// default values (except for table-related) This way, each row only
+    /// adds the constraints of that step (do not nullify the step)
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
         self.witness_env.errors = vec![];
@@ -141,9 +147,10 @@ impl<F: Field> KeccakEnv<F> {
         standardize(self.step.unwrap())
     }
 
-    /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
-    /// and updates the environment accordingly (including the witness and inter-step lookups).
-    /// When it finishes, it updates the value of the current step, so that the next call to
+    /// Entrypoint for the interpreter. It executes one step of the Keccak
+    /// circuit (one row), and updates the environment accordingly
+    /// (including the witness and inter-step lookups). When it finishes, it
+    /// updates the value of the current step, so that the next call to
     /// the `step()` function executes the next step.
     pub fn step(&mut self) {
         // Reset columns to zeros to avoid conflicts between steps
@@ -158,7 +165,8 @@ impl<F: Field> KeccakEnv<F> {
         self.update_step();
     }
 
-    /// This function updates the next step of the environment depending on the current step
+    /// This function updates the next step of the environment depending on the
+    /// current step
     pub fn update_step(&mut self) {
         match self.step {
             Some(step) => match step {
@@ -190,7 +198,8 @@ impl<F: Field> KeccakEnv<F> {
         self.write_column(KeccakColumn::RoundNumber, round);
     }
 
-    /// Updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
+    /// Updates and any other sponge flag depending on the kind of absorb step
+    /// (root, padding, both).
     fn set_flag_absorb(&mut self, absorb: Absorbs) {
         match absorb {
             Last | Only => {
@@ -200,7 +209,8 @@ impl<F: Field> KeccakEnv<F> {
             First | Middle => (), // Step flag has been updated already,
         }
     }
-    /// Sets the flag columns related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
+    /// Sets the flag columns related to padding flags such as `PadLength`,
+    /// `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
     fn set_flags_pad(&mut self) {
         // Initialize padding columns with precomputed values to speed up interpreter
         self.write_column(KeccakColumn::PadLength, self.pad_len);
@@ -226,7 +236,8 @@ impl<F: Field> KeccakEnv<F> {
             Squeeze => self.run_squeeze(),
         }
     }
-    /// Assigns the witness values needed in an absorb step (root, padding, or middle)
+    /// Assigns the witness values needed in an absorb step (root, padding, or
+    /// middle)
     fn run_absorb(&mut self, absorb: Absorbs) {
         self.set_flag_absorb(absorb);
 
@@ -302,7 +313,8 @@ impl<F: Field> KeccakEnv<F> {
 
         // Rest is zero thanks to null_state
     }
-    /// Assigns the witness values needed in the round step for the given round index
+    /// Assigns the witness values needed in the round step for the given round
+    /// index
     fn run_round(&mut self, round: u64) {
         self.set_flag_round(round);
 

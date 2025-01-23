@@ -65,7 +65,8 @@ static OVF_NEG_MI: &[u8] = &[
     0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
-// A value that produces overflow but the high limb of the result is smaller than the high limb of the modulus
+// A value that produces overflow but the high limb of the result is smaller
+// than the high limb of the modulus
 static OVF_LESS_HI_LEFT: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
@@ -75,13 +76,15 @@ static OVF_LESS_HI_RIGHT: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD1,
 ];
 
-// A value that produces two negative carries when added together with [OVF_ZERO_MI_NEG_LO]
+// A value that produces two negative carries when added together with
+// [OVF_ZERO_MI_NEG_LO]
 static OVF_NEG_BOTH: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-// A value that produces two negative carries when added to itself with a middle limb that is all zeros
+// A value that produces two negative carries when added to itself with a middle
+// limb that is all zeros
 static OVF_ZERO_MI_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -201,8 +204,8 @@ fn short_circuit<F: PrimeField>(
     (curr_row, gates)
 }
 
-// Creates a circuit including the public input, chain of additions and rangechecks for all of the involved values
-// Inputs
+// Creates a circuit including the public input, chain of additions and
+// rangechecks for all of the involved values Inputs
 //  operations
 //  foreign field modulus
 // Outputs tuple (next_row, circuit_gates) where
@@ -272,9 +275,9 @@ fn short_witness<F: PrimeField>(
     witness
 }
 
-// Creates a long witness including the chain of additions and rangechecks for all of the involved values
-// inputs: list of all inputs to the chain of additions/subtractions
-// opcode: true for addition, false for subtraction
+// Creates a long witness including the chain of additions and rangechecks for
+// all of the involved values inputs: list of all inputs to the chain of
+// additions/subtractions opcode: true for addition, false for subtraction
 // modulus: modulus of the foreign field
 fn long_witness<F: PrimeField>(
     inputs: &[BigUint],
@@ -559,7 +562,8 @@ fn test_one_minus_one_plus_one() {
 // test -1-1 where (-1) is in the foreign field
 // first tested as neg(1) + neg(1)
 // then tested as 0 - 1 - 1 )
-// TODO: tested as 0 - ( 1 + 1) -> put sign in front of left instead (perhaps in the future we want this)
+// TODO: tested as 0 - ( 1 + 1) -> put sign in front of left instead (perhaps in
+// the future we want this)
 fn test_minus_minus() {
     let neg_one_for = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
         .neg(&secp256k1_modulus());
@@ -615,7 +619,8 @@ fn test_neg_carry_mi() {
 }
 
 #[test]
-// test when there is negative low carry and 0 middle limb (carry bit propagates)
+// test when there is negative low carry and 0 middle limb (carry bit
+// propagates)
 fn test_propagate_carry() {
     let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
@@ -819,8 +824,10 @@ fn test_zero_sub_fmax() {
     check_result(witness, vec![negated]);
 }
 
-// The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
-// The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
+// The order of the Pallas curve is
+// 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001. The order
+// of the Vesta curve is
+// 0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
 
 #[test]
 // Test with Pasta curves where foreign field is smaller than the native field
@@ -1075,7 +1082,8 @@ fn test_bad_bound() {
         Err("Gate is not performing addition".to_string()),
     );
     index.cs.gates[2].coeffs[3] = PallasField::one();
-    // Modify overflow to check first the copy constraint and then the ovf constraint
+    // Modify overflow to check first the copy constraint and then the ovf
+    // constraint
     witness[6][2] = -PallasField::one();
     assert_eq!(
         index.cs.gates[2].verify_witness::<Vesta>(
@@ -1359,28 +1367,32 @@ fn test_ffadd_no_rc() {
 // TESTS CHANGING NATIVE FIELD
 
 #[test]
-// Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
+// Tests targeting each custom constraint with Vesta (foreign field modulus) on
+// Pallas (native field modulus)
 fn test_vesta_on_pallas() {
     let test = run_test::<Pallas>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
-// Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
+// Tests targeting each custom constraint with Pallas (foreign field modulus) on
+// Vesta (native field modulus)
 fn test_pallas_on_vesta() {
     let test = run_test::<Vesta>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
-// Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
+// Tests targeting each custom constraint with Vesta (foreign field modulus) on
+// Vesta (native field modulus)
 fn test_vesta_on_vesta() {
     let test = run_test::<Vesta>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
-// Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
+// Tests targeting each custom constraint with Pallas (foreign field modulus) on
+// Pallas (native field modulus)
 fn test_pallas_on_pallas() {
     let test = run_test::<Pallas>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
@@ -1415,7 +1427,8 @@ where
         .build()
         .unwrap();
 
-    // Perform witness verification that everything is ok before invalidation (quick checks)
+    // Perform witness verification that everything is ok before invalidation (quick
+    // checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result = gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {

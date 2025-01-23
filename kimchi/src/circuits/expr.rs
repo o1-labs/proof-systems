@@ -106,7 +106,8 @@ pub trait ColumnEnvironment<
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
 
     /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
-    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    /// computing the evaluations of the unnormalized Lagrange basis
+    /// polynomials.
     fn l0_1(&self) -> F;
 }
 
@@ -139,8 +140,8 @@ pub fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing a variable which can appear in a constraint. It specifies a column
-/// and a relative position (Curr or Next)
+/// A type representing a variable which can appear in a constraint. It
+/// specifies a column and a relative position (Curr or Next)
 pub struct Variable<Column> {
     /// The column of this variable
     pub col: Column,
@@ -155,8 +156,8 @@ pub struct Variable<Column> {
 /// As for `challengeTerm`, it has been used initially to implement the PLONK
 /// IOP, with the custom gate Poseidon. However, the terms have no built-in
 /// semantic in the expression framework.
-/// TODO: we should generalize the expression type over challenges and constants.
-/// See <https://github.com/MinaProtocol/mina/issues/15287>
+/// TODO: we should generalize the expression type over challenges and
+/// constants. See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
@@ -558,7 +559,8 @@ impl Cache {
     }
 }
 
-/// The feature flags that can be used to enable or disable parts of constraints.
+/// The feature flags that can be used to enable or disable parts of
+/// constraints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -1002,10 +1004,10 @@ enum EvalResult<'a, F: FftField> {
         domain: Domain,
         evals: Evaluations<F, D<F>>,
     },
-    /// SubEvals is used to refer to evaluations that can be trivially obtained from a
-    /// borrowed evaluation. In this case, by taking a subset of the entries
-    /// (specifically when the borrowed `evals` is over a superset of `domain`)
-    /// and shifting them
+    /// SubEvals is used to refer to evaluations that can be trivially obtained
+    /// from a borrowed evaluation. In this case, by taking a subset of the
+    /// entries (specifically when the borrowed `evals` is over a superset
+    /// of `domain`) and shifting them
     SubEvals {
         domain: Domain,
         shift: usize,
@@ -1143,10 +1145,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     /// evaluations at a given point of the domain.
     /// For instance, the second parameter `g` can simply be the identity
     /// functions over a set of field elements.
-    /// It can also be used to define polynomials like `x^2` when we only have the
-    /// value of `x`. It can be used in particular to evaluate an expression (a
-    /// multi-variate polynomial) when we only do have access to the evaluations
-    /// of the individual variables.
+    /// It can also be used to define polynomials like `x^2` when we only have
+    /// the value of `x`. It can be used in particular to evaluate an
+    /// expression (a multi-variate polynomial) when we only do have access
+    /// to the evaluations of the individual variables.
     fn init_<G: Sync + Send + Fn(usize) -> F>(
         res_domain: (Domain, D<F>),
         g: G,
@@ -1631,7 +1633,8 @@ impl<'a, F: Field, Column: PartialEq + Copy, ChallengeTerm: AlphaChallengeTerm<'
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
-    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
+    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n}
+    /// * cn`.
     pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F, ChallengeTerm>, Column>::zero();
         cs.into_iter()
@@ -1844,7 +1847,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         }
     }
 
-    /// Evaluate the constant expressions in this expression down into field elements.
+    /// Evaluate the constant expressions in this expression down into field
+    /// elements.
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -1856,12 +1860,12 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         self.evaluate_constants_(env.get_constants(), env.get_challenges())
     }
 
-    /// Compute the polynomial corresponding to this expression, in evaluation form.
-    /// The routine will first replace the constants (verifier challenges and
-    /// constants like the matrix used by `Poseidon`) in the expression with their
-    /// respective values using `evaluate_constants` and will after evaluate the
-    /// monomials with the corresponding column values using the method
-    /// `evaluations`.
+    /// Compute the polynomial corresponding to this expression, in evaluation
+    /// form. The routine will first replace the constants (verifier
+    /// challenges and constants like the matrix used by `Poseidon`) in the
+    /// expression with their respective values using `evaluate_constants`
+    /// and will after evaluate the monomials with the corresponding column
+    /// values using the method `evaluations`.
     pub fn evaluations<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -1936,7 +1940,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         }
     }
 
-    /// Compute the polynomial corresponding to this expression, in evaluation form.
+    /// Compute the polynomial corresponding to this expression, in evaluation
+    /// form.
     pub fn evaluations<
         'a,
         ChallengeTerm,
@@ -2194,8 +2199,8 @@ impl<A, Column: Copy> Linearization<A, Column> {
 impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     Linearization<Expr<ConstantExpr<F, ChallengeTerm>, Column>, Column>
 {
-    /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
-    /// to literal field elements.
+    /// Evaluate the constants in a linearization with `ConstantExpr<F>`
+    /// coefficients down to literal field elements.
     pub fn evaluate_constants<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -2211,8 +2216,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
 impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
     Linearization<Vec<PolishToken<F, Column, ChallengeTerm>>, Column>
 {
-    /// Given a linearization and an environment, compute the polynomial corresponding to the
-    /// linearization, in evaluation form.
+    /// Given a linearization and an environment, compute the polynomial
+    /// corresponding to the linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -2250,8 +2255,8 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
 impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm: Copy>
     Linearization<Expr<ConstantExpr<F, ChallengeTerm>, Column>, Column>
 {
-    /// Given a linearization and an environment, compute the polynomial corresponding to the
-    /// linearization, in evaluation form.
+    /// Given a linearization and an environment, compute the polynomial
+    /// corresponding to the linearization, in evaluation form.
     pub fn to_polynomial<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -2441,32 +2446,38 @@ where
         }
     }
 
-    /// There is an optimization in PLONK called "linearization" in which a certain
-    /// polynomial is expressed as a linear combination of other polynomials in order
-    /// to reduce the number of evaluations needed in the IOP (by relying on the homomorphic
-    /// property of the polynomial commitments used.)
+    /// There is an optimization in PLONK called "linearization" in which a
+    /// certain polynomial is expressed as a linear combination of other
+    /// polynomials in order to reduce the number of evaluations needed in
+    /// the IOP (by relying on the homomorphic property of the polynomial
+    /// commitments used.)
     ///
-    /// The function performs this "linearization", which we now describe in some detail.
+    /// The function performs this "linearization", which we now describe in
+    /// some detail.
     ///
     /// In mathematical language, an expression `e: Expr<F>`
-    /// is an element of the polynomial ring `F[V]`, where `V` is a set of variables.
+    /// is an element of the polynomial ring `F[V]`, where `V` is a set of
+    /// variables.
     ///
-    /// Given a subset `V_0` of `V` (and letting `V_1 = V \setminus V_0`), there is a map
-    /// `factor_{V_0}: F[V] -> (F[V_1])[V_0]`. That is, polynomials with `F` coefficients in the variables `V = V_0 \cup V_1`
-    /// are the same thing as polynomials with `F[V_1]` coefficients in variables `V_0`.
+    /// Given a subset `V_0` of `V` (and letting `V_1 = V \setminus V_0`), there
+    /// is a map `factor_{V_0}: F[V] -> (F[V_1])[V_0]`. That is, polynomials
+    /// with `F` coefficients in the variables `V = V_0 \cup V_1`
+    /// are the same thing as polynomials with `F[V_1]` coefficients in
+    /// variables `V_0`.
     ///
     /// There is also a function
     /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_1])>, &str>`
     ///
-    /// which checks if the given input is in fact a degree 1 polynomial in the variables `V_0`
-    /// (i.e., a linear combination of `V_0` elements with `F[V_1]` coefficients)
-    /// returning this linear combination if so.
+    /// which checks if the given input is in fact a degree 1 polynomial in the
+    /// variables `V_0` (i.e., a linear combination of `V_0` elements with
+    /// `F[V_1]` coefficients) returning this linear combination if so.
     ///
     /// Given an expression `e` and set of columns `C_0`, letting
     /// `V_0 = { Variable { col: c, row: r } | c in C_0, r in { Curr, Next } }`,
-    /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
-    /// compute it in that way. Instead, it computes it by reducing the expression into
-    /// a sum of monomials with `F` coefficients, and then factors the monomials.
+    /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does
+    /// not compute it in that way. Instead, it computes it by reducing the
+    /// expression into a sum of monomials with `F` coefficients, and then
+    /// factors the monomials.
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
@@ -2500,12 +2511,14 @@ where
                         // let v = res.entry(var.col).or_insert(0.into());
                         // *v = v.clone() + c
                         //
-                        // but calling clone made it extremely slow, so I replaced it
-                        // with the above that moves v out of the map with .remove and
+                        // but calling clone made it extremely slow, so I
+                        // replaced it with the above
+                        // that moves v out of the map with .remove and
                         // into v + c.
                         //
-                        // I'm not sure if there's a way to do it with the HashMap API
-                        // without calling remove.
+                        // I'm not sure if there's a way to do it with the
+                        // HashMap API without calling
+                        // remove.
                     }
                 }
             } else {
@@ -3425,7 +3438,8 @@ macro_rules! auto_clone_array {
 pub use auto_clone;
 pub use auto_clone_array;
 
-/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
+/// You can import this module like `use kimchi::circuits::expr::prologue::*` to
+/// obtain a number of handy aliases and helpers
 pub mod prologue {
     pub use super::{
         berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},

@@ -1,4 +1,6 @@
-//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
+//! This contains the [DomainConstantEvaluations] which is used to provide
+//! precomputations to a
+//! [ConstraintSystem](super::constraints::ConstraintSystem).
 
 use crate::circuits::domains::EvaluationDomains;
 use ark_ff::FftField;
@@ -25,7 +27,8 @@ pub struct DomainConstantEvaluations<F: FftField> {
     /// 0-th Lagrange evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub constant_1_d8: E<F, D<F>>,
-    /// the polynomial that vanishes on the zero-knowledge rows and the row before
+    /// the polynomial that vanishes on the zero-knowledge rows and the row
+    /// before
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub vanishes_on_zero_knowledge_and_previous_rows: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8

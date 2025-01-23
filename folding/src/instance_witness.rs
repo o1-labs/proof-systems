@@ -78,8 +78,8 @@ pub trait Witness<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {}
 // -- with the extra columns added by quadraticization.
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
-    /// This method returns an extended witness which is defined as the witness itself,
-    /// followed by an empty BTreeMap.
+    /// This method returns an extended witness which is defined as the witness
+    /// itself, followed by an empty BTreeMap.
     /// The map will be later filled by the quadraticization witness generator.
     fn extend(witness: W) -> ExtendedWitness<G, W> {
         let extended = BTreeMap::new();
@@ -88,8 +88,8 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
-    /// This method returns an extended instance which is defined as the instance itself,
-    /// followed by an empty vector.
+    /// This method returns an extended instance which is defined as the
+    /// instance itself, followed by an empty vector.
     fn extend(instance: I) -> ExtendedInstance<G, I> {
         ExtendedInstance {
             instance,
@@ -228,9 +228,9 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
 
 // -- "Relaxed"/"Homogenized" structures
 
-/// A relaxed instance is an instance that has been relaxed by the folding scheme.
-/// It contains the original instance, extended with the columns added by
-/// quadriticization, the scalar `u` and a commitment to the
+/// A relaxed instance is an instance that has been relaxed by the folding
+/// scheme. It contains the original instance, extended with the columns added
+/// by quadriticization, the scalar `u` and a commitment to the
 /// slack/error term.
 /// See page 15 of [Nova](https://eprint.iacr.org/2021/370.pdf).
 // FIXME: We should forbid cloning, for memory footprint.

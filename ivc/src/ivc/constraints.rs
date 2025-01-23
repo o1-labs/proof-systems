@@ -34,7 +34,8 @@ fn range_check_scalar_limbs<F, Ff, Env>(
 {
     for (i, x) in input_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
+            // If it's the highest limb, we need to check that it's representing a field
+            // element.
             env.lookup(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,
@@ -58,7 +59,8 @@ fn range_check_small_limbs<F, Ff, Env>(
 {
     for (i, x) in input_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
+            // If it's the highest limb, we need to check that it's representing a field
+            // element.
             env.lookup(
                 IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
                     PhantomData,

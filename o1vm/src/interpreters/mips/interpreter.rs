@@ -182,7 +182,8 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
-    // Returns the variable in the current row corresponding to a given column alias.
+    // Returns the variable in the current row corresponding to a given column
+    // alias.
     fn variable(&self, column: Self::Position) -> Self::Variable;
 
     /// Add a constraint to the proof system, asserting that
@@ -192,10 +193,12 @@ pub trait InterpreterEnv {
     /// Activate the selector for the given instruction.
     fn activate_selector(&mut self, selector: Instruction);
 
-    /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
+    /// Check that the witness value in `assert_equals_zero` is 0; otherwise
+    /// abort.
     fn check_is_zero(assert_equals_zero: &Self::Variable);
 
-    /// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
+    /// Assert that the value `assert_equals_zero` is 0, and add a constraint in
+    /// the proof system.
     fn assert_is_zero(&mut self, assert_equals_zero: Self::Variable) {
         Self::check_is_zero(&assert_equals_zero);
         self.add_constraint(assert_equals_zero);
@@ -204,17 +207,20 @@ pub trait InterpreterEnv {
     /// Check that the witness values in `x` and `y` are equal; otherwise abort.
     fn check_equal(x: &Self::Variable, y: &Self::Variable);
 
-    /// Assert that the values `x` and `y` are equal, and add a constraint in the proof system.
+    /// Assert that the values `x` and `y` are equal, and add a constraint in
+    /// the proof system.
     fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
         // NB: We use a different function to give a better error message for debugging.
         Self::check_equal(&x, &y);
         self.add_constraint(x - y);
     }
 
-    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
+    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise
+    /// abort.
     fn check_boolean(x: &Self::Variable);
 
-    /// Assert that the value `x` is boolean, and add a constraint in the proof system.
+    /// Assert that the value `x` is boolean, and add a constraint in the proof
+    /// system.
     fn assert_boolean(&mut self, x: Self::Variable) {
         Self::check_boolean(&x);
         self.add_constraint(x.clone() * x.clone() - x);
@@ -226,25 +232,26 @@ pub trait InterpreterEnv {
 
     fn increase_instruction_counter(&mut self);
 
-    /// Fetch the value of the general purpose register with index `idx` and store it in local
-    /// position `output`.
+    /// Fetch the value of the general purpose register with index `idx` and
+    /// store it in local position `output`.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn fetch_register(
         &mut self,
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable;
 
-    /// Set the general purpose register with index `idx` to `value` if `if_is_true` is true.
+    /// Set the general purpose register with index `idx` to `value` if
+    /// `if_is_true` is true.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn push_register_if(
         &mut self,
         idx: &Self::Variable,
@@ -256,32 +263,32 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
         self.push_register_if(idx, value, &Self::constant(1))
     }
 
-    /// Fetch the last 'access index' for the general purpose register with index `idx`, and store
-    /// it in local position `output`.
+    /// Fetch the last 'access index' for the general purpose register with
+    /// index `idx`, and store it in local position `output`.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn fetch_register_access(
         &mut self,
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable;
 
-    /// Set the last 'access index' for the general purpose register with index `idx` to `value` if
-    /// `if_is_true` is true.
+    /// Set the last 'access index' for the general purpose register with index
+    /// `idx` to `value` if `if_is_true` is true.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn push_register_access_if(
         &mut self,
         idx: &Self::Variable,
@@ -289,24 +296,25 @@ pub trait InterpreterEnv {
         if_is_true: &Self::Variable,
     );
 
-    /// Set the last 'access index' for the general purpose register with index `idx` to `value`.
+    /// Set the last 'access index' for the general purpose register with index
+    /// `idx` to `value`.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this operation.
     unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
         self.push_register_access_if(idx, value, &Self::constant(1))
     }
 
-    /// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`, if `if_is_true` is
-    /// true.
+    /// Access the general purpose register with index `idx`, adding constraints
+    /// asserting that the old value was `old_value` and that the new value
+    /// will be `new_value`, if `if_is_true` is true.
     ///
     /// # Safety
     ///
-    /// Callers of this function must manually update the registers if required, this function will
-    /// only update the access counter.
+    /// Callers of this function must manually update the registers if required,
+    /// this function will only update the access counter.
     unsafe fn access_register_if(
         &mut self,
         idx: &Self::Variable,
@@ -325,8 +333,9 @@ pub trait InterpreterEnv {
             // instruction*. This ensures that we can't 'time travel' within this
             // instruction, and claim to read the value that we're about to write!
             instruction_counter + Self::constant(1)
-            // A register should allow multiple accesses to the same register within the same instruction.
-            // In order to allow this, we always increase the instruction counter by 1.
+            // A register should allow multiple accesses to the same register
+            // within the same instruction. In order to allow this,
+            // we always increase the instruction counter by 1.
         };
         unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup::write_if(
@@ -356,13 +365,14 @@ pub trait InterpreterEnv {
         value
     }
 
-    /// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`.
+    /// Access the general purpose register with index `idx`, adding constraints
+    /// asserting that the old value was `old_value` and that the new value
+    /// will be `new_value`.
     ///
     /// # Safety
     ///
-    /// Callers of this function must manually update the registers if required, this function will
-    /// only update the access counter.
+    /// Callers of this function must manually update the registers if required,
+    /// this function will only update the access counter.
     unsafe fn access_register(
         &mut self,
         idx: &Self::Variable,
@@ -400,12 +410,13 @@ pub trait InterpreterEnv {
         self.write_register_if(idx, new_value, &Self::constant(1))
     }
 
-    /// Fetch the memory value at address `addr` and store it in local position `output`.
+    /// Fetch the memory value at address `addr` and store it in local position
+    /// `output`.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this memory operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this memory operation.
     unsafe fn fetch_memory(
         &mut self,
         addr: &Self::Variable,
@@ -416,17 +427,17 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this memory operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this memory operation.
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable);
 
-    /// Fetch the last 'access index' that the memory at address `addr` was written at, and store
-    /// it in local position `output`.
+    /// Fetch the last 'access index' that the memory at address `addr` was
+    /// written at, and store it in local position `output`.
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this memory operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this memory operation.
     unsafe fn fetch_memory_access(
         &mut self,
         addr: &Self::Variable,
@@ -437,17 +448,18 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// No lookups or other constraints are added as part of this operation. The caller must
-    /// manually add the lookups for this memory operation.
+    /// No lookups or other constraints are added as part of this operation. The
+    /// caller must manually add the lookups for this memory operation.
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable);
 
-    /// Access the memory address `addr`, adding constraints asserting that the old value was
-    /// `old_value` and that the new value will be `new_value`.
+    /// Access the memory address `addr`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be
+    /// `new_value`.
     ///
     /// # Safety
     ///
-    /// Callers of this function must manually update the memory if required, this function will
-    /// only update the access counter.
+    /// Callers of this function must manually update the memory if required,
+    /// this function will only update the access counter.
     unsafe fn access_memory(
         &mut self,
         addr: &Self::Variable,
@@ -618,18 +630,19 @@ pub trait InterpreterEnv {
 
     fn constant(x: u32) -> Self::Variable;
 
-    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
-    /// the result in `position`.
+    /// Extract the bits from the variable `x` between `highest_bit` and
+    /// `lowest_bit`, and store the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
-    /// bits.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and that the returned
+    /// value fits in `highest_bit - lowest_bit` bits.
     ///
     /// Do not call this function with highest_bit - lowest_bit >= 32.
-    // TODO: embed the range check in the function when highest_bit - lowest_bit <= 16?
+    // TODO: embed the range check in the function when highest_bit - lowest_bit <=
+    // 16?
     unsafe fn bitmask(
         &mut self,
         x: &Self::Variable,
@@ -638,12 +651,13 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    /// Return the result of shifting `x` by `by`, storing the result in
+    /// `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and the shift amount `by`.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and the shift amount `by`.
     unsafe fn shift_left(
         &mut self,
         x: &Self::Variable,
@@ -651,12 +665,13 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    /// Return the result of shifting `x` by `by`, storing the result in
+    /// `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and the shift amount `by`.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and the shift amount `by`.
     unsafe fn shift_right(
         &mut self,
         x: &Self::Variable,
@@ -664,12 +679,13 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    /// Return the result of shifting `x` by `by`, storing the result in
+    /// `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and the shift amount `by`.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and the shift amount `by`.
     unsafe fn shift_right_arithmetic(
         &mut self,
         x: &Self::Variable,
@@ -681,22 +697,23 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// `x`.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable;
 
-    /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in `position`.
+    /// Returns 1 if `x` is equal to `y`, or 0 otherwise, storing the result in
+    /// `position`.
     fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable;
 
-    /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
-    /// `position`.
+    /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the
+    /// result in `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert that the value
-    /// correctly represents the relationship between `x` and `y`
+    /// There are no constraints on the returned value; callers must assert that
+    /// the value correctly represents the relationship between `x` and `y`
     unsafe fn test_less_than(
         &mut self,
         x: &Self::Variable,
@@ -704,12 +721,13 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Returns 1 if `x < y` as signed integers, or 0 otherwise, storing the result in `position`.
+    /// Returns 1 if `x < y` as signed integers, or 0 otherwise, storing the
+    /// result in `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert that the value
-    /// correctly represents the relationship between `x` and `y`
+    /// There are no constraints on the returned value; callers must assert that
+    /// the value correctly represents the relationship between `x` and `y`
     unsafe fn test_less_than_signed(
         &mut self,
         x: &Self::Variable,
@@ -721,8 +739,8 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn and_witness(
         &mut self,
         x: &Self::Variable,
@@ -734,8 +752,8 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn or_witness(
         &mut self,
         x: &Self::Variable,
@@ -747,8 +765,8 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn nor_witness(
         &mut self,
         x: &Self::Variable,
@@ -760,8 +778,8 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn xor_witness(
         &mut self,
         x: &Self::Variable,
@@ -769,13 +787,13 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Returns `x + y` and the overflow bit, storing the results in `position_out` and
-    /// `position_overflow` respectively.
+    /// Returns `x + y` and the overflow bit, storing the results in
+    /// `position_out` and `position_overflow` respectively.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that they are correctly constructed.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that they are correctly constructed.
     unsafe fn add_witness(
         &mut self,
         y: &Self::Variable,
@@ -784,13 +802,13 @@ pub trait InterpreterEnv {
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
-    /// Returns `x + y` and the underflow bit, storing the results in `position_out` and
-    /// `position_underflow` respectively.
+    /// Returns `x + y` and the underflow bit, storing the results in
+    /// `position_out` and `position_underflow` respectively.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that they are correctly constructed.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that they are correctly constructed.
     unsafe fn sub_witness(
         &mut self,
         y: &Self::Variable,
@@ -799,12 +817,13 @@ pub trait InterpreterEnv {
         underflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
-    /// Returns `x * y`, where `x` and `y` are treated as integers, storing the result in `position`.
+    /// Returns `x * y`, where `x` and `y` are treated as integers, storing the
+    /// result in `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn mul_signed_witness(
         &mut self,
         x: &Self::Variable,
@@ -812,14 +831,15 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
-    /// and `position_lo` respectively.
+    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the
+    /// results in `position_hi` and `position_lo` respectively.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
-    /// that they fall within the desired range.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that the pair of returned values
+    /// correspond to the given values `x` and `y`, and that they fall
+    /// within the desired range.
     unsafe fn mul_hi_lo_signed(
         &mut self,
         x: &Self::Variable,
@@ -828,14 +848,15 @@ pub trait InterpreterEnv {
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
-    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
-    /// and `position_lo` respectively.
+    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the
+    /// results in `position_hi` and `position_lo` respectively.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
-    /// that they fall within the desired range.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that the pair of returned values
+    /// correspond to the given values `x` and `y`, and that they fall
+    /// within the desired range.
     unsafe fn mul_hi_lo(
         &mut self,
         x: &Self::Variable,
@@ -849,9 +870,10 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
-    /// that they fall within the desired range.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that the pair of returned values
+    /// correspond to the given values `x` and `y`, and that they fall
+    /// within the desired range.
     unsafe fn divmod_signed(
         &mut self,
         x: &Self::Variable,
@@ -865,9 +887,10 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned values; callers must manually add constraints to
-    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
-    /// that they fall within the desired range.
+    /// There are no constraints on the returned values; callers must manually
+    /// add constraints to ensure that the pair of returned values
+    /// correspond to the given values `x` and `y`, and that they fall
+    /// within the desired range.
     unsafe fn divmod(
         &mut self,
         x: &Self::Variable,
@@ -876,24 +899,26 @@ pub trait InterpreterEnv {
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
-    /// Returns the number of leading 0s in `x`, storing the result in `position`.
+    /// Returns the number of leading 0s in `x`, storing the result in
+    /// `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn count_leading_zeros(
         &mut self,
         x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable;
 
-    /// Returns the number of leading 1s in `x`, storing the result in `position`.
+    /// Returns the number of leading 1s in `x`, storing the result in
+    /// `position`.
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must manually add constraints to
-    /// ensure that it is correctly constructed.
+    /// There are no constraints on the returned value; callers must manually
+    /// add constraints to ensure that it is correctly constructed.
     unsafe fn count_leading_ones(
         &mut self,
         x: &Self::Variable,
@@ -902,8 +927,8 @@ pub trait InterpreterEnv {
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
-    /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
-    /// value of the heap pointer.
+    /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and
+    /// returns the previous value of the heap pointer.
     fn increase_heap_pointer(
         &mut self,
         by_amount: &Self::Variable,
@@ -1187,11 +1212,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let is_preimage_read = check_equal(FD_PREIMAGE_READ);
             let is_hint_read = check_equal(FD_HINT_READ);
 
-            // FIXME: Should assert that `is_preimage_read` and `is_hint_read` cannot be true here.
+            // FIXME: Should assert that `is_preimage_read` and `is_hint_read` cannot be
+            // true here.
             let other_fd = Env::constant(1) - is_stdin - is_preimage_read - is_hint_read;
 
-            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
-            // bad FD that we reject with EBADF.
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or
+            // we've hit a bad FD that we reject with EBADF.
             let v0 = other_fd.clone() * Env::constant(0xFFFFFFFF);
             let v1 = other_fd * Env::constant(0x9); // EBADF
 
@@ -1214,10 +1240,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let addr = env.read_register(&Env::constant(5));
             let write_length = env.read_register(&Env::constant(6));
 
-            // Cannon assumes that the remaining `byte_length` represents how much remains to be
-            // read (i.e. all write calls send the full data in one syscall, and attempt to retry
-            // with the rest until there is a success). This also simplifies the implementation
-            // here, so we will follow suit.
+            // Cannon assumes that the remaining `byte_length` represents how much remains
+            // to be read (i.e. all write calls send the full data in one
+            // syscall, and attempt to retry with the rest until there is a
+            // success). This also simplifies the implementation here, so we
+            // will follow suit.
             let bytes_to_preserve_in_register = {
                 let pos = env.alloc_scratch();
                 unsafe { env.bitmask(&write_length, 2, 0, pos) }
@@ -1238,8 +1265,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let register_value = {
                     let initial_register_value = env.read_register(&register_idx);
 
-                    // We should clear the register if our offset into the read will replace all of its
-                    // bytes.
+                    // We should clear the register if our offset into the read will replace all of
+                    // its bytes.
                     let should_clear_register = env.is_zero(&bytes_to_preserve_in_register);
 
                     let pos = env.alloc_scratch();
@@ -1272,8 +1299,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.lookup_8bits(&r2);
             env.lookup_8bits(&r3);
 
-            // We choose our read address so that the bytes we read come aligned with the target
-            // bytes in the register, to avoid an expensive bitshift.
+            // We choose our read address so that the bytes we read come aligned with the
+            // target bytes in the register, to avoid an expensive bitshift.
             let read_address = addr.clone() - bytes_to_preserve_in_register.clone();
 
             let m0 = env.read_memory(&read_address);
@@ -1281,9 +1308,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
             let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
 
-            // Now, for some complexity. From the perspective of the write operation, we should be
-            // reading the `4 - bytes_to_preserve_in_register`. However, to match cannon 1:1, we
-            // only want to read the bytes up to the end of the current word.
+            // Now, for some complexity. From the perspective of the write operation, we
+            // should be reading the `4 - bytes_to_preserve_in_register`.
+            // However, to match cannon 1:1, we only want to read the bytes up
+            // to the end of the current word.
             let [overwrite_0, overwrite_1, overwrite_2, overwrite_3] = {
                 let next_word_addr = {
                     let byte_subaddr = {
@@ -1374,13 +1402,13 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let is_preimage_write = check_equal(FD_PREIMAGE_WRITE);
             let is_hint_write = check_equal(FD_HINT_WRITE);
 
-            // FIXME: Should assert that `is_preimage_write` and `is_hint_write` cannot be true
-            // here.
+            // FIXME: Should assert that `is_preimage_write` and `is_hint_write` cannot be
+            // true here.
             let known_fd = is_stdout + is_stderr + is_preimage_write + is_hint_write;
             let other_fd = Env::constant(1) - known_fd.clone();
 
-            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
-            // bad FD that we reject with EBADF.
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or
+            // we've hit a bad FD that we reject with EBADF.
             let v0 = known_fd * write_length + other_fd.clone() * Env::constant(0xFFFFFFFF);
             let v1 = other_fd * Env::constant(0x9); // EBADF
 
@@ -1720,7 +1748,8 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
     env.range_check8(&opcode, 6);
 
     let addr = {
-        // FIXME: Requires a range check (cannot use range_check_bits here because 26 > 16)
+        // FIXME: Requires a range check (cannot use range_check_bits here because 26 >
+        // 16)
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 0, pos) }
     };

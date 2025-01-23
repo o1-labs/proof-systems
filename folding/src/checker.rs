@@ -1,5 +1,5 @@
-//! A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-//! for a zero result.
+//! A kind of pseudo-prover, will compute the expressions over the witness a
+//! check row by row for a zero result.
 
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
@@ -127,7 +127,8 @@ where
                 let col = &self.witness[col].evals;
 
                 let mut col = col.clone();
-                //check this, while not relevant in this case I think it should be right rotation
+                //check this, while not relevant in this case I think it should be right
+                // rotation
                 if let CurrOrNext::Next = row {
                     col.rotate_left(1);
                 }

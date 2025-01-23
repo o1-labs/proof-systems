@@ -6,8 +6,8 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::ops::Index;
 
 /// The witness columns used by a gate of the MSM circuits.
-/// It is generic over the number of columns, `N_WIT`, and the type of the witness, `T`.
-/// It is parametrized by a type `T` which can be either:
+/// It is generic over the number of columns, `N_WIT`, and the type of the
+/// witness, `T`. It is parametrized by a type `T` which can be either:
 /// - `Vec<G::ScalarField>` for the evaluations
 /// - `PolyComm<G>` for the commitments
 /// It can be used to represent the different subcircuits used by the project.

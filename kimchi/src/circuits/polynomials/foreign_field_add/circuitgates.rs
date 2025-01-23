@@ -17,11 +17,12 @@ use std::{array, marker::PhantomData};
 //~
 //~ ```text
 //~ left_input +/- right_input = field_overflow * foreign_modulus + result
-//~```
+//~ ```
 //~
 //~ ##### Documentation
 //~
-//~  For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
+//~  For more details please see the [Foreign Field
+//~ Addition](../kimchi/foreign_field_add.md) chapter.
 //~
 //~ ##### Mapping
 //~
@@ -39,67 +40,88 @@ use std::{array, marker::PhantomData};
 //~     carry_mi        -> c1
 //~     bound_carry_lo  -> k0
 //~     bound_carry_mi  -> k1
-//~```
+//~ ```
 //~
 //~ Note: Our limbs are 88-bit long. We denote with:
 //~
 //~ * `lo` the least significant limb (in little-endian, this is from 0 to 87)
 //~ * `mi` the middle limb            (in little-endian, this is from 88 to 175)
-//~ * `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+//~ * `hi` the most significant limb  (in little-endian, this is from 176 to
+//~   263)
 //~
-//~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
+//~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the
+//~ left element
 //~
-//~ Let `right_input_lo`, `right_input_mi`, `right_input_hi` be 88-bit limbs of the right element
+//~ Let `right_input_lo`, `right_input_mi`, `right_input_hi` be 88-bit limbs of
+//~ the right element
 //~
-//~ Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit limbs of the foreign modulus
+//~ Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be
+//~ 88-bit limbs of the foreign modulus
 //~
 //~ Then the limbs of the result are
 //~
-//~ * `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
-//~ * `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
-//~ * `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+//~ * `result_lo = left_input_lo +/- right_input_lo - field_overflow *
+//~   foreign_modulus_lo - 2^{88} * result_carry_lo`
+//~ * `result_mi = left_input_mi +/- right_input_mi - field_overflow *
+//~   foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+//~ * `result_hi = left_input_hi +/- right_input_hi - field_overflow *
+//~   foreign_modulus_hi + result_carry_mi`
 //~
 //~ `field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
 //~
-//~ `result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+//~ `result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries
+//~ between limbs
 //~
-//~ Apart from the range checks of the chained inputs, we need to do an additional range check for a final bound
-//~ to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
-//~ (This can be computed easily from the limbs of the modulus)
+//~ Apart from the range checks of the chained inputs, we need to do an
+//~ additional range check for a final bound to make sure that the result is
+//~ less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
+//~  (This can be computed easily from the limbs of the modulus)
 //~ Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
 //~
 //~ The upper-bound check can be calculated as:
 //~
 //~ * `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
-//~ * `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ * `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} +
+//~   bound_carry_lo`
 //~ * `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 //~
-//~ Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
+//~ Which is equivalent to another foreign field addition with right input
+//~ 2^{264}, q = 1 and s = 1
 //~
-//~ * `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
-//~ * `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-//~ * `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+//~ * `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo -
+//~   bound_carry_lo * 2^{88}`
+//~ * `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi -
+//~   bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ * `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi
+//~   + bound_carry_mi`
 //~
-//~ `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
+//~ `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle
+//~ carries between limbs
 //~
 //~ The range check of `bound` can be skipped until the end of the operations
-//~ and `result` is an intermediate value that is unused elsewhere (since the final `result`
-//~ must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
-//~ In other words, intermediate results could potentially give a valid witness that satisfies the constraints
-//~ but where the result is larger than the modulus (yet smaller than 2^{264}). The reason that we have a
-//~ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
-//~ (meaning less than the modulus).
+//~ and `result` is an intermediate value that is unused elsewhere (since the
+//~ final `result` must have had the right amount of moduli subtracted along the
+//~ way, meaning a multiple of the modulus). In other words, intermediate
+//~ results could potentially give a valid witness that satisfies the
+//~ constraints but where the result is larger than the modulus (yet smaller
+//~ than 2^{264}). The reason that we have a  final bound check is to make sure
+//~ that the final result (`min_result`) is indeed the minimum one
+//~  (meaning less than the modulus).
 //~
-//~ A more optimized version of these constraints is able to reduce by 2 the number of constraints and
-//~ by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
-//~ limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
-//~ With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+//~ A more optimized version of these constraints is able to reduce by 2 the
+//~ number of constraints and by 1 the number of witness cells needed. The idea
+//~ is to condense the low and middle limbs in one longer limb of 176 bits
+//~ (which fits inside our native field) and getting rid of the low carry flag.
+//~ With this idea in mind, the sole carry flag we need is the one located
+//~ between the middle and the high limbs.
 //~
 //~ ##### Layout
 //~
-//~ The sign of the operation (whether it is an addition or a subtraction) is stored in the fourth coefficient as
-//~ a value +1 (for addition) or -1 (for subtraction). The first 3 coefficients are the 3 limbs of the foreign modulus.
-//~ One could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+//~ The sign of the operation (whether it is an addition or a subtraction) is
+//~ stored in the fourth coefficient as a value +1 (for addition) or -1 (for
+//~ subtraction). The first 3 coefficients are the 3 limbs of the foreign
+//~ modulus. One could lay this out as a double-width gate for chained foreign
+//~ additions and a final row, e.g.:
 //~
 //~ | col | `ForeignFieldAdd`        | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
 //~ | --- | ------------------------ | ----------------------- | ----------------------- | ----------------- |
@@ -119,16 +141,18 @@ use std::{array, marker::PhantomData};
 //~ |  13 |                          |                         |                         |                   |
 //~ |  14 |                          |                         |                         |                   |
 //~
-//~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
-//~ specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
-//~ be done by copy constraining these values with a public input value. One could have a specific gate
-//~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
-//~ the savings of one row and a few constraints of difference.
+//~ We reuse the foreign field addition gate for the final bound check since
+//~ this is an addition with a specific parameter structure. Checking that the
+//~ correct right input, overflow, and overflow are used shall be done by copy
+//~ constraining these values with a public input value. One could have a
+//~ specific gate for just this check requiring less constrains, but the cost of
+//~ adding one more selector gate outweights the savings of one row and a few
+//~ constraints of difference.
 //~
 //~ ##### Integration
 //~
 //~ * Copy final overflow bit from public input containing value 1
-//~ * Range check the final bound
+//~  *Range check the final bound
 //~
 
 /// Implementation of the foreign field addition gate
@@ -149,10 +173,11 @@ where
     ) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
-        // stored as coefficient for better correspondance with the relation being proved
-        // this reduces the number of copy constraints needed to check the operation
-        // it also allows the final bound check to copy the overflow bit to be 1
-        // because otherwise it did not fit in the first 7 columns of the row
+        // stored as coefficient for better correspondance with the relation being
+        // proved this reduces the number of copy constraints needed to check
+        // the operation it also allows the final bound check to copy the
+        // overflow bit to be 1 because otherwise it did not fit in the first 7
+        // columns of the row
         let sign = env.coeff(3);
 
         let left_input_lo = env.witness_curr(0);
@@ -183,7 +208,8 @@ where
         // Constraints to check the carry flag is -1, 0, or 1.
         checks.push(is_carry(&carry));
 
-        // Auxiliary inline function to obtain the constraints of a foreign field addition result
+        // Auxiliary inline function to obtain the constraints of a foreign field
+        // addition result
 
         // a_bot = a_0 + a_1 * 2^88
         // b_bot = b_0 + b_1 * 2^88

@@ -89,8 +89,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -125,8 +126,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -170,8 +172,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -209,8 +212,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -242,8 +246,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -285,8 +290,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -340,8 +346,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
@@ -395,8 +402,9 @@ mod tests {
             domain_size,
             &mut rng,
         );
-        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
-        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // FIXME: we would want to allow the prover to make a proof, but the
+        // verification must fail. TODO: Refactorize code in prover to
+        // handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 }

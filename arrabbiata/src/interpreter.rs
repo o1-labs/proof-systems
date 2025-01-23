@@ -23,9 +23,11 @@
 //!     - [Gadget layout](#gadget-layout)
 //!   - [Hash - Poseidon](#hash---poseidon)
 //!     - [Gadget layout](#gadget-layout-1)
-//!   - [Elliptic curve scalar multiplication](#elliptic-curve-scalar-multiplication)
+//!   - [Elliptic curve scalar
+//!     multiplication](#elliptic-curve-scalar-multiplication)
 //!     - [Gadget layout](#gadget-layout-2)
-//! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
+//! - [Handle the combinaison of
+//!   constraints](#handle-the-combinaison-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
 //! - [Folding](#folding)
@@ -166,11 +168,12 @@
 //!
 //! #### Gadget layout
 //!
-//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
-//! Therefore, we have 255 rows to compute the scalar multiplication.
-//! For a given step `i`, we have the following values:
+//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one
+//! step per row. Therefore, we have 255 rows to compute the scalar
+//! multiplication. For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
-//! - `res_x`, `res_y`: the result of the scalar multiplication i.e. the accumulator.
+//! - `res_x`, `res_y`: the result of the scalar multiplication i.e. the
+//!   accumulator.
 //! - `b`: the i-th bit of the scalar.
 //! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
 //! - `λ'` and `λ`: the coefficients
@@ -294,8 +297,8 @@
 //!
 //! Constraints must be homogenized for the folding scheme.
 //! Homogenising a constraint means that we add a new variable (called "U" in
-//! Nova for instance) that will be used to homogenize the degree of the monomials
-//! forming the constraint.
+//! Nova for instance) that will be used to homogenize the degree of the
+//! monomials forming the constraint.
 //! Next to this, additional information, like the cross-terms and the error
 //! terms must be computed.
 //!
@@ -443,8 +446,8 @@ use num_bigint::BigInt;
 /// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
-/// Mostly, the instructions will be used to build the IVC circuit, but it can be
-/// generalized.
+/// Mostly, the instructions will be used to build the IVC circuit, but it can
+/// be generalized.
 ///
 /// When the circuit is predefined, the instructions can be accompanied by a
 /// public selector. When implementing a virtual machine, where instructions are
@@ -545,9 +548,9 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
-    /// bits.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and that the returned
+    /// value fits in `highest_bit - lowest_bit` bits.
     unsafe fn bitmask_be(
         &mut self,
         x: &Self::Variable,
@@ -672,7 +675,8 @@ pub trait InterpreterEnv {
     /// For now, it can only be used to load affine coordinates of elliptic
     /// curve points given in the short Weierstrass form.
     ///
-    /// Temporary accumulators could also be seen as return values of a function.
+    /// Temporary accumulators could also be seen as return values of a
+    /// function.
     ///
     /// # Safety
     ///

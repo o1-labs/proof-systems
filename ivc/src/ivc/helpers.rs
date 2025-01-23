@@ -45,7 +45,8 @@ pub fn combine_small_to_full<
 }
 
 // TODO double-check it works
-/// Helper. Combines large limbs into one element. Computation is over the field.
+/// Helper. Combines large limbs into one element. Computation is over the
+/// field.
 pub fn combine_large_to_full_field<Ff: PrimeField>(x: [Ff; N_LIMBS_LARGE]) -> Ff {
     let [res] =
         combine_limbs_m_to_n::<N_LIMBS_LARGE, 1, LIMB_BITSIZE_LARGE, 300, Ff, Ff, _>(|f| f, x);

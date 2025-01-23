@@ -207,7 +207,8 @@ fn test_kzg_proof() {
     assert!(res);
 }
 
-/// Our points in G2 are not actually in the correct subgroup and serialize well.
+/// Our points in G2 are not actually in the correct subgroup and serialize
+/// well.
 #[test]
 fn check_srs_g2_valid_and_serializes() {
     type BN254 = Bn<Config>;

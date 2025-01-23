@@ -13,14 +13,16 @@ use rayon::prelude::*;
 ///
 /// When chunking is in place, the domain size `n` is larger than the maximum
 /// polynomial degree allowed `m`. Thus, on input `n = c·m` evaluations for `c`
-/// chunks, we cannot obtain a polynomial `f` with degree `c·m-1` with the equation:
+/// chunks, we cannot obtain a polynomial `f` with degree `c·m-1` with the
+/// equation:
 ///
 /// `f(X) = x_0 · l_0(X) + ... + x_{c·m-1} · l_{c·m-1}(X)`
 ///
 /// Instead, this struct will contain the `c·m` coefficients of the polynomial
 /// that is equal to the powers of the point `x` in the positions corresponding
-/// to the chunk, and `0` elsewhere in the domain. This is useful to evaluate the
-/// chunks of polynomials of degree `c·m-1` given in evaluation form at the point.
+/// to the chunk, and `0` elsewhere in the domain. This is useful to evaluate
+/// the chunks of polynomials of degree `c·m-1` given in evaluation form at the
+/// point.
 pub struct LagrangeBasisEvaluations<F> {
     /// If no chunking:
     /// - evals is a vector of length 1 containing a vector of size `n`
@@ -40,7 +42,6 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     ///
     /// Note that there is an invariant that all individual evaluation chunks
     /// have the same size. It is enforced by each constructor.
-    ///
     pub fn domain_size(&self) -> usize {
         self.evals[0].len()
     }

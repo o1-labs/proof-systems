@@ -2,12 +2,14 @@ use crate::circuits::lookup::tables::{LookupTable, XOR_TABLE_ID};
 use ark_ff::Field;
 
 //~ The lookup table for 4-bit xor.
-//~ Note that it is constructed so that `(0, 0, 0)` is the last position in the table.
+//~ Note that it is constructed so that `(0, 0, 0)` is the last position in the
+//~ table.
 //~
-//~ This is because tables are extended to the full size of a column (essentially)
-//~ by padding them with their final value. And, having the value `(0, 0, 0)` here means
-//~ that when we commit to this table and use the dummy value in the `lookup_sorted`
-//~ columns, those entries that have the dummy value of
+//~ This is because tables are extended to the full size of a column
+//~ (essentially) by padding them with their final value. And, having the value
+//~ `(0, 0, 0)` here means that when we commit to this table and use the dummy
+//~ value in the `lookup_sorted` columns, those entries that have the dummy
+//~ value of
 //~
 //~ $$0 = 0 + j*0 + j^2*0$$
 //~

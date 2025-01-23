@@ -13,18 +13,18 @@
 ///             &VariableCell::create("final_value"),
 ///         ]
 ///      ;
-///```
+/// ```
 ///
 ///   Second, you use variables with the same names when performing the
 ///   witness computation.
 ///
 ///   Ex.
 ///```ignore
-///
+/// 
 ///     let sum_of_products = carry1 * limb1 + pow1 * limb2;
 ///     ...
 ///     let final_value = middle_bits.pow(&[2u8]) * carry_flag
-///```
+/// ```
 ///
 ///   Third, when you're ready to generate the witness, you pass those
 ///   variables to the witness creation functions using variables!(foo, bar)
@@ -37,8 +37,7 @@
 ///         &layout,
 ///         &variables!(sum_of_products, something_else, final_value),
 ///     );
-///```
-///
+/// ```
 use std::{
     collections::HashMap,
     ops::{Index, IndexMut},

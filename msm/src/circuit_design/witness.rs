@@ -37,8 +37,10 @@ pub struct WitnessBuilderEnv<
     /// vector of <#number_of_reads_per_row> columns. Each column is a
     /// vector of elements. Each element is vector of field elements.
     ///
-    /// - `lookup_reads[table_id][read_i]` is a column corresponding to a read #`read_i` per row.
-    /// - `lookup_reads[table_id][read_i][row_i]` is a value-vector that's looked up at `row_i`
+    /// - `lookup_reads[table_id][read_i]` is a column corresponding to a read
+    ///   #`read_i` per row.
+    /// - `lookup_reads[table_id][read_i][row_i]` is a value-vector that's
+    ///   looked up at `row_i`
     pub lookup_reads: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
 
     /// Values for runtime tables. Each element (value) in the map is
@@ -46,8 +48,10 @@ pub struct WitnessBuilderEnv<
     ///
     /// Format is the same as `lookup_reads`.
     ///
-    /// - `runtime_tables[table_id][write_i]` is a column corresponding to a write #`write_i` per row.
-    /// - `runtime_tables[table_id][write_i][row_i]` is a value-vector that's looked up at `row_i`
+    /// - `runtime_tables[table_id][write_i]` is a column corresponding to a
+    ///   write #`write_i` per row.
+    /// - `runtime_tables[table_id][write_i][row_i]` is a value-vector that's
+    ///   looked up at `row_i`
     pub runtime_lookup_writes: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
 
     /// Fixed values for selector columns. `fixed_selectors[i][j]` is the
@@ -179,7 +183,8 @@ impl<
         LT: LookupTableID,
     > DirectWitnessCap<F, CIx> for WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
-    /// Convert an abstract variable to a field element! Inverse of Env::constant().
+    /// Convert an abstract variable to a field element! Inverse of
+    /// Env::constant().
     fn variable_to_field(value: Self::Variable) -> F {
         value
     }
@@ -590,7 +595,8 @@ impl<
 
         let mut lookup_multiplicities: BTreeMap<LT, Vec<Vec<F>>> = BTreeMap::new();
 
-        // Counting multiplicities & adding fixed column into the last column of every table.
+        // Counting multiplicities & adding fixed column into the last column of every
+        // table.
         for (table_id, table) in lookup_tables.iter_mut() {
             let lookup_m: Vec<Vec<F>> = self.get_lookup_multiplicities(domain_size, *table_id);
             lookup_multiplicities.insert(*table_id, lookup_m.clone());
@@ -660,7 +666,8 @@ impl<
             .collect()
     }
 
-    /// Generates proof inputs, repacking/collecting internal witness builder state.
+    /// Generates proof inputs, repacking/collecting internal witness builder
+    /// state.
     pub fn get_proof_inputs(
         &self,
         domain_size: usize,

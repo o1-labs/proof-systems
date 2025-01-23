@@ -228,7 +228,8 @@ pub trait LookupTableID:
     fn all_variants() -> Vec<Self>;
 }
 
-/// A table of values that can be used for a lookup, along with the ID for the table.
+/// A table of values that can be used for a lookup, along with the ID for the
+/// table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F, ID: LookupTableID> {
     /// Table ID corresponding to this table
@@ -327,9 +328,9 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 ///         n      m_i(X)        n         1            m_0(ω^j)
 /// h(X) =  ∑    ----------  =   ∑   ------------  -  -----------
 ///        i=0   β + f_i(X)     i=1  β + f_i(ω^j)      β + t(ω^j)
-///```
-/// The first form is generic, the second is concrete with f_0 = t; m_0 = m; m_i = 1 for ≠ 1.
-/// We will be thinking in the generic form.
+/// ```
+/// The first form is generic, the second is concrete with f_0 = t; m_0 = m; m_i
+/// = 1 for ≠ 1. We will be thinking in the generic form.
 ///
 /// For instance, if N = 2, we have
 /// ```text
@@ -499,15 +500,18 @@ pub mod prover {
 
     /// The structure used by the prover the compute the quotient polynomial.
     /// The structure contains the evaluations of the inner sums, the
-    /// multiplicities, the aggregation and the fixed tables, over the domain d8.
+    /// multiplicities, the aggregation and the fixed tables, over the domain
+    /// d8.
     pub struct QuotientPolynomialEnvironment<'a, F: FftField, ID: LookupTableID> {
         /// The evaluations of the partial sums, over d8.
         pub lookup_terms_evals_d8: &'a BTreeMap<ID, Vec<Evaluations<F, D<F>>>>,
         /// The evaluations of the aggregation, over d8.
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
-        /// The evaluations of the multiplicities, over d8, indexed by the table ID.
+        /// The evaluations of the multiplicities, over d8, indexed by the table
+        /// ID.
         pub lookup_counters_evals_d8: &'a BTreeMap<ID, Vec<Evaluations<F, D<F>>>>,
-        /// The evaluations of the fixed tables, over d8, indexed by the table ID.
+        /// The evaluations of the fixed tables, over d8, indexed by the table
+        /// ID.
         pub fixed_tables_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
     }
 
@@ -550,9 +554,9 @@ pub mod prover {
     }
 
     impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
-        /// Create an environment for the prover to create a proof for the Logup protocol.
-        /// The protocol does suppose that the individual lookup terms are
-        /// committed as part of the columns.
+        /// Create an environment for the prover to create a proof for the Logup
+        /// protocol. The protocol does suppose that the individual
+        /// lookup terms are committed as part of the columns.
         /// Therefore, the protocol only focus on committing to the "grand
         /// product sum" and the "row-accumulated" values.
         pub fn create<
@@ -658,10 +662,12 @@ pub mod prover {
 
             // @volhovm TODO These are h_i related chunks!
             //
-            // We keep the lookup terms in a map, to process them in order in the constraints.
+            // We keep the lookup terms in a map, to process them in order in the
+            // constraints.
             let mut lookup_terms_map: BTreeMap<ID, Vec<Vec<G::ScalarField>>> = BTreeMap::new();
 
-            // Where are commitments to the last element are made? First "read" columns we don't commit to, right?..
+            // Where are commitments to the last element are made? First "read" columns we
+            // don't commit to, right?..
 
             lookups.into_iter().for_each(|(table_id, logup_witness)| {
                 let LogupWitness { f, m: _ } = logup_witness;
@@ -751,9 +757,10 @@ pub mod prover {
                             partial_sum_idx += 1;
                         }
                     }
-                    // Whatever leftover in `row_acc` left in the end of the iteration, we write it into
-                    // `partial_sums` too. This is only done in case `n % (MAX_SUPPORTED_DEGREE - 2) != 0`
-                    // which means that the similar addition to `partial_sums` a few lines above won't be triggered.
+                    // Whatever leftover in `row_acc` left in the end of the iteration, we write it
+                    // into `partial_sums` too. This is only done in case `n %
+                    // (MAX_SUPPORTED_DEGREE - 2) != 0` which means that the
+                    // similar addition to `partial_sums` a few lines above won't be triggered.
                     // So we have this wrapping up call instead.
                     if n % (MAX_SUPPORTED_DEGREE - 2) != 0 {
                         partial_sums[partial_sum_idx].push(row_acc);
@@ -769,7 +776,8 @@ pub mod prover {
                     .for_each(|eval| assert_eq!(eval.len(), domain.d1.size as usize))
             });
 
-            // Sanity check to verify that we have all the evaluations for the fixed lookup tables
+            // Sanity check to verify that we have all the evaluations for the fixed lookup
+            // tables
             fixed_lookup_tables
                 .values()
                 .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
@@ -880,9 +888,8 @@ pub mod prover {
             // -- start computing the running sum in lookup_aggregation
             // The running sum, φ, is defined recursively over the subgroup as followed:
             // - φ(1) = 0
-            // - φ(ω^{j + 1}) = φ(ω^j) + \
-            //                         \sum_{i = 1}^{n} (1 / (β + f_i(ω^{j + 1}))) - \
-            //                         (m(ω^{j + 1}) / (β + t(ω^{j + 1})))
+            // - φ(ω^{j + 1}) = φ(ω^j) + \ \sum_{i = 1}^{n} (1 / (β + f_i(ω^{j + 1}))) - \
+            //   (m(ω^{j + 1}) / (β + t(ω^{j + 1})))
             // - φ(ω^n) = 0
             let lookup_aggregation_evals_d1 = {
                 {

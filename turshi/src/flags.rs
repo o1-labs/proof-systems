@@ -7,7 +7,8 @@ pub const NUM_FLAGS: usize = 16;
 pub const POS_DST: usize = 0;
 /// Position of first operand offset of 16 bits within instruction decomposition
 pub const POS_OP0: usize = 1;
-/// Position of second operand offset of 16 bits within instruction decomposition
+/// Position of second operand offset of 16 bits within instruction
+/// decomposition
 pub const POS_OP1: usize = 2;
 /// Bit position of the beginning of the flags in a Cairo instruction
 pub const POS_FLAGS: usize = 48;

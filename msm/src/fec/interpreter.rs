@@ -28,7 +28,8 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
         .collect::<Vec<_>>()
 }
 
-/// When P = (xP,yP) and Q = (xQ,yQ) are not negative of each other, thus function ensures
+/// When P = (xP,yP) and Q = (xQ,yQ) are not negative of each other, thus
+/// function ensures
 ///
 /// P + Q = R where
 ///
@@ -159,22 +160,21 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 ///
 ///
 /// Eq1.
-/// - i ∈ [0,n-1]:  c1_i ∈ [-((i+1)*2^(b+1) - 2*i - 3),
-///                           (i+1)*2^(b+1) - 2*i - 3] (symmetric)
+/// - i ∈ [0,n-1]:  c1_i ∈ [-((i+1)*2^(b+1) - 2*i - 3), (i+1)*2^(b+1) - 2*i - 3]
+///   (symmetric)
 /// - i ∈ [n,2n-2]: c1_i ∈ [-((2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3),
-///                           (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3] (symmetric)
+///   (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3] (symmetric)
 ///
 /// Eq2.
-/// - i ∈ [0,n-1]:  c2_i ∈ [-((i+1)*2^(b+1) - 2*i - 4),
-///                          if i == 0 2^b else (i+1)*2^b - i]
+/// - i ∈ [0,n-1]:  c2_i ∈ [-((i+1)*2^(b+1) - 2*i - 4), if i == 0 2^b else
+///   (i+1)*2^b - i]
 /// - i ∈ [n,2n-2]: c2_i ∈ [-((2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3),
-///                           (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
+///   (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
 ///
 /// Eq3.
-/// - i ∈ [0,n-1]:  c3_i ∈ [-((i+1)*2^(b+1) - 2*i - 4),
-///                           (i+1)*2^b - i - 1]
+/// - i ∈ [0,n-1]:  c3_i ∈ [-((i+1)*2^(b+1) - 2*i - 4), (i+1)*2^b - i - 1]
 /// - i ∈ [n,2n-2]: c3_i ∈ [-((2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3),
-///                           (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
+///   (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
 ///
 /// Absolute maximum values for all carries:
 /// Eq1.
@@ -257,7 +257,8 @@ pub fn constrain_ec_addition<
         .enumerate()
     {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
+            // If it's the highest limb, we need to check that it's representing a field
+            // element.
             env.lookup(
                 LookupTable::RangeCheckFfHighest(PhantomData),
                 vec![x.clone()],
@@ -267,7 +268,8 @@ pub fn constrain_ec_addition<
         }
     }
 
-    // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
+    // Quotient limbs must fit into 15 bits, but we don't care if they're in the
+    // field.
     for x in q1_limbs_small
         .iter()
         .chain(q2_limbs_small.iter())
@@ -289,15 +291,17 @@ pub fn constrain_ec_addition<
         .enumerate()
     {
         if i % 6 == 5 {
-            // This should be a different range check depending on which big-limb we're processing?
-            // So instead of one type of lookup we will have 5 different ones?
+            // This should be a different range check depending on which big-limb we're
+            // processing? So instead of one type of lookup we will have 5
+            // different ones?
             env.lookup(LookupTable::RangeCheck9Abs, vec![x.clone()]);
         } else {
             env.lookup(LookupTable::RangeCheck14Abs, vec![x.clone()]);
         }
     }
 
-    // Make sure qi_limbs_large are properly constructed from qi_limbs_small and qi_sign
+    // Make sure qi_limbs_large are properly constructed from qi_limbs_small and
+    // qi_sign
     {
         let q1_limbs_large_abs_expected =
             combine_small_to_large::<_, _, Env>(q1_limbs_small.clone());
@@ -353,7 +357,8 @@ pub fn constrain_ec_addition<
 
     // Equation 1
     // General form:
-    // \sum_{k,j | k+j = i} s_j (xP_k - xQ_k) - (yP_i - yQ_i) - \sum_{k,j} q_1_k f_j - c_i * 2^B + c_{i-1} =  0
+    // \sum_{k,j | k+j = i} s_j (xP_k - xQ_k) - (yP_i - yQ_i) - \sum_{k,j} q_1_k f_j
+    // - c_i * 2^B + c_{i-1} =  0
     for i in 0..2 * N_LIMBS_LARGE - 1 {
         let mut constraint1 = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
             s_limbs_large[j].clone() * (xp_limbs_large[k].clone() - xq_limbs_large[k].clone())
@@ -370,7 +375,8 @@ pub fn constrain_ec_addition<
     }
 
     // Equation 2
-    // General form: xR_i - \sum s_j s_k + xP_i + xQ_i - \sum q_2_j f_k - c_i * 2^B + c_{i-1} =  0
+    // General form: xR_i - \sum s_j s_k + xP_i + xQ_i - \sum q_2_j f_k - c_i * 2^B
+    // + c_{i-1} =  0
     for i in 0..2 * N_LIMBS_LARGE - 1 {
         let mut constraint2 = -fold_choice2(N_LIMBS_LARGE, i, |j, k| {
             s_limbs_large[j].clone() * s_limbs_large[k].clone()
@@ -390,7 +396,8 @@ pub fn constrain_ec_addition<
     }
 
     // Equation 3
-    // General form: yR_i + yP_i - \sum s_j (xP_k - xR_k) - \sum q_3_j f_k - c_i * 2^B + c_{i-1} = 0
+    // General form: yR_i + yP_i - \sum s_j (xP_k - xR_k) - \sum q_3_j f_k - c_i *
+    // 2^B + c_{i-1} = 0
     for i in 0..2 * N_LIMBS_LARGE - 1 {
         let mut constraint3 = -fold_choice2(N_LIMBS_LARGE, i, |j, k| {
             s_limbs_large[j].clone() * (xp_limbs_large[k].clone() - xr_limbs_large[k].clone())
@@ -617,7 +624,8 @@ pub fn ec_add_circuit<
         {
             // Last carry should be zero, otherwise we record it
             if i < N_LIMBS_LARGE * 2 - 2 {
-                // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
+                // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I
+                // think.
                 let newcarry_sign = if &newcarry.to_bigint_positive() > n_half_bi {
                     F::zero() - F::one()
                 } else {
@@ -625,7 +633,8 @@ pub fn ec_add_circuit<
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
-                // But limbs are signed, so we split into 14-bit /signed/ limbs. + last chunk is signed 9 bit.
+                // But limbs are signed, so we split into 14-bit /signed/ limbs. + last chunk is
+                // signed 9 bit.
                 let newcarry_limbs: [F; 6] =
                     limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(
                         newcarry_abs_bui.clone(),

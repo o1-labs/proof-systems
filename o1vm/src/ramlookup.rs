@@ -15,7 +15,8 @@ pub struct RAMLookup<T, ID: LookupTableID> {
     pub(crate) table_id: ID,
     /// Whether it is a read or write lookup
     pub(crate) mode: LookupMode,
-    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
+    /// The number of times that this lookup value should be added to /
+    /// subtracted from the lookup accumulator.
     pub(crate) magnitude: T,
     /// The columns containing the content of this lookup
     pub(crate) value: Vec<T>,
@@ -32,7 +33,8 @@ where
         + Zero,
     ID: LookupTableID,
 {
-    /// Creates a new RAMLookup from a mode, a table ID, a magnitude, and a value
+    /// Creates a new RAMLookup from a mode, a table ID, a magnitude, and a
+    /// value
     pub fn new(mode: LookupMode, table_id: ID, magnitude: T, value: &[T]) -> Self {
         Self {
             mode,

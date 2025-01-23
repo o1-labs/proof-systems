@@ -103,7 +103,8 @@ where
     ///
     /// # Errors
     ///
-    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length),
+    /// or `proof` is verified as invalid.
     ///
     /// # Panics
     ///
@@ -117,7 +118,6 @@ where
         public_comm: &PolyComm<G>,
         public_input: Option<&[G::ScalarField]>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
-        //~
         //~ #### Fiat-Shamir argument
         //~
         //~ We run the following algorithm:
@@ -153,7 +153,8 @@ where
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, public_comm);
 
-        //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+        //~ 1. Absorb the commitments to the registers / witness columns with the
+        //~    Fq-Sponge.
         self.commitments
             .w_comm
             .iter()
@@ -218,7 +219,8 @@ where
         //~ 1. Sample the second permutation challenge $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
+        //~ 1. If using lookup, absorb the commitment to the aggregation lookup
+        //~    polynomial.
         if index.lookup_index.is_some() {
             // Should not fail, as the lookup index is present
             let lookup_commits = self
@@ -771,12 +773,12 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    //~
     //~ #### Partial verification
     //~
-    //~ For every proof we want to verify, we defer the proof opening to the very end.
-    //~ This allows us to potentially batch verify a number of partially verified proofs.
-    //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+    //~ For every proof we want to verify, we defer the proof opening to the very
+    //~end.  This allows us to potentially batch verify a number of partially
+    //~verified proofs.  Essentially, this steps verifies that $f(\zeta) =
+    //~t(\zeta) * Z_H(\zeta)$.
     //~
 
     let zk_rows = verifier_index.zk_rows;
@@ -845,9 +847,9 @@ where
         ..
     } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, Some(public_input))?;
 
-    //~ 1. Combine the chunked polynomials' evaluations
-    //~    (TODO: most likely only the quotient polynomial is chunked)
-    //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
+    //~ 1. Combine the chunked polynomials' evaluations (TODO: most likely only the
+    //~    quotient polynomial is chunked) with the right powers of $\zeta^n$ and
+    //~    $(\zeta * \omega)^n$.
     let evals = proof.evals.combine(&powers_of_eval_points_for_chunks);
 
     let context = Context {
@@ -856,14 +858,13 @@ where
         public_input,
     };
 
-    //~ 1. Compute the commitment to the linearized polynomial $f$.
-    //~    To do this, add the constraints of all of the gates, of the permutation,
-    //~    and optionally of the lookup.
-    //~    (See the separate sections in the [constraints](#constraints) section.)
-    //~    Any polynomial should be replaced by its associated commitment,
-    //~    contained in the verifier index or in the proof,
-    //~    unless a polynomial has its evaluation provided by the proof
-    //~    in which case the evaluation should be used in place of the commitment.
+    //~ 1. Compute the commitment to the linearized polynomial $f$. To do this, add
+    //~    the constraints of all of the gates, of the permutation, and optionally
+    //~    of the lookup. (See the separate sections in the
+    //~    [constraints](#constraints) section.) Any polynomial should be replaced
+    //~    by its associated commitment, contained in the verifier index or in the
+    //~    proof, unless a polynomial has its evaluation provided by the proof in
+    //~    which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
         let permutation_vanishing_polynomial = verifier_index
@@ -925,8 +926,8 @@ where
         PolyComm::multi_scalar_mul(&commitments, &scalars)
     };
 
-    //~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller's optimization](../kimchi/maller_15.md)).
+    //~ 1. Compute the (chuncked) commitment of $ft$ (see [Maller's
+    //~    optimization](../kimchi/maller_15.md)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
@@ -934,8 +935,8 @@ where
         &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())
     };
 
-    //~ 1. List the polynomial commitments, and their associated evaluations,
-    //~    that are associated to the aggregated evaluation proof in the proof:
+    //~ 1. List the polynomial commitments, and their associated evaluations, that
+    //~    are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
     //~~ * recursion
@@ -1217,7 +1218,8 @@ where
         return Ok(());
     }
 
-    //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+    //~ 1. Ensure that all the proof's verifier index have a URS of the same length.
+    //~    (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
     let srs = proofs[0].verifier_index.srs();
     for &Context { verifier_index, .. } in proofs {
@@ -1226,7 +1228,8 @@ where
         }
     }
 
-    //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
+    //~ 1. Validate each proof separately following the [partial
+    //~    verification](#partial-verification) steps.
     let mut batch = vec![];
     for &Context {
         verifier_index,
@@ -1241,7 +1244,8 @@ where
         )?);
     }
 
-    //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
+    //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the
+    //~    partially evaluated proofs.
     if OpeningProof::verify(srs, group_map, &mut batch, &mut thread_rng()) {
         Ok(())
     } else {

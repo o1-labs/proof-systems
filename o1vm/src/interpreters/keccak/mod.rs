@@ -26,7 +26,8 @@ pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
 /// Number of columns required in the `curr` part of the witness
 pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
-/// Number of columns required in the `next` part of the witness, corresponding to the output length
+/// Number of columns required in the `next` part of the witness, corresponding
+/// to the output length
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
@@ -64,10 +65,11 @@ pub enum Constraint {
 /// Standardizes a Keccak step to a common opcode
 pub fn standardize(opcode: Steps) -> Steps {
     // Note that steps of execution are obtained from the constraints environment.
-    // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
-    // Nonetheless, all of them contain the same set of constraints and lookups.
-    // Therefore, we want to treat them as the same step when it comes to splitting the
-    // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
+    // There, the round steps can be anything between 0 and 23 (for the 24
+    // permutations). Nonetheless, all of them contain the same set of
+    // constraints and lookups. Therefore, we want to treat them as the same
+    // step when it comes to splitting the circuit into multiple instances with
+    // shared behaviour. By default, we use `Round(0)`.
     if let Round(_) = opcode {
         Round(0)
     } else {
@@ -75,7 +77,8 @@ pub fn standardize(opcode: Steps) -> Steps {
     }
 }
 
-// This function maps a 4D index into a 1D index depending on the length of the grid
+// This function maps a 4D index into a 1D index depending on the length of the
+// grid
 fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     match length {
         5 => x,
@@ -87,15 +90,17 @@ fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     }
 }
 
-/// This function returns a vector of field elements that represent the 5 padding suffixes.
-/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+/// This function returns a vector of field elements that represent the 5
+/// padding suffixes. The first one uses at most 12 bytes, and the rest use at
+/// most 31 bytes.
 pub fn pad_blocks<F: Field>(pad_bytelength: usize) -> [F; PAD_SUFFIX_LEN] {
     assert!(pad_bytelength > 0, "Padding length must be at least 1 byte");
     assert!(
         pad_bytelength <= 136,
         "Padding length must be at most 136 bytes",
     );
-    // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+    // Blocks to store padding. The first one uses at most 12 bytes, and the rest
+    // use at most 31 bytes.
     let mut blocks = [F::zero(); PAD_SUFFIX_LEN];
     let mut pad = [F::zero(); RATE_IN_BYTES];
     pad[RATE_IN_BYTES - pad_bytelength] = F::one();
@@ -105,7 +110,8 @@ pub fn pad_blocks<F: Field>(pad_bytelength: usize) -> [F; PAD_SUFFIX_LEN] {
         .take(12)
         .fold(F::zero(), |acc, x| acc * F::from(256u32) + *x);
     for (i, block) in blocks.iter_mut().enumerate().take(5).skip(1) {
-        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
+        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a
+        // single Fp
         *block = pad
             .iter()
             .skip(12 + (i - 1) * 31)

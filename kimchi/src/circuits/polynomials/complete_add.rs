@@ -9,7 +9,8 @@
 //~ where
 //~
 //~ * `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
-//~ * `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+//~ * `inf` is a boolean that is true iff the result (x3, y3) is the point at
+//~   infinity.
 //~
 //~ The rest of the values are inaccessible from the permutation argument, but
 //~ `same_x` is a boolean that is true iff `x1 == x2`.
@@ -52,7 +53,8 @@ fn zero_check<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(z: T, z_inv: T, r:
 //~ * $x_{0} = w_{2} - w_{0}$
 //~ * $x_{1} = w_{3} - w_{1}$
 //~ * $x_{2} = w_{0} \cdot w_{0}$
-//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
+//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) +
+//~   (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
 //~
 //~ constraint 4:
 //~
@@ -178,7 +180,8 @@ where
         //
         // Y same_x = same_x - inf
         //
-        // so multiplying the above constraints through by same_x yields constraints on inf.
+        // so multiplying the above constraints through by same_x yields constraints on
+        // inf.
         //
         // (y2 - y1) same_x Y = 0
         // (y2 - y1) same_x z_inv = inf
@@ -197,9 +200,9 @@ where
         // Let's check that these equations are correct.
         //
         // Case 1: [y1 == y2]
-        //   In this case the expected result is inf = 0, since for the result to be the point at
-        //   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order
-        //   curves).
+        //   In this case the expected result is inf = 0, since for the result to be the
+        // point at   infinity we need y1 = -y2 (note here we assume y1 != 0,
+        // which is the case for prime order   curves).
         //
         //   y2 - y1 = 0, so the second equation becomes inf = 0, which is correct.
         //
@@ -231,7 +234,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// # Panics
     ///
-    /// Will panic if `multiplicative inverse` operation between gate values fails.
+    /// Will panic if `multiplicative inverse` operation between gate values
+    /// fails.
     pub fn verify_complete_add(
         &self,
         row: usize,
