@@ -54,7 +54,6 @@ macro_rules! from_shifts {
     };
 }
 
-//~
 //~ | `KeccakRound` | [0...265) | [265...1165) | [1165...1965) |
 //~ | ------------- | --------- | ------------ | ------------- |
 //~ | Curr          | theta     | pirho        | chi           |
@@ -168,7 +167,8 @@ where
         // IOTA
         let state_g = grid!(100, env.witness_next_chunk(0, IOTA_STATE_G_LEN));
 
-        // Define vectors containing witness expressions which are not in the layout for efficiency
+        // Define vectors containing witness expressions which are not in the layout for
+        // efficiency
         let mut state_c: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
         let mut state_d: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
         let mut state_e: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
@@ -248,7 +248,6 @@ where
     }
 }
 
-//~
 //~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...400] | [400...800) |
 //~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- |
 //~ | Curr           | old_state | new_block   | zeros       | bytes       | shifts      |
@@ -311,7 +310,8 @@ where
             constraints.push(absorb() * (new_state(i) - from_shifts!(shifts, i)));
         }
         for i in 0..64 {
-            // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
+            // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old
+            // state (current)
             constraints.push(squeeze() * (old_state(i) - from_shifts!(shifts, i)));
         }
         for i in 0..RATE_IN_BYTES {

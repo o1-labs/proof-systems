@@ -22,7 +22,8 @@ pub use self::{
 
 use super::polynomial::COLUMNS;
 
-/// Witness cell interface. By default, the witness cell is a single element of type F.
+/// Witness cell interface. By default, the witness cell is a single element of
+/// type F.
 pub trait WitnessCell<F: Field, T = F, const W: usize = COLUMNS> {
     fn value(&self, witness: &mut [Vec<F>; W], variables: &Variables<T>, index: usize) -> F;
 
@@ -38,7 +39,8 @@ pub trait WitnessCell<F: Field, T = F, const W: usize = COLUMNS> {
 /// - offset: the row offset of the witness before initialization
 /// - row: the row index inside the partial layout
 /// - col: the column index inside the witness
-/// - cell: the cell index inside the partial layout (for any but IndexCell, it must be the same as col)
+/// - cell: the cell index inside the partial layout (for any but IndexCell, it
+///   must be the same as col)
 /// - index: the index within the variable (for IndexCell, 0 otherwise)
 /// - layout: the partial layout to initialize from
 /// - variables: the hashmap of variables to get the values from

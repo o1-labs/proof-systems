@@ -411,7 +411,8 @@ fn test_folding_instance() {
     let (scheme, final_constraint) =
         FoldingScheme::<TestFoldingConfig>::new(constraints.clone(), &srs, domain, &structure);
 
-    // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
+    // We have a 2 row circuit with and addition gate in the first row, and a
+    // multiplication gate in the second
 
     // Left: 1 + 2 - 3 = 0
     let left_witness = [

@@ -13,15 +13,19 @@ use super::Hashable;
 
 /// Random oracle input structure
 ///
-/// The random oracle input encapsulates the serialization format and methods using during hashing.
+/// The random oracle input encapsulates the serialization format and methods
+/// using during hashing.
 ///
-/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement
-/// its `to_roinput()` serialization method using the [`ROInput`] functions below.
+/// When implementing the [`Hashable`] trait to enable hashing for a type, you
+/// must implement its `to_roinput()` serialization method using the [`ROInput`]
+/// functions below.
 ///
-/// The random oracle input structure is used (by generic code) to serialize the object into
-/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.
+/// The random oracle input structure is used (by generic code) to serialize the
+/// object into both a vector of `pasta::Fp` field elements and into a vector of
+/// bytes, depending on the situation.
 ///
-/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
+/// Here is an example of how `ROInput` is used during the definition of the
+/// `Hashable` trait.
 ///
 /// ```rust
 /// use mina_hasher::{Hashable, ROInput};
@@ -49,11 +53,12 @@ use super::Hashable;
 ///     }
 /// }
 /// ```
-/// **Details:** For technical reasons related to our proof system and performance,
-/// non-field-element members are serialized for signing differently than other types.
-/// Additionally, during signing all members of the random oracle input get serialized
-/// together in two different ways: both as *bytes* and as a vector of *field elements*.
-/// The random oracle input automates and encapsulates this complexity.
+/// **Details:** For technical reasons related to our proof system and
+/// performance, non-field-element members are serialized for signing
+/// differently than other types. Additionally, during signing all members of
+/// the random oracle input get serialized together in two different ways: both
+/// as *bytes* and as a vector of *field elements*. The random oracle input
+/// automates and encapsulates this complexity.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ROInput {
     fields: Vec<Fp>,

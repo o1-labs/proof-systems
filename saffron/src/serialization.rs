@@ -16,7 +16,8 @@ fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
-// A FieldBlob<F> represents the encoding of a Vec<u8> as a Vec<F> where F is a prime field.
+// A FieldBlob<F> represents the encoding of a Vec<u8> as a Vec<F> where F is a
+// prime field.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldBlob<F> {
     pub n_bytes: usize,

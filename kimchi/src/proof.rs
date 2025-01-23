@@ -31,12 +31,14 @@ pub struct PointEvaluations<Evals> {
     /// Evaluation at the challenge point zeta.
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub zeta: Evals,
-    /// Evaluation at `zeta . omega`, the product of the challenge point and the group generator.
+    /// Evaluation at `zeta . omega`, the product of the challenge point and the
+    /// group generator.
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub zeta_omega: Evals,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+// TODO: this should really be vectors here, perhaps create another type for
+// chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length
 /// that equals the length of the chunk
@@ -365,8 +367,8 @@ impl<G: AffineRepr> RecursionChallenge<G> {
         powers_of_eval_points_for_chunks: &[G::ScalarField],
     ) -> Vec<Vec<G::ScalarField>> {
         let RecursionChallenge { chals, comm: _ } = self;
-        // No need to check the correctness of poly explicitly. Its correctness is assured by the
-        // checking of the inner product argument.
+        // No need to check the correctness of poly explicitly. Its correctness is
+        // assured by the checking of the inner product argument.
         let b_len = 1 << chals.len();
         let mut b: Option<Vec<G::ScalarField>> = None;
 

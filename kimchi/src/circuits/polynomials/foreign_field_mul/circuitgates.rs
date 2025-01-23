@@ -4,12 +4,12 @@
 //~
 //~```text
 //~ left_input * right_input = quotient * foreign_field_modulus + remainder
-//~```
+//~ ```
 //~
 //~ ##### Documentation
 //~
-//~ For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_mul.md)
-//~ chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
+//~ For more details please see the [Foreign Field
+//~ Multiplication](../kimchi/foreign_field_mul.md) chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 //~
 //~ ##### Notations
 //~
@@ -27,30 +27,34 @@
 //~    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
 //~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
 //~    quotient_hi_bound => q'2
-//~
 //~ ````
 //~
 //~ ##### Suffixes
 //~
-//~ The variable names in this code uses descriptive suffixes to convey information about the
-//~ positions of the bits referred to.  When a word is split into up to `n` parts
-//~ we use: `0`, `1` ... `n` (where `n` is the most significant).  For example, if we split
-//~ word `x` into three limbs, we'd name them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
+//~ The variable names in this code uses descriptive suffixes to convey
+//~ information about the positions of the bits referred to.  When a word is
+//~ split into up to `n` parts we use: `0`, `1` ... `n` (where `n` is the most
+//~ significant).  For example, if we split word `x` into three limbs, we'd name
+//~ them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
 //~
-//~ Continuing in this fashion, when one of those words is subsequently split in half, then we
-//~ add the suffixes `_lo` and `_hi`, where `hi` corresponds to the most significant bits.
-//~ For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are splitting into
-//~ more than two things, then we pick meaningful names for each.
+//~ Continuing in this fashion, when one of those words is subsequently split in
+//~ half, then we add the suffixes `_lo` and `_hi`, where `hi` corresponds to
+//~ the most significant bits. For our running example, `x1` would become
+//~ `x1_lo` and `x1_hi`.  If we are splitting into more than two things, then we
+//~ pick meaningful names for each.
 //~
-//~ So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-//~ deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
-//~ would be split into `x1_lo_0` and `x1_lo_1`.
+//~ So far we've explained our conventions for a splitting depth of up to 2.
+//~ For splitting deeper than two, we simply cycle back to our depth 1 suffixes
+//~ again.  So for example, `x1_lo` would be split into `x1_lo_0` and `x1_lo_1`.
 //~
 //~ ##### Parameters
 //~
-//~ * `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
-//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
-//~ * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
+//~ * `hi_foreign_field_modulus` := high limb of foreign field modulus $f$
+//~   (stored in gate coefficient 0)
+//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored
+//~   in gate coefficients 1-3)
+//~ * `n` := the native field modulus is obtainable from `F`, the native field's
+//~   trait bound
 //~
 //~ ##### Witness
 //~
@@ -62,7 +66,8 @@
 //~ * `carry1_lo` := low 88 bits of `carry1`
 //~ * `carry1_hi` := high 3 bits of `carry1`
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
-//~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
+//~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest
+//~   88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
 //~ * `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 //~
@@ -105,7 +110,6 @@ use std::{array, marker::PhantomData};
 ///
 /// For more details see the "Intermediate products" Section of
 /// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
-///
 pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
     left_input: &[T; 3],
     right_input: &[T; 3],
@@ -223,8 +227,8 @@ where
             env.witness_curr(5),
         ];
 
-        // Carry bits v1 decomposed into 7 sublimbs of 12 bits, 3 crumbs of 2 bits, and 1 bit
-        // Total is 91 bits (v11 3 bits + v10 88 bits)
+        // Carry bits v1 decomposed into 7 sublimbs of 12 bits, 3 crumbs of 2 bits, and
+        // 1 bit Total is 91 bits (v11 3 bits + v10 88 bits)
         let carry1_crumb0 = env.witness_curr(11);
         let carry1_crumb1 = env.witness_curr(12);
         let carry1_crumb2 = env.witness_curr(13);

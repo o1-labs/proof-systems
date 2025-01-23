@@ -21,7 +21,8 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     const SMALL_SUBGROUP_BASE_ADICITY: Option<u32> = None;
 
     /// GENERATOR^((MODULUS-1) / (2^s *
-    /// SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY)) Used for mixed-radix FFT.
+    /// SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY)) Used for mixed-radix
+    /// FFT.
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self::BigInt> = None;
 }
 

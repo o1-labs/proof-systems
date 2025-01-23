@@ -18,7 +18,8 @@ use kimchi::{
 };
 use kimchi_msm::columns::ColumnIndexer;
 
-/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+/// This struct contains all that needs to be kept track of during the execution
+/// of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct Env<Fp> {
     /// Constraints that are added to the circuit

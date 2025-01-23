@@ -462,7 +462,8 @@ where
     let ft: DensePolynomial<G::ScalarField> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         // Compute \sum_i t_i(X) ζ^{i n}
-        // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
+        // First we split t in t_i, and we reduce to degree (n - 1) after using
+        // `linearize`
         let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);

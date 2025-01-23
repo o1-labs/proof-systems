@@ -51,13 +51,15 @@ pub trait BigUintForeignFieldHelpers {
     /// Convert to 3 limbs of LIMB_BITS each
     fn to_limbs(&self) -> [BigUint; 3];
 
-    /// Convert to 2 limbs of 2 * LIMB_BITS each. The compressed term is the bottom part
+    /// Convert to 2 limbs of 2 * LIMB_BITS each. The compressed term is the
+    /// bottom part
     fn to_compact_limbs(&self) -> [BigUint; 2];
 
     /// Convert to 3 PrimeField limbs of LIMB_BITS each
     fn to_field_limbs<F: Field>(&self) -> [F; 3];
 
-    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each. The compressed term is the bottom part.
+    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each. The compressed term
+    /// is the bottom part.
     fn to_compact_field_limbs<F: Field>(&self) -> [F; 2];
 
     /// Negate: 2^T - self

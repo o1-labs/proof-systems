@@ -7,7 +7,8 @@ use o1_utils::FieldHelpers;
 
 /// Field element helpers for Cairo
 pub trait CairoFieldHelpers<F> {
-    /// Return field element as byte, if it fits. Otherwise returns least significant byte
+    /// Return field element as byte, if it fits. Otherwise returns least
+    /// significant byte
     fn lsb(&self) -> u8;
 
     /// Return `pos`-th 16-bit chunk as another field element

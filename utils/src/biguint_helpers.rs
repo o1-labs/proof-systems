@@ -1,5 +1,5 @@
-//! This module provides a set of functions to perform bit operations on big integers.
-//! In particular, it gives XOR and NOT for BigUint.
+//! This module provides a set of functions to perform bit operations on big
+//! integers. In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 
 /// Helpers for BigUint

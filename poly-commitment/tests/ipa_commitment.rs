@@ -101,7 +101,8 @@ fn test_offset_chunked_lagrange_commitments() {
             let mut e = vec![Fp::zero(); n];
             e[i] = Fp::one();
             let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-            srs.commit_non_hiding(&p, num_chunks) // this requires max = Some(64)
+            srs.commit_non_hiding(&p, num_chunks) // this requires max =
+                                                  // Some(64)
         })
         .collect();
 

@@ -190,7 +190,8 @@ fn test_and64_alternating() {
 }
 
 #[test]
-// Test a AND of 64bit whose inputs are zero. Checks it works fine with non-dense values.
+// Test a AND of 64bit whose inputs are zero. Checks it works fine with
+// non-dense values.
 fn test_and64_zeros() {
     let zero_pallas = PallasField::from(0u8);
     let zero_vesta = VestaField::from(0u8);
@@ -266,7 +267,8 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
     // modify by one each of the witness cells individually
     for col in 0..COLUMNS {
         // first three columns make fail the ith+1 constraint
-        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
+        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd
+        // fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         let xor_row = 0;
         let and_row = 2;

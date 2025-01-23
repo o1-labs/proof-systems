@@ -435,7 +435,8 @@ pub struct ScalarLimbs<F> {
     pub phi_np1_r3_limbs: [F; N_LIMBS_SMALL],
 }
 
-/// Processes scalars. Returns a vector of limbs of (powers of) scalars produced.
+/// Processes scalars. Returns a vector of limbs of (powers of) scalars
+/// produced.
 pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize>(
     env: &mut Env,
     fold_iteration: usize,
@@ -529,8 +530,8 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
     );
 
     let stub_bucket = {
-        // FIXME This is a STUB right now it uses randomly generated points (not even on curve)
-        // Must use bucket input which is looked up.
+        // FIXME This is a STUB right now it uses randomly generated points (not even on
+        // curve) Must use bucket input which is looked up.
         let mut rng = rand::thread_rng();
         let stub_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);
         let stub_y = <Ff as ark_ff::UniformRand>::rand(&mut rng);
@@ -541,8 +542,9 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
         (stub_x_large, stub_y_large)
     };
 
-    // TODO FIXME STUBBED. multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
-    //let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
+    // TODO FIXME STUBBED. multiply by r. For now these are just C_{R,i}, they must
+    // be {r * C_{R,i}} let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE];
+    // N_COL_TOTAL]> = Box::new(comms_large[1]);
     let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = {
         let mut rng = rand::thread_rng();
         let r_hat_x = <Ff as ark_ff::UniformRand>::rand(&mut rng);

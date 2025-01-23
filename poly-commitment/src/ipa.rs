@@ -132,20 +132,21 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // if we sample evalscale at random, it suffices to check
         //
-        // 0 == sum_i evalscale^i (c_i Q_i + delta_i - ( z1_i (G_i + b_i U_i) + z2_i H ))
+        // 0 == sum_i evalscale^i (c_i Q_i + delta_i - ( z1_i (G_i + b_i U_i) + z2_i H
+        // ))
         //
         // and because each G_i is a multiexp on the same array self.g, we
         // can batch the multiexp across proofs.
         //
-        // So for each proof in the batch, we add onto our big multiexp the following terms
-        // evalscale^i c_i Q_i
+        // So for each proof in the batch, we add onto our big multiexp the following
+        // terms evalscale^i c_i Q_i
         // evalscale^i delta_i
         // - (evalscale^i z1_i) G_i
         // - (evalscale^i z2_i) H
         // - (evalscale^i z1_i b_i) U_i
 
-        // We also check that the sg component of the proof is equal to the polynomial commitment
-        // to the "s" array
+        // We also check that the sg component of the proof is equal to the polynomial
+        // commitment to the "s" array
 
         let nonzero_length = self.g.len();
 
@@ -569,16 +570,19 @@ impl<G: CommitmentCurve> SRS<G> {
         //
         // `blinding_factor` is a combined set of commitments that are
         // paired with polynomials in `plnms`. In kimchi, these input commitments
-        // are poly com blinders, so often `[G::ScalarField::one(); num_chunks]` or zeroes.
+        // are poly com blinders, so often `[G::ScalarField::one(); num_chunks]` or
+        // zeroes.
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
 
         // The initial evaluation vector for polynomial commitment b_init is not
         // just the powers of a single point as in the original IPA (1,ζ,ζ^2,...)
         //
-        // but rather a vector of linearly combined powers with `evalscale` as recombiner.
+        // but rather a vector of linearly combined powers with `evalscale` as
+        // recombiner.
         //
         // b_init[j] = Σ_i evalscale^i elm_i^j
-        //           = ζ^j + evalscale * ζ^j ω^j (in the specific case of challenges (ζ,ζω))
+        //           = ζ^j + evalscale * ζ^j ω^j (in the specific case of challenges
+        // (ζ,ζω))
         //
         // So in our case b_init is the following vector:
         //    1 + evalscale
@@ -612,12 +616,13 @@ impl<G: CommitmentCurve> SRS<G> {
         // So we should absorb `combined_inner_product``
         // However it is more efficient in the recursion circuit
         // to absorb a slightly modified version of it.
-        // As a reminder, in a recursive setting, the challenges are given as a public input
-        // and verified in the next iteration.
+        // As a reminder, in a recursive setting, the challenges are given as a public
+        // input and verified in the next iteration.
         // See the `shift_scalar`` doc.
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
-        // Generate another randomisation base U; our commitments will be w.r.t bases {G_i},H,U.
+        // Generate another randomisation base U; our commitments will be w.r.t bases
+        // {G_i},H,U.
         let u_base: G = {
             let t = sponge.challenge_fq();
             let (x, y) = group_map.to_group(t);
@@ -745,7 +750,8 @@ impl<G: CommitmentCurve> SRS<G> {
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
         // Compute delta, the commitment
-        // delta = [d] G0 + [b0*d] U_base + [r_delta] H^r   (as a group element, in additive notation)
+        // delta = [d] G0 + [b0*d] U_base + [r_delta] H^r   (as a group element, in
+        // additive notation)
         let delta = ((g0.into_group() + (u_base.mul(b0))).into_affine().mul(d)
             + self.h.mul(r_delta))
         .into_affine();
@@ -818,7 +824,8 @@ impl<G: CommitmentCurve> SRS<G> {
         // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
         //
         // Therefore, the IFFT algorithm, when applied to the vector u (the standard
-        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        // monomial basis) will yield the vector v of the (normalized) Lagrange
+        // polynomials.
         //
         // Now, because the polynomial commitment scheme is additively homomorphic, and
         // because the commitment to the polynomial x^i is just self.g[i], we can obtain
@@ -833,15 +840,17 @@ impl<G: CommitmentCurve> SRS<G> {
         // where each f_i has degree n-1.
         //
         // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
-        // then we effectively 'zero out' any polynomial terms higher than x^{n-1}, leaving
-        // us with the 'partial Lagrange polynomials' that contribute to f_0.
+        // then we effectively 'zero out' any polynomial terms higher than x^{n-1},
+        // leaving us with the 'partial Lagrange polynomials' that contribute to
+        // f_0.
         //
-        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n leading
-        // zeros 'zeroes out' all terms except the 'partial Lagrange polynomials' that
-        // contribute to f_1, and likewise for each f_i.
+        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n
+        // leading zeros 'zeroes out' all terms except the 'partial Lagrange
+        // polynomials' that contribute to f_1, and likewise for each f_i.
         //
-        // By computing each of these, and recollecting the terms as a vector of polynomial
-        // commitments, we obtain a chunked commitment to the L_i polynomials.
+        // By computing each of these, and recollecting the terms as a vector of
+        // polynomial commitments, we obtain a chunked commitment to the L_i
+        // polynomials.
         let srs_size = self.g.len();
         let num_elems = (n + srs_size - 1) / srs_size;
         let mut chunks = Vec::with_capacity(num_elems);

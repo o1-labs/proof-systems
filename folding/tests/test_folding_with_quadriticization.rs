@@ -1,5 +1,5 @@
-// this example is a copy of the decomposable folding one, but with a degree 3 gate
-// that triggers quadriticization
+// this example is a copy of the decomposable folding one, but with a degree 3
+// gate that triggers quadriticization
 use ark_ec::AffineRepr;
 use ark_ff::{One, UniformRand};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -44,7 +44,8 @@ pub enum DynamicSelector {
 }
 
 impl FoldingColumnTrait for TestColumn {
-    //in this case we have only witness, the other example shows non-witness columns
+    //in this case we have only witness, the other example shows non-witness
+    // columns
     fn is_witness(&self) -> bool {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
@@ -93,10 +94,10 @@ impl Instance<Curve> for TestInstance {
     }
 }
 
-// our environment, the way in which we provide access to the actual values in the
-// witness and instances, when folding evaluates expressions and reaches leaves (Atom)
-// it will call methods from here to resolve the types we have in the config like the
-// columns into the actual values.
+// our environment, the way in which we provide access to the actual values in
+// the witness and instances, when folding evaluates expressions and reaches
+// leaves (Atom) it will call methods from here to resolve the types we have in
+// the config like the columns into the actual values.
 pub struct TestFoldingEnv {
     instances: [TestInstance; 2],
     // Corresponds to the omega evaluations, for both sides
@@ -181,9 +182,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     // this is exclusively for dynamic selectors aiming to make use of optimization
-    // as classic static selectors will be handle as normal structure columns in col()
-    // the implementation of this if the same as col(), it is just separated as they
-    // have different types to resolve
+    // as classic static selectors will be handle as normal structure columns in
+    // col() the implementation of this if the same as col(), it is just
+    // separated as they have different types to resolve
     fn selector(&self, s: &DynamicSelector, side: Side) -> &[Fp] {
         let wit = &self.curr_witnesses[side as usize];
         match s {
@@ -228,7 +229,8 @@ pub struct TestFoldingConfig;
 
 // Flag used as the challenges are never built.
 // FIXME: should we use unit?
-// Does not contain alpha because it should be added to the expressions by folding
+// Does not contain alpha because it should be added to the expressions by
+// folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {
     Beta,
@@ -262,8 +264,8 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 5] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later compute challenges
-    // but for this example I just use random values
+    // here we should absorve the commitments and similar things to later compute
+    // challenges but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);
     let challenges = [(); 3].map(|_| challenge());

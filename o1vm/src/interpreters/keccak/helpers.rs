@@ -5,8 +5,8 @@ use crate::{
 use ark_ff::{One, Zero};
 use std::fmt::Debug;
 
-/// This trait contains helper functions for the lookups used in the Keccak circuit
-/// using the zkVM lookup tables
+/// This trait contains helper functions for the lookups used in the Keccak
+/// circuit using the zkVM lookup tables
 pub trait LogupHelpers<F: One + Debug + Zero>
 where
     Self: Interpreter<F>,
@@ -55,12 +55,14 @@ where
     }
 }
 
-/// This trait contains helper functions for boolean operations used in the Keccak circuit
+/// This trait contains helper functions for boolean operations used in the
+/// Keccak circuit
 pub trait BoolHelpers<F: One + Debug + Zero>
 where
     Self: Interpreter<F>,
 {
-    /// Degree-2 variable encoding whether the input is a boolean value (0 = yes)
+    /// Degree-2 variable encoding whether the input is a boolean value (0 =
+    /// yes)
     fn is_boolean(x: Self::Variable) -> Self::Variable {
         x.clone() * (x - Self::Variable::one())
     }
@@ -77,13 +79,15 @@ where
     }
 
     /// Degree-2 variable encoding whether the first input is nonzero (0 = yes).
-    /// It requires the second input to be the multiplicative inverse of the first.
-    /// Note: if the first input is zero, there is no multiplicative inverse.
+    /// It requires the second input to be the multiplicative inverse of the
+    /// first. Note: if the first input is zero, there is no multiplicative
+    /// inverse.
     fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable {
         Self::is_one(x * x_inv)
     }
 
-    // The following two degree-2 constraints define the is_zero function meaning (1 = yes):
+    // The following two degree-2 constraints define the is_zero function meaning (1
+    // = yes):
     // - if x = 0 then is_zero(x) = 1
     // - if x ≠ 0 then is_zero(x) = 0
     // It is obtained by combining these two equations:
@@ -101,23 +105,27 @@ where
         )
     }
 
-    /// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
+    /// Degree-2 variable encoding the XOR of two variables which should be
+    /// boolean (1 = true)
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - Self::constant(2) * x * y
     }
 
-    /// Degree-2 variable encoding the OR of two variables, which should be boolean (1 = true)
+    /// Degree-2 variable encoding the OR of two variables, which should be
+    /// boolean (1 = true)
     fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - x * y
     }
 
-    /// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
+    /// Degree-2 variable encoding whether at least one of the two inputs is
+    /// zero (0 = yes)
     fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x * y
     }
 }
 
-/// This trait contains helper functions for arithmetic operations used in the Keccak circuit
+/// This trait contains helper functions for arithmetic operations used in the
+/// Keccak circuit
 pub trait ArithHelpers<F: One + Debug + Zero>
 where
     Self: Interpreter<F>,

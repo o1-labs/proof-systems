@@ -73,7 +73,8 @@ where
 ///
 /// # Panics
 ///
-/// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
+/// Will panic if `TinyTemplate::render()` returns `Error` or
+/// `std::fs::File::create()` returns `Error`.
 pub fn visu<G: KimchiCurve>(
     index: &ProverIndex<G, OpeningProof<G>>,
     witness: Option<Witness<G::ScalarField>>,

@@ -1,5 +1,5 @@
-//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
-//! the definition of the constraints of the `Xor16` circuit gate,
+//! This module includes the definition of the XOR gadget for 64, 32, and 16
+//! bits, the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
 use crate::{
     circuits::{
@@ -59,7 +59,8 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
     /// Warning:
-    /// - don't forget to check that the final row is all zeros as in `extend_xor_gadget`
+    /// - don't forget to check that the final row is all zeros as in
+    ///   `extend_xor_gadget`
     pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut xor_gates = (0..num_xors)
@@ -87,8 +88,10 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 
 //~ `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
 //~
-//~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
-//~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+//~ * This circuit gate is used to constrain that `in1` xored with `in2` equals
+//~   `out`
+//~ * The length of `in1`, `in2` and `out` must be the same and a multiple of
+//~   16bits.
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
 //~ It uses three different types of constraints:
@@ -97,8 +100,9 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
-//~ Given values `in1`, `in2` and `out`, the layout looks like this:
+//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least
+//~ significant nybble. Given values `in1`, `in2` and `out`, the layout looks
+//~ like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
 //~ | ------ | ---------------- | ---------------- |
@@ -118,9 +122,10 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ |     13 | plookup2 `out_2` |                  |
 //~ |     14 | plookup3 `out_3` |                  |
 //~
-//~ One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
-//~ that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
-//~ to obtain a gadget for 64-bit words XOR:
+//~ One single gate with next values of `in1'`, `in2'` and `out'` being zero can
+//~ be used to check that the original `in1`, `in2` and `out` had 16-bits. We
+//~ can chain this gate 4 times as follows to obtain a gadget for 64-bit words
+//~ XOR:
 //~
 //~ | Row | `CircuitGate` | Purpose                                    |
 //~ | --- | ------------- | ------------------------------------------ |
@@ -149,7 +154,8 @@ where
 
     // Constraints for Xor16
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
+    //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16
+    //     bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,

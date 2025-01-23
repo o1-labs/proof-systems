@@ -8,8 +8,8 @@
 use crate::{columns::ColumnIndexer, logup::LookupTableID};
 use ark_ff::PrimeField;
 
-/// Environment capability for accessing and reading columns. This is necessary for
-/// building constraints.
+/// Environment capability for accessing and reading columns. This is necessary
+/// for building constraints.
 pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer<usize>> {
     // NB: 'static here means that `Variable` does not contain any
     // references with a lifetime less than 'static. Which is true in
@@ -88,7 +88,8 @@ pub trait DirectWitnessCap<F: PrimeField, CIx: ColumnIndexer<usize>>
 where
     Self: MultiRowReadCap<F, CIx>,
 {
-    /// Convert an abstract variable to a field element! Inverse of Env::constant().
+    /// Convert an abstract variable to a field element! Inverse of
+    /// Env::constant().
     fn variable_to_field(value: Self::Variable) -> F;
 }
 

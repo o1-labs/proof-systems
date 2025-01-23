@@ -30,7 +30,8 @@ pub struct ColumnEnvironment<
     /// fixed.
     pub fixed_selectors: &'a [Evaluations<F, Radix2EvaluationDomain<F>>; N_FSEL],
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
-    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    /// computing the evaluations of the unnormalized Lagrange basis
+    /// polynomials.
     pub l0_1: F,
     /// Constant values required
     pub constants: Constants<F>,
@@ -60,7 +61,8 @@ impl<
         &self,
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
-        // TODO: when non-literal constant generics are available, substitute N with N_REG + N_DSEL + N_FSEL
+        // TODO: when non-literal constant generics are available, substitute N with
+        // N_REG + N_DSEL + N_FSEL
         assert!(N_WIT == N_REL + N_DSEL);
         assert!(N_WIT == self.witness.len());
         match *col {

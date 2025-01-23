@@ -85,8 +85,8 @@ where
 
     // Optionally also add external gate checks to circuit
     if external_gates {
-        // Layout for this test (just an example, circuit designer has complete flexibility where to put the checks)
-        //    BASIC:
+        // Layout for this test (just an example, circuit designer has complete
+        // flexibility where to put the checks)    BASIC:
         //      0-1  ForeignFieldMul | Zero
         // EXTERNAL:
         //      2-5  compact-multi-range-check (result range check)
@@ -120,7 +120,8 @@ where
         gates.connect_cell_pair((1, 4), (9, 0)); // quotient2
                                                  // Witness updated below
 
-        // Multiplication witness value quotient_bound, product1_lo, product1_hi_0 multi-range-check
+        // Multiplication witness value quotient_bound, product1_lo, product1_hi_0
+        // multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((1, 5), (11, 0)); // quotient_bound
         gates.connect_cell_pair((0, 6), (12, 0)); // product1_lo
@@ -201,7 +202,8 @@ where
         ConstraintSystem::create(gates.clone()).build().unwrap()
     };
 
-    // Perform witness verification that everything is ok before invalidation (quick checks)
+    // Perform witness verification that everything is ok before invalidation (quick
+    // checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result = gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
@@ -234,8 +236,9 @@ where
 
         if !disable_gates_checks {
             // Check witness verification fails
-            // When targeting the plookup constraints the invalidated values would cause custom constraint
-            // failures, so we want to suppress these witness verification checks when doing plookup tests.
+            // When targeting the plookup constraints the invalidated values would cause
+            // custom constraint failures, so we want to suppress these witness
+            // verification checks when doing plookup tests.
             for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
                 let result =
                     gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
@@ -366,8 +369,8 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
         );
 
-        // Test constraint (C5): invalid native modulus check but binary modulus checks ok
-        //     Triggering constraint C4 is challenging, so this is done with
+        // Test constraint (C5): invalid native modulus check but binary modulus checks
+        // ok     Triggering constraint C4 is challenging, so this is done with
         //     the test_native_modulus_constraint() test below
 
         // Test constraint (C6): invalidate carry1_crumb0
@@ -687,11 +690,13 @@ fn test_nonzero_carry0() {
 }
 
 #[test]
-// Test with nonzero carry10 (this targets only the limbs and the first crumb of carry1)
+// Test with nonzero carry10 (this targets only the limbs and the first crumb of
+// carry1)
 fn test_nonzero_carry10() {
     // Max modulus
     // Actually this is larger than max_foreign_field_modulus, but it's fine because
-    // we can still hold larger than 2^259-1. This is just for the test to produce nonzero carry10.
+    // we can still hold larger than 2^259-1. This is just for the test to produce
+    // nonzero carry10.
     let foreign_field_modulus = BigUint::two().pow(259u32);
 
     // Maximum quotient
@@ -878,7 +883,8 @@ fn test_invalid_wraparound_carry1_hi() {
     // Sanity check wraparound values
     let two_to_9 = PallasField::from(2u32).pow([9]);
     // Wraparound (exploit) value x s.t. x >= 2^12 AND 2^9 * x < 2^12
-    // (credit to querolita for computing the real instances of this value for these test cases!)
+    // (credit to querolita for computing the real instances of this value for these
+    // test cases!)
     let wraparound_0 = two_to_9.inverse().expect("failed to get inverse");
     for i in 0..8 {
         let wraparound_i = wraparound_0 + PallasField::from(i);
@@ -904,7 +910,8 @@ fn test_invalid_wraparound_carry1_hi() {
 
     let carry1_crumb2 = value % BigUint::from(4u32);
 
-    // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
+    // Invalid carry1_hi witness that causes wrap around to something less than
+    // 3-bits
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
@@ -1245,7 +1252,8 @@ fn test_random_multiplicands_valid() {
 }
 
 #[test]
-// Test multiplying some random values with foreign modulus smaller than native modulus
+// Test multiplying some random values with foreign modulus smaller than native
+// modulus
 fn test_smaller_foreign_field_modulus() {
     let foreign_field_modulus = BigUint::two().pow(252u32) - BigUint::one();
 
@@ -1287,7 +1295,8 @@ fn test_custom_constraints_secp256k1_on_pallas() {
 }
 
 #[test]
-// Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
+// Tests targeting each custom constraint with Vesta (foreign field modulus) on
+// Pallas (native field modulus)
 fn test_custom_constraints_vesta_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &VestaField::modulus_biguint(),
@@ -1295,7 +1304,8 @@ fn test_custom_constraints_vesta_on_pallas() {
 }
 
 #[test]
-// Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
+// Tests targeting each custom constraint with Pallas (foreign field modulus) on
+// Vesta (native field modulus)
 fn test_custom_constraints_pallas_on_vesta() {
     test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         &PallasField::modulus_biguint(),
@@ -1303,7 +1313,8 @@ fn test_custom_constraints_pallas_on_vesta() {
 }
 
 #[test]
-// Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
+// Tests targeting each custom constraint with Vesta (foreign field modulus) on
+// Vesta (native field modulus)
 fn test_custom_constraints_vesta_on_vesta() {
     test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         &VestaField::modulus_biguint(),
@@ -1311,7 +1322,8 @@ fn test_custom_constraints_vesta_on_vesta() {
 }
 
 #[test]
-// Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
+// Tests targeting each custom constraint with Pallas (foreign field modulus) on
+// Pallas (native field modulus)
 fn test_custom_constraints_pallas_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &PallasField::modulus_biguint(),
@@ -1319,7 +1331,8 @@ fn test_custom_constraints_pallas_on_pallas() {
 }
 
 #[test]
-// Tests targeting each custom constraint (foreign modulus smaller than native vesta)
+// Tests targeting each custom constraint (foreign modulus smaller than native
+// vesta)
 fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
     test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
@@ -1327,7 +1340,8 @@ fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
 }
 
 #[test]
-// Tests targeting each custom constraint (foreign modulus smaller than native pallas)
+// Tests targeting each custom constraint (foreign modulus smaller than native
+// pallas)
 fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
@@ -1391,7 +1405,8 @@ fn test_witness_max_foreign_field_modulus() {
 }
 
 #[test]
-// Checks that the high bound check includes when q2 is exactly f2 and not just up to f2-1
+// Checks that the high bound check includes when q2 is exactly f2 and not just
+// up to f2-1
 fn test_q2_exactly_f2() {
     let left_input = secp256k1_max() - BigUint::from(4u32);
     let right_input = secp256k1_max() - BigUint::from(1u32);
@@ -1440,7 +1455,8 @@ fn test_carry_plookups() {
         [witness[0][1], witness[1][1]].compose()
     );
     assert_eq!(result, Ok(()),);
-    // Adds 1 bit to carry1_36 (obtaining 0x1FFF) and removing 1 from carry1_48 (obtaining 0xFFE)
+    // Adds 1 bit to carry1_36 (obtaining 0x1FFF) and removing 1 from carry1_48
+    // (obtaining 0xFFE)
     let (result, _witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false,

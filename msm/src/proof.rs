@@ -49,8 +49,9 @@ impl<const N_WIT: usize, F: PrimeField> ProofInputs<N_WIT, F, LookupTableIDs> {
 }
 
 impl<const N_WIT: usize, F: PrimeField, ID: LookupTableID> Default for ProofInputs<N_WIT, F, ID> {
-    /// Creates a default proof instance. Note that such an empty "zero" instance will not satisfy any constraint.
-    /// E.g. some constraints that have constants inside of them (A - const = 0) cannot be satisfied by it.
+    /// Creates a default proof instance. Note that such an empty "zero"
+    /// instance will not satisfy any constraint. E.g. some constraints that
+    /// have constants inside of them (A - const = 0) cannot be satisfied by it.
     fn default() -> Self {
         ProofInputs {
             evaluations: Witness {
@@ -148,11 +149,12 @@ impl<
 
 #[derive(Debug, Clone)]
 pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve, ID: LookupTableID> {
-    /// Commitments to the N columns of the circuits, also called the 'witnesses'.
-    /// If some columns are considered as public inputs, it is counted in the witness.
+    /// Commitments to the N columns of the circuits, also called the
+    /// 'witnesses'. If some columns are considered as public inputs, it is
+    /// counted in the witness.
     pub(crate) witness_comms: Witness<N_WIT, PolyComm<G>>,
-    /// Commitments to the polynomials used by the lookup argument, coined "logup".
-    /// The values contains the chunked polynomials.
+    /// Commitments to the polynomials used by the lookup argument, coined
+    /// "logup". The values contains the chunked polynomials.
     pub(crate) logup_comms: Option<LookupProof<PolyComm<G>, ID>>,
     /// Commitments to the quotient polynomial.
     /// The value contains the chunked polynomials.

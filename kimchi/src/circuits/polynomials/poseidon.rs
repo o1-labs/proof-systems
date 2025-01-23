@@ -14,9 +14,12 @@
 //~
 //~ The last state is stored on the next row. This last state is either used:
 //~
-//~ * with another Poseidon gate on that next row, representing the next 5 rounds.
-//~ * or with a Zero gate, and a permutation to use the output elsewhere in the circuit.
-//~ * or with another gate expecting an input of 3 field elements in its first registers.
+//~ * with another Poseidon gate on that next row, representing the next 5
+//~   rounds.
+//~ * or with a Zero gate, and a permutation to use the output elsewhere in the
+//~   circuit.
+//~ * or with another gate expecting an input of 3 field elements in its first
+//~   registers.
 //~
 //~ ```admonish
 //~ As some of the poseidon hash variants might not use $5k$ rounds (for some $k$),
@@ -88,12 +91,15 @@ impl<F: PrimeField> CircuitGate<F> {
         CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
-    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`
+    /// creates an entire set of constraint for a Poseidon hash.
     /// For that, you need to pass:
     /// - the index of the first `row`
-    /// - the first and last rows' wires (because they are used in the permutation)
+    /// - the first and last rows' wires (because they are used in the
+    ///   permutation)
     /// - the round constants
-    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    /// The function returns a set of gates, as well as the next pointer to the
+    /// circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -137,7 +143,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// # Errors
     ///
-    /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
+    /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does
+    /// not match after `permutation`.
     pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -216,9 +223,9 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-/// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
-/// `params` to generate a witness for starting at row `row` in `witness_cols`,
-/// and with input `input`.
+/// `generate_witness(row, params, witness_cols, input)` uses a sponge
+/// initialized with `params` to generate a witness for starting at row `row` in
+/// `witness_cols`, and with input `input`.
 ///
 /// # Panics
 ///
@@ -326,8 +333,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// ...
 /// ```
 ///
-/// The rth position in this array contains the alphas used for the equations that
-/// constrain the values of the (r+1)th state.
+/// The rth position in this array contains the alphas used for the equations
+/// that constrain the values of the (r+1)th state.
 #[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 

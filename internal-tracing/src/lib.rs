@@ -46,8 +46,8 @@ impl From<SystemTime> for TimeInput {
 /// **Note:**Traces are stored locally for each thread (`thread_local`).
 ///
 /// Module exposes two main methods:
-/// - `fn start_tracing()` - Simply calls `take_traces()` and discards
-///   the result, in order to clean up old traces.
+/// - `fn start_tracing()` - Simply calls `take_traces()` and discards the
+///   result, in order to clean up old traces.
 /// - `fn take_traces()` - Take accumulated traces.
 #[cfg(feature = "enabled")]
 #[macro_export]

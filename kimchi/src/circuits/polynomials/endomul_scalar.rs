@@ -1,5 +1,5 @@
-//! Implementation of the `EndomulScalar` gate for the endomul scalar multiplication.
-//! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
+//! Implementation of the `EndomulScalar` gate for the endomul scalar
+//! multiplication. This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
 
 use crate::{
     circuits::{
@@ -20,7 +20,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// # Errors
     ///
-    /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
+    /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there
+    /// are errors in gate values.
     pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -59,12 +60,12 @@ fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &
 
 //~ We give constraints for the endomul scalar computation.
 //~
-//~ Each row corresponds to 8 iterations of the inner loop in "Algorithm 2" on page 29 of
-//~ [the Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+//~ Each row corresponds to 8 iterations of the inner loop in "Algorithm 2" on
+//~ page 29 of [the Halo paper](https://eprint.iacr.org/2019/1021.pdf).
 //~
-//~ The state of the algorithm that's updated across iterations of the loop is `(a, b)`.
-//~ It's clear from that description of the algorithm that an iteration of the loop can
-//~ be written as
+//~ The state of the algorithm that's updated across iterations of the loop is
+//~ `(a, b)`. It's clear from that description of the algorithm that an
+//~ iteration of the loop can be written as
 //~
 //~ ```ignore
 //~ (a, b, i) ->
@@ -72,9 +73,9 @@ fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &
 //~     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
 //~ ```
 //~
-//~ for some functions `c_func` and `d_func`. If one works out what these functions are on
-//~ every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they
-//~ are given by
+//~ for some functions `c_func` and `d_func`. If one works out what these
+//~ functions are on every input (thinking of a two-bit input as a number in
+//~ $\{0, 1, 2, 3\}$), one finds they are given by
 //~
 //~ * `c_func(x)`, defined by
 //~~  * `c_func(0) = 0`
@@ -88,7 +89,8 @@ fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &
 //~~  * `d_func(2) = 0`
 //~~  * `d_func(3) = 0`
 //~
-//~ One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
+//~ One can then interpolate to find polynomials that implement these functions
+//~ on $\{0, 1, 2, 3\}$.
 //~
 //~ You can use [`sage`](https://www.sagemath.org/), as
 //~
@@ -118,8 +120,9 @@ fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &
 //~
 //~ where each `xi` is a two-bit "crumb".
 //~
-//~ We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2, 3\}$,
-//~ which can be done by checking that each $x_i$ is a root of the polyunomial below:
+//~ We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2,
+//~ 3\}$, which can be done by checking that each $x_i$ is a root of the
+//~ polyunomial below:
 //~
 //~ ```ignore
 //~ crumb(x)
@@ -134,19 +137,25 @@ fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &
 //~ * Update $a$: $\quad a_{i+1} = 2 \cdot a_{i} + c_i$
 //~ * Update $b$: $\quad b_{i+1} = 2 \cdot b_{i} + d_i$
 //~
-//~ Then, after the 8 iterations, we compute expected values of the above operations as:
+//~ Then, after the 8 iterations, we compute expected values of the above
+//~ operations as:
 //~
-//~ * `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1 ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`
-//~ * `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1 ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`
-//~ * `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1 ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`
+//~ * `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1
+//~   ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`
+//~ * `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1
+//~   ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`
+//~ * `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1
+//~   ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`
 //~
-//~ Putting together all of the above, these are the 11 constraints for this gate
+//~ Putting together all of the above, these are the 11 constraints for this
+//~ gate
 //~
 //~ * Checking values after the 8 iterations:
 //~   * Constrain $n$: `0 = expected_n8 - n8`
 //~   * Constrain $a$: `0 = expected_a8 - a8`
 //~   * Constrain $b$: `0 = expected_b8 - b8`
-//~ * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
+//~ * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2,
+//~   3\}$:
 //~   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
 //~   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
 //~   * Constrain $x_2$: `0 = x2 * ( x2^3 - 6 * x2^2 + 11 * x2 - 6 )`

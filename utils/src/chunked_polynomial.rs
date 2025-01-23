@@ -25,10 +25,11 @@ impl<F: Field> ChunkedPolynomial<F> {
         res
     }
 
-    /// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n-1.
-    /// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`
-    /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
-    /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
+    /// Multiplies the chunks of a polynomial with powers of zeta^n to make it
+    /// of degree n-1. For example, if a polynomial can be written `f = f0 +
+    /// x^n f1 + x^2n f2` (where f0, f1, f2 are of degree n-1), then this
+    /// function returns the new semi-evaluated `f'(x) = f0(x) + zeta^n
+    /// f1(x) + zeta^2n f2(x)`.
     pub fn linearize(&self, zeta_n: F) -> DensePolynomial<F> {
         let mut scale = F::one();
         let mut coeffs = vec![F::zero(); self.size];

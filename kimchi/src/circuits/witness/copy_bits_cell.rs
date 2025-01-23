@@ -12,7 +12,8 @@ pub struct CopyBitsCell {
 }
 
 impl CopyBitsCell {
-    /// Create witness cell copied from bits [start, end) of the witness cell at position (row, col)
+    /// Create witness cell copied from bits [start, end) of the witness cell at
+    /// position (row, col)
     pub fn create(row: usize, col: usize, start: usize, end: usize) -> Box<CopyBitsCell> {
         Box::new(CopyBitsCell {
             row,

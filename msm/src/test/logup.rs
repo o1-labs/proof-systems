@@ -73,7 +73,8 @@ mod tests {
             &proof,
             Witness::zero_vec(domain_size),
         );
-        // FIXME: At the moment, it does verify. It should not. We are missing constraints.
+        // FIXME: At the moment, it does verify. It should not. We are missing
+        // constraints.
         assert!(!verifies);
     }
 }

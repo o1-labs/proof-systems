@@ -171,10 +171,10 @@ pub fn get_mapping_with_primes<const N: usize>() -> Vec<usize> {
 
 /// Compute all the possible two factors decomposition of a number n.
 /// It uses a cache where previous values have been computed.
-/// For instance, if n = 6, the function will return [(1, 6), (2, 3), (3, 2), (6, 1)].
-/// The cache might be used to store the results of previous computations.
-/// The cache is a hashmap where the key is the number and the value is the
-/// list of all the possible two factors decomposition.
+/// For instance, if n = 6, the function will return [(1, 6), (2, 3), (3, 2),
+/// (6, 1)]. The cache might be used to store the results of previous
+/// computations. The cache is a hashmap where the key is the number and the
+/// value is the list of all the possible two factors decomposition.
 /// The hashmap is updated in place.
 /// The third parameter is a precomputed list of prime numbers. It is updated in
 /// place in case new prime numbers are generated.

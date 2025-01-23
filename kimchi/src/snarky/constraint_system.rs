@@ -1,9 +1,10 @@
 #![allow(clippy::all)]
 
 //! The backend used by Snarky, gluing snarky to kimchi.
-//! This module holds the actual logic that constructs the circuit using kimchi's gates,
-//! as well as the logic that constructs the permutation,
-//! and the symbolic execution trace table (both for compilation and at runtime).
+//! This module holds the actual logic that constructs the circuit using
+//! kimchi's gates, as well as the logic that constructs the permutation,
+//! and the symbolic execution trace table (both for compilation and at
+//! runtime).
 
 use crate::{
     circuits::{
@@ -79,7 +80,8 @@ struct GateSpec<Row, Field> {
 }
 
 impl<Row, Field> GateSpec<Row, Field> {
-    /** Applies a function [f] to the [row] of [t] and all the rows of its [`wired_to`]. */
+    /** Applies a function [f] to the [row] of [t] and all the rows of its
+     * [`wired_to`]. */
     fn map_rows<Row2, F: Fn(Row) -> Row2>(self, f: F) -> GateSpec<Row2, Field> {
         let GateSpec {
             kind,
@@ -233,9 +235,12 @@ pub struct EcEndoscaleInput<Var> {
     pub n_acc: Var,
 }
 
-/** A PLONK constraint (or gate) can be [`Basic`](KimchiConstraint::Basic), [`Poseidon`](KimchiConstraint::Poseidon),
- * [`EcAddComplete`](KimchiConstraint::EcAddComplete), [`EcScale`](KimchiConstraint::EcScale),
- * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
+/** A PLONK constraint (or gate) can be [`Basic`](KimchiConstraint::Basic),
+ * [`Poseidon`](KimchiConstraint::Poseidon),
+ * [`EcAddComplete`](KimchiConstraint::EcAddComplete),
+ * [`EcScale`](KimchiConstraint::EcScale),
+ * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or
+ * [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -289,15 +294,19 @@ pub struct SnarkyConstraintSystem<Field>
 where
     Field: PrimeField,
 {
-    // TODO: once we have a trait we can get these via the Curve (if we parameterize SnarkyConstraintSystem on the curve)
+    // TODO: once we have a trait we can get these via the Curve (if we parameterize
+    // SnarkyConstraintSystem on the curve)
     constants: Constants<Field>,
 
-    /** Map of cells that share the same value (enforced by to the permutation). */
+    /** Map of cells that share the same value (enforced by to the
+     * permutation). */
     equivalence_classes: HashMap<V, Vec<Position<Row>>>,
     next_internal_var: usize,
-    /** How to compute each internal variable (as a linear combination of other variables). */
+    /** How to compute each internal variable (as a linear combination of
+     * other variables). */
     internal_vars: HashMap<InternalVar, (Vec<(Field, V)>, Option<Field>)>,
-    /** The variables that hold each witness value for each row, in reverse order. */
+    /** The variables that hold each witness value for each row, in reverse
+     * order. */
     rows: Vec<Vec<Option<V>>>,
     /** A circuit is described by a series of gates.
        A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
@@ -307,7 +316,8 @@ where
     /** The row to use the next time we add a constraint. */
     // TODO: I think we can delete this and get it from rows.len() or something
     next_row: usize,
-    /** The size of the public input (which fills the first rows of our constraint system. */
+    /** The size of the public input (which fills the first rows of our
+     * constraint system. */
     public_input_size: Option<usize>,
 
     /** The number of previous recursion challenges. */
@@ -407,11 +417,13 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     }
 
     /// Compute the witness, given the constraint system `sys`
-    /// and a function that converts the indexed secret inputs to their concrete values.
+    /// and a function that converts the indexed secret inputs to their concrete
+    /// values.
     ///
     /// # Panics
     ///
-    /// Will panic if some inputs like `public_input_size` are unknown(None value).
+    /// Will panic if some inputs like `public_input_size` are unknown(None
+    /// value).
     // TODO: build the transposed version instead of this
     pub fn compute_witness<FUNC>(&mut self, external_values: FUNC) -> [Vec<Field>; COLUMNS]
     where
@@ -486,7 +498,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
     pub fn create(constants: Constants<Field>) -> Self {
         Self {
-            // TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio's trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
+            // TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()`
+            // here. But we might want to wait for Fabrizio's trait? Also we should keep this close
+            // to the OCaml stuff if we want to avoid pains when we plug this in
             constants: constants,
             public_input_size: None,
             prev_challenges: None,
@@ -533,7 +547,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             .push(Position { row, col });
     }
 
-    /** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
+    /** Same as wire', except that the row must be given relatively to the
+     * end of the public-input rows. */
     fn wire(&mut self, key: V, row: usize, col: usize) {
         self.wire_(key, Row::AfterPublicInput(row), col);
     }
@@ -547,8 +562,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         kind: GateType,
         coeffs: Vec<Field>,
     ) {
-        // TODO: for now we can print the debug info at runtime, but in the future we should allow serialization of these things as well
-        // TODO: this ignores the public gates!!
+        // TODO: for now we can print the debug info at runtime, but in the future we
+        // should allow serialization of these things as well TODO: this ignores
+        // the public gates!!
         if std::env::var("SNARKY_LOG_CONSTRAINTS").is_ok() {
             println!("{}: {loc} - {}", self.next_row, labels.join(", "));
         }
@@ -579,8 +595,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     }
 
     /// Returns the number of rows in the constraint system.
-    /// Note: This is not necessarily the number of rows of the compiled circuit.
-    /// If the circuit has not finished compiling, you will only get the current number of rows.
+    /// Note: This is not necessarily the number of rows of the compiled
+    /// circuit. If the circuit has not finished compiling, you will only
+    /// get the current number of rows.
     pub fn get_rows_len(&self) -> usize {
         self.rows.len()
     }
@@ -704,7 +721,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     ///
     /// # Panics
     ///
-    /// Will panic if the constraint system has not previously been compiled (via [`Self::finalize`]).
+    /// Will panic if the constraint system has not previously been compiled
+    /// (via [`Self::finalize`]).
     pub fn digest(&mut self) -> [u8; 32] {
         // make sure it's finalized
         self.finalize();
@@ -1013,7 +1031,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     }
 
     /// Applies the basic `SnarkyConstraint`.
-    /// Simply, place the values of `selector`(`sl`, `sr`, `so` ...) and `input`(`l`, `r`, `o`, `m`).
+    /// Simply, place the values of `selector`(`sl`, `sr`, `so` ...) and
+    /// `input`(`l`, `r`, `o`, `m`).
     ///
     /// # Panics
     ///
@@ -1184,7 +1203,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 let (s, x) = self.reduce_lincom(labels, loc, v);
                 match x {
                     ConstantOrVar::Var(x) =>
-                    /* -x + x * x = 0  */
+                    /* -x + x * x = 0 */
                     {
                         self.add_generic_constraint(
                             labels,
@@ -1477,7 +1496,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 // create the rows
                 for rounds in &states
                     .into_iter()
-                    // TODO: poseidon constants should really be passed instead of living in the constraint system as a cfg no? annoying clone fosho
+                    // TODO: poseidon constants should really be passed instead of living in the
+                    // constraint system as a cfg no? annoying clone fosho
                     .zip(self.constants.poseidon.round_constants.clone())
                     .chunks(ROUNDS_PER_ROW)
                 {
@@ -1786,7 +1806,8 @@ where
                 let o = env.read_var(o_var);
                 let res = *c0 * l + *c1 * r + *c2 * o + l * r * c3 + c4;
                 if !res.is_zero() {
-                    // TODO: return different errors depending on the type of generic gate (e.g. addition, cst, mul, etc.)
+                    // TODO: return different errors depending on the type of generic gate (e.g.
+                    // addition, cst, mul, etc.)
                     return Err(Box::new(SnarkyRuntimeError::UnsatisfiedGenericConstraint(
                         c0.to_string(),
                         l.to_string(),

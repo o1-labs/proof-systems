@@ -17,9 +17,11 @@ use super::{
 };
 
 /// A circuit variable represents a field element in the circuit.
-/// Note that a [`FieldVar`] currently represents a small AST that can hide nested additions and multiplications of [`FieldVar`]s.
-/// The reason behind this decision is that converting additions and multiplications directly into constraints is not optimal.
-/// So we most often wait until some additions have been accumulated before reducing them down to constraints.
+/// Note that a [`FieldVar`] currently represents a small AST that can hide
+/// nested additions and multiplications of [`FieldVar`]s. The reason behind
+/// this decision is that converting additions and multiplications directly into
+/// constraints is not optimal. So we most often wait until some additions have
+/// been accumulated before reducing them down to constraints.
 ///
 /// Note: this design decision also leads to optimization issues,
 /// when we end up cloning and then reducing the same mini-ASTs multiple times.
@@ -94,7 +96,8 @@ where
         }
     }
 
-    /// Evaluate the field element associated to a variable (used during witness generation)
+    /// Evaluate the field element associated to a variable (used during witness
+    /// generation)
     pub fn eval(&self, state: &RunState<F>) -> F {
         let mut res = F::zero();
         self.eval_inner(state, F::one(), &mut res);
@@ -260,12 +263,13 @@ where
     ///
     /// As a [`FieldVar`] can represent an AST,
     /// it might not be a good idea to clone it and reuse it in several places.
-    /// This is because the exact same reduction that will eventually happen on each clone
-    /// will end up creating the same set of constraints multiple times in the circuit.
+    /// This is because the exact same reduction that will eventually happen on
+    /// each clone will end up creating the same set of constraints multiple
+    /// times in the circuit.
     ///
     /// It is useful to call on a variable that represents a long computation
-    /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
-    /// before using it further in the circuit.
+    /// that hasn't been constrained yet (e.g. by an assert call, or a call to a
+    /// custom gate), before using it further in the circuit.
     pub fn seal(&self, state: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<Self> {
         match self.to_constant_and_terms() {
             (None, terms) if terms.len() == 1 && terms[0].0.is_one() => {

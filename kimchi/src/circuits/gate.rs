@@ -23,8 +23,8 @@ use thiserror::Error;
 
 use super::{argument::ArgumentWitness, expr};
 
-/// A row accessible from a given row, corresponds to the fact that we open all polynomials
-/// at `zeta` **and** `omega * zeta`.
+/// A row accessible from a given row, corresponds to the fact that we open all
+/// polynomials at `zeta` **and** `omega * zeta`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(
@@ -89,7 +89,8 @@ pub enum GateType {
     CompleteAdd,
     /// EC variable base scalar multiplication
     VarBaseMul,
-    /// EC variable base scalar multiplication with group endomorphim optimization
+    /// EC variable base scalar multiplication with group endomorphim
+    /// optimization
     EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar,
@@ -374,22 +375,26 @@ pub trait Connect {
     /// Connect the pair of cells specified by the cell1 and cell2 parameters
     /// `cell_pre` --> `cell_new` && `cell_new` --> `wire_tmp`
     ///
-    /// Note: This function assumes that the targeted cells are freshly instantiated
-    ///       with self-connections.  If the two cells are transitively already part
-    ///       of the same permutation then this would split it.
+    /// Note: This function assumes that the targeted cells are freshly
+    /// instantiated       with self-connections.  If the two cells are
+    /// transitively already part       of the same permutation then this
+    /// would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
 
-    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    /// Connects a generic gate cell with zeros to a given row for 64bit range
+    /// check
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 
-    /// Connects the wires of the range checks in a single foreign field addition
-    /// Inputs:
+    /// Connects the wires of the range checks in a single foreign field
+    /// addition Inputs:
     /// - `ffadd_row`: the row of the foreign field addition gate
     /// - `left_rc`: the first row of the range check for the left input
     /// - `right_rc`: the first row of the range check for the right input
-    /// - `out_rc`: the first row of the range check for the output of the addition
+    /// - `out_rc`: the first row of the range check for the output of the
+    ///   addition
     /// Note:
-    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    /// If run with `left_rc = None` and `right_rc = None` then it can be used
+    /// for the bound check range check
     fn connect_ffadd_range_checks(
         &mut self,
         ffadd_row: usize,
@@ -407,7 +412,8 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
     }
 
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
-        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12
+        // bits
         self.connect_cell_pair((start_row, 1), (start_row, 2));
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));

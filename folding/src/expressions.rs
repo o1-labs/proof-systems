@@ -27,39 +27,47 @@
 //!
 //! As a reminder, after we reduce to degree 2, the multivariate polynomial
 //! `P(X_{1}, ..., X_{n})` describing the NP relation will be
-//! "relaxed" in another polynomial of the form `P_relaxed(X_{1}, ..., X_{n}, u)`.
-//! First, we decompose the polynomial `P` in its monomials of degree `0`, `1` and `2`:
+//! "relaxed" in another polynomial of the form `P_relaxed(X_{1}, ..., X_{n},
+//! u)`. First, we decompose the polynomial `P` in its monomials of degree `0`,
+//! `1` and `2`:
+//!
 //! ```text
 //! P(X_{1}, ..., X_{n}) = ∑_{i} f_{i, 0}(X_{1}, ..., X_{n}) +
 //!                        ∑_{i} f_{i, 1}(X_{1}, ..., X_{n}) +
 //!                        ∑_{i} f_{i, 2}(X_{1}, ..., X_{n})
 //! ```
-//! where `f_{i, 0}` is a monomial of degree `0`, `f_{i, 1}` is a monomial of degree
-//! `1` and `f_{i, 2}` is a monomial of degree `2`.
+//!
+//! where `f_{i, 0}` is a monomial of degree `0`, `f_{i, 1}` is a monomial of
+//! degree `1` and `f_{i, 2}` is a monomial of degree `2`.
 //! For instance, for the polynomial `P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} +
 //! (1 - X_{3})`, we have:
+//!
 //! ```text
 //! f_{0, 0}(X_{1}, X_{2}, X_{3}) = 1
 //! f_{0, 1}(X_{1}, X_{2}, X_{3}) = -X_{3}
 //! f_{0, 2}(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2}
 //! ```
+//!
 //! Then, we can relax the polynomial `P` in `P_relaxed` by adding a new
 //! variable `u` in the following way:
-//! - For the monomials `f_{i, 0}`, i.e. the monomials of degree `0`, we add `u^2`
+//! - For the monomials `f_{i, 0}`, i.e. the monomials of degree `0`, we add
+//!   `u^2`
 //! to the expression.
 //! - For the monomials `f_{i, 1}`, we add `u` to the expression.
 //! - For the monomials `f_{i, 2}`, we keep the expression as is.
 //!
-//! For the polynomial `P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})`, we have:
+//! For the polynomial `P(X_{1}, X_{2}, X_{3}) = X_{1} * X_{2} + (1 - X_{3})`,
+//! we have:
+//!
 //! ```text
 //! P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} * X_{2} + u (u - X_{3})
 //! ```
-//!
+
 //! From the relaxed form of the polynomial, we can "fold" multiple instances of
 //! the NP relation by randomising it into a single instance by adding an error
 //! term `E`.
-//! For instance, for the polynomial `P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1} *
-//! X_{2} + u (u - X_{3})`,
+//! For instance, for the polynomial `P_relaxed(X_{1}, X_{2}, X_{3}, u) = X_{1}
+//! * X_{2} + u (u - X_{3})`,
 //! for two instances `(X_{1}, X_{2}, X_{3}, u)` and `(X_{1}', X_{2}', X_{3}',
 //! u')`, we can fold them into a single instance by coining a random value `r`:
 //! ```text
@@ -76,7 +84,8 @@
 //! ```
 //! which can be simplified into:
 //! ```text
-//!   P_relaxed(X_{1}, X_{2}, X_{3}, u) + P_relaxed(r X_{1}', r X_{2}', r X_{3}', r u')
+//!   P_relaxed(X_{1}, X_{2}, X_{3}, u) + P_relaxed(r X_{1}', r X_{2}', r
+//! X_{3}', r u')
 //! + r [u (u' - X_{3}) + u' (u - X_{3})] + r [X_{1} X_{2}'   +   X_{2} X_{1}']
 //!   \---------------------------------/   \----------------------------------/
 //!  cross terms of monomials of degree 1   cross terms of monomials of degree 2
@@ -121,9 +130,9 @@
 //! randomized polynomial `P + α Q` (used to build the quotient polynomial in
 //! PlonK).
 //!
-//! More generally, if for each row, our computation is constrained by the polynomial
-//! list `[P_{1}, P_{2}, ..., P_{n}]`, we can aggregate them into a single
-//! polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the α terms
+//! More generally, if for each row, our computation is constrained by the
+//! polynomial list `[P_{1}, P_{2}, ..., P_{n}]`, we can aggregate them into a
+//! single polynomial `P_{agg} = ∑_{i} α^{i} P_{i}`. Multiplying by the α terms
 //! consequently increases the overall degree of the expression.
 //!
 //! In particular, when we reduce a polynomial to degree 2, we have this case
@@ -144,13 +153,14 @@
 //! ```
 //!
 //! We start by coining `α_{1}` and `α_{2}` and we compute the polynomial
-//! `P'(X_{1}, X_{2}, X_{3}, u, α_{1})` and `Q'(X_{1}, X_{2}, X_{3}, α_{2})` such that:
-//! ```text
+//! `P'(X_{1}, X_{2}, X_{3}, u, α_{1})` and `Q'(X_{1}, X_{2}, X_{3}, α_{2})`
+//! such that:
+//!```text
 //! P'(X_{1}, X_{2}, X_{3}, u, α_{1}) = α_{1} P_relaxed(X_{1}, X_{2}, X_{3}, u)
 //!                                   = α_{1} (X_{1} * X_{2} + u (u - X_{3}))
-//!                                   = α_{1} X_{1} * X_{2} + α_{1} u^2 - α_{1} u X_{3}
-//! Q'(X_{1}, X_{2}, X_{3}, u, α_{2}) = α_{2} Q_relaxed(X_{1}, X_{2}, X_{3}, u)
-//!                                   = α_{2} (u X_{1} + u X_{2})
+//!                                   = α_{1} X_{1} * X_{2} + α_{1} u^2 - α_{1}
+//! u X_{3} Q'(X_{1}, X_{2}, X_{3}, u, α_{2}) = α_{2} Q_relaxed(X_{1}, X_{2},
+//! X_{3}, u)                                   = α_{2} (u X_{1} + u X_{2})
 //!                                   = α_{2} u X_{1} + α_{2} u X_{2}
 //! ```
 //! and we want to fold the multivariate polynomial S defined over six
@@ -170,7 +180,8 @@
 //! homogeneous expressions by one.
 //!
 //! For two given instances `(X_{1}, X_{2}, X_{3}, u, α_{1}, α_{2})` and
-//! `(X_{1}', X_{2}', X_{3}', u', α_{1}', α_{2}')`, we coin a random value `r` and we compute:
+//! `(X_{1}', X_{2}', X_{3}', u', α_{1}', α_{2}')`, we coin a random value `r`
+//! and we compute:
 //! ```text
 //! X''_{1} = X_{1} + r X'_{1}
 //! X''_{2} = X_{2} + r X'_{2}
@@ -233,12 +244,13 @@
 //! ```text
 //! β + f(x) = m(x) (β + t(x))
 //! ```
-//! where β is the challenge, `f(x)` is the polynomial whose evaluations describe
-//! the value Alice wants to prove to Bob that is in the table, `m(x)` is
-//! the polynomial describing the multiplicities, and `t(x)` is the
+//! where β is the challenge, `f(x)` is the polynomial whose evaluations
+//! describe the value Alice wants to prove to Bob that is in the table, `m(x)`
+//! is the polynomial describing the multiplicities, and `t(x)` is the
 //! polynomial describing the (fixed) table.
 //!
 //! The equation can be described by the multi-variate polynomial `LOGUP`:
+//!
 //! ```text
 //! LOGUP(β, F, M, T) = β + F - M (β + T)
 //! ```
@@ -248,7 +260,8 @@
 //! LOGUP_relaxed(β, F, M, T, u) = u β + u F - M (β + T)
 //! ```
 //!
-//! Folding this polynomial means that we will coin a random value `r`, and we compute:
+//! Folding this polynomial means that we will coin a random value `r`, and we
+//! compute:
 //! ```text
 //! β'' = β + r β'
 //! F'' = F + r F'

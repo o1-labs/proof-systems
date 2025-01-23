@@ -23,7 +23,8 @@ impl<F: PrimeField> CircuitGate<F> {
         circuit.len()
     }
 
-    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, message of a given bytelength
+    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, message
+    /// of a given bytelength
     fn create_keccak(new_row: usize, bytelength: usize) -> Vec<Self> {
         let padded_len = Keccak::padded_length(bytelength);
         let extra_bytes = padded_len - bytelength;

@@ -1,7 +1,7 @@
-//! This file defines a trait similar to [kimchi::curve::KimchiCurve] for Pallas and
-//! Vesta. It aims to define all the parameters that are needed by a curve to be
-//! used in Arrabbiata. For instance, the sponge parameters, the endomorphism
-//! coefficients, etc.
+//! This file defines a trait similar to [kimchi::curve::KimchiCurve] for Pallas
+//! and Vesta. It aims to define all the parameters that are needed by a curve
+//! to be used in Arrabbiata. For instance, the sponge parameters, the
+//! endomorphism coefficients, etc.
 //! The goal of this trait is to parametrize the whole library with the
 //! different curves.
 

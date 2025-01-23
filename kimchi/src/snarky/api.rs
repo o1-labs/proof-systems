@@ -102,8 +102,8 @@ where
 
         // create constraint between public output var and return var
         {
-            // Note: since the values of the public output part are set to zero at this point,
-            // let's also avoid checking the wiring (which would fail)
+            // Note: since the values of the public output part are set to zero at this
+            // point, let's also avoid checking the wiring (which would fail)
             let eval_constraints = self.compiled_circuit.sys.eval_constraints;
             self.compiled_circuit.sys.eval_constraints = false;
 
@@ -218,7 +218,9 @@ where
     sys: RunState<ScalarField<Circuit::Curve>>,
 
     /// The public input size.
-    // TODO: can't we get this from `circuit.public_input_size()`? (easy to implement). Or better, this could be a `Circuit` type that contains the gates as well (or the kimchi ConstraintSystem type)
+    // TODO: can't we get this from `circuit.public_input_size()`? (easy to implement). Or better,
+    // this could be a `Circuit` type that contains the gates as well (or the kimchi
+    // ConstraintSystem type)
     public_input_size: usize,
 
     /// The gates obtained after compilation.
@@ -265,13 +267,15 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
 // The main user-facing trait for constructing circuits.
 //
 
-/// The main trait. Implement this on your circuit to get access to more functions (specifically [Self::compile_to_indexes]).
+/// The main trait. Implement this on your circuit to get access to more
+/// functions (specifically [Self::compile_to_indexes]).
 pub trait SnarkyCircuit: Sized {
     /// A circuit must be defined for a specific field,
     /// as it might be incorrect to use a different field.
     /// Currently we specify the field by the curve,
     /// which is more strict and needed due to implementation details in kimchi.
-    // TODO: if we remove `sponge_params` from KimchiCurve and move it to the Field then we could specify a field here instead.
+    // TODO: if we remove `sponge_params` from KimchiCurve and move it to the Field
+    // then we could specify a field here instead.
     type Curve: KimchiCurve;
     type Proof: OpenProof<Self::Curve>;
 
@@ -287,21 +291,24 @@ pub trait SnarkyCircuit: Sized {
     /// The circuit. It takes:
     ///
     /// - `self`: to parameterize it at compile time.
-    /// - `sys`: to construct the circuit or generate the witness (dpeending on mode)
+    /// - `sys`: to construct the circuit or generate the witness (dpeending on
+    ///   mode)
     /// - `public_input`: the public input (as defined above)
-    /// - `private_input`: the private input as an option, set to `None` for compilation.
+    /// - `private_input`: the private input as an option, set to `None` for
+    ///   compilation.
     ///
     /// It returns a [SnarkyResult] containing the public output.
     fn circuit(
         &self,
-        // TODO: change to an enum that is either the state for compilation or the state for proving ([WitnessGeneration])
-        // TODO: change the name to `runner` everywhere?
+        // TODO: change to an enum that is either the state for compilation or the state for
+        // proving ([WitnessGeneration]) TODO: change the name to `runner` everywhere?
         sys: &mut RunState<ScalarField<Self::Curve>>,
         public_input: Self::PublicInput,
         private_input: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput>;
 
-    /// Compiles the circuit to a prover index ([ProverIndexWrapper]) and a verifier index ([VerifierIndexWrapper]).
+    /// Compiles the circuit to a prover index ([ProverIndexWrapper]) and a
+    /// verifier index ([VerifierIndexWrapper]).
     fn compile_to_indexes(
         self,
     ) -> SnarkyResult<(ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)>

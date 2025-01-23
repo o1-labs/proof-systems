@@ -27,7 +27,8 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
 
-    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    /// The symbolic linearization of our circuit, which can compile to concrete
+    /// types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization:
         Linearization<Vec<PolishToken<G::ScalarField, Column, BerkeleyChallengeTerm>>, Column>,
@@ -168,7 +169,8 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        // not sure if theres a smarter way instead of the double unwrap, but should be
+        // fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)

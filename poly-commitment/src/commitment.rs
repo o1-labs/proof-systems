@@ -35,8 +35,9 @@ use std::{
 ///
 /// Note that the parameter `C` is not constrained to be a curve, therefore in
 /// some places in the code, `C` can refer to a scalar field element. For
-/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of the
-/// polynomial bound by a specific commitment, at a particular evaluation point.
+/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of
+/// the polynomial bound by a specific commitment, at a particular evaluation
+/// point.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
@@ -219,8 +220,8 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     }
 }
 
-/// Inside the circuit, we have a specialized scalar multiplication which computes
-/// either
+/// Inside the circuit, we have a specialized scalar multiplication which
+/// computes either
 ///
 /// ```ignore
 /// |g: G, x: G::ScalarField| g.scale(x + 2^n)
@@ -316,8 +317,9 @@ impl<C: AffineRepr> PolyComm<C> {
         }
     }
 
-    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
-    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    /// Performs a multi-scalar multiplication between scalars `elm` and
+    /// commitments `com`. If both are empty, returns a commitment of length
+    /// 1 containing the point at infinity.
     ///
     /// ## Panics
     ///
@@ -522,8 +524,9 @@ pub fn combined_inner_product<F: PrimeField>(
             .collect();
 
         // Iterating over the polynomial segments.
-        // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
-        // Given that polyscale_i = polyscale^i0 at this point, after this loop we have:
+        // Each segment gets its own polyscale^i, each segment element j is multiplied
+        // by evalscale^j. Given that polyscale_i = polyscale^i0 at this point,
+        // after this loop we have:
         //
         //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
         //           i                    j

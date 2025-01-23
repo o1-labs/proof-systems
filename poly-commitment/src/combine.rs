@@ -4,16 +4,18 @@
 //!
 //! Usually, affine coordinates are not used because curve operations require
 //! division, which is very inefficient. However, if one is performing a large
-//! number of curve operations at the same time, then the inverses can be computed
-//! efficiently using the *batch inversion algorithm* which allows you to compute
-//! the inverses for an array of elements at a cost of 3 multiplications per element.
+//! number of curve operations at the same time, then the inverses can be
+//! computed efficiently using the *batch inversion algorithm* which allows you
+//! to compute the inverses for an array of elements at a cost of 3
+//! multiplications per element.
 //!
 //! With the reduced cost of inversion, in settings where you are computing many
-//! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.
+//! parallel elliptic curve operations, it is actually cheaper to use affine
+//! coordinates.
 //!
-//! Most algorithms in this module take an argument `denominators: &mut Vec<F>` which
-//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
-//! such a scratch array within each algorithm.
+//! Most algorithms in this module take an argument `denominators: &mut Vec<F>`
+//! which is a scratch array used for performing inversions. It is passed around
+//! to avoid re-allocating such a scratch array within each algorithm.
 
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
@@ -428,8 +430,8 @@ pub fn affine_window_combine<P: SWCurveConfig>(
     v.concat()
 }
 
-/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is
-/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
+/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith
+/// entry is `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
 ///
 /// Internally, it uses the curve endomorphism to speed up this operation.
 pub fn affine_window_combine_one_endo<P: SWCurveConfig>(

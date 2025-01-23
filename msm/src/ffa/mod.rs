@@ -71,7 +71,8 @@ mod tests {
 
         let witness_env = build_ffa_circuit(&mut rng, domain_size);
 
-        // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        // Fixed tables can be generated inside lookup_tables_data. Runtime should be
+        // generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(

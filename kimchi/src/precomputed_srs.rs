@@ -209,25 +209,29 @@ mod tests {
         assert_eq!(srs, srs_on_disk);
     }
 
-    /// Checks if `get_srs` (prod) succeeds for Pallas. Can be used for time-profiling.
+    /// Checks if `get_srs` (prod) succeeds for Pallas. Can be used for
+    /// time-profiling.
     #[test]
     pub fn heavy_check_get_srs_prod_pallas() {
         get_srs::<Pallas>();
     }
 
-    /// Checks if `get_srs` (prod) succeeds for Vesta. Can be used for time-profiling.
+    /// Checks if `get_srs` (prod) succeeds for Vesta. Can be used for
+    /// time-profiling.
     #[test]
     pub fn heavy_check_get_srs_prod_vesta() {
         get_srs::<Vesta>();
     }
 
-    /// Checks if `get_srs` (test) succeeds for Pallas. Can be used for time-profiling.
+    /// Checks if `get_srs` (test) succeeds for Pallas. Can be used for
+    /// time-profiling.
     #[test]
     pub fn check_get_srs_test_pallas() {
         get_srs_test::<Pallas>();
     }
 
-    /// Checks if `get_srs` (test) succeeds for Vesta. Can be used for time-profiling.
+    /// Checks if `get_srs` (test) succeeds for Vesta. Can be used for
+    /// time-profiling.
     #[test]
     pub fn check_get_srs_test_vesta() {
         get_srs_test::<Vesta>();

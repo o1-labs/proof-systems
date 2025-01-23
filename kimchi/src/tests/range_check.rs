@@ -1065,10 +1065,11 @@ fn verify_64_bit_range_check() {
     gates[0].wires[0] = Wire { row: 1, col: 1 };
 
     // Create constraint system
-    let cs =
-        ConstraintSystem::<Fp>::create(gates /*, mina_poseidon::pasta::fp_kimchi::params()*/)
-            .build()
-            .unwrap();
+    let cs = ConstraintSystem::<Fp>::create(
+        gates, /* , mina_poseidon::pasta::fp_kimchi::params() */
+    )
+    .build()
+    .unwrap();
 
     let index = {
         let srs = SRS::<Vesta>::create(cs.domain.d1.size());

@@ -68,13 +68,14 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 /// degree less than the SRS size).
 ///
 /// Parameters:
-/// - `plnms`: vector of polynomials, either in evaluations or coefficients form, together with
-///    a set of scalars representing their blinders.
-/// - `polyscale`: scalar to combine the polynomials, which will be scaled based on the number of
-///    polynomials to combine.
+/// - `plnms`: vector of polynomials, either in evaluations or coefficients
+///   form, together with a set of scalars representing their blinders.
+/// - `polyscale`: scalar to combine the polynomials, which will be scaled based
+///   on the number of polynomials to combine.
 ///
 /// Output:
-/// - `combined_poly`: combined polynomial. The order of the output follows the order of `plnms`.
+/// - `combined_poly`: combined polynomial. The order of the output follows the
+///   order of `plnms`.
 /// - `combined_comm`: combined scalars representing the blinder commitment.
 ///
 /// Example:
@@ -123,8 +124,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut polyscale_to_i = G::ScalarField::one();
 
     // Iterating over polynomials in the batch.
-    // Note that the chunks in the commitment `p_i_comm` are given as `PolyComm<G::ScalarField>`. They are
-    // evaluations.
+    // Note that the chunks in the commitment `p_i_comm` are given as
+    // `PolyComm<G::ScalarField>`. They are evaluations.
     // We do modify two different structures depending on the form of the
     // polynomial we are currently processing: `plnm` and `plnm_evals_part`.
     // We do need to treat both forms separately.

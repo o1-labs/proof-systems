@@ -1,7 +1,7 @@
 //! Follows approach of SvdW06 to construct a "near injection" from a field
 //! into an elliptic curve defined over that field. WB19 is also a useful
-//! reference that details several constructions which are more appropriate in other
-//! contexts.
+//! reference that details several constructions which are more appropriate in
+//! other contexts.
 //!
 //! Fix an elliptic curve E given by y^2 = x^3 + ax + b over a field "F"
 //!   Let f(x) = x^3 + ax + b.
@@ -9,15 +9,15 @@
 //! Define the variety V to be
 //!   (x1, x2, x3, x4) : f(x1) f(x2) f(x3) = x4^2.
 //!
-//! By a not-too-hard we have a map `V -> E`. Thus, a map of type `F -> V` yields a
-//! map of type `F -> E` by composing.
-//! Our goal is to construct such a map of type `F -> V`. The paper SvdW06 constructs
-//! a family of such maps, defined by a collection of values which we'll term `params`.
+//! By a not-too-hard we have a map `V -> E`. Thus, a map of type `F -> V`
+//! yields a map of type `F -> E` by composing.
+//! Our goal is to construct such a map of type `F -> V`. The paper SvdW06
+//! constructs a family of such maps, defined by a collection of values which
+//! we'll term `params`.
 //!
 //! OCaml implementation <https://github.com/o1-labs/snarky/blob/2e9013159ad0d1df0af681735b89518befc4be11/group_map/group_map.ml#L4>
 //! SvdW06: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. <https://works.bepress.com/andrew_shallue/1/download/>
 //! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. <https://eprint.iacr.org/2019/403>
-//!
 
 use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ff::{Field, One, Zero};
@@ -37,7 +37,8 @@ pub struct BWParameters<G: SWCurveConfig> {
     inv_three_u_squared: G::BaseField,
 }
 
-/// returns the right-hand side of the Short Weierstrass curve equation for a given x
+/// returns the right-hand side of the Short Weierstrass curve equation for a
+/// given x
 fn curve_eqn<G: SWCurveConfig>(x: G::BaseField) -> G::BaseField {
     let mut res = x;
     res *= &x; // x^2
@@ -67,13 +68,14 @@ fn potential_xs_helper<G: SWCurveConfig>(
     t2: G::BaseField,
     alpha: G::BaseField,
 ) -> [G::BaseField; 3] {
-    let x1 = {
-        let mut temp = t2;
-        temp.square_in_place(); // t2^2
-        temp *= &alpha; // t2^2 * alpha
-        temp *= &params.sqrt_neg_three_u_squared; // t2^2 * alpha * sqrt(-3u^2)
-        params.sqrt_neg_three_u_squared_minus_u_over_2 - temp // sqrt(-3u^2-u/2) - t2^2 * alpha * sqrt(-3u^2)
-    };
+    let x1 =
+        {
+            let mut temp = t2;
+            temp.square_in_place(); // t2^2
+            temp *= &alpha; // t2^2 * alpha
+            temp *= &params.sqrt_neg_three_u_squared; // t2^2 * alpha * sqrt(-3u^2)
+            params.sqrt_neg_three_u_squared_minus_u_over_2 - temp // sqrt(-3u^2-u/2) - t2^2 * alpha * sqrt(-3u^2)
+        };
 
     let x2 = -params.u - x1;
 

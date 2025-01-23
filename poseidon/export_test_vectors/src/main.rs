@@ -1,7 +1,8 @@
 mod vectors;
 use inner::*;
 
-/// "Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [legacy|kimchi] <OUTPUT_FILE>",
+/// "Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10]
+/// [legacy|kimchi] <OUTPUT_FILE>",
 fn main() {
     inner::main();
 }

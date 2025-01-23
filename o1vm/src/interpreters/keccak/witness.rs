@@ -1,8 +1,9 @@
-//! This file contains the witness for the Keccak hash function for the zkVM project.
-//! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
+//! This file contains the witness for the Keccak hash function for the zkVM
+//! project. It assigns the witness values to the corresponding columns of
+//! KeccakWitness in the environment.
 //!
-//! The actual witness generation code makes use of the code which is already present in Kimchi,
-//! to avoid code duplication and reduce error-proneness.
+//! The actual witness generation code makes use of the code which is already
+//! present in Kimchi, to avoid code duplication and reduce error-proneness.
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
@@ -25,7 +26,8 @@ use ark_ff::Field;
 use kimchi::o1_utils::Two;
 use kimchi_msm::LookupTableID;
 
-/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+/// This struct contains all that needs to be kept track of during the execution
+/// of the Keccak step interpreter
 // TODO: the fixed tables information should be inferred from the general environment
 #[derive(Clone, Debug)]
 pub struct Env<F> {
@@ -33,9 +35,11 @@ pub struct Env<F> {
     pub witness: KeccakWitness<F>,
     /// The fixed tables used in the Keccak gate
     pub tables: HashMap<LookupTableIDs, LookupTable<F>>,
-    /// The multiplicities of each lookup entry. Should not be cleared between steps.
+    /// The multiplicities of each lookup entry. Should not be cleared between
+    /// steps.
     pub multiplicities: HashMap<LookupTableIDs, Vec<u32>>,
-    /// If any, an error that occurred during the execution of the constraints, to help with debugging
+    /// If any, an error that occurred during the execution of the constraints,
+    /// to help with debugging
     pub(crate) errors: Vec<Error>,
 }
 

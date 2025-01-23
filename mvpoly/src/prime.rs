@@ -3,8 +3,8 @@
 //! First, we start by attributing a different prime number for each variable.
 //! For instance, for `F^{<=2}[X_{1}, X_{2}]`, we assign `X_{1}` to `2`
 //! and $X_{2}$ to $3$.
-//! From there, we note `X_{1} X_{2}` as the value `6`, `X_{1}^2` as `4`, `X_{2}^2`
-//! as 9. The constant is `1`.
+//! From there, we note `X_{1} X_{2}` as the value `6`, `X_{1}^2` as `4`,
+//! `X_{2}^2` as 9. The constant is `1`.
 //!
 //! From there, we represent our polynomial coefficients in a sparse list. Some
 //! cells, noted `NA`, won't be used for certain vector spaces.
@@ -18,8 +18,8 @@
 //!  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
 //! ```
 //!
-//! and the polynomial `42 X_{1} + 3 X_{1} X_{2} + 14 X_{2}^2` will be represented
-//! as
+//! and the polynomial `42 X_{1} + 3 X_{1} X_{2} + 14 X_{2}^2` will be
+//! represented as
 //!
 //! ```text
 //! [0,  42,   1,   0,    0,   3,    0,    0,    14]
@@ -29,12 +29,12 @@
 //!  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
 //! ```
 //!
-//! Adding two polynomials in this base is pretty straightforward: we simply add the
-//! coefficients of the two lists.
+//! Adding two polynomials in this base is pretty straightforward: we simply add
+//! the coefficients of the two lists.
 //!
 //! Multiplication is not more complicated.
-//! To compute the result of $P_{1} * P_{2}$, the value of index $i$ will be the sum
-//! of the decompositions.
+//! To compute the result of $P_{1} * P_{2}$, the value of index $i$ will be the
+//! sum of the decompositions.
 //!
 //! For instance, if we take `P_{1}(X_{1}) = 2 X_{1} + X_{2}` and `P_{2}(X_{1},
 //! X_{2}) = X_{2} + 3`, the expected product is
@@ -51,7 +51,6 @@
 //!  1    2    3    4     5    6     7     8     9
 //!  |    |    |    |     |    |     |     |     |
 //!  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-//!
 //! ```
 //!
 //! ```text
@@ -62,7 +61,6 @@
 //!  1    2    3    4     5    6     7     8     9
 //!  |    |    |    |     |    |     |     |     |
 //!  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-//!
 //! ```
 //!
 //!
@@ -74,24 +72,25 @@
 //!  1    2    3    4     5    6     7     8     9
 //!  |    |    |    |     |    |     |     |     |
 //!  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-//!
 //! ```
 //!
-//! To compute `P_{3}`, we get iterate over an empty list of $9$ elements which will
-//! define `P_{3}`.
+//! To compute `P_{3}`, we get iterate over an empty list of $9$ elements which
+//! will define `P_{3}`.
 //!
 //! For index `1`, we multiply `P_{1}[1]` and `P_{1}[1]`.
 //!
-//! FOr index $2$, the only way to get this index is by fetching $2$ in each list.
-//! Therefore, we do `P_{1}[2] P_{2}[1] + P_{2}[2] * P_{1}[1] = 2 * 3 + 0 * 0 = 6`.
+//! FOr index $2$, the only way to get this index is by fetching $2$ in each
+//! list. Therefore, we do
+//! `P_{1}[2] P_{2}[1] + P_{2}[2] * P_{1}[1] = 2 * 3 + 0 * 0 = 6`.
 //!
 //! For index `3`, same than for `2`.
 //!
-//! For index `4`, we have `4 = 2 * 2`, therefore, we multiply `P_{1}[2]` and `P_{2}[2]`
+//! For index `4`, we have `4 = 2 * 2`, therefore, we multiply `P_{1}[2]` and
+//! `P_{2}[2]`
 //!
 //! For index `6`, we have `6 = 2 * 3` and `6 = 3 * 2`, which are the prime
-//! decompositions of $6$. Therefore we sum `P_{1}[2] * P_{2}[3]` and `P_{2}[2] *
-//! P_{1}[3]`.
+//! decompositions of $6$. Therefore we sum `P_{1}[2] * P_{2}[3]` and
+//! `P_{2}[2] * P_{1}[3]`.
 //!
 //! For index $9$, we have $9 = 3 * 3$, therefore we do the same than for $4$.
 //!
@@ -105,12 +104,11 @@
 //!         - for each decomposition, compute the product
 //!         - sum
 //!
-//!
 //! #### Other examples degree $2$ with 3 variables.
 //!
 //! ```math
 //! \begin{align}
-//! $\mathbb{F}^{\le 2}[X_{1}, X_{2}, X_{3}] = \{
+//! \mathbb{F}^{\le 2}[X_{1}, X_{2}, X_{3}] = \{
 //!         & \, a_{0} + \\
 //!         & \, a_{1} X_{1} + \\
 //!         & \, a_{2} X_{2} + \\
@@ -159,8 +157,8 @@ use crate::{
     MVPoly,
 };
 
-/// Represents a multivariate polynomial of degree less than `D` in `N` variables.
-/// The representation is dense, i.e., all coefficients are stored.
+/// Represents a multivariate polynomial of degree less than `D` in `N`
+/// variables. The representation is dense, i.e., all coefficients are stored.
 /// The polynomial is represented as a vector of coefficients, where the index
 /// of the coefficient corresponds to the index of the monomial.
 /// A mapping between the index and the prime decomposition of the monomial is

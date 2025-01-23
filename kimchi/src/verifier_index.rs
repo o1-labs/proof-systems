@@ -99,7 +99,8 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// endoscalar multiplication selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub emul_comm: PolyComm<G>,
-    /// endoscalar multiplication scalar computation selector polynomial commitment
+    /// endoscalar multiplication scalar computation selector polynomial
+    /// commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
 
@@ -336,11 +337,13 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         self.w.get_or_init(|| zk_w(self.domain, self.zk_rows))
     }
 
-    /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
+    /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS
+    /// and an optional offset in the file.
     ///
     /// # Errors
     ///
-    /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
+    /// Will give error if it fails to deserialize from file or unable to set
+    /// `srs` in `verifier_index`.
     pub fn from_file(
         srs: Arc<OpeningProof::SRS>,
         path: &Path,
@@ -371,7 +374,8 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         Ok(verifier_index)
     }
 
-    /// Writes a [`VerifierIndex`] to a file, potentially appending it to the already-existing content (if append is set to true)
+    /// Writes a [`VerifierIndex`] to a file, potentially appending it to the
+    /// already-existing content (if append is set to true)
     // TODO: append should be a bool, not an option
     /// # Errors
     ///
@@ -393,13 +397,14 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
             .map_err(|e| e.to_string())
     }
 
-    /// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
-    /// transformation while proving / verifying.
+    /// Compute the digest of the [`VerifierIndex`], which can be used for the
+    /// Fiat-Shamir transformation while proving / verifying.
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
     ) -> G::BaseField {
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-        // We fully expand this to make the compiler check that we aren't missing any commitments
+        // We fully expand this to make the compiler check that we aren't missing any
+        // commitments
         let VerifierIndex {
             domain: _,
             max_poly_size: _,

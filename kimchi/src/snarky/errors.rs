@@ -20,7 +20,8 @@ pub struct RealSnarkyError {
     /// A location string, usually a file name and line number.
     /// Location information is usually useful for:
     ///
-    /// - assert that failed (so we need to keep track of the location that created each gates)
+    /// - assert that failed (so we need to keep track of the location that
+    ///   created each gates)
     pub loc: Option<String>,
 
     /// A stack of labels,
@@ -28,7 +29,8 @@ pub struct RealSnarkyError {
     pub label_stack: Option<Vec<Cow<'static, str>>>,
 
     /// A Rust backtrace of where the error came from.
-    /// This can be especially useful for debugging snarky when wrapped by a different language implementation.
+    /// This can be especially useful for debugging snarky when wrapped by a
+    /// different language implementation.
     backtrace: Option<Backtrace>,
 }
 

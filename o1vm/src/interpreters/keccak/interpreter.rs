@@ -1,4 +1,5 @@
-//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
+//! This module defines the Keccak interpreter in charge of triggering the
+//! Keccak workflow
 
 use crate::{
     interpreters::keccak::{
@@ -32,7 +33,8 @@ use kimchi::{
 };
 use std::{array, fmt::Debug};
 
-/// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints and witness
+/// This trait includes functionalities needed to obtain the variables of the
+/// Keccak circuit needed for constraints and witness
 pub trait Interpreter<F: One + Debug + Zero> {
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
@@ -67,10 +69,13 @@ where
     /// - 146 constraints of degree 2
     /// Where:
     /// - if Steps::Round(_)                -> only 389 constraints added
-    /// - if Steps::Sponge::Absorb::First   -> only 332 constraints added (232 + 100)
+    /// - if Steps::Sponge::Absorb::First   -> only 332 constraints added (232 +
+    ///   100)
     /// - if Steps::Sponge::Absorb::Middle  -> only 232 constraints added
-    /// - if Steps::Sponge::Absorb::Last    -> only 374 constraints added (232 + 136 + 6)
-    /// - if Steps::Sponge::Absorb::Only    -> only 474 constraints added (232 + 136 + 100 + 6)
+    /// - if Steps::Sponge::Absorb::Last    -> only 374 constraints added (232 +
+    ///   136 + 6)
+    /// - if Steps::Sponge::Absorb::Only    -> only 474 constraints added (232 +
+    ///   136 + 100 + 6)
     /// - if Steps::Sponge::Squeeze         -> only 16  constraints added
     /// So:
     /// - At most, 474 constraints are added per row
@@ -78,7 +83,8 @@ where
     /// - 136 columns should be added for the degree-2 constraints of the flags
     /// - 5   columns should be added for the degree-2 constraints of the round
     /// - 10  columns should be added for the degree-2 constraints of the sponge
-    ///   - for each of the 5 constraints, 2 columns are added for block_in_padding
+    ///   - for each of the 5 constraints, 2 columns are added for
+    ///     block_in_padding
     fn constraints(&mut self, step: Steps) {
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
@@ -214,7 +220,8 @@ where
     fn constrain_squeeze(&mut self, step: Steps) {
         let sponge_shifts = self.vec_sponge_shifts();
         for i in 0..QUARTERS * WORDS_IN_HASH {
-            // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
+            // In squeeze, check shifts correspond to the 256-bit prefix digest of the old
+            // state (current)
             self.constrain(
                 SqueezeShifts(i),
                 self.is_squeeze(step),
@@ -252,7 +259,8 @@ where
     ///  - 30 constraints of degree 1
     ///  - 5 constraints of degree 2
     fn constrain_theta(&mut self, step: Steps) -> Vec<Vec<Vec<Self::Variable>>> {
-        // Define vectors storing expressions which are not in the witness layout for efficiency
+        // Define vectors storing expressions which are not in the witness layout for
+        // efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_e = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
@@ -310,7 +318,8 @@ where
         step: Steps,
         state_e: Vec<Vec<Vec<Self::Variable>>>,
     ) -> Vec<Vec<Vec<Self::Variable>>> {
-        // Define vectors storing expressions which are not in the witness layout for efficiency
+        // Define vectors storing expressions which are not in the witness layout for
+        // efficiency
         let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
         for (y, col) in OFF.iter().enumerate() {
@@ -359,7 +368,8 @@ where
         step: Steps,
         state_b: Vec<Vec<Vec<Self::Variable>>>,
     ) -> Vec<Vec<Vec<Self::Variable>>> {
-        // Define vectors storing expressions which are not in the witness layout for efficiency
+        // Define vectors storing expressions which are not in the witness layout for
+        // efficiency
         let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
         for q in 0..QUARTERS {
@@ -449,8 +459,8 @@ where
         }
 
         // INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        // -> adds 1 lookup if is_root
+        // Write outputs for next step if not a squeeze and read inputs of curr step if
+        // not a root -> adds 1 lookup if is_root
         // -> adds 1 lookup if is_squeeze
         // -> adds 2 lookups otherwise
         self.lookup_steps(step);
@@ -464,7 +474,8 @@ where
         self.lookup_syscall_hash(step);
     }
 
-    /// When in Absorb mode, reads Lookups containing the 136 bytes of the block of the preimage
+    /// When in Absorb mode, reads Lookups containing the 136 bytes of the block
+    /// of the preimage
     /// - if is_absorb, adds 136 lookups
     /// - otherwise, adds 0 lookups
     // TODO: optimize this by using a single lookup reusing PadSuffix
@@ -641,35 +652,42 @@ where
     /// SELECTOR OPERATIONS ///
     ///////////////////////////
 
-    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
+    /// Returns a degree-2 variable that encodes whether the current step is a
+    /// sponge (1 = yes)
     fn is_sponge(&self, step: Steps) -> Self::Variable {
         Self::xor(self.is_absorb(step), self.is_squeeze(step))
     }
-    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is an absorb
+    /// sponge (1 = yes)
     fn is_absorb(&self, step: Steps) -> Self::Variable {
         Self::or(
             Self::or(self.mode_root(step), self.mode_rootpad(step)),
             Self::or(self.mode_pad(step), self.mode_absorb(step)),
         )
     }
-    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is a squeeze
+    /// sponge (1 = yes)
     fn is_squeeze(&self, step: Steps) -> Self::Variable {
         self.mode_squeeze(step)
     }
-    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is the first
+    /// absorb sponge (1 = yes)
     fn is_root(&self, step: Steps) -> Self::Variable {
         Self::or(self.mode_root(step), self.mode_rootpad(step))
     }
-    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    /// Returns a degree-1 variable that encodes whether the current step is the
+    /// last absorb sponge (1 = yes)
     fn is_pad(&self, step: Steps) -> Self::Variable {
         Self::or(self.mode_pad(step), self.mode_rootpad(step))
     }
-    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    /// Returns a variable that encodes whether the current step is a
+    /// permutation round (1 = yes)
     fn is_round(&self, step: Steps) -> Self::Variable {
         self.mode_round(step)
     }
 
-    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is an absorb
+    /// sponge (1 = yes)
     fn mode_absorb(&self, step: Steps) -> Self::Variable {
         match step {
             Sponge(Absorb(Middle)) => Self::one(),
@@ -677,7 +695,8 @@ where
         }
     }
 
-    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is a squeeze
+    /// sponge (1 = yes)
     fn mode_squeeze(&self, step: Steps) -> Self::Variable {
         match step {
             Sponge(Squeeze) => Self::one(),
@@ -685,7 +704,8 @@ where
         }
     }
 
-    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    /// Returns a variable that encodes whether the current step is the first
+    /// absorb sponge (1 = yes)
     fn mode_root(&self, step: Steps) -> Self::Variable {
         match step {
             Sponge(Absorb(First)) => Self::one(),
@@ -693,7 +713,8 @@ where
         }
     }
 
-    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    /// Returns a degree-1 variable that encodes whether the current step is the
+    /// last absorb sponge (1 = yes)
     fn mode_pad(&self, step: Steps) -> Self::Variable {
         match step {
             Sponge(Absorb(Last)) => Self::one(),
@@ -701,7 +722,8 @@ where
         }
     }
 
-    /// Returns a degree-1 variable that encodes whether the current step is the first and last absorb sponge (1 = yes)
+    /// Returns a degree-1 variable that encodes whether the current step is the
+    /// first and last absorb sponge (1 = yes)
     fn mode_rootpad(&self, step: Steps) -> Self::Variable {
         match step {
             Sponge(Absorb(Only)) => Self::one(),
@@ -709,10 +731,12 @@ where
         }
     }
 
-    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    /// Returns a variable that encodes whether the current step is a
+    /// permutation round (1 = yes)
     fn mode_round(&self, step: Steps) -> Self::Variable {
-        // The actual round number in the selector carries no information for witness nor constraints
-        // because in the witness, any usize is mapped to the same index inside the mode flags
+        // The actual round number in the selector carries no information for witness
+        // nor constraints because in the witness, any usize is mapped to the
+        // same index inside the mode flags
         match step {
             Round(_) => Self::one(),
             _ => Self::zero(),
@@ -723,14 +747,17 @@ where
     /// COLUMN OPERATIONS ///
     /////////////////////////
 
-    /// This function returns the composed sparse variable from shifts of any correct length:
+    /// This function returns the composed sparse variable from shifts of any
+    /// correct length:
     /// - When the length is 400, two index configurations are possible:
-    ///     - If `i` is `Some`, then this sole index could range between [0..400)
+    ///     - If `i` is `Some`, then this sole index could range between
+    ///       [0..400)
     ///     - If `i` is `None`, then `y`, `x` and `q` must be `Some` and
     ///         - `y` must range between [0..5)
     ///         - `x` must range between [0..5)
     ///         - `q` must range between [0..4)
-    /// - When the length is 80, both `i` and `y` should be `None`, and `x` and `q` must be `Some` with:
+    /// - When the length is 80, both `i` and `y` should be `None`, and `x` and
+    ///   `q` must be `Some` with:
     ///     - `x` must range between [0..5)
     ///     - `q` must range between [0..4)
     fn from_shifts(
@@ -767,7 +794,8 @@ where
         }
     }
 
-    /// This function returns the composed variable from dense quarters of any correct length:
+    /// This function returns the composed variable from dense quarters of any
+    /// correct length:
     /// - When `y` is `Some`, then the length must be 100 and:
     ///     - `y` must range between [0..5)
     ///     - `x` must range between [0..5)
@@ -796,7 +824,8 @@ where
         self.variable(KeccakColumn::RoundNumber)
     }
 
-    /// Returns a variable that encodes the bytelength of the padding if any [0..136)
+    /// Returns a variable that encodes the bytelength of the padding if any
+    /// [0..136)
     fn pad_length(&self) -> Self::Variable {
         self.variable(KeccakColumn::PadLength)
     }
@@ -805,7 +834,8 @@ where
         self.variable(KeccakColumn::TwoToPad)
     }
 
-    /// Returns a variable that encodes whether the `idx`-th byte of the new block is involved in the padding (1 = yes)
+    /// Returns a variable that encodes whether the `idx`-th byte of the new
+    /// block is involved in the padding (1 = yes)
     fn in_padding(&self, idx: usize) -> Self::Variable {
         self.variable(KeccakColumn::PadBytesFlags(idx))
     }
@@ -817,8 +847,8 @@ where
         self.variable(KeccakColumn::PadSuffix(idx))
     }
 
-    /// Returns a variable that encodes the `idx`-th block of bytes of the new block
-    /// by composing the bytes variables, with `idx` in [0..5)
+    /// Returns a variable that encodes the `idx`-th block of bytes of the new
+    /// block by composing the bytes variables, with `idx` in [0..5)
     fn bytes_block(&self, idx: usize) -> Vec<Self::Variable> {
         let sponge_bytes = self.sponge_bytes();
         match idx {
@@ -828,7 +858,8 @@ where
         }
     }
 
-    /// Returns the 136 flags indicating which bytes of the new block are involved in the padding, as variables
+    /// Returns the 136 flags indicating which bytes of the new block are
+    /// involved in the padding, as variables
     fn pad_bytes_flags(&self) -> [Self::Variable; PAD_BYTES_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::PadBytesFlags(idx)))
     }
@@ -845,10 +876,12 @@ where
         }
     }
 
-    /// This function returns a degree-2 variable that is computed as the accumulated value of the
-    /// operation `byte * flag * 2^8` for each byte block and flag block of the new block.
-    /// This function will be used in constraints to determine whether the padding is located
-    /// at the end of the preimage data, as consecutive bits that are involved in the padding.
+    /// This function returns a degree-2 variable that is computed as the
+    /// accumulated value of the operation `byte * flag * 2^8` for each byte
+    /// block and flag block of the new block. This function will be used in
+    /// constraints to determine whether the padding is located at the end
+    /// of the preimage data, as consecutive bits that are involved in the
+    /// padding.
     fn block_in_padding(&self, idx: usize) -> Self::Variable {
         let bytes = self.bytes_block(idx);
         let flags = self.flags_block(idx);
@@ -863,7 +896,8 @@ where
         pad
     }
 
-    /// Returns the 4 expanded quarters that encode the round constant, as variables
+    /// Returns the 4 expanded quarters that encode the round constant, as
+    /// variables
     fn round_constants(&self) -> [Self::Variable; ROUND_CONST_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::RoundConstants(idx)))
     }
@@ -878,17 +912,20 @@ where
         self.variable(KeccakColumn::SpongeNewState(idx))
     }
 
-    /// Returns the output of an absorb sponge, which is the XOR of the old state and the new state
+    /// Returns the output of an absorb sponge, which is the XOR of the old
+    /// state and the new state
     fn xor_state(&self, idx: usize) -> Self::Variable {
         self.variable(KeccakColumn::Output(idx))
     }
 
-    /// Returns the last 32 terms that are added to the new block in an absorb sponge, as variables which should be zeros
+    /// Returns the last 32 terms that are added to the new block in an absorb
+    /// sponge, as variables which should be zeros
     fn sponge_zeros(&self) -> [Self::Variable; SPONGE_ZEROS_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::SpongeZeros(idx)))
     }
 
-    /// Returns the 400 terms that compose the shifts of the sponge, as variables
+    /// Returns the 400 terms that compose the shifts of the sponge, as
+    /// variables
     fn vec_sponge_shifts(&self) -> [Self::Variable; SPONGE_SHIFTS_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::SpongeShifts(idx)))
     }
@@ -1091,8 +1128,8 @@ where
     fn output(&self) -> [Self::Variable; STATE_LEN] {
         array::from_fn::<_, STATE_LEN, _>(|idx| self.variable(KeccakColumn::Output(idx)))
     }
-    /// Returns a slice of the output variables of the current step (= input of next step)
-    /// including the current hash index and step index
+    /// Returns a slice of the output variables of the current step (= input of
+    /// next step) including the current hash index and step index
     fn output_of_step(&self) -> Vec<Self::Variable> {
         let mut output_of_step = Vec::with_capacity(STATE_LEN + 2);
         output_of_step.push(self.hash_index());

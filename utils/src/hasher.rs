@@ -28,13 +28,13 @@
 //! for different types. This prefix is here to semantically
 //! distinguish the hash of different types
 //! (and thus different use-case).
-//!
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-/// This trait can be implemented on any type that implements [serde::Serialize],
-/// in order to provide a `digest()` function that returns a unique hash.
+/// This trait can be implemented on any type that implements
+/// [serde::Serialize], in order to provide a `digest()` function that returns a
+/// unique hash.
 pub trait CryptoDigest: Serialize {
     /// The domain separation string to use in the hash.
     /// This is to distinguish hashes for different use-cases.

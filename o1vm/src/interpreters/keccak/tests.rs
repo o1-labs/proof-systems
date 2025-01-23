@@ -329,7 +329,8 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(1u32);
     // Now that PadBytesFlags(0) is 1, then block_in_padding(0) should be 0b10*
     witness_env[0].constrain_padding(step);
-    // When the byte(0) is different than 0 then the padding suffix constraint also fails
+    // When the byte(0) is different than 0 then the padding suffix constraint also
+    // fails
     if witness_env[0].sponge_bytes()[0] != Fp::zero() {
         assert_eq!(
             witness_env[0].errors,
@@ -450,7 +451,8 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
 fn test_keccak_multiplicities() {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
-    // Generate random preimage of 1 block for Keccak, which will need a second full block for padding
+    // Generate random preimage of 1 block for Keccak, which will need a second full
+    // block for padding
     let preimage: Vec<u8> = (0..136).map(|_| rng.gen()).collect();
 
     // Initialize witness for

@@ -40,14 +40,16 @@ impl<F: PrimeField> CircuitGate<F> {
         Self::create_multi_range_check_gadget(start_row, true)
     }
 
-    /// Create foreign field muti-range-check gadget by extending the existing gates
+    /// Create foreign field muti-range-check gadget by extending the existing
+    /// gates
     pub fn extend_multi_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
         let (next_row, circuit_gates) = Self::create_multi_range_check(*curr_row);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
     }
 
-    /// Create foreign field muti-range-check gadget by extending the existing gates
+    /// Create foreign field muti-range-check gadget by extending the existing
+    /// gates
     pub fn extend_compact_multi_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
         let (next_row, circuit_gates) = Self::create_compact_multi_range_check(*curr_row);
         *curr_row = next_row;

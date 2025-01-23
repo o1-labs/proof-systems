@@ -91,8 +91,8 @@ pub(crate) fn check_xor<G: KimchiCurve>(
     );
 }
 
-// Creates the constraint system and witness for xor, and checks the witness values without
-// calling the constraints verification
+// Creates the constraint system and witness for xor, and checks the witness
+// values without calling the constraints verification
 fn setup_xor<G: KimchiCurve>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
@@ -106,12 +106,14 @@ where
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     // Initialize inputs
-    // If some input was given then use that one, otherwise generate a random one with the given bits
+    // If some input was given then use that one, otherwise generate a random one
+    // with the given bits
     let input1 = rng.gen(in1, bits);
     let input2 = rng.gen(in2, bits);
 
-    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
-    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    // If user specified a concrete number of bits, use that (if they are sufficient
+    // to hold both inputs) Otherwise, use the max number of bits required to
+    // hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
     let bits = bits.map_or(0, |b| b); // 0 or bits
@@ -125,7 +127,8 @@ where
     (cs, witness)
 }
 
-// General test for Xor, first sets up the xor, and then uses the verification of the constraints
+// General test for Xor, first sets up the xor, and then uses the verification
+// of the constraints
 fn test_xor<G: KimchiCurve>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
@@ -182,7 +185,8 @@ fn test_xor64_alternating() {
 }
 
 #[test]
-// Test a XOR of 64bit whose inputs are zero. Checks it works fine with non-dense values.
+// Test a XOR of 64bit whose inputs are zero. Checks it works fine with
+// non-dense values.
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
     let zero = PallasField::zero();
@@ -191,7 +195,8 @@ fn test_xor64_zeros() {
 }
 
 #[test]
-// Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
+// Test a XOR of 64bit whose inputs are all zero and all one. Checks it works
+// fine with non-dense values.
 fn test_xor64_zero_one() {
     let zero = PallasField::zero();
     let all_ones = all_ones::<Vesta>(64);
@@ -243,7 +248,8 @@ fn verify_bad_xor_decomposition<G: KimchiCurve>(
     // modify by one each of the witness cells individually
     for col in 0..COLUMNS {
         // first three columns make fail the ith+1 constraint
-        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
+        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd
+        // fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
@@ -260,7 +266,8 @@ fn verify_bad_xor_decomposition<G: KimchiCurve>(
 }
 
 #[test]
-// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
+// Test that a random XOR of 16 bits fails if the inputs do not decompose
+// correctly
 fn test_bad_xor_decompsition() {
     let (cs, mut witness) = setup_xor::<Vesta>(None, None, Some(16));
     verify_bad_xor_decomposition::<Vesta>(&mut witness, cs);
@@ -274,8 +281,9 @@ fn test_extend_xor() {
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
-    // If one specifies a concrete number of bits, use that (if they are sufficient to hold both inputs)
-    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    // If one specifies a concrete number of bits, use that (if they are sufficient
+    // to hold both inputs) Otherwise, use the max number of bits required to
+    // hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
     let bits = bits.map_or(0, |b| b); // 0 or bits
@@ -316,8 +324,9 @@ fn test_bad_xor() {
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
-    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
-    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    // If user specified a concrete number of bits, use that (if they are sufficient
+    // to hold both inputs) Otherwise, use the max number of bits required to
+    // hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
     let bits = bits.map_or(0, |b| b); // 0 or bits
@@ -362,7 +371,8 @@ fn test_xor_finalization() {
                 None,
             ));
         }
-        // 1 XOR of 128 bits. This will create 8 Xor16 gates and a Generic final gate with all zeros.
+        // 1 XOR of 128 bits. This will create 8 Xor16 gates and a Generic final gate
+        // with all zeros.
         CircuitGate::<Fp>::extend_xor_gadget(&mut gates, 128);
         // connect public inputs to the inputs of the XOR
         gates.connect_cell_pair((0, 0), (2, 0));

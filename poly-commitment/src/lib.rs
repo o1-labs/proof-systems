@@ -64,8 +64,8 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// - `num_chunks`: the minimal number of commitments to be included in the
     /// output polynomial commitment.
     ///
-    /// The function returns the commitments to the chunks (of size at most `n`) of
-    /// the polynomials.
+    /// The function returns the commitments to the chunks (of size at most `n`)
+    /// of the polynomials.
     ///
     /// The function will also pad with zeroes if the polynomial has a degree
     /// smaller than `n * num_chunks`.
@@ -158,8 +158,8 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// this case.
     fn create(depth: usize) -> Self;
 
-    /// Compute commitments to the lagrange basis corresponding to the given domain and
-    /// cache them in the SRS
+    /// Compute commitments to the lagrange basis corresponding to the given
+    /// domain and cache them in the SRS
     fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>>;
 
     /// Same as `get_lagrange_basis` but only using the domain size.

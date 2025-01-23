@@ -282,9 +282,9 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     }
 }
 
-/// An extended environment contains the evaluations of all the columns, including
-/// the ones added by the quadraticization process. It also contains the
-/// the two instances and witnesses that are being folded.
+/// An extended environment contains the evaluations of all the columns,
+/// including the ones added by the quadraticization process. It also contains
+/// the the two instances and witnesses that are being folded.
 /// The domain is required to define the polynomial size of the evaluations of
 /// the error terms.
 pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
@@ -444,8 +444,9 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
                 .commitment;
             relaxed_instance.extended_instance.extended.push(commit)
         }
-        // FIXME: maybe returning a value is not necessary as it does inplace operations.
-        // It implies copying on the stack and possibly copy multiple times.
+        // FIXME: maybe returning a value is not necessary as it does inplace
+        // operations. It implies copying on the stack and possibly copy
+        // multiple times.
         self
     }
 

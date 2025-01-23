@@ -44,7 +44,8 @@ pub enum DynamicSelector {
 }
 
 impl FoldingColumnTrait for TestColumn {
-    //in this case we have only witness, the other example shows non-witness columns
+    //in this case we have only witness, the other example shows non-witness
+    // columns
     fn is_witness(&self) -> bool {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
@@ -113,10 +114,10 @@ impl Foldable<Fp> for TestWitness {
 
 impl Witness<Curve> for TestWitness {}
 
-// our environment, the way in which we provide access to the actual values in the
-// witness and instances, when folding evaluates expressions and reaches leaves (Atom)
-// it will call methods from here to resolve the types we have in the config like the
-// columns into the actual values.
+// our environment, the way in which we provide access to the actual values in
+// the witness and instances, when folding evaluates expressions and reaches
+// leaves (Atom) it will call methods from here to resolve the types we have in
+// the config like the columns into the actual values.
 pub struct TestFoldingEnv {
     instances: [TestInstance; 2],
     // Corresponds to the omega evaluations, for both sides
@@ -137,14 +138,16 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         instances: [&TestInstance; 2],
         witnesses: [&TestWitness; 2],
     ) -> Self {
-        // here it is mostly storing the pairs into self, and also computing other things we may need
-        // later like the shifted versions, note there are more efficient ways of handling the rotated
-        // witnesses, which are just for example as no contraint uses them anyway
+        // here it is mostly storing the pairs into self, and also computing other
+        // things we may need later like the shifted versions, note there are
+        // more efficient ways of handling the rotated witnesses, which are just
+        // for example as no contraint uses them anyway
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.0.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                //TODO: check this, while not relevant for this example I think it should be
+                // right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -179,9 +182,9 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     // This is exclusively for dynamic selectors aiming to make use of optimization
-    // as classic static selectors will be handled as normal structure columns in col().
-    // The implementation of this if the same as col(), it is just separated as they
-    // have different types to resolve
+    // as classic static selectors will be handled as normal structure columns in
+    // col(). The implementation of this if the same as col(), it is just
+    // separated as they have different types to resolve
     fn selector(&self, s: &DynamicSelector, side: Side) -> &[Fp] {
         let wit = &self.curr_witnesses[side as usize];
         match s {
@@ -228,7 +231,8 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestFoldingConfig;
 
-// Does not contain alpha because it should be added to the expressions by folding
+// Does not contain alpha because it should be added to the expressions by
+// folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TestChallenge {
     Beta,
@@ -262,8 +266,8 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 5] = commitments.try_into().unwrap();
 
-    // here we should absorb the commitments and similar things to later compute challenges
-    // but for this example I just use random values
+    // here we should absorb the commitments and similar things to later compute
+    // challenges but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);
     let challenges = [(); 3].map(|_| challenge());

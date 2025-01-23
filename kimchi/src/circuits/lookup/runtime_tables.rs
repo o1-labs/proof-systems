@@ -1,6 +1,7 @@
-//! Runtime tables are tables (or arrays) that can be produced during proof creation.
-//! The setup has to prepare for their presence using [`RuntimeTableCfg`].
-//! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
+//! Runtime tables are tables (or arrays) that can be produced during proof
+//! creation. The setup has to prepare for their presence using
+//! [`RuntimeTableCfg`]. At proving time, the prover can use [`RuntimeTable`] to
+//! specify the actual tables.
 
 // TODO: write cargo specifications
 
@@ -20,7 +21,8 @@ pub struct RuntimeTableSpec {
 
 /// Use this type at setup time, to list all the runtime tables.
 ///
-/// Note: care must be taken as table IDs can collide with IDs of other types of lookup tables.
+/// Note: care must be taken as table IDs can collide with IDs of other types of
+/// lookup tables.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeTableCfg<F> {
     /// The table ID.

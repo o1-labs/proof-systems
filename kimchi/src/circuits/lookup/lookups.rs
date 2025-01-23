@@ -21,9 +21,9 @@ use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
-//~ Lookups patterns are extremely flexible and can be configured in a number of ways.
-//~ Every type of lookup is a JointLookup -- to create a single lookup your create a
-//~ JointLookup that contains one SingleLookup.
+//~ Lookups patterns are extremely flexible and can be configured in a number of
+//~ ways. Every type of lookup is a JointLookup -- to create a single lookup
+//~ your create a JointLookup that contains one SingleLookup.
 //~
 //~ Generally, the patterns of lookups possible are
 //~   * Multiple lookups per row
@@ -31,7 +31,8 @@ type Evaluations<Field> = E<Field, D<Field>>;
 //~   * Multiple values in each lookup (via joining, think of it like a tuple)
 //~    `JoinLookup { SingleLookup { }, ..., SingleLookup { } }`
 //~   * Multiple columns combined in linear combination to create each value
-//~    `JointLookup { SingleLookup { value: vec![(scale1, col1), ..., (scale2, col2)] } }`
+//~    `JointLookup { SingleLookup { value: vec![(scale1, col1), ..., (scale2,
+//~ col2)] } }`
 //~   * Any combination of these
 
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
@@ -140,7 +141,8 @@ impl LookupPatterns {
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupFeatures {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
+    /// A single lookup constraint is a vector of lookup constraints to be
+    /// applied at a row.
     pub patterns: LookupPatterns,
     /// Whether joint lookups are used
     pub joint_lookup_used: bool,
@@ -166,9 +168,11 @@ impl LookupFeatures {
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupInfo {
-    /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
+    /// The maximum length of an element of `kinds`. This can be computed from
+    /// `kinds`.
     pub max_per_row: usize,
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`.
+    /// This can be computed from `kinds`.
     pub max_joint_size: u32,
     /// The features enabled for this lookup configuration
     pub features: LookupFeatures,
@@ -202,8 +206,9 @@ impl LookupInfo {
         }
     }
 
-    /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
-    /// lookup kind should be enforced at a given row. This computes those selector polynomials.
+    /// Each entry in `kinds` has a corresponding selector polynomial that
+    /// controls whether that lookup kind should be enforced at a given row.
+    /// This computes those selector polynomials.
     pub fn selector_polynomials_and_tables<F: PrimeField>(
         &self,
         domain: &EvaluationDomains<F>,
@@ -254,7 +259,8 @@ impl LookupInfo {
         (selector_values8, res_tables)
     }
 
-    /// For each row in the circuit, which lookup-constraints should be enforced at that row.
+    /// For each row in the circuit, which lookup-constraints should be enforced
+    /// at that row.
     pub fn by_row<F: PrimeField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
@@ -278,8 +284,8 @@ pub struct LocalPosition {
     pub column: usize,
 }
 
-/// Look up a single value in a lookup table. The value may be computed as a linear
-/// combination of locally-accessible cells.
+/// Look up a single value in a lookup table. The value may be computed as a
+/// linear combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
     /// Linear combination of local-positions
@@ -287,7 +293,8 @@ pub struct SingleLookup<F> {
 }
 
 impl<F: Copy> SingleLookup<F> {
-    /// Evaluate the linear combination specifying the lookup value to a field element.
+    /// Evaluate the linear combination specifying the lookup value to a field
+    /// element.
     pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, eval: G) -> K
     where
         K: Zero,
@@ -304,23 +311,26 @@ impl<F: Copy> SingleLookup<F> {
 pub enum LookupTableID {
     /// Look up the value from the given fixed table ID
     Constant(i32),
-    /// Look up the value in the table with ID given by the value in the witness column
+    /// Look up the value in the table with ID given by the value in the witness
+    /// column
     WitnessColumn(usize),
 }
 
-/// A spec for checking that the given vector belongs to a vector-valued lookup table.
+/// A spec for checking that the given vector belongs to a vector-valued lookup
+/// table.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct JointLookup<SingleLookup, LookupTableID> {
     /// The ID for the table associated with this lookup.
-    /// Positive IDs are intended to be used for the fixed tables associated with individual gates,
-    /// with negative IDs reserved for gates defined by the particular constraint system to avoid
-    /// accidental collisions.
+    /// Positive IDs are intended to be used for the fixed tables associated
+    /// with individual gates, with negative IDs reserved for gates defined
+    /// by the particular constraint system to avoid accidental collisions.
     pub table_id: LookupTableID,
     pub entry: Vec<SingleLookup>,
 }
 
-/// A spec for checking that the given vector belongs to a vector-valued lookup table, where the
-/// components of the vector are computed from a linear combination of locally-accessible cells.
+/// A spec for checking that the given vector belongs to a vector-valued lookup
+/// table, where the components of the vector are computed from a linear
+/// combination of locally-accessible cells.
 pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>, LookupTableID>;
 
 /// A concrete value or representation of a lookup.
@@ -339,8 +349,8 @@ impl<F: Zero + One + Clone + Neg<Output = F> + From<u64>> JointLookupValue<F> {
 }
 
 impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
-    /// Reduce linear combinations in the lookup entries to a single value, resolving local
-    /// positions using the given function.
+    /// Reduce linear combinations in the lookup entries to a single value,
+    /// resolving local positions using the given function.
     pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookupValue<K>
     where
         K: Zero,
@@ -361,8 +371,8 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
         }
     }
 
-    /// Evaluate the combined value of a joint-lookup, resolving local positions using the given
-    /// function.
+    /// Evaluate the combined value of a joint-lookup, resolving local positions
+    /// using the given function.
     pub fn evaluate<K, G: Fn(LocalPosition) -> K>(
         &self,
         joint_combiner: &K,
@@ -395,7 +405,8 @@ pub enum LookupPattern {
 }
 
 impl LookupPattern {
-    /// Returns the maximum number of lookups per row that are used by the pattern.
+    /// Returns the maximum number of lookups per row that are used by the
+    /// pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
             LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
@@ -403,7 +414,8 @@ impl LookupPattern {
         }
     }
 
-    /// Returns the maximum number of values that are used in any vector lookup in this pattern.
+    /// Returns the maximum number of values that are used in any vector lookup
+    /// in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::Xor => 3,
@@ -499,7 +511,8 @@ impl LookupPattern {
         }
     }
 
-    /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
+    /// Returns the lookup table used by the pattern, or `None` if no specific
+    /// table is rqeuired.
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
             LookupPattern::Xor => Some(GateLookupTable::Xor),
@@ -509,7 +522,8 @@ impl LookupPattern {
         }
     }
 
-    /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
+    /// Returns the lookup pattern used by a [`GateType`] on a given row
+    /// (current or next).
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::{Curr, Next};
         use GateType::*;
@@ -548,7 +562,8 @@ fn lookup_pattern_constants_correct() {
             .map(|lookup| lookup.entry.len())
             .max()
             .unwrap_or(0);
-        // NB: We include pat in the assertions so that the test will print out which pattern failed
+        // NB: We include pat in the assertions so that the test will print out which
+        // pattern failed
         assert_eq!((pat, pat.max_lookups_per_row()), (pat, lookups.len()));
         assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
     }

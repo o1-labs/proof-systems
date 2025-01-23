@@ -16,16 +16,16 @@ use crate::{
 };
 
 /// Witness layout
-///   * The values and cell contents are in little-endian order.
-///     This is important for compatibility with other gates, where
-///     elements of the first 7 columns could be copied and reused by them.
-///     So they should be in the usual little-endian witness byte order.
-///   * Limbs are mapped to columns so that those containing the MSBs
-///     are in lower numbered columns (i.e. big-endian column mapping).
-///     This is important so that copy constraints are possible on the MSBs.
-///     For example, we can convert the `RangeCheck0` circuit gate into
-///     a 64-bit lookup by adding two copy constraints to constrain
-///     columns 1 and 2 to zero.
+///   * The values and cell contents are in little-endian order. This is
+///     important for compatibility with other gates, where elements of the
+///     first 7 columns could be copied and reused by them. So they should be in
+///     the usual little-endian witness byte order.
+///   * Limbs are mapped to columns so that those containing the MSBs are in
+///     lower numbered columns (i.e. big-endian column mapping). This is
+///     important so that copy constraints are possible on the MSBs. For
+///     example, we can convert the `RangeCheck0` circuit gate into a 64-bit
+///     lookup by adding two copy constraints to constrain columns 1 and 2 to
+///     zero.
 fn layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 4] {
     [
         /* row 1, RangeCheck0 row */
@@ -129,8 +129,9 @@ pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     witness
 }
 
-/// Create a multi range check witness from two limbs: v01 (176 bits), v2 (88 bits),
-/// where v2 is the most significant limb and v01 is the least significant limb
+/// Create a multi range check witness from two limbs: v01 (176 bits), v2 (88
+/// bits), where v2 is the most significant limb and v01 is the least
+/// significant limb
 pub fn create_multi_compact<F: PrimeField>(v01: F, v2: F) -> [Vec<F>; COLUMNS] {
     let layout = layout();
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
@@ -175,7 +176,8 @@ pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
     witness
 }
 
-/// Extend an existing witness with a multi-range-check gadget for three 88-bit values: v0, v1 and v2
+/// Extend an existing witness with a multi-range-check gadget for three 88-bit
+/// values: v0, v1 and v2
 pub fn extend_multi<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v0: F, v1: F, v2: F) {
     let limbs_witness = create_multi(v0, v1, v2);
     for col in 0..COLUMNS {
@@ -183,8 +185,9 @@ pub fn extend_multi<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v0: F, v1: F
     }
 }
 
-/// Extend and existing witness with a multi range check witness for two limbs: v01 (176 bits), v2 (88 bits),
-/// where v2 is the most significant limb and v01 is the least significant limb
+/// Extend and existing witness with a multi range check witness for two limbs:
+/// v01 (176 bits), v2 (88 bits), where v2 is the most significant limb and v01
+/// is the least significant limb
 pub fn extend_multi_compact<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v01: F, v2: F) {
     let limbs_witness = create_multi_compact(v01, v2);
     for col in 0..COLUMNS {
@@ -208,7 +211,8 @@ pub fn extend_multi_compact_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS]
     }
 }
 
-/// Extend an existing witness with a multi-range-check gadget for ForeignElement
+/// Extend an existing witness with a multi-range-check gadget for
+/// ForeignElement
 pub fn extend_multi_from_fe<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     fe: &ForeignElement<F, LIMB_BITS, 3>,
@@ -216,7 +220,8 @@ pub fn extend_multi_from_fe<F: PrimeField>(
     extend_multi(witness, fe.limbs[0], fe.limbs[1], fe.limbs[2]);
 }
 
-/// Extend an existing witness with a single range check witness for foreign field element
+/// Extend an existing witness with a single range check witness for foreign
+/// field element
 pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: F) {
     let limbs_witness = create(fe);
     for col in 0..COLUMNS {

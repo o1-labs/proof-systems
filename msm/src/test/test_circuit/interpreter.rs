@@ -117,7 +117,8 @@ pub fn constrain_test_const<F: PrimeField, Env: ColAccessCap<F, TestColumn>>(
     env.assert_zero(equation.clone());
 }
 
-/// Circuit generator function for A_0 * B_0 - const, with every other column = 0
+/// Circuit generator function for A_0 * B_0 - const, with every other column =
+/// 0
 pub fn test_const<F: PrimeField, Env: ColAccessCap<F, TestColumn> + ColWriteCap<F, TestColumn>>(
     env: &mut Env,
     a: F,
@@ -300,8 +301,9 @@ pub fn constrain_lookups<
         ],
     );
 
-    // For now we only allow one read per runtime table with runtime_create_column = true.
-    //env.lookup(LookupTable::RuntimeTable1, vec![a0.clone(), a1.clone()]);
+    // For now we only allow one read per runtime table with runtime_create_column =
+    // true. env.lookup(LookupTable::RuntimeTable1, vec![a0.clone(),
+    // a1.clone()]);
 
     env.lookup_runtime_write(
         LookupTable::RuntimeTable2,

@@ -96,7 +96,8 @@ impl FromStr for PreimageKey {
             };
             parts[1]
         };
-        // We only handle a hexadecimal representations of exactly 32 bytes (no auto-padding)
+        // We only handle a hexadecimal representations of exactly 32 bytes (no
+        // auto-padding)
         if hex_value.len() == 64 {
             hex::decode(hex_value).map_or_else(
                 |_| {

@@ -157,7 +157,8 @@ where
 }
 
 #[test]
-// Test that a random offset between 1 and 63 work as expected, both left and right
+// Test that a random offset between 1 and 63 work as expected, both left and
+// right
 fn test_rot_random() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..=63);

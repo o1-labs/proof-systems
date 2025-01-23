@@ -4,8 +4,8 @@ use turshi::CairoMemory;
 
 #[test]
 fn test_cairo_bytecode() {
-    // This test starts with the public memory corresponding to a simple Cairo program
-    // func main{}():
+    // This test starts with the public memory corresponding to a simple Cairo
+    // program func main{}():
     //    tempvar x = 10;
     //    return()
     // end

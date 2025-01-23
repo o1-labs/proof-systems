@@ -76,8 +76,8 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
             }
         }
 
-        // Sanity check: if we were given multiple tables, we should have used multiple tables,
-        // assuming we're generating enough gates.
+        // Sanity check: if we were given multiple tables, we should have used multiple
+        // tables, assuming we're generating enough gates.
         assert!(tables_used.len() >= 2 || table_sizes.len() <= 1);
 
         let [lookup_indexes0, lookup_indexes1, lookup_indexes2] = lookup_indexes;
@@ -588,9 +588,9 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
     setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
-// This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
-// This is to enforce the constraint we have on the so-called "dummy value".
-// FIXME: see https://github.com/o1-labs/proof-systems/issues/1460
+// This test verifies that if there is a table with ID 0, it contains a row with
+// only zeroes. This is to enforce the constraint we have on the so-called
+// "dummy value". FIXME: see https://github.com/o1-labs/proof-systems/issues/1460
 // We should test the error message, "expected" argument of the macro won't be
 // allowed anymore in future release, see clippy output.
 #[test]

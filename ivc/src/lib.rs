@@ -7,7 +7,8 @@
 //! "relaxation/relaxed" with "homogeneisation/homogeneous" polynomials. The
 //! reason is explained in the [folding] library. The term "running relaxed
 //! instance" can be rephrased as "an accumulator of evaluations of the
-//! homogeneised polynomials describing the computation and commitments to them".
+//! homogeneised polynomials describing the computation and commitments to
+//! them".
 //!
 //! ## A recap of the Nova IVC scheme
 //!
@@ -71,7 +72,6 @@
 //! scalars are done in the middle square, i.e. `acc_(i + 1) = NIFS.V(acc_i,
 //! u_i)`. It performs foreign field elliptic curve additions and scalars
 //! additions.
-//!
 // The documentation below is outdated. Please, update it after bifolding is
 // implemented.
 //! ## Our design
@@ -125,10 +125,10 @@
 //! the scalar multiplications, and we reduce the verifier work to compute only
 //! the foreign field elliptic curve additions. Therefore, the verifier has
 //! access already to the
-//! result of `r T0`, `r^2 T1`, `r^3 E2` and `r (C_i)_R`, and must only perform the
-//! addition. We call the commitments `r T0` the "scaled" commitment to `T0`, and
-//! the same for the others. The commitments `(C_i)_L`, `(C_i)_R` and `(C_i)_O` are
-//! called the "instance commitments".
+//! result of `r T0`, `r^2 T1`, `r^3 E2` and `r (C_i)_R`, and must only perform
+//! the addition. We call the commitments `r T0` the "scaled" commitment to
+//! `T0`, and the same for the others. The commitments `(C_i)_L`, `(C_i)_R` and
+//! `(C_i)_O` are called the "instance commitments".
 //!
 //! To perform foreign field elliptic curve addition, we split the commitments
 //! into 17 chunks of 15 bits and use additive lookups as described in
@@ -168,10 +168,10 @@
 // We will change this soon, by absorbing the coordinate x, and the sign of y.
 // If we compute on one row the hash and on the next row the ECADD, the sign of
 // y can be computed on the ECADD row, and accessed by the poseidon constraints.
-//! For a given set of coordinates `(x, y)`, and by supposing an initial state of
-//! our permutation `(s0, s1, s2)`, we will compute on a single row the absorbtion
-//! of `(x, y)`, which consists of updating the state `(s0, s1, s2)` to
-//! `(s0 + x, s1 + y, s2)`.
+//! For a given set of coordinates `(x, y)`, and by supposing an initial state
+//! of our permutation `(s0, s1, s2)`, we will compute on a single row the
+//! absorbtion of `(x, y)`, which consists of updating the state `(s0, s1, s2)`
+//! to `(s0 + x, s1 + y, s2)`.
 //! For each side, we will initialize a new Poseidon state, and we will keep
 //! absorbing each column of the circuit.
 //!

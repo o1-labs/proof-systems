@@ -36,7 +36,8 @@ pub fn vec_to_boxed_array2<T: Clone, const N: usize, const M: usize>(
         .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch outer array"))
 }
 
-/// Converts a three-dimensional vector to a constant sized two-dimensional array.
+/// Converts a three-dimensional vector to a constant sized two-dimensional
+/// array.
 pub fn vec_to_boxed_array3<T: Clone, const N: usize, const M: usize, const K: usize>(
     vec: Vec<Vec<Vec<T>>>,
 ) -> Box<[[[T; N]; M]; K]> {
@@ -83,7 +84,6 @@ macro_rules! box_array {
 /// ```rustc
 ///     let _: Box<[[u8; 1024]; 512]> = box_array![0; 1024; 512];
 /// ```
-///
 #[macro_export]
 macro_rules! box_array2 {
     ($val:expr; $len1:expr; $len2:expr) => {{

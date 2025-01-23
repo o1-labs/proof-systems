@@ -33,8 +33,8 @@ pub struct Keypair {
 }
 
 impl Keypair {
-    /// Create keypair from scalar field `secret` element and curve point `public`
-    /// Note: Does not check point `public` is on curve
+    /// Create keypair from scalar field `secret` element and curve point
+    /// `public` Note: Does not check point `public` is on curve
     pub fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
         Self {
             secret: SecKey::new(secret),

@@ -22,7 +22,8 @@ where
 {
     let mut gates = vec![];
     let next_row = CircuitGate::extend_keccak(&mut gates, bytelength);
-    // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
+    // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next
+    // row
     gates.push(CircuitGate {
         typ: GateType::Zero,
         wires: Wire::for_row(next_row),
@@ -38,7 +39,8 @@ where
 {
     let mut witness: [Vec<G::ScalarField>; KECCAK_COLS] = array::from_fn(|_| vec![]);
     extend_keccak_witness(&mut witness, message);
-    // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
+    // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next
+    // row
     let dummy_row: [Vec<G::ScalarField>; KECCAK_COLS] =
         array::from_fn(|_| vec![G::ScalarField::zero()]);
     for col in 0..KECCAK_COLS {

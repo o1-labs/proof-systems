@@ -27,12 +27,12 @@ use std::{array, ops::Div};
 use super::circuitgates;
 
 // Witness layout
-//   * The values and cell contents are in little-endian order, which
-//     is important for compatibility with other gates.
-//   * The witness sections for the multi range check gates should be set up
-//     so that the last range checked value is the MS limb of the respective
-//     foreign field element. For example, given foreign field element q
-//     such that
+//   * The values and cell contents are in little-endian order, which is
+//     important for compatibility with other gates.
+//   * The witness sections for the multi range check gates should be set up so
+//     that the last range checked value is the MS limb of the respective
+//     foreign field element. For example, given foreign field element q such
+//     that
 //
 //         q = q0 + 2^88 * q1 + 2^176 * q2
 //
@@ -173,15 +173,17 @@ pub fn create<F: PrimeField>(
     let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1] =
         compute_witness_variables(&products.to_limbs(), &remainder.to_limbs());
 
-    // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
-    // Assumes that right's and left's high bounds are range checked at a different stage.
+    // Compute high bounds for multi-range-checks on quotient and remainder, making
+    // 3 limbs (with zero) Assumes that right's and left's high bounds are range
+    // checked at a different stage.
     let remainder_hi_bound = compute_high_bound(&remainder, foreign_field_modulus);
     let quotient_hi_bound = compute_high_bound(&quotient, foreign_field_modulus);
 
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());
 
-    // Track witness data for external multi-range-check on certain components of quotient bound and intermediate product
+    // Track witness data for external multi-range-check on certain components of
+    // quotient bound and intermediate product
     external_checks.add_multi_range_check(&[
         quotient_hi_bound.clone().into(),
         product1_lo,
@@ -190,13 +192,16 @@ pub fn create<F: PrimeField>(
 
     // Track witness data for external multi-range-checks on quotient and remainder
     external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
-    // This only takes 1.33 of a row, but this can be used to aggregate 3 limbs into 1 MRC
+    // This only takes 1.33 of a row, but this can be used to aggregate 3 limbs into
+    // 1 MRC
     external_checks.add_limb_check(&remainder_hi_bound.into());
-    // Extract the high limb of remainder to create a high bound check (Double generic)
+    // Extract the high limb of remainder to create a high bound check (Double
+    // generic)
     let remainder_hi = remainder.to_field_limbs()[2];
     external_checks.add_high_bound_computation(&remainder_hi);
 
-    // NOTE: high bound checks and multi range checks for left and right should be done somewhere else
+    // NOTE: high bound checks and multi range checks for left and right should be
+    // done somewhere else
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
@@ -303,7 +308,8 @@ impl<F: PrimeField> ExternalChecks<F> {
         self.limb_ranges = vec![];
     }
 
-    /// Extend the witness with external bound addition as foreign field addition
+    /// Extend the witness with external bound addition as foreign field
+    /// addition
     pub fn extend_witness_bound_addition(
         &mut self,
         witness: &mut [Vec<F>; COLUMNS],
@@ -319,7 +325,8 @@ impl<F: PrimeField> ExternalChecks<F> {
         self.bounds = vec![];
     }
 
-    /// Extend the witness with external high bounds additions as double generic gates
+    /// Extend the witness with external high bounds additions as double generic
+    /// gates
     pub fn extend_witness_high_bounds_computation(
         &mut self,
         witness: &mut [Vec<F>; COLUMNS],

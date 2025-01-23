@@ -102,7 +102,8 @@ where
         } else if xs.len() == 1 {
             return Ok(xs[0].clone());
         } else if xs.len() == 2 {
-            return Ok(xs[0].or(xs[1], loc, cs)); // TODO: is this better than below?
+            return Ok(xs[0].or(xs[1], loc, cs)); // TODO: is this better than
+                                                 // below?
         }
 
         let zero = FieldVar::zero();
@@ -122,7 +123,8 @@ where
         } else if xs.len() == 1 {
             return Ok(xs[0].clone());
         } else if xs.len() == 2 {
-            return Ok(xs[0].and(&xs[1], cs, loc)); // TODO: is this better than below?
+            return Ok(xs[0].and(&xs[1], cs, loc)); // TODO: is this better than
+                                                   // below?
         }
 
         let expected = FieldVar::Constant(F::from(xs.len() as u64));

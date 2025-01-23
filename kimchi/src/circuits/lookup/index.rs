@@ -133,8 +133,8 @@ impl<T> LookupSelectors<T> {
             range_check,
             ffmul,
         } = self;
-        // This closure isn't really redundant -- it shields the parameter from a copy -- but
-        // clippy isn't smart enough to figure that out..
+        // This closure isn't really redundant -- it shields the parameter from a copy
+        // -- but clippy isn't smart enough to figure that out..
         #[allow(clippy::redundant_closure)]
         let f = |x| f(x);
         LookupSelectors {

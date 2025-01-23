@@ -2,8 +2,8 @@ use crate::poseidon::ArithmeticSpongeParams;
 use ark_ff::Field;
 use std::{fmt::Debug, str::FromStr};
 
-/// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
-/// above.
+/// Placeholder dummy value for the kimchi configuration, suitable for fields of
+/// bitlength 254 and above.
 /// These parameters are duplicated from the Vesta parameters, generated with
 /// ```text
 /// ./pasta/params.sage --rounds 55 rust 3 kimchi

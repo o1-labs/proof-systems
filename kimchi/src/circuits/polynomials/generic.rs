@@ -9,7 +9,8 @@
 //~ * or multiplication of two registers
 //~ * equality of a register with a constant
 //~
-//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:
+//~ More generally, the generic gate controls the coefficients $c_i$ in the
+//~ equation:
 //~
 //~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
 //~
@@ -119,7 +120,8 @@ where
 }
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
+/// This type is useful to create a generic gate via the
+/// [`CircuitGate::create_generic_gadget`] function.
 #[derive(Clone)]
 pub enum GenericGateSpec<F> {
     /// Add two values.
@@ -135,7 +137,8 @@ pub enum GenericGateSpec<F> {
     Mul {
         /// Optional coefficient that can be multiplied with the output.
         output_coeff: Option<F>,
-        /// Optional coefficient that can be multiplied with the multiplication result.
+        /// Optional coefficient that can be multiplied with the multiplication
+        /// result.
         mul_coeff: Option<F>,
     },
     /// A constant, the constructor contains the constant itself
@@ -147,7 +150,9 @@ pub enum GenericGateSpec<F> {
 }
 
 impl<F: PrimeField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
+    /// This allows you to create two generic gates that will fit in one row,
+    /// check [`Self::create_generic_gadget`] for a better to way to create
+    /// these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate::new(GateType::Generic, wires, c.to_vec())
     }
@@ -246,7 +251,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
 //~ The constraints:
 //~
-//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
+//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 +
+//~   c_4$
 //~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 //~
 //~ where the $c_i$ are the `coefficients`.

@@ -74,16 +74,19 @@ impl<F: Field> CairoMemory<F> {
         self.data.len() as u64
     }
 
-    /// Returns whether the memory is empty (either length 0, or with the dummy first entry)
+    /// Returns whether the memory is empty (either length 0, or with the dummy
+    /// first entry)
     pub fn is_empty(&self) -> bool {
         self.data.len() < 2
     }
 
-    /// Resizes memory with enough additional None slots if necessary before writing or reading
+    /// Resizes memory with enough additional None slots if necessary before
+    /// writing or reading
     fn resize(&mut self, addr: u64) {
-        // if you want to access an index of the memory but its size is less or equal than this
-        // you will need to extend the vector with enough spaces (taking into account that
-        // vectors start by index 0, the 0 address is dummy, and size starts in 1)
+        // if you want to access an index of the memory but its size is less or equal
+        // than this you will need to extend the vector with enough spaces
+        // (taking into account that vectors start by index 0, the 0 address is
+        // dummy, and size starts in 1)
         if let Some(additional) = addr.checked_sub(self.len() - 1) {
             self.data.extend(repeat(None).take(additional as usize));
         }

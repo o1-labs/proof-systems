@@ -30,8 +30,8 @@ impl LegendreSymbol {
 
 /// The interface for a field that supports an efficient square-root operation.
 pub trait SquareRootField: Field {
-    /// Returns a `LegendreSymbol`, which indicates whether this field element is
-    ///  1 : a quadratic residue
+    /// Returns a `LegendreSymbol`, which indicates whether this field element
+    /// is  1 : a quadratic residue
     ///  0 : equal to 0
     /// -1 : a quadratic non-residue
     fn legendre(&self) -> LegendreSymbol;

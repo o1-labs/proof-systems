@@ -70,7 +70,8 @@ impl IntoIterator for GateLookupTables {
     }
 }
 
-/// A table of values that can be used for a lookup, along with the ID for the table.
+/// A table of values that can be used for a lookup, along with the ID for the
+/// table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
     pub id: i32,
@@ -129,17 +130,18 @@ impl GateLookupTable {
     }
 }
 
-/// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
-/// am using `[F; n]` to model a vector of length `n`).
+/// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>`
+/// (here I am using `[F; n]` to model a vector of length `n`).
 ///
-/// For `i < n`, define `T_i := T.map(|t| t[i]).collect()`. In other words, the table
-/// obtained by taking the `ith` entry of each element of `T`.
+/// For `i < n`, define `T_i := T.map(|t| t[i]).collect()`. In other words, the
+/// table obtained by taking the `ith` entry of each element of `T`.
 ///
-/// In the lookup argument, we perform lookups in `T` by sampling a random challenge
-/// `joint_combiner`, and computing a "combined" lookup table `sum_{i < n} joint_combiner^i T_i`.
+/// In the lookup argument, we perform lookups in `T` by sampling a random
+/// challenge `joint_combiner`, and computing a "combined" lookup table `sum_{i
+/// < n} joint_combiner^i T_i`.
 ///
-/// To check a vector's membership in this lookup table, we combine the values in that vector
-/// analogously using `joint_combiner`.
+/// To check a vector's membership in this lookup table, we combine the values
+/// in that vector analogously using `joint_combiner`.
 ///
 /// This function computes that combined value.
 pub fn combine_table_entry<'a, F, I>(
