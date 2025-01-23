@@ -2,25 +2,25 @@
 members = [
     "arrabbiata",
     "book",
-    "turshi",
     "curves",
+    "folding",
     "groupmap",
     "hasher",
-    "kimchi",
-    "msm",
-    "o1vm",
-    "poseidon",
-    "poseidon/export_test_vectors",
-    "poly-commitment",
-    "signer",
-    "mvpoly",
-    "tools/kimchi-visu",
-    "utils",
     "internal-tracing",
     "ivc",
-    "folding",
+    "kimchi",
+    "msm",
+    "mvpoly",
+    "o1vm",
+    "poly-commitment",
+    "poseidon",
+    "poseidon/export_test_vectors",
     "saffron"
-]
+,
+    "signer",
+    "tools/kimchi-visu",
+    "turshi",
+    "utils"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -80,7 +80,6 @@ syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.90"
-
 
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
