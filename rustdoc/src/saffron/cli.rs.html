@@ -42,7 +42,7 @@
 <a href="#42" id="42">42</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::{arg, Parser};
 
-<span class="attr">#[derive(Parser, Debug, Clone)]
+<span class="attr">#[derive(Parser)]
 </span><span class="kw">pub struct </span>EncodeFileArgs {
     <span class="attr">#[arg(long, short = <span class="string">&#39;i&#39;</span>, value_name = <span class="string">&quot;FILE&quot;</span>, help = <span class="string">&quot;input file&quot;</span>)]
     </span><span class="kw">pub </span>input: String,
@@ -56,7 +56,7 @@
     </span><span class="kw">pub </span>output: String,
 }
 
-<span class="attr">#[derive(Parser, Debug, Clone)]
+<span class="attr">#[derive(Parser)]
 </span><span class="kw">pub struct </span>DecodeFileArgs {
     <span class="attr">#[arg(
         long,
@@ -70,7 +70,7 @@
     </span><span class="kw">pub </span>output: String,
 }
 
-<span class="attr">#[derive(Parser, Debug, Clone)]
+<span class="attr">#[derive(Parser)]
 #[command(
     name = <span class="string">&quot;saffron&quot;</span>,
     version = <span class="string">&quot;0.1&quot;</span>,
