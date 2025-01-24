@@ -408,18 +408,36 @@ where
     ) -> PolyComm<G> {
         let is_zero = plnm.is_zero();
 
-        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
-
         // chunk while committing
-        let mut chunks = vec![];
-        if is_zero {
-            chunks.push(G::zero());
+        let mut chunks: Vec<_> = if is_zero {
+            vec![G::zero()]
+        } else if plnm.len() < self.g.len() {
+            vec![G::Group::msm(&self.g[..plnm.len()], &plnm.coeffs)
+                .unwrap()
+                .into_affine()]
+        } else if plnm.len() == self.g.len() {
+            // when processing a single chunk, it's faster to parallelise vertically in 2 threads
+            let n = self.g.len();
+            let (r1, r2) = rayon::join(
+                || G::Group::msm(&self.g[..n / 2], &plnm.coeffs[..n / 2]).unwrap(),
+                || G::Group::msm(&self.g[n / 2..n], &plnm.coeffs[n / 2..n]).unwrap(),
+            );
+
+            vec![(r1 + r2).into_affine()]
         } else {
-            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = G::Group::msm_bigint(&self.g, coeffs_chunk);
-                chunks.push(chunk.into_affine());
-            });
-        }
+            // otherwise it's better to parallelise horizontally along chunks
+            plnm.into_par_iter()
+                .chunks(self.g.len())
+                .map(|chunk| {
+                    let chunk_coeffs = chunk
+                        .into_iter()
+                        .map(|c| c.into_bigint())
+                        .collect::<Vec<_>>();
+                    let chunk_res = G::Group::msm_bigint(&self.g, &chunk_coeffs);
+                    chunk_res.into_affine()
+                })
+                .collect()
+        };
 
         for _ in chunks.len()..num_chunks {
             chunks.push(G::zero());
