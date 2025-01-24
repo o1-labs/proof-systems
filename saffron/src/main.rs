@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use clap::Parser;
 use mina_curves::pasta::Fp;
-use saffron::{cli, serialization::FieldBlob};
+use saffron::{blob::FieldBlob, cli};
 use std::{
     fs::File,
     io::{Read, Write},
