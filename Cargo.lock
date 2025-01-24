@@ -2659,6 +2659,7 @@ dependencies = [
  "once_cell",
  "poly-commitment",
  "proptest",
+ "rand",
  "rayon",
  "rmp-serde",
  "serde",
