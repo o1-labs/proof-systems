@@ -67,7 +67,8 @@ mod tests {
 
     use super::*;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    use mina_curves::pasta::{Fp, Vesta};
+    use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
     use o1_utils::FieldHelpers;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
@@ -88,7 +89,22 @@ mod tests {
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Fp>::encode(*DOMAIN, &xs);
             let storeage_provider_commitments = commit_to_blob(&*SRS, &blob);
-            prop_assert_eq!(user_commitments, storeage_provider_commitments);
+            prop_assert_eq!(&user_commitments, &storeage_provider_commitments);
+            let user_commitment =
+              { let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fq_kimchi::static_params(),
+                );
+                fold_commitments(&mut fq_sponge, &user_commitments)
+
+              };
+            let storage_provider_commitment =
+              { let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fq_kimchi::static_params(),
+                );
+                fold_commitments(&mut fq_sponge, &storeage_provider_commitments)
+
+              };
+            prop_assert_eq!(&user_commitment, &storage_provider_commitment);
           }
         }
 }
