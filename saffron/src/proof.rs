@@ -9,11 +9,13 @@ use poly_commitment::{
     commitment::{absorb_commitment, BatchEvaluationProof, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
-    PolyComm,
+    PolyComm, SRS as _,
 };
 use rand::rngs::OsRng;
 
-pub fn opening_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+//TODO: Where does the challenge come in? Shoud we force different commitments for each time we challenge,
+// or only different evaluation points?
+pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     group_map: &G::Map,
     blob: FieldBlob<G>,
@@ -22,30 +24,26 @@ pub fn opening_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G
 where
     G::BaseField: PrimeField,
 {
-    let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for commitment in &blob.commitments {
-        absorb_commitment(&mut sponge, commitment)
-    }
-    let alpha = sponge.challenge();
-    let powers: Vec<G::ScalarField> = blob
-        .commitments
-        .iter()
-        .scan(G::ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= alpha;
-            Some(res)
-        })
-        .collect::<Vec<_>>();
-    let final_commitment =
-        PolyComm::multi_scalar_mul(&blob.commitments.iter().collect::<Vec<_>>(), &powers);
-    // NOTE: The user can compute final_commitment on their end as well
-    let p: DensePolynomial<G::ScalarField> = blob.data.into_iter().zip(powers).fold(
-        DensePolynomial::<G::ScalarField>::zero(),
-        |acc, (p, power)| acc + p.scale(power),
-    );
+    let alpha = {
+        let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+        for commitment in &blob.commitments {
+            absorb_commitment(&mut sponge, commitment)
+        }
+        sponge.challenge()
+    };
+    let p = {
+        let init = (DensePolynomial::zero(), G::ScalarField::one());
+        blob.data
+            .into_iter()
+            .fold(init, |(acc_poly, curr_power), curr_poly| {
+                (acc_poly + curr_poly.scale(curr_power), curr_power * alpha)
+            })
+            .0
+    };
+    let commitment = srs.commit_non_hiding(&p, 1);
     let (evaluation_point, evaluation) = {
         let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-        sponge.absorb_g(&final_commitment.chunks);
+        sponge.absorb_g(&commitment.chunks);
         let evaluation_point = sponge.challenge();
         (evaluation_point, p.evaluate(&evaluation_point))
     };
@@ -74,7 +72,7 @@ where
 pub fn verify<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     group_map: &G::Map,
-    final_commitment: PolyComm<G>,
+    commitment: PolyComm<G>,
     evaluation: G::ScalarField,
     opening_proof: &OpeningProof<G>,
     rng: &mut OsRng,
@@ -84,7 +82,7 @@ where
 {
     let evaluation_point = {
         let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-        sponge.absorb_g(&final_commitment.chunks);
+        sponge.absorb_g(&commitment.chunks);
         sponge.challenge()
     };
 
@@ -99,7 +97,7 @@ where
             polyscale: G::ScalarField::one(),
             evalscale: G::ScalarField::one(),
             evaluations: vec![Evaluation {
-                commitment: final_commitment,
+                commitment,
                 evaluations: vec![vec![evaluation]],
             }],
             opening: opening_proof,
@@ -122,7 +120,7 @@ mod tests {
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     use o1_utils::FieldHelpers;
     use once_cell::sync::Lazy;
-    use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
+    use poly_commitment::{commitment::CommitmentCurve, ipa::SRS};
     use proptest::prelude::*;
 
     const SRS_SIZE: usize = 1 << 16;
@@ -145,7 +143,7 @@ mod tests {
             let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
             let mut rng = OsRng;
             let (evaluation, proof) =
-                opening_proof::<
+                storage_proof::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, &*GROUP_MAP, blob, &mut rng);
             let user_commitment = {
