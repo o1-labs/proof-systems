@@ -18,6 +18,7 @@ pub mod prover;
 pub mod verifier;
 
 ///Lookup related modules
+pub mod auxiliary_prover;
 pub mod lookup_env;
 
 /// Maximum degree of the constraints.
