@@ -106,14 +106,18 @@ mod blob_test_utils {
         Large,
     }
 
-    // TODO: This is fine for now, but figure out what the realistic expectations are.
     impl DataSize {
+        const KB: usize = 1_000;
+        const MB: usize = 1_000_000;
+
         fn size_range_bytes(&self) -> (usize, usize) {
-            let c = 1_000_000;
             match self {
-                Self::Small => (1, 2 * c),
-                Self::Medium => (5 * c, 10 * c),
-                Self::Large => (50 * c, 75 * c),
+                // Small: 1KB - 1MB
+                Self::Small => (Self::KB, Self::MB),
+                // Medium: 1MB - 10MB
+                Self::Medium => (Self::MB, 10 * Self::MB),
+                // Large: 10MB - 100MB
+                Self::Large => (10 * Self::MB, 100 * Self::MB),
             }
         }
     }
@@ -124,8 +128,8 @@ mod blob_test_utils {
 
         fn arbitrary_with(_: ()) -> Self::Strategy {
             prop_oneof![
-                4 => Just(DataSize::Small),
-                2 => Just(DataSize::Medium),
+                6 => Just(DataSize::Small), // 60% chance
+                3 => Just(DataSize::Medium),
                 1 => Just(DataSize::Large)
             ]
             .boxed()
@@ -134,7 +138,7 @@ mod blob_test_utils {
 
     impl Default for DataSize {
         fn default() -> Self {
-            Self::Medium
+            Self::Small
         }
     }
 
