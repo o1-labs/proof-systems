@@ -115,3 +115,34 @@ impl BenchmarkCtx {
         .unwrap();
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_prover_bench() {
+        let mut ctx = BenchmarkCtx::new(16);
+
+        ctx.index.compute_verifier_index_digest::<BaseSponge>();
+        use poly_commitment::SRS;
+        ctx.index.srs.get_lagrange_basis(ctx.index.cs.domain.d1);
+
+        // Sleep 2 sec to clearly show where the comp starts
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+
+        //use crate::prover::internal_traces;
+        //internal_traces::start_tracing();
+        println!(
+            "proof creation (SRS size 2^{{{}}}, {} gates)",
+            ctx.srs_size(),
+            ctx.num_gates
+        );
+        for _i in 0..10 {
+            ctx.create_proof();
+        }
+        //let traces = internal_traces::take_traces();
+        //println!("traces: {:?}", traces);
+    }
+}

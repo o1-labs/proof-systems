@@ -52,6 +52,7 @@ groupmap.workspace = true
 mina-curves.workspace = true
 o1-utils.workspace = true
 mina-poseidon.workspace = true
+criterion.workspace = true
 
 
 [dev-dependencies]
@@ -79,7 +80,7 @@ name = "amortization"
 harness = false
 
 [features]
-default = []
+default = ["internal_tracing"]
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
     "ocaml",
