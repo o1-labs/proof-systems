@@ -8,6 +8,69 @@ use poly_commitment::{
     commitment::CommitmentCurve, ipa::SRS, utils::DensePolynomialOrEvaluations, PolyComm, SRS as _,
 };
 
+fn benchmark_msm(c: &mut Criterion) {
+    use ark_ec::{AffineRepr, VariableBaseMSM};
+    use ark_ff::PrimeField;
+
+    let mut group = c.benchmark_group("MSM");
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let srs = SRS::<Vesta>::create(1 << 16);
+    srs.get_lagrange_basis_from_domain_size(1 << 16);
+
+    for msm_size_log in [8, 10, 12, 14, 16].into_iter() {
+        let n = 1 << msm_size_log;
+        group.bench_function(format!("msm (size 2^{{{}}})", msm_size_log), |b| {
+            b.iter_batched(
+                || {
+                    let coeffs: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();
+                    coeffs
+                },
+                |coeffs| black_box(<Vesta as AffineRepr>::Group::msm(&srs.g[0..n], &coeffs)),
+                BatchSize::LargeInput,
+            )
+        });
+        group.bench_function(format!("msm bigint (size 2^{{{}}})", msm_size_log), |b| {
+            b.iter_batched(
+                || {
+                    let coeffs: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();
+                    let coeffs_bigint: Vec<_> =
+                        coeffs.into_iter().map(|c| c.into_bigint()).collect();
+                    coeffs_bigint
+                },
+                |coeffs_bigint| {
+                    black_box(<Vesta as AffineRepr>::Group::msm_bigint(
+                        &srs.g,
+                        &coeffs_bigint,
+                    ))
+                },
+                BatchSize::LargeInput,
+            )
+        });
+        group.bench_function(
+            format!("msm bigint + conversion (size 2^{{{}}})", msm_size_log),
+            |b| {
+                b.iter_batched(
+                    || {
+                        let coeffs: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();
+                        coeffs
+                    },
+                    |coeffs| {
+                        black_box(<Vesta as AffineRepr>::Group::msm_bigint(
+                            &srs.g,
+                            &coeffs
+                                .into_iter()
+                                .map(|c| c.into_bigint())
+                                .collect::<Vec<_>>(),
+                        ))
+                    },
+                    BatchSize::LargeInput,
+                )
+            },
+        );
+    }
+}
+
 fn benchmark_ipa_commit(c: &mut Criterion) {
     let mut group = c.benchmark_group("IPA Commit");
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -83,5 +146,10 @@ fn benchmark_ipa_open(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, benchmark_ipa_commit, benchmark_ipa_open);
+criterion_group!(
+    benches,
+    benchmark_msm,
+    benchmark_ipa_commit,
+    benchmark_ipa_open
+);
 criterion_main!(benches);
