@@ -1,0 +1,37 @@
+[package]
+name = "fiat-shamir-typed"
+version = "0.1.0"
+description = "An attempt to type Fiat Shamir transformation"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ark-bn254.workspace = true
+ark-serialize.workspace = true
+o1-utils.workspace = true
+itertools.workspace = true
+kimchi.workspace = true
+poly-commitment.workspace = true
+groupmap.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+num-traits.workspace = true
+rmp-serde.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+ark-poly.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
+rand.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
