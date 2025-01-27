@@ -26,6 +26,7 @@ use ark_poly::{
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
+use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{array, default::Default, sync::Arc};
@@ -373,25 +374,71 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
-        // compute shifted witness polynomials
-        let w8: [E<F, D<F>>; COLUMNS] =
-            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
-        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
+        // the idea is to have threading minimised below a certain threshold.
+        let min_len = {
+            let threads_to_use = if w[0].len() <= 2048 {
+                1
+            } else {
+                rayon::max_num_threads()
+            };
+            // min batch size is COLUMNS, when threads_to_use == 1,
+            // in which case every iterator will use one thread
+            // min batch size is COLUMNS / N where N = max_num_threads otherwise
+            // an extra max is to ensure the result is not 0
+            std::cmp::max(1, COLUMNS / threads_to_use)
+        };
 
-        let w4: [E<F, D<F>>; COLUMNS] = array::from_fn(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                (0..self.domain.d4.size)
-                    .map(|j| w8[i].evals[2 * j as usize])
-                    .collect(),
-                self.domain.d4,
-            )
-        });
+        // compute shifted witness polynomials and z8, all in parallel
+        let (w8, z8): ([E<F, D<F>>; COLUMNS], _) = {
+            let mut res = w
+                .par_iter()
+                .chain(rayon::iter::once(z))
+                .with_min_len(min_len)
+                .map(|elem| elem.evaluate_over_domain_by_ref(self.domain.d8))
+                .collect::<Vec<_>>();
+            let z8 = res[COLUMNS].clone();
+            res.truncate(COLUMNS);
+            (res.try_into().unwrap(), z8)
+        };
+
+        let w4: [E<F, D<F>>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .with_min_len(min_len)
+            .map(|i| {
+                E::<F, D<F>>::from_vec_and_domain(
+                    (0..self.domain.d4.size)
+                        .map(|j| w8[i].evals[2 * j as usize])
+                        .collect(),
+                    self.domain.d4,
+                )
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
         let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+        let z8_shift8 = z8.shift(8);
+
+        let d4_next_w: [_; COLUMNS] = w4
+            .par_iter()
+            .with_min_len(min_len)
+            .map(|w4_i| w4_i.shift(4))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let d8_next_w: [_; COLUMNS] = w8
+            .par_iter()
+            .with_min_len(min_len)
+            .map(|w8_i| w8_i.shift(8))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w4[i].shift(4)),
+                    w: d4_next_w,
                     // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
@@ -402,8 +449,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w8[i].shift(8)),
-                    z: z8.shift(8),
+                    w: d8_next_w,
+                    z: z8_shift8,
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
