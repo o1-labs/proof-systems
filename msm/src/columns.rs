@@ -5,9 +5,9 @@ use kimchi::circuits::expr::{CacheId, FormattedOutput};
 
 /// Describe a generic indexed variable X_{i}.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-pub enum Column {
+pub enum Column<T> {
     /// Columns related to the relation encoded in the circuit
-    Relation(usize),
+    Relation(T),
     /// Columns related to dynamic selectors to indicate gate type
     DynamicSelector(usize),
     /// Constant column that is /always/ fixed for a given circuit.
@@ -25,9 +25,9 @@ pub enum Column {
     LookupFixedTable(u32),
 }
 
-impl Column {
+impl Column<usize> {
     /// Adds offset if the column is `Relation`. Fails otherwise.
-    pub fn add_rel_offset(self, offset: usize) -> Column {
+    pub fn add_rel_offset(self, offset: usize) -> Column<usize> {
         let Column::Relation(i) = self else {
             todo!("add_rel_offset is only implemented for the relation columns")
         };
@@ -35,7 +35,7 @@ impl Column {
     }
 }
 
-impl FormattedOutput for Column {
+impl FormattedOutput for Column<usize> {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Relation(i) => format!("x_{{{i}}}"),
@@ -73,17 +73,17 @@ impl FormattedOutput for Column {
 
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
-pub trait ColumnIndexer: core::fmt::Debug + Copy + Eq + Ord {
+pub trait ColumnIndexer<T>: core::fmt::Debug + Copy + Eq + Ord {
     /// Total number of columns in this index.
     const N_COL: usize;
 
     /// Flatten the column "alias" into the integer-like column.
-    fn to_column(self) -> Column;
+    fn to_column(self) -> Column<T>;
 }
 
 // Implementation to be compatible with folding if we use generic column
 // constraints
-impl FoldingColumnTrait for Column {
+impl<T: Copy> FoldingColumnTrait for Column<T> {
     fn is_witness(&self) -> bool {
         match self {
             // Witness

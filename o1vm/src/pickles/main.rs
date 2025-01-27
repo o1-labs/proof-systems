@@ -1,6 +1,6 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use clap::Parser;
-use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -22,8 +22,6 @@ use o1vm::{
 };
 use poly_commitment::{ipa::SRS, SRS as _};
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
-
-pub const DOMAIN_SIZE: usize = 1 << 15;
 
 pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut rng = rand::thread_rng();
@@ -47,11 +45,40 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
-    let domain_fp = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
-    let srs: SRS<Vesta> = {
-        let srs = SRS::create(DOMAIN_SIZE);
-        srs.get_lagrange_basis(domain_fp.d1);
-        srs
+    let (srs, domain_fp) = match &args.srs_cache {
+        Some(cache) => {
+            debug!("Loading SRS from cache {}", cache);
+            let file_path = Path::new(cache);
+            let file = File::open(file_path).expect("Error opening SRS cache file");
+            let srs: SRS<Vesta> = {
+                // By convention, proof systems serializes a TestSRS with filename 'test_<CURVE_NAME>.srs'.
+                // The benefit of using this is you don't waste time verifying the SRS.
+                if file_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("test_")
+                {
+                    let test_srs: TestSRS<Vesta> = rmp_serde::from_read(&file).unwrap();
+                    From::from(test_srs)
+                } else {
+                    rmp_serde::from_read(&file).unwrap()
+                }
+            };
+            debug!("SRS loaded successfully from cache");
+            let domain_fp = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
+            (srs, domain_fp)
+        }
+        None => {
+            debug!("No SRS cache provided. Creating SRS from scratch with domain size 2^16");
+            let domain_size = 1 << 16;
+            let srs = SRS::create(domain_size);
+            let domain_fp = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
+            srs.get_lagrange_basis(domain_fp.d1);
+            debug!("SRS created successfully");
+            (srs, domain_fp)
+        }
     };
 
     // Initialize the environments
@@ -77,8 +104,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     let constraints = mips_constraints::get_all_constraints::<Fp>();
+    let domain_size = domain_fp.d1.size as usize;
 
-    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(DOMAIN_SIZE);
+    let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -95,6 +123,28 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         {
             scratch_chunk.push(*scratch);
         }
+        // Lookup state
+        {
+            let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
+            let environment_length = mips_wit_env.lookup_state.len();
+            let lookup_state_size = std::cmp::max(proof_inputs_length, environment_length);
+            for idx in 0..lookup_state_size {
+                if idx >= environment_length {
+                    // We pad with 0s for dummy lookups missing from the environment.
+                    curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } else if idx >= proof_inputs_length {
+                    // We create a new column filled with 0s in the proof inputs.
+                    let mut new_vec =
+                        vec![Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
+                } else {
+                    // Push the value to the column.
+                    curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
+        }
         curr_proof_inputs
             .evaluations
             .instruction_counter
@@ -107,9 +157,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .selector
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
-        if curr_proof_inputs.evaluations.instruction_counter.len() == DOMAIN_SIZE {
+        if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
             let start_iteration = Instant::now();
-            debug!("Limit of {DOMAIN_SIZE} reached. We make a proof, verify it (for testing) and start with a new chunk");
+            debug!("Limit of {domain_size} reached. We make a proof, verify it (for testing) and start with a new chunk");
             let proof = prover::prove::<
                 Vesta,
                 DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
@@ -137,7 +187,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 assert!(verif);
             }
 
-            curr_proof_inputs = ProofInputs::new(DOMAIN_SIZE);
+            curr_proof_inputs = ProofInputs::new(domain_size);
         }
     }
 }

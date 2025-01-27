@@ -378,7 +378,7 @@ pub enum IVCColumn {
     Block6UOutput,
 }
 
-impl ColumnIndexer for IVCColumn {
+impl ColumnIndexer<usize> for IVCColumn {
     /// Number of columns used by the IVC circuit
     /// It contains at least the columns used for Poseidon.
     /// It does not include the additional columns that might be required
@@ -391,7 +391,7 @@ impl ColumnIndexer for IVCColumn {
     // We also add 1 for the FoldIteration column.
     const N_COL: usize = IVCPoseidonColumn::N_COL + 1 + N_BLOCKS;
 
-    fn to_column(self) -> Column {
+    fn to_column(self) -> Column<usize> {
         match self {
             // We keep a column that will be used for the folding iteration.
             // Question: do we need it for all the rows or does it appear only

@@ -16,7 +16,7 @@ use std::{collections::BTreeMap, iter, marker::PhantomData};
 /// separately is due to a rust limitation.
 pub struct WitnessBuilderEnv<
     F: PrimeField,
-    CIx: ColumnIndexer,
+    CIx: ColumnIndexer<usize>,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
@@ -68,7 +68,7 @@ pub struct WitnessBuilderEnv<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -103,7 +103,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -124,7 +124,7 @@ impl<
 /// for every `T: ColWriteCap`.
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -142,7 +142,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -171,7 +171,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -187,7 +187,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -276,7 +276,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,
@@ -284,7 +284,7 @@ impl<
         LT: LookupTableID,
     > WitnessBuilderEnv<F, CIx, N_WIT, N_REL, N_DSEL, N_FSEL, LT>
 {
-    pub fn write_column_raw(&mut self, position: Column, value: F) {
+    pub fn write_column_raw(&mut self, position: Column<usize>, value: F) {
         match position {
             Column::Relation(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::FixedSelector(_) => {
@@ -421,7 +421,7 @@ impl<
 
 impl<
         F: PrimeField,
-        CIx: ColumnIndexer,
+        CIx: ColumnIndexer<usize>,
         const N_WIT: usize,
         const N_REL: usize,
         const N_DSEL: usize,

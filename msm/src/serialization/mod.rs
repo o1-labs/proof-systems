@@ -28,8 +28,8 @@ mod tests {
     type SerializationWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         SerializationColumn,
-        { <SerializationColumn as ColumnIndexer>::N_COL - N_FSEL_SER },
-        { <SerializationColumn as ColumnIndexer>::N_COL - N_FSEL_SER },
+        { <SerializationColumn as ColumnIndexer<usize>>::N_COL - N_FSEL_SER },
+        { <SerializationColumn as ColumnIndexer<usize>>::N_COL - N_FSEL_SER },
         0,
         N_FSEL_SER,
         LookupTable<Ff1>,

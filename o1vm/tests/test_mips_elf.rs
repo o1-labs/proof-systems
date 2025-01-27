@@ -1,4 +1,4 @@
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use mina_curves::pasta::Fp;
 use o1vm::{
     cannon::{self, State, VmConfiguration},
@@ -29,7 +29,10 @@ impl MipsTest {
         o1vm::elf_loader::parse_elf(Architecture::Mips, &path).unwrap()
     }
 
-    fn read_word<Fp: Field, T: PreImageOracleT>(env: &mut witness::Env<Fp, T>, addr: u32) -> u32 {
+    fn read_word<Fp: PrimeField, T: PreImageOracleT>(
+        env: &mut witness::Env<Fp, T>,
+        addr: u32,
+    ) -> u32 {
         let bytes: [u8; 4] = [
             env.get_memory_direct(addr),
             env.get_memory_direct(addr + 1),

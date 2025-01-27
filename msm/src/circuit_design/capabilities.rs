@@ -10,7 +10,7 @@ use ark_ff::PrimeField;
 
 /// Environment capability for accessing and reading columns. This is necessary for
 /// building constraints.
-pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
+pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer<usize>> {
     // NB: 'static here means that `Variable` does not contain any
     // references with a lifetime less than 'static. Which is true in
     // our case. Necessary for `set_assert_mapper`
@@ -39,7 +39,7 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
 
 /// Environment capability similar to `ColAccessCap` but for /also
 /// writing/ columns. Used on the witness side.
-pub trait ColWriteCap<F: PrimeField, CIx: ColumnIndexer>
+pub trait ColWriteCap<F: PrimeField, CIx: ColumnIndexer<usize>>
 where
     Self: ColAccessCap<F, CIx>,
 {
@@ -47,7 +47,7 @@ where
 }
 
 /// Capability for invoking table lookups.
-pub trait LookupCap<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
+pub trait LookupCap<F: PrimeField, CIx: ColumnIndexer<usize>, LT: LookupTableID>
 where
     Self: ColAccessCap<F, CIx>,
 {
@@ -62,7 +62,7 @@ where
 /// Holds a "current" row that can be moved forward with `next_row`.
 /// The `ColWriteCap` and `ColAccessCap` reason in terms of current
 /// row. The two other methods can be used to read/write previous.
-pub trait MultiRowReadCap<F: PrimeField, CIx: ColumnIndexer>
+pub trait MultiRowReadCap<F: PrimeField, CIx: ColumnIndexer<usize>>
 where
     Self: ColWriteCap<F, CIx>,
 {
@@ -84,7 +84,7 @@ where
 // F-typed inputs to a function.
 /// A direct field access capability modelling an abstract witness
 /// builder. Not for constraint building.
-pub trait DirectWitnessCap<F: PrimeField, CIx: ColumnIndexer>
+pub trait DirectWitnessCap<F: PrimeField, CIx: ColumnIndexer<usize>>
 where
     Self: MultiRowReadCap<F, CIx>,
 {
@@ -106,7 +106,7 @@ where
 /// partially) in the constraint builder case. For example, "hcopy",
 /// despite its name, does not do any "write", so hcopy !=>
 /// write_column.
-pub trait HybridCopyCap<F: PrimeField, CIx: ColumnIndexer>
+pub trait HybridCopyCap<F: PrimeField, CIx: ColumnIndexer<usize>>
 where
     Self: ColAccessCap<F, CIx>,
 {
@@ -120,7 +120,7 @@ where
 ////////////////////////////////////////////////////////////////////////////
 
 /// Write an array of values simultaneously.
-pub fn read_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+pub fn read_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer<usize>, ColMap>(
     env: &mut Env,
     column_map: ColMap,
 ) -> [Env::Variable; ARR_N]
@@ -133,7 +133,7 @@ where
 }
 
 /// Write a field element directly as a constant.
-pub fn write_column_const<F, Env, CIx: ColumnIndexer>(env: &mut Env, col: CIx, var: &F)
+pub fn write_column_const<F, Env, CIx: ColumnIndexer<usize>>(env: &mut Env, col: CIx, var: &F)
 where
     F: PrimeField,
     Env: ColWriteCap<F, CIx>,
@@ -142,7 +142,7 @@ where
 }
 
 /// Write an array of values simultaneously.
-pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer<usize>, ColMap>(
     env: &mut Env,
     input: [Env::Variable; ARR_N],
     column_map: ColMap,
@@ -157,7 +157,7 @@ pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap
 }
 
 /// Write an array of /field/ values simultaneously.
-pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer<usize>, ColMap>(
     env: &mut Env,
     input: &[F; ARR_N],
     column_map: ColMap,

@@ -86,6 +86,7 @@ where
         let WitnessColumns {
             scratch,
             scratch_inverse,
+            lookup_state,
             instruction_counter,
             error,
             selector,
@@ -119,10 +120,15 @@ where
                 eval_col(evals)
             })
             .collect::<Vec<_>>();
+        let lookup_state = lookup_state
+            .into_par_iter()
+            .map(eval_col)
+            .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_col).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
+            lookup_state,
             instruction_counter: eval_col(instruction_counter),
             error: eval_col(error.clone()),
             selector: selector.try_into().unwrap(),
@@ -134,6 +140,7 @@ where
         let WitnessColumns {
             scratch,
             scratch_inverse,
+            lookup_state,
             instruction_counter,
             error,
             selector,
@@ -151,10 +158,12 @@ where
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse.par_iter().map(comm).collect::<Vec<_>>();
+        let lookup_state = lookup_state.par_iter().map(comm).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
+            lookup_state,
             instruction_counter: comm(instruction_counter),
             error: comm(error),
             selector: selector.try_into().unwrap(),
@@ -170,6 +179,7 @@ where
         let WitnessColumns {
             scratch,
             scratch_inverse,
+            lookup_state,
             instruction_counter,
             error,
             selector,
@@ -182,10 +192,15 @@ where
             .into_par_iter()
             .map(eval_d8)
             .collect::<Vec<_>>();
+        let lookup_state = lookup_state
+            .into_par_iter()
+            .map(eval_d8)
+            .collect::<Vec<_>>();
         let selector = selector.into_par_iter().map(eval_d8).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
+            lookup_state,
             instruction_counter: eval_d8(instruction_counter),
             error: eval_d8(error),
             selector: selector.try_into().unwrap(),
@@ -198,6 +213,9 @@ where
         absorb_commitment(&mut fq_sponge, comm)
     }
     for comm in commitments.scratch_inverse.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
+    for comm in commitments.lookup_state.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
     absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
@@ -314,6 +332,7 @@ where
         let WitnessColumns {
             scratch,
             scratch_inverse,
+            lookup_state,
             instruction_counter,
             error,
             selector,
@@ -321,10 +340,12 @@ where
         let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
         let scratch = scratch.par_iter().map(eval).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse.par_iter().map(eval).collect::<Vec<_>>();
+        let lookup_state = lookup_state.par_iter().map(eval).collect::<Vec<_>>();
         let selector = selector.par_iter().map(eval).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
             scratch_inverse: scratch_inverse.try_into().unwrap(),
+            lookup_state,
             instruction_counter: eval(instruction_counter),
             error: eval(error),
             selector: selector.try_into().unwrap(),
@@ -375,6 +396,15 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .lookup_state
+        .iter()
+        .zip(zeta_omega_evaluations.lookup_state.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
     fr_sponge.absorb(&zeta_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
     fr_sponge.absorb(&zeta_evaluations.error);
@@ -401,6 +431,7 @@ where
 
     let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
     polynomials.extend(polys.scratch_inverse);
+    polynomials.extend(polys.lookup_state);
     polynomials.push(polys.instruction_counter);
     polynomials.push(polys.error);
     polynomials.extend(polys.selector);

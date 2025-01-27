@@ -12,11 +12,15 @@ use crate::{
         interpreter::{self, InterpreterEnv},
         Instruction,
     },
-    pickles::{verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS, TOTAL_NUMBER_OF_CONSTRAINTS},
+    pickles::{
+        column_env::RelationColumnType, verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS,
+        TOTAL_NUMBER_OF_CONSTRAINTS,
+    },
+    E,
 };
 use ark_ff::{Field, One, UniformRand, Zero};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
-use kimchi_msm::{columns::Column, expr::E};
+use kimchi_msm::columns::Column;
 use log::debug;
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
 use mina_poseidon::{
@@ -67,6 +71,7 @@ fn test_small_circuit() {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
+            lookup_state: vec![],
             instruction_counter: zero_to_n_minus_one(8)
                 .into_iter()
                 .map(|x| x + Fq::one())
@@ -78,9 +83,26 @@ fn test_small_circuit() {
         },
     };
     let mut expr = Expr::zero();
-    for i in 0..SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2 {
-        expr += Expr::cell(Column::Relation(i), CurrOrNext::Curr);
+    for i in 0..SCRATCH_SIZE {
+        expr += Expr::cell(
+            Column::Relation(RelationColumnType::Scratch(i)),
+            CurrOrNext::Curr,
+        );
     }
+    for i in 0..SCRATCH_SIZE_INVERSE {
+        expr += Expr::cell(
+            Column::Relation(RelationColumnType::ScratchInverse(i)),
+            CurrOrNext::Curr,
+        );
+    }
+    expr += Expr::cell(
+        Column::Relation(RelationColumnType::InstructionCounter),
+        CurrOrNext::Curr,
+    );
+    expr += Expr::cell(
+        Column::Relation(RelationColumnType::Error),
+        CurrOrNext::Curr,
+    );
     let mut rng = make_test_rng(None);
 
     type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;

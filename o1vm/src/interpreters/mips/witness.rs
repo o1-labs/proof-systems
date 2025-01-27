@@ -20,13 +20,15 @@ use crate::{
             registers::Registers,
         },
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
+    ramlookup::LookupMode,
     utils::memory_size,
 };
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use core::panic;
 use kimchi::o1_utils::Two;
+use kimchi_msm::LogupTableID;
 use log::{debug, info};
 use std::{
     array,
@@ -64,6 +66,36 @@ impl SyscallEnv {
     }
 }
 
+pub struct LookupMultiplicities {
+    pub pad_lookup: Vec<u64>,
+    pub round_constants_lookup: Vec<u64>,
+    pub at_most_4_lookup: Vec<u64>,
+    pub byte_lookup: Vec<u64>,
+    pub range_check_16_lookup: Vec<u64>,
+    pub sparse_lookup: Vec<u64>,
+    pub reset_lookup: Vec<u64>,
+}
+
+impl LookupMultiplicities {
+    pub fn new() -> Self {
+        LookupMultiplicities {
+            pad_lookup: vec![0; LookupTableIDs::PadLookup.length()],
+            round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
+            at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
+            byte_lookup: vec![0; LookupTableIDs::ByteLookup.length()],
+            range_check_16_lookup: vec![0; LookupTableIDs::RangeCheck16Lookup.length()],
+            sparse_lookup: vec![0; LookupTableIDs::SparseLookup.length()],
+            reset_lookup: vec![0; LookupTableIDs::ResetLookup.length()],
+        }
+    }
+}
+
+impl Default for LookupMultiplicities {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// This structure represents the environment the virtual machine state will use
 /// to transition. This environment will be used by the interpreter. The virtual
 /// machine has access to its internal state and some external memory. In
@@ -81,6 +113,8 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state_idx_inverse: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
+    pub lookup_state_idx: usize,
+    pub lookup_state: Vec<Fp>,
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -90,13 +124,14 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub lookup_multiplicities: LookupMultiplicities,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreImageOracle> {
     type Position = Column;
 
     fn alloc_scratch(&mut self) -> Self::Position {
@@ -142,9 +177,53 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
         }
     }
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
-        // No-op, constraints only
-        // TODO: keep track of multiplicities of fixed tables here as in Keccak?
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        let mut add_value = |x: Fp| {
+            self.lookup_state_idx += 1;
+            self.lookup_state.push(x);
+        };
+        let Lookup {
+            table_id,
+            magnitude: numerator,
+            mode,
+            value: values,
+        } = lookup;
+        let values: Vec<_> = values.into_iter().map(|x| Fp::from(x)).collect();
+
+        // Add lookup numerator
+        match mode {
+            LookupMode::Write => add_value(Fp::from(numerator)),
+            LookupMode::Read => add_value(-Fp::from(numerator)),
+        };
+        // Add lookup table ID
+        add_value(Fp::from(table_id.to_u32()));
+        // Add values
+        for value in values.iter() {
+            add_value(*value);
+        }
+
+        if let Some(idx) = table_id.ix_by_value(values.as_slice()) {
+            match table_id {
+                LookupTableIDs::PadLookup => self.lookup_multiplicities.pad_lookup[idx] += 1,
+                LookupTableIDs::RoundConstantsLookup => {
+                    self.lookup_multiplicities.round_constants_lookup[idx] += 1
+                }
+                LookupTableIDs::AtMost4Lookup => {
+                    self.lookup_multiplicities.at_most_4_lookup[idx] += 1
+                }
+                LookupTableIDs::ByteLookup => self.lookup_multiplicities.byte_lookup[idx] += 1,
+                LookupTableIDs::RangeCheck16Lookup => {
+                    self.lookup_multiplicities.range_check_16_lookup[idx] += 1
+                }
+                LookupTableIDs::SparseLookup => self.lookup_multiplicities.sparse_lookup[idx] += 1,
+                LookupTableIDs::ResetLookup => self.lookup_multiplicities.reset_lookup[idx] += 1,
+                // RAM ones, no multiplicities
+                LookupTableIDs::MemoryLookup => (),
+                LookupTableIDs::RegisterLookup => (),
+                LookupTableIDs::SyscallLookup => (),
+                LookupTableIDs::KeccakStepLookup => (),
+            }
+        }
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -819,7 +898,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp, PreI
     }
 }
 
-impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
+impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
@@ -882,6 +961,8 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state_idx_inverse: 0,
             scratch_state: fresh_scratch_state(),
             scratch_state_inverse: fresh_scratch_state(),
+            lookup_state_idx: 0,
+            lookup_state: vec![],
             halt: state.exited,
             syscall_env,
             selector,
@@ -891,6 +972,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            lookup_multiplicities: LookupMultiplicities::new(),
         }
     }
 
@@ -903,6 +985,11 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn reset_scratch_state_inverse(&mut self) {
         self.scratch_state_idx_inverse = 0;
         self.scratch_state_inverse = fresh_scratch_state();
+    }
+
+    pub fn reset_lookup_state(&mut self) {
+        self.lookup_state_idx = 0;
+        self.lookup_state = vec![];
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
@@ -1148,6 +1235,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     ) -> Instruction {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
+        self.reset_lookup_state();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
@@ -1169,7 +1257,7 @@ impl<Fp: Field, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.instruction_counter = self.next_instruction_counter();
 
         config.halt_address.iter().for_each(|halt_address: &u32| {
-            if self.get_instruction_pointer() == (*halt_address as u64) {
+            if self.registers.current_instruction_pointer == *halt_address {
                 debug!("Program jumped to halt address: {:#X}", halt_address);
                 self.halt = true;
             }
