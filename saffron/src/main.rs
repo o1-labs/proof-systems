@@ -1,12 +1,11 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use clap::Parser;
 use kimchi::precomputed_srs::TestSRS;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use mina_curves::pasta::{Fp, Vesta};
+use poly_commitment::{ipa::SRS, SRS as _};
 use saffron::{blob::FieldBlob, cli, commitment, utils};
+use sha3::{Digest, Sha3_256};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -69,11 +68,9 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
         input_file = args.input,
         "Decoding file"
     );
-    let mut file = File::open(args.input)?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf)?;
-    let blob: FieldBlob<Fp> = FieldBlob::<Fp>::deserialize_compressed(&buf[..])?;
-    let data = FieldBlob::<Fp>::decode(domain, blob);
+    let file = File::open(args.input)?;
+    let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
+    let data = FieldBlob::<Vesta>::decode(domain, blob);
     debug!(output_file = args.output, "Writing decoded blob to file");
     let mut writer = File::create(args.output)?;
     writer.write_all(&data)?;
@@ -90,30 +87,23 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let blob = FieldBlob::<Fp>::encode(domain, &buf);
+    let blob = FieldBlob::<Vesta>::encode(&srs, domain, &buf);
     args.assert_commitment
         .into_iter()
         .for_each(|asserted_commitment| {
-            let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                mina_poseidon::pasta::fq_kimchi::static_params(),
-            );
-            let commitments = commitment::commit_to_blob(&srs, &blob);
-            let c: PolyComm<ark_ec::short_weierstrass::Affine<VestaParameters>> =
-                commitment::fold_commitments(&mut fq_sponge, &commitments);
-            let bytes = serde_json::to_vec(&c).unwrap();
-            let computed_commitment = hex::encode(bytes);
+            let bytes = rmp_serde::to_vec(&blob.commitments).unwrap();
+            let hash = Sha3_256::new().chain_update(bytes).finalize();
+            let computed_commitment = hex::encode(hash);
             if asserted_commitment != computed_commitment {
                 panic!(
-                    "commitment mismatch: asserted {}, computed {}",
+                    "commitment hash mismatch: asserted {}, computed {}",
                     asserted_commitment, computed_commitment
                 );
             }
         });
-    let mut bytes_to_write = Vec::with_capacity(buf.len());
-    blob.serialize_compressed(&mut bytes_to_write)?;
     debug!(output_file = args.output, "Writing encoded blob to file",);
     let mut writer = File::create(args.output)?;
-    writer.write_all(&bytes_to_write)?;
+    rmp_serde::encode::write(&mut writer, &blob)?;
     Ok(())
 }
 
@@ -123,14 +113,10 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<String> {
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-        mina_poseidon::pasta::fq_kimchi::static_params(),
-    );
     let commitments = commitment::commit_to_field_elems(&srs, domain_fp, field_elems);
-    let c: PolyComm<ark_ec::short_weierstrass::Affine<VestaParameters>> =
-        commitment::fold_commitments(&mut fq_sponge, &commitments);
-    let bytes = serde_json::to_vec(&c).unwrap();
-    Ok(hex::encode(bytes))
+    let bytes = rmp_serde::to_vec(&commitments).unwrap();
+    let hash = Sha3_256::new().chain_update(bytes).finalize();
+    Ok(hex::encode(hash))
 }
 
 pub fn init_subscriber() {
