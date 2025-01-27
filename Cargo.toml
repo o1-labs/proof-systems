@@ -79,7 +79,7 @@ strum_macros = "0.26.1"
 syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
-wasm-bindgen = "=0.2.90"
+wasm-bindgen = "=0.2.87"
 
 
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
