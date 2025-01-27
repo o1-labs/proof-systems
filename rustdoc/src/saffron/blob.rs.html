@@ -137,91 +137,57 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::{decode_into, encode_for_domain};
-<span class="kw">use </span>ark_ff::{Field, PrimeField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
-<span class="kw">use </span>ark_serialize::{
-    CanonicalDeserialize, CanonicalSerialize, Compress, Read, SerializationError, Valid, Validate,
-    Write,
-};
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>tracing::{debug, instrument};
 
 <span class="comment">// A FieldBlob&lt;F&gt; represents the encoding of a Vec&lt;u8&gt; as a list of polynomials over F,
 // where F is a prime field. The polyonomials are represented in the monomial basis.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub struct </span>FieldBlob&lt;F: Field&gt; {
+</span><span class="attr">#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(bound = <span class="string">&quot;G::ScalarField : CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>FieldBlob&lt;G: CommitmentCurve&gt; {
     <span class="kw">pub </span>n_bytes: usize,
     <span class="kw">pub </span>domain_size: usize,
-    <span class="kw">pub </span>data: Vec&lt;DensePolynomial&lt;F&gt;&gt;,
+    <span class="kw">pub </span>commitments: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>data: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: CanonicalSerialize + Field&gt; CanonicalSerialize <span class="kw">for </span>FieldBlob&lt;F&gt; {
-    <span class="kw">fn </span>serialize_with_mode&lt;W: Write&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>writer: W,
-        mode: Compress,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializationError&gt; {
-        <span class="self">self</span>.n_bytes.serialize_with_mode(<span class="kw-2">&amp;mut </span>writer, mode)<span class="question-mark">?</span>;
-        <span class="self">self</span>.domain_size.serialize_with_mode(<span class="kw-2">&amp;mut </span>writer, mode)<span class="question-mark">?</span>;
-        <span class="self">self</span>.data.serialize_with_mode(<span class="kw-2">&amp;mut </span>writer, mode)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn </span>serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Compress) -&gt; usize {
-        <span class="self">self</span>.n_bytes.serialized_size(mode)
-            + <span class="self">self</span>.domain_size.serialized_size(mode)
-            + <span class="self">self</span>.data.serialized_size(mode)
-    }
+<span class="attr">#[instrument(skip_all)]
+</span><span class="kw">fn </span>commit_to_blob_data&lt;G: CommitmentCurve&gt;(
+    srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
+    data: <span class="kw-2">&amp;</span>[DensePolynomial&lt;G::ScalarField&gt;],
+) -&gt; Vec&lt;PolyComm&lt;G&gt;&gt; {
+    <span class="kw">let </span>num_chunks = <span class="number">1</span>;
+    data.par_iter()
+        .map(|p| srs.commit_non_hiding(p, num_chunks))
+        .collect()
 }
 
-<span class="kw">impl</span>&lt;F: Valid + Field&gt; Valid <span class="kw">for </span>FieldBlob&lt;F&gt; {
-    <span class="kw">fn </span>check(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializationError&gt; {
-        <span class="self">self</span>.n_bytes.check()<span class="question-mark">?</span>;
-        <span class="self">self</span>.domain_size.check()<span class="question-mark">?</span>;
-        <span class="self">self</span>.data.check()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="kw">impl</span>&lt;F: CanonicalDeserialize + Field&gt; CanonicalDeserialize <span class="kw">for </span>FieldBlob&lt;F&gt; {
-    <span class="kw">fn </span>deserialize_with_mode&lt;R: Read&gt;(
-        <span class="kw-2">mut </span>reader: R,
-        compress: Compress,
-        validate: Validate,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, SerializationError&gt; {
-        <span class="kw">let </span>n_bytes = usize::deserialize_with_mode(<span class="kw-2">&amp;mut </span>reader, compress, validate)<span class="question-mark">?</span>;
-        <span class="kw">let </span>domain_size = usize::deserialize_with_mode(<span class="kw-2">&amp;mut </span>reader, compress, validate)<span class="question-mark">?</span>;
-        <span class="kw">let </span>data =
-            Vec::&lt;DensePolynomial&lt;F&gt;&gt;::deserialize_with_mode(<span class="kw-2">&amp;mut </span>reader, compress, validate)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            n_bytes,
-            domain_size,
-            data,
-        })
-    }
-}
-
-<span class="kw">impl</span>&lt;F: PrimeField&gt; FieldBlob&lt;F&gt; {
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; FieldBlob&lt;G&gt; {
     <span class="attr">#[instrument(skip_all)]
-    </span><span class="kw">pub fn </span>encode&lt;D: EvaluationDomain&lt;F&gt;&gt;(domain: D, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; FieldBlob&lt;F&gt; {
+    </span><span class="kw">pub fn </span>encode&lt;D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
+        srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
+        domain: D,
+        bytes: <span class="kw-2">&amp;</span>[u8],
+    ) -&gt; FieldBlob&lt;G&gt; {
         <span class="kw">let </span>field_elements = encode_for_domain(<span class="kw-2">&amp;</span>domain, bytes);
         <span class="kw">let </span>domain_size = domain.size();
 
-        <span class="kw">let </span>data: Vec&lt;DensePolynomial&lt;F&gt;&gt; = field_elements
+        <span class="kw">let </span>data: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = field_elements
             .par_iter()
             .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
             .collect();
+
+        <span class="kw">let </span>commitments = commit_to_blob_data(srs, <span class="kw-2">&amp;</span>data);
 
         <span class="macro">debug!</span>(
             <span class="string">&quot;Encoded {} bytes into {} polynomials&quot;</span>,
@@ -232,12 +198,13 @@
         FieldBlob {
             n_bytes: bytes.len(),
             domain_size,
+            commitments,
             data,
         }
     }
 
     <span class="attr">#[instrument(skip_all)]
-    </span><span class="kw">pub fn </span>decode&lt;D: EvaluationDomain&lt;F&gt;&gt;(domain: D, blob: FieldBlob&lt;F&gt;) -&gt; Vec&lt;u8&gt; {
+    </span><span class="kw">pub fn </span>decode&lt;D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(domain: D, blob: FieldBlob&lt;G&gt;) -&gt; Vec&lt;u8&gt; {
         <span class="comment">// TODO: find an Error type and use Result
         </span><span class="kw">if </span>domain.size() != blob.domain_size {
             <span class="macro">panic!</span>(
@@ -246,8 +213,8 @@
                 domain.size()
             );
         }
-        <span class="kw">let </span>n = (F::MODULUS_BIT_SIZE / <span class="number">8</span>) <span class="kw">as </span>usize;
-        <span class="kw">let </span>m = F::size_in_bytes();
+        <span class="kw">let </span>n = (G::ScalarField::MODULUS_BIT_SIZE / <span class="number">8</span>) <span class="kw">as </span>usize;
+        <span class="kw">let </span>m = G::ScalarField::size_in_bytes();
         <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::with_capacity(blob.n_bytes);
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[<span class="number">0u8</span>; m];
 
@@ -266,32 +233,47 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::commitment::commit_to_field_elems;
+
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_poly::Radix2EvaluationDomain;
-    <span class="kw">use </span>mina_curves::pasta::Fp;
+    <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
     <span class="kw">use </span>once_cell::sync::Lazy;
     <span class="kw">use </span>proptest::prelude::<span class="kw-2">*</span>;
 
-    <span class="kw">static </span>DOMAIN: Lazy&lt;Radix2EvaluationDomain&lt;Fp&gt;&gt; = Lazy::new(|| {
-        <span class="kw">const </span>SRS_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
-        Radix2EvaluationDomain::new(SRS_SIZE).unwrap()
-    });
+    <span class="kw">const </span>SRS_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
+
+    <span class="kw">static </span>SRS: Lazy&lt;SRS&lt;Vesta&gt;&gt; = Lazy::new(|| SRS::create(SRS_SIZE));
+
+    <span class="kw">static </span>DOMAIN: Lazy&lt;Radix2EvaluationDomain&lt;Fp&gt;&gt; =
+        Lazy::new(|| Radix2EvaluationDomain::new(SRS_SIZE).unwrap());
 
     <span class="comment">// check that Vec&lt;u8&gt; -&gt; FieldBlob&lt;Fp&gt; -&gt; Vec&lt;u8&gt; is the identity function
     </span><span class="macro">proptest! </span>{
     <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">20</span>))]
     #[test]
     </span><span class="kw">fn </span>test_round_trip_blob_encoding( xs <span class="kw">in </span>prop::collection::vec(any::&lt;u8&gt;(), <span class="number">0</span>..=<span class="number">2 </span>* Fp::size_in_bytes() * DOMAIN.size()))
-      { <span class="kw">let </span>blob = FieldBlob::&lt;Fp&gt;::encode(<span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
-        blob.serialize_compressed(<span class="kw-2">&amp;mut </span>buf).unwrap();
-        <span class="kw">let </span>a = FieldBlob::&lt;Fp&gt;::deserialize_compressed(<span class="kw-2">&amp;</span>buf[..]).unwrap();
+      { <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+        <span class="kw">let </span>bytes = rmp_serde::to_vec(<span class="kw-2">&amp;</span>blob).unwrap();
+        <span class="kw">let </span>a = rmp_serde::from_slice(<span class="kw-2">&amp;</span>bytes).unwrap();
         <span class="comment">// check that ark-serialize is behaving as expected
         </span><span class="macro">prop_assert_eq!</span>(blob.clone(), a);
-        <span class="kw">let </span>ys = FieldBlob::&lt;Fp&gt;::decode(<span class="kw-2">*</span>DOMAIN, blob);
+        <span class="kw">let </span>ys = FieldBlob::&lt;Vesta&gt;::decode(<span class="kw-2">*</span>DOMAIN, blob);
         <span class="comment">// check that we get the byte blob back again
         </span><span class="macro">prop_assert_eq!</span>(xs,ys);
       }
     }
+
+    <span class="macro">proptest! </span>{
+    <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">10</span>))]
+    #[test]
+        </span><span class="kw">fn </span>test_user_and_storage_provider_commitments_equal(xs <span class="kw">in </span>prop::collection::vec(any::&lt;u8&gt;(), <span class="number">0</span>..=<span class="number">2 </span>* Fp::size_in_bytes() * DOMAIN.size())
+        )
+          { <span class="kw">let </span>elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>user_commitments = commit_to_field_elems(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, elems);
+            <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="macro">prop_assert_eq!</span>(user_commitments, blob.commitments);
+          }
+        }
 }
 </code></pre></div></section></main></body></html>

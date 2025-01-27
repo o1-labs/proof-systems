@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["commit_to_blob","commit_to_field_elems","fold_commitments"]};
+window.SIDEBAR_ITEMS = {"fn":["commit_to_field_elems","fold_commitments"]};
