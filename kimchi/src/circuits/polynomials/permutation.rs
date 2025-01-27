@@ -252,6 +252,9 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ $$
         //~
         let perm = {
+            // @volhovm: wondering: is it more efficient to map them all individually first, and
+            // then fold... or map and reduce row by row at the same time?
+
             // shifts = z(x) *
             // (w[0](x) + gamma + x * beta * shift[0]) *
             // (w[1](x) + gamma + x * beta * shift[1]) * ...
