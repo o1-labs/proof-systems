@@ -22,7 +22,7 @@ pub struct FieldBlob<G: CommitmentCurve> {
     pub data: Vec<DensePolynomial<G::ScalarField>>,
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = "debug")]
 fn commit_to_blob_data<G: CommitmentCurve>(
     srs: &SRS<G>,
     data: &[DensePolynomial<G::ScalarField>],
@@ -34,7 +34,7 @@ fn commit_to_blob_data<G: CommitmentCurve>(
 }
 
 impl<G: CommitmentCurve> FieldBlob<G> {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub fn encode<D: EvaluationDomain<G::ScalarField>>(
         srs: &SRS<G>,
         domain: D,
@@ -64,7 +64,7 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub fn decode<D: EvaluationDomain<G::ScalarField>>(domain: D, blob: FieldBlob<G>) -> Vec<u8> {
         // TODO: find an Error type and use Result
         if domain.size() != blob.domain_size {
