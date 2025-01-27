@@ -1,48 +1,22 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
-use kimchi::precomputed_srs::TestSRS;
 use mina_curves::pasta::{Fp, Vesta};
 use poly_commitment::{ipa::SRS, SRS as _};
-use saffron::{blob::FieldBlob, cli, commitment, utils};
+use saffron::{blob::FieldBlob, cli, commitment, env, utils};
 use sha3::{Digest, Sha3_256};
 use std::{
     fs::File,
     io::{Read, Write},
-    path::Path,
 };
-use time::macros::format_description;
 use tracing::debug;
-use tracing_subscriber::{
-    fmt::{format::FmtSpan, time::UtcTime},
-    EnvFilter,
-};
 
 const DEFAULT_SRS_SIZE: usize = 1 << 16;
 
 fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     match cache {
         Some(cache) => {
-            debug!("Loading SRS from cache {}", cache);
-            let file_path = Path::new(&cache);
-            let file = File::open(file_path).expect("Error opening SRS cache file");
-            let srs: SRS<Vesta> = {
-                // By convention, proof systems serializes a TestSRS with filename 'test_<CURVE_NAME>.srs'.
-                // The benefit of using this is you don't waste time verifying the SRS.
-                if file_path
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .starts_with("test_")
-                {
-                    let test_srs: TestSRS<Vesta> = rmp_serde::from_read(&file).unwrap();
-                    From::from(test_srs)
-                } else {
-                    rmp_serde::from_read(&file).unwrap()
-                }
-            };
-            debug!("SRS loaded successfully from cache");
+            let srs = env::get_srs_from_cache(cache);
             let domain_fp = Radix2EvaluationDomain::new(srs.size()).unwrap();
             (srs, domain_fp)
         }
@@ -119,26 +93,8 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<String> {
     Ok(hex::encode(hash))
 }
 
-pub fn init_subscriber() {
-    let timer = UtcTime::new(format_description!(
-        "[year]-[month]-[day]T[hour repr:24]:[minute]:[second].[subsecond digits:3]Z"
-    ));
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_span_events(FmtSpan::CLOSE)
-        .with_timer(timer)
-        .with_target(true)
-        .with_thread_ids(false)
-        .with_line_number(false)
-        .with_file(false)
-        .with_level(true)
-        .with_ansi(true)
-        .with_writer(std::io::stdout)
-        .init();
-}
-
 pub fn main() -> Result<()> {
-    init_subscriber();
+    env::init_console_subscriber();
     let args = cli::Commands::parse();
     match args {
         cli::Commands::Encode(args) => encode_file(args),
