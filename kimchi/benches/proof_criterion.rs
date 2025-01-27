@@ -3,9 +3,10 @@ use kimchi::bench::BenchmarkCtx;
 
 pub fn bench_proof_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof creation");
-    group.sample_size(10).sampling_mode(SamplingMode::Flat); // for slow benchmarks
+    group.sampling_mode(SamplingMode::Flat); // for slow benchmarks
+    group.measurement_time(std::time::Duration::from_secs(90));
 
-    for size in [10, 14] {
+    for size in [10, 16] {
         let ctx = BenchmarkCtx::new(size);
 
         group.bench_function(
