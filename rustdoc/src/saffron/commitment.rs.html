@@ -59,7 +59,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>tracing::instrument;
 
-<span class="attr">#[instrument(skip_all)]
+<span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">pub fn </span>commit_to_field_elems&lt;G: CommitmentCurve&gt;(
     srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
     domain: D&lt;G::ScalarField&gt;,
@@ -74,7 +74,7 @@
         .collect()
 }
 
-<span class="attr">#[instrument(skip_all)]
+<span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">pub fn </span>fold_commitments&lt;
     G: AffineRepr,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["blob","cli","commitment","utils"]};
+window.SIDEBAR_ITEMS = {"mod":["blob","cli","commitment","env","utils"]};

@@ -223,7 +223,7 @@
     </span><span class="macro">proptest! </span>{
         <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">20</span>))]
         #[test]
-        </span><span class="kw">fn </span>test_round_trip_blob_encoding(xs <span class="kw">in </span>prop::collection::vec(any::&lt;u8&gt;(), <span class="number">0</span>..=<span class="number">2 </span>* Fp::size_in_bytes() * DOMAIN.size())
+        </span><span class="kw">fn </span>test_round_trip_encoding_to_field_elems(xs <span class="kw">in </span>prop::collection::vec(any::&lt;u8&gt;(), <span class="number">0</span>..=<span class="number">2 </span>* Fp::size_in_bytes() * DOMAIN.size())
     )
           { <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>elems = chunked
