@@ -71,6 +71,52 @@ fn benchmark_msm(c: &mut Criterion) {
     }
 }
 
+fn benchmark_msm_parallel(c: &mut Criterion) {
+    use ark_ec::{AffineRepr, VariableBaseMSM};
+    use rayon::prelude::*;
+
+    let mut group = c.benchmark_group("MSM");
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    let srs = SRS::<Vesta>::create(1 << 16);
+    srs.get_lagrange_basis_from_domain_size(1 << 16);
+
+    for msm_size_log in [8, 10, 12, 14, 16].into_iter() {
+        let n = 1 << msm_size_log;
+        for thread_num in [1, 2, 4, 8].into_iter() {
+            group.bench_function(
+                format!(
+                    "msm vertical (size 2^{{{}}}, threads {})",
+                    msm_size_log, thread_num
+                ),
+                |b| {
+                    b.iter_batched(
+                        || {
+                            let coeffs: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();
+                            coeffs
+                        },
+                        |coeffs| {
+                            black_box({
+                                let sub_g: Vec<_> =
+                                    srs.g.chunks(n / thread_num).take(thread_num).collect();
+                                coeffs
+                                    .into_par_iter()
+                                    .chunks(n / thread_num)
+                                    .zip(sub_g.into_par_iter())
+                                    .map(|(coeffs_chunk, g_chunk)| {
+                                        <Vesta as AffineRepr>::Group::msm(g_chunk, &coeffs_chunk)
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                        },
+                        BatchSize::LargeInput,
+                    )
+                },
+            );
+        }
+    }
+}
+
 fn benchmark_ipa_commit(c: &mut Criterion) {
     let mut group = c.benchmark_group("IPA Commit");
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -148,6 +194,7 @@ fn benchmark_ipa_open(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    benchmark_msm_parallel,
     benchmark_msm,
     benchmark_ipa_commit,
     benchmark_ipa_open
