@@ -1,6 +1,6 @@
 #![allow(clippy::unit_arg)]
 use criterion::{black_box, criterion_group, criterion_main, Criterion, SamplingMode};
-use kimchi::bench::BenchmarkCtx;
+use kimchi::bench::{bench_arguments_from_file, BenchmarkCtx};
 
 pub fn bench_proof_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof creation");
@@ -23,58 +23,21 @@ pub fn bench_proof_creation(c: &mut Criterion) {
 }
 
 pub fn bench_proof_creation_mina(c: &mut Criterion) {
-    use ark_serialize::CanonicalDeserialize;
     use groupmap::GroupMap;
-    use kimchi::bench::{BaseSponge, ScalarSponge};
-    use kimchi::circuits::lookup::runtime_tables::RuntimeTable;
-    use kimchi::circuits::polynomial::COLUMNS;
-    use kimchi::proof::{ProverProof, RecursionChallenge};
-    use kimchi::prover_index::ProverIndex;
-    use mina_curves::pasta::{Fp, Vesta};
-    use poly_commitment::commitment::PolyComm;
-    use poly_commitment::ipa::OpeningProof;
-    use std::{fs::File, io::BufReader};
-
-    let group_map = GroupMap::<_>::setup();
+    use kimchi::{
+        bench::{BaseSponge, ScalarSponge},
+        proof::ProverProof,
+    };
 
     let mut group = c.benchmark_group("Proof creation (mina circuit)");
 
     //let seed = "18402993648648599487";
     let seed = "10200493143626649653";
 
-    let bytes1: Vec<u8> = std::fs::read(format!("./test_kimchi_input_{}.ser", seed)).unwrap();
-    let (witness, runtime_tables_as_vec, prev_as_pairs): (
-        [Vec<_>; COLUMNS],
-        Vec<(u32, Vec<Fp>)>,
-        Vec<_>,
-    ) = CanonicalDeserialize::deserialize_uncompressed(bytes1.as_slice()).unwrap();
-
-    let runtime_tables: Vec<RuntimeTable<_>> = runtime_tables_as_vec
-        .into_iter()
-        .map(|(id_u32, data)| RuntimeTable {
-            id: id_u32 as i32,
-            data,
-        })
-        .collect();
-
-    let prev: Vec<RecursionChallenge<_>> = prev_as_pairs
-        .into_iter()
-        .map(|(chals, chunks)| RecursionChallenge {
-            chals,
-            comm: PolyComm { chunks },
-        })
-        .collect();
-
-    let mut reader2 =
-        BufReader::new(File::open(format!("./test_kimchi_index_{}.ser", seed)).unwrap());
-    let index_orig: ProverIndex<Vesta, OpeningProof<Vesta>> =
-        rmp_serde::from_read(&mut reader2).unwrap();
-
-    let cs = index_orig.cs.clone();
-    let endo = cs.endo;
     let srs = kimchi::precomputed_srs::get_srs_test();
-    let index: ProverIndex<Vesta, OpeningProof<Vesta>> = ProverIndex::create(cs, endo, srs.into());
+    let (index, witness, runtime_tables, prev) = bench_arguments_from_file(srs, seed.to_string());
 
+    let group_map = GroupMap::<_>::setup();
     group.bench_function(format!("proof creation (mina)",), |b| {
         b.iter(|| {
             black_box(
