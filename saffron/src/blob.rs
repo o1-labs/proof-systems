@@ -93,7 +93,7 @@ impl<G: CommitmentCurve> FieldBlob<G> {
 }
 
 #[cfg(test)]
-mod blob_test_utils {
+pub mod test_utils {
     use proptest::prelude::*;
 
     #[derive(Debug)]
@@ -171,10 +171,10 @@ mod tests {
 
     use super::*;
     use ark_poly::Radix2EvaluationDomain;
-    use blob_test_utils::*;
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
+    use test_utils::*;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
