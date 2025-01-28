@@ -75,6 +75,8 @@ fn benchmark_msm_parallel(c: &mut Criterion) {
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use rayon::prelude::*;
 
+    let max_threads_global = rayon::max_num_threads();
+
     let mut group = c.benchmark_group("MSM");
     let mut rng = o1_utils::tests::make_test_rng(None);
 
@@ -144,6 +146,52 @@ fn benchmark_msm_parallel(c: &mut Criterion) {
                                             <Vesta as AffineRepr>::Group::msm(&srs.g[..n], chunk)
                                                 .unwrap();
                                         chunk_res.into_affine()
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                        },
+                        BatchSize::LargeInput,
+                    )
+                },
+            );
+            group.bench_function(
+                format!(
+                    "msm batched *parallel & 2-vertical* (size 2^{{{}}}, batch size {})",
+                    msm_size_log, batch_size
+                ),
+                |b| {
+                    let min_len = std::cmp::min(batch_size, max_threads_global / 4);
+                    b.iter_batched(
+                        || {
+                            let coeffs: Vec<Fp> =
+                                (0..batch_size * n).map(|_| Fp::rand(&mut rng)).collect();
+                            coeffs
+                        },
+                        |coeffs| {
+                            black_box({
+                                coeffs
+                                    .into_par_iter()
+                                    .chunks(n)
+                                    .with_min_len(min_len)
+                                    .map(|chunk| {
+                                        let (r1, r2) = rayon::join(
+                                            || {
+                                                <Vesta as AffineRepr>::Group::msm(
+                                                    &srs.g[..n / 2],
+                                                    &chunk[..n / 2],
+                                                )
+                                                .unwrap()
+                                            },
+                                            || {
+                                                <Vesta as AffineRepr>::Group::msm(
+                                                    &srs.g[n / 2..n],
+                                                    &chunk[n / 2..n],
+                                                )
+                                                .unwrap()
+                                            },
+                                        );
+
+                                        (r1 + r2).into_affine()
                                     })
                                     .collect::<Vec<_>>()
                             })
