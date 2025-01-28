@@ -72,7 +72,7 @@ fn benchmark_msm(c: &mut Criterion) {
 }
 
 fn benchmark_msm_parallel(c: &mut Criterion) {
-    use ark_ec::{AffineRepr, VariableBaseMSM};
+    use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use rayon::prelude::*;
 
     let mut group = c.benchmark_group("MSM");
@@ -105,6 +105,45 @@ fn benchmark_msm_parallel(c: &mut Criterion) {
                                     .zip(sub_g.into_par_iter())
                                     .map(|(coeffs_chunk, g_chunk)| {
                                         <Vesta as AffineRepr>::Group::msm(g_chunk, &coeffs_chunk)
+                                            .unwrap()
+                                    })
+                                    .reduce(<Vesta as AffineRepr>::Group::generator, |mut l, r| {
+                                        l += r;
+                                        l
+                                    })
+                            })
+                        },
+                        BatchSize::LargeInput,
+                    )
+                },
+            );
+        }
+    }
+
+    for msm_size_log in [8, 10, 12, 14, 16].into_iter() {
+        let n = 1 << msm_size_log;
+        for batch_size in [1, 2, 4, 8].into_iter() {
+            group.bench_function(
+                format!(
+                    "msm batched (size 2^{{{}}}, batch size {})",
+                    msm_size_log, batch_size
+                ),
+                |b| {
+                    b.iter_batched(
+                        || {
+                            let coeffs: Vec<Fp> =
+                                (0..batch_size * n).map(|_| Fp::rand(&mut rng)).collect();
+                            coeffs
+                        },
+                        |coeffs| {
+                            black_box({
+                                coeffs
+                                    .chunks(n)
+                                    .map(|chunk| {
+                                        let chunk_res =
+                                            <Vesta as AffineRepr>::Group::msm(&srs.g[..n], chunk)
+                                                .unwrap();
+                                        chunk_res.into_affine()
                                     })
                                     .collect::<Vec<_>>()
                             })
@@ -113,6 +152,41 @@ fn benchmark_msm_parallel(c: &mut Criterion) {
                     )
                 },
             );
+            for max_threads in [2, 4, 8].into_iter().filter(|i| *i <= batch_size) {
+                group.bench_function(
+                    format!(
+                        "msm batched *parallel* (size 2^{{{}}}, batch size {}, max threads {})",
+                        msm_size_log, batch_size, max_threads
+                    ),
+                    |b| {
+                        b.iter_batched(
+                            || {
+                                let coeffs: Vec<Fp> =
+                                    (0..batch_size * n).map(|_| Fp::rand(&mut rng)).collect();
+                                coeffs
+                            },
+                            |coeffs| {
+                                black_box({
+                                    coeffs
+                                        .into_par_iter()
+                                        .chunks(n)
+                                        .with_min_len(batch_size / max_threads)
+                                        .map(|chunk| {
+                                            let chunk_res = <Vesta as AffineRepr>::Group::msm(
+                                                &srs.g[..n],
+                                                &chunk,
+                                            )
+                                            .unwrap();
+                                            chunk_res.into_affine()
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                            },
+                            BatchSize::LargeInput,
+                        )
+                    },
+                );
+            }
         }
     }
 }
