@@ -10,7 +10,7 @@ use poly_commitment::{
 use rayon::prelude::*;
 use tracing::instrument;
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = "debug")]
 pub fn commit_to_field_elems<G: CommitmentCurve>(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
@@ -25,7 +25,7 @@ pub fn commit_to_field_elems<G: CommitmentCurve>(
         .collect()
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = "debug")]
 pub fn fold_commitments<
     G: AffineRepr,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,

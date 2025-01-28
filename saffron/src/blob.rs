@@ -22,7 +22,7 @@ pub struct FieldBlob<G: CommitmentCurve> {
     pub data: Vec<DensePolynomial<G::ScalarField>>,
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = "debug")]
 fn commit_to_blob_data<G: CommitmentCurve>(
     srs: &SRS<G>,
     data: &[DensePolynomial<G::ScalarField>],
@@ -34,7 +34,7 @@ fn commit_to_blob_data<G: CommitmentCurve>(
 }
 
 impl<G: CommitmentCurve> FieldBlob<G> {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub fn encode<D: EvaluationDomain<G::ScalarField>>(
         srs: &SRS<G>,
         domain: D,
@@ -51,8 +51,8 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         let commitments = commit_to_blob_data(srs, &data);
 
         debug!(
-            "Encoded {} bytes into {} polynomials",
-            bytes.len(),
+            "Encoded {:.2} MB into {} polynomials",
+            bytes.len() as f32 / 1_000_000.0,
             data.len()
         );
 
@@ -64,7 +64,7 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub fn decode<D: EvaluationDomain<G::ScalarField>>(domain: D, blob: FieldBlob<G>) -> Vec<u8> {
         // TODO: find an Error type and use Result
         if domain.size() != blob.domain_size {
@@ -93,27 +93,105 @@ impl<G: CommitmentCurve> FieldBlob<G> {
 }
 
 #[cfg(test)]
+mod blob_test_utils {
+    use proptest::prelude::*;
+
+    #[derive(Debug)]
+    pub struct BlobData(pub Vec<u8>);
+
+    #[derive(Clone, Debug)]
+    pub enum DataSize {
+        Small,
+        Medium,
+        Large,
+    }
+
+    impl DataSize {
+        const KB: usize = 1_000;
+        const MB: usize = 1_000_000;
+
+        fn size_range_bytes(&self) -> (usize, usize) {
+            match self {
+                // Small: 1KB - 1MB
+                Self::Small => (Self::KB, Self::MB),
+                // Medium: 1MB - 10MB
+                Self::Medium => (Self::MB, 10 * Self::MB),
+                // Large: 10MB - 100MB
+                Self::Large => (10 * Self::MB, 100 * Self::MB),
+            }
+        }
+    }
+
+    impl Arbitrary for DataSize {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with(_: ()) -> Self::Strategy {
+            prop_oneof![
+                6 => Just(DataSize::Small), // 60% chance
+                3 => Just(DataSize::Medium),
+                1 => Just(DataSize::Large)
+            ]
+            .boxed()
+        }
+    }
+
+    impl Default for DataSize {
+        fn default() -> Self {
+            Self::Small
+        }
+    }
+
+    impl Arbitrary for BlobData {
+        type Parameters = DataSize;
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary() -> Self::Strategy {
+            DataSize::arbitrary()
+                .prop_flat_map(|size| {
+                    let (min, max) = size.size_range_bytes();
+                    prop::collection::vec(any::<u8>(), min..max)
+                })
+                .prop_map(BlobData)
+                .boxed()
+        }
+
+        fn arbitrary_with(size: Self::Parameters) -> Self::Strategy {
+            let (min, max) = size.size_range_bytes();
+            prop::collection::vec(any::<u8>(), min..max)
+                .prop_map(BlobData)
+                .boxed()
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
-    use crate::commitment::commit_to_field_elems;
+    use crate::{commitment::commit_to_field_elems, env};
 
     use super::*;
     use ark_poly::Radix2EvaluationDomain;
+    use blob_test_utils::*;
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
 
-    const SRS_SIZE: usize = 1 << 16;
-
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| SRS::create(SRS_SIZE));
+    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
+        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
+            env::get_srs_from_cache(srs)
+        } else {
+            SRS::create(1 << 16)
+        }
+    });
 
     static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
-        Lazy::new(|| Radix2EvaluationDomain::new(SRS_SIZE).unwrap());
+        Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());
 
     // check that Vec<u8> -> FieldBlob<Fp> -> Vec<u8> is the identity function
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
-    fn test_round_trip_blob_encoding( xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size()))
+    fn test_round_trip_blob_encoding(BlobData(xs) in BlobData::arbitrary())
       { let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
@@ -128,8 +206,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_user_and_storage_provider_commitments_equal(xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size())
-        )
+        fn test_user_and_storage_provider_commitments_equal(BlobData(xs) in BlobData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);

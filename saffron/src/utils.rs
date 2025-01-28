@@ -103,7 +103,7 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
-        fn test_round_trip_blob_encoding(xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size())
+        fn test_round_trip_encoding_to_field_elems(xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size())
     )
           { let chunked = encode_for_domain(&*DOMAIN, &xs);
             let elems = chunked
