@@ -337,7 +337,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
-
         Ok((perm, bnd))
     }
 
@@ -446,7 +445,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        let mut z = vec![F::one(); n];
+        let mut z = vec![F::one(); 1];
 
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
@@ -481,27 +480,76 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - 1 {
-            z[j + 1] = witness
-                .iter()
-                .zip(self.column_evaluations.permutation_coefficients8.iter())
-                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
-                .fold(F::one(), |x, y| x * y);
+
+        let ix_chunk_num = rayon::max_num_threads();
+        let ix_chunk_size = n / ix_chunk_num;
+
+        // @volhovm: FIXME check correctness of the last batch processing
+        let sub_arrays: Vec<Vec<_>> = (0..ix_chunk_num)
+            .into_par_iter()
+            .map(|j_chunk| {
+                let start_ix = j_chunk * ix_chunk_size;
+                let end_ix = if j_chunk == ix_chunk_num - 1 {
+                    n - 1
+                } else {
+                    (j_chunk + 1) * ix_chunk_size
+                };
+                let sub_array: Vec<_> = (start_ix..end_ix)
+                    .map(|j| {
+                        witness
+                            .iter()
+                            .zip(self.column_evaluations.permutation_coefficients8.iter())
+                            .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
+                            .fold(F::one(), |x, y| x * y)
+                    })
+                    .collect();
+                sub_array
+            })
+            .collect();
+
+        for s in sub_arrays.into_iter() {
+            z.extend_from_slice(&s);
         }
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
 
+        // @volhovm: FIXME is this OK that we do only zk_rows + 1 and +2 and not zk_rows ... n (which may be more than 2 elements?)
         //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
         //~ zero-knowledge to the protocol.
         //~
+
+        let mut z_prefolded = vec![F::one(); 1];
+
+        let sub_arrays_2: Vec<Vec<_>> = (0..ix_chunk_num)
+            .into_par_iter()
+            .map(|j_chunk| {
+                let start_ix = j_chunk * ix_chunk_size;
+                let end_ix = if j_chunk == ix_chunk_num - 1 {
+                    n - 1
+                } else {
+                    (j_chunk + 1) * ix_chunk_size
+                };
+                let sub_array_2: Vec<_> = (start_ix..end_ix)
+                    .map(|j| {
+                        witness
+                            .iter()
+                            .zip(self.cs.shift.iter())
+                            .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
+                            .fold(F::one(), |x, y| x * y)
+                    })
+                    .collect();
+                sub_array_2
+            })
+            .collect();
+
+        for s in sub_arrays_2.into_iter() {
+            z_prefolded.extend_from_slice(&s);
+        }
+
         for j in 0..n - 1 {
             if j != n - zk_rows && j != n - zk_rows + 1 {
                 let x = z[j];
-                z[j + 1] *= witness
-                    .iter()
-                    .zip(self.cs.shift.iter())
-                    .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
-                    .fold(x, |z, y| z * y);
+                z[j + 1] *= z_prefolded[j + 1] * x;
             } else {
                 z[j + 1] = F::rand(rng);
             }
@@ -514,6 +562,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         };
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
+
         Ok(res)
     }
 }
