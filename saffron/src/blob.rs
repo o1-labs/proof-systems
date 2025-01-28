@@ -82,7 +82,7 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         for p in blob.data {
             let evals = p.evaluate_over_domain(domain).evals;
             for x in evals {
-                decode_into(&mut buffer, x);
+                decode_into(&mut buffer, &x);
                 bytes.extend_from_slice(&buffer[(m - n)..m]);
             }
         }

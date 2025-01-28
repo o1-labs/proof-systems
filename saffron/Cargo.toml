@@ -39,7 +39,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
 
 [dev-dependencies]
-ark-std.workspace = true
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
