@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
 use o1_utils::FieldHelpers;
@@ -57,25 +59,26 @@ pub struct QueryBytes {
 /// The inner vector represent polynomials
 pub struct FieldElt {
     /// the number of the polynomial the data point is attached too
-    pub poly_nb: usize,
+    poly_nb: usize,
     /// the number of the root of unity the data point is attached too
-    pub eval_nb: usize,
+    eval_nb: usize,
 }
 /// Represents a query in term of Field element
 #[derive(Debug)]
-pub struct QueryField {
-    pub start: FieldElt,
+pub struct QueryField<F> {
+    start: FieldElt,
     /// how many bytes we need to trim from the first 31bytes chunk
     /// we get from the first field element we decode
-    pub leftover_start: usize,
-    pub end: FieldElt,
+    leftover_start: usize,
+    end: FieldElt,
     /// how many bytes we need to trim from the last 31bytes chunk
     /// we get from the last field element we decode
-    pub leftover_end: usize,
+    leftover_end: usize,
+    tag: PhantomData<F>
 }
 
-impl QueryField {
-    pub fn is_valid<F: PrimeField>(&self, nb_poly: usize) -> bool {
+impl<F: PrimeField> QueryField<F> {
+    pub fn is_valid(&self, nb_poly: usize) -> bool {
         self.start.eval_nb < 1 << 16
             && self.end.eval_nb < 1 << 16
             && self.end.poly_nb < nb_poly
@@ -84,8 +87,8 @@ impl QueryField {
             && self.leftover_start <= (F::MODULUS_BIT_SIZE as usize) / 8
     }
 
-    pub fn apply<F: PrimeField>(self, data: Vec<Vec<F>>) -> Vec<u8> {
-        assert!(self.is_valid::<F>(data.len()), "Invalid query");
+    pub fn apply(self, data: Vec<Vec<F>>) -> Vec<u8> {
+        assert!(self.is_valid(data.len()), "Invalid query");
         let mut answer: Vec<u8> = Vec::new();
         let mut field_elt = self.start;
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
@@ -114,9 +117,9 @@ impl Iterator for FieldElt {
     }
 }
 
-impl Into<QueryField> for QueryBytes {
-    fn into(self) -> QueryField {
-        let n = 31 as usize;
+impl<F: PrimeField> Into<QueryField<F>> for QueryBytes {
+    fn into(self) -> QueryField<F> {
+        let n = F::MODULUS_BIT_SIZE as usize / 8;
         let start_field_nb = self.start / n;
         let start = FieldElt {
             poly_nb: start_field_nb / (1 << 16),
@@ -136,6 +139,7 @@ impl Into<QueryField> for QueryBytes {
             leftover_start,
             end,
             leftover_end,
+            tag: PhantomData,
         }
     }
 }
@@ -310,7 +314,7 @@ mod tests {
             let chunked = encode_for_domain(&*DOMAIN, &xs);
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
-                let field_query: QueryField = query.clone().into();
+                let field_query: QueryField<Fp> = query.clone().into();
                 let got_answer = field_query.apply(chunked.clone());  // Note: might need clone depending on your types
                 prop_assert_eq!(expected, got_answer);
             }
