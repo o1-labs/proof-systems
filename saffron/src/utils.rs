@@ -1,6 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
-use ark_std::rand::Rng;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -57,17 +56,6 @@ pub struct QueryBytes {
     pub len: usize,
 }
 
-/// For testing purposes
-impl QueryBytes {
-    pub fn random(size: usize) -> Self {
-        let mut rng = ark_std::rand::thread_rng();
-        let start = rng.gen_range(0..size);
-        QueryBytes {
-            start,
-            len: rng.gen_range(0..(size - start)),
-        }
-    }
-}
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Debug)]
 /// We store the data in a vector of vector of field element
 /// The inner vector represent polynomials
@@ -156,6 +144,86 @@ impl Into<QueryField> for QueryBytes {
         }
     }
 }
+
+#[cfg(test)]
+pub mod test_utils {
+    use proptest::prelude::*;
+
+    #[derive(Debug, Clone)]
+    pub struct UserData(pub Vec<u8>);
+
+    impl UserData {
+        pub fn len(&self) -> usize {
+            self.0.len()
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub enum DataSize {
+        Small,
+        Medium,
+        Large,
+    }
+
+    impl DataSize {
+        const KB: usize = 1_000;
+        const MB: usize = 1_000_000;
+
+        fn size_range_bytes(&self) -> (usize, usize) {
+            match self {
+                // Small: 1KB - 1MB
+                Self::Small => (Self::KB, Self::MB),
+                // Medium: 1MB - 10MB
+                Self::Medium => (Self::MB, 10 * Self::MB),
+                // Large: 10MB - 100MB
+                Self::Large => (10 * Self::MB, 100 * Self::MB),
+            }
+        }
+    }
+
+    impl Arbitrary for DataSize {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with(_: ()) -> Self::Strategy {
+            prop_oneof![
+                6 => Just(DataSize::Small), // 60% chance
+                3 => Just(DataSize::Medium),
+                1 => Just(DataSize::Large)
+            ]
+            .boxed()
+        }
+    }
+
+    impl Default for DataSize {
+        fn default() -> Self {
+            Self::Small
+        }
+    }
+
+    impl Arbitrary for UserData {
+        type Parameters = DataSize;
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary() -> Self::Strategy {
+            DataSize::arbitrary()
+                .prop_flat_map(|size| {
+                    let (min, max) = size.size_range_bytes();
+                    prop::collection::vec(any::<u8>(), min..max)
+                })
+                .prop_map(UserData)
+                .boxed()
+        }
+
+        fn arbitrary_with(size: Self::Parameters) -> Self::Strategy {
+            let (min, max) = size.size_range_bytes();
+            prop::collection::vec(any::<u8>(), min..max)
+                .prop_map(UserData)
+                .boxed()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,6 +233,7 @@ mod tests {
     use o1_utils::FieldHelpers;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
+    use test_utils::UserData;
 
     fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
         let mut buffer = vec![0u8; Fp::size_in_bytes()];
@@ -215,7 +284,7 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
-        fn test_round_trip_encoding_to_field_elems(xs in prop::collection::vec(any::<u8>(), 0..=2 * Fp::size_in_bytes() * DOMAIN.size())
+        fn test_round_trip_encoding_to_field_elems(UserData(xs) in UserData::arbitrary()
     )
           { let chunked = encode_for_domain(&*DOMAIN, &xs);
             let elems = chunked
@@ -230,33 +299,27 @@ mod tests {
           }
         }
 
-    // check that appying a field query = applying a byte query
     proptest! {
-                    #![proptest_config(ProptestConfig::with_cases(20))]
-                    #[test]
-                    fn test_round_trip_query(xs in prop::collection::vec(any::<u8>(), 0..10 * Fp::size_in_bytes() *DOMAIN.size() )
-                          )                      {
-                       proptest! ( |query in prop::strategy::Just(QueryBytes::random(xs.len()))| 
-                        let chunked = encode_for_domain(&*DOMAIN, &xs);
-                        let expected_answer = &xs[query.start..(query.start+query.len)];
-                        let field_query :QueryField = query.clone().into();
-                     let got_answer = field_query.apply(chunked);
-                     prop_assert_eq!(expected_answer,got_answer);
-                       )
-                    
-                    }
-                }
-
-
-    }
-    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
-        fn test_dependent_args(base in 0..100) {
-            let multiplied = (1..10).prop_map(|factor| base * factor);
-            prop_assume!(base > 0);
-            proptest!(|(multiplied in multiplied)| {
-                prop_assert!(base * multiplied != 0);
-            });
+        fn test_query(
+            (UserData(xs), queries) in UserData::arbitrary()
+                .prop_flat_map(|xs| {
+                    let n = xs.len();
+                    let query_strategy = (0..(n - 1)).prop_flat_map(move |start| {
+                        ((start + 1)..n).prop_map(move |end| QueryBytes { start, len: end - start})
+                    });
+                    let queries_strategy = prop::collection::vec(query_strategy, 10);
+                    (Just(xs), queries_strategy)
+                })
+        ) {
+            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            for query in queries {
+                let expected = &xs[query.start..(query.start+query.len)];
+                let field_query: QueryField = query.clone().into();
+                let got_answer = field_query.apply(chunked.clone());  // Note: might need clone depending on your types
+                prop_assert_eq!(expected, got_answer);
+            }
         }
     }
 }
