@@ -297,6 +297,25 @@ mod tests {
           }
         }
 
+    fn padded_field_length(xs: &[u8]) -> usize {
+        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+        let n = xs.len();
+        let num_field_elems = (n + m - 1) / m;
+        let num_polys = (num_field_elems + DOMAIN.size() - 1) / DOMAIN.size();
+        DOMAIN.size() * num_polys
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn test_padded_byte_length(UserData(xs) in UserData::arbitrary()
+    )
+          { let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n = chunked.into_iter().flatten().count();
+            prop_assert_eq!(n, padded_field_length(&xs));
+          }
+        }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
