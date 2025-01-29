@@ -1,5 +1,6 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
+use o1_utils::FieldHelpers;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -10,11 +11,6 @@ fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
 pub fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
     let bytes = x.into_bigint().to_bytes_be();
     buffer.copy_from_slice(&bytes);
-}
-
-pub fn get_31_bytes<F: PrimeField>(x: F) -> Vec<u8> {
-    let bytes = x.into_bigint().to_bytes_be();
-    bytes[1..32].to_vec()
 }
 
 pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
@@ -92,17 +88,16 @@ impl QueryField {
         assert!(self.is_valid::<F>(data.len()), "Invalid query");
         let mut answer: Vec<u8> = Vec::new();
         let mut field_elt = self.start;
+        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+        let m = F::size_in_bytes();
+        let mut buffer = vec![0u8; m];
         while field_elt <= self.end {
-            if data[field_elt.poly_nb][field_elt.eval_nb] == F::zero() {
-                println!()
-            }
-            let mut to_append = get_31_bytes(data[field_elt.poly_nb][field_elt.eval_nb]);
-            answer.append(&mut to_append);
+            decode_into(&mut buffer, data[field_elt.poly_nb][field_elt.eval_nb]);
+            answer.extend_from_slice(&buffer[(m - n)..m]);
             field_elt = field_elt.next().unwrap();
         }
-        let n = answer.len();
         // trimming the first and last 31bytes chunk
-        answer[(self.leftover_start)..(n - self.leftover_end)].to_vec()
+        answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
     }
 }
 
@@ -230,7 +225,6 @@ mod tests {
     use ark_poly::Radix2EvaluationDomain;
     use ark_std::UniformRand;
     use mina_curves::pasta::Fp;
-    use o1_utils::FieldHelpers;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use test_utils::UserData;
