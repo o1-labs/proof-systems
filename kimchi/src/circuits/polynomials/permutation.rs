@@ -257,32 +257,45 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             // (w[1](x) + gamma + x * beta * shift[1]) * ...
             // (w[6](x) + gamma + x * beta * shift[6])
             // in evaluation form in d8
-            let mut shifts = lagrange.d8.this.z.clone();
-            for (witness, shift) in lagrange.d8.this.w.iter().zip(self.cs.shift.iter()) {
-                let term =
-                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift);
-                shifts = &shifts * &term;
-            }
+            let shifts: Evaluations<F, D<F>> = &lagrange
+                .d8
+                .this
+                .w
+                .par_iter()
+                .zip(self.cs.shift.par_iter())
+                .map(|(witness, shift)| {
+                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift)
+                })
+                .reduce_with(|mut l, r| {
+                    l *= &r;
+                    l
+                })
+                .unwrap()
+                * &lagrange.d8.this.z.clone();
 
             // sigmas = z(x * w) *
             // (w8[0] + gamma + sigma[0] * beta) *
             // (w8[1] + gamma + sigma[1] * beta) * ...
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
-            let mut sigmas = lagrange.d8.next.z.clone();
-            for (witness, sigma) in lagrange
+            let sigmas = &lagrange
                 .d8
                 .this
                 .w
-                .iter()
-                .zip(self.column_evaluations.permutation_coefficients8.iter())
-            {
-                let term = witness + &(gamma + &sigma.scale(beta));
-                sigmas = &sigmas * &term;
-            }
+                .par_iter()
+                .zip(self.column_evaluations.permutation_coefficients8.par_iter())
+                .map(|(witness, sigma)| witness + &(gamma + &sigma.scale(beta)))
+                .reduce_with(|mut l, r| {
+                    l *= &r;
+                    l
+                })
+                .unwrap()
+                * &lagrange.d8.next.z.clone();
 
-            &(&shifts - &sigmas).scale(alpha0)
-                * &self.cs.precomputations().permutation_vanishing_polynomial_l
+            let res = &(&shifts - &sigmas).scale(alpha0)
+                * &self.cs.precomputations().permutation_vanishing_polynomial_l;
+
+            res
         };
 
         //~ and `bnd`:
