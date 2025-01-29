@@ -59,7 +59,7 @@ pub struct QueryBytes {
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Debug)]
 /// We store the data in a vector of vector of field element
 /// The inner vector represent polynomials
-pub struct FieldElt {
+struct FieldElt {
     /// the index of the polynomial the data point is attached too
     poly_index: usize,
     /// the index of the root of unity the data point is attached too
@@ -146,14 +146,6 @@ impl QueryBytes {
                 n_polys,
             }
         };
-        if start.poly_index >= n_polys {
-            return Err(QueryError::QueryOutOfBounds {
-                poly_index: start.poly_index,
-                eval_index: start.eval_index,
-                n_polys,
-                domain_size,
-            });
-        };
         let byte_end = self.start + self.len;
         let end = {
             let end_field_nb = byte_end / n;
@@ -164,7 +156,8 @@ impl QueryBytes {
                 n_polys,
             }
         };
-        if end.poly_index >= n_polys {
+
+        if start.poly_index >= n_polys || end.poly_index >= n_polys {
             return Err(QueryError::QueryOutOfBounds {
                 poly_index: end.poly_index,
                 eval_index: end.eval_index,
@@ -196,6 +189,10 @@ pub mod test_utils {
     impl UserData {
         pub fn len(&self) -> usize {
             self.0.len()
+        }
+
+        pub fn is_empty(&self) -> bool {
+            self.0.is_empty()
         }
     }
 
